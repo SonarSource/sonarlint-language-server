@@ -2,7 +2,7 @@ SonarLint Language Server
 =========================
 SonarLint language server (used by SonarLint VSCode)
 
-[![Build Status](https://dev.azure.com/sonarsource/DotNetTeam%20Project/_apis/build/status/sonarlint/SonarSource.sonarlint-language-server?branchName=master)](https://dev.azure.com/sonarsource/DotNetTeam%20Project/_build/latest?definitionId=XX&branchName=master)
+[![Build Status](https://sonarsource.visualstudio.com/DotNetTeam%20Project/_apis/build/status/sonarlint/SonarLint%20Language%20Server?branchName=master)](https://sonarsource.visualstudio.com/DotNetTeam%20Project/_build/latest?definitionId=66&branchName=master)
 [![Quality Gate Status](https://next.sonarqube.com/sonarqube/api/project_badges/measure?project=org.sonarsource.sonarlint.ls%3Asonarlint-language-server&metric=alert_status)](https://next.sonarqube.com/sonarqube/dashboard?id=org.sonarsource.sonarlint.ls%3Asonarlint-language-server)
 
 Have Question or Feedback?
