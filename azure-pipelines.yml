@@ -182,4 +182,5 @@ stages:
 - template: promote-stage.yml@commonTemplates
   parameters:
     stageDependencies:
+    - build
     - validate
