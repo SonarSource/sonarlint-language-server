@@ -31,12 +31,14 @@ import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.junit.Rule;
 import org.junit.Test;
 import org.sonar.api.utils.log.LogTester;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 import static java.net.URI.create;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
+import static org.mockito.Mockito.mock;
 import static org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager.isAncestor;
 
 public class WorkspaceFoldersManagerTest {
@@ -44,7 +46,7 @@ public class WorkspaceFoldersManagerTest {
   @Rule
   public LogTester logTester = new LogTester();
 
-  private WorkspaceFoldersManager underTest = new WorkspaceFoldersManager();
+  private WorkspaceFoldersManager underTest = new WorkspaceFoldersManager(mock(SettingsManager.class));
 
   @Test
   public void findFolderForFile_returns_correct_folder_when_exists() {
@@ -206,10 +208,7 @@ public class WorkspaceFoldersManagerTest {
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(Collections.emptyList(), asList(workspaceFolder)));
 
     assertThat(underTest.getAll()).isEmpty();
-    assertThat(logTester.logs()).containsExactly("Unregistered workspace folder was missing: WorkspaceFolder [\n" +
-      "  uri = \"" + basedir.toUri() + "\"\n" +
-      "  name = null\n" +
-      "]");
+    assertThat(logTester.logs()).containsExactly("Unregistered workspace folder was missing: " + basedir.toUri());
   }
 
   private static WorkspaceFolder mockWorkspaceFolder(URI uri) {

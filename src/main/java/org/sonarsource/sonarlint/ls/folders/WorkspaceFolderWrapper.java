@@ -22,12 +22,19 @@ package org.sonarsource.sonarlint.ls.folders;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import javax.annotation.CheckForNull;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
 import org.eclipse.lsp4j.WorkspaceFolder;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
+
+import static java.util.Objects.requireNonNull;
 
 public class WorkspaceFolderWrapper {
 
   private final URI uri;
   private final WorkspaceFolder lspFolder;
+  private WorkspaceFolderSettings settings;
 
   public WorkspaceFolderWrapper(URI uri, WorkspaceFolder lspFolder) {
     this.uri = uri;
@@ -39,9 +46,29 @@ public class WorkspaceFolderWrapper {
     return Paths.get(uri);
   }
 
+  public URI getUri() {
+    return uri;
+  }
+
   @Override
   public String toString() {
-    return lspFolder.toString();
+    return ToStringBuilder.reflectionToString(lspFolder, ToStringStyle.SHORT_PREFIX_STYLE);
+  }
+
+  /**
+   * Get non null globalSettings, assuming they have been initialized 
+   */
+  public WorkspaceFolderSettings getSettings() {
+    return requireNonNull(settings, "Settings are not yet initialized");
+  }
+
+  @CheckForNull
+  public WorkspaceFolderSettings getRawSettings() {
+    return settings;
+  }
+
+  public void setSettings(WorkspaceFolderSettings settings) {
+    this.settings = settings;
   }
 
 }

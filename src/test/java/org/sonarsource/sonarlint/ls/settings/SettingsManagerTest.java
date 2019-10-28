@@ -17,35 +17,24 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls;
+package org.sonarsource.sonarlint.ls.settings;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import java.io.File;
-import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
+import java.util.Map;
 import org.junit.Test;
+import org.sonarsource.sonarlint.ls.Utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.tuple;
 
-public class UserSettingsTest {
-
-  @Test
-  public void shouldParseEmptySettings() {
-    UserSettings settings = fromJsonString("{}");
-    assertThat(settings.testMatcher.matches(new File("./someTest").toPath())).isFalse();
-    assertThat(settings.testMatcher.matches(new File("./someTest.ext").toPath())).isFalse();
-    assertThat(settings.analyzerProperties).isEmpty();
-    assertThat(settings.disableTelemetry).isFalse();
-    assertThat(settings.excludedRules).isEmpty();
-    assertThat(settings.includedRules).isEmpty();
-    assertThat(settings.hasLocalRuleConfiguration()).isFalse();
-  }
+public class SettingsManagerTest {
 
   @Test
   public void shouldParseFullWellFormedJsonSettings() {
-    UserSettings settings = fromJsonString("{\n" +
+    WorkspaceFolderSettings settings = SettingsManager.parseFolderSettings(fromJsonString("{\n" +
       "  \"testFilePattern\": \"**/*Test.*\",\n" +
       "  \"analyzerProperties\": {\n" +
       "    \"sonar.polop\": \"palap\"\n" +
@@ -66,45 +55,39 @@ public class UserSettingsTest {
       "      \"level\": \"off\"\n" +
       "    }\n" +
       "  }\n" +
-      "}\n");
+      "}\n"));
 
-    assertThat(settings.testMatcher.matches(new File("./someTest").toPath())).isFalse();
-    assertThat(settings.testMatcher.matches(new File("./someTest.ext").toPath())).isTrue();
-    assertThat(settings.analyzerProperties).containsExactly(entry("sonar.polop", "palap"));
-    assertThat(settings.disableTelemetry).isTrue();
-    assertThat(settings.excludedRules).extracting("repository", "rule").containsExactly(tuple("xoo", "rule1"));
-    assertThat(settings.includedRules).extracting("repository", "rule").containsExactly(tuple("xoo", "rule3"));
+    assertThat(settings.getTestMatcher().matches(new File("./someTest").toPath())).isFalse();
+    assertThat(settings.getTestMatcher().matches(new File("./someTest.ext").toPath())).isTrue();
+    assertThat(settings.getAnalyzerProperties()).containsExactly(entry("sonar.polop", "palap"));
+    assertThat(settings.getExcludedRules()).extracting("repository", "rule").containsExactly(tuple("xoo", "rule1"));
+    assertThat(settings.getIncludedRules()).extracting("repository", "rule").containsExactly(tuple("xoo", "rule3"));
     assertThat(settings.hasLocalRuleConfiguration()).isTrue();
-  }
-
-  @Test(expected = ResponseErrorException.class)
-  public void shouldThrowOnUnexpectedObjectInSettings() {
-    fromJsonString("\"not a JSON object\"");
   }
 
   @Test
   public void shouldHaveLocalRuleConfigurationWithDisabledRule() {
-    assertThat(fromJsonString("{\n" +
+    assertThat(SettingsManager.parseFolderSettings(fromJsonString("{\n" +
       "  \"rules\": {\n" +
       "    \"xoo:rule1\": {\n" +
       "      \"level\": \"off\"\n" +
       "    }\n" +
       "  }\n" +
-      "}\n").hasLocalRuleConfiguration()).isTrue();
+      "}\n")).hasLocalRuleConfiguration()).isTrue();
   }
 
   @Test
   public void shouldHaveLocalRuleConfigurationWithEnabledRule() {
-    assertThat(fromJsonString("{\n" +
+    assertThat(SettingsManager.parseFolderSettings(fromJsonString("{\n" +
       "  \"rules\": {\n" +
       "    \"xoo:rule1\": {\n" +
       "      \"level\": \"on\"\n" +
       "    }\n" +
       "  }\n" +
-      "}\n").hasLocalRuleConfiguration()).isTrue();
+      "}\n")).hasLocalRuleConfiguration()).isTrue();
   }
 
-  private static UserSettings fromJsonString(String json) {
-    return new UserSettings(UserSettings.parseToMap(new Gson().fromJson(json, JsonElement.class)));
+  private static Map<String, Object> fromJsonString(String json) {
+    return Utils.parseToMap(new Gson().fromJson(json, JsonElement.class));
   }
 }

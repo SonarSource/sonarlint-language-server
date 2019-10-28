@@ -17,24 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls;
+@ParametersAreNonnullByDefault
+package org.sonarsource.sonarlint.ls.connected;
 
-import javax.annotation.Nullable;
-import javax.annotation.concurrent.Immutable;
-
-@Immutable
-class ServerInfo {
-  final String serverId;
-  final String serverUrl;
-  final String token;
-
-  @Nullable
-  final String organizationKey;
-
-  ServerInfo(String serverId, String serverUrl, String token, @Nullable String organizationKey) {
-    this.serverId = serverId;
-    this.serverUrl = serverUrl;
-    this.token = token;
-    this.organizationKey = organizationKey;
-  }
-}
+import javax.annotation.ParametersAreNonnullByDefault;

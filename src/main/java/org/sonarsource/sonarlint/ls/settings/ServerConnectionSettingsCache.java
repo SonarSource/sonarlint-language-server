@@ -17,37 +17,32 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls;
+package org.sonarsource.sonarlint.ls.settings;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.ls.log.ClientLogger;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
 
 import static org.apache.commons.lang.StringUtils.isBlank;
 
 /**
- * Cache of server connection details. Used for updating server and module storage.
+ * Cache of server connection globalSettings. This is to avoid querying the client all the time.
  */
-class ServerInfoCache {
-  static final String[] SONARCLOUD_ALIAS = {"https://sonarqube.com", "https://www.sonarqube.com",
-    "https://www.sonarcloud.io", "https://sonarcloud.io"};
-  private final ClientLogger logger;
+public class ServerConnectionSettingsCache {
 
-  private final Map<String, ServerInfo> cache = new HashMap<>();
+  private static final Logger LOG = Loggers.get(ServerConnectionSettingsCache.class);
 
-  ServerInfoCache(ClientLogger logger) {
-    this.logger = logger;
-  }
+  private final Map<String, ServerConnectionSettings> cache = new HashMap<>();
 
   /**
    * Parse the raw value received from client configuration and replace the content of the cache.
    */
-  void replace(@Nullable Object servers) {
+  public void replace(@Nullable Object servers) {
     cache.clear();
     if (servers == null) {
       return;
@@ -62,32 +57,19 @@ class ServerInfoCache {
       String organization = m.get("organizationKey");
 
       if (!isBlank(serverId) && !isBlank(url) && !isBlank(token)) {
-        cache.put(serverId, new ServerInfo(serverId, url, token, organization));
+        cache.put(serverId, new ServerConnectionSettings(serverId, url, token, organization));
       } else {
-        logger.error(ClientLogger.ErrorType.INCOMPLETE_SERVER_CONFIG);
+        LOG.error("Incomplete server configuration. Required parameters must not be blank: serverId, serverUrl, token.");
       }
     });
   }
 
-  boolean isEmpty() {
-    return cache.isEmpty();
-  }
-
-  boolean containsSonarCloud() {
-    return cache.values().stream()
-      .anyMatch(s -> isSonarCloudAlias(s.serverUrl));
-  }
-
-  private static boolean isSonarCloudAlias(@Nullable String url) {
-    return Arrays.asList(SONARCLOUD_ALIAS).contains(url);
-  }
-
-  void forEach(BiConsumer<String, ServerInfo> action) {
+  public void forEach(BiConsumer<String, ServerConnectionSettings> action) {
     cache.forEach(action);
   }
 
   @CheckForNull
-  public ServerInfo get(String serverId) {
+  public ServerConnectionSettings get(String serverId) {
     return cache.get(serverId);
   }
 }

@@ -25,15 +25,14 @@
   <properties>
     <sonarlint.core.version>4.7.0.12286</sonarlint.core.version>
     <!-- analyzers used for tests -->
-    <sonar.javascript.version>4.2.0.6476</sonar.javascript.version>
-    <sonar.php.version>2.14.0.3569</sonar.php.version>
-    <sonar.python.version>1.10.0.2131</sonar.python.version>
-    <sonar.typescript.version>1.7.0.2893</sonar.typescript.version>
-    <sonar.html.version>3.1.0.1615</sonar.html.version>
+    <sonar.javascript.version>5.2.1.7778</sonar.javascript.version>
+    <sonar.php.version>3.2.0.4868</sonar.php.version>
+    <sonar.python.version>2.1.0.5269</sonar.python.version>
+    <sonar.typescript.version>1.9.0.3766</sonar.typescript.version>
+    <sonar.html.version>3.2.0.2082</sonar.html.version>
     <gitRepositoryName>sonarlint-language-server</gitRepositoryName>
     <!-- Release: enable publication to Bintray -->
     <artifactsToPublish>${project.groupId}:${project.artifactId}:jar</artifactsToPublish>
-    <jarsigner.skip>true</jarsigner.skip>
   </properties>
 
   <dependencies>
@@ -119,8 +118,8 @@
         <artifactId>maven-dependency-plugin</artifactId>
         <executions>
           <execution>
-            <id>copy</id>
-            <phase>validate</phase>
+            <id>copy-test-plugins</id>
+            <phase>generate-test-resources</phase>
             <goals>
               <goal>copy</goal>
             </goals>
@@ -215,7 +214,38 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <trimStackTrace>false</trimStackTrace>
+          <environmentVariables>
+            <PATH>${basedir}/src/test/resources/fake-ts-project/node;${env.PATH}</PATH>
+          </environmentVariables>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>com.github.eirslett</groupId>
+        <artifactId>frontend-maven-plugin</artifactId>
+        <version>1.8.0</version>
+        <configuration>
+          <nodeVersion>v11.12.0</nodeVersion>
+          <workingDirectory>src/test/resources/fake-ts-project</workingDirectory>
+        </configuration>
+        <executions>
+          <execution>
+            <id>install node and npm</id>
+            <goals>
+              <goal>install-node-and-npm</goal>
+            </goals>
+            <phase>generate-test-resources</phase>
+          </execution>
+          <execution>
+            <id>npm install</id>
+            <goals>
+              <goal>npm</goal>
+            </goals>
+            <phase>generate-test-resources</phase>
+            <configuration>
+              <arguments>install</arguments>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

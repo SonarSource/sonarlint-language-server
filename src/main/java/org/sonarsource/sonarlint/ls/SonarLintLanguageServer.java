@@ -37,12 +37,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.CodeAction;
@@ -81,12 +78,9 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonar.api.internal.apachecommons.lang.StringUtils;
+import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
-import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
-import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.log.ClientLogger;
-import org.sonarsource.sonarlint.ls.log.DefaultClientLogger;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.core.StandaloneSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.AnalysisResults;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
@@ -96,95 +90,88 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueLocation;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedAnalysisConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
-import org.sonarsource.sonarlint.core.client.api.exceptions.GlobalStorageUpdateRequiredException;
-import org.sonarsource.sonarlint.core.client.api.exceptions.ProjectNotFoundException;
-import org.sonarsource.sonarlint.core.client.api.exceptions.StorageException;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneAnalysisConfiguration;
+import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
-import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.connected.ServerIssueTrackerWrapper;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 import static java.net.URI.create;
 import static java.util.Collections.singleton;
 import static java.util.Objects.nonNull;
-import static org.apache.commons.lang.StringUtils.isBlank;
-import static org.sonarsource.sonarlint.ls.UserSettings.CONNECTED_MODE_PROJECT_PROP;
-import static org.sonarsource.sonarlint.ls.UserSettings.CONNECTED_MODE_SERVERS_PROP;
-import static org.sonarsource.sonarlint.ls.UserSettings.TYPESCRIPT_LOCATION;
 
 public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer, WorkspaceService, TextDocumentService {
-  private static final String USER_AGENT = "SonarLint Language Server";
 
-  private static final String TYPESCRIPT_PATH_PROP = "sonar.typescript.internal.typescriptLocation";
+  private static final Logger LOG = Loggers.get(SonarLintLanguageServer.class);
 
-  private static final String SONARLINT_CONFIGURATION_NAMESPACE = "sonarlint";
-  private static final String SONARLINT_SOURCE = SONARLINT_CONFIGURATION_NAMESPACE;
+  public static final String TYPESCRIPT_PATH_PROP = "sonar.typescript.internal.typescriptLocation";
+  private static final String TYPESCRIPT_LOCATION = "typeScriptLocation";
+
+  private static final String SONARLINT_SOURCE = "sonarlint";
   private static final String SONARLINT_OPEN_RULE_DESCRIPTION_COMMAND = "SonarLint.OpenRuleDesc";
   private static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
-  static final String SONARLINT_UPDATE_SERVER_STORAGE_COMMAND = "SonarLint.UpdateServerStorage";
   static final String SONARLINT_UPDATE_PROJECT_BINDING_COMMAND = "SonarLint.UpdateProjectBinding";
   static final String SONARLINT_REFRESH_DIAGNOSTICS_COMMAND = "SonarLint.RefreshDiagnostics";
   private static final List<String> SONARLINT_COMMANDS = Arrays.asList(
-    SONARLINT_UPDATE_SERVER_STORAGE_COMMAND,
     SONARLINT_UPDATE_PROJECT_BINDING_COMMAND,
     SONARLINT_REFRESH_DIAGNOSTICS_COMMAND);
 
   private final SonarLintExtendedLanguageClient client;
   private final Future<?> backgroundProcess;
-  private final LanguageClientLogOutput logOutput;
-  private final ClientLogger logger;
 
   private final Map<URI, String> languageIdPerFileURI = new HashMap<>();
   private final SonarLintTelemetry telemetry = new SonarLintTelemetry();
 
-  private UserSettings userSettings = new UserSettings();
-  private final Map<Path, ProjectBinding> workspaceBindings = new HashMap<>();
-  private final Map<Path, ServerIssueTracker> workspaceTrackers = new HashMap<>();
-
-  private final EngineCache engineCache;
-  private final ServerInfoCache serverInfoCache;
-
-  private ServerProjectBinding binding;
+  private final LanguageClientLogOutput clientLogOutput;
+  private final Collection<URL> standaloneAnalyzers;
+  private final WorkspaceFoldersManager workspaceFoldersManager;
+  private final SettingsManager settingsManager;
+  private final ProjectBindingManager bindingManager;
+  private String typeScriptPath;
+  private StandaloneSonarLintEngine standaloneEngine;
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
    */
   private TraceValues traceLevel;
 
-  private WorkspaceFoldersManager workspaceFoldersManager;
-
-  SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream,
-    BiFunction<LanguageClientLogOutput, ClientLogger, EngineCache> engineCacheFactory,
-    Function<SonarLintExtendedLanguageClient, ClientLogger> loggerFactory) {
-    Launcher<SonarLintExtendedLanguageClient> launcher = Launcher.createLauncher(this,
-      SonarLintExtendedLanguageClient.class,
-      inputStream,
-      outputStream);
+  SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<URL> analyzers) {
+    this.standaloneAnalyzers = analyzers;
+    Launcher<SonarLintExtendedLanguageClient> launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
+      .setLocalService(this)
+      .setRemoteInterface(SonarLintExtendedLanguageClient.class)
+      .setInput(inputStream)
+      .setOutput(outputStream)
+      .create();
 
     this.client = launcher.getRemoteProxy();
 
-    backgroundProcess = launcher.startListening();
+    clientLogOutput = new LanguageClientLogOutput(this.client);
+    Loggers.setTarget(clientLogOutput);
+    this.settingsManager = new SettingsManager(this.client);
+    this.settingsManager.addListener(telemetry);
+    this.workspaceFoldersManager = new WorkspaceFoldersManager(settingsManager);
+    this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager, clientLogOutput);
+    this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
+    this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
+    this.workspaceFoldersManager.addListener(settingsManager);
 
-    this.logger = loggerFactory.apply(this.client);
-    this.logOutput = new LanguageClientLogOutput(this.client);
-    this.engineCache = engineCacheFactory.apply(logOutput, logger);
-    this.serverInfoCache = new ServerInfoCache(logger);
+    backgroundProcess = launcher.startListening();
   }
 
   static SonarLintLanguageServer bySocket(int port, Collection<URL> analyzers) throws IOException {
     Socket socket = new Socket("localhost", port);
 
-    BiFunction<LanguageClientLogOutput, ClientLogger, EngineCache> engineCacheFactory = (logOutput, logger) -> {
-      StandaloneEngineFactory standaloneEngineFactory = new StandaloneEngineFactory(analyzers, logOutput, logger);
-      ConnectedEngineFactory connectedEngineFactory = new ConnectedEngineFactory(logOutput, logger);
-      return new DefaultEngineCache(standaloneEngineFactory, connectedEngineFactory);
-    };
-
-    Function<SonarLintExtendedLanguageClient, ClientLogger> loggerFactory = DefaultClientLogger::new;
-
-    return new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), engineCacheFactory, loggerFactory);
+    return new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers);
   }
 
   @Override
@@ -192,13 +179,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
       this.traceLevel = parseTraceLevel(params.getTrace());
-      Loggers.setTarget(logOutput);
 
-      this.workspaceFoldersManager = new WorkspaceFoldersManager();
       workspaceFoldersManager.initialize(params.getWorkspaceFolders());
 
-      Map<String, Object> options = UserSettings.parseToMap(params.getInitializationOptions());
-      userSettings = new UserSettings(options);
+      Map<String, Object> options = Utils.parseToMap(params.getInitializationOptions());
 
       String productKey = (String) options.get("productKey");
       // deprecated, will be ignored when productKey present
@@ -208,14 +192,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       String productVersion = (String) options.get("productVersion");
       String ideVersion = (String) options.get("ideVersion");
 
-      String typeScriptPath = (String) options.get(TYPESCRIPT_LOCATION);
-      engineCache.putExtraProperty(TYPESCRIPT_PATH_PROP, typeScriptPath);
+      typeScriptPath = (String) options.get(TYPESCRIPT_LOCATION);
 
-      serverInfoCache.replace(options.get(CONNECTED_MODE_SERVERS_PROP));
-      updateBinding((Map<?, ?>) options.get(CONNECTED_MODE_PROJECT_PROP));
+      bindingManager.initialize(typeScriptPath);
 
-      telemetry.init(getStoragePath(productKey, telemetryStorage), productName, productVersion, ideVersion, this::usesConnectedMode, this::usesSonarCloud);
-      telemetry.optOut(userSettings.disableTelemetry);
+      telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion, bindingManager::usesConnectedMode, bindingManager::usesSonarCloud);
 
       InitializeResult result = new InitializeResult();
       ServerCapabilities c = new ServerCapabilities();
@@ -227,16 +208,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       result.setCapabilities(c);
       return result;
     });
-  }
-
-  private boolean usesConnectedMode() {
-    // TODO check if this is correct
-    return !serverInfoCache.isEmpty();
-  }
-
-  private boolean usesSonarCloud() {
-    // TODO check if this is correct
-    return serverInfoCache.containsSonarCloud();
   }
 
   private static WorkspaceServerCapabilities getWorkspaceServerCapabilities() {
@@ -257,125 +228,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return textDocumentSyncOptions;
   }
 
-  private void handleUpdateServerStorageCommand(@Nullable List<Object> arguments) {
-    engineCache.clearConnectedEngines();
-
-    serverInfoCache.replace(arguments);
-
-    serverInfoCache.forEach((serverId, serverInfo) -> {
-      ConnectedSonarLintEngine engine = engineCache.getOrCreateConnectedEngine(serverInfo);
-      if (engine == null) {
-        logger.warn("Could not start server: " + serverId);
-      } else {
-        updateServerStorage(engine, serverInfo);
-      }
-    });
-  }
-
-  private void updateServerStorage(ConnectedSonarLintEngine engine, ServerInfo serverInfo) {
-    String serverId = serverInfo.serverId;
-    logger.debug("Updating global storage of server " + serverId + ", may take some time...");
-    ServerConfiguration serverConfig = getServerConfiguration(serverInfo);
-    engine.update(serverConfig, null);
-    logger.debug("Successfully updated global storage of server " + serverId);
-  }
-
-  private static ServerConfiguration getServerConfiguration(ServerInfo serverInfo) {
-    return ServerConfiguration.builder()
-      .url(serverInfo.serverUrl)
-      .token(serverInfo.token)
-      .organizationKey(serverInfo.organizationKey)
-      .userAgent(USER_AGENT)
-      .build();
-  }
-
-  private void updateBinding(@Nullable Map<?, ?> connectedModeProject) {
-    binding = null;
-    if (connectedModeProject == null) {
-      return;
-    }
-
-    Map<String, String> map = (Map<String, String>) connectedModeProject;
-    if (map.isEmpty()) {
-      return;
-    }
-
-    String serverId = map.get("serverId");
-    String projectKey = map.get("projectKey");
-    if (isBlank(serverId) || isBlank(projectKey)) {
-      logger.error(ClientLogger.ErrorType.INCOMPLETE_BINDING);
-      return;
-    }
-
-    ServerInfo serverInfo = serverInfoCache.get(serverId);
-    if (serverInfo == null) {
-      logger.error(ClientLogger.ErrorType.INVALID_BINDING_SERVER);
-      return;
-    }
-
-    ConnectedSonarLintEngine engine = engineCache.getOrCreateConnectedEngine(serverInfo);
-    if (engine == null) {
-      logger.error(ClientLogger.ErrorType.START_CONNECTED_ENGINE_FAILED);
-      return;
-    }
-
-    binding = new ServerProjectBinding(serverId, projectKey);
-
-    if (updateProjectStorage(engine, serverInfo)) {
-      updateIssueTrackers(engine, serverInfo);
-    } else {
-      binding = null;
-    }
-  }
-
-  private void updateIssueTrackers(ConnectedSonarLintEngine engine, ServerInfo serverInfo) {
-    workspaceBindings.clear();
-    workspaceTrackers.clear();
-
-    workspaceFoldersManager.getAll().forEach(folder -> {
-      Path folderRoot = folder.getRootPath();
-      Collection<String> ideFilePaths = FileUtils.allRelativePathsForFilesInTree(folderRoot);
-      ProjectBinding projectBinding = engine.calculatePathPrefixes(binding.projectKey, ideFilePaths);
-      workspaceBindings.put(folderRoot, projectBinding);
-      logger.debug(String.format("Resolved sqPathPrefix:%s / idePathPrefix:%s / for folder %s",
-        projectBinding.sqPathPrefix(),
-        projectBinding.idePathPrefix(),
-        folderRoot));
-      workspaceTrackers.put(folderRoot,
-        new ServerIssueTracker(engine, getServerConfiguration(serverInfo), projectBinding));
-    });
-  }
-
-  private boolean updateProjectStorage(ConnectedSonarLintEngine engine, ServerInfo serverInfo) {
-    ServerConfiguration serverConfig = getServerConfiguration(serverInfo);
-    try {
-      engine.updateProject(serverConfig, binding.projectKey, null);
-      return true;
-    } catch (ProjectNotFoundException e) {
-      logger.error(ClientLogger.ErrorType.PROJECT_NOT_FOUND);
-    } catch (Exception e) {
-      logger.warn(e.getMessage());
-    }
-    return false;
-  }
-
-  // visible for testing
-  static Path getStoragePath(@Nullable String productKey, @Nullable String telemetryStorage) {
-    if (productKey != null) {
-      if (telemetryStorage != null) {
-        TelemetryPathManager.migrate(productKey, Paths.get(telemetryStorage));
-      }
-      return TelemetryPathManager.getPath(productKey);
-    }
-    return telemetryStorage != null ? Paths.get(telemetryStorage) : null;
-  }
-
   @Override
   public CompletableFuture<Object> shutdown() {
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
-      engineCache.stopStandaloneEngine();
-      engineCache.clearConnectedEngines();
+      if (standaloneEngine != null) {
+        standaloneEngine.stop();
+      }
+      bindingManager.shutdown();
       telemetry.stop();
       return new Object();
     });
@@ -396,11 +256,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
       List<Either<Command, CodeAction>> commands = new ArrayList<>();
-      boolean standaloneMode = this.binding == null;
+      URI uri = create(params.getTextDocument().getUri());
+      Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(uri);
       for (Diagnostic d : params.getContext().getDiagnostics()) {
         if (SONARLINT_SOURCE.equals(d.getSource())) {
           String ruleKey = d.getCode();
-          List<Object> ruleDescriptionParams = getOpenRuleDescriptionParams(ruleKey);
+          List<Object> ruleDescriptionParams = getOpenRuleDescriptionParams(binding, ruleKey);
           // May take time to initialize the engine so check for cancellation just after
           cancelToken.checkCanceled();
           if (!ruleDescriptionParams.isEmpty()) {
@@ -409,7 +270,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
                 SONARLINT_OPEN_RULE_DESCRIPTION_COMMAND,
                 ruleDescriptionParams)));
           }
-          if (standaloneMode) {
+          if (!binding.isPresent()) {
             commands.add(Either.forLeft(
               new Command(String.format("Deactivate rule '%s'", ruleKey),
                 SONARLINT_DEACTIVATE_RULE_COMMAND,
@@ -421,14 +282,42 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     });
   }
 
-  private List<Object> getOpenRuleDescriptionParams(String ruleKey) {
+  private synchronized StandaloneSonarLintEngine getOrCreateStandaloneEngine() {
+    if (standaloneEngine == null) {
+      standaloneEngine = createStandaloneEngine();
+    }
+    return standaloneEngine;
+  }
+
+  private StandaloneSonarLintEngine createStandaloneEngine() {
+    LOG.debug("Starting standalone SonarLint engine...");
+    LOG.debug("Using {} analyzers", standaloneAnalyzers.size());
+
+    try {
+      Map<String, String> extraProperties = new HashMap<>();
+      extraProperties.put(TYPESCRIPT_PATH_PROP, typeScriptPath);
+      StandaloneGlobalConfiguration configuration = StandaloneGlobalConfiguration.builder()
+        .setExtraProperties(extraProperties)
+        .addPlugins(standaloneAnalyzers.toArray(new URL[0]))
+        .setLogOutput(clientLogOutput)
+        .build();
+
+      StandaloneSonarLintEngine engine = new StandaloneSonarLintEngineImpl(configuration);
+      LOG.debug("Standalone SonarLint engine started");
+      return engine;
+    } catch (Exception e) {
+      LOG.error("Error starting standalone SonarLint engine", e);
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private List<Object> getOpenRuleDescriptionParams(Optional<ProjectBindingWrapper> binding, String ruleKey) {
     RuleDetails ruleDetails;
-    if (binding == null) {
-      ruleDetails = engineCache.getOrCreateStandaloneEngine().getRuleDetails(ruleKey)
+    if (!binding.isPresent()) {
+      ruleDetails = getOrCreateStandaloneEngine().getRuleDetails(ruleKey)
         .orElseThrow(() -> new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unknown rule with key: " + ruleKey, null)));
     } else {
-      ServerInfo serverInfo = serverInfoCache.get(binding.serverId);
-      ConnectedSonarLintEngine engine = engineCache.getOrCreateConnectedEngine(serverInfo);
+      ConnectedSonarLintEngine engine = binding.get().getEngine();
       if (engine != null) {
         ruleDetails = engine.getRuleDetails(ruleKey);
       } else {
@@ -477,8 +366,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
       Map<String, List<RuleDescription>> result = new HashMap<>();
-      Map<String, String> languagesNameByKey = engineCache.getOrCreateStandaloneEngine().getAllLanguagesNameByKey();
-      engineCache.getOrCreateStandaloneEngine().getAllRuleDetails()
+      Map<String, String> languagesNameByKey = getOrCreateStandaloneEngine().getAllLanguagesNameByKey();
+      getOrCreateStandaloneEngine().getAllRuleDetails()
         .forEach(d -> {
           String languageName = languagesNameByKey.get(d.getLanguageKey());
           if (!result.containsKey(languageName)) {
@@ -491,20 +380,23 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   // visible for testing
-  void analyze(URI uri, String content, boolean shouldFetchServerIssues) {
-    if (!uri.getScheme().equalsIgnoreCase("file")) {
-      logger.warn("URI is not a file, analysis not supported");
+  void analyze(URI fileUri, String content, boolean shouldFetchServerIssues) {
+    if (!fileUri.getScheme().equalsIgnoreCase("file")) {
+      LOG.warn("URI '{}' is not a file, analysis not supported", fileUri);
       return;
     }
 
     Map<URI, PublishDiagnosticsParams> files = new HashMap<>();
-    files.put(uri, newPublishDiagnostics(uri));
+    files.put(fileUri, newPublishDiagnostics(fileUri));
 
-    AnalysisWrapper analysisWrapper = getAnalysisWrapper();
-    if (analysisWrapper.isExcludedByServerSideExclusions(uri)) {
-      logger.debug("Skip analysis of excluded file: " + uri);
-      return;
-    }
+    Optional<WorkspaceFolderWrapper> workspaceFolder = workspaceFoldersManager.findFolderForFile(fileUri);
+
+    WorkspaceFolderSettings settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
+      .orElse(settingsManager.getCurrentDefaultFolderSettings());
+
+    Path baseDir = workspaceFolder.map(WorkspaceFolderWrapper::getRootPath)
+      // Default to take file parent dir if file is not part of any workspace
+      .orElse(Paths.get(fileUri).getParent());
 
     IssueListener issueListener = issue -> {
       ClientInputFile inputFile = issue.getInputFile();
@@ -516,33 +408,35 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       }
     };
 
+    Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(fileUri);
+    AnalysisResultsWrapper analysisResults;
     try {
-      Path baseDir = findBaseDir(uri);
-      AnalysisResultsWrapper analysisResults = analysisWrapper.analyze(baseDir, uri, content, issueListener, shouldFetchServerIssues);
-      telemetry.analysisDoneOnSingleFile(StringUtils.substringAfterLast(uri.toString(), "."), analysisResults.analysisTime);
+      if (binding.isPresent()) {
+        ConnectedSonarLintEngine connectedEngine = binding.get().getEngine();
+        if (!connectedEngine.getExcludedFiles(binding.get().getBinding(),
+          singleton(fileUri),
+          uri -> getFileRelativePath(baseDir, uri),
+          uri -> isTest(settings, uri))
+          .isEmpty()) {
+          LOG.debug("Skip analysis of excluded file: {}", fileUri);
+          return;
+        }
+        analysisResults = analyzeConnected(binding.get(), settings, baseDir, fileUri, content, issueListener, shouldFetchServerIssues);
+      } else {
+        analysisResults = analyzeStandalone(settings, baseDir, fileUri, content, issueListener);
+      }
+
+      telemetry.analysisDoneOnSingleFile(StringUtils.substringAfterLast(fileUri.toString(), "."), analysisResults.analysisTime);
 
       // Ignore files with parsing error
       analysisResults.results.failedAnalysisFiles().stream()
         .map(ClientInputFile::getClientObject)
         .forEach(files::remove);
     } catch (Exception e) {
-      logger.error(ClientLogger.ErrorType.ANALYSIS_FAILED, e);
+      LOG.error("Analysis failed.", e);
     }
 
     files.values().forEach(client::publishDiagnostics);
-  }
-
-  private AnalysisWrapper getAnalysisWrapper() {
-    return getConnectedEngine()
-      .map(e -> (AnalysisWrapper) new ConnectedAnalysisWrapper(e, binding.projectKey))
-      .orElse(new StandaloneAnalysisWrapper());
-  }
-
-  private Optional<ConnectedSonarLintEngine> getConnectedEngine() {
-    return Optional.ofNullable(binding)
-      .map(b -> serverInfoCache.get(b.serverId))
-      .filter(Objects::nonNull)
-      .map(engineCache::getOrCreateConnectedEngine);
   }
 
   static class AnalysisResultsWrapper {
@@ -555,110 +449,55 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     }
   }
 
-  interface AnalysisWrapper {
-    AnalysisResultsWrapper analyze(Path baseDir, URI uri, String content, IssueListener issueListener, boolean shouldFetchServerIssues);
+  private AnalysisResultsWrapper analyzeStandalone(WorkspaceFolderSettings settings, Path baseDir, URI uri, String content, IssueListener issueListener) {
+    StandaloneAnalysisConfiguration configuration = StandaloneAnalysisConfiguration.builder()
+      .setBaseDir(baseDir)
+      .addInputFiles(new DefaultClientInputFile(uri, getFileRelativePath(baseDir, uri), content, isTest(settings, uri), languageIdPerFileURI.get(uri)))
+      .putAllExtraProperties(settings.getAnalyzerProperties())
+      .addExcludedRules(settings.getExcludedRules())
+      .addIncludedRules(settings.getIncludedRules())
+      .build();
+    LOG.debug("Analysis triggered on '{}' with configuration: \n{}", uri, configuration.toString());
 
-    boolean isExcludedByServerSideExclusions(URI fileUri);
+    long start = System.currentTimeMillis();
+    StandaloneSonarLintEngine engine = getOrCreateStandaloneEngine();
+    AnalysisResults analysisResults = engine.analyze(configuration, issueListener, null, null);
+    int analysisTime = (int) (System.currentTimeMillis() - start);
+
+    return new AnalysisResultsWrapper(analysisResults, analysisTime);
   }
 
-  class StandaloneAnalysisWrapper implements AnalysisWrapper {
-    @Override
-    public boolean isExcludedByServerSideExclusions(URI fileUri) {
-      return false;
+  public AnalysisResultsWrapper analyzeConnected(ProjectBindingWrapper binding, WorkspaceFolderSettings settings, Path baseDir, URI uri, String content,
+    IssueListener issueListener, boolean shouldFetchServerIssues) {
+    ConnectedAnalysisConfiguration configuration = ConnectedAnalysisConfiguration.builder()
+      .setProjectKey(settings.getProjectKey())
+      .setBaseDir(baseDir)
+      .addInputFile(new DefaultClientInputFile(uri, getFileRelativePath(baseDir, uri), content, isTest(settings, uri), languageIdPerFileURI.get(uri)))
+      .putAllExtraProperties(settings.getAnalyzerProperties())
+      .build();
+    if (settings.hasLocalRuleConfiguration()) {
+      LOG.debug("Local rules globalSettings are ignored, using quality profile from server");
     }
+    LOG.debug("Analysis triggered on '{}' with configuration: \n{}", uri, configuration.toString());
 
-    @Override
-    public AnalysisResultsWrapper analyze(Path baseDir, URI uri, String content, IssueListener issueListener, boolean shouldFetchServerIssues) {
-      StandaloneAnalysisConfiguration configuration = StandaloneAnalysisConfiguration.builder()
-        .setBaseDir(baseDir)
-        .addInputFiles(new DefaultClientInputFile(uri, getFileRelativePath(baseDir, uri), content, isTest(uri), languageIdPerFileURI.get(uri)))
-        .putAllExtraProperties(userSettings.analyzerProperties)
-        .addExcludedRules(userSettings.excludedRules)
-        .addIncludedRules(userSettings.includedRules)
-        .build();
-      logger.debug("Analysis triggered on " + uri + " with configuration: \n" + configuration.toString());
+    List<Issue> issues = new LinkedList<>();
+    IssueListener collector = issues::add;
 
-      long start = System.currentTimeMillis();
-      StandaloneSonarLintEngine engine = engineCache.getOrCreateStandaloneEngine();
-      AnalysisResults analysisResults = engine.analyze(configuration, issueListener, logOutput, null);
-      int analysisTime = (int) (System.currentTimeMillis() - start);
+    long start = System.currentTimeMillis();
+    AnalysisResults analysisResults;
+    analysisResults = binding.getEngine().analyze(configuration, collector, null, null);
 
-      return new AnalysisResultsWrapper(analysisResults, analysisTime);
-    }
+    String filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, uri));
+    ServerIssueTrackerWrapper serverIssueTracker = binding.getServerIssueTracker();
+    serverIssueTracker.matchAndTrack(filePath, issues, issueListener, shouldFetchServerIssues);
+
+    int analysisTime = (int) (System.currentTimeMillis() - start);
+
+    return new AnalysisResultsWrapper(analysisResults, analysisTime);
   }
 
-  class ConnectedAnalysisWrapper implements AnalysisWrapper {
-    private final ConnectedSonarLintEngine engine;
-    private final String projectKey;
-
-    ConnectedAnalysisWrapper(ConnectedSonarLintEngine engine, String projectKey) {
-      this.engine = engine;
-      this.projectKey = projectKey;
-    }
-
-    @Override
-    public boolean isExcludedByServerSideExclusions(URI fileUri) {
-      Path baseDir = findBaseDir(fileUri);
-      ProjectBinding projectBinding = workspaceBindings.getOrDefault(baseDir, new ProjectBinding(projectKey, "", ""));
-      return !engine.getExcludedFiles(projectBinding,
-        singleton(fileUri),
-        uri -> getFileRelativePath(baseDir, uri),
-        SonarLintLanguageServer.this::isTest)
-        .isEmpty();
-    }
-
-    @Override
-    public AnalysisResultsWrapper analyze(Path baseDir, URI uri, String content, IssueListener issueListener, boolean shouldFetchServerIssues) {
-      ConnectedAnalysisConfiguration configuration = ConnectedAnalysisConfiguration.builder()
-        .setProjectKey(projectKey)
-        .setBaseDir(baseDir)
-        .addInputFile(new DefaultClientInputFile(uri, getFileRelativePath(baseDir, uri), content, isTest(uri), languageIdPerFileURI.get(uri)))
-        .putAllExtraProperties(userSettings.analyzerProperties)
-        .build();
-      if (userSettings.hasLocalRuleConfiguration()) {
-        logger.debug("Local rules settings are ignored, using quality profile from server");
-      }
-      logger.debug("Analysis triggered on " + uri + " with configuration: \n" + configuration.toString());
-
-      List<Issue> issues = new LinkedList<>();
-      IssueListener collector = issues::add;
-      ServerInfo serverInfo = serverInfoCache.get(binding.serverId);
-
-      long start = System.currentTimeMillis();
-      AnalysisResults analysisResults;
-      try {
-        analysisResults = analyze(configuration, collector);
-      } catch (GlobalStorageUpdateRequiredException e) {
-        updateServerStorage(engine, serverInfo);
-        updateProjectStorage(engine, serverInfo);
-        analysisResults = analyze(configuration, collector);
-      } catch (StorageException e) {
-        updateProjectStorage(engine, serverInfo);
-        analysisResults = analyze(configuration, collector);
-      }
-
-      String filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, uri));
-      ServerIssueTracker serverIssueTracker = workspaceTrackers.get(baseDir);
-      serverIssueTracker.matchAndTrack(filePath, issues, issueListener, shouldFetchServerIssues);
-
-      int analysisTime = (int) (System.currentTimeMillis() - start);
-
-      return new AnalysisResultsWrapper(analysisResults, analysisTime);
-    }
-
-    private AnalysisResults analyze(ConnectedAnalysisConfiguration configuration, IssueListener issueListener) {
-      return engine.analyze(configuration, issueListener, logOutput, null);
-    }
-  }
-
-  private boolean isTest(URI uri) {
-    return userSettings.testMatcher.matches(Paths.get(uri));
-  }
-
-  private Path findBaseDir(URI uri) {
-    return workspaceFoldersManager.findFolderForFile(uri).map(WorkspaceFolderWrapper::getRootPath)
-      // Default to take file parent dir if file is not part of any workspace
-      .orElse(Paths.get(uri).getParent());
+  private boolean isTest(WorkspaceFolderSettings settings, URI uri) {
+    return settings.getTestMatcher().matches(Paths.get(uri));
   }
 
   private static String getFileRelativePath(Path baseDir, URI uri) {
@@ -756,13 +595,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       cancelToken.checkCanceled();
       List<Object> args = params.getArguments();
       switch (params.getCommand()) {
-        case SONARLINT_UPDATE_SERVER_STORAGE_COMMAND:
-          List<Object> list = args == null ? null : args.stream().map(UserSettings::parseToMap).collect(Collectors.toList());
-          handleUpdateServerStorageCommand(list);
-          break;
         case SONARLINT_UPDATE_PROJECT_BINDING_COMMAND:
-          Map<String, Object> map = args == null || args.isEmpty() ? null : UserSettings.parseToMap(args.get(0));
-          updateBinding(map);
+          bindingManager.updateAllBindings();
           break;
         case SONARLINT_REFRESH_DIAGNOSTICS_COMMAND:
           Gson gson = new Gson();
@@ -789,10 +623,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didChangeConfiguration(DidChangeConfigurationParams params) {
-    Map<String, Object> settings = UserSettings.parseToMap(params.getSettings());
-    Map<String, Object> entries = (Map<String, Object>) settings.get(SONARLINT_CONFIGURATION_NAMESPACE);
-    userSettings = new UserSettings(entries);
-    telemetry.optOut(userSettings.disableTelemetry);
+    settingsManager.didChangeConfiguration();
+    workspaceFoldersManager.didChangeConfiguration();
   }
 
   @Override
@@ -803,15 +635,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParams params) {
     workspaceFoldersManager.didChangeWorkspaceFolders(params.getEvent());
-    if (binding != null) {
-      ServerInfo serverInfo = serverInfoCache.get(binding.serverId);
-      if (serverInfo != null) {
-        ConnectedSonarLintEngine engine = engineCache.getOrCreateConnectedEngine(serverInfo);
-        if (engine != null) {
-          updateIssueTrackers(engine, serverInfo);
-        }
-      }
-    }
   }
 
   @Override
@@ -824,16 +647,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .map(String::toUpperCase)
       .map(TraceValues::valueOf)
       .orElse(TraceValues.OFF);
-  }
-
-  static class ServerProjectBinding {
-    final String serverId;
-    final String projectKey;
-
-    ServerProjectBinding(String serverId, String projectKey) {
-      this.serverId = serverId;
-      this.projectKey = projectKey;
-    }
   }
 
   static class Document {

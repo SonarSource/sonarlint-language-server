@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.junit.After;
@@ -32,12 +33,15 @@ import org.sonar.api.utils.log.LogTester;
 import org.sonar.api.utils.log.LoggerLevel;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
+import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.sonarsource.sonarlint.ls.SonarLintTelemetry.getStoragePath;
 
 public class SonarLintTelemetryTest {
   private SonarLintTelemetry telemetry;
@@ -114,7 +118,7 @@ public class SonarLintTelemetryTest {
   @Test
   public void optOut_should_trigger_disable_telemetry() {
     when(telemetryManager.isEnabled()).thenReturn(true);
-    telemetry.optOut(true);
+    telemetry.onChange(null, new WorkspaceSettings(true, Collections.emptyMap()));
     verify(telemetryManager).disable();
     telemetry.stop();
   }
@@ -122,7 +126,7 @@ public class SonarLintTelemetryTest {
   @Test
   public void should_not_opt_out_twice() {
     when(telemetryManager.isEnabled()).thenReturn(false);
-    telemetry.optOut(true);
+    telemetry.onChange(null, new WorkspaceSettings(true, Collections.emptyMap()));
     verify(telemetryManager).isEnabled();
     verifyNoMoreInteractions(telemetryManager);
   }
@@ -130,7 +134,7 @@ public class SonarLintTelemetryTest {
   @Test
   public void optIn_should_trigger_enable_telemetry() {
     when(telemetryManager.isEnabled()).thenReturn(false);
-    telemetry.optOut(false);
+    telemetry.onChange(null, new WorkspaceSettings(false, Collections.emptyMap()));
     verify(telemetryManager).enable();
   }
 
@@ -193,5 +197,22 @@ public class SonarLintTelemetryTest {
     };
     telemetry.init(null, "product", "version", "ideVersion", () -> true, () -> true);
     assertThat(telemetry.enabled()).isFalse();
+  }
+
+  @Test
+  public void getStoragePath_should_return_null_when_configuration_missing() {
+    assertThat(getStoragePath(null, null)).isNull();
+  }
+
+  @Test
+  public void getStoragePath_should_return_old_path_when_product_key_missing() {
+    String oldStorage = "dummy";
+    assertThat(getStoragePath(null, oldStorage)).isEqualTo(Paths.get(oldStorage));
+  }
+
+  @Test
+  public void getStoragePath_should_return_new_path_when_product_key_present() {
+    String productKey = "vim";
+    assertThat(getStoragePath(productKey, "dummy")).isEqualTo(TelemetryPathManager.getPath(productKey));
   }
 }

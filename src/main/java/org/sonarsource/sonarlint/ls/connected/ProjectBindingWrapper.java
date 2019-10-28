@@ -17,40 +17,39 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls;
+package org.sonarsource.sonarlint.ls.connected;
 
-import javax.annotation.CheckForNull;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
+import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 
-/**
- * Common interface to create, cache and modify SonarLint engines.
- */
-public interface EngineCache {
+public class ProjectBindingWrapper {
 
-  /**
-   * Get or create and start a standalone engine.
-   */
-  StandaloneSonarLintEngine getOrCreateStandaloneEngine();
+  private final String serverId;
+  private final ProjectBinding binding;
+  private final ConnectedSonarLintEngine engine;
+  private final ServerIssueTrackerWrapper issueTrackerWrapper;
 
-  void stopStandaloneEngine();
+  public ProjectBindingWrapper(String serverId, ProjectBinding binding, ConnectedSonarLintEngine engine, ServerIssueTrackerWrapper issueTrackerWrapper) {
+    this.serverId = serverId;
+    this.binding = binding;
+    this.engine = engine;
+    this.issueTrackerWrapper = issueTrackerWrapper;
+  }
 
-  /**
-   * Get or create and start a connected engine to the specified server.
-   *
-   * Returns null if the engine cannot be created.
-   */
-  @CheckForNull
-  ConnectedSonarLintEngine getOrCreateConnectedEngine(ServerInfo serverInfo);
+  public String getServerId() {
+    return serverId;
+  }
 
-  /**
-   * Add extra property. Will apply to newly created engines only.
-   */
-  void putExtraProperty(String name, String value);
+  public ProjectBinding getBinding() {
+    return binding;
+  }
 
-  /**
-   * Clear the cache of connected engines, stopping them.
-   */
-  void clearConnectedEngines();
+  public ConnectedSonarLintEngine getEngine() {
+    return engine;
+  }
+
+  public ServerIssueTrackerWrapper getServerIssueTracker() {
+    return issueTrackerWrapper;
+  }
 
 }
