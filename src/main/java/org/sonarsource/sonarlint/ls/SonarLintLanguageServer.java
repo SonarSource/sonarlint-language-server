@@ -454,8 +454,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .setBaseDir(baseDir)
       .addInputFiles(new DefaultClientInputFile(uri, getFileRelativePath(baseDir, uri), content, isTest(settings, uri), languageIdPerFileURI.get(uri)))
       .putAllExtraProperties(settings.getAnalyzerProperties())
-      .addExcludedRules(settings.getExcludedRules())
-      .addIncludedRules(settings.getIncludedRules())
+      .addExcludedRules(settingsManager.getCurrentSettings().getExcludedRules())
+      .addIncludedRules(settingsManager.getCurrentSettings().getIncludedRules())
       .build();
     LOG.debug("Analysis triggered on '{}' with configuration: \n{}", uri, configuration.toString());
 
@@ -475,8 +475,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .addInputFile(new DefaultClientInputFile(uri, getFileRelativePath(baseDir, uri), content, isTest(settings, uri), languageIdPerFileURI.get(uri)))
       .putAllExtraProperties(settings.getAnalyzerProperties())
       .build();
-    if (settings.hasLocalRuleConfiguration()) {
-      LOG.debug("Local rules globalSettings are ignored, using quality profile from server");
+    if (settingsManager.getCurrentSettings().hasLocalRuleConfiguration()) {
+      LOG.debug("Local rules settings are ignored, using quality profile from server");
     }
     LOG.debug("Analysis triggered on '{}' with configuration: \n{}", uri, configuration.toString());
 

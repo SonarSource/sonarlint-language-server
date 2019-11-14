@@ -22,7 +22,6 @@ package org.sonarsource.sonarlint.ls.settings;
 import java.lang.reflect.Field;
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
@@ -30,7 +29,6 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
-import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 import org.sonarsource.sonarlint.shaded.org.apache.commons.lang.StringUtils;
 
 /**
@@ -44,21 +42,15 @@ public class WorkspaceFolderSettings {
   // Keep the string pattern for equals comparison
   private final String testFilePattern;
   private final PathMatcher testMatcher;
-  // TODO move rule config to WorkspaceSettings
-  private final Collection<RuleKey> excludedRules;
-  private final Collection<RuleKey> includedRules;
   private final String serverId;
   private final String projectKey;
 
-  public WorkspaceFolderSettings(@Nullable String serverId, @Nullable String projectKey, Map<String, String> analyzerProperties, @Nullable String testFilePattern,
-    Collection<RuleKey> excludedRules, Collection<RuleKey> includedRules) {
+  public WorkspaceFolderSettings(@Nullable String serverId, @Nullable String projectKey, Map<String, String> analyzerProperties, @Nullable String testFilePattern) {
     this.serverId = serverId;
     this.projectKey = projectKey;
     this.analyzerProperties = analyzerProperties;
     this.testFilePattern = testFilePattern;
     this.testMatcher = testFilePattern != null ? FileSystems.getDefault().getPathMatcher("glob:" + testFilePattern) : (p -> false);
-    this.excludedRules = excludedRules;
-    this.includedRules = includedRules;
   }
 
   public Map<String, String> getAnalyzerProperties() {
@@ -67,18 +59,6 @@ public class WorkspaceFolderSettings {
 
   public PathMatcher getTestMatcher() {
     return testMatcher;
-  }
-
-  public Collection<RuleKey> getExcludedRules() {
-    return Collections.unmodifiableCollection(excludedRules);
-  }
-
-  public Collection<RuleKey> getIncludedRules() {
-    return Collections.unmodifiableCollection(includedRules);
-  }
-
-  public boolean hasLocalRuleConfiguration() {
-    return !excludedRules.isEmpty() || !includedRules.isEmpty();
   }
 
   public String getServerId() {
@@ -95,7 +75,7 @@ public class WorkspaceFolderSettings {
 
   @Override
   public int hashCode() {
-    return Objects.hash(serverId, projectKey, analyzerProperties, excludedRules, includedRules, testFilePattern);
+    return Objects.hash(serverId, projectKey, analyzerProperties, testFilePattern);
   }
 
   @Override
@@ -111,7 +91,6 @@ public class WorkspaceFolderSettings {
     }
     WorkspaceFolderSettings other = (WorkspaceFolderSettings) obj;
     return Objects.equals(serverId, other.serverId) && Objects.equals(projectKey, other.projectKey) && Objects.equals(analyzerProperties, other.analyzerProperties)
-      && Objects.equals(excludedRules, other.excludedRules) && Objects.equals(includedRules, other.includedRules)
       && Objects.equals(testFilePattern, other.testFilePattern);
   }
 

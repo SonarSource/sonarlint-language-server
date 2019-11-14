@@ -206,7 +206,8 @@ public class LanguageServerMediumTests {
     emulateConfigurationChangeOnClient(null, true);
     emulateConfigurationChangeOnClient(null, false);
     await().atMost(5, SECONDS)
-      .untilAsserted(() -> assertThat(client.logs).extracting(MessageParams::getMessage).contains("Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={}]"));
+      .untilAsserted(() -> assertThat(client.logs).extracting(MessageParams::getMessage)
+        .contains("Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[],includedRules=[]]"));
 
     client.logs.clear();
   }
@@ -235,7 +236,7 @@ public class LanguageServerMediumTests {
     emulateConfigurationChangeOnClient("**/*Test.js", null);
 
     assertLogContainsInOrder(MessageType.Log,
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=**/*Test.js,excludedRules=[],includedRules=[],serverId=<null>,projectKey=<null>]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=**/*Test.js,serverId=<null>,projectKey=<null>]");
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", jsSource);
     assertThat(diagnostics)
@@ -252,7 +253,7 @@ public class LanguageServerMediumTests {
       "javascript:S1105", "on");
 
     assertLogContainsInOrder(MessageType.Log,
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=**/*Test.js,excludedRules=[javascript:UnusedVariable],includedRules=[javascript:S1105],serverId=<null>,projectKey=<null>]");
+      "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[javascript:UnusedVariable],includedRules=[javascript:S1105]]");
 
     // Trigger diagnostics refresh (called by client on config change)
     ExecuteCommandParams refreshDiagsCommand = new ExecuteCommandParams();
@@ -344,7 +345,7 @@ public class LanguageServerMediumTests {
   public void noIssueOnTestJSFiles() throws Exception {
     emulateConfigurationChangeOnClient("{**/*Test*}", null);
     assertLogContainsInOrder(MessageType.Log,
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*Test*},excludedRules=[],includedRules=[],serverId=<null>,projectKey=<null>]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*Test*},serverId=<null>,projectKey=<null>]");
 
     String jsContent = "function foo() {\n  alert('toto');\n}";
     String fooTestUri = getUri("fooTest.js");
@@ -355,7 +356,7 @@ public class LanguageServerMediumTests {
 
     emulateConfigurationChangeOnClient("{**/*MyTest*}", null);
     assertLogContainsInOrder(MessageType.Log,
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*MyTest*},excludedRules=[],includedRules=[],serverId=<null>,projectKey=<null>]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*MyTest*},serverId=<null>,projectKey=<null>]");
 
     diagnostics = didChangeAndWaitForDiagnostics(fooTestUri, jsContent);
     assertThat(diagnostics).hasSize(1);
@@ -422,14 +423,14 @@ public class LanguageServerMediumTests {
     emulateConfigurationChangeOnClient(null, true);
 
     assertLogContainsInOrder(MessageType.Log,
-      "Global settings updated: WorkspaceSettings[disableTelemetry=true,servers={}]");
+      "Global settings updated: WorkspaceSettings[disableTelemetry=true,servers={},excludedRules=[],includedRules=[]]");
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder(MessageType.Log, "Telemetry disabled");
 
     emulateConfigurationChangeOnClient(null, false);
 
     assertLogContainsInOrder(MessageType.Log,
-      "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={}]");
+      "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[],includedRules=[]]");
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder(MessageType.Log, "Telemetry enabled");
   }
@@ -501,7 +502,7 @@ public class LanguageServerMediumTests {
         new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.singletonList(new WorkspaceFolder(SOME_FOLDER_URI, "Added")), Collections.emptyList())));
 
     assertLogContainsInOrder(MessageType.Log,
-      "Workspace folder 'WorkspaceFolder[uri=some://uri,name=Added]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=some pattern,excludedRules=[],includedRules=[],serverId=<null>,projectKey=<null>]");
+      "Workspace folder 'WorkspaceFolder[uri=some://uri,name=Added]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=some pattern,serverId=<null>,projectKey=<null>]");
   }
 
   @Test

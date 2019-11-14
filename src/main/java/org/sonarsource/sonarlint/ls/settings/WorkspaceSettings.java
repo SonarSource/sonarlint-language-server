@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.settings;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,6 +27,7 @@ import java.util.Objects;
 import javax.annotation.concurrent.Immutable;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 
 /**
  * Settings global to the entire workspace (user + machine + workspace scopes)
@@ -35,10 +37,15 @@ public class WorkspaceSettings {
 
   private final boolean disableTelemetry;
   private final Map<String, ServerConnectionSettings> servers;
+  private final Collection<RuleKey> excludedRules;
+  private final Collection<RuleKey> includedRules;
 
-  public WorkspaceSettings(boolean disableTelemetry, Map<String, ServerConnectionSettings> servers) {
+  public WorkspaceSettings(boolean disableTelemetry, Map<String, ServerConnectionSettings> servers,
+    Collection<RuleKey> excludedRules, Collection<RuleKey> includedRules) {
     this.disableTelemetry = disableTelemetry;
     this.servers = new HashMap<>(servers);
+    this.excludedRules = excludedRules;
+    this.includedRules = includedRules;
   }
 
   public boolean isDisableTelemetry() {
@@ -49,9 +56,21 @@ public class WorkspaceSettings {
     return Collections.unmodifiableMap(servers);
   }
 
+  public Collection<RuleKey> getExcludedRules() {
+    return Collections.unmodifiableCollection(excludedRules);
+  }
+
+  public Collection<RuleKey> getIncludedRules() {
+    return Collections.unmodifiableCollection(includedRules);
+  }
+
+  public boolean hasLocalRuleConfiguration() {
+    return !excludedRules.isEmpty() || !includedRules.isEmpty();
+  }
+
   @Override
   public int hashCode() {
-    return Objects.hash(disableTelemetry, servers);
+    return Objects.hash(disableTelemetry, servers, excludedRules, includedRules);
   }
 
   @Override
@@ -66,7 +85,8 @@ public class WorkspaceSettings {
       return false;
     }
     WorkspaceSettings other = (WorkspaceSettings) obj;
-    return disableTelemetry == other.disableTelemetry && Objects.equals(servers, other.servers);
+    return disableTelemetry == other.disableTelemetry && Objects.equals(servers, other.servers) && Objects.equals(excludedRules, other.excludedRules)
+      && Objects.equals(includedRules, other.includedRules);
   }
 
   @Override

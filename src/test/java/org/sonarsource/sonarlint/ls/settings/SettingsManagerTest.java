@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.tuple;
 public class SettingsManagerTest {
 
   @Test
-  public void shouldParseFullWellFormedJsonSettings() {
+  public void shouldParseFullWellFormedJsonWorkspaceFolderSettings() {
     WorkspaceFolderSettings settings = SettingsManager.parseFolderSettings(fromJsonString("{\n" +
       "  \"testFilePattern\": \"**/*Test.*\",\n" +
       "  \"analyzerProperties\": {\n" +
@@ -60,6 +60,35 @@ public class SettingsManagerTest {
     assertThat(settings.getTestMatcher().matches(new File("./someTest").toPath())).isFalse();
     assertThat(settings.getTestMatcher().matches(new File("./someTest.ext").toPath())).isTrue();
     assertThat(settings.getAnalyzerProperties()).containsExactly(entry("sonar.polop", "palap"));
+  }
+
+  @Test
+  public void shouldParseFullWellFormedJsonWorkspaceSettings() {
+    WorkspaceSettings settings = SettingsManager.parseSettings(fromJsonString("{\n" +
+      "  \"testFilePattern\": \"**/*Test.*\",\n" +
+      "  \"analyzerProperties\": {\n" +
+      "    \"sonar.polop\": \"palap\"\n" +
+      "  },\n" +
+      "  \"disableTelemetry\": true,\n" +
+      "  \"rules\": {\n" +
+      "    \"xoo:rule1\": {\n" +
+      "      \"level\": \"off\"\n" +
+      "    },\n" +
+      "    \"xoo:rule2\": {\n" +
+      "      \"level\": \"warn\"\n" +
+      "    },\n" +
+      "    \"xoo:rule3\": {\n" +
+      "      \"level\": \"on\"\n" +
+      "    },\n" +
+      "    \"xoo:notEvenARule\": \"definitely not a rule\",\n" +
+      "    \"somethingNotParsedByRuleKey\": {\n" +
+      "      \"level\": \"off\"\n" +
+      "    }\n" +
+      "  }\n" +
+      "}\n"));
+
+    assertThat(settings.isDisableTelemetry()).isTrue();
+    assertThat(settings.getExcludedRules()).extracting("repository", "rule").containsExactly(tuple("xoo", "rule1"));
     assertThat(settings.getExcludedRules()).extracting("repository", "rule").containsExactly(tuple("xoo", "rule1"));
     assertThat(settings.getIncludedRules()).extracting("repository", "rule").containsExactly(tuple("xoo", "rule3"));
     assertThat(settings.hasLocalRuleConfiguration()).isTrue();
@@ -67,7 +96,7 @@ public class SettingsManagerTest {
 
   @Test
   public void shouldHaveLocalRuleConfigurationWithDisabledRule() {
-    assertThat(SettingsManager.parseFolderSettings(fromJsonString("{\n" +
+    assertThat(SettingsManager.parseSettings(fromJsonString("{\n" +
       "  \"rules\": {\n" +
       "    \"xoo:rule1\": {\n" +
       "      \"level\": \"off\"\n" +
@@ -78,7 +107,7 @@ public class SettingsManagerTest {
 
   @Test
   public void shouldHaveLocalRuleConfigurationWithEnabledRule() {
-    assertThat(SettingsManager.parseFolderSettings(fromJsonString("{\n" +
+    assertThat(SettingsManager.parseSettings(fromJsonString("{\n" +
       "  \"rules\": {\n" +
       "    \"xoo:rule1\": {\n" +
       "      \"level\": \"on\"\n" +

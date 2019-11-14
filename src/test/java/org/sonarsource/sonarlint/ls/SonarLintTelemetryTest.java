@@ -118,7 +118,7 @@ public class SonarLintTelemetryTest {
   @Test
   public void optOut_should_trigger_disable_telemetry() {
     when(telemetryManager.isEnabled()).thenReturn(true);
-    telemetry.onChange(null, new WorkspaceSettings(true, Collections.emptyMap()));
+    telemetry.onChange(null, new WorkspaceSettings(true, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList()));
     verify(telemetryManager).disable();
     telemetry.stop();
   }
@@ -126,7 +126,7 @@ public class SonarLintTelemetryTest {
   @Test
   public void should_not_opt_out_twice() {
     when(telemetryManager.isEnabled()).thenReturn(false);
-    telemetry.onChange(null, new WorkspaceSettings(true, Collections.emptyMap()));
+    telemetry.onChange(null, new WorkspaceSettings(true, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList()));
     verify(telemetryManager).isEnabled();
     verifyNoMoreInteractions(telemetryManager);
   }
@@ -134,7 +134,7 @@ public class SonarLintTelemetryTest {
   @Test
   public void optIn_should_trigger_enable_telemetry() {
     when(telemetryManager.isEnabled()).thenReturn(false);
-    telemetry.onChange(null, new WorkspaceSettings(false, Collections.emptyMap()));
+    telemetry.onChange(null, new WorkspaceSettings(false, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList()));
     verify(telemetryManager).enable();
   }
 

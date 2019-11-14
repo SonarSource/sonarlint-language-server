@@ -144,10 +144,12 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     }
   }
 
-  private static WorkspaceSettings parseSettings(Map<String, Object> params) {
+  static WorkspaceSettings parseSettings(Map<String, Object> params) {
     boolean disableTelemetry = (Boolean) params.getOrDefault(DISABLE_TELEMETRY, false);
     Map<String, ServerConnectionSettings> serverConnections = parseServerConnections(params);
-    return new WorkspaceSettings(disableTelemetry, serverConnections);
+    Set<RuleKey> excludedRules = parseRuleKeysMatching(params, SettingsManager.hasLevelSetTo("off"));
+    Set<RuleKey> includedRules = parseRuleKeysMatching(params, SettingsManager.hasLevelSetTo("on"));
+    return new WorkspaceSettings(disableTelemetry, serverConnections, excludedRules, includedRules);
   }
 
   private static Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params) {
@@ -175,13 +177,11 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   static WorkspaceFolderSettings parseFolderSettings(Map<String, Object> params) {
     String testFilePattern = (String) params.get(TEST_FILE_PATTERN);
     Map<String, String> analyzerProperties = getAnalyzerProperties(params);
-    Set<RuleKey> excludedRules = parseRuleKeysMatching(params, SettingsManager.hasLevelSetTo("off"));
-    Set<RuleKey> includedRules = parseRuleKeysMatching(params, SettingsManager.hasLevelSetTo("on"));
     @SuppressWarnings("unchecked")
     Map<String, Object> connectedModeMap = (Map<String, Object>) params.getOrDefault("connectedMode", Collections.emptyMap());
     @SuppressWarnings("unchecked")
     Map<String, String> projectBinding = (Map<String, String>) connectedModeMap.getOrDefault("project", Collections.emptyMap());
-    return new WorkspaceFolderSettings(projectBinding.get("serverId"), projectBinding.get("projectKey"), analyzerProperties, testFilePattern, excludedRules, includedRules);
+    return new WorkspaceFolderSettings(projectBinding.get("serverId"), projectBinding.get("projectKey"), analyzerProperties, testFilePattern);
   }
 
   @SuppressWarnings("unchecked")
