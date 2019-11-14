@@ -24,6 +24,7 @@ import com.google.gson.JsonElement;
 import java.io.File;
 import java.util.Map;
 import org.junit.Test;
+import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 import org.sonarsource.sonarlint.ls.Utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,30 +33,38 @@ import static org.assertj.core.api.Assertions.tuple;
 
 public class SettingsManagerTest {
 
+  private static final String FULL_SAMPLE_CONFIG = "{\n" +
+    "  \"testFilePattern\": \"**/*Test.*\",\n" +
+    "  \"analyzerProperties\": {\n" +
+    "    \"sonar.polop\": \"palap\"\n" +
+    "  },\n" +
+    "  \"disableTelemetry\": true,\n" +
+    "  \"rules\": {\n" +
+    "    \"xoo:rule1\": {\n" +
+    "      \"level\": \"off\"\n" +
+    "    },\n" +
+    "    \"xoo:rule2\": {\n" +
+    "      \"level\": \"warn\"\n" +
+    "    },\n" +
+    "    \"xoo:rule3\": {\n" +
+    "      \"level\": \"on\"\n" +
+    "    },\n" +
+    "    \"xoo:notEvenARule\": \"definitely not a rule\",\n" +
+    "    \"somethingNotParsedByRuleKey\": {\n" +
+    "      \"level\": \"off\"\n" +
+    "    }\n" +
+    "  },\n" +
+    "  \"connectedMode\": {\n" +
+    "    \"servers\": [\n" +
+    "      { \"serverId\": \"server1\", \"serverUrl\": \"https://mysonarqube.mycompany.org\", \"token\": \"ab12\" }," +
+    "      { \"serverId\": \"sc\", \"serverUrl\": \"https://sonarcloud.io\", \"token\": \"cd34\", \"organizationKey\": \"myOrga\" }" +
+    "    ]\n" +
+    "  }\n" +
+    "}\n";
+
   @Test
   public void shouldParseFullWellFormedJsonWorkspaceFolderSettings() {
-    WorkspaceFolderSettings settings = SettingsManager.parseFolderSettings(fromJsonString("{\n" +
-      "  \"testFilePattern\": \"**/*Test.*\",\n" +
-      "  \"analyzerProperties\": {\n" +
-      "    \"sonar.polop\": \"palap\"\n" +
-      "  },\n" +
-      "  \"disableTelemetry\": true,\n" +
-      "  \"rules\": {\n" +
-      "    \"xoo:rule1\": {\n" +
-      "      \"level\": \"off\"\n" +
-      "    },\n" +
-      "    \"xoo:rule2\": {\n" +
-      "      \"level\": \"warn\"\n" +
-      "    },\n" +
-      "    \"xoo:rule3\": {\n" +
-      "      \"level\": \"on\"\n" +
-      "    },\n" +
-      "    \"xoo:notEvenARule\": \"definitely not a rule\",\n" +
-      "    \"somethingNotParsedByRuleKey\": {\n" +
-      "      \"level\": \"off\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n"));
+    WorkspaceFolderSettings settings = SettingsManager.parseFolderSettings(fromJsonString(FULL_SAMPLE_CONFIG));
 
     assertThat(settings.getTestMatcher().matches(new File("./someTest").toPath())).isFalse();
     assertThat(settings.getTestMatcher().matches(new File("./someTest.ext").toPath())).isTrue();
@@ -64,34 +73,18 @@ public class SettingsManagerTest {
 
   @Test
   public void shouldParseFullWellFormedJsonWorkspaceSettings() {
-    WorkspaceSettings settings = SettingsManager.parseSettings(fromJsonString("{\n" +
-      "  \"testFilePattern\": \"**/*Test.*\",\n" +
-      "  \"analyzerProperties\": {\n" +
-      "    \"sonar.polop\": \"palap\"\n" +
-      "  },\n" +
-      "  \"disableTelemetry\": true,\n" +
-      "  \"rules\": {\n" +
-      "    \"xoo:rule1\": {\n" +
-      "      \"level\": \"off\"\n" +
-      "    },\n" +
-      "    \"xoo:rule2\": {\n" +
-      "      \"level\": \"warn\"\n" +
-      "    },\n" +
-      "    \"xoo:rule3\": {\n" +
-      "      \"level\": \"on\"\n" +
-      "    },\n" +
-      "    \"xoo:notEvenARule\": \"definitely not a rule\",\n" +
-      "    \"somethingNotParsedByRuleKey\": {\n" +
-      "      \"level\": \"off\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n"));
+    WorkspaceSettings settings = SettingsManager.parseSettings(fromJsonString(FULL_SAMPLE_CONFIG));
 
     assertThat(settings.isDisableTelemetry()).isTrue();
-    assertThat(settings.getExcludedRules()).extracting("repository", "rule").containsExactly(tuple("xoo", "rule1"));
-    assertThat(settings.getExcludedRules()).extracting("repository", "rule").containsExactly(tuple("xoo", "rule1"));
-    assertThat(settings.getIncludedRules()).extracting("repository", "rule").containsExactly(tuple("xoo", "rule3"));
+    assertThat(settings.getExcludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsExactly(tuple("xoo", "rule1"));
+    assertThat(settings.getExcludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsExactly(tuple("xoo", "rule1"));
+    assertThat(settings.getIncludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsExactly(tuple("xoo", "rule3"));
     assertThat(settings.hasLocalRuleConfiguration()).isTrue();
+    assertThat(settings.getServers()).containsKeys("server1", "sc");
+    assertThat(settings.getServers().values())
+      .extracting(ServerConnectionSettings::getServerId, ServerConnectionSettings::getServerUrl, ServerConnectionSettings::getToken, ServerConnectionSettings::getOrganizationKey)
+      .containsExactlyInAnyOrder(tuple("server1", "https://mysonarqube.mycompany.org", "ab12", null),
+        tuple("sc", "https://sonarcloud.io", "cd34", "myOrga"));
   }
 
   @Test
