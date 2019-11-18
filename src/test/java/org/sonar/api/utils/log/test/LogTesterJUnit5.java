@@ -1,5 +1,5 @@
 /*
- * SonarLint Language Server
+ * SonarLint Core - Implementation
  * Copyright (C) 2009-2019 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
@@ -17,22 +17,30 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls.log;
+package org.sonar.api.utils.log.test;
 
-import org.eclipse.lsp4j.MessageType;
-import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.client.api.common.LogOutput.Level;
+import org.junit.jupiter.api.extension.AfterTestExecutionCallback;
+import org.junit.jupiter.api.extension.BeforeTestExecutionCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.sonar.api.utils.log.LogTester;
 
-import static org.assertj.core.api.Assertions.assertThat;
+/**
+ * Waiting for {@link LogTester} to migrate to JUnit 5
+ */
+public class LogTesterJUnit5 extends LogTester implements BeforeTestExecutionCallback, AfterTestExecutionCallback {
 
-public class LanguageClientLogOutputTest {
-
-  @Test
-  public void coverage() {
-    assertThat(LanguageClientLogOutput.messageType(Level.ERROR)).isEqualTo(MessageType.Error);
-    assertThat(LanguageClientLogOutput.messageType(Level.WARN)).isEqualTo(MessageType.Warning);
-    assertThat(LanguageClientLogOutput.messageType(Level.INFO)).isEqualTo(MessageType.Info);
-    assertThat(LanguageClientLogOutput.messageType(Level.DEBUG)).isEqualTo(MessageType.Log);
-    assertThat(LanguageClientLogOutput.messageType(Level.TRACE)).isEqualTo(MessageType.Log);
+  @Override
+  public void beforeTestExecution(ExtensionContext context) throws Exception {
+    try {
+      before();
+    } catch (Throwable e) {
+      throw new IllegalStateException(e);
+    }
   }
+
+  @Override
+  public void afterTestExecution(ExtensionContext context) throws Exception {
+    after();
+  }
+
 }

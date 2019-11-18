@@ -27,16 +27,14 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
-import org.sonarsource.sonarlint.ls.connected.ServerIssueTrackerWrapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -48,15 +46,13 @@ import static org.mockito.Mockito.when;
 
 public class ServerIssueTrackerWrapperTest {
 
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
+  @TempDir
+  Path baseDir;
 
   private static int counter = 1;
 
   @Test
   public void get_original_issues_when_there_are_no_server_issues() throws IOException {
-    Path baseDir = temporaryFolder.newFolder().toPath();
-
     Issue issue = mockIssue();
     when(issue.getInputFile().getPath()).thenReturn(baseDir.resolve("dummy").toString());
 
@@ -69,7 +65,6 @@ public class ServerIssueTrackerWrapperTest {
 
   @Test
   public void hide_resolved_server_issues() throws IOException {
-    Path baseDir = temporaryFolder.newFolder().toPath();
     String dummyFilePath = baseDir.resolve("dummy").toString();
 
     Issue unresolved = mockIssue();
@@ -95,7 +90,6 @@ public class ServerIssueTrackerWrapperTest {
 
   @Test
   public void get_severity_and_issue_type_from_matched_server_issue() throws IOException {
-    Path baseDir = temporaryFolder.newFolder().toPath();
     String dummyFilePath = baseDir.resolve("dummy").toString();
 
     Issue unmatched = mockIssue();
@@ -130,8 +124,6 @@ public class ServerIssueTrackerWrapperTest {
 
   @Test
   public void do_not_get_server_issues_when_there_are_no_local_issues() throws IOException {
-    Path baseDir = temporaryFolder.newFolder().toPath();
-
     ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
 
     ServerIssueTrackerWrapper tracker = newTracker(baseDir, engine);
@@ -141,7 +133,6 @@ public class ServerIssueTrackerWrapperTest {
 
   @Test
   public void fetch_server_issues_when_needed() throws IOException {
-    Path baseDir = temporaryFolder.newFolder().toPath();
     String dummyFilePath = baseDir.resolve("dummy").toString();
 
     Issue issue = mockIssue();

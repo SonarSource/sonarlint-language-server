@@ -20,10 +20,7 @@
 package org.sonarsource.sonarlint.ls;
 
 import org.eclipse.lsp4j.DiagnosticSeverity;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 
@@ -34,12 +31,6 @@ import static org.sonarsource.sonarlint.ls.SonarLintLanguageServer.convert;
 import static org.sonarsource.sonarlint.ls.SonarLintLanguageServer.getHtmlDescription;
 
 public class SonarLintLanguageServerTest {
-
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
-
-  @Rule
-  public ExpectedException thrown = ExpectedException.none();
 
   @Test
   public void testNotConvertGlobalIssues() {

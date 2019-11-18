@@ -24,13 +24,11 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.contrib.java.lang.system.EnvironmentVariables;
-import org.sonar.api.utils.log.LogTester;
-import org.sonar.api.utils.log.LoggerLevel;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonar.api.utils.log.test.LogTesterJUnit5;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
@@ -47,18 +45,15 @@ public class SonarLintTelemetryTest {
   private SonarLintTelemetry telemetry;
   private TelemetryManager telemetryManager = mock(TelemetryManager.class);
 
-  @Rule
-  public final EnvironmentVariables env = new EnvironmentVariables();
+  @RegisterExtension
+  public LogTesterJUnit5 logTester = new LogTesterJUnit5();
 
-  @Rule
-  public LogTester logTester = new LogTester();
-
-  @Before
+  @BeforeEach
   public void setUp() {
     this.telemetry = createTelemetry();
   }
 
-  @After
+  @AfterEach
   public void after() {
     System.clearProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY);
   }
@@ -84,17 +79,6 @@ public class SonarLintTelemetryTest {
   }
 
   @Test
-  public void log_failure_create_task_if_debug_enabled() {
-    env.set("SONARLINT_INTERNAL_DEBUG", "true");
-    telemetry = new SonarLintTelemetry(() -> {
-      throw new IllegalStateException("error");
-    });
-    telemetry.init(Paths.get("dummy"), "product", "version", "ideVersion", () -> true, () -> true);
-
-    assertThat(logTester.logs(LoggerLevel.ERROR)).contains("Failed scheduling period telemetry job");
-  }
-
-  @Test
   public void stop_should_trigger_stop_telemetry() {
     when(telemetryManager.isEnabled()).thenReturn(true);
     telemetry.stop();
@@ -104,10 +88,10 @@ public class SonarLintTelemetryTest {
 
   @Test
   public void test_scheduler() {
-    assertThat(telemetry.scheduledFuture).isNotNull();
+    assertThat((Object) telemetry.scheduledFuture).isNotNull();
     assertThat(telemetry.scheduledFuture.getDelay(TimeUnit.MINUTES)).isBetween(0L, 1L);
     telemetry.stop();
-    assertThat(telemetry.scheduledFuture).isNull();
+    assertThat((Object) telemetry.scheduledFuture).isNull();
   }
 
   @Test

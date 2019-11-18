@@ -25,26 +25,26 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
-import org.apache.commons.lang.SystemUtils;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
-import org.junit.Rule;
-import org.junit.Test;
-import org.sonar.api.utils.log.LogTester;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonar.api.utils.log.test.LogTesterJUnit5;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 import static java.net.URI.create;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 import static org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager.isAncestor;
 
 public class WorkspaceFoldersManagerTest {
 
-  @Rule
-  public LogTester logTester = new LogTester();
+  @RegisterExtension
+  public LogTesterJUnit5 logTester = new LogTesterJUnit5();
 
   private WorkspaceFoldersManager underTest = new WorkspaceFoldersManager(mock(SettingsManager.class));
 
@@ -161,10 +161,9 @@ public class WorkspaceFoldersManagerTest {
   }
 
   @Test
+  @EnabledOnOs(OS.WINDOWS)
+  // Fail on Linux with IllegalArgumentException: URI has an authority component
   public void testURIAncestor_UNC_path() {
-    // Fail on Linux with IllegalArgumentException: URI has an authority component
-    assumeTrue(SystemUtils.IS_OS_WINDOWS);
-
     assertThat(isAncestor(create("file://laptop/My%20Documents"), create("file://laptop/My%20Documents/FileSchemeURIs.doc"))).isTrue();
   }
 

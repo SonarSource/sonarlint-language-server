@@ -23,7 +23,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import java.io.File;
 import java.util.Map;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 import org.sonarsource.sonarlint.ls.Utils;
 

@@ -28,6 +28,7 @@ import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -87,14 +88,11 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.launch.LSPLauncher;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.sonar.api.internal.apachecommons.io.FileUtils;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.shaded.org.apache.commons.io.output.ByteArrayOutputStream;
 
 import static java.util.Collections.singletonList;
@@ -102,22 +100,22 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class LanguageServerMediumTests {
 
   private static final String SOME_FOLDER_URI = "some://uri";
-  @ClassRule
-  public static TemporaryFolder globalTemp = new TemporaryFolder();
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+
+  @TempDir
+  Path temp;
+
   private static ServerSocket serverSocket;
   private static SonarLintExtendedLanguageServer lsProxy;
   private static FakeLanguageClient client;
   private static ByteArrayOutputStream serverStdOut;
   private static ByteArrayOutputStream serverStdErr;
 
-  @BeforeClass
+  @BeforeAll
   public static void startServer() throws Exception {
     System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
     serverSocket = new ServerSocket(0);
@@ -175,7 +173,7 @@ public class LanguageServerMediumTests {
     lsProxy.initialized(new InitializedParams());
   }
 
-  @AfterClass
+  @AfterAll
   public static void stop() throws Exception {
     System.clearProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY);
     try {
@@ -188,7 +186,7 @@ public class LanguageServerMediumTests {
     }
   }
 
-  @Before
+  @BeforeEach
   public void cleanup() throws InterruptedException {
     // Reset settings on LS side
     client.clear();
@@ -274,8 +272,8 @@ public class LanguageServerMediumTests {
 
   @Test
   public void analyzeSimpleTsFileOnOpen() throws Exception {
-    File tsconfig = temp.newFile("tsconfig.json");
-    FileUtils.write(tsconfig, "{}", StandardCharsets.UTF_8);
+    Path tsconfig = temp.resolve("tsconfig.json");
+    Files.write(tsconfig, "{}".getBytes(StandardCharsets.UTF_8));
     String uri = getUri("foo.ts");
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "typescript", "function foo() {\n if(bar() && bar()) { return 42; }\n}");
@@ -528,7 +526,9 @@ public class LanguageServerMediumTests {
   }
 
   private String getUri(String filename) throws IOException {
-    return temp.newFile(filename).toPath().toUri().toString();
+    Path file = temp.resolve(filename);
+    Files.createFile(file);
+    return file.toUri().toString();
   }
 
   private static class FakeLanguageClient implements SonarLintExtendedLanguageClient {
