@@ -193,12 +193,12 @@ public class LanguageServerMediumTests {
     lsProxy.getWorkspaceService()
       .didChangeWorkspaceFolders(
         new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), singletonList(new WorkspaceFolder(SOME_FOLDER_URI, "Added")))));
-    // Remove a unexisting folder will log
+    // Remove a unexisting workspaceFolderPath will log
     lsProxy.getWorkspaceService()
       .didChangeWorkspaceFolders(
         new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), singletonList(new WorkspaceFolder("another://uri", "Unknown")))));
     await().atMost(5, SECONDS)
-      .untilAsserted(() -> assertThat(client.logs).extracting(MessageParams::getMessage).contains("Unregistered workspace folder was missing: another://uri"));
+      .untilAsserted(() -> assertThat(client.logs).extracting(MessageParams::getMessage).contains("Unregistered workspace workspaceFolderPath was missing: another://uri"));
 
     // Switch telemetry on/off to ensure at least one log will appear
     emulateConfigurationChangeOnClient(null, true);
@@ -500,12 +500,12 @@ public class LanguageServerMediumTests {
         new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.singletonList(new WorkspaceFolder(SOME_FOLDER_URI, "Added")), Collections.emptyList())));
 
     assertLogContainsInOrder(MessageType.Log,
-      "Workspace folder 'WorkspaceFolder[uri=some://uri,name=Added]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=some pattern,serverId=<null>,projectKey=<null>]");
+      "Workspace workspaceFolderPath 'WorkspaceFolder[uri=some://uri,name=Added]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=some pattern,serverId=<null>,projectKey=<null>]");
   }
 
   @Test
   public void logErrorWhenClientFailedToReturnConfiguration() {
-    // No folder settings registered in the client mock, so it should fail when server will request folder configuration
+    // No workspaceFolderPath settings registered in the client mock, so it should fail when server will request workspaceFolderPath configuration
     lsProxy.getWorkspaceService()
       .didChangeWorkspaceFolders(
         new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.singletonList(new WorkspaceFolder(SOME_FOLDER_URI, "Added")), Collections.emptyList())));
@@ -600,7 +600,7 @@ public class LanguageServerMediumTests {
             result.add(globalSettings);
           } else {
             result
-              .add(Optional.ofNullable(folderSettings.get(item.getScopeUri())).orElseThrow(() -> new IllegalStateException("No settings mocked for folder " + item.getScopeUri())));
+              .add(Optional.ofNullable(folderSettings.get(item.getScopeUri())).orElseThrow(() -> new IllegalStateException("No settings mocked for workspaceFolderPath " + item.getScopeUri())));
           }
         }
         settingsLatch.countDown();

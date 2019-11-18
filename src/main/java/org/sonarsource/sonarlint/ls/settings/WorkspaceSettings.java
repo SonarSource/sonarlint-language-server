@@ -21,7 +21,6 @@ package org.sonarsource.sonarlint.ls.settings;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import javax.annotation.concurrent.Immutable;
@@ -43,7 +42,7 @@ public class WorkspaceSettings {
   public WorkspaceSettings(boolean disableTelemetry, Map<String, ServerConnectionSettings> servers,
     Collection<RuleKey> excludedRules, Collection<RuleKey> includedRules) {
     this.disableTelemetry = disableTelemetry;
-    this.servers = new HashMap<>(servers);
+    this.servers = servers;
     this.excludedRules = excludedRules;
     this.includedRules = includedRules;
   }

@@ -139,7 +139,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     WorkspaceFolderSettings old = f.getRawSettings();
     if (!Objects.equals(old, newSettings)) {
       f.setSettings(newSettings);
-      LOG.debug("Workspace folder '{}' configuration updated: {}", f, newSettings);
+      LOG.debug("Workspace workspaceFolderPath '{}' configuration updated: {}", f, newSettings);
       folderListeners.forEach(l -> l.onChange(f, old, newSettings));
     }
   }

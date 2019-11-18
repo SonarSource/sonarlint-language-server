@@ -19,44 +19,26 @@
  */
 package org.sonarsource.sonarlint.ls.connected;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
+import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 
-public class ProjectBindingWrapper {
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
-  private final String serverId;
-  private final ProjectBinding binding;
-  private final ConnectedSonarLintEngine engine;
-  private final ServerIssueTrackerWrapper issueTrackerWrapper;
+public class ProjectBindingWrapperTests {
 
-  public ProjectBindingWrapper(String serverId, ProjectBinding binding, ConnectedSonarLintEngine engine, ServerIssueTrackerWrapper issueTrackerWrapper) {
-    this.serverId = serverId;
-    this.binding = binding;
-    this.engine = engine;
-    this.issueTrackerWrapper = issueTrackerWrapper;
-  }
+  @Test
+  public void test_getters() {
+    ProjectBinding binding = new ProjectBinding("projectKey", "prefix", "idePrefix");
+    ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
+    ServerIssueTrackerWrapper issueTrackerWrapper = mock(ServerIssueTrackerWrapper.class);
+    ProjectBindingWrapper underTest = new ProjectBindingWrapper("serverId", binding, engine, issueTrackerWrapper);
 
-  public String getServerId() {
-    return serverId;
-  }
-
-  public ProjectBinding getBinding() {
-    return binding;
-  }
-
-  public ConnectedSonarLintEngine getEngine() {
-    return engine;
-  }
-
-  public ServerIssueTrackerWrapper getServerIssueTracker() {
-    return issueTrackerWrapper;
-  }
-
-  @Override
-  public String toString() {
-    return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
+    assertThat(underTest.getServerId()).isEqualTo("serverId");
+    assertThat(underTest.getBinding()).isEqualTo(binding);
+    assertThat(underTest.getEngine()).isEqualTo(engine);
+    assertThat(underTest.getServerIssueTracker()).isEqualTo(issueTrackerWrapper);
   }
 
 }

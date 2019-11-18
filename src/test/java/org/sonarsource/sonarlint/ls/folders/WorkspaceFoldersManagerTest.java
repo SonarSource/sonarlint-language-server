@@ -184,7 +184,7 @@ public class WorkspaceFoldersManagerTest {
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(asList(workspaceFolder), Collections.emptyList()));
 
     assertThat(underTest.getAll()).extracting(WorkspaceFolderWrapper::getRootPath).containsExactly(basedir);
-    assertThat(logTester.logs()).containsExactly("Registered workspace folder was already added: WorkspaceFolder [\n" +
+    assertThat(logTester.logs()).containsExactly("Registered workspace workspaceFolderPath was already added: WorkspaceFolder [\n" +
       "  uri = \"" + basedir.toUri() + "\"\n" +
       "  name = null\n" +
       "]");
@@ -207,7 +207,7 @@ public class WorkspaceFoldersManagerTest {
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(Collections.emptyList(), asList(workspaceFolder)));
 
     assertThat(underTest.getAll()).isEmpty();
-    assertThat(logTester.logs()).containsExactly("Unregistered workspace folder was missing: " + basedir.toUri());
+    assertThat(logTester.logs()).containsExactly("Unregistered workspace workspaceFolderPath was missing: " + basedir.toUri());
   }
 
   private static WorkspaceFolder mockWorkspaceFolder(URI uri) {

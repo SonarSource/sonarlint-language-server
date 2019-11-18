@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import org.sonar.api.utils.log.Logger;
@@ -36,7 +37,9 @@ import org.sonarsource.sonarlint.core.ConnectedSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine.State;
+import org.sonarsource.sonarlint.core.client.api.connected.GlobalStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
+import org.sonarsource.sonarlint.core.client.api.connected.ProjectStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
 import org.sonarsource.sonarlint.ls.SonarLintLanguageServer;
@@ -51,7 +54,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 /**
- * Keep a cache of project bindings. Files that are part of a workspace folder will share the same binding.
+ * Keep a cache of project bindings. Files that are part of a workspace workspaceFolderPath will share the same binding.
  * Files that are opened alone will have their own binding.
  */
 public class ProjectBindingManager implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
@@ -65,12 +68,20 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final Map<URI, ProjectBindingWrapper> fileBindingCache = new HashMap<>();
   private final Map<String, ConnectedSonarLintEngine> connectedEngineCacheByServerId = new HashMap<>();
   private final LanguageClientLogOutput clientLogOutput;
+  private final Function<ConnectedGlobalConfiguration, ConnectedSonarLintEngine> engineFactory;
   private String typeScriptPath;
 
   public ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClientLogOutput clientLogOutput) {
+    this(foldersManager, settingsManager, clientLogOutput, ConnectedSonarLintEngineImpl::new);
+  }
+
+  // For testing
+  ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClientLogOutput clientLogOutput,
+    Function<ConnectedGlobalConfiguration, ConnectedSonarLintEngine> engineFactory) {
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
     this.clientLogOutput = clientLogOutput;
+    this.engineFactory = engineFactory;
   }
 
   /**
@@ -89,7 +100,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         bindingCache.put(cacheKey, null);
       } else {
         Path folderRoot = folder.map(WorkspaceFolderWrapper::getRootPath).orElse(Paths.get(fileUri).getParent());
-        ProjectBindingWrapper projectBindingWrapper = computeProjectBinding(settings, folderRoot, folder, false);
+        ProjectBindingWrapper projectBindingWrapper = computeProjectBinding(settings, folderRoot, false);
         bindingCache.put(cacheKey, projectBindingWrapper);
       }
     }
@@ -98,7 +109,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   @CheckForNull
-  private ProjectBindingWrapper computeProjectBinding(WorkspaceFolderSettings settings, Path folderRoot, Optional<WorkspaceFolderWrapper> folder, boolean forceUpdateStorage) {
+  private ProjectBindingWrapper computeProjectBinding(WorkspaceFolderSettings settings, Path folderRoot, boolean forceUpdateStorage) {
     String serverId = settings.getServerId();
     ServerConnectionSettings serverConnectionSettings = settingsManager.getCurrentSettings().getServers().get(serverId);
     if (serverConnectionSettings == null) {
@@ -106,25 +117,28 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       return null;
     }
     ServerConfiguration serverConfiguration = getServerConfiguration(serverConnectionSettings);
-    ConnectedSonarLintEngine engine = connectedEngineCacheByServerId.computeIfAbsent(serverId, s -> {
-      return createConnectedEngine(serverId, serverConfiguration, forceUpdateStorage);
-    });
+    ConnectedSonarLintEngine engine = connectedEngineCacheByServerId.computeIfAbsent(serverId, s -> createConnectedEngine(serverId, serverConfiguration, forceUpdateStorage));
+    if (engine == null) {
+      return null;
+    }
     String projectKey = settings.getProjectKey();
-    if (forceUpdateStorage || engine.getProjectStorageStatus(projectKey) == null) {
+    ProjectStorageStatus projectStorageStatus = engine.getProjectStorageStatus(projectKey);
+    if (forceUpdateStorage || projectStorageStatus == null || projectStorageStatus.isStale()) {
       engine.updateProject(serverConfiguration, projectKey, null);
     }
     Collection<String> ideFilePaths = FileUtils.allRelativePathsForFilesInTree(folderRoot);
     ProjectBinding projectBinding = engine.calculatePathPrefixes(projectKey, ideFilePaths);
-    LOG.debug(String.format("Resolved sqPathPrefix:%s / idePathPrefix:%s / for folder %s",
+    LOG.debug("Resolved sqPathPrefix:{} / idePathPrefix:{} / for workspaceFolderPath {}",
       projectBinding.sqPathPrefix(),
       projectBinding.idePathPrefix(),
-      folderRoot));
+      folderRoot);
     ServerIssueTrackerWrapper issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, serverConfiguration, projectBinding);
     return new ProjectBindingWrapper(serverId, projectBinding, engine, issueTrackerWrapper);
   }
 
+  @CheckForNull
   private ConnectedSonarLintEngine createConnectedEngine(String serverId, ServerConfiguration serverConfiguration, boolean forceUpdateStorage) {
-    LOG.debug("Starting connected SonarLint engine for " + serverId + "...");
+    LOG.debug("Starting connected SonarLint engine for '{}'...", serverId);
 
     try {
       Map<String, String> extraProperties = new HashMap<>();
@@ -136,17 +150,21 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         .setLogOutput(clientLogOutput)
         .build();
 
-      ConnectedSonarLintEngine engine = new ConnectedSonarLintEngineImpl(configuration);
+      ConnectedSonarLintEngine engine = engineFactory.apply(configuration);
 
-      LOG.debug("Connected SonarLint engine started for " + serverId);
+      LOG.debug("Connected SonarLint engine started for '{}'", serverId);
+      if (engine.getState() == State.UPDATING) {
+        return engine;
+      }
 
-      if (engine.getGlobalStorageStatus() == null || engine.getState() != State.UPDATED || forceUpdateStorage) {
+      GlobalStorageStatus globalStorageStatus = engine.getGlobalStorageStatus();
+      if (forceUpdateStorage || globalStorageStatus == null || globalStorageStatus.isStale() || engine.getState() != State.UPDATED) {
         engine.update(serverConfiguration, null);
       }
 
       return engine;
     } catch (Exception e) {
-      LOG.error("Error starting connected SonarLint engine for " + serverId, e);
+      LOG.error("Error starting connected SonarLint engine for '" + serverId + "'", e);
     }
     return null;
   }
@@ -184,17 +202,17 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       }
     } else if (newValue.hasBinding() && (!Objects.equals(oldValue.getServerId(), newValue.getServerId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
       if (folder != null && folderBindingCache.containsKey(folder.getUri())) {
-        // Rebind the folder
-        ProjectBindingWrapper projectBindingWrapper = computeProjectBinding(newValue, folder.getRootPath(), Optional.of(folder), true);
+        // Rebind the workspaceFolderPath
+        ProjectBindingWrapper projectBindingWrapper = computeProjectBinding(newValue, folder.getRootPath(), true);
         bindingCache.put(folder.getUri(), projectBindingWrapper);
-        // TODO trigger analysis of all open files in the workspace folder
+        // TODO trigger analysis of all open files in the workspace workspaceFolderPath
       } else if (folder == null && !fileBindingCache.isEmpty()) {
         // Rebind all open files
         for (URI file : new HashSet<>(fileBindingCache.keySet())) {
-          ProjectBindingWrapper projectBindingWrapper = computeProjectBinding(newValue, Paths.get(file).getParent(), Optional.empty(), true);
+          ProjectBindingWrapper projectBindingWrapper = computeProjectBinding(newValue, Paths.get(file).getParent(), true);
           fileBindingCache.put(file, projectBindingWrapper);
         }
-        // TODO trigger analysis of all open files not part of any workspace folder
+        // TODO trigger analysis of all open files not part of any workspace workspaceFolderPath
       }
     }
   }
@@ -205,13 +223,13 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     }
 
     LOG.debug("All files outside workspace are now unbound");
-    // TODO trigger analysis of all open files not part of any workspace folder
+    // TODO trigger analysis of all open files not part of any workspace workspaceFolderPath
   }
 
   private void unbindFolder(WorkspaceFolderWrapper folder) {
     folderBindingCache.put(folder.getUri(), null);
-    LOG.debug("Workspace folder {} unbound", folder);
-    // TODO trigger analysis of all open files in the workspace folder
+    LOG.debug("Workspace workspaceFolderPath {} unbound", folder);
+    // TODO trigger analysis of all open files in the workspace workspaceFolderPath
   }
 
   @Override
@@ -219,13 +237,18 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     if (oldValue == null) {
       return;
     }
-    // TODO Auto-generated method stub
+    // TODO Detect changes of server configuration and stop engines accordingly
 
   }
 
   public void shutdown() {
-    // TODO Auto-generated method stub
-
+    connectedEngineCacheByServerId.entrySet().forEach(entry -> {
+      try {
+        entry.getValue().stop(false);
+      } catch (Exception e) {
+        LOG.error("Unable to stop engine '" + entry.getKey() + "'", e);
+      }
+    });
   }
 
   public void initialize(String typeScriptPath) {

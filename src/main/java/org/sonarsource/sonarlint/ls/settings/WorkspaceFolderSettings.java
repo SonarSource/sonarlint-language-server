@@ -32,8 +32,8 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.sonarsource.sonarlint.shaded.org.apache.commons.lang.StringUtils;
 
 /**
- * Settings specific to a workspace folder (but they may be inherited from higher level)
- * For a file not part of any workspace folder, this will be same as global globalSettings.
+ * Settings specific to a workspace workspaceFolderPath (but they may be inherited from higher level)
+ * For a file not part of any workspace workspaceFolderPath, this will be same as global globalSettings.
  */
 @Immutable
 public class WorkspaceFolderSettings {

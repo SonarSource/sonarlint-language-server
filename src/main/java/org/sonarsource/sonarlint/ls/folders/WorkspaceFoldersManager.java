@@ -78,7 +78,7 @@ public class WorkspaceFoldersManager {
     for (WorkspaceFolder added : event.getAdded()) {
       URI uri = create(added.getUri());
       if (folders.containsKey(uri)) {
-        LOG.warn("Registered workspace folder was already added: " + added);
+        LOG.warn("Registered workspace workspaceFolderPath was already added: " + added);
         continue;
       }
       addFolder(added, uri);
@@ -88,7 +88,7 @@ public class WorkspaceFoldersManager {
   private void removeFolder(URI uri) {
     WorkspaceFolderWrapper folderWrapper = folders.remove(uri);
     if (folderWrapper == null) {
-      LOG.warn("Unregistered workspace folder was missing: " + uri);
+      LOG.warn("Unregistered workspace workspaceFolderPath was missing: " + uri);
       return;
     }
     listeners.forEach(l -> l.removed(folderWrapper));
