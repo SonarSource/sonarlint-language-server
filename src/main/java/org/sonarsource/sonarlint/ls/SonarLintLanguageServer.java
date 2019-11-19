@@ -194,7 +194,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
       typeScriptPath = (String) options.get(TYPESCRIPT_LOCATION);
 
-      bindingManager.initialize(typeScriptPath);
+      bindingManager.initialize(Paths.get(typeScriptPath));
 
       telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion, bindingManager::usesConnectedMode, bindingManager::usesSonarCloud);
 
