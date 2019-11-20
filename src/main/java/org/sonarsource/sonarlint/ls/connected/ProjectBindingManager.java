@@ -95,7 +95,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
    * Return the binding of the given file.
    * @return empty if the file is unbound
    */
-  public Optional<ProjectBindingWrapper> getBinding(URI fileUri) {
+  public synchronized Optional<ProjectBindingWrapper> getBinding(URI fileUri) {
     Optional<WorkspaceFolderWrapper> folder = foldersManager.findFolderForFile(fileUri);
     URI cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
     Map<URI, ProjectBindingWrapper> bindingCache = folder.isPresent() ? folderBindingCache : fileBindingCache;
@@ -152,7 +152,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   @CheckForNull
-  private ConnectedSonarLintEngine getOrCreateConnectedEngine(String serverId, ServerConfiguration serverConfiguration) {
+  private synchronized ConnectedSonarLintEngine getOrCreateConnectedEngine(String serverId, ServerConfiguration serverConfiguration) {
     return connectedEngineCacheByServerId.computeIfAbsent(serverId, s -> createConnectedEngineAndUpdateIfNeeded(serverId, serverConfiguration));
   }
 
@@ -210,22 +210,21 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       .build();
   }
 
-  public boolean usesConnectedMode() {
+  public synchronized boolean usesConnectedMode() {
     return Stream.concat(folderBindingCache.values().stream(), fileBindingCache.values().stream()).anyMatch(Objects::nonNull);
   }
 
-  public boolean usesSonarCloud() {
+  public synchronized boolean usesSonarCloud() {
     return Stream.concat(folderBindingCache.values().stream(), fileBindingCache.values().stream())
       .filter(Objects::nonNull)
       .anyMatch(binding -> settingsManager.getCurrentSettings().getServers().get(binding.getServerId()).isSonarCloudAlias());
   }
 
   @Override
-  public void onChange(@CheckForNull WorkspaceFolderWrapper folder, @CheckForNull WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
+  public synchronized void onChange(@CheckForNull WorkspaceFolderWrapper folder, @CheckForNull WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
     if (oldValue == null) {
       return;
     }
-    Map<URI, ProjectBindingWrapper> bindingCache = folder != null ? folderBindingCache : fileBindingCache;
     if (oldValue.hasBinding() && !newValue.hasBinding()) {
       if (folder != null && folderBindingCache.containsKey(folder.getUri())) {
         unbindFolder(folder);
@@ -273,7 +272,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     // TODO trigger analysis of all open files in the workspace folder
   }
 
-  private void stopUnusedEngines() {
+  private synchronized void stopUnusedEngines() {
     Set<String> usedServerIds = new HashSet<>();
     String serverId = settingsManager.getCurrentDefaultFolderSettings().getServerId();
     if (serverId != null) {

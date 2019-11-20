@@ -39,6 +39,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -143,6 +145,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
    */
   private TraceValues traceLevel;
+  private ExecutorService analysisExecutor;
 
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<URL> analyzers) {
     this.standaloneAnalyzers = analyzers;
@@ -164,6 +167,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);
+    this.analysisExecutor = Executors.newSingleThreadExecutor();
 
     backgroundProcess = launcher.startListening();
   }
@@ -335,13 +339,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public void didOpen(DidOpenTextDocumentParams params) {
     URI uri = create(params.getTextDocument().getUri());
     languageIdPerFileURI.put(uri, params.getTextDocument().getLanguageId());
-    analyze(uri, params.getTextDocument().getText(), true);
+    analyzeAsync(uri, params.getTextDocument().getText(), true);
   }
 
   @Override
   public void didChange(DidChangeTextDocumentParams params) {
     URI uri = create(params.getTextDocument().getUri());
-    analyze(uri, params.getContentChanges().get(0).getText(), false);
+    analyzeAsync(uri, params.getContentChanges().get(0).getText(), false);
   }
 
   @Override
@@ -357,7 +361,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     String content = params.getText();
     if (content != null) {
       URI uri = create(params.getTextDocument().getUri());
-      analyze(uri, params.getText(), false);
+      analyzeAsync(uri, content, false);
     }
   }
 
@@ -379,64 +383,64 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     });
   }
 
-  // visible for testing
-  void analyze(URI fileUri, String content, boolean shouldFetchServerIssues) {
+  private void analyzeAsync(URI fileUri, String content, boolean shouldFetchServerIssues) {
     if (!fileUri.getScheme().equalsIgnoreCase("file")) {
       LOG.warn("URI '{}' is not a file, analysis not supported", fileUri);
       return;
     }
+    analysisExecutor.execute(() -> {
+      Map<URI, PublishDiagnosticsParams> files = new HashMap<>();
+      files.put(fileUri, newPublishDiagnostics(fileUri));
 
-    Map<URI, PublishDiagnosticsParams> files = new HashMap<>();
-    files.put(fileUri, newPublishDiagnostics(fileUri));
+      Optional<WorkspaceFolderWrapper> workspaceFolder = workspaceFoldersManager.findFolderForFile(fileUri);
 
-    Optional<WorkspaceFolderWrapper> workspaceFolder = workspaceFoldersManager.findFolderForFile(fileUri);
+      WorkspaceFolderSettings settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
+        .orElse(settingsManager.getCurrentDefaultFolderSettings());
 
-    WorkspaceFolderSettings settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
-      .orElse(settingsManager.getCurrentDefaultFolderSettings());
+      Path baseDir = workspaceFolder.map(WorkspaceFolderWrapper::getRootPath)
+        // Default to take file parent dir if file is not part of any workspace
+        .orElse(Paths.get(fileUri).getParent());
 
-    Path baseDir = workspaceFolder.map(WorkspaceFolderWrapper::getRootPath)
-      // Default to take file parent dir if file is not part of any workspace
-      .orElse(Paths.get(fileUri).getParent());
+      IssueListener issueListener = issue -> {
+        ClientInputFile inputFile = issue.getInputFile();
+        if (inputFile != null) {
+          URI uri1 = inputFile.getClientObject();
+          PublishDiagnosticsParams publish = files.computeIfAbsent(uri1, SonarLintLanguageServer::newPublishDiagnostics);
 
-    IssueListener issueListener = issue -> {
-      ClientInputFile inputFile = issue.getInputFile();
-      if (inputFile != null) {
-        URI uri1 = inputFile.getClientObject();
-        PublishDiagnosticsParams publish = files.computeIfAbsent(uri1, SonarLintLanguageServer::newPublishDiagnostics);
-
-        convert(issue).ifPresent(publish.getDiagnostics()::add);
-      }
-    };
-
-    Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(fileUri);
-    AnalysisResultsWrapper analysisResults;
-    try {
-      if (binding.isPresent()) {
-        ConnectedSonarLintEngine connectedEngine = binding.get().getEngine();
-        if (!connectedEngine.getExcludedFiles(binding.get().getBinding(),
-          singleton(fileUri),
-          uri -> getFileRelativePath(baseDir, uri),
-          uri -> isTest(settings, uri))
-          .isEmpty()) {
-          LOG.debug("Skip analysis of excluded file: {}", fileUri);
-          return;
+          convert(issue).ifPresent(publish.getDiagnostics()::add);
         }
-        analysisResults = analyzeConnected(binding.get(), settings, baseDir, fileUri, content, issueListener, shouldFetchServerIssues);
-      } else {
-        analysisResults = analyzeStandalone(settings, baseDir, fileUri, content, issueListener);
+      };
+
+      Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(fileUri);
+      AnalysisResultsWrapper analysisResults;
+      try {
+        if (binding.isPresent()) {
+          ConnectedSonarLintEngine connectedEngine = binding.get().getEngine();
+          if (!connectedEngine.getExcludedFiles(binding.get().getBinding(),
+            singleton(fileUri),
+            uri -> getFileRelativePath(baseDir, uri),
+            uri -> isTest(settings, uri))
+            .isEmpty()) {
+            LOG.debug("Skip analysis of excluded file: {}", fileUri);
+            return;
+          }
+          analysisResults = analyzeConnected(binding.get(), settings, baseDir, fileUri, content, issueListener, shouldFetchServerIssues);
+        } else {
+          analysisResults = analyzeStandalone(settings, baseDir, fileUri, content, issueListener);
+        }
+
+        telemetry.analysisDoneOnSingleFile(StringUtils.substringAfterLast(fileUri.toString(), "."), analysisResults.analysisTime);
+
+        // Ignore files with parsing error
+        analysisResults.results.failedAnalysisFiles().stream()
+          .map(ClientInputFile::getClientObject)
+          .forEach(files::remove);
+      } catch (Exception e) {
+        LOG.error("Analysis failed.", e);
       }
 
-      telemetry.analysisDoneOnSingleFile(StringUtils.substringAfterLast(fileUri.toString(), "."), analysisResults.analysisTime);
-
-      // Ignore files with parsing error
-      analysisResults.results.failedAnalysisFiles().stream()
-        .map(ClientInputFile::getClientObject)
-        .forEach(files::remove);
-    } catch (Exception e) {
-      LOG.error("Analysis failed.", e);
-    }
-
-    files.values().forEach(client::publishDiagnostics);
+      files.values().forEach(client::publishDiagnostics);
+    });
   }
 
   static class AnalysisResultsWrapper {
@@ -602,7 +606,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
           Gson gson = new Gson();
           List<Document> docsToRefresh = args == null ? Collections.emptyList()
             : args.stream().map(arg -> gson.fromJson(arg.toString(), Document.class)).collect(Collectors.toList());
-          docsToRefresh.forEach(doc -> analyze(create(doc.uri), doc.text, false));
+          docsToRefresh.forEach(doc -> analyzeAsync(create(doc.uri), doc.text, false));
           break;
         default:
           throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported command: " + params.getCommand(), null));
