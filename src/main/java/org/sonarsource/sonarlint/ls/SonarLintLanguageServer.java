@@ -121,10 +121,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private static final String SONARLINT_SOURCE = "sonarlint";
   private static final String SONARLINT_OPEN_RULE_DESCRIPTION_COMMAND = "SonarLint.OpenRuleDesc";
   private static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
-  static final String SONARLINT_UPDATE_PROJECT_BINDING_COMMAND = "SonarLint.UpdateProjectBinding";
+  static final String SONARLINT_UPDATE_ALL_BINDINGS_COMMAND = "SonarLint.UpdateAllBindings";
   static final String SONARLINT_REFRESH_DIAGNOSTICS_COMMAND = "SonarLint.RefreshDiagnostics";
   private static final List<String> SONARLINT_COMMANDS = Arrays.asList(
-    SONARLINT_UPDATE_PROJECT_BINDING_COMMAND,
+    SONARLINT_UPDATE_ALL_BINDINGS_COMMAND,
     SONARLINT_REFRESH_DIAGNOSTICS_COMMAND);
 
   private final SonarLintExtendedLanguageClient client;
@@ -599,7 +599,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       cancelToken.checkCanceled();
       List<Object> args = params.getArguments();
       switch (params.getCommand()) {
-        case SONARLINT_UPDATE_PROJECT_BINDING_COMMAND:
+        case SONARLINT_UPDATE_ALL_BINDINGS_COMMAND:
           bindingManager.updateAllBindings();
           break;
         case SONARLINT_REFRESH_DIAGNOSTICS_COMMAND:

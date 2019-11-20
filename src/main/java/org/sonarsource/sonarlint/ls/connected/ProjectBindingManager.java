@@ -274,16 +274,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private synchronized void stopUnusedEngines() {
     Set<String> usedServerIds = new HashSet<>();
-    String serverId = settingsManager.getCurrentDefaultFolderSettings().getServerId();
-    if (serverId != null) {
-      usedServerIds.add(serverId);
-    }
-    foldersManager.getAll().forEach(w -> {
-      String folderServerId = w.getSettings().getServerId();
-      if (folderServerId != null) {
-        usedServerIds.add(folderServerId);
-      }
-    });
+    WorkspaceFolderSettings folderSettings = settingsManager.getCurrentDefaultFolderSettings();
+    collectUsedServerId(usedServerIds, folderSettings);
+    foldersManager.getAll().forEach(w -> collectUsedServerId(usedServerIds, w.getSettings()));
     Set<String> startedEngines = new HashSet<>(connectedEngineCacheByServerId.keySet());
     for (String startedEngineId : startedEngines) {
       if (!usedServerIds.contains(startedEngineId)) {
@@ -292,13 +285,21 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     }
   }
 
+  private void collectUsedServerId(Set<String> usedServerIds, WorkspaceFolderSettings folderSettings) {
+    if (folderSettings.hasBinding()) {
+      String serverId = folderSettings.getServerId();
+      if (serverId != null && settingsManager.getCurrentSettings().getServers().containsKey(serverId)) {
+        usedServerIds.add(serverId);
+      }
+    }
+  }
+
   @Override
-  public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
+  public synchronized void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
     if (oldValue == null) {
       return;
     }
-    // TODO Detect changes of server configuration and stop engines accordingly
-
+    stopUnusedEngines();
   }
 
   public void shutdown() {
