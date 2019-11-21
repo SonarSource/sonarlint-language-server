@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
@@ -35,6 +36,7 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 import static java.net.URI.create;
 
@@ -46,14 +48,22 @@ public class WorkspaceFoldersManager {
 
   private boolean initialized;
 
+  private final SettingsManager settingsManager;
+
+  private List<WorkspaceFolderLifecycleListener> listeners = new ArrayList<>();
+
+  public WorkspaceFoldersManager(SettingsManager settingsManager) {
+    this.settingsManager = settingsManager;
+  }
+
   public void initialize(@Nullable List<WorkspaceFolder> workspaceFolders) {
     if (initialized) {
-      throw new IllegalStateException("WorkspaceFoldersManager has already been initialized");
+      throw new IllegalStateException("SettingsManager has already been initialized");
     }
     if (workspaceFolders != null) {
       workspaceFolders.forEach(wf -> {
         URI uri = create(wf.getUri());
-        folders.put(uri, new WorkspaceFolderWrapper(uri, wf));
+        addFolder(wf, uri);
       });
     }
     this.initialized = true;
@@ -63,21 +73,31 @@ public class WorkspaceFoldersManager {
     checkInitialized();
     for (WorkspaceFolder removed : event.getRemoved()) {
       URI uri = create(removed.getUri());
-      if (!folders.containsKey(uri)) {
-        LOG.warn("Unregistered workspace folder was missing: " + removed);
-        continue;
-      }
-      folders.remove(uri);
+      removeFolder(uri);
     }
     for (WorkspaceFolder added : event.getAdded()) {
       URI uri = create(added.getUri());
       if (folders.containsKey(uri)) {
-        LOG.warn("Registered workspace folder was already added: " + added);
+        LOG.warn("Registered workspace workspaceFolderPath was already added: " + added);
         continue;
       }
-      folders.put(uri, new WorkspaceFolderWrapper(uri, added));
+      addFolder(added, uri);
     }
+  }
 
+  private void removeFolder(URI uri) {
+    WorkspaceFolderWrapper folderWrapper = folders.remove(uri);
+    if (folderWrapper == null) {
+      LOG.warn("Unregistered workspace workspaceFolderPath was missing: " + uri);
+      return;
+    }
+    listeners.forEach(l -> l.removed(folderWrapper));
+  }
+
+  private void addFolder(WorkspaceFolder added, URI uri) {
+    WorkspaceFolderWrapper addedWrapper = new WorkspaceFolderWrapper(uri, added);
+    folders.put(uri, addedWrapper);
+    listeners.forEach(l -> l.added(addedWrapper));
   }
 
   public Optional<WorkspaceFolderWrapper> findFolderForFile(URI uri) {
@@ -126,8 +146,20 @@ public class WorkspaceFoldersManager {
 
   private void checkInitialized() {
     if (!initialized) {
-      throw new IllegalStateException("WorkspaceFoldersManager has not been initialized");
+      throw new IllegalStateException("SettingsManager has not been initialized");
     }
   }
 
+  public void didChangeConfiguration() {
+    folders.values()
+      .forEach(settingsManager::updateWorkspaceFolderSettingsAsync);
+  }
+
+  public void addListener(WorkspaceFolderLifecycleListener listener) {
+    listeners.add(listener);
+  }
+
+  public void removeListener(WorkspaceFolderLifecycleListener listener) {
+    listeners.remove(listener);
+  }
 }

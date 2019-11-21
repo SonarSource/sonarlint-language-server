@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -33,8 +34,11 @@ import org.sonarsource.sonarlint.core.client.api.common.TelemetryClientConfig;
 import org.sonarsource.sonarlint.core.client.api.util.SonarLintUtils;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
+import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
-public class SonarLintTelemetry {
+public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   public static final String DISABLE_PROPERTY_KEY = "sonarlint.telemetry.disabled";
   private static final Logger LOG = Loggers.get(SonarLintTelemetry.class);
 
@@ -53,14 +57,16 @@ public class SonarLintTelemetry {
     this.executorFactory = executorFactory;
   }
 
-  public void optOut(boolean optOut) {
+  private void optOut(boolean optOut) {
     if (telemetry != null) {
       if (optOut) {
         if (telemetry.isEnabled()) {
+          LOG.debug("Disabling telemetry");
           telemetry.disable();
         }
       } else {
         if (!telemetry.isEnabled()) {
+          LOG.debug("Enabling telemetry");
           telemetry.enable();
         }
       }
@@ -77,7 +83,15 @@ public class SonarLintTelemetry {
     return telemetry != null && telemetry.isEnabled();
   }
 
-  public void init(@Nullable Path storagePath, String productName, String productVersion, String ideVersion, Supplier<Boolean> usesConnectedMode,
+  public void init(@Nullable String productKey, @Nullable String telemetryStorage, String productName, String productVersion, String ideVersion,
+    Supplier<Boolean> usesConnectedMode,
+    Supplier<Boolean> usesSonarCloud) {
+    Path storagePath = getStoragePath(productKey, telemetryStorage);
+    init(storagePath, productName, productVersion, ideVersion, usesConnectedMode, usesSonarCloud);
+  }
+
+  // Visible for testing
+  void init(@Nullable Path storagePath, String productName, String productVersion, String ideVersion, Supplier<Boolean> usesConnectedMode,
     Supplier<Boolean> usesSonarCloud) {
     if (storagePath == null) {
       LOG.info("Telemetry disabled because storage path is null");
@@ -99,6 +113,17 @@ public class SonarLintTelemetry {
         LOG.error("Failed scheduling period telemetry job", e);
       }
     }
+  }
+
+  @VisibleForTesting
+  static Path getStoragePath(@Nullable String productKey, @Nullable String telemetryStorage) {
+    if (productKey != null) {
+      if (telemetryStorage != null) {
+        TelemetryPathManager.migrate(productKey, Paths.get(telemetryStorage));
+      }
+      return TelemetryPathManager.getPath(productKey);
+    }
+    return telemetryStorage != null ? Paths.get(telemetryStorage) : null;
   }
 
   TelemetryManager newTelemetryManager(Path path, TelemetryClient client, Supplier<Boolean> usesConnectedMode, Supplier<Boolean> usesSonarCloud) {
@@ -136,5 +161,10 @@ public class SonarLintTelemetry {
     if (scheduler != null) {
       scheduler.shutdown();
     }
+  }
+
+  @Override
+  public void onChange(WorkspaceSettings oldValue, WorkspaceSettings newValue) {
+    optOut(newValue.isDisableTelemetry());
   }
 }

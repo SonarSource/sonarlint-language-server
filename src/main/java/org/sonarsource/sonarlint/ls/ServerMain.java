@@ -20,20 +20,43 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 
 public class ServerMain {
 
-  private ServerMain() {
+  static {
+    Path path;
+    try {
+      path = Paths.get(ServerMain.class.getResource("/logging.properties").toURI());
+    } catch (URISyntaxException e) {
+      throw new IllegalStateException(e);
+    }
+    System.setProperty("java.util.logging.config.file", path.toString());
+  }
+
+  private PrintStream out;
+  private PrintStream err;
+
+  ServerMain(PrintStream out, PrintStream err) {
+    this.out = out;
+    this.err = err;
   }
 
   public static void main(String... args) {
+    new ServerMain(System.out, System.err).startLanguageServer(args);
+  }
+
+  SonarLintLanguageServer startLanguageServer(String... args) {
     if (args.length < 1) {
-      System.err.println("Usage: java -jar sonarlint-server.jar <jsonRpcPort> [file:///path/to/analyzer1.jar [file:///path/to/analyzer2.jar] ...]");
-      System.exit(1);
+      err.println("Usage: java -jar sonarlint-server.jar <jsonRpcPort> [file:///path/to/analyzer1.jar [file:///path/to/analyzer2.jar] ...]");
+      exitWithError();
     }
     int jsonRpcPort = parsePortArgument(args);
 
@@ -43,34 +66,37 @@ public class ServerMain {
         try {
           analyzers.add(new URL(args[i]));
         } catch (MalformedURLException e) {
-          System.err.println("Invalid " + i + "th argument. Expected an URL.");
-          e.printStackTrace(System.err);
-          System.exit(1);
+          err.println("Invalid " + i + "th argument. Expected an URL.");
+          e.printStackTrace(err);
+          exitWithError();
         }
       }
     }
 
-    System.out.println("Binding to " + jsonRpcPort);
+    out.println("Binding to " + jsonRpcPort);
     try {
-      SonarLintLanguageServer.bySocket(jsonRpcPort, analyzers);
+      return SonarLintLanguageServer.bySocket(jsonRpcPort, analyzers);
     } catch (IOException e) {
-      System.err.println("Unable to connect to the client");
-      e.printStackTrace(System.err);
-      System.exit(1);
-      return;
+      err.println("Unable to connect to the client");
+      e.printStackTrace(err);
+      exitWithError();
+      return null;
     }
-
   }
 
-  private static int parsePortArgument(String... args) {
+  private int parsePortArgument(String... args) {
     try {
       return Integer.parseInt(args[0]);
     } catch (NumberFormatException e) {
-      System.err.println("Invalid port provided as first parameter");
-      e.printStackTrace(System.err);
-      System.exit(1);
+      err.println("Invalid port provided as first parameter");
+      e.printStackTrace(err);
+      exitWithError();
     }
     return 0;
+  }
+
+  private void exitWithError() {
+    System.exit(1);
   }
 
 }

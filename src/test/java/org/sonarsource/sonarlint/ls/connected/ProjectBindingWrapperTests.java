@@ -17,22 +17,28 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls.log;
+package org.sonarsource.sonarlint.ls.connected;
 
-import org.eclipse.lsp4j.MessageType;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.client.api.common.LogOutput.Level;
+import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
+import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
-public class LanguageClientLogOutputTest {
+public class ProjectBindingWrapperTests {
 
   @Test
-  public void coverage() {
-    assertThat(LanguageClientLogOutput.messageType(Level.ERROR)).isEqualTo(MessageType.Error);
-    assertThat(LanguageClientLogOutput.messageType(Level.WARN)).isEqualTo(MessageType.Warning);
-    assertThat(LanguageClientLogOutput.messageType(Level.INFO)).isEqualTo(MessageType.Info);
-    assertThat(LanguageClientLogOutput.messageType(Level.DEBUG)).isEqualTo(MessageType.Log);
-    assertThat(LanguageClientLogOutput.messageType(Level.TRACE)).isEqualTo(MessageType.Log);
+  public void test_getters() {
+    ProjectBinding binding = new ProjectBinding("projectKey", "prefix", "idePrefix");
+    ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
+    ServerIssueTrackerWrapper issueTrackerWrapper = mock(ServerIssueTrackerWrapper.class);
+    ProjectBindingWrapper underTest = new ProjectBindingWrapper("serverId", binding, engine, issueTrackerWrapper);
+
+    assertThat(underTest.getServerId()).isEqualTo("serverId");
+    assertThat(underTest.getBinding()).isEqualTo(binding);
+    assertThat(underTest.getEngine()).isEqualTo(engine);
+    assertThat(underTest.getServerIssueTracker()).isEqualTo(issueTrackerWrapper);
   }
+
 }
