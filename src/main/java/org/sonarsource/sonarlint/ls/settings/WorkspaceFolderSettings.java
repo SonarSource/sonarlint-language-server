@@ -25,6 +25,7 @@ import java.nio.file.PathMatcher;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
@@ -61,10 +62,12 @@ public class WorkspaceFolderSettings {
     return testMatcher;
   }
 
+  @CheckForNull
   public String getServerId() {
     return serverId;
   }
 
+  @CheckForNull
   public String getProjectKey() {
     return projectKey;
   }

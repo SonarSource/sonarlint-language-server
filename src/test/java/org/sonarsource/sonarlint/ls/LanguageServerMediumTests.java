@@ -198,7 +198,7 @@ public class LanguageServerMediumTests {
       .didChangeWorkspaceFolders(
         new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), singletonList(new WorkspaceFolder("another://uri", "Unknown")))));
     await().atMost(5, SECONDS)
-      .untilAsserted(() -> assertThat(client.logs).extracting(MessageParams::getMessage).contains("Unregistered workspace workspaceFolderPath was missing: another://uri"));
+      .untilAsserted(() -> assertThat(client.logs).extracting(MessageParams::getMessage).contains("Unregistered workspace folder was missing: another://uri"));
 
     // Switch telemetry on/off to ensure at least one log will appear
     emulateConfigurationChangeOnClient(null, true);
@@ -505,7 +505,8 @@ public class LanguageServerMediumTests {
 
   @Test
   public void logErrorWhenClientFailedToReturnConfiguration() {
-    // No workspaceFolderPath settings registered in the client mock, so it should fail when server will request workspaceFolderPath configuration
+    // No workspaceFolderPath settings registered in the client mock, so it should fail when server will request workspaceFolderPath
+    // configuration
     lsProxy.getWorkspaceService()
       .didChangeWorkspaceFolders(
         new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.singletonList(new WorkspaceFolder(SOME_FOLDER_URI, "Added")), Collections.emptyList())));
@@ -600,7 +601,8 @@ public class LanguageServerMediumTests {
             result.add(globalSettings);
           } else {
             result
-              .add(Optional.ofNullable(folderSettings.get(item.getScopeUri())).orElseThrow(() -> new IllegalStateException("No settings mocked for workspaceFolderPath " + item.getScopeUri())));
+              .add(Optional.ofNullable(folderSettings.get(item.getScopeUri()))
+                .orElseThrow(() -> new IllegalStateException("No settings mocked for workspaceFolderPath " + item.getScopeUri())));
           }
         }
         settingsLatch.countDown();

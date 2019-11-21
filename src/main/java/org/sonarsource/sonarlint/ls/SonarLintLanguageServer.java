@@ -39,6 +39,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -119,10 +121,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private static final String SONARLINT_SOURCE = "sonarlint";
   private static final String SONARLINT_OPEN_RULE_DESCRIPTION_COMMAND = "SonarLint.OpenRuleDesc";
   private static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
-  static final String SONARLINT_UPDATE_PROJECT_BINDING_COMMAND = "SonarLint.UpdateProjectBinding";
+  static final String SONARLINT_UPDATE_ALL_BINDINGS_COMMAND = "SonarLint.UpdateAllBindings";
   static final String SONARLINT_REFRESH_DIAGNOSTICS_COMMAND = "SonarLint.RefreshDiagnostics";
   private static final List<String> SONARLINT_COMMANDS = Arrays.asList(
-    SONARLINT_UPDATE_PROJECT_BINDING_COMMAND,
+    SONARLINT_UPDATE_ALL_BINDINGS_COMMAND,
     SONARLINT_REFRESH_DIAGNOSTICS_COMMAND);
 
   private final SonarLintExtendedLanguageClient client;
@@ -143,6 +145,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
    */
   private TraceValues traceLevel;
+  private ExecutorService analysisExecutor;
 
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<URL> analyzers) {
     this.standaloneAnalyzers = analyzers;
@@ -164,6 +167,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);
+    this.analysisExecutor = Executors.newSingleThreadExecutor();
 
     backgroundProcess = launcher.startListening();
   }
@@ -194,7 +198,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
       typeScriptPath = (String) options.get(TYPESCRIPT_LOCATION);
 
-      bindingManager.initialize(typeScriptPath);
+      bindingManager.initialize(Paths.get(typeScriptPath));
 
       telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion, bindingManager::usesConnectedMode, bindingManager::usesSonarCloud);
 
@@ -335,13 +339,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public void didOpen(DidOpenTextDocumentParams params) {
     URI uri = create(params.getTextDocument().getUri());
     languageIdPerFileURI.put(uri, params.getTextDocument().getLanguageId());
-    analyze(uri, params.getTextDocument().getText(), true);
+    analyzeAsync(uri, params.getTextDocument().getText(), true);
   }
 
   @Override
   public void didChange(DidChangeTextDocumentParams params) {
     URI uri = create(params.getTextDocument().getUri());
-    analyze(uri, params.getContentChanges().get(0).getText(), false);
+    analyzeAsync(uri, params.getContentChanges().get(0).getText(), false);
   }
 
   @Override
@@ -357,7 +361,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     String content = params.getText();
     if (content != null) {
       URI uri = create(params.getTextDocument().getUri());
-      analyze(uri, params.getText(), false);
+      analyzeAsync(uri, content, false);
     }
   }
 
@@ -379,13 +383,17 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     });
   }
 
-  // visible for testing
-  void analyze(URI fileUri, String content, boolean shouldFetchServerIssues) {
+  private void analyzeAsync(URI fileUri, String content, boolean shouldFetchServerIssues) {
     if (!fileUri.getScheme().equalsIgnoreCase("file")) {
       LOG.warn("URI '{}' is not a file, analysis not supported", fileUri);
       return;
     }
+    analysisExecutor.execute(() -> {
+      analyze(fileUri, content, shouldFetchServerIssues);
+    });
+  }
 
+  private void analyze(URI fileUri, String content, boolean shouldFetchServerIssues) {
     Map<URI, PublishDiagnosticsParams> files = new HashMap<>();
     files.put(fileUri, newPublishDiagnostics(fileUri));
 
@@ -398,15 +406,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       // Default to take file parent dir if file is not part of any workspace
       .orElse(Paths.get(fileUri).getParent());
 
-    IssueListener issueListener = issue -> {
-      ClientInputFile inputFile = issue.getInputFile();
-      if (inputFile != null) {
-        URI uri1 = inputFile.getClientObject();
-        PublishDiagnosticsParams publish = files.computeIfAbsent(uri1, SonarLintLanguageServer::newPublishDiagnostics);
-
-        convert(issue).ifPresent(publish.getDiagnostics()::add);
-      }
-    };
+    IssueListener issueListener = createIssueListener(files);
 
     Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(fileUri);
     AnalysisResultsWrapper analysisResults;
@@ -437,6 +437,17 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     }
 
     files.values().forEach(client::publishDiagnostics);
+  }
+
+  private IssueListener createIssueListener(Map<URI, PublishDiagnosticsParams> files) {
+    return issue -> {
+      ClientInputFile inputFile = issue.getInputFile();
+      if (inputFile != null) {
+        URI uri = inputFile.getClientObject();
+        PublishDiagnosticsParams publish = files.computeIfAbsent(uri, SonarLintLanguageServer::newPublishDiagnostics);
+        convert(issue).ifPresent(publish.getDiagnostics()::add);
+      }
+    };
   }
 
   static class AnalysisResultsWrapper {
@@ -595,14 +606,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       cancelToken.checkCanceled();
       List<Object> args = params.getArguments();
       switch (params.getCommand()) {
-        case SONARLINT_UPDATE_PROJECT_BINDING_COMMAND:
+        case SONARLINT_UPDATE_ALL_BINDINGS_COMMAND:
           bindingManager.updateAllBindings();
           break;
         case SONARLINT_REFRESH_DIAGNOSTICS_COMMAND:
           Gson gson = new Gson();
           List<Document> docsToRefresh = args == null ? Collections.emptyList()
             : args.stream().map(arg -> gson.fromJson(arg.toString(), Document.class)).collect(Collectors.toList());
-          docsToRefresh.forEach(doc -> analyze(create(doc.uri), doc.text, false));
+          docsToRefresh.forEach(doc -> analyzeAsync(create(doc.uri), doc.text, false));
           break;
         default:
           throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported command: " + params.getCommand(), null));

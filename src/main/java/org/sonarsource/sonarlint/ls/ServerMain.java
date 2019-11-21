@@ -22,24 +22,11 @@ package org.sonarsource.sonarlint.ls;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 
 public class ServerMain {
-
-  static {
-    Path path;
-    try {
-      path = Paths.get(ServerMain.class.getResource("/logging.properties").toURI());
-    } catch (URISyntaxException e) {
-      throw new IllegalStateException(e);
-    }
-    System.setProperty("java.util.logging.config.file", path.toString());
-  }
 
   private PrintStream out;
   private PrintStream err;

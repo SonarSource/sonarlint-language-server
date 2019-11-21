@@ -100,28 +100,6 @@ public class WorkspaceFoldersManagerTest {
   }
 
   @Test
-  public void fail_if_initialize_called_twice() {
-    underTest.initialize(null);
-
-    try {
-      underTest.initialize(null);
-      fail("Exception expected");
-    } catch (Exception e) {
-      assertThat(e).isInstanceOf(IllegalStateException.class);
-    }
-  }
-
-  @Test
-  public void fail_if_not_initialized() {
-    try {
-      underTest.getAll();
-      fail("Exception expected");
-    } catch (Exception e) {
-      assertThat(e).isInstanceOf(IllegalStateException.class);
-    }
-  }
-
-  @Test
   public void testURIAncestor() {
     assertThat(isAncestor(create("file:///foo"), create("file:///foo"))).isTrue();
     assertThat(isAncestor(create("file:///foo"), create("file:///foo/bar.txt"))).isTrue();
@@ -184,7 +162,7 @@ public class WorkspaceFoldersManagerTest {
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(asList(workspaceFolder), Collections.emptyList()));
 
     assertThat(underTest.getAll()).extracting(WorkspaceFolderWrapper::getRootPath).containsExactly(basedir);
-    assertThat(logTester.logs()).containsExactly("Registered workspace workspaceFolderPath was already added: WorkspaceFolder [\n" +
+    assertThat(logTester.logs()).containsExactly("Registered workspace folder was already added: WorkspaceFolder [\n" +
       "  uri = \"" + basedir.toUri() + "\"\n" +
       "  name = null\n" +
       "]");
@@ -207,7 +185,7 @@ public class WorkspaceFoldersManagerTest {
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(Collections.emptyList(), asList(workspaceFolder)));
 
     assertThat(underTest.getAll()).isEmpty();
-    assertThat(logTester.logs()).containsExactly("Unregistered workspace workspaceFolderPath was missing: " + basedir.toUri());
+    assertThat(logTester.logs()).containsExactly("Unregistered workspace folder was missing: " + basedir.toUri());
   }
 
   private static WorkspaceFolder mockWorkspaceFolder(URI uri) {

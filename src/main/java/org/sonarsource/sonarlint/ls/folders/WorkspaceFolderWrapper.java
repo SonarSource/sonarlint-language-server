@@ -22,19 +22,24 @@ package org.sonarsource.sonarlint.ls.folders;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.eclipse.lsp4j.WorkspaceFolder;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 
-import static java.util.Objects.requireNonNull;
-
 public class WorkspaceFolderWrapper {
+
+  private static final Logger LOG = Loggers.get(WorkspaceFolderWrapper.class);
 
   private final URI uri;
   private final WorkspaceFolder lspFolder;
   private WorkspaceFolderSettings settings;
+  private final CountDownLatch initLatch = new CountDownLatch(1);
 
   public WorkspaceFolderWrapper(URI uri, WorkspaceFolder lspFolder) {
     this.uri = uri;
@@ -56,10 +61,18 @@ public class WorkspaceFolderWrapper {
   }
 
   /**
-   * Get non null globalSettings, assuming they have been initialized 
+   * Get non null settings, waiting for them to be initialized 
    */
   public WorkspaceFolderSettings getSettings() {
-    return requireNonNull(settings, "Settings are not yet initialized");
+    try {
+      if (initLatch.await(1, TimeUnit.MINUTES)) {
+        return settings;
+      }
+    } catch (InterruptedException e) {
+      LOG.debug("Interrupted!", e);
+      Thread.currentThread().interrupt();
+    }
+    throw new IllegalStateException("Unable to get settings in time");
   }
 
   @CheckForNull
@@ -69,6 +82,7 @@ public class WorkspaceFolderWrapper {
 
   public void setSettings(WorkspaceFolderSettings settings) {
     this.settings = settings;
+    initLatch.countDown();
   }
 
 }
