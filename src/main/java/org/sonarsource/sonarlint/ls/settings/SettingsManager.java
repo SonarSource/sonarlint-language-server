@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -48,7 +49,6 @@ import org.sonarsource.sonarlint.ls.Utils;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 
-import static java.util.Objects.requireNonNull;
 import static org.apache.commons.lang.StringUtils.isBlank;
 
 public class SettingsManager implements WorkspaceFolderLifecycleListener {
@@ -64,7 +64,9 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private final LanguageClient client;
 
   private WorkspaceSettings currentSettings = null;
-  // Setting that are normally resolved at workspace level, but we also keep a cache of global values to analyze files outside any workspace
+  private final CountDownLatch initLatch = new CountDownLatch(1);
+  // Setting that are normally specific per workspace folder, but we also keep a cache of global values to analyze files outside any
+  // workspace
   private WorkspaceFolderSettings currentDefaultSettings = null;
 
   private final ExecutorService executor;
@@ -73,15 +75,35 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   public SettingsManager(LanguageClient client) {
     this.client = client;
-    this.executor = Executors.newSingleThreadExecutor();
+    this.executor = Executors.newCachedThreadPool();
   }
 
+  /**
+   * Get workspace level settings, waiting for them to be initialized
+   */
   public WorkspaceSettings getCurrentSettings() {
-    return requireNonNull(currentSettings, "Settings are not yet initialized");
+    try {
+      if (initLatch.await(1, TimeUnit.MINUTES)) {
+        return currentSettings;
+      }
+    } catch (InterruptedException e) {
+      interrupted(e);
+    }
+    throw new IllegalStateException("Unable to get settings in time");
   }
 
+  /**
+   * Get default workspace folder level settings, waiting for them to be initialized
+   */
   public WorkspaceFolderSettings getCurrentDefaultFolderSettings() {
-    return requireNonNull(currentDefaultSettings, "Settings are not yet initialized");
+    try {
+      if (initLatch.await(1, TimeUnit.MINUTES)) {
+        return currentDefaultSettings;
+      }
+    } catch (InterruptedException e) {
+      interrupted(e);
+    }
+    throw new IllegalStateException("Unable to get settings in time");
   }
 
   public void didChangeConfiguration() {
@@ -104,7 +126,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       List<Object> response;
       try {
         response = client.configuration(params).get(1, TimeUnit.MINUTES);
-      } catch (InterruptedException | ExecutionException | TimeoutException e) {
+      } catch (InterruptedException e) {
+        interrupted(e);
+        return;
+      } catch (ExecutionException | TimeoutException e) {
         LOG.error("Unable to fetch configuration", e);
         return;
       }
@@ -112,18 +137,24 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     });
   }
 
+  private static void interrupted(InterruptedException e) {
+    LOG.debug("Interrupted!", e);
+    Thread.currentThread().interrupt();
+  }
+
   private void update(@Nullable Map<String, Object> params) {
     WorkspaceSettings newSettings = parseSettings(params != null ? params : Collections.emptyMap());
     WorkspaceSettings old = currentSettings;
+    this.currentSettings = newSettings;
+    WorkspaceFolderSettings newDefaultSettings = parseFolderSettings(params != null ? params : Collections.emptyMap());
+    WorkspaceFolderSettings oldDefault = currentDefaultSettings;
+    this.currentDefaultSettings = newDefaultSettings;
+    initLatch.countDown();
     if (!Objects.equals(old, newSettings)) {
-      this.currentSettings = newSettings;
       LOG.debug("Global settings updated: {}", newSettings);
       globalListeners.forEach(l -> l.onChange(old, newSettings));
     }
-    WorkspaceFolderSettings newDefaultSettings = parseFolderSettings(params != null ? params : Collections.emptyMap());
-    WorkspaceFolderSettings oldDefault = currentDefaultSettings;
     if (!Objects.equals(oldDefault, newDefaultSettings)) {
-      this.currentDefaultSettings = newDefaultSettings;
       LOG.debug("Default settings updated: {}", newDefaultSettings);
       folderListeners.forEach(l -> l.onChange(null, oldDefault, newDefaultSettings));
     }
