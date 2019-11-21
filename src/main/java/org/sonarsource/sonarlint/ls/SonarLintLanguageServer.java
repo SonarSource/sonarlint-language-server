@@ -163,7 +163,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager = new SettingsManager(this.client);
     this.settingsManager.addListener(telemetry);
     this.workspaceFoldersManager = new WorkspaceFoldersManager(settingsManager);
-    this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager, clientLogOutput);
+    this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager, clientLogOutput, client);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);

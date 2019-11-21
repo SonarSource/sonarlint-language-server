@@ -35,6 +35,9 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.ConnectedSonarLintEngineImpl;
@@ -76,19 +79,21 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final Map<String, ConnectedSonarLintEngine> connectedEngineCacheByServerId = new HashMap<>();
   private final LanguageClientLogOutput clientLogOutput;
   private final Function<ConnectedGlobalConfiguration, ConnectedSonarLintEngine> engineFactory;
+  private final LanguageClient client;
   private Path typeScriptPath;
 
-  public ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClientLogOutput clientLogOutput) {
-    this(foldersManager, settingsManager, clientLogOutput, ConnectedSonarLintEngineImpl::new);
+  public ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClientLogOutput clientLogOutput, LanguageClient client) {
+    this(foldersManager, settingsManager, clientLogOutput, ConnectedSonarLintEngineImpl::new, client);
   }
 
   // For testing
   ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClientLogOutput clientLogOutput,
-    Function<ConnectedGlobalConfiguration, ConnectedSonarLintEngine> engineFactory) {
+    Function<ConnectedGlobalConfiguration, ConnectedSonarLintEngine> engineFactory, LanguageClient client) {
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
     this.clientLogOutput = clientLogOutput;
     this.engineFactory = engineFactory;
+    this.client = client;
   }
 
   /**
@@ -328,10 +333,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     WorkspaceFolderSettings defaultFolderSettings = settingsManager.getCurrentDefaultFolderSettings();
     updateBindingIfNecessary(defaultFolderSettings);
 
-    foldersManager.getAll().forEach(w -> {
-      updateBindingIfNecessary(w.getSettings());
-    });
+    foldersManager.getAll().forEach(w -> updateBindingIfNecessary(w.getSettings()));
 
+    client.showMessage(new MessageParams(MessageType.Info, "All SonarLint bindings succesfully updated"));
   }
 
   private void updateBindingIfNecessary(WorkspaceFolderSettings defaultFolderSettings) {

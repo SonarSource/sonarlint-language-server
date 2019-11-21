@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import org.eclipse.lsp4j.WorkspaceFolder;
+import org.eclipse.lsp4j.services.LanguageClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -133,7 +134,7 @@ public class ProjectBindingManagerTests {
     when(projectStorageStatus2.isStale()).thenReturn(false);
     when(fakeEngine2.getProjectStorageStatus(PROJECT_KEY)).thenReturn(projectStorageStatus2);
 
-    underTest = new ProjectBindingManager(foldersManager, settingsManager, mock(LanguageClientLogOutput.class), engineFactory);
+    underTest = new ProjectBindingManager(foldersManager, settingsManager, mock(LanguageClientLogOutput.class), engineFactory, mock(LanguageClient.class));
   }
 
   @Test
