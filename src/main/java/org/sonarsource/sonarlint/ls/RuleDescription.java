@@ -21,11 +21,9 @@ package org.sonarsource.sonarlint.ls;
 
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
-import org.eclipse.lsp4j.jsonrpc.json.MessageJsonHandler;
-import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
-
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
 
 public class RuleDescription {
 
@@ -79,52 +77,16 @@ public class RuleDescription {
     return activeByDefault;
   }
 
-  public RuleDescription setKey(String key) {
+  public RuleDescription(String key, String name, @Nullable String htmlDescription, @Nullable String type, String severity, boolean activeByDefault) {
     this.key = key;
-    return this;
-  }
-
-  public RuleDescription setName(String name) {
     this.name = name;
-    return this;
-  }
-
-  public RuleDescription setHtmlDescription(@Nullable String htmlDescription) {
     this.htmlDescription = htmlDescription;
-    return this;
-  }
-
-  public RuleDescription setType(@Nullable String type) {
     this.type = type;
-    return this;
-  }
-
-  public RuleDescription setSeverity(String severity) {
     this.severity = severity;
-    return this;
-  }
-
-  public RuleDescription setActiveByDefault(boolean activeByDefault) {
     this.activeByDefault = activeByDefault;
-    return this;
-  }
-
-  @Override
-  public String toString() {
-    return MessageJsonHandler.toString(this);
-  }
-
-  public static RuleDescription of(String key, String name, @Nullable String htmlDescription, @Nullable String type, String severity, boolean activeByDefault) {
-    return new RuleDescription()
-      .setKey(key)
-      .setName(name)
-      .setHtmlDescription(htmlDescription)
-      .setType(type)
-      .setSeverity(severity)
-      .setActiveByDefault(activeByDefault);
   }
 
   public static RuleDescription of(RuleDetails d) {
-    return of(d.getKey(), d.getName(), d.getHtmlDescription(), d.getType(), d.getSeverity(), d.isActiveByDefault());
+    return new RuleDescription(d.getKey(), d.getName(), d.getHtmlDescription(), d.getType(), d.getSeverity(), d.isActiveByDefault());
   }
 }

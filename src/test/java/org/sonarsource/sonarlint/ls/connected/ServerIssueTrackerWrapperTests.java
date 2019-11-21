@@ -44,7 +44,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
-public class ServerIssueTrackerWrapperTest {
+class ServerIssueTrackerWrapperTests {
 
   @TempDir
   Path baseDir;

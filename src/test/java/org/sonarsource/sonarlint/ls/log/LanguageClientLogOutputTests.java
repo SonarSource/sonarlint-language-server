@@ -25,7 +25,7 @@ import org.sonarsource.sonarlint.core.client.api.common.LogOutput.Level;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class LanguageClientLogOutputTest {
+class LanguageClientLogOutputTests {
 
   @Test
   public void coverage() {
