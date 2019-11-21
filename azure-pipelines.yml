@@ -171,8 +171,8 @@ stages:
           ARTIFACTORY_PRIVATE_READER_USERNAME: $(ARTIFACTORY_PRIVATE_READER_USERNAME)
           ARTIFACTORY_PRIVATE_READER_PASSWORD: $(ARTIFACTORY_PRIVATE_READER_PASSWORD)
         inputs:
-          goals: 'org.jacoco:jacoco-maven-plugin:prepare-agent verify'
-          options: -B --settings $(mavenSettings.secureFilePath) -Dcommercial -Denable-repo=private
+          goals: 'verify'
+          options: -B --settings $(mavenSettings.secureFilePath) -Dcommercial -Denable-repo=private -Pcoverage
           publishJUnitResults: false
           javaHomeOption: 'JDKVersion'
           jdkVersionOption: '1.11'
