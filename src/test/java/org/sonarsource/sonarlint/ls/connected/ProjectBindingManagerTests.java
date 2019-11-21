@@ -66,7 +66,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
-public class ProjectBindingManagerTests {
+class ProjectBindingManagerTests {
 
   private static final String FILE_PHP = "fileInAWorkspaceFolderPath.php";
   private static final String PROJECT_KEY = "myProject";

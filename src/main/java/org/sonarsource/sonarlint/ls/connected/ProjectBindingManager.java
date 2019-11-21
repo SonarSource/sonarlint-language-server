@@ -321,7 +321,11 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     this.typeScriptPath = typeScriptPath;
   }
 
-  public void updateAllBindings() {
+  public synchronized void updateAllBindings() {
+    // Clear cached bindings to force rebind during next analysis
+    folderBindingCache.clear();
+    fileBindingCache.clear();
+
     // Start by updating all engines that are already started and cached
     connectedEngineCacheByServerId.entrySet().forEach(e -> {
       String serverId = e.getKey();
