@@ -30,7 +30,7 @@ import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.SonarLintLanguageServer.convert;
 import static org.sonarsource.sonarlint.ls.SonarLintLanguageServer.getHtmlDescription;
 
-public class SonarLintLanguageServerTest {
+class SonarLintLanguageServerTests {
 
   @Test
   public void testNotConvertGlobalIssues() {

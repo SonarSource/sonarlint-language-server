@@ -41,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 import static org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager.isAncestor;
 
-public class WorkspaceFoldersManagerTest {
+class WorkspaceFoldersManagerTests {
 
   @RegisterExtension
   public LogTesterJUnit5 logTester = new LogTesterJUnit5();

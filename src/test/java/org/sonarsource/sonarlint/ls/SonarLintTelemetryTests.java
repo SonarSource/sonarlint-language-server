@@ -41,7 +41,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.SonarLintTelemetry.getStoragePath;
 
-public class SonarLintTelemetryTest {
+class SonarLintTelemetryTests {
   private SonarLintTelemetry telemetry;
   private TelemetryManager telemetryManager = mock(TelemetryManager.class);
 

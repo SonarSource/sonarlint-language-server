@@ -26,7 +26,7 @@ import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-public class ProjectBindingWrapperTests {
+class ProjectBindingWrapperTests {
 
   @Test
   public void test_getters() {

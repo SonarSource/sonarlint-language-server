@@ -102,7 +102,7 @@ import static org.assertj.core.groups.Tuple.tuple;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class LanguageServerMediumTests {
+class LanguageServerMediumTests {
 
   private static final String SOME_FOLDER_URI = "some://uri";
 
@@ -490,6 +490,39 @@ public class LanguageServerMediumTests {
   public void testListAllRules() throws Exception {
     Map<String, List<RuleDescription>> result = lsProxy.listAllRules().join();
     assertThat(result).containsOnlyKeys("HTML", "JavaScript", "TypeScript", "PHP", "Python");
+
+    assertThat(result.get("HTML"))
+      .extracting(RuleDescription::getKey, RuleDescription::getName, RuleDescription::getSeverity, RuleDescription::getType, RuleDescription::getHtmlDescription,
+        RuleDescription::isActiveByDefault)
+      .contains(tuple("Web:PageWithoutTitleCheck", "\"<title>\" should be present in all pages", "MAJOR", "BUG",
+        "<p>Titles are important because they are displayed in search engine results as well as the browser's toolbar.</p>\n" +
+          "<p>This rule verifies that the <code>&lt;head&gt;</code> tag contains a <code>&lt;title&gt;</code> one, and the <code>&lt;html&gt;</code> tag a\n" +
+          "<code>&lt;head&gt;</code> one.</p>\n" +
+          "<h2>Noncompliant Code Example</h2>\n" +
+          "<pre>\n" +
+          "&lt;html&gt;         &lt;!-- Non-Compliant --&gt;\n" +
+          "\n" +
+          "&lt;body&gt;\n" +
+          "...\n" +
+          "&lt;/body&gt;\n" +
+          "\n" +
+          "&lt;/html&gt;\n" +
+          "</pre>\n" +
+          "<h2>Compliant Solution</h2>\n" +
+          "<pre>\n" +
+          "&lt;html&gt;         &lt;!-- Compliant --&gt;\n" +
+          "\n" +
+          "&lt;head&gt;\n" +
+          "  &lt;title&gt;Some relevant title&lt;/title&gt;\n" +
+          "&lt;/head&gt;\n" +
+          "\n" +
+          "&lt;body&gt;\n" +
+          "...\n" +
+          "&lt;/body&gt;\n" +
+          "\n" +
+          "&lt;/html&gt;\n" +
+          "</pre>",
+        true));
   }
 
   @Test

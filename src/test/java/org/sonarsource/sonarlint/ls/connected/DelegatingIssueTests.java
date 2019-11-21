@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 import java.util.Collections;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
@@ -28,13 +29,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class DelegatingIssueTest {
+class DelegatingIssueTests {
 
-  private final Issue issue;
-  private final DelegatingIssue delegatingIssue;
+  private Issue issue = mock(Issue.class);
+  private DelegatingIssue delegatingIssue = new DelegatingIssue(issue);
 
-  public DelegatingIssueTest() {
-    issue = mock(Issue.class);
+  @BeforeEach
+  public void prepare() {
     when(issue.getSeverity()).thenReturn("BLOCKER");
     when(issue.getType()).thenReturn("BUG");
     when(issue.getMessage()).thenReturn("don't do this");
@@ -46,8 +47,6 @@ public class DelegatingIssueTest {
     when(issue.getEndLineOffset()).thenReturn(5);
     when(issue.flows()).thenReturn(Collections.singletonList(mock(Issue.Flow.class)));
     when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
-
-    delegatingIssue = new DelegatingIssue(issue);
   }
 
   @Test

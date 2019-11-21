@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.tuple;
 
-public class SettingsManagerTest {
+class SettingsManagerTest {
 
   private static final String FULL_SAMPLE_CONFIG = "{\n" +
     "  \"testFilePattern\": \"**/*Test.*\",\n" +
