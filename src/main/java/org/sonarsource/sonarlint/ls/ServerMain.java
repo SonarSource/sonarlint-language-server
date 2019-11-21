@@ -53,7 +53,7 @@ public class ServerMain {
         try {
           analyzers.add(new URL(args[i]));
         } catch (MalformedURLException e) {
-          err.println("Invalid " + i + "th argument. Expected an URL.");
+          err.println("Invalid argument at position " + (i + 1) + ". Expected an URL.");
           e.printStackTrace(err);
           exitWithError();
         }
@@ -82,7 +82,7 @@ public class ServerMain {
     return 0;
   }
 
-  private void exitWithError() {
+  void exitWithError() {
     System.exit(1);
   }
 
