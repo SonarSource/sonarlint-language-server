@@ -389,58 +389,65 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       return;
     }
     analysisExecutor.execute(() -> {
-      Map<URI, PublishDiagnosticsParams> files = new HashMap<>();
-      files.put(fileUri, newPublishDiagnostics(fileUri));
+      analyze(fileUri, content, shouldFetchServerIssues);
+    });
+  }
 
-      Optional<WorkspaceFolderWrapper> workspaceFolder = workspaceFoldersManager.findFolderForFile(fileUri);
+  private void analyze(URI fileUri, String content, boolean shouldFetchServerIssues) {
+    Map<URI, PublishDiagnosticsParams> files = new HashMap<>();
+    files.put(fileUri, newPublishDiagnostics(fileUri));
 
-      WorkspaceFolderSettings settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
-        .orElse(settingsManager.getCurrentDefaultFolderSettings());
+    Optional<WorkspaceFolderWrapper> workspaceFolder = workspaceFoldersManager.findFolderForFile(fileUri);
 
-      Path baseDir = workspaceFolder.map(WorkspaceFolderWrapper::getRootPath)
-        // Default to take file parent dir if file is not part of any workspace
-        .orElse(Paths.get(fileUri).getParent());
+    WorkspaceFolderSettings settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
+      .orElse(settingsManager.getCurrentDefaultFolderSettings());
 
-      IssueListener issueListener = issue -> {
-        ClientInputFile inputFile = issue.getInputFile();
-        if (inputFile != null) {
-          URI uri1 = inputFile.getClientObject();
-          PublishDiagnosticsParams publish = files.computeIfAbsent(uri1, SonarLintLanguageServer::newPublishDiagnostics);
+    Path baseDir = workspaceFolder.map(WorkspaceFolderWrapper::getRootPath)
+      // Default to take file parent dir if file is not part of any workspace
+      .orElse(Paths.get(fileUri).getParent());
 
-          convert(issue).ifPresent(publish.getDiagnostics()::add);
+    IssueListener issueListener = createIssueListener(files);
+
+    Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(fileUri);
+    AnalysisResultsWrapper analysisResults;
+    try {
+      if (binding.isPresent()) {
+        ConnectedSonarLintEngine connectedEngine = binding.get().getEngine();
+        if (!connectedEngine.getExcludedFiles(binding.get().getBinding(),
+          singleton(fileUri),
+          uri -> getFileRelativePath(baseDir, uri),
+          uri -> isTest(settings, uri))
+          .isEmpty()) {
+          LOG.debug("Skip analysis of excluded file: {}", fileUri);
+          return;
         }
-      };
-
-      Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(fileUri);
-      AnalysisResultsWrapper analysisResults;
-      try {
-        if (binding.isPresent()) {
-          ConnectedSonarLintEngine connectedEngine = binding.get().getEngine();
-          if (!connectedEngine.getExcludedFiles(binding.get().getBinding(),
-            singleton(fileUri),
-            uri -> getFileRelativePath(baseDir, uri),
-            uri -> isTest(settings, uri))
-            .isEmpty()) {
-            LOG.debug("Skip analysis of excluded file: {}", fileUri);
-            return;
-          }
-          analysisResults = analyzeConnected(binding.get(), settings, baseDir, fileUri, content, issueListener, shouldFetchServerIssues);
-        } else {
-          analysisResults = analyzeStandalone(settings, baseDir, fileUri, content, issueListener);
-        }
-
-        telemetry.analysisDoneOnSingleFile(StringUtils.substringAfterLast(fileUri.toString(), "."), analysisResults.analysisTime);
-
-        // Ignore files with parsing error
-        analysisResults.results.failedAnalysisFiles().stream()
-          .map(ClientInputFile::getClientObject)
-          .forEach(files::remove);
-      } catch (Exception e) {
-        LOG.error("Analysis failed.", e);
+        analysisResults = analyzeConnected(binding.get(), settings, baseDir, fileUri, content, issueListener, shouldFetchServerIssues);
+      } else {
+        analysisResults = analyzeStandalone(settings, baseDir, fileUri, content, issueListener);
       }
 
-      files.values().forEach(client::publishDiagnostics);
-    });
+      telemetry.analysisDoneOnSingleFile(StringUtils.substringAfterLast(fileUri.toString(), "."), analysisResults.analysisTime);
+
+      // Ignore files with parsing error
+      analysisResults.results.failedAnalysisFiles().stream()
+        .map(ClientInputFile::getClientObject)
+        .forEach(files::remove);
+    } catch (Exception e) {
+      LOG.error("Analysis failed.", e);
+    }
+
+    files.values().forEach(client::publishDiagnostics);
+  }
+
+  private IssueListener createIssueListener(Map<URI, PublishDiagnosticsParams> files) {
+    return issue -> {
+      ClientInputFile inputFile = issue.getInputFile();
+      if (inputFile != null) {
+        URI uri = inputFile.getClientObject();
+        PublishDiagnosticsParams publish = files.computeIfAbsent(uri, SonarLintLanguageServer::newPublishDiagnostics);
+        convert(issue).ifPresent(publish.getDiagnostics()::add);
+      }
+    };
   }
 
   static class AnalysisResultsWrapper {
