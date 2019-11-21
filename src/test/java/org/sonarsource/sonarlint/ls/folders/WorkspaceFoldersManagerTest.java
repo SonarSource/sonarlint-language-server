@@ -25,26 +25,28 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
-import org.apache.commons.lang.SystemUtils;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
-import org.junit.Rule;
-import org.junit.Test;
-import org.sonar.api.utils.log.LogTester;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonar.api.utils.log.test.LogTesterJUnit5;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 import static java.net.URI.create;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.Mockito.mock;
 import static org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager.isAncestor;
 
 public class WorkspaceFoldersManagerTest {
 
-  @Rule
-  public LogTester logTester = new LogTester();
+  @RegisterExtension
+  public LogTesterJUnit5 logTester = new LogTesterJUnit5();
 
-  private WorkspaceFoldersManager underTest = new WorkspaceFoldersManager();
+  private WorkspaceFoldersManager underTest = new WorkspaceFoldersManager(mock(SettingsManager.class));
 
   @Test
   public void findFolderForFile_returns_correct_folder_when_exists() {
@@ -159,10 +161,9 @@ public class WorkspaceFoldersManagerTest {
   }
 
   @Test
+  @EnabledOnOs(OS.WINDOWS)
+  // Fail on Linux with IllegalArgumentException: URI has an authority component
   public void testURIAncestor_UNC_path() {
-    // Fail on Linux with IllegalArgumentException: URI has an authority component
-    assumeTrue(SystemUtils.IS_OS_WINDOWS);
-
     assertThat(isAncestor(create("file://laptop/My%20Documents"), create("file://laptop/My%20Documents/FileSchemeURIs.doc"))).isTrue();
   }
 
@@ -183,7 +184,7 @@ public class WorkspaceFoldersManagerTest {
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(asList(workspaceFolder), Collections.emptyList()));
 
     assertThat(underTest.getAll()).extracting(WorkspaceFolderWrapper::getRootPath).containsExactly(basedir);
-    assertThat(logTester.logs()).containsExactly("Registered workspace folder was already added: WorkspaceFolder [\n" +
+    assertThat(logTester.logs()).containsExactly("Registered workspace workspaceFolderPath was already added: WorkspaceFolder [\n" +
       "  uri = \"" + basedir.toUri() + "\"\n" +
       "  name = null\n" +
       "]");
@@ -206,10 +207,7 @@ public class WorkspaceFoldersManagerTest {
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(Collections.emptyList(), asList(workspaceFolder)));
 
     assertThat(underTest.getAll()).isEmpty();
-    assertThat(logTester.logs()).containsExactly("Unregistered workspace folder was missing: WorkspaceFolder [\n" +
-      "  uri = \"" + basedir.toUri() + "\"\n" +
-      "  name = null\n" +
-      "]");
+    assertThat(logTester.logs()).containsExactly("Unregistered workspace workspaceFolderPath was missing: " + basedir.toUri());
   }
 
   private static WorkspaceFolder mockWorkspaceFolder(URI uri) {

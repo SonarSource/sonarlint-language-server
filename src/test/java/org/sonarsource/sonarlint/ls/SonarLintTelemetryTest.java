@@ -21,40 +21,39 @@ package org.sonarsource.sonarlint.ls;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.contrib.java.lang.system.EnvironmentVariables;
-import org.sonar.api.utils.log.LogTester;
-import org.sonar.api.utils.log.LoggerLevel;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonar.api.utils.log.test.LogTesterJUnit5;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
+import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.sonarsource.sonarlint.ls.SonarLintTelemetry.getStoragePath;
 
 public class SonarLintTelemetryTest {
   private SonarLintTelemetry telemetry;
   private TelemetryManager telemetryManager = mock(TelemetryManager.class);
 
-  @Rule
-  public final EnvironmentVariables env = new EnvironmentVariables();
+  @RegisterExtension
+  public LogTesterJUnit5 logTester = new LogTesterJUnit5();
 
-  @Rule
-  public LogTester logTester = new LogTester();
-
-  @Before
+  @BeforeEach
   public void setUp() {
     this.telemetry = createTelemetry();
   }
 
-  @After
+  @AfterEach
   public void after() {
     System.clearProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY);
   }
@@ -80,17 +79,6 @@ public class SonarLintTelemetryTest {
   }
 
   @Test
-  public void log_failure_create_task_if_debug_enabled() {
-    env.set("SONARLINT_INTERNAL_DEBUG", "true");
-    telemetry = new SonarLintTelemetry(() -> {
-      throw new IllegalStateException("error");
-    });
-    telemetry.init(Paths.get("dummy"), "product", "version", "ideVersion", () -> true, () -> true);
-
-    assertThat(logTester.logs(LoggerLevel.ERROR)).contains("Failed scheduling period telemetry job");
-  }
-
-  @Test
   public void stop_should_trigger_stop_telemetry() {
     when(telemetryManager.isEnabled()).thenReturn(true);
     telemetry.stop();
@@ -100,10 +88,10 @@ public class SonarLintTelemetryTest {
 
   @Test
   public void test_scheduler() {
-    assertThat(telemetry.scheduledFuture).isNotNull();
+    assertThat((Object) telemetry.scheduledFuture).isNotNull();
     assertThat(telemetry.scheduledFuture.getDelay(TimeUnit.MINUTES)).isBetween(0L, 1L);
     telemetry.stop();
-    assertThat(telemetry.scheduledFuture).isNull();
+    assertThat((Object) telemetry.scheduledFuture).isNull();
   }
 
   @Test
@@ -114,7 +102,7 @@ public class SonarLintTelemetryTest {
   @Test
   public void optOut_should_trigger_disable_telemetry() {
     when(telemetryManager.isEnabled()).thenReturn(true);
-    telemetry.optOut(true);
+    telemetry.onChange(null, new WorkspaceSettings(true, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList()));
     verify(telemetryManager).disable();
     telemetry.stop();
   }
@@ -122,7 +110,7 @@ public class SonarLintTelemetryTest {
   @Test
   public void should_not_opt_out_twice() {
     when(telemetryManager.isEnabled()).thenReturn(false);
-    telemetry.optOut(true);
+    telemetry.onChange(null, new WorkspaceSettings(true, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList()));
     verify(telemetryManager).isEnabled();
     verifyNoMoreInteractions(telemetryManager);
   }
@@ -130,7 +118,7 @@ public class SonarLintTelemetryTest {
   @Test
   public void optIn_should_trigger_enable_telemetry() {
     when(telemetryManager.isEnabled()).thenReturn(false);
-    telemetry.optOut(false);
+    telemetry.onChange(null, new WorkspaceSettings(false, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList()));
     verify(telemetryManager).enable();
   }
 
@@ -193,5 +181,22 @@ public class SonarLintTelemetryTest {
     };
     telemetry.init(null, "product", "version", "ideVersion", () -> true, () -> true);
     assertThat(telemetry.enabled()).isFalse();
+  }
+
+  @Test
+  public void getStoragePath_should_return_null_when_configuration_missing() {
+    assertThat(getStoragePath(null, null)).isNull();
+  }
+
+  @Test
+  public void getStoragePath_should_return_old_path_when_product_key_missing() {
+    String oldStorage = "dummy";
+    assertThat(getStoragePath(null, oldStorage)).isEqualTo(Paths.get(oldStorage));
+  }
+
+  @Test
+  public void getStoragePath_should_return_new_path_when_product_key_present() {
+    String productKey = "vim";
+    assertThat(getStoragePath(productKey, "dummy")).isEqualTo(TelemetryPathManager.getPath(productKey));
   }
 }

@@ -19,38 +19,29 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonSyntaxException;
+import java.util.Map;
 import javax.annotation.CheckForNull;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
+import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
+import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
+import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 
-/**
- * Common interface to create, cache and modify SonarLint engines.
- */
-public interface EngineCache {
+public class Utils {
 
-  /**
-   * Get or create and start a standalone engine.
-   */
-  StandaloneSonarLintEngine getOrCreateStandaloneEngine();
+  private Utils() {
+  }
 
-  void stopStandaloneEngine();
-
-  /**
-   * Get or create and start a connected engine to the specified server.
-   *
-   * Returns null if the engine cannot be created.
-   */
+  // See the changelog for any evolutions on how properties are parsed:
+  // https://github.com/eclipse/lsp4j/blob/master/CHANGELOG.md
+  // (currently JsonElement, used to be Map<String, Object>)
   @CheckForNull
-  ConnectedSonarLintEngine getOrCreateConnectedEngine(ServerInfo serverInfo);
-
-  /**
-   * Add extra property. Will apply to newly created engines only.
-   */
-  void putExtraProperty(String name, String value);
-
-  /**
-   * Clear the cache of connected engines, stopping them.
-   */
-  void clearConnectedEngines();
-
+  public static Map<String, Object> parseToMap(Object obj) {
+    try {
+      return new Gson().fromJson((JsonElement) obj, Map.class);
+    } catch (JsonSyntaxException e) {
+      throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Expected a JSON map but was: " + obj, e));
+    }
+  }
 }

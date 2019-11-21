@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls;
+package org.sonarsource.sonarlint.ls.connected;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -35,7 +35,7 @@ import org.sonarsource.sonarlint.core.tracking.IssueTrackable;
 import org.sonarsource.sonarlint.core.tracking.IssueTrackerCache;
 import org.sonarsource.sonarlint.core.tracking.Trackable;
 
-class ServerIssueTracker {
+public class ServerIssueTrackerWrapper {
 
   private final ConnectedSonarLintEngine engine;
   private final ServerConfiguration serverConfiguration;
@@ -45,7 +45,7 @@ class ServerIssueTracker {
   private final CachingIssueTracker cachingIssueTracker;
   private final org.sonarsource.sonarlint.core.tracking.ServerIssueTracker tracker;
 
-  ServerIssueTracker(ConnectedSonarLintEngine engine, ServerConfiguration serverConfiguration, ProjectBinding projectBinding) {
+  ServerIssueTrackerWrapper(ConnectedSonarLintEngine engine, ServerConfiguration serverConfiguration, ProjectBinding projectBinding) {
     this.engine = engine;
     this.serverConfiguration = serverConfiguration;
     this.projectBinding = projectBinding;
@@ -55,7 +55,7 @@ class ServerIssueTracker {
     this.tracker = new org.sonarsource.sonarlint.core.tracking.ServerIssueTracker(cachingIssueTracker);
   }
 
-  void matchAndTrack(String filePath, Collection<Issue> issues, IssueListener issueListener, boolean shouldFetchServerIssues) {
+  public void matchAndTrack(String filePath, Collection<Issue> issues, IssueListener issueListener, boolean shouldFetchServerIssues) {
     if (issues.isEmpty()) {
       issueTrackerCache.put(filePath, Collections.emptyList());
       return;

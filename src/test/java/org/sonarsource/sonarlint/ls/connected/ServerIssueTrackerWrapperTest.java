@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls;
+package org.sonarsource.sonarlint.ls.connected;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -27,9 +27,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
@@ -45,22 +44,20 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
-public class ServerIssueTrackerTest {
+public class ServerIssueTrackerWrapperTest {
 
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
+  @TempDir
+  Path baseDir;
 
   private static int counter = 1;
 
   @Test
   public void get_original_issues_when_there_are_no_server_issues() throws IOException {
-    Path baseDir = temporaryFolder.newFolder().toPath();
-
     Issue issue = mockIssue();
     when(issue.getInputFile().getPath()).thenReturn(baseDir.resolve("dummy").toString());
 
     Collection<Issue> issues = Collections.singletonList(issue);
-    ServerIssueTracker tracker = newTracker(baseDir);
+    ServerIssueTrackerWrapper tracker = newTracker(baseDir);
 
     Collection<Issue> result = matchAndTrack(tracker, "dummy", issues);
     assertThat(result).extracting("issue").isEqualTo(issues);
@@ -68,7 +65,6 @@ public class ServerIssueTrackerTest {
 
   @Test
   public void hide_resolved_server_issues() throws IOException {
-    Path baseDir = temporaryFolder.newFolder().toPath();
     String dummyFilePath = baseDir.resolve("dummy").toString();
 
     Issue unresolved = mockIssue();
@@ -83,7 +79,7 @@ public class ServerIssueTrackerTest {
     ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
     when(engine.getServerIssues(any(), any())).thenReturn(serverIssues);
 
-    ServerIssueTracker tracker = newTracker(baseDir, engine);
+    ServerIssueTrackerWrapper tracker = newTracker(baseDir, engine);
     Collection<Issue> trackedIssues = matchAndTrack(tracker, "dummy", issues);
     assertThat(trackedIssues).extracting("issue").containsOnlyElementsOf(issues);
 
@@ -94,7 +90,6 @@ public class ServerIssueTrackerTest {
 
   @Test
   public void get_severity_and_issue_type_from_matched_server_issue() throws IOException {
-    Path baseDir = temporaryFolder.newFolder().toPath();
     String dummyFilePath = baseDir.resolve("dummy").toString();
 
     Issue unmatched = mockIssue();
@@ -113,7 +108,7 @@ public class ServerIssueTrackerTest {
     ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
     when(engine.getServerIssues(any(), any())).thenReturn(serverIssues);
 
-    ServerIssueTracker tracker = newTracker(baseDir, engine);
+    ServerIssueTrackerWrapper tracker = newTracker(baseDir, engine);
     Collection<Issue> trackedIssues = matchAndTrack(tracker, "dummy", issues);
 
     assertThat(trackedIssues).extracting("ruleKey")
@@ -129,18 +124,15 @@ public class ServerIssueTrackerTest {
 
   @Test
   public void do_not_get_server_issues_when_there_are_no_local_issues() throws IOException {
-    Path baseDir = temporaryFolder.newFolder().toPath();
-
     ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
 
-    ServerIssueTracker tracker = newTracker(baseDir, engine);
+    ServerIssueTrackerWrapper tracker = newTracker(baseDir, engine);
     matchAndTrack(tracker, "dummy", Collections.emptyList());
     verifyZeroInteractions(engine);
   }
 
   @Test
   public void fetch_server_issues_when_needed() throws IOException {
-    Path baseDir = temporaryFolder.newFolder().toPath();
     String dummyFilePath = baseDir.resolve("dummy").toString();
 
     Issue issue = mockIssue();
@@ -149,7 +141,7 @@ public class ServerIssueTrackerTest {
     Collection<Issue> issues = Collections.singleton(issue);
 
     ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
-    ServerIssueTracker tracker = newTracker(baseDir, engine);
+    ServerIssueTrackerWrapper tracker = newTracker(baseDir, engine);
     matchAndTrack(tracker, "dummy", issues, false);
     verify(engine).getServerIssues(any(), any());
     verifyNoMoreInteractions(engine);
@@ -161,24 +153,24 @@ public class ServerIssueTrackerTest {
     verifyNoMoreInteractions(engine);
   }
 
-  private Collection<Issue> matchAndTrack(ServerIssueTracker tracker, String filePath, Collection<Issue> issues) {
+  private Collection<Issue> matchAndTrack(ServerIssueTrackerWrapper tracker, String filePath, Collection<Issue> issues) {
     return matchAndTrack(tracker, filePath, issues, false);
   }
 
-  private Collection<Issue> matchAndTrack(ServerIssueTracker tracker, String filePath, Collection<Issue> issues, boolean shouldFetchServerIssues) {
+  private Collection<Issue> matchAndTrack(ServerIssueTrackerWrapper tracker, String filePath, Collection<Issue> issues, boolean shouldFetchServerIssues) {
     List<Issue> recorded = new LinkedList<>();
     tracker.matchAndTrack(filePath, issues, recorded::add, shouldFetchServerIssues);
     return recorded;
   }
 
-  private ServerIssueTracker newTracker(Path baseDir, ConnectedSonarLintEngine engine) {
+  private ServerIssueTrackerWrapper newTracker(Path baseDir, ConnectedSonarLintEngine engine) {
     ServerConfiguration serverConfiguration = mock(ServerConfiguration.class);
     String projectKey = "project1";
     ProjectBinding projectBinding = new ProjectBinding(projectKey, "", "");
-    return new ServerIssueTracker(engine, serverConfiguration, projectBinding);
+    return new ServerIssueTrackerWrapper(engine, serverConfiguration, projectBinding);
   }
 
-  private ServerIssueTracker newTracker(Path baseDir) {
+  private ServerIssueTrackerWrapper newTracker(Path baseDir) {
     ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
     return newTracker(baseDir, engine);
   }
