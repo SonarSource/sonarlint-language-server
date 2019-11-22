@@ -285,7 +285,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     Set<String> startedEngines = new HashSet<>(connectedEngineCacheByServerId.keySet());
     for (String startedEngineId : startedEngines) {
       if (!usedServerIds.contains(startedEngineId)) {
-        connectedEngineCacheByServerId.remove(startedEngineId).stop(false);
+        folderBindingCache.entrySet().removeIf(e -> e.getValue() != null && e.getValue().getServerId().equals(startedEngineId));
+        fileBindingCache.entrySet().removeIf(e -> e.getValue() != null && e.getValue().getServerId().equals(startedEngineId));
+        tryStopServer(startedEngineId, connectedEngineCacheByServerId.remove(startedEngineId));
       }
     }
   }
@@ -308,13 +310,15 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   public void shutdown() {
-    connectedEngineCacheByServerId.entrySet().forEach(entry -> {
-      try {
-        entry.getValue().stop(false);
-      } catch (Exception e) {
-        LOG.error("Unable to stop engine '" + entry.getKey() + "'", e);
-      }
-    });
+    connectedEngineCacheByServerId.entrySet().forEach(entry -> tryStopServer(entry.getKey(), entry.getValue()));
+  }
+
+  private void tryStopServer(String serverId, ConnectedSonarLintEngine engine) {
+    try {
+      engine.stop(false);
+    } catch (Exception e) {
+      LOG.error("Unable to stop engine '" + serverId + "'", e);
+    }
   }
 
   public void initialize(Path typeScriptPath) {
