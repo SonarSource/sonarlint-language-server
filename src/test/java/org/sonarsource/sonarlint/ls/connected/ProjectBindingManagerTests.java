@@ -434,6 +434,36 @@ class ProjectBindingManagerTests {
   }
 
   @Test
+
+  public void unbind_when_global_server_deleted() {
+    Map<String, ServerConnectionSettings> servers = new HashMap<String, ServerConnectionSettings>();
+    servers.put(SERVER_ID, GLOBAL_SETTINGS);
+    WorkspaceSettings settingsWithServer1 = new WorkspaceSettings(false, servers, Collections.emptyList(), Collections.emptyList());
+
+    servers = new HashMap<String, ServerConnectionSettings>();
+    servers.put(SERVER_ID2, GLOBAL_SETTINGS_DIFFERENT_SERVER_ID);
+    WorkspaceSettings settingsWithServer2 = new WorkspaceSettings(false, servers, Collections.emptyList(), Collections.emptyList());
+
+    when(settingsManager.getCurrentSettings()).thenReturn(settingsWithServer1);
+
+    WorkspaceFolderWrapper folder = mockFileInABoundWorkspaceFolder();
+    when(foldersManager.getAll()).thenReturn(asList(folder));
+
+    Optional<ProjectBindingWrapper> binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
+    assertThat(binding).isNotEmpty();
+
+    when(settingsManager.getCurrentSettings()).thenReturn(settingsWithServer2);
+    underTest.onChange(settingsWithServer1, settingsWithServer2);
+
+    binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
+    assertThat(binding).isEmpty();
+
+    verify(fakeEngine).stop(anyBoolean());
+    assertThat(logTester.logs())
+      .contains("The specified serverId 'myServer' doesn't exist.", "Invalid binding for '" + workspaceFolderPath.toString() + "'");
+  }
+
+  @Test
   public void test_rebind_file_after_project_key_change() {
     mockFileOutsideFolder();
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(BOUND_SETTINGS);
@@ -536,6 +566,54 @@ class ProjectBindingManagerTests {
 
     verify(fakeEngine).stop(false);
     verify(fakeEngine2).stop(false);
+  }
+
+  @Test
+  public void update_all_project_bindings_update_already_started_servers() {
+    WorkspaceFolderWrapper folder1 = mockFileInABoundWorkspaceFolder();
+    WorkspaceFolderWrapper folder2 = mockFileInABoundWorkspaceFolder2();
+
+    when(foldersManager.getAll()).thenReturn(asList(folder1, folder2));
+
+    when(fakeEngine2.getProjectStorageStatus(PROJECT_KEY2)).thenReturn(projectStorageStatus2);
+
+    when(engineFactory.apply(any(ConnectedGlobalConfiguration.class)))
+      .thenReturn(fakeEngine)
+      .thenReturn(fakeEngine2);
+
+    Optional<ProjectBindingWrapper> binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
+    assertThat(binding).isNotEmpty();
+
+    Optional<ProjectBindingWrapper> binding2 = underTest.getBinding(fileInAWorkspaceFolderPath2.toUri());
+    assertThat(binding2).isNotEmpty();
+
+    underTest.updateAllBindings();
+
+    verify(fakeEngine).update(any(), any());
+    verify(fakeEngine).updateProject(any(), eq(PROJECT_KEY), any());
+    verify(fakeEngine2).update(any(), any());
+    verify(fakeEngine2).updateProject(any(), eq(PROJECT_KEY2), any());
+  }
+
+  @Test
+  public void update_all_project_bindings_update_not_started_servers() {
+    WorkspaceFolderWrapper folder1 = mockFileInABoundWorkspaceFolder();
+    WorkspaceFolderWrapper folder2 = mockFileInABoundWorkspaceFolder2();
+
+    when(foldersManager.getAll()).thenReturn(asList(folder1, folder2));
+
+    when(fakeEngine2.getProjectStorageStatus(PROJECT_KEY2)).thenReturn(projectStorageStatus2);
+
+    when(engineFactory.apply(any(ConnectedGlobalConfiguration.class)))
+      .thenReturn(fakeEngine)
+      .thenReturn(fakeEngine2);
+
+    underTest.updateAllBindings();
+
+    verify(fakeEngine).update(any(), any());
+    verify(fakeEngine).updateProject(any(), eq(PROJECT_KEY), any());
+    verify(fakeEngine2).update(any(), any());
+    verify(fakeEngine2).updateProject(any(), eq(PROJECT_KEY2), any());
   }
 
   @Test
