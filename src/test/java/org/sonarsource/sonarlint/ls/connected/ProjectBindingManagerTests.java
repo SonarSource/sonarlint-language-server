@@ -58,6 +58,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -79,6 +80,7 @@ class ProjectBindingManagerTests {
   private static final ServerConnectionSettings GLOBAL_SETTINGS_DIFFERENT_SERVER_ID = new ServerConnectionSettings(SERVER_ID2, "http://foo2", "token2", null);
   private static final WorkspaceFolderSettings UNBOUND_SETTINGS = new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null);
   private static final WorkspaceFolderSettings BOUND_SETTINGS = new WorkspaceFolderSettings(SERVER_ID, PROJECT_KEY, Collections.emptyMap(), null);
+  private static final WorkspaceFolderSettings BOUND_SETTINGS2 = new WorkspaceFolderSettings(SERVER_ID2, PROJECT_KEY2, Collections.emptyMap(), null);
   private static final WorkspaceFolderSettings BOUND_SETTINGS_DIFFERENT_PROJECT_KEY = new WorkspaceFolderSettings(SERVER_ID, PROJECT_KEY2, Collections.emptyMap(), null);
   private static final WorkspaceFolderSettings BOUND_SETTINGS_DIFFERENT_SERVER_ID = new WorkspaceFolderSettings(SERVER_ID2, PROJECT_KEY, Collections.emptyMap(), null);
 
@@ -88,8 +90,10 @@ class ProjectBindingManagerTests {
   @TempDir
   Path basedir;
   private Path workspaceFolderPath;
+  private Path workspaceFolderPath2;
   private Path anotherFolderPath;
   private Path fileInAWorkspaceFolderPath;
+  private Path fileInAWorkspaceFolderPath2;
   private Path fileNotInAWorkspaceFolderPath;
   private ProjectBindingManager underTest;
   private SettingsManager settingsManager = mock(SettingsManager.class);
@@ -108,10 +112,14 @@ class ProjectBindingManagerTests {
   public void prepare() throws IOException {
     workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
     Files.createDirectories(workspaceFolderPath);
+    workspaceFolderPath2 = basedir.resolve("myWorkspaceFolder2");
+    Files.createDirectories(workspaceFolderPath2);
     anotherFolderPath = basedir.resolve("anotherFolder");
     Files.createDirectories(anotherFolderPath);
     fileInAWorkspaceFolderPath = workspaceFolderPath.resolve(FILE_PHP);
     Files.createFile(fileInAWorkspaceFolderPath);
+    fileInAWorkspaceFolderPath2 = workspaceFolderPath2.resolve(FILE_PHP);
+    Files.createFile(fileInAWorkspaceFolderPath2);
     fileNotInAWorkspaceFolderPath = anotherFolderPath.resolve(FILE_PHP);
     Files.createFile(fileNotInAWorkspaceFolderPath);
 
@@ -477,6 +485,60 @@ class ProjectBindingManagerTests {
   }
 
   @Test
+  public void shutdown_should_stop_all_servers() {
+    mockFileInABoundWorkspaceFolder();
+    mockFileInABoundWorkspaceFolder2();
+
+    when(engineFactory.apply(any(ConnectedGlobalConfiguration.class)))
+      .thenReturn(fakeEngine)
+      .thenReturn(fakeEngine2);
+
+    Optional<ProjectBindingWrapper> binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
+    assertThat(binding).isNotEmpty();
+
+    assertThat(logTester.logs())
+      .contains("Starting connected SonarLint engine for 'myServer'...", "Connected SonarLint engine started for 'myServer'");
+
+    Optional<ProjectBindingWrapper> binding2 = underTest.getBinding(fileInAWorkspaceFolderPath2.toUri());
+    assertThat(binding2).isNotEmpty();
+
+    assertThat(logTester.logs())
+      .contains("Starting connected SonarLint engine for 'myServer2'...", "Connected SonarLint engine started for 'myServer2'");
+
+    underTest.shutdown();
+
+    verify(fakeEngine).stop(false);
+    verify(fakeEngine2).stop(false);
+  }
+
+  @Test
+  public void failure_during_stop_should_not_prevent_others_to_stop() {
+    mockFileInABoundWorkspaceFolder();
+    mockFileInABoundWorkspaceFolder2();
+
+    when(engineFactory.apply(any(ConnectedGlobalConfiguration.class)))
+      .thenReturn(fakeEngine)
+      .thenReturn(fakeEngine2);
+
+    Optional<ProjectBindingWrapper> binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
+    assertThat(binding).isNotEmpty();
+
+    Optional<ProjectBindingWrapper> binding2 = underTest.getBinding(fileInAWorkspaceFolderPath2.toUri());
+    assertThat(binding2).isNotEmpty();
+
+    doThrow(new RuntimeException("stop error")).when(fakeEngine).stop(anyBoolean());
+    doThrow(new RuntimeException("stop error")).when(fakeEngine2).stop(anyBoolean());
+
+    underTest.shutdown();
+
+    assertThat(logTester.logs(LoggerLevel.ERROR))
+      .contains("Unable to stop engine 'myServer'", "Unable to stop engine 'myServer2'");
+
+    verify(fakeEngine).stop(false);
+    verify(fakeEngine2).stop(false);
+  }
+
+  @Test
   public void configure_typescript_path_property() {
     mockFileOutsideFolder();
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(BOUND_SETTINGS);
@@ -506,6 +568,14 @@ class ProjectBindingManagerTests {
     return folder;
   }
 
+  private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder2() {
+    WorkspaceFolderWrapper folder2 = mockFileInAFolder2();
+    folder2.setSettings(BOUND_SETTINGS2);
+    servers.put(SERVER_ID2, GLOBAL_SETTINGS_DIFFERENT_SERVER_ID);
+    when(fakeEngine2.calculatePathPrefixes(eq(PROJECT_KEY2), any())).thenReturn(FAKE_BINDING2);
+    return folder2;
+  }
+
   private void mockFileOutsideFolder() {
     when(foldersManager.findFolderForFile(fileNotInAWorkspaceFolderPath.toUri())).thenReturn(Optional.empty());
   }
@@ -516,4 +586,9 @@ class ProjectBindingManagerTests {
     return folderWrapper;
   }
 
+  private WorkspaceFolderWrapper mockFileInAFolder2() {
+    WorkspaceFolderWrapper folderWrapper2 = spy(new WorkspaceFolderWrapper(workspaceFolderPath2.toUri(), new WorkspaceFolder(workspaceFolderPath2.toUri().toString())));
+    when(foldersManager.findFolderForFile(fileInAWorkspaceFolderPath2.toUri())).thenReturn(Optional.of(folderWrapper2));
+    return folderWrapper2;
+  }
 }
