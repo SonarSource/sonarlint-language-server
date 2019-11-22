@@ -388,9 +388,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       LOG.warn("URI '{}' is not a file, analysis not supported", fileUri);
       return;
     }
-    analysisExecutor.execute(() -> {
-      analyze(fileUri, content, shouldFetchServerIssues);
-    });
+    analysisExecutor.execute(() -> analyze(fileUri, content, shouldFetchServerIssues));
   }
 
   private void analyze(URI fileUri, String content, boolean shouldFetchServerIssues) {
@@ -439,7 +437,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     files.values().forEach(client::publishDiagnostics);
   }
 
-  private IssueListener createIssueListener(Map<URI, PublishDiagnosticsParams> files) {
+  private static IssueListener createIssueListener(Map<URI, PublishDiagnosticsParams> files) {
     return issue -> {
       ClientInputFile inputFile = issue.getInputFile();
       if (inputFile != null) {
@@ -507,7 +505,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return new AnalysisResultsWrapper(analysisResults, analysisTime);
   }
 
-  private boolean isTest(WorkspaceFolderSettings settings, URI uri) {
+  private static boolean isTest(WorkspaceFolderSettings settings, URI uri) {
     return settings.getTestMatcher().matches(Paths.get(uri));
   }
 
