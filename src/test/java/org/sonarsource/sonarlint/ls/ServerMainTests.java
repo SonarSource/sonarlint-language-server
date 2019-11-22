@@ -37,7 +37,7 @@ class ServerMainTests {
   private ServerMain underTest = new ServerMain(new PrintStream(out), new PrintStream(err));
 
   @BeforeEach
-  public void preapre() {
+  public void prepare() {
     underTest = spy(underTest);
     doThrow(new RuntimeException("exit called")).when(underTest).exitWithError();
   }

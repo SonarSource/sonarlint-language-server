@@ -231,17 +231,25 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       return;
     }
     if (oldValue.hasBinding() && !newValue.hasBinding()) {
-      if (folder != null && folderBindingCache.containsKey(folder.getUri())) {
-        unbindFolder(folder);
-      } else if (folder == null && !fileBindingCache.isEmpty()) {
-        unbindFiles();
-      }
+      unbind(folder);
     } else if (newValue.hasBinding() && (!Objects.equals(oldValue.getServerId(), newValue.getServerId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
-      if (folder != null && folderBindingCache.containsKey(folder.getUri())) {
-        clearFolderBindingCache(folder);
-      } else if (folder == null && !fileBindingCache.isEmpty()) {
-        clearFilesBindingCache();
-      }
+      forceRebindDuringNextAnalysis(folder);
+    }
+  }
+
+  private void forceRebindDuringNextAnalysis(@Nullable WorkspaceFolderWrapper folder) {
+    if (folder != null && folderBindingCache.containsKey(folder.getUri())) {
+      clearFolderBindingCache(folder);
+    } else if (folder == null && !fileBindingCache.isEmpty()) {
+      clearFilesBindingCache();
+    }
+  }
+
+  private void unbind(@Nullable WorkspaceFolderWrapper folder) {
+    if (folder != null && folderBindingCache.containsKey(folder.getUri())) {
+      unbindFolder(folder);
+    } else if (folder == null && !fileBindingCache.isEmpty()) {
+      unbindFiles();
     }
   }
 
@@ -313,7 +321,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     connectedEngineCacheByServerId.entrySet().forEach(entry -> tryStopServer(entry.getKey(), entry.getValue()));
   }
 
-  private void tryStopServer(String serverId, ConnectedSonarLintEngine engine) {
+  private static void tryStopServer(String serverId, ConnectedSonarLintEngine engine) {
     try {
       engine.stop(false);
     } catch (Exception e) {
@@ -371,7 +379,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     connectedEngineCacheByServerId.put(serverId, engine);
   }
 
-  private void updateGlobalStorageAndLogResults(ServerConfiguration serverConfiguration, ConnectedSonarLintEngine engine) {
+  private static void updateGlobalStorageAndLogResults(ServerConfiguration serverConfiguration, ConnectedSonarLintEngine engine) {
     UpdateResult updateResult = engine.update(serverConfiguration, null);
     LOG.info("Global storage status: {}", updateResult.status());
   }
