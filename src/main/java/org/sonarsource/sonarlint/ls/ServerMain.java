@@ -31,7 +31,7 @@ public class ServerMain {
   private PrintStream out;
   private PrintStream err;
 
-  ServerMain(PrintStream out, PrintStream err) {
+  public ServerMain(PrintStream out, PrintStream err) {
     this.out = out;
     this.err = err;
   }
@@ -40,7 +40,7 @@ public class ServerMain {
     new ServerMain(System.out, System.err).startLanguageServer(args);
   }
 
-  SonarLintLanguageServer startLanguageServer(String... args) {
+  public SonarLintLanguageServer startLanguageServer(String... args) {
     if (args.length < 1) {
       err.println("Usage: java -jar sonarlint-server.jar <jsonRpcPort> [file:///path/to/analyzer1.jar [file:///path/to/analyzer2.jar] ...]");
       exitWithError();

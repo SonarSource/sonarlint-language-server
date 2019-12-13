@@ -80,6 +80,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final LanguageClientLogOutput clientLogOutput;
   private final Function<ConnectedGlobalConfiguration, ConnectedSonarLintEngine> engineFactory;
   private final LanguageClient client;
+  @CheckForNull
   private Path typeScriptPath;
 
   public ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClientLogOutput clientLogOutput, LanguageClient client) {
@@ -329,7 +330,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     }
   }
 
-  public void initialize(Path typeScriptPath) {
+  public void initialize(@Nullable Path typeScriptPath) {
     this.typeScriptPath = typeScriptPath;
   }
 
