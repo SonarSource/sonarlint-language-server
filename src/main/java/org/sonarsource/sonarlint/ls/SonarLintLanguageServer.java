@@ -138,7 +138,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
-  private String typeScriptPath;
+  private Optional<String> typeScriptPath;
   private StandaloneSonarLintEngine standaloneEngine;
 
   /**
@@ -196,9 +196,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       String productVersion = (String) options.get("productVersion");
       String ideVersion = (String) options.get("ideVersion");
 
-      typeScriptPath = (String) options.get(TYPESCRIPT_LOCATION);
+      typeScriptPath = Optional.ofNullable((String) options.get(TYPESCRIPT_LOCATION));
 
-      bindingManager.initialize(Paths.get(typeScriptPath));
+      bindingManager.initialize(typeScriptPath.map(p -> Paths.get(p)).orElse(null));
 
       telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion, bindingManager::usesConnectedMode, bindingManager::usesSonarCloud);
 
@@ -299,7 +299,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
     try {
       Map<String, String> extraProperties = new HashMap<>();
-      extraProperties.put(TYPESCRIPT_PATH_PROP, typeScriptPath);
+      typeScriptPath.ifPresent(p -> extraProperties.put(TYPESCRIPT_PATH_PROP, p));
       StandaloneGlobalConfiguration configuration = StandaloneGlobalConfiguration.builder()
         .setExtraProperties(extraProperties)
         .addPlugins(standaloneAnalyzers.toArray(new URL[0]))
@@ -658,7 +658,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .orElse(TraceValues.OFF);
   }
 
-  static class Document {
+  public static class Document {
     final String uri;
     final String text;
 
