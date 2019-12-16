@@ -41,7 +41,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.CodeAction;
@@ -128,7 +127,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     SONARLINT_REFRESH_DIAGNOSTICS_COMMAND);
 
   private final SonarLintExtendedLanguageClient client;
-  private final Future<?> backgroundProcess;
 
   private final Map<URI, String> languageIdPerFileURI = new HashMap<>();
   private final SonarLintTelemetry telemetry = new SonarLintTelemetry();
@@ -147,13 +145,17 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private TraceValues traceLevel;
   private ExecutorService analysisExecutor;
 
+  private final ExecutorService threadPool;
+
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<URL> analyzers) {
     this.standaloneAnalyzers = analyzers;
+    threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
     Launcher<SonarLintExtendedLanguageClient> launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
       .setLocalService(this)
       .setRemoteInterface(SonarLintExtendedLanguageClient.class)
       .setInput(inputStream)
       .setOutput(outputStream)
+      .setExecutorService(threadPool)
       .create();
 
     this.client = launcher.getRemoteProxy();
@@ -167,14 +169,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);
-    this.analysisExecutor = Executors.newSingleThreadExecutor();
+    this.analysisExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint analysis", false));
 
-    backgroundProcess = launcher.startListening();
+    launcher.startListening();
   }
 
   static SonarLintLanguageServer bySocket(int port, Collection<URL> analyzers) throws IOException {
     Socket socket = new Socket("localhost", port);
-
     return new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers);
   }
 
@@ -198,7 +199,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
       typeScriptPath = Optional.ofNullable((String) options.get(TYPESCRIPT_LOCATION));
 
-      bindingManager.initialize(typeScriptPath.map(p -> Paths.get(p)).orElse(null));
+      bindingManager.initialize(typeScriptPath.map(Paths::get).orElse(null));
 
       telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion, bindingManager::usesConnectedMode, bindingManager::usesSonarCloud);
 
@@ -241,13 +242,16 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       }
       bindingManager.shutdown();
       telemetry.stop();
+      settingsManager.shutdown();
+      threadPool.shutdown();
+      analysisExecutor.shutdown();
       return new Object();
     });
   }
 
   @Override
   public void exit() {
-    backgroundProcess.cancel(true);
+    // The Socket will be closed by the client, and so remaining threads will die and the JVM will terminate
   }
 
   @Override
