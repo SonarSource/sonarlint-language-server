@@ -40,7 +40,7 @@ public class ServerMain {
     new ServerMain(System.out, System.err).startLanguageServer(args);
   }
 
-  public SonarLintLanguageServer startLanguageServer(String... args) {
+  public void startLanguageServer(String... args) {
     if (args.length < 1) {
       err.println("Usage: java -jar sonarlint-server.jar <jsonRpcPort> [file:///path/to/analyzer1.jar [file:///path/to/analyzer2.jar] ...]");
       exitWithError();
@@ -62,12 +62,11 @@ public class ServerMain {
 
     out.println("Binding to " + jsonRpcPort);
     try {
-      return SonarLintLanguageServer.bySocket(jsonRpcPort, analyzers);
+      SonarLintLanguageServer.bySocket(jsonRpcPort, analyzers);
     } catch (IOException e) {
       err.println("Unable to connect to the client");
       e.printStackTrace(err);
       exitWithError();
-      return null;
     }
   }
 

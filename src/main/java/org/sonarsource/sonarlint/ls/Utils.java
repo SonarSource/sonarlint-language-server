@@ -23,6 +23,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonSyntaxException;
 import java.util.Map;
+import java.util.concurrent.ThreadFactory;
 import javax.annotation.CheckForNull;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
@@ -43,5 +44,13 @@ public class Utils {
     } catch (JsonSyntaxException e) {
       throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Expected a JSON map but was: " + obj, e));
     }
+  }
+
+  public static ThreadFactory threadFactory(String name, boolean daemon) {
+    return runnable -> {
+      Thread result = new Thread(runnable, name);
+      result.setDaemon(daemon);
+      return result;
+    };
   }
 }

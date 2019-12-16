@@ -50,7 +50,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   private ScheduledExecutorService scheduler;
 
   public SonarLintTelemetry() {
-    this(() -> Executors.newScheduledThreadPool(1));
+    this(() -> Executors.newScheduledThreadPool(1, Utils.threadFactory("SonarLint Telemetry", false)));
   }
 
   public SonarLintTelemetry(Supplier<ScheduledExecutorService> executorFactory) {

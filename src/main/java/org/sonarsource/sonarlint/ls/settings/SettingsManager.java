@@ -75,7 +75,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   public SettingsManager(LanguageClient client) {
     this.client = client;
-    this.executor = Executors.newCachedThreadPool();
+    this.executor = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint settings manager", false));
   }
 
   /**
@@ -274,6 +274,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   @Override
   public void removed(WorkspaceFolderWrapper removed) {
     // Nothing to do
+  }
+
+  public void shutdown() {
+    executor.shutdown();
   }
 
 }
