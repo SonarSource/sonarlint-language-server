@@ -62,4 +62,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     VERBOSE
   }
 
+  @JsonNotification("sonarlint/didClasspathUpdate")
+  void didClasspathUpdate(String projectUri);
+
 }

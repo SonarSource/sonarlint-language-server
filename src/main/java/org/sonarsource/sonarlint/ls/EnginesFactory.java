@@ -81,7 +81,7 @@ public class EnginesFactory {
     ConnectedGlobalConfiguration configuration = ConnectedGlobalConfiguration.builder()
       .setServerId(serverId)
       .setExtraProperties(prepareExtraProps())
-      .addEnabledLanguages(Language.APEX, Language.HTML, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON, Language.TS)
+      .addEnabledLanguages(Language.APEX, Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON, Language.TS)
       .setLogOutput(lsLogOutput)
       .build();
 

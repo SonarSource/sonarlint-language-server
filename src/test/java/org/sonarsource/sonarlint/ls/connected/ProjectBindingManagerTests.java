@@ -102,10 +102,11 @@ class ProjectBindingManagerTests {
   private ConnectedSonarLintEngine fakeEngine = mock(ConnectedSonarLintEngine.class);
   private GlobalStorageStatus globalStorageStatus = mock(GlobalStorageStatus.class);
   private ProjectStorageStatus projectStorageStatus = mock(ProjectStorageStatus.class);
+  private UpdateResult updateResult = mock(UpdateResult.class);
   private ConnectedSonarLintEngine fakeEngine2 = mock(ConnectedSonarLintEngine.class);
   private GlobalStorageStatus globalStorageStatus2 = mock(GlobalStorageStatus.class);
   private ProjectStorageStatus projectStorageStatus2 = mock(ProjectStorageStatus.class);
-  private UpdateResult updateResult = mock(UpdateResult.class);
+  private UpdateResult updateResult2 = mock(UpdateResult.class);
   private AnalysisManager analysisManager = mock(AnalysisManager.class);
 
   @BeforeEach
@@ -133,7 +134,6 @@ class ProjectBindingManagerTests {
     when(fakeEngine.getGlobalStorageStatus()).thenReturn(globalStorageStatus);
     when(projectStorageStatus.isStale()).thenReturn(false);
     when(fakeEngine.getProjectStorageStatus(PROJECT_KEY)).thenReturn(projectStorageStatus);
-
     when(fakeEngine.update(any(), any())).thenReturn(updateResult);
 
     when(globalStorageStatus2.isStale()).thenReturn(false);
@@ -141,6 +141,7 @@ class ProjectBindingManagerTests {
     when(fakeEngine2.getGlobalStorageStatus()).thenReturn(globalStorageStatus2);
     when(projectStorageStatus2.isStale()).thenReturn(false);
     when(fakeEngine2.getProjectStorageStatus(PROJECT_KEY)).thenReturn(projectStorageStatus2);
+    when(fakeEngine2.update(any(), any())).thenReturn(updateResult2);
 
     underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, mock(LanguageClient.class));
     underTest.setAnalysisManager(analysisManager);
@@ -182,6 +183,7 @@ class ProjectBindingManagerTests {
     assertThat(logTester.logs(LoggerLevel.ERROR))
       .containsOnly("The specified serverId 'myServer' doesn't exist.", "Invalid binding for '" + workspaceFolderPath.toString() + "'");
     assertThat(underTest.usesConnectedMode()).isFalse();
+    assertThat(underTest.usesSonarCloud()).isFalse();
   }
 
   @Test

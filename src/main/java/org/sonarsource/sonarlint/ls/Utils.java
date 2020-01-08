@@ -28,8 +28,12 @@ import javax.annotation.CheckForNull;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
 
 public class Utils {
+
+  private static final Logger LOG = Loggers.get(Utils.class);
 
   private Utils() {
   }
@@ -53,4 +57,10 @@ public class Utils {
       return result;
     };
   }
+
+  public static void interrupted(InterruptedException e) {
+    LOG.debug("Interrupted!", e);
+    Thread.currentThread().interrupt();
+  }
+
 }

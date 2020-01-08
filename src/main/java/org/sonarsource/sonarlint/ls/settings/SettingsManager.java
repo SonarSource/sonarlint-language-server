@@ -51,6 +51,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import static java.util.Arrays.stream;
 import static org.apache.commons.lang.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang.StringUtils.isBlank;
+import static org.sonarsource.sonarlint.ls.Utils.interrupted;
 
 public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
@@ -122,7 +123,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   public void didChangeConfiguration() {
     executor.execute(() -> {
       try {
-        Map<String, Object> workspaceSettingsMap = requestSonarLintConfigurationAsync(null).get();
+        Map<String, Object> workspaceSettingsMap = requestSonarLintConfigurationAsync(null).get(1, TimeUnit.MINUTES);
         WorkspaceSettings newWorkspaceSettings = parseSettings(workspaceSettingsMap);
         WorkspaceSettings oldWorkspaceSettings = currentSettings;
         this.currentSettings = newWorkspaceSettings;
@@ -173,11 +174,6 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         return r;
       })
       .thenApply(response -> response != null ? Utils.parseToMap(response.get(0)) : Collections.emptyMap());
-  }
-
-  private static void interrupted(InterruptedException e) {
-    LOG.debug("Interrupted!", e);
-    Thread.currentThread().interrupt();
   }
 
   private void updateWorkspaceFolderSettings(WorkspaceFolderWrapper f, boolean notifyOnChange) {

@@ -90,4 +90,53 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
 
   }
+
+  /**
+   * Fetch java configuration for a given file.
+   * See: https://github.com/redhat-developer/vscode-java/commit/e29f6df2db016c514afd8d2b69462ad2ef1de867
+   */
+  @JsonRequest("sonarlint/getJavaConfig")
+  CompletableFuture<GetJavaConfigResponse> getJavaConfig(String fileUri);
+
+  public static class GetJavaConfigResponse {
+
+    private String projectRoot;
+    private String sourceLevel;
+    private String[] classpath;
+    private boolean isTest;
+
+    public String getProjectRoot() {
+      return projectRoot;
+    }
+
+    public void setProjectRoot(String projectRoot) {
+      this.projectRoot = projectRoot;
+    }
+
+    public String getSourceLevel() {
+      return sourceLevel;
+    }
+
+    public void setSourceLevel(String sourceLevel) {
+      this.sourceLevel = sourceLevel;
+    }
+
+    public String[] getClasspath() {
+      return classpath;
+    }
+
+    public void setClasspath(String[] classpath) {
+      this.classpath = classpath;
+    }
+
+    public boolean isTest() {
+      return isTest;
+    }
+
+    public void setTest(boolean isTest) {
+      this.isTest = isTest;
+    }
+
+  }
+
 }

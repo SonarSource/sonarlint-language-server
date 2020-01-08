@@ -400,7 +400,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   public void testListAllRules() throws Exception {
     Map<String, List<Rule>> result = lsProxy.listAllRules().join();
-    assertThat(result).containsOnlyKeys("HTML", "JavaScript", "TypeScript", "PHP", "Python");
+    assertThat(result).containsOnlyKeys("HTML", "JavaScript", "TypeScript", "PHP", "Python", "Java");
 
     assertThat(result.get("HTML"))
       .extracting(Rule::getKey, Rule::getName, Rule::isActiveByDefault)

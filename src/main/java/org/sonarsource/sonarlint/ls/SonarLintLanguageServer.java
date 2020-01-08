@@ -283,4 +283,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .orElse(TraceValues.OFF);
   }
 
+  @Override
+  public void didClasspathUpdate(String projectUri) {
+    analysisManager.didClasspathUpdate(projectUri);
+  }
+
 }
