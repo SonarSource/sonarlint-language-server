@@ -74,7 +74,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
-import org.sonarsource.sonarlint.ls.RuleDescription;
 import org.sonarsource.sonarlint.ls.ServerMain;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
@@ -208,7 +207,6 @@ abstract class AbstractLanguageServerMediumTests {
   protected static class FakeLanguageClient implements SonarLintExtendedLanguageClient {
 
     Map<String, List<Diagnostic>> diagnostics = new ConcurrentHashMap<>();
-    List<RuleDescription> ruleDescs = new ArrayList<>();
     Queue<MessageParams> logs = new ConcurrentLinkedQueue<>();
     Map<String, Object> globalSettings = null;
     Map<String, Map<String, Object>> folderSettings = new HashMap<>();
@@ -217,7 +215,6 @@ abstract class AbstractLanguageServerMediumTests {
 
     void clear() {
       diagnostics.clear();
-      ruleDescs.clear();
       logs.clear();
       globalSettings = null;
       folderSettings.clear();
@@ -257,11 +254,6 @@ abstract class AbstractLanguageServerMediumTests {
         logs.add(message);
       }
       System.out.println(message.getMessage());
-    }
-
-    @Override
-    public void openRuleDescription(RuleDescription notification) {
-      ruleDescs.add(notification);
     }
 
     @Override

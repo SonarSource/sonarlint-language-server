@@ -19,16 +19,8 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.services.LanguageClient;
 
 public interface SonarLintExtendedLanguageClient extends LanguageClient {
-
-  /**
-   * This command is sent from a server to a client to ask
-   * the client to display a rule description in the user interface.
-   */
-  @JsonNotification("sonarlint/openRuleDescription")
-  void openRuleDescription(RuleDescription notification);
 
 }
