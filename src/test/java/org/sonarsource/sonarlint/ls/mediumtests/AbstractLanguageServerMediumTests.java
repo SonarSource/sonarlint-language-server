@@ -95,7 +95,7 @@ abstract class AbstractLanguageServerMediumTests {
   @TempDir
   Path temp;
 
-  private Set<String> toBeClosed = new HashSet<>();
+  protected Set<String> toBeClosed = new HashSet<>();
 
   private static ServerSocket serverSocket;
   protected static SonarLintExtendedLanguageServer lsProxy;
@@ -126,6 +126,7 @@ abstract class AbstractLanguageServerMediumTests {
     Future<SonarLintExtendedLanguageServer> future = executor.submit(callable);
     executor.shutdown();
 
+    String java = new File("target/plugins/java.jar").getAbsoluteFile().toURI().toURL().toString();
     String js = new File("target/plugins/javascript.jar").getAbsoluteFile().toURI().toURL().toString();
     String php = new File("target/plugins/php.jar").getAbsoluteFile().toURI().toURL().toString();
     String py = new File("target/plugins/python.jar").getAbsoluteFile().toURI().toURL().toString();
@@ -135,7 +136,7 @@ abstract class AbstractLanguageServerMediumTests {
     serverStdOut = new ByteArrayOutputStream();
     serverStdErr = new ByteArrayOutputStream();
     try {
-      new ServerMain(new PrintStream(serverStdOut), new PrintStream(serverStdErr)).startLanguageServer("" + port, js, php, py, ts, html);
+      new ServerMain(new PrintStream(serverStdOut), new PrintStream(serverStdErr)).startLanguageServer("" + port, java, js, php, py, ts, html);
     } catch (Exception e) {
       e.printStackTrace();
       future.get(1, TimeUnit.SECONDS);
@@ -226,6 +227,7 @@ abstract class AbstractLanguageServerMediumTests {
     Queue<MessageParams> logs = new ConcurrentLinkedQueue<>();
     Map<String, Object> globalSettings = null;
     Map<String, Map<String, Object>> folderSettings = new HashMap<>();
+    Map<String, GetJavaConfigResponse> javaConfigs = new HashMap<>();
     CountDownLatch settingsLatch = new CountDownLatch(0);
     CountDownLatch diagnosticsLatch = new CountDownLatch(0);
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
@@ -302,6 +304,13 @@ abstract class AbstractLanguageServerMediumTests {
         return null;
       });
     }
+
+    public CompletableFuture<GetJavaConfigResponse> getJavaConfig(String fileUri) {
+      return CompletableFutures.computeAsync(cancelToken -> {
+        return javaConfigs.get(fileUri);
+      });
+    }
+
   }
 
   protected void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, String... ruleConfigs) {
