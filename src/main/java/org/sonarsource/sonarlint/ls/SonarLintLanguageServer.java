@@ -39,6 +39,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -128,7 +129,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   private final SonarLintExtendedLanguageClient client;
 
-  private final Map<URI, String> languageIdPerFileURI = new HashMap<>();
+  private final Map<URI, String> languageIdPerFileURI = new ConcurrentHashMap<>();
+  private final Map<URI, String> fileContentPerFileURI = new ConcurrentHashMap<>();
   private final SonarLintTelemetry telemetry = new SonarLintTelemetry();
 
   private final LanguageClientLogOutput clientLogOutput;
@@ -343,30 +345,31 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public void didOpen(DidOpenTextDocumentParams params) {
     URI uri = create(params.getTextDocument().getUri());
     languageIdPerFileURI.put(uri, params.getTextDocument().getLanguageId());
-    analyzeAsync(uri, params.getTextDocument().getText(), true);
+    fileContentPerFileURI.put(uri, params.getTextDocument().getText());
+    analyzeAsync(uri, true);
   }
 
   @Override
   public void didChange(DidChangeTextDocumentParams params) {
     URI uri = create(params.getTextDocument().getUri());
-    analyzeAsync(uri, params.getContentChanges().get(0).getText(), false);
+    fileContentPerFileURI.put(uri, params.getContentChanges().get(0).getText());
+    analyzeAsync(uri, false);
   }
 
   @Override
   public void didClose(DidCloseTextDocumentParams params) {
     URI uri = create(params.getTextDocument().getUri());
     languageIdPerFileURI.remove(uri);
-    // Clear issues
+    fileContentPerFileURI.remove(uri);
+    // TODO Clear issues after all pending analysis have been processed
     client.publishDiagnostics(newPublishDiagnostics(uri));
   }
 
   @Override
   public void didSave(DidSaveTextDocumentParams params) {
-    String content = params.getText();
-    if (content != null) {
-      URI uri = create(params.getTextDocument().getUri());
-      analyzeAsync(uri, content, false);
-    }
+    URI uri = create(params.getTextDocument().getUri());
+    fileContentPerFileURI.put(uri, params.getText());
+    analyzeAsync(uri, false);
   }
 
   @Override
@@ -387,15 +390,16 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     });
   }
 
-  private void analyzeAsync(URI fileUri, String content, boolean shouldFetchServerIssues) {
+  private void analyzeAsync(URI fileUri, boolean shouldFetchServerIssues) {
     if (!fileUri.getScheme().equalsIgnoreCase("file")) {
       LOG.warn("URI '{}' is not a file, analysis not supported", fileUri);
       return;
     }
-    analysisExecutor.execute(() -> analyze(fileUri, content, shouldFetchServerIssues));
+    analysisExecutor.execute(() -> analyze(fileUri, shouldFetchServerIssues));
   }
 
-  private void analyze(URI fileUri, String content, boolean shouldFetchServerIssues) {
+  private void analyze(URI fileUri, boolean shouldFetchServerIssues) {
+    String content = fileContentPerFileURI.get(fileUri);
     Map<URI, PublishDiagnosticsParams> files = new HashMap<>();
     files.put(fileUri, newPublishDiagnostics(fileUri));
 
@@ -615,7 +619,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
           Gson gson = new Gson();
           List<Document> docsToRefresh = args == null ? Collections.emptyList()
             : args.stream().map(arg -> gson.fromJson(arg.toString(), Document.class)).collect(Collectors.toList());
-          docsToRefresh.forEach(doc -> analyzeAsync(create(doc.uri), doc.text, false));
+          docsToRefresh.forEach(doc -> analyzeAsync(create(doc.uri), false));
           break;
         default:
           throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported command: " + params.getCommand(), null));
@@ -664,11 +668,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   public static class Document {
     final String uri;
-    final String text;
 
-    public Document(String uri, String text) {
+    public Document(String uri) {
       this.uri = uri;
-      this.text = text;
     }
   }
 }

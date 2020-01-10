@@ -121,7 +121,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     // Trigger diagnostics refresh (called by client on config change)
     ExecuteCommandParams refreshDiagsCommand = new ExecuteCommandParams();
     refreshDiagsCommand.setCommand("SonarLint.RefreshDiagnostics");
-    refreshDiagsCommand.setArguments(Collections.singletonList(new Gson().toJsonTree(new SonarLintLanguageServer.Document(uri, jsSource))));
+    refreshDiagsCommand.setArguments(Collections.singletonList(new Gson().toJsonTree(new SonarLintLanguageServer.Document(uri))));
     client.diagnosticsLatch = new CountDownLatch(1);
     lsProxy.getWorkspaceService().executeCommand(refreshDiagsCommand);
     client.diagnosticsLatch.await(1, TimeUnit.MINUTES);
