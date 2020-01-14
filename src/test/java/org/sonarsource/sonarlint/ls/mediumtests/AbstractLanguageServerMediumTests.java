@@ -319,7 +319,7 @@ abstract class AbstractLanguageServerMediumTests {
     VersionedTextDocumentIdentifier docId = new VersionedTextDocumentIdentifier(uri, 1);
     client.diagnosticsLatch = new CountDownLatch(1);
     lsProxy.getTextDocumentService()
-      .didChange(new DidChangeTextDocumentParams(docId, singletonList(new TextDocumentContentChangeEvent("function foo() {\n  alert('toto');\n}"))));
+      .didChange(new DidChangeTextDocumentParams(docId, singletonList(new TextDocumentContentChangeEvent(content))));
     if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
       return client.getDiagnostics(uri);
     } else {

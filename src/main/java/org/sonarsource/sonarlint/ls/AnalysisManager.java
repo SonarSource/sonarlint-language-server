@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -75,6 +76,8 @@ import static java.util.Objects.nonNull;
 
 public class AnalysisManager {
 
+  private static final int DEFAULT_TIMER_MS = 2000;
+
   private static final Logger LOG = Loggers.get(AnalysisManager.class);
 
   public static final String TYPESCRIPT_PATH_PROP = "sonar.typescript.internal.typescriptLocation";
@@ -84,6 +87,8 @@ public class AnalysisManager {
 
   private final Map<URI, String> languageIdPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, String> fileContentPerFileURI = new ConcurrentHashMap<>();
+  // entries in this map mean that the file is "dirty"
+  private final Map<URI, Long> eventMap = new ConcurrentHashMap<>();
 
   private final SonarLintTelemetry telemetry;
   private final LanguageClientLogOutput clientLogOutput;
@@ -91,6 +96,8 @@ public class AnalysisManager {
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
+  private final EventWatcher watcher;
+  private final int timerMs;
   @CheckForNull
   private Path typeScriptPath;
   private StandaloneSonarLintEngine standaloneEngine;
@@ -107,7 +114,9 @@ public class AnalysisManager {
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
+    this.timerMs = DEFAULT_TIMER_MS;
     this.analysisExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint analysis", false));
+    this.watcher = new EventWatcher();
   }
 
   synchronized StandaloneSonarLintEngine getOrCreateStandaloneEngine() {
@@ -149,13 +158,61 @@ public class AnalysisManager {
 
   public void didChange(URI fileUri, String fileContent) {
     fileContentPerFileURI.put(fileUri, fileContent);
-    analyzeAsync(fileUri, false);
+    eventMap.put(fileUri, System.currentTimeMillis());
+  }
+
+  /**
+   * Marks a file as launched, resetting its state to unchanged
+   */
+  private void removeFiles(Collection<URI> files) {
+    files.forEach(eventMap::remove);
+  }
+
+  private class EventWatcher extends Thread {
+    private boolean stop = false;
+
+    EventWatcher() {
+      this.setDaemon(true);
+      this.setName("sonarlint-auto-trigger");
+    }
+
+    public void stopWatcher() {
+      stop = true;
+      this.interrupt();
+    }
+
+    @Override
+    public void run() {
+      while (!stop) {
+        checkTimers();
+        try {
+          Thread.sleep(200);
+        } catch (InterruptedException e) {
+          // continue until stop flag is set
+        }
+      }
+    }
+
+    private void checkTimers() {
+      long t = System.currentTimeMillis();
+
+      Iterator<Map.Entry<URI, Long>> it = eventMap.entrySet().iterator();
+      while (it.hasNext()) {
+        Map.Entry<URI, Long> e = it.next();
+        // filter files opened in the editor
+        // use some heuristics based on analysis time or average pauses? Or make it configurable?
+        if (e.getValue() + timerMs < t) {
+          analyzeAsync(e.getKey(), false);
+          it.remove();
+        }
+      }
+    }
   }
 
   public void didClose(URI fileUri) {
     languageIdPerFileURI.remove(fileUri);
     fileContentPerFileURI.remove(fileUri);
-    // TODO Clear issues after all pending analysis have been processed
+    eventMap.remove(fileUri);
     client.publishDiagnostics(newPublishDiagnostics(fileUri));
   }
 
@@ -216,7 +273,10 @@ public class AnalysisManager {
       LOG.error("Analysis failed.", e);
     }
 
-    files.values().forEach(client::publishDiagnostics);
+    // Check if file has not being closed during the analysis
+    if (fileContentPerFileURI.containsKey(fileUri)) {
+      files.values().forEach(client::publishDiagnostics);
+    }
   }
 
   private static IssueListener createIssueListener(Map<URI, PublishDiagnosticsParams> files) {
@@ -377,9 +437,12 @@ public class AnalysisManager {
 
   public void initialize(@Nullable Path typeScriptPath) {
     this.typeScriptPath = typeScriptPath;
+    watcher.start();
   }
 
   public void shutdown() {
+    watcher.stopWatcher();
+    eventMap.clear();
     analysisExecutor.shutdown();
     if (standaloneEngine != null) {
       standaloneEngine.stop();
