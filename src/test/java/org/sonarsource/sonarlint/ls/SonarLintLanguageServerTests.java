@@ -19,42 +19,15 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.sonarsource.sonarlint.ls.SonarLintLanguageServer.convert;
 import static org.sonarsource.sonarlint.ls.SonarLintLanguageServer.getHtmlDescription;
 
 class SonarLintLanguageServerTests {
-
-  @Test
-  public void testNotConvertGlobalIssues() {
-    Issue issue = mock(Issue.class);
-    when(issue.getStartLine()).thenReturn(null);
-    assertThat(convert(issue)).isEmpty();
-  }
-
-  @Test
-  public void testNotConvertSeverity() {
-    Issue issue = mock(Issue.class);
-    when(issue.getStartLine()).thenReturn(1);
-    when(issue.getSeverity()).thenReturn("BLOCKER");
-    when(issue.getMessage()).thenReturn("Do this, don't do that");
-    assertThat(convert(issue).get().getSeverity()).isEqualTo(DiagnosticSeverity.Error);
-    when(issue.getSeverity()).thenReturn("CRITICAL");
-    assertThat(convert(issue).get().getSeverity()).isEqualTo(DiagnosticSeverity.Error);
-    when(issue.getSeverity()).thenReturn("MAJOR");
-    assertThat(convert(issue).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
-    when(issue.getSeverity()).thenReturn("MINOR");
-    assertThat(convert(issue).get().getSeverity()).isEqualTo(DiagnosticSeverity.Information);
-    when(issue.getSeverity()).thenReturn("INFO");
-    assertThat(convert(issue).get().getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
-  }
 
   @Test
   public void getHtmlDescription_appends_extended_description_when_non_empty() {
