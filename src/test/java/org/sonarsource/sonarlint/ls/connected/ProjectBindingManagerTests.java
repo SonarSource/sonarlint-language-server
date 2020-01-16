@@ -44,6 +44,7 @@ import org.sonarsource.sonarlint.core.client.api.connected.GlobalStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.UpdateResult;
+import org.sonarsource.sonarlint.ls.AnalysisManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -64,6 +65,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
@@ -107,6 +109,7 @@ class ProjectBindingManagerTests {
   private GlobalStorageStatus globalStorageStatus2 = mock(GlobalStorageStatus.class);
   private ProjectStorageStatus projectStorageStatus2 = mock(ProjectStorageStatus.class);
   private UpdateResult updateResult = mock(UpdateResult.class);
+  private AnalysisManager analysisManager = mock(AnalysisManager.class);
 
   @BeforeEach
   public void prepare() throws IOException {
@@ -143,6 +146,7 @@ class ProjectBindingManagerTests {
     when(fakeEngine2.getProjectStorageStatus(PROJECT_KEY)).thenReturn(projectStorageStatus2);
 
     underTest = new ProjectBindingManager(foldersManager, settingsManager, mock(LanguageClientLogOutput.class), engineFactory, mock(LanguageClient.class));
+    underTest.setAnalysisManager(analysisManager);
   }
 
   @Test
@@ -384,6 +388,8 @@ class ProjectBindingManagerTests {
     when(folder.getSettings()).thenReturn(UNBOUND_SETTINGS);
     underTest.onChange(folder, BOUND_SETTINGS, UNBOUND_SETTINGS);
 
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder);
+
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
     assertThat(binding).isEmpty();
@@ -404,6 +410,8 @@ class ProjectBindingManagerTests {
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(UNBOUND_SETTINGS);
     underTest.onChange(null, BOUND_SETTINGS, UNBOUND_SETTINGS);
 
+    verify(analysisManager).analyzeAllOpenFilesInFolder(null);
+
     binding = underTest.getBinding(fileNotInAWorkspaceFolderPath.toUri());
 
     assertThat(binding).isEmpty();
@@ -423,6 +431,8 @@ class ProjectBindingManagerTests {
     when(fakeEngine.calculatePathPrefixes(eq(PROJECT_KEY2), any())).thenReturn(FAKE_BINDING2);
 
     underTest.onChange(folder, BOUND_SETTINGS, BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
+
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder);
 
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
@@ -477,6 +487,8 @@ class ProjectBindingManagerTests {
     when(fakeEngine.calculatePathPrefixes(eq(PROJECT_KEY2), any())).thenReturn(FAKE_BINDING2);
 
     underTest.onChange(null, BOUND_SETTINGS, BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
+
+    verify(analysisManager).analyzeAllOpenFilesInFolder(null);
 
     binding = underTest.getBinding(fileNotInAWorkspaceFolderPath.toUri());
 
@@ -593,6 +605,10 @@ class ProjectBindingManagerTests {
     verify(fakeEngine).updateProject(any(), eq(PROJECT_KEY), any());
     verify(fakeEngine2).update(any(), any());
     verify(fakeEngine2).updateProject(any(), eq(PROJECT_KEY2), any());
+
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
+    verifyNoMoreInteractions(analysisManager);
   }
 
   @Test
@@ -614,6 +630,10 @@ class ProjectBindingManagerTests {
     verify(fakeEngine).updateProject(any(), eq(PROJECT_KEY), any());
     verify(fakeEngine2).update(any(), any());
     verify(fakeEngine2).updateProject(any(), eq(PROJECT_KEY2), any());
+
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
+    verifyNoMoreInteractions(analysisManager);
   }
 
   @Test

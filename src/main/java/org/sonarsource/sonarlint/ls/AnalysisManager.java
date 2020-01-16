@@ -32,6 +32,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -70,11 +71,13 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 import static java.util.Collections.singleton;
 import static java.util.Objects.nonNull;
 
-public class AnalysisManager {
+public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
   private static final int DELAY_MS = 500;
   private static final int QUEUE_POLLING_PERIOD_MS = 200;
@@ -200,6 +203,7 @@ public class AnalysisManager {
   }
 
   public void didClose(URI fileUri) {
+    LOG.debug("File '{}' closed. Cleaning diagnostics.", fileUri);
     languageIdPerFileURI.remove(fileUri);
     fileContentPerFileURI.remove(fileUri);
     eventMap.remove(fileUri);
@@ -216,6 +220,7 @@ public class AnalysisManager {
       LOG.warn("URI '{}' is not a file, analysis not supported", fileUri);
       return;
     }
+    LOG.debug("Queuing analysis of file '{}'", fileUri);
     analysisExecutor.execute(() -> analyze(fileUri, shouldFetchServerIssues));
   }
 
@@ -436,6 +441,34 @@ public class AnalysisManager {
     analysisExecutor.shutdown();
     if (standaloneEngine != null) {
       standaloneEngine.stop();
+    }
+  }
+
+  public void analyzeAllOpenFilesInFolder(@Nullable WorkspaceFolderWrapper folder) {
+    for (URI fileUri : fileContentPerFileURI.keySet()) {
+      Optional<WorkspaceFolderWrapper> actualFolder = workspaceFoldersManager.findFolderForFile(fileUri);
+      if (actualFolder.map(f -> f.equals(folder)).orElse(folder == null)) {
+        analyzeAsync(fileUri, false);
+      }
+    }
+  }
+
+  @Override
+  public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
+    if (oldValue == null) {
+      return;
+    }
+    if (!Objects.equals(oldValue.getExcludedRules(), newValue.getExcludedRules()) || !Objects.equals(oldValue.getIncludedRules(), newValue.getIncludedRules())) {
+      analyzeAllUnboundOpenFiles();
+    }
+  }
+
+  private void analyzeAllUnboundOpenFiles() {
+    for (URI fileUri : fileContentPerFileURI.keySet()) {
+      Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(fileUri);
+      if (!binding.isPresent()) {
+        analyzeAsync(fileUri, false);
+      }
     }
   }
 

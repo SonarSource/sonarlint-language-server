@@ -31,10 +31,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,6 +55,7 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
+import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
 import org.eclipse.lsp4j.InitializeParams;
@@ -63,6 +66,7 @@ import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
+import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceFolder;
@@ -71,6 +75,7 @@ import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
@@ -83,6 +88,7 @@ import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.equalTo;
 
 abstract class AbstractLanguageServerMediumTests {
 
@@ -90,6 +96,8 @@ abstract class AbstractLanguageServerMediumTests {
 
   @TempDir
   Path temp;
+
+  private Set<String> toBeClosed = new HashSet<>();
 
   private static ServerSocket serverSocket;
   protected static SonarLintExtendedLanguageServer lsProxy;
@@ -165,26 +173,33 @@ abstract class AbstractLanguageServerMediumTests {
 
   @BeforeEach
   public final void cleanup() throws InterruptedException {
+    toBeClosed.clear();
     // Reset settings on LS side
     client.clear();
     lsProxy.getWorkspaceService()
       .didChangeWorkspaceFolders(
         new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), singletonList(new WorkspaceFolder(SOME_FOLDER_URI, "Added")))));
-    // Remove a unexisting workspaceFolderPath will log
-    lsProxy.getWorkspaceService()
-      .didChangeWorkspaceFolders(
-        new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), singletonList(new WorkspaceFolder("another://uri", "Unknown")))));
-    await().atMost(5, SECONDS)
-      .untilAsserted(() -> assertThat(client.logs).extracting(MessageParams::getMessage).contains("Unregistered workspace folder was missing: another://uri"));
 
-    // Switch telemetry on/off to ensure at least one log will appear
-    emulateConfigurationChangeOnClient(null, true);
     emulateConfigurationChangeOnClient(null, false);
-    await().atMost(5, SECONDS)
-      .untilAsserted(() -> assertThat(client.logs).extracting(MessageParams::getMessage)
-        .contains("Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[],includedRules=[]]"));
 
-    client.logs.clear();
+    // Wait for logs to stop being produced
+    await().during(1, SECONDS).atMost(5, SECONDS).until(() -> {
+      int count = client.logs.size();
+      client.logs.clear();
+      return count;
+    }, equalTo(0));
+  }
+
+  @AfterEach
+  public final void closeFiles() throws InterruptedException {
+    // Close all opened files
+    for (String uri : toBeClosed) {
+      client.diagnosticsLatch = new CountDownLatch(1);
+      lsProxy.getTextDocumentService().didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
+      if (!client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
+        throw new AssertionError("No empty diagnostics received after 1 minute");
+      }
+    }
   }
 
   protected static void assertLogContainsInOrder(MessageType type, String msg) {
@@ -320,6 +335,7 @@ abstract class AbstractLanguageServerMediumTests {
     client.diagnosticsLatch = new CountDownLatch(1);
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(docId, singletonList(new TextDocumentContentChangeEvent(content))));
+    toBeClosed.add(uri);
     if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
       return client.getDiagnostics(uri);
     } else {
@@ -331,6 +347,7 @@ abstract class AbstractLanguageServerMediumTests {
     client.diagnosticsLatch = new CountDownLatch(1);
     lsProxy.getTextDocumentService()
       .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, languageId, 1, content)));
+    toBeClosed.add(uri);
     if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
       return client.getDiagnostics(uri);
     } else {

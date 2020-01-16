@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls.mediumtests;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.gson.Gson;
 import com.google.gson.JsonPrimitive;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -58,7 +57,6 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.ls.RuleDescription;
-import org.sonarsource.sonarlint.ls.SonarLintLanguageServer;
 
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -83,7 +81,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   public void analyzeSimpleJsFileOnOpen() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true);
 
-    String uri = getUri("foo.js");
+    String uri = getUri("analyzeSimpleJsFileOnOpen.js");
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
 
     assertThat(diagnostics)
@@ -96,7 +94,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   public void analyzeSimpleJsFileWithCustomRuleConfig() throws Exception {
-    String uri = getUri("foo.js");
+    String uri = getUri("analyzeSimpleJsFileWithCustomRuleConfig.js");
     String jsSource = "function foo()\n {\n  alert('toto');\n  var plouf = 0;\n}";
 
     // Default configuration should result in 2 issues: S1442 and UnusedVariable
@@ -115,6 +113,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     client.clear();
 
     // Update rules configuration: disable UnusedVariable, enable Semicolon
+    client.diagnosticsLatch = new CountDownLatch(1);
+
     emulateConfigurationChangeOnClient("**/*Test.js", null,
       "javascript:UnusedVariable", "off",
       "javascript:S1105", "on");
@@ -122,12 +122,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertLogContainsInOrder(MessageType.Log,
       "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[javascript:UnusedVariable],includedRules=[javascript:S1105]]");
 
-    // Trigger diagnostics refresh (called by client on config change)
-    ExecuteCommandParams refreshDiagsCommand = new ExecuteCommandParams();
-    refreshDiagsCommand.setCommand("SonarLint.RefreshDiagnostics");
-    refreshDiagsCommand.setArguments(Collections.singletonList(new Gson().toJsonTree(new SonarLintLanguageServer.Document(uri))));
-    client.diagnosticsLatch = new CountDownLatch(1);
-    lsProxy.getWorkspaceService().executeCommand(refreshDiagsCommand);
     client.diagnosticsLatch.await(1, TimeUnit.MINUTES);
 
     assertThat(client.getDiagnostics(uri))
@@ -143,7 +137,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   public void analyzeSimpleTsFileOnOpen() throws Exception {
     Path tsconfig = temp.resolve("tsconfig.json");
     Files.write(tsconfig, "{}".getBytes(StandardCharsets.UTF_8));
-    String uri = getUri("foo.ts");
+    String uri = getUri("analyzeSimpleTsFileOnOpen.ts");
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "typescript", "function foo() {\n if(bar() && bar()) { return 42; }\n}");
 
@@ -155,7 +149,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   public void analyzeSimplePythonFileOnOpen() throws Exception {
-    String uri = getUri("foo.py");
+    String uri = getUri("analyzeSimplePythonFileOnOpen.py");
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "python", "def foo():\n  print 'toto'\n");
 
@@ -236,7 +230,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   public void analyzeSimpleJsFileOnChange() throws Exception {
-    String uri = getUri("foo.js");
+    String uri = getUri("analyzeSimpleJsFileOnChange.js");
 
     List<Diagnostic> diagnostics = didChangeAndWaitForDiagnostics(uri, "function foo() {\n  alert('toto');\n}");
 

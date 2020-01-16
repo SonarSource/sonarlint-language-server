@@ -19,7 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import com.google.gson.Gson;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -38,7 +37,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionParams;
@@ -93,10 +91,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private static final String SONARLINT_OPEN_RULE_DESCRIPTION_COMMAND = "SonarLint.OpenRuleDesc";
   private static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
   static final String SONARLINT_UPDATE_ALL_BINDINGS_COMMAND = "SonarLint.UpdateAllBindings";
-  static final String SONARLINT_REFRESH_DIAGNOSTICS_COMMAND = "SonarLint.RefreshDiagnostics";
   private static final List<String> SONARLINT_COMMANDS = Arrays.asList(
-    SONARLINT_UPDATE_ALL_BINDINGS_COMMAND,
-    SONARLINT_REFRESH_DIAGNOSTICS_COMMAND);
+    SONARLINT_UPDATE_ALL_BINDINGS_COMMAND);
 
   private final SonarLintExtendedLanguageClient client;
 
@@ -137,6 +133,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);
     this.analysisManager = new AnalysisManager(analyzers, clientLogOutput, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager);
+    bindingManager.setAnalysisManager(analysisManager);
+    this.settingsManager.addListener(analysisManager);
     launcher.startListening();
   }
 
@@ -325,16 +323,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<Object> executeCommand(ExecuteCommandParams params) {
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
-      List<Object> args = params.getArguments();
       switch (params.getCommand()) {
         case SONARLINT_UPDATE_ALL_BINDINGS_COMMAND:
           bindingManager.updateAllBindings();
-          break;
-        case SONARLINT_REFRESH_DIAGNOSTICS_COMMAND:
-          Gson gson = new Gson();
-          List<Document> docsToRefresh = args == null ? Collections.emptyList()
-            : args.stream().map(arg -> gson.fromJson(arg.toString(), Document.class)).collect(Collectors.toList());
-          docsToRefresh.forEach(doc -> analysisManager.analyzeAsync(create(doc.uri), false));
           break;
         default:
           throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported command: " + params.getCommand(), null));
@@ -381,11 +372,4 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .orElse(TraceValues.OFF);
   }
 
-  public static class Document {
-    final String uri;
-
-    public Document(String uri) {
-      this.uri = uri;
-    }
-  }
 }
