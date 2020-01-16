@@ -76,7 +76,8 @@ import static java.util.Objects.nonNull;
 
 public class AnalysisManager {
 
-  private static final int DEFAULT_TIMER_MS = 2000;
+  private static final int DELAY_MS = 500;
+  private static final int QUEUE_POLLING_PERIOD_MS = 200;
 
   private static final Logger LOG = Loggers.get(AnalysisManager.class);
 
@@ -97,7 +98,6 @@ public class AnalysisManager {
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
   private final EventWatcher watcher;
-  private final int timerMs;
   @CheckForNull
   private Path typeScriptPath;
   private StandaloneSonarLintEngine standaloneEngine;
@@ -114,7 +114,6 @@ public class AnalysisManager {
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
-    this.timerMs = DEFAULT_TIMER_MS;
     this.analysisExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint analysis", false));
     this.watcher = new EventWatcher();
   }
@@ -161,13 +160,6 @@ public class AnalysisManager {
     eventMap.put(fileUri, System.currentTimeMillis());
   }
 
-  /**
-   * Marks a file as launched, resetting its state to unchanged
-   */
-  private void removeFiles(Collection<URI> files) {
-    files.forEach(eventMap::remove);
-  }
-
   private class EventWatcher extends Thread {
     private boolean stop = false;
 
@@ -186,7 +178,7 @@ public class AnalysisManager {
       while (!stop) {
         checkTimers();
         try {
-          Thread.sleep(200);
+          Thread.sleep(QUEUE_POLLING_PERIOD_MS);
         } catch (InterruptedException e) {
           // continue until stop flag is set
         }
@@ -199,9 +191,7 @@ public class AnalysisManager {
       Iterator<Map.Entry<URI, Long>> it = eventMap.entrySet().iterator();
       while (it.hasNext()) {
         Map.Entry<URI, Long> e = it.next();
-        // filter files opened in the editor
-        // use some heuristics based on analysis time or average pauses? Or make it configurable?
-        if (e.getValue() + timerMs < t) {
+        if (e.getValue() + DELAY_MS < t) {
           analyzeAsync(e.getKey(), false);
           it.remove();
         }
