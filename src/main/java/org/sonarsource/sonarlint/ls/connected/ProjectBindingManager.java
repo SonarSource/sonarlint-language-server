@@ -45,6 +45,7 @@ import org.sonarsource.sonarlint.core.client.api.connected.ConnectedGlobalConfig
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine.State;
 import org.sonarsource.sonarlint.core.client.api.connected.GlobalStorageStatus;
+import org.sonarsource.sonarlint.core.client.api.connected.Language;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
@@ -197,7 +198,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     ConnectedGlobalConfiguration configuration = ConnectedGlobalConfiguration.builder()
       .setServerId(serverId)
       .setExtraProperties(extraProperties)
-      .addExcludedCodeAnalyzers("abap", "cpp", "cobol", "java", "kotlin", "pli", "rpg", "ruby", "sonarscala", "swift", "tsql", "xml")
+      .addEnabledLanguages(Language.APEX, Language.HTML, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON, Language.TS)
       .setLogOutput(clientLogOutput)
       .build();
 
