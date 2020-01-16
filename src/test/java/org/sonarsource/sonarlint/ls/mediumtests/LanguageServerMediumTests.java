@@ -39,13 +39,16 @@ import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
+import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
+import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
@@ -57,6 +60,7 @@ import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.ls.RuleDescription;
 import org.sonarsource.sonarlint.ls.SonarLintLanguageServer;
 
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -121,7 +125,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     // Trigger diagnostics refresh (called by client on config change)
     ExecuteCommandParams refreshDiagsCommand = new ExecuteCommandParams();
     refreshDiagsCommand.setCommand("SonarLint.RefreshDiagnostics");
-    refreshDiagsCommand.setArguments(Collections.singletonList(new Gson().toJsonTree(new SonarLintLanguageServer.Document(uri, jsSource))));
+    refreshDiagsCommand.setArguments(Collections.singletonList(new Gson().toJsonTree(new SonarLintLanguageServer.Document(uri))));
     client.diagnosticsLatch = new CountDownLatch(1);
     lsProxy.getWorkspaceService().executeCommand(refreshDiagsCommand);
     client.diagnosticsLatch.await(1, TimeUnit.MINUTES);
@@ -239,6 +243,28 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(diagnostics)
       .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
       .containsExactly(tuple(1, 2, 1, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information));
+  }
+
+  @Test
+  public void delayAnalysisOnChange() throws Exception {
+    String uri = getUri("foo.js");
+
+    VersionedTextDocumentIdentifier docId = new VersionedTextDocumentIdentifier(uri, 1);
+    // Emulate two quick changes, should only trigger one analysis
+    client.diagnosticsLatch = new CountDownLatch(1);
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(docId, singletonList(new TextDocumentContentChangeEvent("function foo() {\n  alert('toto');\n}"))));
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(docId, singletonList(new TextDocumentContentChangeEvent("function foo() {\n  alert('toto');\n  alert('toto');\n}"))));
+    if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
+      List<Diagnostic> diagnostics = client.getDiagnostics(uri);
+      assertThat(diagnostics)
+        .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+        .containsExactly(tuple(1, 2, 1, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information),
+          tuple(2, 2, 2, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information));
+    } else {
+      throw new AssertionError("No diagnostics received after 1 minute");
+    }
   }
 
   @Test

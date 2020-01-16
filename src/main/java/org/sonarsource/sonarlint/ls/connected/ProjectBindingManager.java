@@ -50,7 +50,7 @@ import org.sonarsource.sonarlint.core.client.api.connected.ProjectStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.UpdateResult;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
-import org.sonarsource.sonarlint.ls.SonarLintLanguageServer;
+import org.sonarsource.sonarlint.ls.AnalysisManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -192,7 +192,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private ConnectedSonarLintEngine createConnectedEngine(String serverId) {
     Map<String, String> extraProperties = new HashMap<>();
     if (typeScriptPath != null) {
-      extraProperties.put(SonarLintLanguageServer.TYPESCRIPT_PATH_PROP, typeScriptPath.toString());
+      extraProperties.put(AnalysisManager.TYPESCRIPT_PATH_PROP, typeScriptPath.toString());
     }
     ConnectedGlobalConfiguration configuration = ConnectedGlobalConfiguration.builder()
       .setServerId(serverId)
