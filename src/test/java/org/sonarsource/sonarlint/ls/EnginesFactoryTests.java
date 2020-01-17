@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,7 @@ import static org.mockito.Mockito.spy;
 
 public class EnginesFactoryTests {
 
+  private static final Path FAKE_TYPESCRIPT_PATH = Paths.get("some/path");
   private EnginesFactory underTest;
 
   @BeforeEach
@@ -48,7 +50,7 @@ public class EnginesFactoryTests {
 
   @Test
   public void pass_typescript_path_to_standalone_engine() throws Exception {
-    underTest.initialize(Paths.get("some/path"));
+    underTest.initialize(FAKE_TYPESCRIPT_PATH);
 
     ArgumentCaptor<StandaloneGlobalConfiguration> argCaptor = ArgumentCaptor.forClass(StandaloneGlobalConfiguration.class);
     StandaloneSonarLintEngine mockEngine = mock(StandaloneSonarLintEngine.class);
@@ -58,7 +60,7 @@ public class EnginesFactoryTests {
 
     assertThat(createdEngine).isSameAs(mockEngine);
     StandaloneGlobalConfiguration capturedConfig = argCaptor.getValue();
-    assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", "some/path");
+    assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", FAKE_TYPESCRIPT_PATH.toString());
   }
 
   @Test
@@ -78,7 +80,7 @@ public class EnginesFactoryTests {
 
   @Test
   public void pass_typescript_path_to_connected_engine() throws Exception {
-    underTest.initialize(Paths.get("some/path"));
+    underTest.initialize(FAKE_TYPESCRIPT_PATH);
 
     ArgumentCaptor<ConnectedGlobalConfiguration> argCaptor = ArgumentCaptor.forClass(ConnectedGlobalConfiguration.class);
     ConnectedSonarLintEngine mockEngine = mock(ConnectedSonarLintEngine.class);
@@ -88,7 +90,7 @@ public class EnginesFactoryTests {
 
     assertThat(createdEngine).isSameAs(mockEngine);
     ConnectedGlobalConfiguration capturedConfig = argCaptor.getValue();
-    assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", "some/path");
+    assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", FAKE_TYPESCRIPT_PATH.toString());
   }
 
   @Test
