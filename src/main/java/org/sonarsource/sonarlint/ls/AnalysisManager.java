@@ -20,11 +20,9 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
-import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -50,7 +48,6 @@ import org.eclipse.lsp4j.Range;
 import org.sonar.api.internal.apachecommons.lang.StringUtils;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
-import org.sonarsource.sonarlint.core.StandaloneSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.AnalysisResults;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
@@ -60,7 +57,6 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueLocation;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedAnalysisConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneAnalysisConfiguration;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -68,7 +64,6 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.ServerIssueTrackerWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -95,23 +90,18 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   private final Map<URI, Long> eventMap = new ConcurrentHashMap<>();
 
   private final SonarLintTelemetry telemetry;
-  private final LanguageClientLogOutput clientLogOutput;
-  private final Collection<URL> standaloneAnalyzers;
+  private final EnginesFactory enginesFactory;
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
   private final EventWatcher watcher;
-  @CheckForNull
-  private Path typeScriptPath;
   private StandaloneSonarLintEngine standaloneEngine;
 
   private ExecutorService analysisExecutor;
 
-  public AnalysisManager(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput clientLogOutput, SonarLintExtendedLanguageClient client,
-    SonarLintTelemetry telemetry,
+  public AnalysisManager(EnginesFactory enginesFactory, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
     WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, ProjectBindingManager bindingManager) {
-    this.standaloneAnalyzers = standaloneAnalyzers;
-    this.clientLogOutput = clientLogOutput;
+    this.enginesFactory = enginesFactory;
     this.client = client;
     this.telemetry = telemetry;
     this.workspaceFoldersManager = workspaceFoldersManager;
@@ -123,33 +113,9 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
   synchronized StandaloneSonarLintEngine getOrCreateStandaloneEngine() {
     if (standaloneEngine == null) {
-      standaloneEngine = createStandaloneEngine();
+      standaloneEngine = enginesFactory.createStandaloneEngine();
     }
     return standaloneEngine;
-  }
-
-  private StandaloneSonarLintEngine createStandaloneEngine() {
-    LOG.debug("Starting standalone SonarLint engine...");
-    LOG.debug("Using {} analyzers", standaloneAnalyzers.size());
-
-    try {
-      Map<String, String> extraProperties = new HashMap<>();
-      if (typeScriptPath != null) {
-        extraProperties.put(TYPESCRIPT_PATH_PROP, typeScriptPath.toString());
-      }
-      StandaloneGlobalConfiguration configuration = StandaloneGlobalConfiguration.builder()
-        .setExtraProperties(extraProperties)
-        .addPlugins(standaloneAnalyzers.toArray(new URL[0]))
-        .setLogOutput(clientLogOutput)
-        .build();
-
-      StandaloneSonarLintEngine engine = new StandaloneSonarLintEngineImpl(configuration);
-      LOG.debug("Standalone SonarLint engine started");
-      return engine;
-    } catch (Exception e) {
-      LOG.error("Error starting standalone SonarLint engine", e);
-      throw new IllegalStateException(e);
-    }
   }
 
   public void didOpen(URI fileUri, String languageId, String fileContent) {
@@ -430,8 +396,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     return p;
   }
 
-  public void initialize(@Nullable Path typeScriptPath) {
-    this.typeScriptPath = typeScriptPath;
+  public void initialize() {
     watcher.start();
   }
 

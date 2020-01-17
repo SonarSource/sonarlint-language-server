@@ -67,7 +67,6 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
-import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
@@ -82,8 +81,6 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 import static java.net.URI.create;
 
 public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer, WorkspaceService, TextDocumentService {
-
-  private static final Logger LOG = Loggers.get(SonarLintLanguageServer.class);
 
   private static final String TYPESCRIPT_LOCATION = "typeScriptLocation";
 
@@ -103,6 +100,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
   private final AnalysisManager analysisManager;
+  private final EnginesFactory enginesFactory;
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
@@ -127,12 +125,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     Loggers.setTarget(clientLogOutput);
     this.settingsManager = new SettingsManager(this.client);
     this.settingsManager.addListener(telemetry);
+    this.enginesFactory = new EnginesFactory(analyzers, clientLogOutput);
     this.workspaceFoldersManager = new WorkspaceFoldersManager(settingsManager);
-    this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager, clientLogOutput, client);
+    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);
-    this.analysisManager = new AnalysisManager(analyzers, clientLogOutput, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager);
+    this.analysisManager = new AnalysisManager(enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager);
     bindingManager.setAnalysisManager(analysisManager);
     this.settingsManager.addListener(analysisManager);
     launcher.startListening();
@@ -163,8 +162,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
       Optional<String> typeScriptPath = Optional.ofNullable((String) options.get(TYPESCRIPT_LOCATION));
 
-      bindingManager.initialize(typeScriptPath.map(Paths::get).orElse(null));
-      analysisManager.initialize(typeScriptPath.map(Paths::get).orElse(null));
+      enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));
+      analysisManager.initialize();
 
       telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion, bindingManager::usesConnectedMode, bindingManager::usesSonarCloud);
 
