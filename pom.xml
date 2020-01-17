@@ -23,7 +23,7 @@
   </issueManagement>
 
   <properties>
-    <sonarlint.core.version>4.7.0.12286</sonarlint.core.version>
+    <sonarlint.core.version>4.8.0.14372</sonarlint.core.version>
     <!-- analyzers used for tests -->
     <sonar.javascript.version>5.2.1.7778</sonar.javascript.version>
     <sonar.php.version>3.2.0.4868</sonar.php.version>
@@ -64,13 +64,6 @@
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
       <version>2.6</version>
-      <scope>test</scope>
-    </dependency>
-    <!-- Still needed by LogTesterJUnit5 -->
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.12</version>
       <scope>test</scope>
     </dependency>
     <dependency>

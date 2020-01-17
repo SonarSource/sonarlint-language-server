@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonar.api.utils.log.test.LogTesterJUnit5;
+import org.sonar.api.utils.log.LogTesterJUnit5;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 import static java.net.URI.create;
