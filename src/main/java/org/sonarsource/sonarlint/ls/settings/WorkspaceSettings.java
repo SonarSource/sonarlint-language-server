@@ -38,13 +38,17 @@ public class WorkspaceSettings {
   private final Map<String, ServerConnectionSettings> servers;
   private final Collection<RuleKey> excludedRules;
   private final Collection<RuleKey> includedRules;
+  private final boolean showAnalyzerLogs;
+  private final boolean showVerboseLogs;
 
   public WorkspaceSettings(boolean disableTelemetry, Map<String, ServerConnectionSettings> servers,
-    Collection<RuleKey> excludedRules, Collection<RuleKey> includedRules) {
+    Collection<RuleKey> excludedRules, Collection<RuleKey> includedRules, boolean showAnalyzerLogs, boolean showVerboseLogs) {
     this.disableTelemetry = disableTelemetry;
     this.servers = servers;
     this.excludedRules = excludedRules;
     this.includedRules = includedRules;
+    this.showAnalyzerLogs = showAnalyzerLogs;
+    this.showVerboseLogs = showVerboseLogs;
   }
 
   public boolean isDisableTelemetry() {
@@ -67,9 +71,17 @@ public class WorkspaceSettings {
     return !excludedRules.isEmpty() || !includedRules.isEmpty();
   }
 
+  public boolean showAnalyzerLogs() {
+    return showAnalyzerLogs;
+  }
+
+  public boolean showVerboseLogs() {
+    return showVerboseLogs;
+  }
+
   @Override
   public int hashCode() {
-    return Objects.hash(disableTelemetry, servers, excludedRules, includedRules);
+    return Objects.hash(disableTelemetry, servers, excludedRules, includedRules, showAnalyzerLogs, showVerboseLogs);
   }
 
   @Override
@@ -85,7 +97,7 @@ public class WorkspaceSettings {
     }
     WorkspaceSettings other = (WorkspaceSettings) obj;
     return disableTelemetry == other.disableTelemetry && Objects.equals(servers, other.servers) && Objects.equals(excludedRules, other.excludedRules)
-      && Objects.equals(includedRules, other.includedRules);
+      && Objects.equals(includedRules, other.includedRules) && Objects.equals(showAnalyzerLogs, other.showAnalyzerLogs) && Objects.equals(showVerboseLogs, other.showVerboseLogs);
   }
 
   @Override

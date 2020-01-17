@@ -64,6 +64,7 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.ServerIssueTrackerWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -95,12 +96,14 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
   private final EventWatcher watcher;
+  private final LanguageClientLogOutput lsLogOutput;
   private StandaloneSonarLintEngine standaloneEngine;
 
   private ExecutorService analysisExecutor;
 
-  public AnalysisManager(EnginesFactory enginesFactory, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
+  public AnalysisManager(LanguageClientLogOutput lsLogOutput, EnginesFactory enginesFactory, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
     WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, ProjectBindingManager bindingManager) {
+    this.lsLogOutput = lsLogOutput;
     this.enginesFactory = enginesFactory;
     this.client = client;
     this.telemetry = telemetry;
@@ -219,8 +222,10 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
           LOG.debug("Skip analysis of excluded file: {}", fileUri);
           return;
         }
+        LOG.info("Analyzing file '{}'...", fileUri);
         analysisResults = analyzeConnected(binding.get(), settings, baseDir, fileUri, content, issueListener, shouldFetchServerIssues);
       } else {
+        LOG.info("Analyzing file '{}'...", fileUri);
         analysisResults = analyzeStandalone(settings, baseDir, fileUri, content, issueListener);
       }
 
@@ -236,6 +241,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
     // Check if file has not being closed during the analysis
     if (fileContentPerFileURI.containsKey(fileUri)) {
+      LOG.info("Found {} issue(s)", files.values().stream().mapToInt(p -> p.getDiagnostics().size()).sum());
       files.values().forEach(client::publishDiagnostics);
     }
   }
@@ -273,7 +279,13 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
     long start = System.currentTimeMillis();
     StandaloneSonarLintEngine engine = getOrCreateStandaloneEngine();
-    AnalysisResults analysisResults = engine.analyze(configuration, issueListener, null, null);
+    AnalysisResults analysisResults;
+    try {
+      lsLogOutput.setAnalysis(true);
+      analysisResults = engine.analyze(configuration, issueListener, null, null);
+    } finally {
+      lsLogOutput.setAnalysis(false);
+    }
     int analysisTime = (int) (System.currentTimeMillis() - start);
 
     return new AnalysisResultsWrapper(analysisResults, analysisTime);
@@ -297,7 +309,12 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
     long start = System.currentTimeMillis();
     AnalysisResults analysisResults;
-    analysisResults = binding.getEngine().analyze(configuration, collector, null, null);
+    try {
+      lsLogOutput.setAnalysis(true);
+      analysisResults = binding.getEngine().analyze(configuration, collector, null, null);
+    } finally {
+      lsLogOutput.setAnalysis(false);
+    }
 
     String filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, uri));
     ServerIssueTrackerWrapper serverIssueTracker = binding.getServerIssueTracker();

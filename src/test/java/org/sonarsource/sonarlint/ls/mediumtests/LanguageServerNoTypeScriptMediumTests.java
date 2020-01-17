@@ -26,7 +26,6 @@ import java.nio.file.Path;
 import java.util.List;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
-import org.eclipse.lsp4j.MessageParams;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -63,18 +62,22 @@ class LanguageServerNoTypeScriptMediumTests extends AbstractLanguageServerMedium
   }
 
   @Test
-  public void noTypesCriptAnalysisWithoutTypescriptCompilerPath() throws Exception {
+  public void noTypeScriptAnalysisWithoutTypescriptCompilerPath() throws Exception {
+    // Enable analyzer debug logs for assertions
+    emulateConfigurationChangeOnClient("**/*Test.js", null, true, true);
+
     Path tsconfig = temp.resolve("tsconfig.json");
     Files.write(tsconfig, "{}".getBytes(StandardCharsets.UTF_8));
     String uri = getUri("foo.ts");
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "typescript", "function foo() {\n if(bar() && bar()) { return 42; }\n}");
 
-    assertThat(diagnostics)
-      .isEmpty();
+    assertThat(diagnostics).isEmpty();
 
     await().atMost(5, SECONDS)
-      .untilAsserted(() -> assertThat(client.logs).extracting(MessageParams::getMessage).contains("Skipped analysis as SonarTS Server is not running"));
+      .untilAsserted(() -> assertThat(client.logs)
+        .extracting(withoutTimestamp())
+        .contains("[Debug] Skipped analysis as SonarTS Server is not running"));
   }
 
 }

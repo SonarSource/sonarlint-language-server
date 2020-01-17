@@ -19,20 +19,110 @@
  */
 package org.sonarsource.sonarlint.ls.log;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.services.LanguageClient;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.LogOutput.Level;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.verifyZeroInteractions;
 
 class LanguageClientLogOutputTests {
 
-  @Test
-  public void coverage() {
-    assertThat(LanguageClientLogOutput.messageType(Level.ERROR)).isEqualTo(MessageType.Error);
-    assertThat(LanguageClientLogOutput.messageType(Level.WARN)).isEqualTo(MessageType.Warning);
-    assertThat(LanguageClientLogOutput.messageType(Level.INFO)).isEqualTo(MessageType.Info);
-    assertThat(LanguageClientLogOutput.messageType(Level.DEBUG)).isEqualTo(MessageType.Log);
-    assertThat(LanguageClientLogOutput.messageType(Level.TRACE)).isEqualTo(MessageType.Log);
+  private LanguageClientLogOutput underTest;
+  private LanguageClient languageClient = mock(LanguageClient.class);
+
+  @BeforeEach
+  public void prepare() {
+    underTest = new LanguageClientLogOutput(languageClient, Clock.fixed(Instant.ofEpochMilli(12345678), ZoneOffset.UTC));
   }
+
+  @Test
+  public void no_debug_logs() {
+    underTest.log("error", Level.ERROR);
+    underTest.log("warn", Level.WARN);
+    underTest.log("info", Level.INFO);
+    underTest.log("debug", Level.DEBUG);
+    underTest.log("trace", Level.TRACE);
+
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Error - 03:25:45.678] error"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Warn  - 03:25:45.678] warn"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Info  - 03:25:45.678] info"));
+    verifyNoMoreInteractions(languageClient);
+  }
+
+  @Test
+  public void enable_debug_logs() {
+    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, false, true));
+
+    underTest.log("error", Level.ERROR);
+    underTest.log("warn", Level.WARN);
+    underTest.log("info", Level.INFO);
+    underTest.log("debug", Level.DEBUG);
+    underTest.log("trace", Level.TRACE);
+
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Error - 03:25:45.678] error"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Warn  - 03:25:45.678] warn"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Info  - 03:25:45.678] info"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Debug - 03:25:45.678] debug"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Trace - 03:25:45.678] trace"));
+    verifyNoMoreInteractions(languageClient);
+  }
+
+  @Test
+  public void no_analyzer_logs_by_default() {
+    underTest.setAnalysis(true);
+    underTest.log("error", Level.ERROR);
+    underTest.log("warn", Level.WARN);
+    underTest.log("info", Level.INFO);
+    underTest.log("debug", Level.DEBUG);
+    underTest.log("trace", Level.TRACE);
+
+    verifyZeroInteractions(languageClient);
+  }
+
+  @Test
+  public void enable_analyzer_logs() {
+    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, true, false));
+
+    underTest.setAnalysis(true);
+    underTest.log("error", Level.ERROR);
+    underTest.log("warn", Level.WARN);
+    underTest.log("info", Level.INFO);
+    underTest.log("debug", Level.DEBUG);
+    underTest.log("trace", Level.TRACE);
+
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Error - 03:25:45.678] error"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Warn  - 03:25:45.678] warn"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Info  - 03:25:45.678] info"));
+    verifyNoMoreInteractions(languageClient);
+  }
+
+  @Test
+  public void enable_analyzer_debug_logs() {
+    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, true, true));
+
+    underTest.setAnalysis(true);
+    underTest.log("error", Level.ERROR);
+    underTest.log("warn", Level.WARN);
+    underTest.log("info", Level.INFO);
+    underTest.log("debug", Level.DEBUG);
+    underTest.log("trace", Level.TRACE);
+
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Error - 03:25:45.678] error"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Warn  - 03:25:45.678] warn"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Info  - 03:25:45.678] info"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Debug - 03:25:45.678] debug"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Trace - 03:25:45.678] trace"));
+    verifyNoMoreInteractions(languageClient);
+  }
+
 }

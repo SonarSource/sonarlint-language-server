@@ -58,6 +58,9 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static final String RULES = "rules";
   private static final String TEST_FILE_PATTERN = "testFilePattern";
   private static final String ANALYZER_PROPERTIES = "analyzerProperties";
+  private static final String OUTPUT = "output";
+  private static final String SHOW_ANALYZER_LOGS = "showAnalyzerLogs";
+  private static final String SHOW_VERBOSE_LOGS = "showVerboseLogs";
 
   private static final Logger LOG = Loggers.get(SettingsManager.class);
 
@@ -116,6 +119,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private void requestSonarLintConfigurationAsync(@Nullable URI uri, Consumer<List<Object>> handler) {
     executor.execute(() -> {
+      LOG.debug("Fetching configuration for folder '{}'", uri);
       ConfigurationParams params = new ConfigurationParams();
       ConfigurationItem configurationItem = new ConfigurationItem();
       configurationItem.setSection(SONARLINT_CONFIGURATION_NAMESPACE);
@@ -170,7 +174,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     WorkspaceFolderSettings old = f.getRawSettings();
     if (!Objects.equals(old, newSettings)) {
       f.setSettings(newSettings);
-      LOG.debug("Workspace workspaceFolderPath '{}' configuration updated: {}", f, newSettings);
+      LOG.debug("Workspace folder '{}' configuration updated: {}", f, newSettings);
       folderListeners.forEach(l -> l.onChange(f, old, newSettings));
     }
   }
@@ -180,7 +184,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     Map<String, ServerConnectionSettings> serverConnections = parseServerConnections(params);
     Set<RuleKey> excludedRules = parseRuleKeysMatching(params, SettingsManager.hasLevelSetTo("off"));
     Set<RuleKey> includedRules = parseRuleKeysMatching(params, SettingsManager.hasLevelSetTo("on"));
-    return new WorkspaceSettings(disableTelemetry, serverConnections, excludedRules, includedRules);
+    Map<String, Object> consoleParams = ((Map<String, Object>) params.getOrDefault(OUTPUT, Collections.emptyMap()));
+    boolean showAnalyzerLogs = (Boolean) consoleParams.getOrDefault(SHOW_ANALYZER_LOGS, false);
+    boolean showVerboseLogs = (Boolean) consoleParams.getOrDefault(SHOW_VERBOSE_LOGS, false);
+    return new WorkspaceSettings(disableTelemetry, serverConnections, excludedRules, includedRules, showAnalyzerLogs, showVerboseLogs);
   }
 
   private static Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params) {

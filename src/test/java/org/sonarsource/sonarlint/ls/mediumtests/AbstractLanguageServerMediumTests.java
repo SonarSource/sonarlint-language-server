@@ -49,6 +49,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
+import org.assertj.core.api.iterable.ThrowingExtractor;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.Diagnostic;
@@ -62,7 +63,6 @@ import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializedParams;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
-import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
@@ -180,7 +180,7 @@ abstract class AbstractLanguageServerMediumTests {
       .didChangeWorkspaceFolders(
         new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), singletonList(new WorkspaceFolder(SOME_FOLDER_URI, "Added")))));
 
-    emulateConfigurationChangeOnClient(null, false);
+    emulateConfigurationChangeOnClient(null, false, false, false);
 
     // Wait for logs to stop being produced
     await().during(1, SECONDS).atMost(5, SECONDS).until(() -> {
@@ -202,15 +202,12 @@ abstract class AbstractLanguageServerMediumTests {
     }
   }
 
-  protected static void assertLogContainsInOrder(MessageType type, String msg) {
-    assertLogMatchesInOrder(type, Pattern.quote(msg));
+  protected static void assertLogContains(String msg) {
+    assertLogContainsPattern("\\[.*\\] " + Pattern.quote(msg));
   }
 
-  protected static void assertLogMatchesInOrder(MessageType type, String msgPattern) {
-    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs).isNotEmpty());
-    MessageParams params = client.logs.remove();
-    assertThat(params.getMessage()).matches(msgPattern);
-    assertThat(params.getType()).isEqualTo(type);
+  protected static void assertLogContainsPattern(String msgPattern) {
+    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs).anyMatch(p -> p.getMessage().matches(msgPattern)));
   }
 
   protected String getUri(String filename) throws IOException {
@@ -265,10 +262,9 @@ abstract class AbstractLanguageServerMediumTests {
     public void logMessage(MessageParams message) {
       // SSLRSQBR-72 This log is produced by analyzers ProgressReport, and keeps coming long after the analysis has completed. Just ignore
       // it
-      if (!message.getMessage().equals("1/1 source files have been analyzed")) {
+      if (!message.getMessage().contains("1/1 source files have been analyzed")) {
         logs.add(message);
       }
-      System.out.println(message.getMessage());
     }
 
     @Override
@@ -292,9 +288,14 @@ abstract class AbstractLanguageServerMediumTests {
   }
 
   protected void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, String... ruleConfigs) {
-    client.globalSettings = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, ruleConfigs);
+    emulateConfigurationChangeOnClient(testFilePattern, disableTelemetry, null, null, ruleConfigs);
+  }
+
+  protected void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
+    @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
+    client.globalSettings = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs);
     client.settingsLatch = new CountDownLatch(1);
-    lsProxy.getWorkspaceService().didChangeConfiguration(changedConfiguration(testFilePattern, disableTelemetry, ruleConfigs));
+    lsProxy.getWorkspaceService().didChangeConfiguration(changedConfiguration(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs));
     try {
       client.settingsLatch.await(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
@@ -302,18 +303,30 @@ abstract class AbstractLanguageServerMediumTests {
     }
   }
 
-  private DidChangeConfigurationParams changedConfiguration(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, String... ruleConfigs) {
-    Map<String, Object> values = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, ruleConfigs);
+  private DidChangeConfigurationParams changedConfiguration(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
+    @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
+    Map<String, Object> values = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs);
     return new DidChangeConfigurationParams(ImmutableMap.of("sonarlint", values));
   }
 
-  protected Map<String, Object> buildSonarLintSettingsSection(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, String... ruleConfigs) {
+  protected Map<String, Object> buildSonarLintSettingsSection(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
+    @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
     Map<String, Object> values = new HashMap<>();
     if (testFilePattern != null) {
       values.put("testFilePattern", testFilePattern);
     }
     if (disableTelemetry != null) {
       values.put("disableTelemetry", disableTelemetry);
+    }
+    if (showAnalyzerLogs != null || showVerboseLogs != null) {
+      Map<String, Object> output = new HashMap<>();
+      if (showAnalyzerLogs != null) {
+        output.put("showAnalyzerLogs", showAnalyzerLogs);
+      }
+      if (showVerboseLogs != null) {
+        output.put("showVerboseLogs", showVerboseLogs);
+      }
+      values.put("output", output);
     }
     if (ruleConfigs.length > 0) {
       values.put("rules", buildRulesMap(ruleConfigs));
@@ -367,4 +380,7 @@ abstract class AbstractLanguageServerMediumTests {
     }
   }
 
+  protected ThrowingExtractor<? super MessageParams, String, RuntimeException> withoutTimestamp() {
+    return p -> p.getMessage().replaceAll("\\[(\\w*)\\s*-(.*)\\]", "[$1]");
+  }
 }

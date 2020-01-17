@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionContext;
 import org.eclipse.lsp4j.CodeActionParams;
@@ -42,7 +43,7 @@ import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.ExecuteCommandParams;
-import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
@@ -59,8 +60,10 @@ import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.ls.RuleDescription;
 
 import static java.util.Collections.singletonList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.fail;
 
 class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
@@ -98,9 +101,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     String jsSource = "function foo()\n {\n  alert('toto');\n  var plouf = 0;\n}";
 
     // Default configuration should result in 2 issues: S1442 and UnusedVariable
-    emulateConfigurationChangeOnClient("**/*Test.js", null);
+    emulateConfigurationChangeOnClient("**/*Test.js", null, false, true);
 
-    assertLogContainsInOrder(MessageType.Log,
+    assertLogContains(
       "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=**/*Test.js,serverId=<null>,projectKey=<null>]");
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", jsSource);
@@ -119,8 +122,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "javascript:UnusedVariable", "off",
       "javascript:S1105", "on");
 
-    assertLogContainsInOrder(MessageType.Log,
-      "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[javascript:UnusedVariable],includedRules=[javascript:S1105]]");
+    assertLogContains(
+      "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[javascript:UnusedVariable],includedRules=[javascript:S1105],showAnalyzerLogs=false,showVerboseLogs=false]");
 
     client.diagnosticsLatch.await(1, TimeUnit.MINUTES);
 
@@ -204,8 +207,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   public void noIssueOnTestJSFiles() throws Exception {
-    emulateConfigurationChangeOnClient("{**/*Test*}", null);
-    assertLogContainsInOrder(MessageType.Log,
+    // Enable debug logs for assertions
+    emulateConfigurationChangeOnClient("{**/*Test*}", null, null, true);
+    assertLogContains(
       "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*Test*},serverId=<null>,projectKey=<null>]");
 
     String jsContent = "function foo() {\n  alert('toto');\n}";
@@ -215,8 +219,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(diagnostics).isEmpty();
     client.clear();
 
-    emulateConfigurationChangeOnClient("{**/*MyTest*}", null);
-    assertLogContainsInOrder(MessageType.Log,
+    // Enable debug logs for assertions
+    emulateConfigurationChangeOnClient("{**/*MyTest*}", null, null, true);
+    assertLogContains(
       "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*MyTest*},serverId=<null>,projectKey=<null>]");
 
     diagnostics = didChangeAndWaitForDiagnostics(fooTestUri, jsContent);
@@ -303,19 +308,19 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   public void optOutTelemetry() throws Exception {
-    emulateConfigurationChangeOnClient(null, true);
+    // Ensure telemetry is disabled and enable verbose logs
+    emulateConfigurationChangeOnClient(null, true, false, true);
 
-    assertLogContainsInOrder(MessageType.Log,
-      "Global settings updated: WorkspaceSettings[disableTelemetry=true,servers={},excludedRules=[],includedRules=[]]");
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
-    // assertLogContainsInOrder(MessageType.Log, "Telemetry disabled");
+    // assertLogContainsInOrder( "Telemetry disabled");
 
-    emulateConfigurationChangeOnClient(null, false);
+    // Enable telemetry
+    emulateConfigurationChangeOnClient(null, false, false, true);
 
-    assertLogContainsInOrder(MessageType.Log,
-      "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[],includedRules=[]]");
+    assertLogContains(
+      "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[],includedRules=[],showAnalyzerLogs=false,showVerboseLogs=true]");
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
-    // assertLogContainsInOrder(MessageType.Log, "Telemetry enabled");
+    // assertLogContainsInOrder( "Telemetry enabled");
   }
 
   @Test
@@ -412,13 +417,16 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   public void fetchWorkspaceFolderConfigurationWhenAdded() {
-    client.folderSettings.put(SOME_FOLDER_URI, buildSonarLintSettingsSection("some pattern", null));
+    // Enable debug logs for assertions
+    emulateConfigurationChangeOnClient(null, null, null, true);
+
+    client.folderSettings.put(SOME_FOLDER_URI, buildSonarLintSettingsSection("some pattern", null, null, true));
     lsProxy.getWorkspaceService()
       .didChangeWorkspaceFolders(
         new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.singletonList(new WorkspaceFolder(SOME_FOLDER_URI, "Added")), Collections.emptyList())));
 
-    assertLogContainsInOrder(MessageType.Log,
-      "Workspace workspaceFolderPath 'WorkspaceFolder[uri=some://uri,name=Added]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=some pattern,serverId=<null>,projectKey=<null>]");
+    assertLogContains(
+      "Workspace folder 'WorkspaceFolder[uri=some://uri,name=Added]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=some pattern,serverId=<null>,projectKey=<null>]");
   }
 
   @Test
@@ -429,8 +437,91 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .didChangeWorkspaceFolders(
         new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.singletonList(new WorkspaceFolder(SOME_FOLDER_URI, "Added")), Collections.emptyList())));
 
-    assertLogContainsInOrder(MessageType.Error, "Unable to fetch configuration");
-    assertLogMatchesInOrder(MessageType.Error, "(?s).*Internal error.*");
+    assertLogContainsPattern("\\[Error.*\\] Unable to fetch configuration");
+    assertLogContainsPattern("(?s).*Internal error.*");
+  }
+
+  @Test
+  public void test_analysis_logs_disabled() throws Exception {
+    emulateConfigurationChangeOnClient("**/*Test.js", true, false, false);
+    Thread.sleep(1000);
+    client.logs.clear();
+
+    String uri = getUri("testAnalysisLogsDisabled.js");
+    didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
+
+    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+      .filteredOn(notFromContextualTSserver())
+      .extracting(withoutTimestamp())
+      .containsExactly(
+        "[Info] Analyzing file '" + uri + "'...",
+        "[Info] Found 2 issue(s)"));
+  }
+
+  @Test
+  public void test_debug_logs_enabled() throws Exception {
+    emulateConfigurationChangeOnClient("**/*Test.js", true, false, true);
+    Thread.sleep(1000);
+    client.logs.clear();
+
+    String uri = getUri("testAnalysisLogsDebugEnabled.js");
+    didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
+
+    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+      .filteredOn(notFromContextualTSserver())
+      .extracting(withoutTimestamp())
+      .containsSubsequence(
+        "[Debug] Queuing analysis of file '" + uri + "'",
+        "[Info] Analyzing file '" + uri + "'...",
+        "[Info] Found 2 issue(s)"));
+  }
+
+  @Test
+  public void test_analysis_logs_enabled() throws Exception {
+    emulateConfigurationChangeOnClient("**/*Test.js", true, true, false);
+    Thread.sleep(1000);
+    client.logs.clear();
+
+    String uri = getUri("testAnalysisLogsEnabled.js");
+    didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
+
+    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+      .filteredOn(notFromContextualTSserver())
+      .extracting(withoutTimestamp())
+      .containsExactly(
+        "[Info] Analyzing file '" + uri + "'...",
+        "[Info] Index files",
+        "[Info] 1 file indexed",
+        // SonarJS
+        "[Info] 1 source files to be analyzed",
+        // ESLint-based SonarJS
+        "[Info] 1 source files to be analyzed",
+        "[Info] Found 2 issue(s)"));
+  }
+
+  @Test
+  public void test_analysis_with_debug_logs_enabled() throws Exception {
+    emulateConfigurationChangeOnClient("**/*Test.js", true, true, true);
+    Thread.sleep(1000);
+    client.logs.clear();
+
+    String uri = getUri("testAnalysisLogsWithDebugEnabled.js");
+    didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
+
+    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+      .filteredOn(notFromContextualTSserver())
+      .extracting(withoutTimestamp())
+      .containsSubsequence(
+        "[Info] Analyzing file '" + uri + "'...",
+        "[Info] Index files",
+        "[Debug] Language of file '" + uri + "' is set to 'js'",
+        "[Info] 1 file indexed",
+        "[Debug] Execute Sensor: ESLint-based SonarJS",
+        "[Info] Found 2 issue(s)"));
+  }
+
+  private Predicate<? super MessageParams> notFromContextualTSserver() {
+    return m -> !m.getMessage().contains("SonarTS") && !m.getMessage().contains("Using typescript at");
   }
 
 }
