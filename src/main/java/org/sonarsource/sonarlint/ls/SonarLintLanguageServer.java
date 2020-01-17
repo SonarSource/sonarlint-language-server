@@ -19,7 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import com.google.gson.Gson;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -38,7 +37,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionParams;
@@ -69,7 +67,6 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
-import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
@@ -85,18 +82,14 @@ import static java.net.URI.create;
 
 public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer, WorkspaceService, TextDocumentService {
 
-  private static final Logger LOG = Loggers.get(SonarLintLanguageServer.class);
-
   private static final String TYPESCRIPT_LOCATION = "typeScriptLocation";
 
   private static final String SONARLINT_SOURCE = "sonarlint";
   private static final String SONARLINT_OPEN_RULE_DESCRIPTION_COMMAND = "SonarLint.OpenRuleDesc";
   private static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
   static final String SONARLINT_UPDATE_ALL_BINDINGS_COMMAND = "SonarLint.UpdateAllBindings";
-  static final String SONARLINT_REFRESH_DIAGNOSTICS_COMMAND = "SonarLint.RefreshDiagnostics";
   private static final List<String> SONARLINT_COMMANDS = Arrays.asList(
-    SONARLINT_UPDATE_ALL_BINDINGS_COMMAND,
-    SONARLINT_REFRESH_DIAGNOSTICS_COMMAND);
+    SONARLINT_UPDATE_ALL_BINDINGS_COMMAND);
 
   private final SonarLintExtendedLanguageClient client;
 
@@ -107,6 +100,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
   private final AnalysisManager analysisManager;
+  private final EnginesFactory enginesFactory;
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
@@ -131,12 +125,15 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     Loggers.setTarget(clientLogOutput);
     this.settingsManager = new SettingsManager(this.client);
     this.settingsManager.addListener(telemetry);
+    this.enginesFactory = new EnginesFactory(analyzers, clientLogOutput);
     this.workspaceFoldersManager = new WorkspaceFoldersManager(settingsManager);
-    this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager, clientLogOutput, client);
+    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);
-    this.analysisManager = new AnalysisManager(analyzers, clientLogOutput, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager);
+    this.analysisManager = new AnalysisManager(enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager);
+    bindingManager.setAnalysisManager(analysisManager);
+    this.settingsManager.addListener(analysisManager);
     launcher.startListening();
   }
 
@@ -165,8 +162,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
       Optional<String> typeScriptPath = Optional.ofNullable((String) options.get(TYPESCRIPT_LOCATION));
 
-      bindingManager.initialize(typeScriptPath.map(Paths::get).orElse(null));
-      analysisManager.initialize(typeScriptPath.map(Paths::get).orElse(null));
+      enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));
+      analysisManager.initialize();
 
       telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion, bindingManager::usesConnectedMode, bindingManager::usesSonarCloud);
 
@@ -325,16 +322,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<Object> executeCommand(ExecuteCommandParams params) {
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
-      List<Object> args = params.getArguments();
       switch (params.getCommand()) {
         case SONARLINT_UPDATE_ALL_BINDINGS_COMMAND:
           bindingManager.updateAllBindings();
-          break;
-        case SONARLINT_REFRESH_DIAGNOSTICS_COMMAND:
-          Gson gson = new Gson();
-          List<Document> docsToRefresh = args == null ? Collections.emptyList()
-            : args.stream().map(arg -> gson.fromJson(arg.toString(), Document.class)).collect(Collectors.toList());
-          docsToRefresh.forEach(doc -> analysisManager.analyzeAsync(create(doc.uri), false));
           break;
         default:
           throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported command: " + params.getCommand(), null));
@@ -381,11 +371,4 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .orElse(TraceValues.OFF);
   }
 
-  public static class Document {
-    final String uri;
-
-    public Document(String uri) {
-      this.uri = uri;
-    }
-  }
 }

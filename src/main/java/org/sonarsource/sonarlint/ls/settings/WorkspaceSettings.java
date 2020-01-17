@@ -56,11 +56,11 @@ public class WorkspaceSettings {
   }
 
   public Collection<RuleKey> getExcludedRules() {
-    return Collections.unmodifiableCollection(excludedRules);
+    return excludedRules;
   }
 
   public Collection<RuleKey> getIncludedRules() {
-    return Collections.unmodifiableCollection(includedRules);
+    return includedRules;
   }
 
   public boolean hasLocalRuleConfiguration() {

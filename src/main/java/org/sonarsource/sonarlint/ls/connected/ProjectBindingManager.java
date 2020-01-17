@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -40,21 +39,18 @@ import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
-import org.sonarsource.sonarlint.core.ConnectedSonarLintEngineImpl;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine.State;
 import org.sonarsource.sonarlint.core.client.api.connected.GlobalStorageStatus;
-import org.sonarsource.sonarlint.core.client.api.connected.Language;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.UpdateResult;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
 import org.sonarsource.sonarlint.ls.AnalysisManager;
+import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
@@ -78,24 +74,20 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final Map<URI, ProjectBindingWrapper> folderBindingCache = new HashMap<>();
   private final Map<URI, ProjectBindingWrapper> fileBindingCache = new HashMap<>();
   private final Map<String, ConnectedSonarLintEngine> connectedEngineCacheByServerId = new HashMap<>();
-  private final LanguageClientLogOutput clientLogOutput;
-  private final Function<ConnectedGlobalConfiguration, ConnectedSonarLintEngine> engineFactory;
   private final LanguageClient client;
-  @CheckForNull
-  private Path typeScriptPath;
+  private final EnginesFactory enginesFactory;
+  private AnalysisManager analysisManager;
 
-  public ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClientLogOutput clientLogOutput, LanguageClient client) {
-    this(foldersManager, settingsManager, clientLogOutput, ConnectedSonarLintEngineImpl::new, client);
-  }
-
-  // For testing
-  ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClientLogOutput clientLogOutput,
-    Function<ConnectedGlobalConfiguration, ConnectedSonarLintEngine> engineFactory, LanguageClient client) {
+  public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClient client) {
+    this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
-    this.clientLogOutput = clientLogOutput;
-    this.engineFactory = engineFactory;
     this.client = client;
+  }
+
+  // Can't use constructor injection because of cyclic dependency
+  public void setAnalysisManager(AnalysisManager analysisManager) {
+    this.analysisManager = analysisManager;
   }
 
   /**
@@ -169,7 +161,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
     ConnectedSonarLintEngine engine;
     try {
-      engine = createConnectedEngine(serverId);
+      engine = enginesFactory.createConnectedEngine(serverId);
       if (engine.getState() == State.UPDATING) {
         return engine;
       }
@@ -187,24 +179,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       LOG.error("Error updating storage of the connected SonarLint engine '" + serverId + "'", e);
       return null;
     }
-    return engine;
-  }
-
-  private ConnectedSonarLintEngine createConnectedEngine(String serverId) {
-    Map<String, String> extraProperties = new HashMap<>();
-    if (typeScriptPath != null) {
-      extraProperties.put(AnalysisManager.TYPESCRIPT_PATH_PROP, typeScriptPath.toString());
-    }
-    ConnectedGlobalConfiguration configuration = ConnectedGlobalConfiguration.builder()
-      .setServerId(serverId)
-      .setExtraProperties(extraProperties)
-      .addEnabledLanguages(Language.APEX, Language.HTML, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON, Language.TS)
-      .setLogOutput(clientLogOutput)
-      .build();
-
-    ConnectedSonarLintEngine engine = engineFactory.apply(configuration);
-
-    LOG.debug("Connected SonarLint engine started for '{}'", serverId);
     return engine;
   }
 
@@ -261,13 +235,13 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private void clearFilesBindingCache() {
     fileBindingCache.clear();
     stopUnusedEngines();
-    // TODO trigger analysis of all open files not part of any workspace folder
+    analysisManager.analyzeAllOpenFilesInFolder(null);
   }
 
   private void clearFolderBindingCache(WorkspaceFolderWrapper folder) {
     folderBindingCache.remove(folder.getUri());
     stopUnusedEngines();
-    // TODO trigger analysis of all open files in the workspace folder
+    analysisManager.analyzeAllOpenFilesInFolder(folder);
   }
 
   private void unbindFiles() {
@@ -277,14 +251,14 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
     LOG.debug("All files outside workspace are now unbound");
     stopUnusedEngines();
-    // TODO trigger analysis of all open files not part of any workspace folder
+    analysisManager.analyzeAllOpenFilesInFolder(null);
   }
 
   private void unbindFolder(WorkspaceFolderWrapper folder) {
     folderBindingCache.put(folder.getUri(), null);
     LOG.debug("Workspace '{}' unbound", folder);
     stopUnusedEngines();
-    // TODO trigger analysis of all open files in the workspace folder
+    analysisManager.analyzeAllOpenFilesInFolder(folder);
   }
 
   private synchronized void stopUnusedEngines() {
@@ -331,10 +305,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     }
   }
 
-  public void initialize(@Nullable Path typeScriptPath) {
-    this.typeScriptPath = typeScriptPath;
-  }
-
   public synchronized void updateAllBindings() {
     // Clear cached bindings to force rebind during next analysis
     folderBindingCache.clear();
@@ -348,29 +318,30 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         e.getValue().update(serverConfiguration, null);
       }
     });
-    WorkspaceFolderSettings defaultFolderSettings = settingsManager.getCurrentDefaultFolderSettings();
-    updateBindingIfNecessary(defaultFolderSettings);
+    updateBindingIfNecessary(null);
 
-    foldersManager.getAll().forEach(w -> updateBindingIfNecessary(w.getSettings()));
+    foldersManager.getAll().forEach(this::updateBindingIfNecessary);
 
     client.showMessage(new MessageParams(MessageType.Info, "All SonarLint bindings succesfully updated"));
   }
 
-  private void updateBindingIfNecessary(WorkspaceFolderSettings defaultFolderSettings) {
-    if (defaultFolderSettings.hasBinding()) {
-      String serverId = requireNonNull(defaultFolderSettings.getServerId());
+  private void updateBindingIfNecessary(@Nullable WorkspaceFolderWrapper folder) {
+    WorkspaceFolderSettings folderSettings = folder != null ? folder.getSettings() : settingsManager.getCurrentDefaultFolderSettings();
+    if (folderSettings.hasBinding()) {
+      String serverId = requireNonNull(folderSettings.getServerId());
       ServerConfiguration serverConfiguration = createServerConfiguration(serverId);
       if (!connectedEngineCacheByServerId.containsKey(serverId)) {
         startAndUpdateEngine(serverId, serverConfiguration);
       }
       if (serverConfiguration != null && connectedEngineCacheByServerId.containsKey(serverId)) {
-        connectedEngineCacheByServerId.get(serverId).updateProject(serverConfiguration, requireNonNull(defaultFolderSettings.getProjectKey()), null);
+        connectedEngineCacheByServerId.get(serverId).updateProject(serverConfiguration, requireNonNull(folderSettings.getProjectKey()), null);
       }
+      analysisManager.analyzeAllOpenFilesInFolder(folder);
     }
   }
 
   private void startAndUpdateEngine(String serverId, @Nullable ServerConfiguration serverConfiguration) {
-    ConnectedSonarLintEngine engine = createConnectedEngine(serverId);
+    ConnectedSonarLintEngine engine = enginesFactory.createConnectedEngine(serverId);
     if (serverConfiguration != null) {
       try {
         updateGlobalStorageAndLogResults(serverConfiguration, engine);

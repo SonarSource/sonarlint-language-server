@@ -22,31 +22,28 @@ package org.sonarsource.sonarlint.ls.connected;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
-import org.mockito.ArgumentCaptor;
 import org.sonar.api.utils.log.LogTesterJUnit5;
 import org.sonar.api.utils.log.LoggerLevel;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine.State;
 import org.sonarsource.sonarlint.core.client.api.connected.GlobalStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.UpdateResult;
+import org.sonarsource.sonarlint.ls.AnalysisManager;
+import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
@@ -56,6 +53,7 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -64,6 +62,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
@@ -99,7 +98,7 @@ class ProjectBindingManagerTests {
   private SettingsManager settingsManager = mock(SettingsManager.class);
   private WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
   private Map<String, ServerConnectionSettings> servers = new HashMap<String, ServerConnectionSettings>();
-  private Function<ConnectedGlobalConfiguration, ConnectedSonarLintEngine> engineFactory = mock(Function.class);
+  private EnginesFactory enginesFactory = mock(EnginesFactory.class);
   private ConnectedSonarLintEngine fakeEngine = mock(ConnectedSonarLintEngine.class);
   private GlobalStorageStatus globalStorageStatus = mock(GlobalStorageStatus.class);
   private ProjectStorageStatus projectStorageStatus = mock(ProjectStorageStatus.class);
@@ -107,6 +106,7 @@ class ProjectBindingManagerTests {
   private GlobalStorageStatus globalStorageStatus2 = mock(GlobalStorageStatus.class);
   private ProjectStorageStatus projectStorageStatus2 = mock(ProjectStorageStatus.class);
   private UpdateResult updateResult = mock(UpdateResult.class);
+  private AnalysisManager analysisManager = mock(AnalysisManager.class);
 
   @BeforeEach
   public void prepare() throws IOException {
@@ -127,7 +127,7 @@ class ProjectBindingManagerTests {
       .thenReturn(new WorkspaceSettings(false, servers, Collections.emptyList(), Collections.emptyList()));
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(UNBOUND_SETTINGS);
 
-    when(engineFactory.apply(any(ConnectedGlobalConfiguration.class))).thenReturn(fakeEngine);
+    when(enginesFactory.createConnectedEngine(anyString())).thenReturn(fakeEngine);
     when(globalStorageStatus.isStale()).thenReturn(false);
     when(fakeEngine.getState()).thenReturn(State.UPDATED);
     when(fakeEngine.getGlobalStorageStatus()).thenReturn(globalStorageStatus);
@@ -142,7 +142,8 @@ class ProjectBindingManagerTests {
     when(projectStorageStatus2.isStale()).thenReturn(false);
     when(fakeEngine2.getProjectStorageStatus(PROJECT_KEY)).thenReturn(projectStorageStatus2);
 
-    underTest = new ProjectBindingManager(foldersManager, settingsManager, mock(LanguageClientLogOutput.class), engineFactory, mock(LanguageClient.class));
+    underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, mock(LanguageClient.class));
+    underTest.setAnalysisManager(analysisManager);
   }
 
   @Test
@@ -187,7 +188,7 @@ class ProjectBindingManagerTests {
   public void get_binding_default_to_standalone_if_server_fail_to_start() {
     mockFileInABoundWorkspaceFolder();
 
-    when(engineFactory.apply(any(ConnectedGlobalConfiguration.class))).thenThrow(new IllegalStateException("Unable to start"));
+    when(enginesFactory.createConnectedEngine(anyString())).thenThrow(new IllegalStateException("Unable to start"));
 
     assertThat(underTest.getBinding(fileInAWorkspaceFolderPath.toUri())).isEmpty();
 
@@ -384,6 +385,8 @@ class ProjectBindingManagerTests {
     when(folder.getSettings()).thenReturn(UNBOUND_SETTINGS);
     underTest.onChange(folder, BOUND_SETTINGS, UNBOUND_SETTINGS);
 
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder);
+
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
     assertThat(binding).isEmpty();
@@ -404,6 +407,8 @@ class ProjectBindingManagerTests {
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(UNBOUND_SETTINGS);
     underTest.onChange(null, BOUND_SETTINGS, UNBOUND_SETTINGS);
 
+    verify(analysisManager).analyzeAllOpenFilesInFolder(null);
+
     binding = underTest.getBinding(fileNotInAWorkspaceFolderPath.toUri());
 
     assertThat(binding).isEmpty();
@@ -423,6 +428,8 @@ class ProjectBindingManagerTests {
     when(fakeEngine.calculatePathPrefixes(eq(PROJECT_KEY2), any())).thenReturn(FAKE_BINDING2);
 
     underTest.onChange(folder, BOUND_SETTINGS, BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
+
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder);
 
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
@@ -478,6 +485,8 @@ class ProjectBindingManagerTests {
 
     underTest.onChange(null, BOUND_SETTINGS, BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
 
+    verify(analysisManager).analyzeAllOpenFilesInFolder(null);
+
     binding = underTest.getBinding(fileNotInAWorkspaceFolderPath.toUri());
 
     assertThat(binding).isNotEmpty();
@@ -492,7 +501,7 @@ class ProjectBindingManagerTests {
     servers.put(SERVER_ID2, GLOBAL_SETTINGS_DIFFERENT_SERVER_ID);
     WorkspaceFolderWrapper folder = mockFileInABoundWorkspaceFolder();
 
-    when(engineFactory.apply(any(ConnectedGlobalConfiguration.class)))
+    when(enginesFactory.createConnectedEngine(anyString()))
       .thenReturn(fakeEngine)
       .thenReturn(fakeEngine2);
 
@@ -519,21 +528,25 @@ class ProjectBindingManagerTests {
     mockFileInABoundWorkspaceFolder();
     mockFileInABoundWorkspaceFolder2();
 
-    when(engineFactory.apply(any(ConnectedGlobalConfiguration.class)))
-      .thenReturn(fakeEngine)
+    when(enginesFactory.createConnectedEngine("myServer"))
+      .thenReturn(fakeEngine);
+    when(enginesFactory.createConnectedEngine("myServer2"))
       .thenReturn(fakeEngine2);
 
     Optional<ProjectBindingWrapper> binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     assertThat(binding).isNotEmpty();
 
     assertThat(logTester.logs())
-      .contains("Starting connected SonarLint engine for 'myServer'...", "Connected SonarLint engine started for 'myServer'");
+      .contains("Starting connected SonarLint engine for 'myServer'...");
 
     Optional<ProjectBindingWrapper> binding2 = underTest.getBinding(fileInAWorkspaceFolderPath2.toUri());
     assertThat(binding2).isNotEmpty();
 
     assertThat(logTester.logs())
-      .contains("Starting connected SonarLint engine for 'myServer2'...", "Connected SonarLint engine started for 'myServer2'");
+      .contains("Starting connected SonarLint engine for 'myServer2'...");
+
+    verify(enginesFactory).createConnectedEngine("myServer");
+    verify(enginesFactory).createConnectedEngine("myServer2");
 
     underTest.shutdown();
 
@@ -546,7 +559,7 @@ class ProjectBindingManagerTests {
     mockFileInABoundWorkspaceFolder();
     mockFileInABoundWorkspaceFolder2();
 
-    when(engineFactory.apply(any(ConnectedGlobalConfiguration.class)))
+    when(enginesFactory.createConnectedEngine(anyString()))
       .thenReturn(fakeEngine)
       .thenReturn(fakeEngine2);
 
@@ -577,7 +590,7 @@ class ProjectBindingManagerTests {
 
     when(fakeEngine2.getProjectStorageStatus(PROJECT_KEY2)).thenReturn(projectStorageStatus2);
 
-    when(engineFactory.apply(any(ConnectedGlobalConfiguration.class)))
+    when(enginesFactory.createConnectedEngine(anyString()))
       .thenReturn(fakeEngine)
       .thenReturn(fakeEngine2);
 
@@ -593,6 +606,10 @@ class ProjectBindingManagerTests {
     verify(fakeEngine).updateProject(any(), eq(PROJECT_KEY), any());
     verify(fakeEngine2).update(any(), any());
     verify(fakeEngine2).updateProject(any(), eq(PROJECT_KEY2), any());
+
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
+    verifyNoMoreInteractions(analysisManager);
   }
 
   @Test
@@ -604,7 +621,7 @@ class ProjectBindingManagerTests {
 
     when(fakeEngine2.getProjectStorageStatus(PROJECT_KEY2)).thenReturn(projectStorageStatus2);
 
-    when(engineFactory.apply(any(ConnectedGlobalConfiguration.class)))
+    when(enginesFactory.createConnectedEngine(anyString()))
       .thenReturn(fakeEngine)
       .thenReturn(fakeEngine2);
 
@@ -614,28 +631,10 @@ class ProjectBindingManagerTests {
     verify(fakeEngine).updateProject(any(), eq(PROJECT_KEY), any());
     verify(fakeEngine2).update(any(), any());
     verify(fakeEngine2).updateProject(any(), eq(PROJECT_KEY2), any());
-  }
 
-  @Test
-  public void configure_typescript_path_property() {
-    mockFileOutsideFolder();
-    when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(BOUND_SETTINGS);
-    servers.put(SERVER_ID, GLOBAL_SETTINGS);
-
-    when(fakeEngine.calculatePathPrefixes(eq(PROJECT_KEY), any())).thenReturn(FAKE_BINDING);
-
-    Path typeScriptPath = Paths.get("some/random/path");
-    underTest.initialize(typeScriptPath);
-
-    ArgumentCaptor<ConnectedGlobalConfiguration> confCaptor = ArgumentCaptor.forClass(ConnectedGlobalConfiguration.class);
-
-    when(engineFactory.apply(confCaptor.capture())).thenReturn(fakeEngine);
-
-    Optional<ProjectBindingWrapper> binding = underTest.getBinding(fileNotInAWorkspaceFolderPath.toUri());
-    assertThat(binding).isNotEmpty();
-
-    ConnectedGlobalConfiguration providedConf = confCaptor.getValue();
-    assertThat(providedConf.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", typeScriptPath.toString());
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
+    verifyNoMoreInteractions(analysisManager);
   }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {
