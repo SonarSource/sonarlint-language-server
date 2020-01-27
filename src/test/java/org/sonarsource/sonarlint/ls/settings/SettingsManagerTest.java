@@ -38,7 +38,11 @@ class SettingsManagerTest {
     "  \"analyzerProperties\": {\n" +
     "    \"sonar.polop\": \"palap\"\n" +
     "  },\n" +
-    "  \"disableTelemetry\": true,\n" +
+    "  \"disableTelemetry\": true,\n"
+    + "\"output\": {\n" +
+    "  \"showAnalyzerLogs\": true,\n" +
+    "  \"showVerboseLogs\": true\n"
+    + "},\n" +
     "  \"rules\": {\n" +
     "    \"xoo:rule1\": {\n" +
     "      \"level\": \"off\"\n" +
@@ -76,6 +80,8 @@ class SettingsManagerTest {
     WorkspaceSettings settings = SettingsManager.parseSettings(fromJsonString(FULL_SAMPLE_CONFIG));
 
     assertThat(settings.isDisableTelemetry()).isTrue();
+    assertThat(settings.showAnalyzerLogs()).isTrue();
+    assertThat(settings.showVerboseLogs()).isTrue();
     assertThat(settings.getExcludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsExactly(tuple("xoo", "rule1"));
     assertThat(settings.getExcludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsExactly(tuple("xoo", "rule1"));
     assertThat(settings.getIncludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsExactly(tuple("xoo", "rule3"));

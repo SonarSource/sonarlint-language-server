@@ -35,6 +35,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -64,6 +65,7 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.ServerIssueTrackerWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -95,12 +97,14 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
   private final EventWatcher watcher;
+  private final LanguageClientLogOutput lsLogOutput;
   private StandaloneSonarLintEngine standaloneEngine;
 
   private ExecutorService analysisExecutor;
 
-  public AnalysisManager(EnginesFactory enginesFactory, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
+  public AnalysisManager(LanguageClientLogOutput lsLogOutput, EnginesFactory enginesFactory, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
     WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, ProjectBindingManager bindingManager) {
+    this.lsLogOutput = lsLogOutput;
     this.enginesFactory = enginesFactory;
     this.client = client;
     this.telemetry = telemetry;
@@ -219,8 +223,10 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
           LOG.debug("Skip analysis of excluded file: {}", fileUri);
           return;
         }
+        LOG.info("Analyzing file '{}'...", fileUri);
         analysisResults = analyzeConnected(binding.get(), settings, baseDir, fileUri, content, issueListener, shouldFetchServerIssues);
       } else {
+        LOG.info("Analyzing file '{}'...", fileUri);
         analysisResults = analyzeStandalone(settings, baseDir, fileUri, content, issueListener);
       }
 
@@ -236,6 +242,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
     // Check if file has not being closed during the analysis
     if (fileContentPerFileURI.containsKey(fileUri)) {
+      LOG.info("Found {} issue(s)", files.values().stream().mapToInt(p -> p.getDiagnostics().size()).sum());
       files.values().forEach(client::publishDiagnostics);
     }
   }
@@ -271,12 +278,9 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       .build();
     LOG.debug("Analysis triggered on '{}' with configuration: \n{}", uri, configuration.toString());
 
-    long start = System.currentTimeMillis();
     StandaloneSonarLintEngine engine = getOrCreateStandaloneEngine();
-    AnalysisResults analysisResults = engine.analyze(configuration, issueListener, null, null);
-    int analysisTime = (int) (System.currentTimeMillis() - start);
-
-    return new AnalysisResultsWrapper(analysisResults, analysisTime);
+    return analyzeWithTiming(() -> engine.analyze(configuration, issueListener, null, null), () -> {
+    });
   }
 
   public AnalysisResultsWrapper analyzeConnected(ProjectBindingWrapper binding, WorkspaceFolderSettings settings, Path baseDir, URI uri, String content,
@@ -295,16 +299,31 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     List<Issue> issues = new LinkedList<>();
     IssueListener collector = issues::add;
 
+    ConnectedSonarLintEngine engine = binding.getEngine();
+    return analyzeWithTiming(() -> engine.analyze(configuration, collector, null, null), () -> {
+      String filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, uri));
+      ServerIssueTrackerWrapper serverIssueTracker = binding.getServerIssueTracker();
+      serverIssueTracker.matchAndTrack(filePath, issues, issueListener, shouldFetchServerIssues);
+    });
+  }
+
+  /**
+   * @param analyze Analysis callback
+   * @param postAnalysisTask Code that will be logged outside the analysis flag, but still counted in the total analysis duration.
+   */
+  private AnalysisResultsWrapper analyzeWithTiming(Supplier<AnalysisResults> analyze, Runnable postAnalysisTask) {
     long start = System.currentTimeMillis();
     AnalysisResults analysisResults;
-    analysisResults = binding.getEngine().analyze(configuration, collector, null, null);
+    try {
+      lsLogOutput.setAnalysis(true);
+      analysisResults = analyze.get();
+    } finally {
+      lsLogOutput.setAnalysis(false);
+    }
 
-    String filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, uri));
-    ServerIssueTrackerWrapper serverIssueTracker = binding.getServerIssueTracker();
-    serverIssueTracker.matchAndTrack(filePath, issues, issueListener, shouldFetchServerIssues);
+    postAnalysisTask.run();
 
     int analysisTime = (int) (System.currentTimeMillis() - start);
-
     return new AnalysisResultsWrapper(analysisResults, analysisTime);
   }
 

@@ -31,14 +31,14 @@ class WorkspaceSettingsTests {
   private static final WorkspaceSettings SETTINGS = new WorkspaceSettings(false,
     ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
     asList(new RuleKey("repo1", "rule1")),
-    asList(new RuleKey("repo2", "rule2")));
+    asList(new RuleKey("repo2", "rule2")), false, false);
 
   @Test
   public void testHashCode() {
     assertThat(SETTINGS.hashCode()).isEqualTo(new WorkspaceSettings(false,
       ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
       asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule2"))).hashCode());
+      asList(new RuleKey("repo2", "rule2")), false, false).hashCode());
   }
 
   @Test
@@ -49,38 +49,46 @@ class WorkspaceSettingsTests {
     assertThat(SETTINGS).isEqualTo(new WorkspaceSettings(false,
       ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
       asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule2"))));
+      asList(new RuleKey("repo2", "rule2")), false, false));
 
     assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(true,
       ImmutableMap.of("serverId2", new ServerConnectionSettings("serverId2", "serverUrl", "token", "myOrg")),
       asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule2"))));
+      asList(new RuleKey("repo2", "rule2")), false, false));
     assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
       ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl2", "token", "myOrg")),
       asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule2"))));
+      asList(new RuleKey("repo2", "rule2")), false, false));
     assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
       ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token2", "myOrg")),
       asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule2"))));
+      asList(new RuleKey("repo2", "rule2")), false, false));
     assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
       ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2")),
       asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule2"))));
+      asList(new RuleKey("repo2", "rule2")), false, false));
     assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
       ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
       asList(new RuleKey("repo1", "rule12")),
-      asList(new RuleKey("repo2", "rule2"))));
+      asList(new RuleKey("repo2", "rule2")), false, false));
     assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
       ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
       asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule22"))));
+      asList(new RuleKey("repo2", "rule22")), false, false));
+    assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
+      ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
+      asList(new RuleKey("repo1", "rule1")),
+      asList(new RuleKey("repo2", "rule2")), true, false));
+    assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
+      ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
+      asList(new RuleKey("repo1", "rule1")),
+      asList(new RuleKey("repo2", "rule2")), false, true));
   }
 
   @Test
   public void testToString() {
     assertThat(SETTINGS.toString()).isEqualTo(
-      "WorkspaceSettings[disableTelemetry=false,servers={serverId=ServerConnectionSettings[serverId=serverId,serverUrl=serverUrl,token=token,organizationKey=myOrg]},excludedRules=[repo1:rule1],includedRules=[repo2:rule2]]");
+      "WorkspaceSettings[disableTelemetry=false,servers={serverId=ServerConnectionSettings[serverId=serverId,serverUrl=serverUrl,token=token,organizationKey=myOrg]},excludedRules=[repo1:rule1],includedRules=[repo2:rule2],showAnalyzerLogs=false,showVerboseLogs=false]");
   }
 
 }

@@ -43,14 +43,14 @@ public class EnginesFactory {
 
   public static final String TYPESCRIPT_PATH_PROP = "sonar.typescript.internal.typescriptLocation";
 
-  private final LanguageClientLogOutput clientLogOutput;
+  private final LanguageClientLogOutput lsLogOutput;
   private final Collection<URL> standaloneAnalyzers;
   @CheckForNull
   private Path typeScriptPath;
 
-  public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput clientLogOutput) {
+  public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput) {
     this.standaloneAnalyzers = standaloneAnalyzers;
-    this.clientLogOutput = clientLogOutput;
+    this.lsLogOutput = lsLogOutput;
   }
 
   public StandaloneSonarLintEngine createStandaloneEngine() {
@@ -61,7 +61,7 @@ public class EnginesFactory {
       StandaloneGlobalConfiguration configuration = StandaloneGlobalConfiguration.builder()
         .setExtraProperties(prepareExtraProps())
         .addPlugins(standaloneAnalyzers.toArray(new URL[0]))
-        .setLogOutput(clientLogOutput)
+        .setLogOutput(lsLogOutput)
         .build();
 
       StandaloneSonarLintEngine engine = newStandaloneEngine(configuration);
@@ -82,7 +82,7 @@ public class EnginesFactory {
       .setServerId(serverId)
       .setExtraProperties(prepareExtraProps())
       .addEnabledLanguages(Language.APEX, Language.HTML, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON, Language.TS)
-      .setLogOutput(clientLogOutput)
+      .setLogOutput(lsLogOutput)
       .build();
 
     ConnectedSonarLintEngine engine = newConnectedEngine(configuration);

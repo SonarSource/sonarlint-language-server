@@ -95,7 +95,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   private final SonarLintTelemetry telemetry = new SonarLintTelemetry();
 
-  private final LanguageClientLogOutput clientLogOutput;
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
@@ -121,17 +120,18 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
     this.client = launcher.getRemoteProxy();
 
-    clientLogOutput = new LanguageClientLogOutput(this.client);
-    Loggers.setTarget(clientLogOutput);
+    LanguageClientLogOutput lsLogOutput = new LanguageClientLogOutput(this.client);
+    Loggers.setTarget(lsLogOutput);
     this.settingsManager = new SettingsManager(this.client);
     this.settingsManager.addListener(telemetry);
-    this.enginesFactory = new EnginesFactory(analyzers, clientLogOutput);
+    this.settingsManager.addListener(lsLogOutput);
+    this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput);
     this.workspaceFoldersManager = new WorkspaceFoldersManager(settingsManager);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);
-    this.analysisManager = new AnalysisManager(enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager);
+    this.analysisManager = new AnalysisManager(lsLogOutput, enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager);
     bindingManager.setAnalysisManager(analysisManager);
     this.settingsManager.addListener(analysisManager);
     launcher.startListening();

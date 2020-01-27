@@ -19,40 +19,77 @@
  */
 package org.sonarsource.sonarlint.ls.log;
 
+import java.time.Clock;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.client.api.common.LogOutput;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 /**
- * Used by engines
+ * Used by the language server
  */
-public class LanguageClientLogOutput implements LogOutput {
+public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChangeListener {
 
   private final LanguageClient client;
+  private final Clock clock;
+  private boolean showAnalyzerLogs;
+  private boolean showVerboseLogs;
+  private final InheritableThreadLocal<Boolean> isAnalysis = new InheritableThreadLocal<Boolean>() {
+    @Override
+    protected Boolean initialValue() {
+      return false;
+    }
+  };
 
   public LanguageClientLogOutput(LanguageClient client) {
+    this(client, Clock.systemDefaultZone());
+  }
+
+  // Visible for testing
+  LanguageClientLogOutput(LanguageClient client, Clock clock) {
     this.client = client;
+    this.clock = clock;
   }
 
   @Override
   public void log(String formattedMessage, Level level) {
-    client.logMessage(new MessageParams(messageType(level), formattedMessage));
+    if ((!isAnalysis.get() || showAnalyzerLogs) && (showVerboseLogs || (level != Level.DEBUG && level != Level.TRACE))) {
+      client.logMessage(new MessageParams(MessageType.Log, addPrefixIfNeeded(level, formattedMessage)));
+    }
   }
 
-  static MessageType messageType(Level level) {
+  private String addPrefixIfNeeded(Level level, String formattedMessage) {
     switch (level) {
       case ERROR:
-        return MessageType.Error;
+        return prefix("Error", formattedMessage);
       case WARN:
-        return MessageType.Warning;
+        return prefix("Warn ", formattedMessage);
       case INFO:
-        return MessageType.Info;
+        return prefix("Info ", formattedMessage);
       case DEBUG:
+        return prefix("Debug", formattedMessage);
       case TRACE:
-        return MessageType.Log;
+        return prefix("Trace", formattedMessage);
     }
     throw new IllegalStateException("Unexpected level: " + level);
+  }
+
+  private String prefix(String prefix, String formattedMessage) {
+    return "[" + prefix + " - " + LocalTime.now(clock).format(DateTimeFormatter.ISO_LOCAL_TIME) + "] " + formattedMessage;
+  }
+
+  @Override
+  public void onChange(WorkspaceSettings oldValue, WorkspaceSettings newValue) {
+    this.showVerboseLogs = newValue.showVerboseLogs();
+    this.showAnalyzerLogs = newValue.showAnalyzerLogs();
+  }
+
+  public void setAnalysis(boolean isAnalysis) {
+    this.isAnalysis.set(isAnalysis);
   }
 
 }
