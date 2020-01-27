@@ -35,6 +35,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -277,18 +278,9 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       .build();
     LOG.debug("Analysis triggered on '{}' with configuration: \n{}", uri, configuration.toString());
 
-    long start = System.currentTimeMillis();
     StandaloneSonarLintEngine engine = getOrCreateStandaloneEngine();
-    AnalysisResults analysisResults;
-    try {
-      lsLogOutput.setAnalysis(true);
-      analysisResults = engine.analyze(configuration, issueListener, null, null);
-    } finally {
-      lsLogOutput.setAnalysis(false);
-    }
-    int analysisTime = (int) (System.currentTimeMillis() - start);
-
-    return new AnalysisResultsWrapper(analysisResults, analysisTime);
+    return analyzeWithTiming(() -> engine.analyze(configuration, issueListener, null, null), () -> {
+    });
   }
 
   public AnalysisResultsWrapper analyzeConnected(ProjectBindingWrapper binding, WorkspaceFolderSettings settings, Path baseDir, URI uri, String content,
@@ -307,21 +299,31 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     List<Issue> issues = new LinkedList<>();
     IssueListener collector = issues::add;
 
+    ConnectedSonarLintEngine engine = binding.getEngine();
+    return analyzeWithTiming(() -> engine.analyze(configuration, collector, null, null), () -> {
+      String filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, uri));
+      ServerIssueTrackerWrapper serverIssueTracker = binding.getServerIssueTracker();
+      serverIssueTracker.matchAndTrack(filePath, issues, issueListener, shouldFetchServerIssues);
+    });
+  }
+
+  /**
+   * @param analyze Analysis callback
+   * @param postAnalysisTask Code that will be logged outside the analysis flag, but still counted in the total analysis duration.
+   */
+  private AnalysisResultsWrapper analyzeWithTiming(Supplier<AnalysisResults> analyze, Runnable postAnalysisTask) {
     long start = System.currentTimeMillis();
     AnalysisResults analysisResults;
     try {
       lsLogOutput.setAnalysis(true);
-      analysisResults = binding.getEngine().analyze(configuration, collector, null, null);
+      analysisResults = analyze.get();
     } finally {
       lsLogOutput.setAnalysis(false);
     }
 
-    String filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, uri));
-    ServerIssueTrackerWrapper serverIssueTracker = binding.getServerIssueTracker();
-    serverIssueTracker.matchAndTrack(filePath, issues, issueListener, shouldFetchServerIssues);
+    postAnalysisTask.run();
 
     int analysisTime = (int) (System.currentTimeMillis() - start);
-
     return new AnalysisResultsWrapper(analysisResults, analysisTime);
   }
 
