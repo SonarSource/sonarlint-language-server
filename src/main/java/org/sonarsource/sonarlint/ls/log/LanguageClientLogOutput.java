@@ -38,7 +38,12 @@ public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChan
   private final Clock clock;
   private boolean showAnalyzerLogs;
   private boolean showVerboseLogs;
-  private boolean isAnalysis;
+  private final InheritableThreadLocal<Boolean> isAnalysis = new InheritableThreadLocal<Boolean>() {
+    @Override
+    protected Boolean initialValue() {
+      return false;
+    }
+  };
 
   public LanguageClientLogOutput(LanguageClient client) {
     this(client, Clock.systemDefaultZone());
@@ -52,7 +57,7 @@ public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChan
 
   @Override
   public void log(String formattedMessage, Level level) {
-    if ((!isAnalysis || showAnalyzerLogs) && (showVerboseLogs || (level != Level.DEBUG && level != Level.TRACE))) {
+    if ((!isAnalysis.get() || showAnalyzerLogs) && (showVerboseLogs || (level != Level.DEBUG && level != Level.TRACE))) {
       client.logMessage(new MessageParams(MessageType.Log, addPrefixIfNeeded(level, formattedMessage)));
     }
   }
@@ -84,8 +89,7 @@ public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChan
   }
 
   public void setAnalysis(boolean isAnalysis) {
-    this.isAnalysis = isAnalysis;
-
+    this.isAnalysis.set(isAnalysis);
   }
 
 }
