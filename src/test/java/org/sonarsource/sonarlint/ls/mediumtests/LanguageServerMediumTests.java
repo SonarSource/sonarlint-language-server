@@ -25,7 +25,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -57,8 +56,9 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.ls.RuleDescription;
+import org.sonarsource.sonarlint.ls.Rule;
 
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -337,14 +337,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void testCodeAction_with_unknown_diagnostic_rule() throws Exception {
-    Range range = new Range(new Position(1, 0), new Position(1, 10));
-    Diagnostic d = new Diagnostic(range, "An issue");
-    d.setSource("sonarlint");
-    d.setCode("unknown:rule");
-    CodeActionParams codeActionParams = new CodeActionParams(new TextDocumentIdentifier("file://foo.js"), range, new CodeActionContext(Arrays.asList(d)));
+  public void test_command_open_standalone_rule_desc_with_unknown_diagnostic_rule() throws Exception {
     try {
-      lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
+      lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", singletonList("unknown:rule"))).get();
       fail("Expected exception");
     } catch (Exception e) {
       assertThat(e).isInstanceOf(ExecutionException.class).hasCauseInstanceOf(ResponseErrorException.class);
@@ -354,23 +349,50 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  public void test_command_open_standalone_rule_desc() throws Exception {
+    client.showRuleDescriptionLatch = new CountDownLatch(1);
+    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", singletonList("javascript:S930"))).get();
+    client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES);
+
+    assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S930");
+    assertThat(client.ruleDesc.getName()).isEqualTo("Function calls should not pass extra arguments");
+    assertThat(client.ruleDesc.getHtmlDescription()).contains("You can easily call a JavaScript function with more arguments than the function needs");
+    assertThat(client.ruleDesc.getType()).isEqualTo("BUG");
+    assertThat(client.ruleDesc.getSeverity()).isEqualTo("CRITICAL");
+  }
+
+  @Test
+  public void test_command_open_rule_desc_from_code_action() throws Exception {
+    client.showRuleDescriptionLatch = new CountDownLatch(1);
+    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenRuleDescCodeAction", asList("javascript:S930", "file://foo.js"))).get();
+    client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES);
+
+    assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S930");
+    assertThat(client.ruleDesc.getName()).isEqualTo("Function calls should not pass extra arguments");
+    assertThat(client.ruleDesc.getHtmlDescription()).contains("You can easily call a JavaScript function with more arguments than the function needs");
+    assertThat(client.ruleDesc.getType()).isEqualTo("BUG");
+    assertThat(client.ruleDesc.getSeverity()).isEqualTo("CRITICAL");
+  }
+
+  @Test
   public void testCodeAction_with_diagnostic_rule() throws Exception {
     Range range = new Range(new Position(1, 0), new Position(1, 10));
     Diagnostic d = new Diagnostic(range, "An issue");
     d.setSource("sonarlint");
     d.setCode("javascript:S930");
-    CodeActionParams codeActionParams = new CodeActionParams(new TextDocumentIdentifier("file://foo.js"), range, new CodeActionContext(Arrays.asList(d)));
+    CodeActionParams codeActionParams = new CodeActionParams(new TextDocumentIdentifier("file://foo.js"), range, new CodeActionContext(singletonList(d)));
     List<Either<Command, CodeAction>> list = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
     assertThat(list).hasSize(2);
-    Command openRuleDesc = list.get(0).getLeft();
-    assertThat(openRuleDesc.getCommand()).isEqualTo("SonarLint.OpenRuleDesc");
-    assertThat(openRuleDesc.getArguments()).hasSize(5);
+    CodeAction codeAction = list.get(0).getRight();
+    assertThat(codeAction.getTitle()).isEqualTo("Open description of SonarLint rule 'javascript:S930'");
+    Command openRuleDesc = codeAction.getCommand();
+    assertThat(openRuleDesc.getCommand()).isEqualTo("SonarLint.OpenRuleDescCodeAction");
+    assertThat(openRuleDesc.getArguments()).hasSize(2);
     assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(0)).getAsString()).isEqualTo("javascript:S930");
-    assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(1)).getAsString()).isEqualTo("Function calls should not pass extra arguments");
-    assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(2)).getAsString()).contains("<h2>Noncompliant Code Example");
-    assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(3)).getAsString()).isEqualTo("BUG");
-    assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(4)).getAsString()).isEqualTo("CRITICAL");
-    Command disableRule = list.get(1).getLeft();
+    assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(1)).getAsString()).isEqualTo("file://foo.js");
+    CodeAction disableRuleCodeAction = list.get(1).getRight();
+    assertThat(disableRuleCodeAction.getTitle()).isEqualTo("Deactivate rule 'javascript:S930'");
+    Command disableRule = disableRuleCodeAction.getCommand();
     assertThat(disableRule.getCommand()).isEqualTo("SonarLint.DeactivateRule");
     assertThat(disableRule.getArguments()).hasSize(1);
     assertThat(((JsonPrimitive) disableRule.getArguments().get(0)).getAsString()).isEqualTo("javascript:S930");
@@ -378,41 +400,12 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   public void testListAllRules() throws Exception {
-    Map<String, List<RuleDescription>> result = lsProxy.listAllRules().join();
+    Map<String, List<Rule>> result = lsProxy.listAllRules().join();
     assertThat(result).containsOnlyKeys("HTML", "JavaScript", "TypeScript", "PHP", "Python");
 
     assertThat(result.get("HTML"))
-      .extracting(RuleDescription::getKey, RuleDescription::getName, RuleDescription::getSeverity, RuleDescription::getType, RuleDescription::getHtmlDescription,
-        RuleDescription::isActiveByDefault)
-      .contains(tuple("Web:PageWithoutTitleCheck", "\"<title>\" should be present in all pages", "MAJOR", "BUG",
-        "<p>Titles are important because they are displayed in search engine results as well as the browser's toolbar.</p>\n" +
-          "<p>This rule verifies that the <code>&lt;head&gt;</code> tag contains a <code>&lt;title&gt;</code> one, and the <code>&lt;html&gt;</code> tag a\n" +
-          "<code>&lt;head&gt;</code> one.</p>\n" +
-          "<h2>Noncompliant Code Example</h2>\n" +
-          "<pre>\n" +
-          "&lt;html&gt;         &lt;!-- Non-Compliant --&gt;\n" +
-          "\n" +
-          "&lt;body&gt;\n" +
-          "...\n" +
-          "&lt;/body&gt;\n" +
-          "\n" +
-          "&lt;/html&gt;\n" +
-          "</pre>\n" +
-          "<h2>Compliant Solution</h2>\n" +
-          "<pre>\n" +
-          "&lt;html&gt;         &lt;!-- Compliant --&gt;\n" +
-          "\n" +
-          "&lt;head&gt;\n" +
-          "  &lt;title&gt;Some relevant title&lt;/title&gt;\n" +
-          "&lt;/head&gt;\n" +
-          "\n" +
-          "&lt;body&gt;\n" +
-          "...\n" +
-          "&lt;/body&gt;\n" +
-          "\n" +
-          "&lt;/html&gt;\n" +
-          "</pre>",
-        true));
+      .extracting(Rule::getKey, Rule::getName, Rule::isActiveByDefault)
+      .contains(tuple("Web:PageWithoutTitleCheck", "\"<title>\" should be present in all pages", true));
   }
 
   @Test
