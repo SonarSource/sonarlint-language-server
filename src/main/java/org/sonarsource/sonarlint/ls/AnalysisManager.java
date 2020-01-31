@@ -82,7 +82,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   private static final Logger LOG = Loggers.get(AnalysisManager.class);
 
   public static final String TYPESCRIPT_PATH_PROP = "sonar.typescript.internal.typescriptLocation";
-  private static final String SONARLINT_SOURCE = "sonarlint";
+  static final String SONARLINT_SOURCE = "sonarlint";
 
   private final SonarLintExtendedLanguageClient client;
 

@@ -224,6 +224,8 @@ abstract class AbstractLanguageServerMediumTests {
     Map<String, Map<String, Object>> folderSettings = new HashMap<>();
     CountDownLatch settingsLatch = new CountDownLatch(0);
     CountDownLatch diagnosticsLatch = new CountDownLatch(0);
+    CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
+    ShowRuleDescriptionParams ruleDesc;
 
     void clear() {
       diagnostics.clear();
@@ -232,6 +234,7 @@ abstract class AbstractLanguageServerMediumTests {
       folderSettings.clear();
       settingsLatch = new CountDownLatch(0);
       diagnosticsLatch = new CountDownLatch(0);
+      showRuleDescriptionLatch = new CountDownLatch(0);
     }
 
     @Override
@@ -283,6 +286,15 @@ abstract class AbstractLanguageServerMediumTests {
         }
         settingsLatch.countDown();
         return result;
+      });
+    }
+
+    @Override
+    public CompletableFuture<Void> showRuleDescription(ShowRuleDescriptionParams params) {
+      return CompletableFutures.computeAsync(cancelToken -> {
+        this.ruleDesc = params;
+        showRuleDescriptionLatch.countDown();
+        return null;
       });
     }
   }

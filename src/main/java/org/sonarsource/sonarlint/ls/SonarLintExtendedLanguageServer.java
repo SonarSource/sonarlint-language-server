@@ -30,7 +30,7 @@ import org.eclipse.lsp4j.services.LanguageServer;
 public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/listAllRules")
-  CompletableFuture<Map<String, List<RuleDescription>>> listAllRules();
+  CompletableFuture<Map<String, List<Rule>>> listAllRules();
 
   /**
    * Undocumented VSCode message

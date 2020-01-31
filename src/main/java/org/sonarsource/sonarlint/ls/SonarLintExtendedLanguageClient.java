@@ -19,8 +19,75 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import com.google.gson.annotations.Expose;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import javax.annotation.Nullable;
+import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageClient;
 
 public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
+  @JsonRequest("sonarlint/showRuleDescription")
+  CompletableFuture<Void> showRuleDescription(ShowRuleDescriptionParams params);
+
+  public static class ShowRuleDescriptionParams {
+    @Expose
+    private String key;
+    @Expose
+    private String name;
+    @Expose
+    private String htmlDescription;
+    @Expose
+    private String type;
+    @Expose
+    private String severity;
+
+    public ShowRuleDescriptionParams(String ruleKey, String ruleName, @Nullable String htmlDescription, @Nullable String type, String severity) {
+      this.key = ruleKey;
+      this.name = ruleName;
+      this.htmlDescription = htmlDescription;
+      this.type = type;
+      this.severity = severity;
+    }
+
+    public String getKey() {
+      return key;
+    }
+
+    public String getName() {
+      return name;
+    }
+
+    public String getHtmlDescription() {
+      return htmlDescription;
+    }
+
+    public String getType() {
+      return type;
+    }
+
+    public String getSeverity() {
+      return severity;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(htmlDescription, key, name, severity, type);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (!(obj instanceof ShowRuleDescriptionParams)) {
+        return false;
+      }
+      ShowRuleDescriptionParams other = (ShowRuleDescriptionParams) obj;
+      return Objects.equals(htmlDescription, other.htmlDescription) && Objects.equals(key, other.key) && Objects.equals(name, other.name)
+        && Objects.equals(severity, other.severity) && Objects.equals(type, other.type);
+    }
+
+  }
 }

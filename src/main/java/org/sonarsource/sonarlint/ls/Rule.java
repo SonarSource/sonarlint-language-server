@@ -21,11 +21,9 @@ package org.sonarsource.sonarlint.ls;
 
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
-import javax.annotation.CheckForNull;
-import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
 
-public class RuleDescription {
+public class Rule {
 
   @SerializedName("key")
   @Expose
@@ -34,18 +32,6 @@ public class RuleDescription {
   @SerializedName("name")
   @Expose
   private String name;
-
-  @SerializedName("htmlDescription")
-  @Expose
-  private String htmlDescription;
-
-  @SerializedName("type")
-  @Expose
-  private String type;
-
-  @SerializedName("severity")
-  @Expose
-  private String severity;
 
   @SerializedName("activeByDefault")
   @Expose
@@ -59,34 +45,17 @@ public class RuleDescription {
     return name;
   }
 
-  @CheckForNull
-  public String getHtmlDescription() {
-    return htmlDescription;
-  }
-
-  @CheckForNull
-  public String getType() {
-    return type;
-  }
-
-  public String getSeverity() {
-    return severity;
-  }
-
   public boolean isActiveByDefault() {
     return activeByDefault;
   }
 
-  public RuleDescription(String key, String name, @Nullable String htmlDescription, @Nullable String type, String severity, boolean activeByDefault) {
+  public Rule(String key, String name, boolean activeByDefault) {
     this.key = key;
     this.name = name;
-    this.htmlDescription = htmlDescription;
-    this.type = type;
-    this.severity = severity;
     this.activeByDefault = activeByDefault;
   }
 
-  public static RuleDescription of(RuleDetails d) {
-    return new RuleDescription(d.getKey(), d.getName(), d.getHtmlDescription(), d.getType(), d.getSeverity(), d.isActiveByDefault());
+  public static Rule of(RuleDetails d) {
+    return new Rule(d.getKey(), d.getName(), d.isActiveByDefault());
   }
 }

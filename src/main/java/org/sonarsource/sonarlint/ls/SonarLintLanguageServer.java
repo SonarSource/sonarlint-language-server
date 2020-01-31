@@ -26,11 +26,7 @@ import java.net.Socket;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,7 +37,6 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Command;
-import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidChangeWatchedFilesParams;
@@ -61,17 +56,11 @@ import org.eclipse.lsp4j.WorkspaceFoldersOptions;
 import org.eclipse.lsp4j.WorkspaceServerCapabilities;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
-import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
-import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
-import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonar.api.utils.log.Loggers;
-import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -84,32 +73,23 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   private static final String TYPESCRIPT_LOCATION = "typeScriptLocation";
 
-  private static final String SONARLINT_SOURCE = "sonarlint";
-  private static final String SONARLINT_OPEN_RULE_DESCRIPTION_COMMAND = "SonarLint.OpenRuleDesc";
-  private static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
-  static final String SONARLINT_UPDATE_ALL_BINDINGS_COMMAND = "SonarLint.UpdateAllBindings";
-  private static final List<String> SONARLINT_COMMANDS = Arrays.asList(
-    SONARLINT_UPDATE_ALL_BINDINGS_COMMAND);
-
   private final SonarLintExtendedLanguageClient client;
-
-  private final SonarLintTelemetry telemetry = new SonarLintTelemetry();
-
+  private final SonarLintTelemetry telemetry;
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
   private final AnalysisManager analysisManager;
   private final EnginesFactory enginesFactory;
+  private final CommandManager commandManager;
+  private final ExecutorService threadPool;
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
    */
   private TraceValues traceLevel;
 
-  private final ExecutorService threadPool;
-
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<URL> analyzers) {
-    threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
+    this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
     Launcher<SonarLintExtendedLanguageClient> launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
       .setLocalService(this)
       .setRemoteInterface(SonarLintExtendedLanguageClient.class)
@@ -122,6 +102,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
     LanguageClientLogOutput lsLogOutput = new LanguageClientLogOutput(this.client);
     Loggers.setTarget(lsLogOutput);
+    this.telemetry = new SonarLintTelemetry();
     this.settingsManager = new SettingsManager(this.client);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener(lsLogOutput);
@@ -134,6 +115,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.analysisManager = new AnalysisManager(lsLogOutput, enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager);
     bindingManager.setAnalysisManager(analysisManager);
     this.settingsManager.addListener(analysisManager);
+    this.commandManager = new CommandManager(client, bindingManager, analysisManager);
     launcher.startListening();
   }
 
@@ -171,7 +153,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       ServerCapabilities c = new ServerCapabilities();
       c.setTextDocumentSync(getTextDocumentSyncOptions());
       c.setCodeActionProvider(true);
-      c.setExecuteCommandProvider(new ExecuteCommandOptions(SONARLINT_COMMANDS));
+      c.setExecuteCommandProvider(new ExecuteCommandOptions(CommandManager.SONARLINT_SERVERSIDE_COMMANDS));
       c.setWorkspace(getWorkspaceServerCapabilities());
 
       result.setCapabilities(c);
@@ -224,51 +206,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<List<Either<Command, CodeAction>>> codeAction(CodeActionParams params) {
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
-      List<Either<Command, CodeAction>> commands = new ArrayList<>();
-      URI uri = create(params.getTextDocument().getUri());
-      Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(uri);
-      for (Diagnostic d : params.getContext().getDiagnostics()) {
-        if (SONARLINT_SOURCE.equals(d.getSource())) {
-          String ruleKey = d.getCode();
-          List<Object> ruleDescriptionParams = getOpenRuleDescriptionParams(binding, ruleKey);
-          // May take time to initialize the engine so check for cancellation just after
-          cancelToken.checkCanceled();
-          if (!ruleDescriptionParams.isEmpty()) {
-            commands.add(Either.forLeft(
-              new Command(String.format("Open description of SonarLint rule '%s'", ruleKey),
-                SONARLINT_OPEN_RULE_DESCRIPTION_COMMAND,
-                ruleDescriptionParams)));
-          }
-          if (!binding.isPresent()) {
-            commands.add(Either.forLeft(
-              new Command(String.format("Deactivate rule '%s'", ruleKey),
-                SONARLINT_DEACTIVATE_RULE_COMMAND,
-                Collections.singletonList(ruleKey))));
-          }
-        }
-      }
-      return commands;
+      return commandManager.computeCodeActions(params, cancelToken);
     });
-  }
-
-  private List<Object> getOpenRuleDescriptionParams(Optional<ProjectBindingWrapper> binding, String ruleKey) {
-    RuleDetails ruleDetails;
-    if (!binding.isPresent()) {
-      ruleDetails = analysisManager.getOrCreateStandaloneEngine().getRuleDetails(ruleKey)
-        .orElseThrow(() -> new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unknown rule with key: " + ruleKey, null)));
-    } else {
-      ConnectedSonarLintEngine engine = binding.get().getEngine();
-      if (engine != null) {
-        ruleDetails = engine.getRuleDetails(ruleKey);
-      } else {
-        return Collections.emptyList();
-      }
-    }
-    String ruleName = ruleDetails.getName();
-    String htmlDescription = getHtmlDescription(ruleDetails);
-    String type = ruleDetails.getType();
-    String severity = ruleDetails.getSeverity();
-    return Arrays.asList(ruleKey, ruleName, htmlDescription, type, severity);
   }
 
   @Override
@@ -296,20 +235,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<Map<String, List<RuleDescription>>> listAllRules() {
+  public CompletableFuture<Map<String, List<Rule>>> listAllRules() {
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
-      Map<String, List<RuleDescription>> result = new HashMap<>();
-      Map<String, String> languagesNameByKey = analysisManager.getOrCreateStandaloneEngine().getAllLanguagesNameByKey();
-      analysisManager.getOrCreateStandaloneEngine().getAllRuleDetails()
-        .forEach(d -> {
-          String languageName = languagesNameByKey.get(d.getLanguageKey());
-          if (!result.containsKey(languageName)) {
-            result.put(languageName, new ArrayList<>());
-          }
-          result.get(languageName).add(RuleDescription.of(d));
-        });
-      return result;
+      return commandManager.listAllStandaloneRules();
     });
   }
 
@@ -322,25 +251,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<Object> executeCommand(ExecuteCommandParams params) {
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
-      switch (params.getCommand()) {
-        case SONARLINT_UPDATE_ALL_BINDINGS_COMMAND:
-          bindingManager.updateAllBindings();
-          break;
-        default:
-          throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported command: " + params.getCommand(), null));
-      }
+      commandManager.executeCommand(params, cancelToken);
       return null;
     });
-  }
-
-  // visible for testing
-  static String getHtmlDescription(RuleDetails ruleDetails) {
-    String htmlDescription = ruleDetails.getHtmlDescription();
-    String extendedDescription = ruleDetails.getExtendedDescription();
-    if (!extendedDescription.isEmpty()) {
-      htmlDescription += "<div>" + extendedDescription + "</div>";
-    }
-    return htmlDescription;
   }
 
   @Override
