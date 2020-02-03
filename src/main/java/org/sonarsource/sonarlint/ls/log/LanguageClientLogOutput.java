@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.log;
 import java.time.Clock;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.services.LanguageClient;
@@ -29,10 +30,25 @@ import org.sonarsource.sonarlint.core.client.api.common.LogOutput;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
+import static java.time.temporal.ChronoField.HOUR_OF_DAY;
+import static java.time.temporal.ChronoField.MILLI_OF_SECOND;
+import static java.time.temporal.ChronoField.MINUTE_OF_HOUR;
+import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
+
 /**
  * Used by the language server
  */
 public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChangeListener {
+
+  private static final DateTimeFormatter LOG_DATE_FORMAT = new DateTimeFormatterBuilder()
+    .appendValue(HOUR_OF_DAY, 2)
+    .appendLiteral(':')
+    .appendValue(MINUTE_OF_HOUR, 2)
+    .appendLiteral(':')
+    .appendValue(SECOND_OF_MINUTE, 2)
+    .appendLiteral('.')
+    .appendValue(MILLI_OF_SECOND, 3)
+    .toFormatter();
 
   private final LanguageClient client;
   private final Clock clock;
@@ -79,7 +95,7 @@ public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChan
   }
 
   private String prefix(String prefix, String formattedMessage) {
-    return "[" + prefix + " - " + LocalTime.now(clock).format(DateTimeFormatter.ISO_LOCAL_TIME) + "] " + formattedMessage;
+    return "[" + prefix + " - " + LocalTime.now(clock).format(LOG_DATE_FORMAT) + "] " + formattedMessage;
   }
 
   @Override
