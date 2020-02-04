@@ -24,6 +24,9 @@ import com.google.gson.JsonElement;
 import java.io.File;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonar.api.utils.log.LogTesterJUnit5;
+import org.sonar.api.utils.log.LoggerLevel;
 import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 import org.sonarsource.sonarlint.ls.Utils;
 
@@ -32,6 +35,22 @@ import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.tuple;
 
 class SettingsManagerTest {
+
+  @RegisterExtension
+  public LogTesterJUnit5 logTester = new LogTesterJUnit5();
+
+  private static final String DEPRECATED_SAMPLE_CONFIG = "{\n" +
+    "  \"connectedMode\": {\n" +
+    "    \"servers\": [\n" +
+    "      { \"serverId\": \"server1\", \"serverUrl\": \"https://mysonarqube.mycompany.org\", \"token\": \"ab12\" }," +
+    "      { \"serverId\": \"sc\", \"serverUrl\": \"https://sonarcloud.io\", \"token\": \"cd34\", \"organizationKey\": \"myOrga\" }" +
+    "    ],\n" +
+    "    \"project\": {\n" +
+    "      \"serverId\": \"server1\",\n" +
+    "      \"projectKey\": \"myProject\"\n" +
+    "    }\n" +
+    "  }\n" +
+    "}\n";
 
   private static final String FULL_SAMPLE_CONFIG = "{\n" +
     "  \"testFilePattern\": \"**/*Test.*\",\n" +
@@ -59,10 +78,37 @@ class SettingsManagerTest {
     "    }\n" +
     "  },\n" +
     "  \"connectedMode\": {\n" +
-    "    \"servers\": [\n" +
-    "      { \"serverId\": \"server1\", \"serverUrl\": \"https://mysonarqube.mycompany.org\", \"token\": \"ab12\" }," +
-    "      { \"serverId\": \"sc\", \"serverUrl\": \"https://sonarcloud.io\", \"token\": \"cd34\", \"organizationKey\": \"myOrga\" }" +
-    "    ]\n" +
+    "    \"connections\": {\n" +
+    "      \"sonarqube\": [\n" +
+    "        { \"connectionId\": \"sq1\", \"serverUrl\": \"https://mysonarqube1.mycompany.org\", \"token\": \"ab12\" }," +
+    "        { \"connectionId\": \"sq2\", \"serverUrl\": \"https://mysonarqube2.mycompany.org\", \"token\": \"cd34\" }" +
+    "      ],\n" +
+    "      \"sonarcloud\": [\n" +
+    "        { \"connectionId\": \"sc1\", \"token\": \"ab12\", \"organizationKey\": \"myOrga1\" }," +
+    "        { \"connectionId\": \"sc2\", \"token\": \"cd34\", \"organizationKey\": \"myOrga2\" }" +
+    "      ]\n" +
+    "    },\n" +
+    "    \"project\": {\n" +
+    "      \"connectionId\": \"sq1\",\n" +
+    "      \"projectKey\": \"myProject\"\n" +
+    "    }\n" +
+    "  }\n" +
+    "}\n";
+
+  private static final String DUPLICATE_CONNECTIONS = "{\n" +
+    "  \"connectedMode\": {\n" +
+    "    \"connections\": {\n" +
+    "      \"sonarqube\": [\n" +
+    "        { \"connectionId\": \"dup\", \"serverUrl\": \"https://mysonarqube1.mycompany.org\", \"token\": \"ab12\" }" +
+    "      ],\n" +
+    "      \"sonarcloud\": [\n" +
+    "        { \"connectionId\": \"dup\", \"token\": \"ab12\", \"organizationKey\": \"myOrga1\" }" +
+    "      ]\n" +
+    "    },\n" +
+    "    \"project\": {\n" +
+    "      \"connectionId\": \"dup\",\n" +
+    "      \"projectKey\": \"myProject\"\n" +
+    "    }\n" +
     "  }\n" +
     "}\n";
 
@@ -73,6 +119,16 @@ class SettingsManagerTest {
     assertThat(settings.getTestMatcher().matches(new File("./someTest").toPath())).isFalse();
     assertThat(settings.getTestMatcher().matches(new File("./someTest.ext").toPath())).isTrue();
     assertThat(settings.getAnalyzerProperties()).containsExactly(entry("sonar.polop", "palap"));
+    assertThat(settings.getConnectionId()).isEqualTo("sq1");
+    assertThat(settings.getProjectKey()).isEqualTo("myProject");
+  }
+
+  @Test
+  public void shouldParseFullDeprecatedWellFormedJsonWorkspaceFolderSettings() {
+    WorkspaceFolderSettings settings = SettingsManager.parseFolderSettings(fromJsonString(DEPRECATED_SAMPLE_CONFIG));
+
+    assertThat(settings.getConnectionId()).isEqualTo("server1");
+    assertThat(settings.getProjectKey()).isEqualTo("myProject");
   }
 
   @Test
@@ -86,6 +142,28 @@ class SettingsManagerTest {
     assertThat(settings.getExcludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsExactly(tuple("xoo", "rule1"));
     assertThat(settings.getIncludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsExactly(tuple("xoo", "rule3"));
     assertThat(settings.hasLocalRuleConfiguration()).isTrue();
+    assertThat(settings.getServers()).containsKeys("sq1", "sq2", "sc1", "sc2");
+    assertThat(settings.getServers().values())
+      .extracting(ServerConnectionSettings::getServerId, ServerConnectionSettings::getServerUrl, ServerConnectionSettings::getToken, ServerConnectionSettings::getOrganizationKey)
+      .containsExactlyInAnyOrder(
+        tuple("sq1", "https://mysonarqube1.mycompany.org", "ab12", null),
+        tuple("sq2", "https://mysonarqube2.mycompany.org", "cd34", null),
+        tuple("sc1", "https://sonarcloud.io", "ab12", "myOrga1"),
+        tuple("sc2", "https://sonarcloud.io", "cd34", "myOrga2"));
+  }
+
+  @Test
+  public void shouldLogErrorIfDuplicateConnectionId() {
+    WorkspaceSettings settings = SettingsManager.parseSettings(fromJsonString(DUPLICATE_CONNECTIONS));
+
+    assertThat(settings.getServers()).containsKeys("dup");
+    assertThat(logTester.logs(LoggerLevel.ERROR)).containsExactly("Multiple server connections with the same identifier 'dup'. Fix your settings.");
+  }
+
+  @Test
+  public void shouldParseFullDeprecatedWellFormedJsonWorkspaceSettings() {
+    WorkspaceSettings settings = SettingsManager.parseSettings(fromJsonString(DEPRECATED_SAMPLE_CONFIG));
+
     assertThat(settings.getServers()).containsKeys("server1", "sc");
     assertThat(settings.getServers().values())
       .extracting(ServerConnectionSettings::getServerId, ServerConnectionSettings::getServerUrl, ServerConnectionSettings::getToken, ServerConnectionSettings::getOrganizationKey)

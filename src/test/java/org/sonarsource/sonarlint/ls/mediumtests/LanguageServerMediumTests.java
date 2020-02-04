@@ -104,7 +104,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     emulateConfigurationChangeOnClient("**/*Test.js", null, false, true);
 
     assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=**/*Test.js,serverId=<null>,projectKey=<null>]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=**/*Test.js,connectionId=<null>,projectKey=<null>]");
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", jsSource);
     assertThat(diagnostics)
@@ -210,7 +210,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     // Enable debug logs for assertions
     emulateConfigurationChangeOnClient("{**/*Test*}", null, null, true);
     assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*Test*},serverId=<null>,projectKey=<null>]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*Test*},connectionId=<null>,projectKey=<null>]");
 
     String jsContent = "function foo() {\n  alert('toto');\n}";
     String fooTestUri = getUri("fooTest.js");
@@ -222,7 +222,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     // Enable debug logs for assertions
     emulateConfigurationChangeOnClient("{**/*MyTest*}", null, null, true);
     assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*MyTest*},serverId=<null>,projectKey=<null>]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*MyTest*},connectionId=<null>,projectKey=<null>]");
 
     diagnostics = didChangeAndWaitForDiagnostics(fooTestUri, jsContent);
     assertThat(diagnostics).hasSize(1);
@@ -419,7 +419,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
         new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.singletonList(new WorkspaceFolder(SOME_FOLDER_URI, "Added")), Collections.emptyList())));
 
     assertLogContains(
-      "Workspace folder 'WorkspaceFolder[uri=some://uri,name=Added]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=some pattern,serverId=<null>,projectKey=<null>]");
+      "Workspace folder 'WorkspaceFolder[uri=some://uri,name=Added]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=some pattern,connectionId=<null>,projectKey=<null>]");
   }
 
   @Test
