@@ -116,7 +116,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   @CheckForNull
   private ProjectBindingWrapper computeProjectBinding(WorkspaceFolderSettings settings, Path folderRoot) {
-    String serverId = requireNonNull(settings.getServerId());
+    String serverId = requireNonNull(settings.getConnectionId());
     ServerConfiguration serverConfiguration = createServerConfiguration(serverId);
     if (serverConfiguration == null) {
       LOG.error("Invalid binding for '{}'", folderRoot);
@@ -208,7 +208,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     }
     if (oldValue.hasBinding() && !newValue.hasBinding()) {
       unbind(folder);
-    } else if (newValue.hasBinding() && (!Objects.equals(oldValue.getServerId(), newValue.getServerId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
+    } else if (newValue.hasBinding() && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
       forceRebindDuringNextAnalysis(folder);
     }
   }
@@ -278,7 +278,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private void collectUsedServerId(Set<String> usedServerIds, WorkspaceFolderSettings folderSettings) {
     if (folderSettings.hasBinding()) {
-      String serverId = folderSettings.getServerId();
+      String serverId = folderSettings.getConnectionId();
       if (serverId != null && settingsManager.getCurrentSettings().getServers().containsKey(serverId)) {
         usedServerIds.add(serverId);
       }
@@ -328,7 +328,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private void updateBindingIfNecessary(@Nullable WorkspaceFolderWrapper folder) {
     WorkspaceFolderSettings folderSettings = folder != null ? folder.getSettings() : settingsManager.getCurrentDefaultFolderSettings();
     if (folderSettings.hasBinding()) {
-      String serverId = requireNonNull(folderSettings.getServerId());
+      String serverId = requireNonNull(folderSettings.getConnectionId());
       ServerConfiguration serverConfiguration = createServerConfiguration(serverId);
       if (!connectedEngineCacheByServerId.containsKey(serverId)) {
         startAndUpdateEngine(serverId, serverConfiguration);

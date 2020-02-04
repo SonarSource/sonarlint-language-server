@@ -28,7 +28,8 @@ import org.apache.commons.lang.builder.ToStringStyle;
 
 @Immutable
 public class ServerConnectionSettings {
-  static final String[] SONARCLOUD_ALIAS = {"https://sonarqube.com", "https://www.sonarqube.com", "https://www.sonarcloud.io", "https://sonarcloud.io"};
+  static final String SONARCLOUD_URL = "https://sonarcloud.io";
+  static final String[] SONARCLOUD_ALIAS = {"https://sonarqube.com", "https://www.sonarqube.com", "https://www.sonarcloud.io", SONARCLOUD_URL};
 
   private final String serverId;
   private final String serverUrl;

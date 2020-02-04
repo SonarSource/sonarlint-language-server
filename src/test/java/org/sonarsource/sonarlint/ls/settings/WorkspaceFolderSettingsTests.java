@@ -50,7 +50,8 @@ class WorkspaceFolderSettingsTests {
 
   @Test
   public void testToString() {
-    assertThat(SETTINGS.toString()).isEqualTo("WorkspaceFolderSettings[analyzerProperties={sonar.foo=bar},testFilePattern=filePattern,serverId=serverId,projectKey=projectKey]");
+    assertThat(SETTINGS.toString())
+      .isEqualTo("WorkspaceFolderSettings[analyzerProperties={sonar.foo=bar},testFilePattern=filePattern,connectionId=serverId,projectKey=projectKey]");
   }
 
 }

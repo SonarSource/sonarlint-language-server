@@ -43,11 +43,11 @@ public class WorkspaceFolderSettings {
   // Keep the string pattern for equals comparison
   private final String testFilePattern;
   private final PathMatcher testMatcher;
-  private final String serverId;
+  private final String connectionId;
   private final String projectKey;
 
-  public WorkspaceFolderSettings(@Nullable String serverId, @Nullable String projectKey, Map<String, String> analyzerProperties, @Nullable String testFilePattern) {
-    this.serverId = serverId;
+  public WorkspaceFolderSettings(@Nullable String connectionId, @Nullable String projectKey, Map<String, String> analyzerProperties, @Nullable String testFilePattern) {
+    this.connectionId = connectionId;
     this.projectKey = projectKey;
     this.analyzerProperties = analyzerProperties;
     this.testFilePattern = testFilePattern;
@@ -63,8 +63,8 @@ public class WorkspaceFolderSettings {
   }
 
   @CheckForNull
-  public String getServerId() {
-    return serverId;
+  public String getConnectionId() {
+    return connectionId;
   }
 
   @CheckForNull
@@ -73,12 +73,12 @@ public class WorkspaceFolderSettings {
   }
 
   public boolean hasBinding() {
-    return StringUtils.isNotBlank(serverId) && StringUtils.isNotBlank(projectKey);
+    return StringUtils.isNotBlank(connectionId) && StringUtils.isNotBlank(projectKey);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(serverId, projectKey, analyzerProperties, testFilePattern);
+    return Objects.hash(connectionId, projectKey, analyzerProperties, testFilePattern);
   }
 
   @Override
@@ -93,7 +93,7 @@ public class WorkspaceFolderSettings {
       return false;
     }
     WorkspaceFolderSettings other = (WorkspaceFolderSettings) obj;
-    return Objects.equals(serverId, other.serverId) && Objects.equals(projectKey, other.projectKey) && Objects.equals(analyzerProperties, other.analyzerProperties)
+    return Objects.equals(connectionId, other.connectionId) && Objects.equals(projectKey, other.projectKey) && Objects.equals(analyzerProperties, other.analyzerProperties)
       && Objects.equals(testFilePattern, other.testFilePattern);
   }
 
