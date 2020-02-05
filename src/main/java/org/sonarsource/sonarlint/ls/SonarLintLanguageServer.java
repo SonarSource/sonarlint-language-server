@@ -103,11 +103,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     LanguageClientLogOutput lsLogOutput = new LanguageClientLogOutput(this.client);
     Loggers.setTarget(lsLogOutput);
     this.telemetry = new SonarLintTelemetry();
-    this.settingsManager = new SettingsManager(this.client);
+    this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput);
+    this.workspaceFoldersManager = new WorkspaceFoldersManager();
+    this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener(lsLogOutput);
-    this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput);
-    this.workspaceFoldersManager = new WorkspaceFoldersManager(settingsManager);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
@@ -259,7 +259,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didChangeConfiguration(DidChangeConfigurationParams params) {
     settingsManager.didChangeConfiguration();
-    workspaceFoldersManager.didChangeConfiguration();
   }
 
   @Override

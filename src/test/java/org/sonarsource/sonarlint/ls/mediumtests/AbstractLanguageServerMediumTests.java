@@ -29,7 +29,6 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -55,7 +54,6 @@ import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
-import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
@@ -70,7 +68,6 @@ import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceFolder;
-import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.launch.LSPLauncher;
@@ -84,15 +81,16 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 abstract class AbstractLanguageServerMediumTests {
-
-  protected static final String SOME_FOLDER_URI = "some://uri";
 
   @TempDir
   Path temp;
@@ -150,16 +148,17 @@ abstract class AbstractLanguageServerMediumTests {
     lsProxy = future.get();
   }
 
-  protected static void initialize(Map<String, String> initializeOptions) throws InterruptedException, ExecutionException {
+  protected static void initialize(Map<String, String> initializeOptions, WorkspaceFolder... initFolders) throws InterruptedException, ExecutionException {
     InitializeParams initializeParams = new InitializeParams();
     initializeParams.setTrace("messages");
     initializeParams.setInitializationOptions(initializeOptions);
+    initializeParams.setWorkspaceFolders(asList(initFolders));
     lsProxy.initialize(initializeParams).get();
     lsProxy.initialized(new InitializedParams());
   }
 
   @AfterAll
-  public final static void stop() throws Exception {
+  public final static void stopServer() throws Exception {
     System.clearProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY);
     try {
       if (lsProxy != null) {
@@ -172,15 +171,11 @@ abstract class AbstractLanguageServerMediumTests {
   }
 
   @BeforeEach
-  public final void cleanup() throws InterruptedException {
-    toBeClosed.clear();
-    // Reset settings on LS side
+  public void cleanup() throws InterruptedException {
+    // Reset state on LS side
     client.clear();
-    lsProxy.getWorkspaceService()
-      .didChangeWorkspaceFolders(
-        new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), singletonList(new WorkspaceFolder(SOME_FOLDER_URI, "Added")))));
 
-    emulateConfigurationChangeOnClient(null, false, false, false);
+    emulateConfigurationChangeOnClient(null, false, false, true);
 
     // Wait for logs to stop being produced
     await().during(1, SECONDS).atMost(5, SECONDS).until(() -> {
@@ -200,6 +195,7 @@ abstract class AbstractLanguageServerMediumTests {
         throw new AssertionError("No empty diagnostics received after 1 minute");
       }
     }
+    toBeClosed.clear();
   }
 
   protected static void assertLogContains(String msg) {
@@ -214,6 +210,14 @@ abstract class AbstractLanguageServerMediumTests {
     Path file = temp.resolve(filename);
     Files.createFile(file);
     return file.toUri().toString();
+  }
+
+  protected static void awaitLatch(CountDownLatch latch) {
+    try {
+      assertTrue(latch.await(15, TimeUnit.SECONDS));
+    } catch (InterruptedException e) {
+      fail(e);
+    }
   }
 
   protected static class FakeLanguageClient implements SonarLintExtendedLanguageClient {
@@ -268,6 +272,7 @@ abstract class AbstractLanguageServerMediumTests {
       if (!message.getMessage().contains("1/1 source files have been analyzed")) {
         logs.add(message);
       }
+      System.out.println(message.getMessage());
     }
 
     @Override
@@ -303,25 +308,21 @@ abstract class AbstractLanguageServerMediumTests {
     emulateConfigurationChangeOnClient(testFilePattern, disableTelemetry, null, null, ruleConfigs);
   }
 
-  protected void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
+  protected static void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
     @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
     client.globalSettings = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs);
     client.settingsLatch = new CountDownLatch(1);
     lsProxy.getWorkspaceService().didChangeConfiguration(changedConfiguration(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs));
-    try {
-      client.settingsLatch.await(5, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      throw new IllegalStateException(e);
-    }
+    awaitLatch(client.settingsLatch);
   }
 
-  private DidChangeConfigurationParams changedConfiguration(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
+  private static DidChangeConfigurationParams changedConfiguration(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
     @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
     Map<String, Object> values = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs);
     return new DidChangeConfigurationParams(ImmutableMap.of("sonarlint", values));
   }
 
-  protected Map<String, Object> buildSonarLintSettingsSection(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
+  protected static Map<String, Object> buildSonarLintSettingsSection(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
     @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
     Map<String, Object> values = new HashMap<>();
     if (testFilePattern != null) {
@@ -346,7 +347,7 @@ abstract class AbstractLanguageServerMediumTests {
     return values;
   }
 
-  private Map<String, Object> buildRulesMap(String... ruleConfigs) {
+  private static Map<String, Object> buildRulesMap(String... ruleConfigs) {
     assertThat(ruleConfigs.length % 2).withFailMessage("ruleConfigs must contain 'rule:key', 'level' pairs").isEqualTo(0);
     ImmutableMap.Builder<String, Object> rules = ImmutableMap.builder();
     for (int i = 0; i < ruleConfigs.length; i += 2) {

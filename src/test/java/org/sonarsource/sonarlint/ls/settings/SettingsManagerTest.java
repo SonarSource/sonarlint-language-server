@@ -22,7 +22,11 @@ package org.sonarsource.sonarlint.ls.settings;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import java.io.File;
+import java.net.URI;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import javax.annotation.Nullable;
+import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,13 +35,21 @@ import org.sonar.api.utils.log.LogTesterJUnit5;
 import org.sonar.api.utils.log.LoggerLevel;
 import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 import org.sonarsource.sonarlint.ls.Utils;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 class SettingsManagerTest {
+
+  private static final URI FOLDER_URI = URI.create("file://foo");
 
   @RegisterExtension
   public LogTesterJUnit5 logTester = new LogTesterJUnit5();
@@ -99,16 +111,20 @@ class SettingsManagerTest {
     "}\n";
 
   private SettingsManager underTest;
+  private WorkspaceFoldersManager foldersManager;
 
   @BeforeEach
   public void prepare() {
-    underTest = new SettingsManager(mock(LanguageClient.class));
+    foldersManager = mock(WorkspaceFoldersManager.class);
+    underTest = new SettingsManager(mock(LanguageClient.class), foldersManager);
+    underTest = spy(underTest);
   }
 
   @Test
   public void shouldParseFullWellFormedJsonWorkspaceFolderSettings() {
-    underTest.update(fromJsonString(FULL_SAMPLE_CONFIG));
-    WorkspaceFolderSettings settings = underTest.parseFolderSettings(fromJsonString(FULL_SAMPLE_CONFIG));
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    underTest.didChangeConfiguration();
+    WorkspaceFolderSettings settings = underTest.getCurrentDefaultFolderSettings();
 
     assertThat(settings.getTestMatcher().matches(new File("./someTest").toPath())).isFalse();
     assertThat(settings.getTestMatcher().matches(new File("./someTest.ext").toPath())).isTrue();
@@ -117,10 +133,15 @@ class SettingsManagerTest {
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
   }
 
+  private void mockConfigurationRequest(@Nullable URI uri, String json) {
+    doReturn(CompletableFuture.supplyAsync(() -> fromJsonString(json))).when(underTest).requestSonarLintConfigurationAsync(uri);
+  }
+
   @Test
   public void shouldParseFullDeprecatedWellFormedJsonWorkspaceFolderSettings() {
-    underTest.update(fromJsonString(DEPRECATED_SAMPLE_CONFIG));
-    WorkspaceFolderSettings settings = underTest.parseFolderSettings(fromJsonString(DEPRECATED_SAMPLE_CONFIG));
+    mockConfigurationRequest(null, DEPRECATED_SAMPLE_CONFIG);
+    underTest.didChangeConfiguration();
+    WorkspaceFolderSettings settings = underTest.getCurrentDefaultFolderSettings();
 
     assertThat(settings.getConnectionId()).isEqualTo("server1");
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
@@ -128,8 +149,8 @@ class SettingsManagerTest {
 
   @Test
   public void shouldParseFullWellFormedJsonWorkspaceSettings() {
-    underTest.update(fromJsonString(FULL_SAMPLE_CONFIG));
-
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    underTest.didChangeConfiguration();
     WorkspaceSettings settings = underTest.getCurrentSettings();
     assertThat(settings.isDisableTelemetry()).isTrue();
     assertThat(settings.showAnalyzerLogs()).isTrue();
@@ -150,7 +171,7 @@ class SettingsManagerTest {
 
   @Test
   public void shouldLogErrorIfIncompleteConnections() {
-    underTest.update(fromJsonString("{\n" +
+    mockConfigurationRequest(null, "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"servers\": [\n" +
       "      { \"serverUrl\": \"https://mysonarqube.mycompany.org\", \"token\": \"ab12\" }," +
@@ -168,7 +189,8 @@ class SettingsManagerTest {
       "      ]\n" +
       "    }\n" +
       "  }\n" +
-      "}\n"));
+      "}\n");
+    underTest.didChangeConfiguration();
 
     WorkspaceSettings settings = underTest.getCurrentSettings();
     assertThat(settings.getServers()).isEmpty();
@@ -184,7 +206,7 @@ class SettingsManagerTest {
 
   @Test
   public void shouldLogErrorIfDuplicateConnectionId() {
-    underTest.update(fromJsonString("{\n" +
+    mockConfigurationRequest(null, "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"connections\": {\n" +
       "      \"sonarqube\": [\n" +
@@ -195,7 +217,8 @@ class SettingsManagerTest {
       "      ]\n" +
       "    }\n" +
       "  }\n" +
-      "}\n"));
+      "}\n");
+    underTest.didChangeConfiguration();
 
     WorkspaceSettings settings = underTest.getCurrentSettings();
     assertThat(settings.getServers()).containsKeys("dup");
@@ -204,7 +227,7 @@ class SettingsManagerTest {
 
   @Test
   public void shouldLogErrorIfDuplicateConnectionsWithoutId() {
-    underTest.update(fromJsonString("{\n" +
+    mockConfigurationRequest(null, "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"connections\": {\n" +
       "      \"sonarqube\": [\n" +
@@ -215,7 +238,8 @@ class SettingsManagerTest {
       "      ]\n" +
       "    }\n" +
       "  }\n" +
-      "}\n"));
+      "}\n");
+    underTest.didChangeConfiguration();
 
     WorkspaceSettings settings = underTest.getCurrentSettings();
     assertThat(settings.getServers()).containsKeys("<default>");
@@ -224,7 +248,8 @@ class SettingsManagerTest {
 
   @Test
   public void shouldParseFullDeprecatedWellFormedJsonWorkspaceSettings() {
-    underTest.update(fromJsonString(DEPRECATED_SAMPLE_CONFIG));
+    mockConfigurationRequest(null, DEPRECATED_SAMPLE_CONFIG);
+    underTest.didChangeConfiguration();
 
     WorkspaceSettings settings = underTest.getCurrentSettings();
     assertThat(settings.getServers()).containsKeys("server1", "sc");
@@ -236,7 +261,7 @@ class SettingsManagerTest {
 
   @Test
   public void shouldLogErrorIfNoConnectionToDefault() {
-    Map<String, Object> defaultConnectionId = fromJsonString("{\n" +
+    mockConfigurationRequest(null, "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"connections\": {\n" +
       "    },\n" +
@@ -245,9 +270,9 @@ class SettingsManagerTest {
       "    }\n" +
       "  }\n" +
       "}\n");
-    underTest.update(defaultConnectionId);
+    underTest.didChangeConfiguration();
 
-    WorkspaceFolderSettings settings = underTest.parseFolderSettings(defaultConnectionId);
+    WorkspaceFolderSettings settings = underTest.getCurrentDefaultFolderSettings();
     assertThat(settings.getConnectionId()).isNull();
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
     assertThat(logTester.logs(LoggerLevel.ERROR))
@@ -256,7 +281,7 @@ class SettingsManagerTest {
 
   @Test
   public void shouldDefaultIfOnlyOneConnectionId() {
-    Map<String, Object> defaultConnectionId = fromJsonString("{\n" +
+    mockConfigurationRequest(null, "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"connections\": {\n" +
       "      \"sonarqube\": [\n" +
@@ -268,16 +293,16 @@ class SettingsManagerTest {
       "    }\n" +
       "  }\n" +
       "}\n");
-    underTest.update(defaultConnectionId);
+    underTest.didChangeConfiguration();
 
-    WorkspaceFolderSettings settings = underTest.parseFolderSettings(defaultConnectionId);
+    WorkspaceFolderSettings settings = underTest.getCurrentDefaultFolderSettings();
     assertThat(settings.getConnectionId()).isEqualTo("sq");
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
   }
 
   @Test
   public void shouldDefaultIfNoConnectionId() {
-    Map<String, Object> noConnectionsId = fromJsonString("{\n" +
+    mockConfigurationRequest(null, "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"connections\": {\n" +
       "      \"sonarqube\": [\n" +
@@ -289,26 +314,32 @@ class SettingsManagerTest {
       "    }\n" +
       "  }\n" +
       "}\n");
-    underTest.update(noConnectionsId);
+    underTest.didChangeConfiguration();
 
     assertThat(underTest.getCurrentSettings().getServers().keySet()).containsExactly("<default>");
 
-    WorkspaceFolderSettings settings = underTest.parseFolderSettings(noConnectionsId);
+    WorkspaceFolderSettings settings = underTest.getCurrentDefaultFolderSettings();
     assertThat(settings.getConnectionId()).isEqualTo("<default>");
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
   }
 
   @Test
   public void shouldLogAnErrorIfAmbiguousConnectionId() {
-    underTest.update(fromJsonString(FULL_SAMPLE_CONFIG));
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
 
-    WorkspaceFolderSettings settings = underTest.parseFolderSettings(fromJsonString("{\n" +
+    mockConfigurationRequest(FOLDER_URI, "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"project\": {\n" +
       "      \"projectKey\": \"myProject\"\n" +
       "    }\n" +
       "  }\n" +
-      "}\n"));
+      "}\n");
+    WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
+    when(foldersManager.getAll()).thenReturn(asList(folderWrapper));
+
+    underTest.didChangeConfiguration();
+
+    WorkspaceFolderSettings settings = folderWrapper.getSettings();
     assertThat(settings.getConnectionId()).isNull();
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
     assertThat(logTester.logs(LoggerLevel.ERROR))
@@ -317,16 +348,22 @@ class SettingsManagerTest {
 
   @Test
   public void shouldLogAnErrorIfUnknownConnectionId() {
-    underTest.update(fromJsonString(FULL_SAMPLE_CONFIG));
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
 
-    WorkspaceFolderSettings settings = underTest.parseFolderSettings(fromJsonString("{\n" +
+    mockConfigurationRequest(FOLDER_URI, "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"project\": {\n" +
       "      \"connectionId\": \"unknown\",\n" +
       "      \"projectKey\": \"myProject\"\n" +
       "    }\n" +
       "  }\n" +
-      "}\n"));
+      "}\n");
+    WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
+    when(foldersManager.getAll()).thenReturn(asList(folderWrapper));
+
+    underTest.didChangeConfiguration();
+
+    WorkspaceFolderSettings settings = folderWrapper.getSettings();
     assertThat(settings.getConnectionId()).isEqualTo("unknown");
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
     assertThat(logTester.logs(LoggerLevel.ERROR))
@@ -335,13 +372,14 @@ class SettingsManagerTest {
 
   @Test
   public void shouldHaveLocalRuleConfigurationWithDisabledRule() {
-    underTest.update(fromJsonString("{\n" +
+    mockConfigurationRequest(null, "{\n" +
       "  \"rules\": {\n" +
       "    \"xoo:rule1\": {\n" +
       "      \"level\": \"off\"\n" +
       "    }\n" +
       "  }\n" +
-      "}\n"));
+      "}\n");
+    underTest.didChangeConfiguration();
 
     WorkspaceSettings settings = underTest.getCurrentSettings();
     assertThat(settings.hasLocalRuleConfiguration()).isTrue();
@@ -349,13 +387,14 @@ class SettingsManagerTest {
 
   @Test
   public void shouldHaveLocalRuleConfigurationWithEnabledRule() {
-    underTest.update(fromJsonString("{\n" +
+    mockConfigurationRequest(null, "{\n" +
       "  \"rules\": {\n" +
       "    \"xoo:rule1\": {\n" +
       "      \"level\": \"on\"\n" +
       "    }\n" +
       "  }\n" +
-      "}\n"));
+      "}\n");
+    underTest.didChangeConfiguration();
 
     WorkspaceSettings settings = underTest.getCurrentSettings();
     assertThat(settings.hasLocalRuleConfiguration()).isTrue();

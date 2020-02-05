@@ -64,6 +64,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
@@ -125,7 +126,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertLogContains(
       "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[javascript:UnusedVariable],includedRules=[javascript:S1105],showAnalyzerLogs=false,showVerboseLogs=false]");
 
-    client.diagnosticsLatch.await(1, TimeUnit.MINUTES);
+    assertTrue(client.diagnosticsLatch.await(1, TimeUnit.MINUTES));
 
     assertThat(client.getDiagnostics(uri))
       .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
@@ -207,7 +208,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   public void noIssueOnTestJSFiles() throws Exception {
-    // Enable debug logs for assertions
     emulateConfigurationChangeOnClient("{**/*Test*}", null, null, true);
     assertLogContains(
       "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*Test*},connectionId=<null>,projectKey=<null>]");
@@ -219,7 +219,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(diagnostics).isEmpty();
     client.clear();
 
-    // Enable debug logs for assertions
     emulateConfigurationChangeOnClient("{**/*MyTest*}", null, null, true);
     assertLogContains(
       "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*MyTest*},connectionId=<null>,projectKey=<null>]");
@@ -301,7 +300,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     client.diagnosticsLatch = new CountDownLatch(1);
     lsProxy.getTextDocumentService()
       .didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
-    client.diagnosticsLatch.await(1, TimeUnit.MINUTES);
+    assertTrue(client.diagnosticsLatch.await(1, TimeUnit.MINUTES));
 
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
@@ -352,7 +351,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   public void test_command_open_standalone_rule_desc() throws Exception {
     client.showRuleDescriptionLatch = new CountDownLatch(1);
     lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", singletonList("javascript:S930"))).get();
-    client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES);
+    assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
 
     assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S930");
     assertThat(client.ruleDesc.getName()).isEqualTo("Function calls should not pass extra arguments");
@@ -365,7 +364,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   public void test_command_open_rule_desc_from_code_action() throws Exception {
     client.showRuleDescriptionLatch = new CountDownLatch(1);
     lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenRuleDescCodeAction", asList("javascript:S930", "file://foo.js"))).get();
-    client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES);
+    assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
 
     assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S930");
     assertThat(client.ruleDesc.getName()).isEqualTo("Function calls should not pass extra arguments");
@@ -409,29 +408,45 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void fetchWorkspaceFolderConfigurationWhenAdded() {
-    // Enable debug logs for assertions
-    emulateConfigurationChangeOnClient(null, null, null, true);
-
-    client.folderSettings.put(SOME_FOLDER_URI, buildSonarLintSettingsSection("some pattern", null, null, true));
-    lsProxy.getWorkspaceService()
-      .didChangeWorkspaceFolders(
-        new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.singletonList(new WorkspaceFolder(SOME_FOLDER_URI, "Added")), Collections.emptyList())));
-
-    assertLogContains(
-      "Workspace folder 'WorkspaceFolder[uri=some://uri,name=Added]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=some pattern,connectionId=<null>,projectKey=<null>]");
-  }
-
-  @Test
   public void logErrorWhenClientFailedToReturnConfiguration() {
     // No workspaceFolderPath settings registered in the client mock, so it should fail when server will request workspaceFolderPath
     // configuration
-    lsProxy.getWorkspaceService()
-      .didChangeWorkspaceFolders(
-        new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.singletonList(new WorkspaceFolder(SOME_FOLDER_URI, "Added")), Collections.emptyList())));
+    String folderUri = "some://noconfig_uri";
+    try {
+      lsProxy.getWorkspaceService()
+        .didChangeWorkspaceFolders(
+          new DidChangeWorkspaceFoldersParams(
+            new WorkspaceFoldersChangeEvent(Collections.singletonList(new WorkspaceFolder(folderUri, "No config")), Collections.emptyList())));
 
-    assertLogContainsPattern("\\[Error.*\\] Unable to fetch configuration");
-    assertLogContainsPattern("(?s).*Internal error.*");
+      assertLogContainsPattern("\\[Error.*\\] Unable to fetch configuration of folder " + folderUri);
+      assertLogContainsPattern("(?s).*Internal error.*");
+    } finally {
+      lsProxy.getWorkspaceService()
+        .didChangeWorkspaceFolders(
+          new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), singletonList(new WorkspaceFolder(folderUri, "No config")))));
+    }
+  }
+
+  @Test
+  public void fetchWorkspaceFolderConfigurationWhenAdded() throws Exception {
+    client.settingsLatch = new CountDownLatch(1);
+    String folderUri = "some://added_uri";
+    client.folderSettings.put(folderUri, buildSonarLintSettingsSection("another pattern", null, null, true));
+
+    try {
+      lsProxy.getWorkspaceService()
+        .didChangeWorkspaceFolders(
+          new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.singletonList(new WorkspaceFolder(folderUri, "Added")), Collections.emptyList())));
+      awaitLatch(client.settingsLatch);
+
+      assertLogContains(
+        "Workspace folder 'WorkspaceFolder[uri=some://added_uri,name=Added]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=another pattern,connectionId=<null>,projectKey=<null>]");
+    } finally {
+      lsProxy.getWorkspaceService()
+        .didChangeWorkspaceFolders(
+          new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), singletonList(new WorkspaceFolder(folderUri, "Added")))));
+
+    }
   }
 
   @Test

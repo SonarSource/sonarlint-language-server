@@ -25,18 +25,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
-import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 import static java.net.URI.create;
 
@@ -44,13 +43,8 @@ public class WorkspaceFoldersManager {
 
   private static final Logger LOG = Loggers.get(WorkspaceFoldersManager.class);
 
-  private final Map<URI, WorkspaceFolderWrapper> folders = new HashMap<>();
-  private final SettingsManager settingsManager;
+  private final Map<URI, WorkspaceFolderWrapper> folders = new ConcurrentHashMap<>();
   private final List<WorkspaceFolderLifecycleListener> listeners = new ArrayList<>();
-
-  public WorkspaceFoldersManager(SettingsManager settingsManager) {
-    this.settingsManager = settingsManager;
-  }
 
   public void initialize(@Nullable List<WorkspaceFolder> workspaceFolders) {
     if (workspaceFolders != null) {
@@ -61,38 +55,40 @@ public class WorkspaceFoldersManager {
     }
   }
 
-  public synchronized void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
+  public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
+    LOG.debug("Processing didChangeWorkspaceFolders event");
     for (WorkspaceFolder removed : event.getRemoved()) {
       URI uri = create(removed.getUri());
       removeFolder(uri);
     }
     for (WorkspaceFolder added : event.getAdded()) {
       URI uri = create(added.getUri());
-      if (folders.containsKey(uri)) {
-        LOG.warn("Registered workspace folder was already added: " + added);
-        continue;
-      }
       WorkspaceFolderWrapper addedWrapper = addFolder(added, uri);
       listeners.forEach(l -> l.added(addedWrapper));
     }
   }
 
   private void removeFolder(URI uri) {
-    WorkspaceFolderWrapper folderWrapper = folders.remove(uri);
-    if (folderWrapper == null) {
+    WorkspaceFolderWrapper removed = folders.remove(uri);
+    if (removed == null) {
       LOG.warn("Unregistered workspace folder was missing: " + uri);
       return;
     }
-    listeners.forEach(l -> l.removed(folderWrapper));
+    LOG.debug("Folder {} removed", removed);
+    listeners.forEach(l -> l.removed(removed));
   }
 
   private WorkspaceFolderWrapper addFolder(WorkspaceFolder added, URI uri) {
     WorkspaceFolderWrapper addedWrapper = new WorkspaceFolderWrapper(uri, added);
-    folders.put(uri, addedWrapper);
+    if (folders.put(uri, addedWrapper) != null) {
+      LOG.warn("Registered workspace folder {} was already added", addedWrapper);
+    } else {
+      LOG.debug("Folder {} added", addedWrapper);
+    }
     return addedWrapper;
   }
 
-  public synchronized Optional<WorkspaceFolderWrapper> findFolderForFile(URI uri) {
+  public Optional<WorkspaceFolderWrapper> findFolderForFile(URI uri) {
     List<URI> folderUriCandidates = folders.keySet().stream()
       .filter(wfRoot -> isAncestor(wfRoot, uri))
       // Sort by path descending length to prefer the deepest one in case of multiple nested workspace folders
@@ -130,13 +126,8 @@ public class WorkspaceFoldersManager {
     return folderSegments.length <= fileSegments.length && Arrays.equals(folderSegments, Arrays.copyOfRange(fileSegments, 0, folderSegments.length));
   }
 
-  public synchronized Collection<WorkspaceFolderWrapper> getAll() {
+  public Collection<WorkspaceFolderWrapper> getAll() {
     return new ArrayList<>(folders.values());
-  }
-
-  public synchronized void didChangeConfiguration() {
-    folders.values()
-      .forEach(settingsManager::updateWorkspaceFolderSettingsAsync);
   }
 
   public void addListener(WorkspaceFolderLifecycleListener listener) {
