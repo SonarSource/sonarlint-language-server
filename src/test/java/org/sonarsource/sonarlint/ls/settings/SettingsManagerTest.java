@@ -23,6 +23,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import java.io.File;
 import java.util.Map;
+import org.eclipse.lsp4j.services.LanguageClient;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonar.api.utils.log.LogTesterJUnit5;
@@ -33,6 +35,7 @@ import org.sonarsource.sonarlint.ls.Utils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.Mockito.mock;
 
 class SettingsManagerTest {
 
@@ -95,26 +98,17 @@ class SettingsManagerTest {
     "  }\n" +
     "}\n";
 
-  private static final String DUPLICATE_CONNECTIONS = "{\n" +
-    "  \"connectedMode\": {\n" +
-    "    \"connections\": {\n" +
-    "      \"sonarqube\": [\n" +
-    "        { \"connectionId\": \"dup\", \"serverUrl\": \"https://mysonarqube1.mycompany.org\", \"token\": \"ab12\" }" +
-    "      ],\n" +
-    "      \"sonarcloud\": [\n" +
-    "        { \"connectionId\": \"dup\", \"token\": \"ab12\", \"organizationKey\": \"myOrga1\" }" +
-    "      ]\n" +
-    "    },\n" +
-    "    \"project\": {\n" +
-    "      \"connectionId\": \"dup\",\n" +
-    "      \"projectKey\": \"myProject\"\n" +
-    "    }\n" +
-    "  }\n" +
-    "}\n";
+  private SettingsManager underTest;
+
+  @BeforeEach
+  public void prepare() {
+    underTest = new SettingsManager(mock(LanguageClient.class));
+  }
 
   @Test
   public void shouldParseFullWellFormedJsonWorkspaceFolderSettings() {
-    WorkspaceFolderSettings settings = SettingsManager.parseFolderSettings(fromJsonString(FULL_SAMPLE_CONFIG));
+    underTest.update(fromJsonString(FULL_SAMPLE_CONFIG));
+    WorkspaceFolderSettings settings = underTest.parseFolderSettings(fromJsonString(FULL_SAMPLE_CONFIG));
 
     assertThat(settings.getTestMatcher().matches(new File("./someTest").toPath())).isFalse();
     assertThat(settings.getTestMatcher().matches(new File("./someTest.ext").toPath())).isTrue();
@@ -125,7 +119,8 @@ class SettingsManagerTest {
 
   @Test
   public void shouldParseFullDeprecatedWellFormedJsonWorkspaceFolderSettings() {
-    WorkspaceFolderSettings settings = SettingsManager.parseFolderSettings(fromJsonString(DEPRECATED_SAMPLE_CONFIG));
+    underTest.update(fromJsonString(DEPRECATED_SAMPLE_CONFIG));
+    WorkspaceFolderSettings settings = underTest.parseFolderSettings(fromJsonString(DEPRECATED_SAMPLE_CONFIG));
 
     assertThat(settings.getConnectionId()).isEqualTo("server1");
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
@@ -133,8 +128,9 @@ class SettingsManagerTest {
 
   @Test
   public void shouldParseFullWellFormedJsonWorkspaceSettings() {
-    WorkspaceSettings settings = SettingsManager.parseSettings(fromJsonString(FULL_SAMPLE_CONFIG));
+    underTest.update(fromJsonString(FULL_SAMPLE_CONFIG));
 
+    WorkspaceSettings settings = underTest.getCurrentSettings();
     assertThat(settings.isDisableTelemetry()).isTrue();
     assertThat(settings.showAnalyzerLogs()).isTrue();
     assertThat(settings.showVerboseLogs()).isTrue();
@@ -153,17 +149,84 @@ class SettingsManagerTest {
   }
 
   @Test
-  public void shouldLogErrorIfDuplicateConnectionId() {
-    WorkspaceSettings settings = SettingsManager.parseSettings(fromJsonString(DUPLICATE_CONNECTIONS));
+  public void shouldLogErrorIfIncompleteConnections() {
+    underTest.update(fromJsonString("{\n" +
+      "  \"connectedMode\": {\n" +
+      "    \"servers\": [\n" +
+      "      { \"serverUrl\": \"https://mysonarqube.mycompany.org\", \"token\": \"ab12\" }," +
+      "      { \"serverId\": \"server1\", \"token\": \"ab12\" }," +
+      "      { \"serverId\": \"server1\", \"serverUrl\": \"https://mysonarqube.mycompany.org\" }" +
+      "    ],\n" +
+      "    \"connections\": {\n" +
+      "      \"sonarqube\": [\n" +
+      "        { \"serverUrl\": \"https://mysonarqube1.mycompany.org\" }," +
+      "        { \"token\": \"cd34\" }" +
+      "      ],\n" +
+      "      \"sonarcloud\": [\n" +
+      "        { \"token\": \"ab12\" }," +
+      "        { \"organizationKey\": \"myOrga2\" }" +
+      "      ]\n" +
+      "    }\n" +
+      "  }\n" +
+      "}\n"));
 
+    WorkspaceSettings settings = underTest.getCurrentSettings();
+    assertThat(settings.getServers()).isEmpty();
+    assertThat(logTester.logs(LoggerLevel.ERROR))
+      .containsExactly("Incomplete server connection configuration. Required parameters must not be blank: serverId.",
+        "Incomplete server connection configuration. Required parameters must not be blank: serverUrl.",
+        "Incomplete server connection configuration. Required parameters must not be blank: token.",
+        "Incomplete SonarQube server connection configuration. Required parameters must not be blank: token.",
+        "Incomplete SonarQube server connection configuration. Required parameters must not be blank: serverUrl.",
+        "Incomplete SonarCloud connection configuration. Required parameters must not be blank: organizationKey.",
+        "Incomplete SonarCloud connection configuration. Required parameters must not be blank: token.");
+  }
+
+  @Test
+  public void shouldLogErrorIfDuplicateConnectionId() {
+    underTest.update(fromJsonString("{\n" +
+      "  \"connectedMode\": {\n" +
+      "    \"connections\": {\n" +
+      "      \"sonarqube\": [\n" +
+      "        { \"connectionId\": \"dup\", \"serverUrl\": \"https://mysonarqube1.mycompany.org\", \"token\": \"ab12\" }" +
+      "      ],\n" +
+      "      \"sonarcloud\": [\n" +
+      "        { \"connectionId\": \"dup\", \"token\": \"ab12\", \"organizationKey\": \"myOrga1\" }" +
+      "      ]\n" +
+      "    }\n" +
+      "  }\n" +
+      "}\n"));
+
+    WorkspaceSettings settings = underTest.getCurrentSettings();
     assertThat(settings.getServers()).containsKeys("dup");
     assertThat(logTester.logs(LoggerLevel.ERROR)).containsExactly("Multiple server connections with the same identifier 'dup'. Fix your settings.");
   }
 
   @Test
-  public void shouldParseFullDeprecatedWellFormedJsonWorkspaceSettings() {
-    WorkspaceSettings settings = SettingsManager.parseSettings(fromJsonString(DEPRECATED_SAMPLE_CONFIG));
+  public void shouldLogErrorIfDuplicateConnectionsWithoutId() {
+    underTest.update(fromJsonString("{\n" +
+      "  \"connectedMode\": {\n" +
+      "    \"connections\": {\n" +
+      "      \"sonarqube\": [\n" +
+      "        { \"serverUrl\": \"https://mysonarqube1.mycompany.org\", \"token\": \"ab12\" }" +
+      "      ],\n" +
+      "      \"sonarcloud\": [\n" +
+      "        { \"token\": \"ab12\", \"organizationKey\": \"myOrga1\" }" +
+      "      ]\n" +
+      "    }\n" +
+      "  }\n" +
+      "}\n"));
 
+    WorkspaceSettings settings = underTest.getCurrentSettings();
+    assertThat(settings.getServers()).containsKeys("<default>");
+    assertThat(logTester.logs(LoggerLevel.ERROR)).containsExactly("Please specify a unique 'connectionId' in your settings for each of the SonarQube/SonarCloud connections.");
+  }
+
+  @Test
+  public void shouldParseFullDeprecatedWellFormedJsonWorkspaceSettings() {
+    underTest.update(fromJsonString(DEPRECATED_SAMPLE_CONFIG));
+
+    WorkspaceSettings settings = underTest.getCurrentSettings();
     assertThat(settings.getServers()).containsKeys("server1", "sc");
     assertThat(settings.getServers().values())
       .extracting(ServerConnectionSettings::getServerId, ServerConnectionSettings::getServerUrl, ServerConnectionSettings::getToken, ServerConnectionSettings::getOrganizationKey)
@@ -172,25 +235,130 @@ class SettingsManagerTest {
   }
 
   @Test
+  public void shouldLogErrorIfNoConnectionToDefault() {
+    Map<String, Object> defaultConnectionId = fromJsonString("{\n" +
+      "  \"connectedMode\": {\n" +
+      "    \"connections\": {\n" +
+      "    },\n" +
+      "    \"project\": {\n" +
+      "      \"projectKey\": \"myProject\"\n" +
+      "    }\n" +
+      "  }\n" +
+      "}\n");
+    underTest.update(defaultConnectionId);
+
+    WorkspaceFolderSettings settings = underTest.parseFolderSettings(defaultConnectionId);
+    assertThat(settings.getConnectionId()).isNull();
+    assertThat(settings.getProjectKey()).isEqualTo("myProject");
+    assertThat(logTester.logs(LoggerLevel.ERROR))
+      .contains("No SonarQube/SonarCloud connections defined for your binding. Please update your settings.");
+  }
+
+  @Test
+  public void shouldDefaultIfOnlyOneConnectionId() {
+    Map<String, Object> defaultConnectionId = fromJsonString("{\n" +
+      "  \"connectedMode\": {\n" +
+      "    \"connections\": {\n" +
+      "      \"sonarqube\": [\n" +
+      "        { \"connectionId\": \"sq\", \"serverUrl\": \"https://mysonarqube2.mycompany.org\", \"token\": \"cd34\" }" +
+      "      ]\n" +
+      "    },\n" +
+      "    \"project\": {\n" +
+      "      \"projectKey\": \"myProject\"\n" +
+      "    }\n" +
+      "  }\n" +
+      "}\n");
+    underTest.update(defaultConnectionId);
+
+    WorkspaceFolderSettings settings = underTest.parseFolderSettings(defaultConnectionId);
+    assertThat(settings.getConnectionId()).isEqualTo("sq");
+    assertThat(settings.getProjectKey()).isEqualTo("myProject");
+  }
+
+  @Test
+  public void shouldDefaultIfNoConnectionId() {
+    Map<String, Object> noConnectionsId = fromJsonString("{\n" +
+      "  \"connectedMode\": {\n" +
+      "    \"connections\": {\n" +
+      "      \"sonarqube\": [\n" +
+      "        { \"serverUrl\": \"https://mysonarqube2.mycompany.org\", \"token\": \"cd34\" }" +
+      "      ]\n" +
+      "    },\n" +
+      "    \"project\": {\n" +
+      "      \"projectKey\": \"myProject\"\n" +
+      "    }\n" +
+      "  }\n" +
+      "}\n");
+    underTest.update(noConnectionsId);
+
+    assertThat(underTest.getCurrentSettings().getServers().keySet()).containsExactly("<default>");
+
+    WorkspaceFolderSettings settings = underTest.parseFolderSettings(noConnectionsId);
+    assertThat(settings.getConnectionId()).isEqualTo("<default>");
+    assertThat(settings.getProjectKey()).isEqualTo("myProject");
+  }
+
+  @Test
+  public void shouldLogAnErrorIfAmbiguousConnectionId() {
+    underTest.update(fromJsonString(FULL_SAMPLE_CONFIG));
+
+    WorkspaceFolderSettings settings = underTest.parseFolderSettings(fromJsonString("{\n" +
+      "  \"connectedMode\": {\n" +
+      "    \"project\": {\n" +
+      "      \"projectKey\": \"myProject\"\n" +
+      "    }\n" +
+      "  }\n" +
+      "}\n"));
+    assertThat(settings.getConnectionId()).isNull();
+    assertThat(settings.getProjectKey()).isEqualTo("myProject");
+    assertThat(logTester.logs(LoggerLevel.ERROR))
+      .containsExactly("Multiple connections defined in your settings. Please specify a 'connectionId' in your binding with one of [sc1,sq1,sc2,sq2] to disambiguate.");
+  }
+
+  @Test
+  public void shouldLogAnErrorIfUnknownConnectionId() {
+    underTest.update(fromJsonString(FULL_SAMPLE_CONFIG));
+
+    WorkspaceFolderSettings settings = underTest.parseFolderSettings(fromJsonString("{\n" +
+      "  \"connectedMode\": {\n" +
+      "    \"project\": {\n" +
+      "      \"connectionId\": \"unknown\",\n" +
+      "      \"projectKey\": \"myProject\"\n" +
+      "    }\n" +
+      "  }\n" +
+      "}\n"));
+    assertThat(settings.getConnectionId()).isEqualTo("unknown");
+    assertThat(settings.getProjectKey()).isEqualTo("myProject");
+    assertThat(logTester.logs(LoggerLevel.ERROR))
+      .containsExactly("No SonarQube/SonarCloud connections defined for your binding with id 'unknown'. Please update your settings.");
+  }
+
+  @Test
   public void shouldHaveLocalRuleConfigurationWithDisabledRule() {
-    assertThat(SettingsManager.parseSettings(fromJsonString("{\n" +
+    underTest.update(fromJsonString("{\n" +
       "  \"rules\": {\n" +
       "    \"xoo:rule1\": {\n" +
       "      \"level\": \"off\"\n" +
       "    }\n" +
       "  }\n" +
-      "}\n")).hasLocalRuleConfiguration()).isTrue();
+      "}\n"));
+
+    WorkspaceSettings settings = underTest.getCurrentSettings();
+    assertThat(settings.hasLocalRuleConfiguration()).isTrue();
   }
 
   @Test
   public void shouldHaveLocalRuleConfigurationWithEnabledRule() {
-    assertThat(SettingsManager.parseSettings(fromJsonString("{\n" +
+    underTest.update(fromJsonString("{\n" +
       "  \"rules\": {\n" +
       "    \"xoo:rule1\": {\n" +
       "      \"level\": \"on\"\n" +
       "    }\n" +
       "  }\n" +
-      "}\n")).hasLocalRuleConfiguration()).isTrue();
+      "}\n"));
+
+    WorkspaceSettings settings = underTest.getCurrentSettings();
+    assertThat(settings.hasLocalRuleConfiguration()).isTrue();
   }
 
   private static Map<String, Object> fromJsonString(String json) {

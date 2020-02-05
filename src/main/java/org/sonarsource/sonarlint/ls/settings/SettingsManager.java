@@ -49,10 +49,15 @@ import org.sonarsource.sonarlint.ls.Utils;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 
+import static java.util.Arrays.stream;
+import static org.apache.commons.lang.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang.StringUtils.isBlank;
 
 public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
+  private static final String ORGANIZATION_KEY = "organizationKey";
+  private static final String PROJECT = "project";
+  private static final String DEFAULT_CONNECTION_ID = "<default>";
   private static final String SERVER_URL = "serverUrl";
   private static final String SERVER_ID = "serverId";
   private static final String TOKEN = "token";
@@ -154,7 +159,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     Thread.currentThread().interrupt();
   }
 
-  private void update(@Nullable Map<String, Object> params) {
+  void update(@Nullable Map<String, Object> params) {
     WorkspaceSettings newSettings = parseSettings(params != null ? params : Collections.emptyMap());
     WorkspaceSettings old = currentSettings;
     this.currentSettings = newSettings;
@@ -187,7 +192,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     }
   }
 
-  static WorkspaceSettings parseSettings(Map<String, Object> params) {
+  private static WorkspaceSettings parseSettings(Map<String, Object> params) {
     boolean disableTelemetry = (Boolean) params.getOrDefault(DISABLE_TELEMETRY, false);
     Map<String, ServerConnectionSettings> serverConnections = parseServerConnections(params);
     Set<RuleKey> excludedRules = parseRuleKeysMatching(params, SettingsManager.hasLevelSetTo("off"));
@@ -213,16 +218,13 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static void parseDeprecatedServerEntries(Map<String, Object> connectedModeMap, Map<String, ServerConnectionSettings> serverConnections) {
     List<Map<String, String>> deprecatedServersEntries = (List<Map<String, String>>) connectedModeMap.getOrDefault("servers", Collections.emptyList());
     deprecatedServersEntries.forEach(m -> {
-      String serverId = m.get(SERVER_ID);
-      String url = m.get(SERVER_URL);
-      String token = m.get(TOKEN);
-      String organization = m.get("organizationKey");
-
-      if (!isBlank(serverId) && !isBlank(url) && !isBlank(token)) {
+      if (checkRequiredAttribute(m, "server", SERVER_ID, SERVER_URL, TOKEN)) {
+        String serverId = m.get(SERVER_ID);
+        String url = m.get(SERVER_URL);
+        String token = m.get(TOKEN);
+        String organization = m.get(ORGANIZATION_KEY);
         ServerConnectionSettings connectionSettings = new ServerConnectionSettings(serverId, url, token, organization);
         addIfUniqueConnectionId(serverConnections, serverId, connectionSettings);
-      } else {
-        LOG.error("Incomplete server connection configuration. Required parameters must not be blank: serverId, serverUrl, token.");
       }
     });
   }
@@ -230,15 +232,12 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static void parseSonarQubeConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
     List<Map<String, String>> sonarqubeEntries = (List<Map<String, String>>) connectionsMap.getOrDefault("sonarqube", Collections.emptyList());
     sonarqubeEntries.forEach(m -> {
-      String connectionId = m.get(CONNECTION_ID);
-      String url = m.get(SERVER_URL);
-      String token = m.get(TOKEN);
-
-      if (!isBlank(connectionId) && !isBlank(url) && !isBlank(token)) {
+      if (checkRequiredAttribute(m, "SonarQube server", SERVER_URL, TOKEN)) {
+        String connectionId = defaultIfBlank(m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
+        String url = m.get(SERVER_URL);
+        String token = m.get(TOKEN);
         ServerConnectionSettings connectionSettings = new ServerConnectionSettings(connectionId, url, token, null);
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
-      } else {
-        LOG.error("Incomplete SonarQube server connection configuration. Required parameters must not be blank: connectionId, serverUrl, token.");
       }
     });
   }
@@ -246,37 +245,66 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
     List<Map<String, String>> sonarcloudEntries = (List<Map<String, String>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
     sonarcloudEntries.forEach(m -> {
-      String connectionId = m.get(CONNECTION_ID);
-      String organizationKey = m.get("organizationKey");
-      String token = m.get(TOKEN);
 
-      if (!isBlank(connectionId) && !isBlank(organizationKey) && !isBlank(token)) {
+      if (checkRequiredAttribute(m, "SonarCloud", ORGANIZATION_KEY, TOKEN)) {
+        String connectionId = defaultIfBlank(m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
+        String organizationKey = m.get(ORGANIZATION_KEY);
+        String token = m.get(TOKEN);
         ServerConnectionSettings connectionSettings = new ServerConnectionSettings(connectionId, ServerConnectionSettings.SONARCLOUD_URL, token, organizationKey);
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
-      } else {
-        LOG.error("Incomplete SonarCloud connection configuration. Required parameters must not be blank: connectionId, organizationKey, token.");
       }
     });
   }
 
+  private static boolean checkRequiredAttribute(Map<String, String> map, String label, String... requiredAttributes) {
+    List<String> missing = stream(requiredAttributes).filter(att -> isBlank(map.get(att))).collect(Collectors.toList());
+    if (!missing.isEmpty()) {
+      LOG.error("Incomplete {} connection configuration. Required parameters must not be blank: {}.", label, missing.stream().collect(Collectors.joining(",")));
+      return false;
+    }
+    return true;
+  }
+
   private static void addIfUniqueConnectionId(Map<String, ServerConnectionSettings> serverConnections, String connectionId, ServerConnectionSettings connectionSettings) {
     if (serverConnections.containsKey(connectionId)) {
-      LOG.error("Multiple server connections with the same identifier '{}'. Fix your settings.", connectionId);
+      if (DEFAULT_CONNECTION_ID.equals(connectionId)) {
+        LOG.error("Please specify a unique 'connectionId' in your settings for each of the SonarQube/SonarCloud connections.");
+      } else {
+        LOG.error("Multiple server connections with the same identifier '{}'. Fix your settings.", connectionId);
+      }
     } else {
       serverConnections.put(connectionId, connectionSettings);
     }
   }
 
   // Visible for testing
-  static WorkspaceFolderSettings parseFolderSettings(Map<String, Object> params) {
+  WorkspaceFolderSettings parseFolderSettings(Map<String, Object> params) {
     String testFilePattern = (String) params.get(TEST_FILE_PATTERN);
     Map<String, String> analyzerProperties = getAnalyzerProperties(params);
+    String connectionId = null;
+    String projectKey = null;
     @SuppressWarnings("unchecked")
     Map<String, Object> connectedModeMap = (Map<String, Object>) params.getOrDefault("connectedMode", Collections.emptyMap());
-    @SuppressWarnings("unchecked")
-    Map<String, String> projectBinding = (Map<String, String>) connectedModeMap.getOrDefault("project", Collections.emptyMap());
-    return new WorkspaceFolderSettings(projectBinding.getOrDefault(SERVER_ID, projectBinding.get(CONNECTION_ID)), projectBinding.get("projectKey"), analyzerProperties,
-      testFilePattern);
+    if (connectedModeMap.containsKey(PROJECT)) {
+      @SuppressWarnings("unchecked")
+      Map<String, String> projectBinding = (Map<String, String>) connectedModeMap.get(PROJECT);
+      projectKey = projectBinding.get("projectKey");
+      connectionId = projectBinding.getOrDefault(SERVER_ID, projectBinding.get(CONNECTION_ID));
+      if (isBlank(connectionId)) {
+        if (currentSettings.getServers().isEmpty()) {
+          LOG.error("No SonarQube/SonarCloud connections defined for your binding. Please update your settings.");
+        } else if (currentSettings.getServers().size() == 1) {
+          connectionId = currentSettings.getServers().keySet().iterator().next();
+        } else {
+          LOG.error("Multiple connections defined in your settings. Please specify a 'connectionId' in your binding with one of [{}] to disambiguate.",
+            currentSettings.getServers().keySet().stream().collect(Collectors.joining(",")));
+          connectionId = null;
+        }
+      } else if (!currentSettings.getServers().containsKey(connectionId)) {
+        LOG.error("No SonarQube/SonarCloud connections defined for your binding with id '{}'. Please update your settings.", connectionId);
+      }
+    }
+    return new WorkspaceFolderSettings(connectionId, projectKey, analyzerProperties, testFilePattern);
   }
 
   @SuppressWarnings("unchecked")
