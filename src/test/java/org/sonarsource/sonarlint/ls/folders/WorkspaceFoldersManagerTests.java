@@ -32,13 +32,11 @@ import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonar.api.utils.log.LogTesterJUnit5;
-import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 import static java.net.URI.create;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.mockito.Mockito.mock;
 import static org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager.isAncestor;
 
 class WorkspaceFoldersManagerTests {
@@ -46,7 +44,7 @@ class WorkspaceFoldersManagerTests {
   @RegisterExtension
   public LogTesterJUnit5 logTester = new LogTesterJUnit5();
 
-  private WorkspaceFoldersManager underTest = new WorkspaceFoldersManager(mock(SettingsManager.class));
+  private WorkspaceFoldersManager underTest = new WorkspaceFoldersManager();
 
   @Test
   public void findFolderForFile_returns_correct_folder_when_exists() {
@@ -156,16 +154,17 @@ class WorkspaceFoldersManagerTests {
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(asList(workspaceFolder), Collections.emptyList()));
 
     assertThat(underTest.getAll()).extracting(WorkspaceFolderWrapper::getRootPath).containsExactly(basedir);
-    assertThat(logTester.logs()).isEmpty();
+    assertThat(logTester.logs()).containsExactly("Processing didChangeWorkspaceFolders event",
+      "Folder WorkspaceFolder[uri=" + basedir.toUri() + ",name=<null>] added");
+
+    logTester.clear();
 
     // Should never occurs
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(asList(workspaceFolder), Collections.emptyList()));
 
     assertThat(underTest.getAll()).extracting(WorkspaceFolderWrapper::getRootPath).containsExactly(basedir);
-    assertThat(logTester.logs()).containsExactly("Registered workspace folder was already added: WorkspaceFolder [\n" +
-      "  uri = \"" + basedir.toUri() + "\"\n" +
-      "  name = null\n" +
-      "]");
+    assertThat(logTester.logs()).containsExactly("Processing didChangeWorkspaceFolders event",
+      "Registered workspace folder WorkspaceFolder[uri=" + basedir.toUri() + ",name=<null>] was already added");
   }
 
   @Test
@@ -176,16 +175,22 @@ class WorkspaceFoldersManagerTests {
     underTest.initialize(asList(workspaceFolder));
     assertThat(underTest.getAll()).extracting(WorkspaceFolderWrapper::getRootPath).containsExactly(basedir);
 
+    logTester.clear();
+
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(Collections.emptyList(), asList(workspaceFolder)));
 
     assertThat(underTest.getAll()).isEmpty();
-    assertThat(logTester.logs()).isEmpty();
+    assertThat(logTester.logs()).containsExactly("Processing didChangeWorkspaceFolders event",
+      "Folder WorkspaceFolder[uri=" + basedir.toUri() + ",name=<null>] removed");
+
+    logTester.clear();
 
     // Should never occurs
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(Collections.emptyList(), asList(workspaceFolder)));
 
     assertThat(underTest.getAll()).isEmpty();
-    assertThat(logTester.logs()).containsExactly("Unregistered workspace folder was missing: " + basedir.toUri());
+    assertThat(logTester.logs()).containsExactly("Processing didChangeWorkspaceFolders event",
+      "Unregistered workspace folder was missing: " + basedir.toUri());
   }
 
   private static WorkspaceFolder mockWorkspaceFolder(URI uri) {

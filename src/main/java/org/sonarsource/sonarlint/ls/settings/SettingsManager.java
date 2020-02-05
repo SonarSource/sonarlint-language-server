@@ -28,13 +28,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
@@ -48,6 +46,7 @@ import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 import org.sonarsource.sonarlint.ls.Utils;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 
 import static java.util.Arrays.stream;
 import static org.apache.commons.lang.StringUtils.defaultIfBlank;
@@ -74,6 +73,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static final Logger LOG = Loggers.get(SettingsManager.class);
 
   private final LanguageClient client;
+  private final WorkspaceFoldersManager foldersManager;
 
   private WorkspaceSettings currentSettings = null;
   private final CountDownLatch initLatch = new CountDownLatch(1);
@@ -85,8 +85,9 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private final List<WorkspaceSettingsChangeListener> globalListeners = new ArrayList<>();
   private final List<WorkspaceFolderSettingsChangeListener> folderListeners = new ArrayList<>();
 
-  public SettingsManager(LanguageClient client) {
+  public SettingsManager(LanguageClient client, WorkspaceFoldersManager foldersManager) {
     this.client = client;
+    this.foldersManager = foldersManager;
     this.executor = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint settings manager", false));
   }
 
@@ -119,39 +120,59 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   }
 
   public void didChangeConfiguration() {
-    updateWorkspaceSettingsAsync();
-  }
-
-  public void updateWorkspaceSettingsAsync() {
-    requestSonarLintConfigurationAsync(null, response -> update(Utils.parseToMap(response.get(0))));
-  }
-
-  private void requestSonarLintConfigurationAsync(@Nullable URI uri, Consumer<List<Object>> handler) {
     executor.execute(() -> {
-      LOG.debug("Fetching configuration for folder '{}'", uri);
-      ConfigurationParams params = new ConfigurationParams();
-      ConfigurationItem configurationItem = new ConfigurationItem();
-      configurationItem.setSection(SONARLINT_CONFIGURATION_NAMESPACE);
-      if (uri != null) {
-        configurationItem.setScopeUri(uri.toString());
-      }
-      params.setItems(Arrays.asList(configurationItem));
-      List<Object> response;
       try {
-        response = client.configuration(params).get(1, TimeUnit.MINUTES);
+        Map<String, Object> workspaceSettingsMap = requestSonarLintConfigurationAsync(null).get();
+        WorkspaceSettings newWorkspaceSettings = parseSettings(workspaceSettingsMap);
+        WorkspaceSettings oldWorkspaceSettings = currentSettings;
+        this.currentSettings = newWorkspaceSettings;
+        WorkspaceFolderSettings newDefaultFolderSettings = parseFolderSettings(workspaceSettingsMap);
+        WorkspaceFolderSettings oldDefaultFolderSettings = currentDefaultSettings;
+        this.currentDefaultSettings = newDefaultFolderSettings;
+        initLatch.countDown();
+
+        foldersManager.getAll().forEach(f -> updateWorkspaceFolderSettings(f, true));
+
+        notifyListeners(newWorkspaceSettings, oldWorkspaceSettings, newDefaultFolderSettings, oldDefaultFolderSettings);
+
       } catch (InterruptedException e) {
         interrupted(e);
-        return;
-      } catch (ExecutionException | TimeoutException e) {
-        LOG.error("Unable to fetch configuration", e);
-        return;
-      }
-      try {
-        handler.accept(response);
       } catch (Exception e) {
-        LOG.error("Unable to parse configuration", e);
+        LOG.error("Unable to update configuration", e);
       }
     });
+  }
+
+  private void notifyListeners(WorkspaceSettings newWorkspaceSettings, WorkspaceSettings oldWorkspaceSettings, WorkspaceFolderSettings newDefaultFolderSettings,
+    WorkspaceFolderSettings oldDefaultFolderSettings) {
+    if (!Objects.equals(oldWorkspaceSettings, newWorkspaceSettings)) {
+      LOG.debug("Global settings updated: {}", newWorkspaceSettings);
+      globalListeners.forEach(l -> l.onChange(oldWorkspaceSettings, newWorkspaceSettings));
+    }
+    if (!Objects.equals(oldDefaultFolderSettings, newDefaultFolderSettings)) {
+      LOG.debug("Default settings updated: {}", newDefaultFolderSettings);
+      folderListeners.forEach(l -> l.onChange(null, oldDefaultFolderSettings, newDefaultFolderSettings));
+    }
+  }
+
+  // Visible for testing
+  CompletableFuture<Map<String, Object>> requestSonarLintConfigurationAsync(@Nullable URI uri) {
+    LOG.debug("Fetching configuration for folder '{}'", uri);
+    ConfigurationParams params = new ConfigurationParams();
+    ConfigurationItem configurationItem = new ConfigurationItem();
+    configurationItem.setSection(SONARLINT_CONFIGURATION_NAMESPACE);
+    if (uri != null) {
+      configurationItem.setScopeUri(uri.toString());
+    }
+    params.setItems(Arrays.asList(configurationItem));
+    return client.configuration(params)
+      .handle((r, t) -> {
+        if (t != null) {
+          LOG.error("Unable to fetch configuration of folder " + uri, t);
+        }
+        return r;
+      })
+      .thenApply(response -> response != null ? Utils.parseToMap(response.get(0)) : Collections.emptyMap());
   }
 
   private static void interrupted(InterruptedException e) {
@@ -159,36 +180,22 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     Thread.currentThread().interrupt();
   }
 
-  void update(@Nullable Map<String, Object> params) {
-    WorkspaceSettings newSettings = parseSettings(params != null ? params : Collections.emptyMap());
-    WorkspaceSettings old = currentSettings;
-    this.currentSettings = newSettings;
-    WorkspaceFolderSettings newDefaultSettings = parseFolderSettings(params != null ? params : Collections.emptyMap());
-    WorkspaceFolderSettings oldDefault = currentDefaultSettings;
-    this.currentDefaultSettings = newDefaultSettings;
-    initLatch.countDown();
-    if (!Objects.equals(old, newSettings)) {
-      LOG.debug("Global settings updated: {}", newSettings);
-      globalListeners.forEach(l -> l.onChange(old, newSettings));
-    }
-    if (!Objects.equals(oldDefault, newDefaultSettings)) {
-      LOG.debug("Default settings updated: {}", newDefaultSettings);
-      folderListeners.forEach(l -> l.onChange(null, oldDefault, newDefaultSettings));
-    }
-  }
-
-  public void updateWorkspaceFolderSettingsAsync(WorkspaceFolderWrapper f) {
-    requestSonarLintConfigurationAsync(f.getUri(), response -> update(f, Utils.parseToMap(response.get(0))));
-
-  }
-
-  private void update(WorkspaceFolderWrapper f, @Nullable Map<String, Object> params) {
-    WorkspaceFolderSettings newSettings = parseFolderSettings(params != null ? params : Collections.emptyMap());
-    WorkspaceFolderSettings old = f.getRawSettings();
-    if (!Objects.equals(old, newSettings)) {
-      f.setSettings(newSettings);
-      LOG.debug("Workspace folder '{}' configuration updated: {}", f, newSettings);
-      folderListeners.forEach(l -> l.onChange(f, old, newSettings));
+  private void updateWorkspaceFolderSettings(WorkspaceFolderWrapper f, boolean notifyOnChange) {
+    try {
+      Map<String, Object> folderSettingsMap = requestSonarLintConfigurationAsync(f.getUri()).get();
+      WorkspaceFolderSettings newSettings = parseFolderSettings(folderSettingsMap);
+      WorkspaceFolderSettings old = f.getRawSettings();
+      if (!Objects.equals(old, newSettings)) {
+        f.setSettings(newSettings);
+        LOG.debug("Workspace folder '{}' configuration updated: {}", f, newSettings);
+        if (notifyOnChange) {
+          folderListeners.forEach(l -> l.onChange(f, old, newSettings));
+        }
+      }
+    } catch (InterruptedException e) {
+      interrupted(e);
+    } catch (Exception e) {
+      LOG.error("Unable to update configuration of folder " + f.getUri(), e);
     }
   }
 
@@ -288,20 +295,23 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     if (connectedModeMap.containsKey(PROJECT)) {
       @SuppressWarnings("unchecked")
       Map<String, String> projectBinding = (Map<String, String>) connectedModeMap.get(PROJECT);
-      projectKey = projectBinding.get("projectKey");
-      connectionId = projectBinding.getOrDefault(SERVER_ID, projectBinding.get(CONNECTION_ID));
-      if (isBlank(connectionId)) {
-        if (currentSettings.getServers().isEmpty()) {
-          LOG.error("No SonarQube/SonarCloud connections defined for your binding. Please update your settings.");
-        } else if (currentSettings.getServers().size() == 1) {
-          connectionId = currentSettings.getServers().keySet().iterator().next();
-        } else {
-          LOG.error("Multiple connections defined in your settings. Please specify a 'connectionId' in your binding with one of [{}] to disambiguate.",
-            currentSettings.getServers().keySet().stream().collect(Collectors.joining(",")));
-          connectionId = null;
+      // params.connectedMode.project is present but empty when there is no project binding
+      if (!projectBinding.isEmpty()) {
+        projectKey = projectBinding.get("projectKey");
+        connectionId = projectBinding.getOrDefault(SERVER_ID, projectBinding.get(CONNECTION_ID));
+        if (isBlank(connectionId)) {
+          if (currentSettings.getServers().isEmpty()) {
+            LOG.error("No SonarQube/SonarCloud connections defined for your binding. Please update your settings.");
+          } else if (currentSettings.getServers().size() == 1) {
+            connectionId = currentSettings.getServers().keySet().iterator().next();
+          } else {
+            LOG.error("Multiple connections defined in your settings. Please specify a 'connectionId' in your binding with one of [{}] to disambiguate.",
+              currentSettings.getServers().keySet().stream().collect(Collectors.joining(",")));
+            connectionId = null;
+          }
+        } else if (!currentSettings.getServers().containsKey(connectionId)) {
+          LOG.error("No SonarQube/SonarCloud connections defined for your binding with id '{}'. Please update your settings.", connectionId);
         }
-      } else if (!currentSettings.getServers().containsKey(connectionId)) {
-        LOG.error("No SonarQube/SonarCloud connections defined for your binding with id '{}'. Please update your settings.", connectionId);
       }
     }
     return new WorkspaceFolderSettings(connectionId, projectKey, analyzerProperties, testFilePattern);
@@ -360,7 +370,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   @Override
   public void added(WorkspaceFolderWrapper added) {
-    updateWorkspaceFolderSettingsAsync(added);
+    executor.execute(() -> updateWorkspaceFolderSettings(added, false));
   }
 
   @Override
