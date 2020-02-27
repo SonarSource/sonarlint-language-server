@@ -639,6 +639,75 @@ class ProjectBindingManagerTests {
     verifyNoMoreInteractions(analysisManager);
   }
 
+  @Test
+  public void update_all_project_bindings_update_once_each_project_same_server() {
+    WorkspaceFolderWrapper folder1 = mockFileInABoundWorkspaceFolder();
+    WorkspaceFolderWrapper folder2 = mockFileInABoundWorkspaceFolder2();
+    // Folder 2 is bound to the same server, different project
+    folder2.setSettings(BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
+
+    when(foldersManager.getAll()).thenReturn(asList(folder1, folder2));
+
+    when(enginesFactory.createConnectedEngine(anyString()))
+      .thenReturn(fakeEngine);
+
+    underTest.updateAllBindings();
+
+    verify(fakeEngine).update(any(), any());
+    verify(fakeEngine).updateProject(any(), eq(PROJECT_KEY), any());
+    verify(fakeEngine).updateProject(any(), eq(PROJECT_KEY2), any());
+
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
+    verifyNoMoreInteractions(analysisManager);
+  }
+
+  @Test
+  public void update_all_project_bindings_update_only_once_each_project_same_server() {
+    WorkspaceFolderWrapper folder1 = mockFileInABoundWorkspaceFolder();
+    WorkspaceFolderWrapper folder2 = mockFileInABoundWorkspaceFolder2();
+    // Folder 2 is bound to the same server, same project
+    folder2.setSettings(BOUND_SETTINGS);
+
+    when(foldersManager.getAll()).thenReturn(asList(folder1, folder2));
+
+    when(enginesFactory.createConnectedEngine(anyString()))
+      .thenReturn(fakeEngine);
+
+    underTest.updateAllBindings();
+
+    verify(fakeEngine).update(any(), any());
+    verify(fakeEngine).updateProject(any(), eq(PROJECT_KEY), any());
+
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
+    verifyNoMoreInteractions(analysisManager);
+  }
+
+  @Test
+  public void update_all_project_bindings_ignore_wrong_binding() {
+    WorkspaceFolderWrapper folder = mockFileInAFolder();
+    folder.setSettings(BOUND_SETTINGS);
+
+    when(foldersManager.getAll()).thenReturn(asList(folder));
+
+    underTest.updateAllBindings();
+
+    verifyNoMoreInteractions(analysisManager);
+    assertThat(logTester.logs(LoggerLevel.ERROR)).contains("Invalid binding for '" + folder.getRootPath() + "'");
+  }
+
+  @Test
+  public void update_all_project_bindings_ignore_wrong_binding_default_folder() {
+    mockFileOutsideFolder();
+    when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(BOUND_SETTINGS);
+
+    underTest.updateAllBindings();
+
+    verifyNoMoreInteractions(analysisManager);
+    assertThat(logTester.logs(LoggerLevel.ERROR)).contains("Invalid binding for 'default folder'");
+  }
+
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {
     WorkspaceFolderWrapper folder = mockFileInAFolder();
     folder.setSettings(BOUND_SETTINGS);
