@@ -23,6 +23,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -315,27 +316,33 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         entry.getValue().ifPresent(engine -> updateGlobalStorageAndLogResults(serverConfiguration, engine));
       }
     });
-    updateBindingIfNecessary(null);
+    Map<String, Set<String>> updatedProjectsByServer = new HashMap<>();
+    updateBindingIfNecessary(null, updatedProjectsByServer);
 
-    foldersManager.getAll().forEach(this::updateBindingIfNecessary);
+    foldersManager.getAll().forEach(f -> updateBindingIfNecessary(f, updatedProjectsByServer));
 
     client.showMessage(new MessageParams(MessageType.Info, "All SonarLint bindings succesfully updated"));
   }
 
-  private void updateBindingIfNecessary(@Nullable WorkspaceFolderWrapper folder) {
+  private void updateBindingIfNecessary(@Nullable WorkspaceFolderWrapper folder, Map<String, Set<String>> updatedProjectsByServer) {
     WorkspaceFolderSettings folderSettings = folder != null ? folder.getSettings() : settingsManager.getCurrentDefaultFolderSettings();
     if (folderSettings.hasBinding()) {
       String serverId = requireNonNull(folderSettings.getConnectionId());
-      ServerConfiguration serverConfiguration = createServerConfiguration(serverId);
-      if (serverConfiguration == null) {
-        LOG.error("Invalid binding for '{}'", folder != null ? folder.getRootPath() : "default folder");
-        return;
+      String projectKey = requireNonNull(folderSettings.getProjectKey());
+      Set<String> alreadyUpdatedProjects = updatedProjectsByServer.get(serverId);
+      if (alreadyUpdatedProjects == null || !alreadyUpdatedProjects.contains(projectKey)) {
+        ServerConfiguration serverConfiguration = createServerConfiguration(serverId);
+        if (serverConfiguration == null) {
+          LOG.error("Invalid binding for '{}'", folder != null ? folder.getRootPath() : "default folder");
+          return;
+        }
+        Optional<ConnectedSonarLintEngine> engineOpt = getOrCreateConnectedEngine(serverId, serverConfiguration, true);
+        if (!engineOpt.isPresent()) {
+          return;
+        }
+        engineOpt.get().updateProject(serverConfiguration, projectKey, null);
+        updatedProjectsByServer.computeIfAbsent(serverId, s -> new HashSet<>()).add(projectKey);
       }
-      Optional<ConnectedSonarLintEngine> engineOpt = getOrCreateConnectedEngine(serverId, serverConfiguration, true);
-      if (!engineOpt.isPresent()) {
-        return;
-      }
-      engineOpt.get().updateProject(serverConfiguration, requireNonNull(folderSettings.getProjectKey()), null);
       analysisManager.analyzeAllOpenFilesInFolder(folder);
     }
   }
