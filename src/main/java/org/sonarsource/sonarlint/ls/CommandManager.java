@@ -77,7 +77,7 @@ public class CommandManager {
     for (Diagnostic d : params.getContext().getDiagnostics()) {
       cancelToken.checkCanceled();
       if (SONARLINT_SOURCE.equals(d.getSource())) {
-        String ruleKey = d.getCode();
+        String ruleKey = d.getCode().getLeft();
         cancelToken.checkCanceled();
         String titleShowRuleDesc = String.format("Open description of SonarLint rule '%s'", ruleKey);
         CodeAction actionShowRuleDesc = new CodeAction(titleShowRuleDesc);

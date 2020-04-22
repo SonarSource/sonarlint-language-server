@@ -79,7 +79,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
 
     assertThat(diagnostics)
-      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
         tuple(2, 0, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
@@ -98,7 +98,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     diagnostics = didChangeAndWaitForDiagnostics(uri, "public class Foo {\n  public static void main() {\n  System.out.println(\"foo\");\n}\n}");
 
     assertThat(diagnostics)
-      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
         tuple(2, 2, 2, 12, "java:S106", "sonarlint", "Replace this use of System.out or System.err by a logger.", DiagnosticSeverity.Warning));
@@ -120,7 +120,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       "import org.junit.Test;\npublic class FooTest {\n  @Test\n  public void test() {\n String s = \"foo\";\n}\n}");
 
     assertThat(diagnostics)
-      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(3, 14, 3, 18, "java:S2699", "sonarlint", "Add at least one assertion to this test case.", DiagnosticSeverity.Error));
   }
@@ -154,7 +154,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     }
 
     assertThat(diagnostics)
-      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(3, 14, 3, 18, "java:S2699", "sonarlint", "Add at least one assertion to this test case.", DiagnosticSeverity.Error));
   }
