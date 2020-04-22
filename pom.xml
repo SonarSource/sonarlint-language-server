@@ -25,7 +25,7 @@
   <properties>
     <sonarlint.core.version>4.10.0.17000</sonarlint.core.version>
     <!-- analyzers used for tests -->
-    <sonar.java.version>6.1.0.20866</sonar.java.version>
+    <sonar.java.version>6.3.0.21585</sonar.java.version>
     <sonar.javascript.version>5.2.1.7778</sonar.javascript.version>
     <sonar.php.version>3.2.0.4868</sonar.php.version>
     <sonar.python.version>2.1.0.5269</sonar.python.version>
