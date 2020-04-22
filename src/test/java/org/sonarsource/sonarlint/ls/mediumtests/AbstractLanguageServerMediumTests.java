@@ -46,6 +46,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import org.assertj.core.api.iterable.ThrowingExtractor;
@@ -404,5 +405,25 @@ abstract class AbstractLanguageServerMediumTests {
 
   protected ThrowingExtractor<? super MessageParams, String, RuntimeException> withoutTimestamp() {
     return p -> p.getMessage().replaceAll("\\[(\\w*)\\s*-(.*)\\]", "[$1]");
+  }
+
+  protected Function<? super Diagnostic, ?> code() {
+    return d -> d.getCode().getLeft();
+  }
+
+  protected Function<? super Diagnostic, ?> endCharacter() {
+    return d -> d.getRange().getEnd().getCharacter();
+  }
+
+  protected Function<? super Diagnostic, ?> endLine() {
+    return d -> d.getRange().getEnd().getLine();
+  }
+
+  protected Function<? super Diagnostic, ?> startCharacter() {
+    return d -> d.getRange().getStart().getCharacter();
+  }
+
+  protected Function<? super Diagnostic, ?> startLine() {
+    return d -> d.getRange().getStart().getLine();
   }
 }

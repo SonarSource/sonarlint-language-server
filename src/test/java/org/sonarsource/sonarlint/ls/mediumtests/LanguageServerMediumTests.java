@@ -89,7 +89,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
 
     assertThat(diagnostics)
-      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information),
         tuple(2, 6, 2, 11, "javascript:UnusedVariable", "sonarlint", "Remove the declaration of the unused 'plouf' variable.",
@@ -109,7 +109,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", jsSource);
     assertThat(diagnostics)
-      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(2, 2, 2, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information),
         tuple(3, 6, 3, 11, "javascript:UnusedVariable", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information));
@@ -129,7 +129,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertTrue(client.diagnosticsLatch.await(1, TimeUnit.MINUTES));
 
     assertThat(client.getDiagnostics(uri))
-      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(2, 2, 2, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information),
         tuple(1, 1, 1, 2, "javascript:S1105", "sonarlint", "Move this open curly brace to the end of the previous line.", DiagnosticSeverity.Information)
@@ -146,7 +146,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "typescript", "function foo() {\n if(bar() && bar()) { return 42; }\n}");
 
     assertThat(diagnostics)
-      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(tuple(1, 4, 1, 18, "typescript:S1764", "sonarlint", "Correct one of the identical sub-expressions on both sides of operator \"&&\"",
         DiagnosticSeverity.Warning));
   }
@@ -158,7 +158,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "python", "def foo():\n  print 'toto'\n");
 
     assertThat(diagnostics)
-      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
         tuple(1, 2, 1, 7, "python:PrintStatementUsage", "sonarlint", "Replace print statement by built-in function.", DiagnosticSeverity.Warning));
   }
@@ -170,7 +170,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "php", "<?php\nfunction foo() {\n  echo(\"Hello\");\n}\n?>");
 
     assertThat(diagnostics)
-      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(tuple(2, 2, 2, 6, "php:S2041", "sonarlint", "Remove the parentheses from this \"echo\" call.", DiagnosticSeverity.Error));
   }
 
@@ -181,7 +181,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "html", "<html><body></body></html>");
 
     assertThat(diagnostics)
-      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(0, 0, 0, 6, "Web:DoctypePresenceCheck", "sonarlint", "Insert a <!DOCTYPE> declaration to before this <html> tag.",
           DiagnosticSeverity.Warning),
@@ -197,7 +197,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "jsp", "<html><body></body></html>");
 
     assertThat(diagnostics)
-      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(0, 0, 0, 6, "Web:DoctypePresenceCheck", "sonarlint", "Insert a <!DOCTYPE> declaration to before this <html> tag.",
           DiagnosticSeverity.Warning),
@@ -239,7 +239,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     List<Diagnostic> diagnostics = didChangeAndWaitForDiagnostics(uri, "function foo() {\n  alert('toto');\n}");
 
     assertThat(diagnostics)
-      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(tuple(1, 2, 1, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information));
   }
 
@@ -257,7 +257,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
       List<Diagnostic> diagnostics = client.getDiagnostics(uri);
       assertThat(diagnostics)
-        .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
         .containsExactly(tuple(1, 2, 1, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information),
           tuple(2, 2, 2, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information));
     } else {
@@ -272,7 +272,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     List<Diagnostic> diagnostics = didSaveAndWaitForDiagnostics(uri, "function foo() {\n  alert('toto');\n}");
 
     assertThat(diagnostics)
-      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(tuple(1, 2, 1, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information));
   }
 
@@ -285,7 +285,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "foo(\"a\", \"b\", \"c\");\n");
 
     assertThat(diagnostics)
-      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
         tuple(2, 0, 2, 18, "javascript:S930", "sonarlint", "This function expects 2 arguments, but 3 were provided.", DiagnosticSeverity.Error));
 
