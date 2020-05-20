@@ -45,6 +45,19 @@ public class EnginesFactory {
   private final Collection<URL> standaloneAnalyzers;
   @CheckForNull
   private Path typeScriptPath;
+  private static final Language[] STANDALONE_LANGUAGES = {
+    Language.HTML,
+    Language.JAVA,
+    Language.JS,
+    Language.PHP,
+    Language.PYTHON,
+    Language.TS
+  };
+
+  private static final Language[] CONNECTED_ADDITIONAL_LANGUAGES = {
+    Language.APEX,
+    Language.PLSQL
+  };
 
   public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput) {
     this.standaloneAnalyzers = standaloneAnalyzers;
@@ -58,7 +71,7 @@ public class EnginesFactory {
     try {
       StandaloneGlobalConfiguration configuration = StandaloneGlobalConfiguration.builder()
         .setExtraProperties(prepareExtraProps())
-        .addEnabledLanguages(Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PYTHON, Language.TS)
+        .addEnabledLanguages(STANDALONE_LANGUAGES)
         .addPlugins(standaloneAnalyzers.toArray(new URL[0]))
         .setLogOutput(lsLogOutput)
         .build();
@@ -80,7 +93,8 @@ public class EnginesFactory {
     ConnectedGlobalConfiguration configuration = ConnectedGlobalConfiguration.builder()
       .setServerId(serverId)
       .setExtraProperties(prepareExtraProps())
-      .addEnabledLanguages(Language.APEX, Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON, Language.TS)
+      .addEnabledLanguages(STANDALONE_LANGUAGES)
+      .addEnabledLanguages(CONNECTED_ADDITIONAL_LANGUAGES)
       .setLogOutput(lsLogOutput)
       .build();
 
