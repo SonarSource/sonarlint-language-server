@@ -30,9 +30,9 @@ import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.ConnectedSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.StandaloneSonarLintEngineImpl;
+import org.sonarsource.sonarlint.core.client.api.common.Language;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.connected.Language;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -40,8 +40,6 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 public class EnginesFactory {
 
   private static final Logger LOG = Loggers.get(EnginesFactory.class);
-
-  public static final String TYPESCRIPT_PATH_PROP = "sonar.typescript.internal.typescriptLocation";
 
   private final LanguageClientLogOutput lsLogOutput;
   private final Collection<URL> standaloneAnalyzers;
@@ -60,6 +58,7 @@ public class EnginesFactory {
     try {
       StandaloneGlobalConfiguration configuration = StandaloneGlobalConfiguration.builder()
         .setExtraProperties(prepareExtraProps())
+        .addEnabledLanguages(Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PYTHON, Language.TS)
         .addPlugins(standaloneAnalyzers.toArray(new URL[0]))
         .setLogOutput(lsLogOutput)
         .build();
