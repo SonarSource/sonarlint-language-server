@@ -24,6 +24,7 @@ import java.nio.file.Paths;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.sonarsource.sonarlint.core.client.api.common.Language;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneGlobalConfiguration;
@@ -61,6 +62,7 @@ public class EnginesFactoryTests {
     assertThat(createdEngine).isSameAs(mockEngine);
     StandaloneGlobalConfiguration capturedConfig = argCaptor.getValue();
     assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", FAKE_TYPESCRIPT_PATH.toString());
+    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PYTHON, Language.TS);
   }
 
   @Test
@@ -91,6 +93,7 @@ public class EnginesFactoryTests {
     assertThat(createdEngine).isSameAs(mockEngine);
     ConnectedGlobalConfiguration capturedConfig = argCaptor.getValue();
     assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", FAKE_TYPESCRIPT_PATH.toString());
+    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.APEX, Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON, Language.TS);
   }
 
   @Test

@@ -30,9 +30,9 @@ import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.ConnectedSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.StandaloneSonarLintEngineImpl;
+import org.sonarsource.sonarlint.core.client.api.common.Language;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.connected.Language;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -41,12 +41,23 @@ public class EnginesFactory {
 
   private static final Logger LOG = Loggers.get(EnginesFactory.class);
 
-  public static final String TYPESCRIPT_PATH_PROP = "sonar.typescript.internal.typescriptLocation";
-
   private final LanguageClientLogOutput lsLogOutput;
   private final Collection<URL> standaloneAnalyzers;
   @CheckForNull
   private Path typeScriptPath;
+  private static final Language[] STANDALONE_LANGUAGES = {
+    Language.HTML,
+    Language.JAVA,
+    Language.JS,
+    Language.PHP,
+    Language.PYTHON,
+    Language.TS
+  };
+
+  private static final Language[] CONNECTED_ADDITIONAL_LANGUAGES = {
+    Language.APEX,
+    Language.PLSQL
+  };
 
   public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput) {
     this.standaloneAnalyzers = standaloneAnalyzers;
@@ -60,6 +71,7 @@ public class EnginesFactory {
     try {
       StandaloneGlobalConfiguration configuration = StandaloneGlobalConfiguration.builder()
         .setExtraProperties(prepareExtraProps())
+        .addEnabledLanguages(STANDALONE_LANGUAGES)
         .addPlugins(standaloneAnalyzers.toArray(new URL[0]))
         .setLogOutput(lsLogOutput)
         .build();
@@ -81,7 +93,8 @@ public class EnginesFactory {
     ConnectedGlobalConfiguration configuration = ConnectedGlobalConfiguration.builder()
       .setServerId(serverId)
       .setExtraProperties(prepareExtraProps())
-      .addEnabledLanguages(Language.APEX, Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON, Language.TS)
+      .addEnabledLanguages(STANDALONE_LANGUAGES)
+      .addEnabledLanguages(CONNECTED_ADDITIONAL_LANGUAGES)
       .setLogOutput(lsLogOutput)
       .build();
 
