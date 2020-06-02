@@ -22,9 +22,11 @@ package org.sonarsource.sonarlint.ls.connected;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -167,14 +169,17 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       LOG.error("Error starting connected SonarLint engine for '" + serverId + "'", e);
       return null;
     }
-
+    List<String> failedServerIds = new ArrayList<>();
     try {
       GlobalStorageStatus globalStorageStatus = engine.getGlobalStorageStatus();
       if (forceUpdate || globalStorageStatus == null || globalStorageStatus.isStale() || engine.getState() != State.UPDATED) {
-        updateGlobalStorageAndLogResults(serverConfiguration, engine);
+        updateGlobalStorageAndLogResults(serverConfiguration, engine, failedServerIds, serverId);
       }
     } catch (Exception e) {
       LOG.error("Error updating storage of the connected SonarLint engine '" + serverId + "'", e);
+    }
+    if (!failedServerIds.isEmpty()) {
+      client.showMessage(new MessageParams(MessageType.Error, "Binding update failed for the server: " + serverId + ". Look to the SonarLint output for details."));
       return null;
     }
     return engine;
@@ -307,21 +312,24 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     // Clear cached bindings to force rebind during next analysis
     folderBindingCache.clear();
     fileBindingCache.clear();
-
+    List<String> failedServerIds = new ArrayList<>();
     // Start by updating all engines that are already started and cached
-    connectedEngineCacheByServerId.entrySet().forEach(entry -> {
-      String serverId = entry.getKey();
+    connectedEngineCacheByServerId.forEach((serverId, value) -> {
       ServerConfiguration serverConfiguration = createServerConfiguration(serverId);
       if (serverConfiguration != null) {
-        entry.getValue().ifPresent(engine -> updateGlobalStorageAndLogResults(serverConfiguration, engine));
+        value.ifPresent(engine -> updateGlobalStorageAndLogResults(serverConfiguration, engine, failedServerIds, serverId));
       }
     });
     Map<String, Set<String>> updatedProjectsByServer = new HashMap<>();
     updateBindingIfNecessary(null, updatedProjectsByServer);
 
     foldersManager.getAll().forEach(f -> updateBindingIfNecessary(f, updatedProjectsByServer));
-
-    client.showMessage(new MessageParams(MessageType.Info, "All SonarLint bindings succesfully updated"));
+    if (failedServerIds.isEmpty()) {
+      client.showMessage(new MessageParams(MessageType.Info, "All SonarLint bindings succesfully updated"));
+    } else {
+      String message = String.join(", ", failedServerIds);
+      client.showMessage(new MessageParams(MessageType.Error, "Binding update failed for the following servers: " + message + ". Look to the SonarLint output for details."));
+    }
   }
 
   private void updateBindingIfNecessary(@Nullable WorkspaceFolderWrapper folder, Map<String, Set<String>> updatedProjectsByServer) {
@@ -347,8 +355,13 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     }
   }
 
-  private static void updateGlobalStorageAndLogResults(ServerConfiguration serverConfiguration, ConnectedSonarLintEngine engine) {
-    UpdateResult updateResult = engine.update(serverConfiguration, null);
-    LOG.info("Global storage status: {}", updateResult.status());
+  private static void updateGlobalStorageAndLogResults(ServerConfiguration serverConfiguration, ConnectedSonarLintEngine engine, List<String> failedServerIds, String serverId) {
+    try {
+      UpdateResult updateResult = engine.update(serverConfiguration, null);
+      LOG.info("Global storage status: {}", updateResult.status());
+    } catch (Exception e) {
+      LOG.error("Error updating storage of the connected SonarLint engine '" + serverId + "'", e);
+      failedServerIds.add(serverId);
+    }
   }
 }

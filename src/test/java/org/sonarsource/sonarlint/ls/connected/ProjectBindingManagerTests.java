@@ -26,6 +26,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +41,7 @@ import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEng
 import org.sonarsource.sonarlint.core.client.api.connected.GlobalStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectStorageStatus;
+import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.UpdateResult;
 import org.sonarsource.sonarlint.ls.AnalysisManager;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
@@ -108,6 +111,7 @@ class ProjectBindingManagerTests {
   private ProjectStorageStatus projectStorageStatus2 = mock(ProjectStorageStatus.class);
   private UpdateResult updateResult2 = mock(UpdateResult.class);
   private AnalysisManager analysisManager = mock(AnalysisManager.class);
+  LanguageClient client = mock(LanguageClient.class);
 
   @BeforeEach
   public void prepare() throws IOException {
@@ -143,7 +147,7 @@ class ProjectBindingManagerTests {
     when(fakeEngine2.getProjectStorageStatus(PROJECT_KEY)).thenReturn(projectStorageStatus2);
     when(fakeEngine2.update(any(), any())).thenReturn(updateResult2);
 
-    underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, mock(LanguageClient.class));
+    underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client);
     underTest.setAnalysisManager(analysisManager);
   }
 
@@ -706,6 +710,58 @@ class ProjectBindingManagerTests {
 
     verifyNoMoreInteractions(analysisManager);
     assertThat(logTester.logs(LoggerLevel.ERROR)).contains("Invalid binding for 'default folder'");
+  }
+
+  @Test
+  public void update_bindings_error_client_notification() {
+    WorkspaceFolderSettings folderSettings = mock(WorkspaceFolderSettings.class);
+    WorkspaceSettings settings = mock(WorkspaceSettings.class);
+    Map<String, ServerConnectionSettings> servers = mock(Map.class);
+    String serverId = "serverId";
+    when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(folderSettings);
+    when(folderSettings.hasBinding()).thenReturn(true);
+    when(folderSettings.getConnectionId()).thenReturn(serverId);
+    when(settingsManager.getCurrentSettings()).thenReturn(settings);
+    when(settings.getServers()).thenReturn(servers);
+    ServerConnectionSettings serverConnectionSettings = new ServerConnectionSettings("serverId", "serverUrl", "token", "organizationKey");
+    when(servers.get(serverId)).thenReturn(serverConnectionSettings);
+    when(globalStorageStatus.isStale()).thenReturn(true);
+    when(enginesFactory.createConnectedEngine(serverId)).thenReturn(fakeEngine);
+    doThrow(new RuntimeException("Boom")).when(fakeEngine).update(any(ServerConfiguration.class), any());
+
+    underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
+
+    verify(client, times(1)).showMessage(new MessageParams(MessageType.Error, "Binding update failed for the server: " + serverId + ". Look to the SonarLint output for details."));
+  }
+
+  @Test
+  public void update_all_bindings_error_client_notification() {
+    WorkspaceFolderSettings folderSettings = mock(WorkspaceFolderSettings.class);
+    WorkspaceSettings settings = mock(WorkspaceSettings.class);
+    Map<String, ServerConnectionSettings> servers = mock(Map.class);
+    String serverId = "serverId";
+    when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(folderSettings);
+    when(folderSettings.hasBinding()).thenReturn(true);
+    when(folderSettings.getConnectionId()).thenReturn(serverId);
+    when(folderSettings.getProjectKey()).thenReturn("projectKey");
+    when(settingsManager.getCurrentSettings()).thenReturn(settings);
+    when(settings.getServers()).thenReturn(servers);
+    ServerConnectionSettings serverConnectionSettings = new ServerConnectionSettings("serverId", "serverUrl", "token", "organizationKey");
+    when(servers.get(serverId)).thenReturn(serverConnectionSettings);
+    when(globalStorageStatus.isStale()).thenReturn(true);
+    when(enginesFactory.createConnectedEngine(serverId)).thenReturn(fakeEngine);
+    when(settingsManager.getCurrentSettings()).thenReturn(settings);
+    when(settings.getServers()).thenReturn(servers);
+    when(servers.get(serverId)).thenReturn(serverConnectionSettings);
+    when(enginesFactory.createConnectedEngine(serverId)).thenReturn(fakeEngine);
+    when(fakeEngine.update(any(ServerConfiguration.class), any()))
+      .thenReturn(mock(UpdateResult.class))
+      .thenThrow(new RuntimeException("Boom"));
+
+    underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
+    underTest.updateAllBindings();
+
+    verify(client, times(1)).showMessage(new MessageParams(MessageType.Error, "Binding update failed for the following servers: " + serverId + ". Look to the SonarLint output for details."));
   }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {
