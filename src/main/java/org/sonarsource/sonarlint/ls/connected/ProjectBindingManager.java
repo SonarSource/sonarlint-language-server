@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -312,7 +313,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     // Clear cached bindings to force rebind during next analysis
     folderBindingCache.clear();
     fileBindingCache.clear();
-    List<String> failedServerIds = new ArrayList<>();
+    Set<String> failedServerIds = new LinkedHashSet<>();
     // Start by updating all engines that are already started and cached
     connectedEngineCacheByServerId.forEach((serverId, value) -> {
       ServerConfiguration serverConfiguration = createServerConfiguration(serverId);
@@ -321,9 +322,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       }
     });
     Map<String, Set<String>> updatedProjectsByServer = new HashMap<>();
-    updateBindingIfNecessary(null, updatedProjectsByServer);
+    updateBindingIfNecessary(null, updatedProjectsByServer, failedServerIds);
 
-    foldersManager.getAll().forEach(f -> updateBindingIfNecessary(f, updatedProjectsByServer));
+    foldersManager.getAll().forEach(f -> updateBindingIfNecessary(f, updatedProjectsByServer, failedServerIds));
     if (failedServerIds.isEmpty()) {
       client.showMessage(new MessageParams(MessageType.Info, "All SonarLint bindings succesfully updated"));
     } else {
@@ -332,8 +333,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     }
   }
 
-  private void updateBindingIfNecessary(@Nullable WorkspaceFolderWrapper folder, Map<String, Set<String>> updatedProjectsByServer) {
+  private void updateBindingIfNecessary(@Nullable WorkspaceFolderWrapper folder, Map<String, Set<String>> updatedProjectsByServer, Collection<String> failedServerIds) {
     WorkspaceFolderSettings folderSettings = folder != null ? folder.getSettings() : settingsManager.getCurrentDefaultFolderSettings();
+    Object folderId = folder != null ? folder.getRootPath() : "default folder";
     if (folderSettings.hasBinding()) {
       String serverId = requireNonNull(folderSettings.getConnectionId());
       String projectKey = requireNonNull(folderSettings.getProjectKey());
@@ -341,21 +343,26 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       if (alreadyUpdatedProjects == null || !alreadyUpdatedProjects.contains(projectKey)) {
         ServerConfiguration serverConfiguration = createServerConfiguration(serverId);
         if (serverConfiguration == null) {
-          LOG.error("Invalid binding for '{}'", folder != null ? folder.getRootPath() : "default folder");
+          LOG.error("Invalid binding for '{}'", folderId);
           return;
         }
         Optional<ConnectedSonarLintEngine> engineOpt = getOrCreateConnectedEngine(serverId, serverConfiguration, true);
         if (!engineOpt.isPresent()) {
           return;
         }
-        engineOpt.get().updateProject(serverConfiguration, projectKey, null);
-        updatedProjectsByServer.computeIfAbsent(serverId, s -> new HashSet<>()).add(projectKey);
+        try {
+          engineOpt.get().updateProject(serverConfiguration, projectKey, null);
+          updatedProjectsByServer.computeIfAbsent(serverId, s -> new HashSet<>()).add(projectKey);
+        } catch(Exception updateFailed) {
+          LOG.error("Binding update failed for folder '{}'", folderId, updateFailed);
+          failedServerIds.add(serverId);
+        }
       }
       analysisManager.analyzeAllOpenFilesInFolder(folder);
     }
   }
 
-  private static void updateGlobalStorageAndLogResults(ServerConfiguration serverConfiguration, ConnectedSonarLintEngine engine, List<String> failedServerIds, String serverId) {
+  private static void updateGlobalStorageAndLogResults(ServerConfiguration serverConfiguration, ConnectedSonarLintEngine engine, Collection<String> failedServerIds, String serverId) {
     try {
       UpdateResult updateResult = engine.update(serverConfiguration, null);
       LOG.info("Global storage status: {}", updateResult.status());

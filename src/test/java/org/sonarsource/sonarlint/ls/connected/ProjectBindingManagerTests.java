@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
@@ -59,6 +60,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -740,10 +742,11 @@ class ProjectBindingManagerTests {
     WorkspaceSettings settings = mock(WorkspaceSettings.class);
     Map<String, ServerConnectionSettings> servers = mock(Map.class);
     String serverId = "serverId";
+    String projectKey = "projectKey";
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(folderSettings);
     when(folderSettings.hasBinding()).thenReturn(true);
     when(folderSettings.getConnectionId()).thenReturn(serverId);
-    when(folderSettings.getProjectKey()).thenReturn("projectKey");
+    when(folderSettings.getProjectKey()).thenReturn(projectKey);
     when(settingsManager.getCurrentSettings()).thenReturn(settings);
     when(settings.getServers()).thenReturn(servers);
     ServerConnectionSettings serverConnectionSettings = new ServerConnectionSettings("serverId", "serverUrl", "token", "organizationKey");
@@ -757,6 +760,15 @@ class ProjectBindingManagerTests {
     when(fakeEngine.update(any(ServerConfiguration.class), any()))
       .thenReturn(mock(UpdateResult.class))
       .thenThrow(new RuntimeException("Boom"));
+    AtomicInteger calls = new AtomicInteger(0);
+    doAnswer(ignored -> {
+      if (calls.getAndIncrement() == 0) {
+        return null;
+      } else {
+        throw new RuntimeException("Boom at project update");
+      }
+    })
+      .when(fakeEngine).updateProject(any(ServerConfiguration.class), eq(projectKey), eq(null));
 
     underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     underTest.updateAllBindings();
