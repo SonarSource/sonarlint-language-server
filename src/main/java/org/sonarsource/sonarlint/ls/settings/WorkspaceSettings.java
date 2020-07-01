@@ -38,15 +38,18 @@ public class WorkspaceSettings {
   private final Map<String, ServerConnectionSettings> servers;
   private final Collection<RuleKey> excludedRules;
   private final Collection<RuleKey> includedRules;
+  private final Map<RuleKey, Map<String, String>> ruleParameters;
   private final boolean showAnalyzerLogs;
   private final boolean showVerboseLogs;
 
   public WorkspaceSettings(boolean disableTelemetry, Map<String, ServerConnectionSettings> servers,
-    Collection<RuleKey> excludedRules, Collection<RuleKey> includedRules, boolean showAnalyzerLogs, boolean showVerboseLogs) {
+    Collection<RuleKey> excludedRules, Collection<RuleKey> includedRules, Map<RuleKey, Map<String, String>> ruleParameters,
+    boolean showAnalyzerLogs, boolean showVerboseLogs) {
     this.disableTelemetry = disableTelemetry;
     this.servers = servers;
     this.excludedRules = excludedRules;
     this.includedRules = includedRules;
+    this.ruleParameters = ruleParameters;
     this.showAnalyzerLogs = showAnalyzerLogs;
     this.showVerboseLogs = showVerboseLogs;
   }
@@ -65,6 +68,10 @@ public class WorkspaceSettings {
 
   public Collection<RuleKey> getIncludedRules() {
     return includedRules;
+  }
+
+  public Map<RuleKey, Map<String, String>> getRuleParameters() {
+    return ruleParameters;
   }
 
   public boolean hasLocalRuleConfiguration() {

@@ -87,6 +87,10 @@ class SettingsManagerTest {
     "    \"xoo:rule3\": {\n" +
     "      \"level\": \"on\"\n" +
     "    },\n" +
+    "    \"xoo:rule4\": {\n" +
+    "      \"level\": \"on\",\n" +
+    "      \"params\": { \"param1\": \"123\" }" +
+    "    },\n" +
     "    \"xoo:notEvenARule\": \"definitely not a rule\",\n" +
     "    \"somethingNotParsedByRuleKey\": {\n" +
     "      \"level\": \"off\"\n" +
@@ -156,8 +160,9 @@ class SettingsManagerTest {
     assertThat(settings.showAnalyzerLogs()).isTrue();
     assertThat(settings.showVerboseLogs()).isTrue();
     assertThat(settings.getExcludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsExactly(tuple("xoo", "rule1"));
-    assertThat(settings.getExcludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsExactly(tuple("xoo", "rule1"));
-    assertThat(settings.getIncludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsExactly(tuple("xoo", "rule3"));
+    assertThat(settings.getIncludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsOnly(tuple("xoo", "rule3"), tuple("xoo", "rule4"));
+    assertThat(settings.getRuleParameters()).hasSize(1).containsOnlyKeys(RuleKey.parse("xoo:rule4"));
+    assertThat(settings.getRuleParameters().get(RuleKey.parse("xoo:rule4"))).containsOnly(entry("param1", "123"));
     assertThat(settings.hasLocalRuleConfiguration()).isTrue();
     assertThat(settings.getServers()).containsKeys("sq1", "sq2", "sc1", "sc2");
     assertThat(settings.getServers().values())

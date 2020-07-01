@@ -61,7 +61,7 @@ class LanguageClientLogOutputTests {
 
   @Test
   public void enable_debug_logs() {
-    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, false, true));
+    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, null, false, true));
 
     underTest.log("error", Level.ERROR);
     underTest.log("warn", Level.WARN);
@@ -91,7 +91,7 @@ class LanguageClientLogOutputTests {
 
   @Test
   public void enable_analyzer_logs() {
-    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, true, false));
+    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, null, true, false));
 
     underTest.setAnalysis(true);
     underTest.log("error", Level.ERROR);
@@ -108,7 +108,7 @@ class LanguageClientLogOutputTests {
 
   @Test
   public void enable_analyzer_debug_logs() {
-    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, true, true));
+    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, null,true, true));
 
     underTest.setAnalysis(true);
     underTest.log("error", Level.ERROR);

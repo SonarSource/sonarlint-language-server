@@ -124,7 +124,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "javascript:S1105", "on");
 
     assertLogContains(
-      "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[javascript:UnusedVariable],includedRules=[javascript:S1105],showAnalyzerLogs=false,showVerboseLogs=false]");
+      "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[javascript:UnusedVariable],includedRules=[javascript:S1105],ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=false]");
 
     assertTrue(client.diagnosticsLatch.await(1, TimeUnit.MINUTES));
 
@@ -317,7 +317,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     emulateConfigurationChangeOnClient(null, false, false, true);
 
     assertLogContains(
-      "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[],includedRules=[],showAnalyzerLogs=false,showVerboseLogs=true]");
+      "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[],includedRules=[],ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=true]");
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder( "Telemetry enabled");
   }

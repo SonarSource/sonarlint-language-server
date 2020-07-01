@@ -131,7 +131,7 @@ class ProjectBindingManagerTests {
     Files.createFile(fileNotInAWorkspaceFolderPath);
 
     when(settingsManager.getCurrentSettings())
-      .thenReturn(new WorkspaceSettings(false, servers, Collections.emptyList(), Collections.emptyList(), false, false));
+      .thenReturn(newWorkspaceSettingsWithServers(servers));
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(UNBOUND_SETTINGS);
 
     when(enginesFactory.createConnectedEngine(anyString())).thenReturn(fakeEngine);
@@ -151,6 +151,10 @@ class ProjectBindingManagerTests {
 
     underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client);
     underTest.setAnalysisManager(analysisManager);
+  }
+
+  private static WorkspaceSettings newWorkspaceSettingsWithServers(Map<String, ServerConnectionSettings> servers) {
+    return new WorkspaceSettings(false, servers, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(),false, false);
   }
 
   @Test
@@ -453,11 +457,11 @@ class ProjectBindingManagerTests {
   public void unbind_when_global_server_deleted() {
     Map<String, ServerConnectionSettings> servers = new HashMap<String, ServerConnectionSettings>();
     servers.put(SERVER_ID, GLOBAL_SETTINGS);
-    WorkspaceSettings settingsWithServer1 = new WorkspaceSettings(false, servers, Collections.emptyList(), Collections.emptyList(), false, false);
+    WorkspaceSettings settingsWithServer1 = newWorkspaceSettingsWithServers(servers);
 
     servers = new HashMap<String, ServerConnectionSettings>();
     servers.put(SERVER_ID2, GLOBAL_SETTINGS_DIFFERENT_SERVER_ID);
-    WorkspaceSettings settingsWithServer2 = new WorkspaceSettings(false, servers, Collections.emptyList(), Collections.emptyList(), false, false);
+    WorkspaceSettings settingsWithServer2 = newWorkspaceSettingsWithServers(servers);
 
     when(settingsManager.getCurrentSettings()).thenReturn(settingsWithServer1);
 

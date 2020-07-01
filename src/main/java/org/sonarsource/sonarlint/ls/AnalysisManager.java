@@ -307,6 +307,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       .putAllExtraProperties(configureJavaProperties(uri))
       .addExcludedRules(settingsManager.getCurrentSettings().getExcludedRules())
       .addIncludedRules(settingsManager.getCurrentSettings().getIncludedRules())
+      .addRuleParameters(settingsManager.getCurrentSettings().getRuleParameters())
       .build();
     LOG.debug("Analysis triggered on '{}' with configuration: \n{}", uri, configuration.toString());
 
