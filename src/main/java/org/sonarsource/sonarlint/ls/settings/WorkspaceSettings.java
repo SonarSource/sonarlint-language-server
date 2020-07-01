@@ -104,7 +104,8 @@ public class WorkspaceSettings {
     }
     WorkspaceSettings other = (WorkspaceSettings) obj;
     return disableTelemetry == other.disableTelemetry && Objects.equals(servers, other.servers) && Objects.equals(excludedRules, other.excludedRules)
-      && Objects.equals(includedRules, other.includedRules) && Objects.equals(showAnalyzerLogs, other.showAnalyzerLogs) && Objects.equals(showVerboseLogs, other.showVerboseLogs);
+      && Objects.equals(includedRules, other.includedRules) && Objects.equals(ruleParameters, other.ruleParameters)
+      && Objects.equals(showAnalyzerLogs, other.showAnalyzerLogs) && Objects.equals(showVerboseLogs, other.showVerboseLogs);
   }
 
   @Override

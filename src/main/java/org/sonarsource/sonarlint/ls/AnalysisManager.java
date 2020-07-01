@@ -472,7 +472,9 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     if (oldValue == null) {
       return;
     }
-    if (!Objects.equals(oldValue.getExcludedRules(), newValue.getExcludedRules()) || !Objects.equals(oldValue.getIncludedRules(), newValue.getIncludedRules())) {
+    if (!Objects.equals(oldValue.getExcludedRules(), newValue.getExcludedRules()) ||
+      !Objects.equals(oldValue.getIncludedRules(), newValue.getIncludedRules()) ||
+      !Objects.equals(oldValue.getRuleParameters(), newValue.getRuleParameters())) {
       analyzeAllUnboundOpenFiles();
     }
   }

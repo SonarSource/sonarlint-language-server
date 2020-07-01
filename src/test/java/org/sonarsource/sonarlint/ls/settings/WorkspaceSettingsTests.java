@@ -92,7 +92,12 @@ class WorkspaceSettingsTests {
       ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
       asList(new RuleKey("repo1", "rule1")),
       asList(new RuleKey("repo2", "rule22")),
-      ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param2", "value2")),false, false));
+      ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false));
+    assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
+      ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
+      asList(RULE_KEY_1),
+      asList(RULE_KEY_2),
+      ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value2")),false, false));
     assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
       ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
       asList(new RuleKey("repo1", "rule1")),
