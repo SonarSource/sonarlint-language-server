@@ -55,10 +55,8 @@ class LanguageServerNoTypeScriptMediumTests extends AbstractLanguageServerMedium
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactlyInAnyOrder(
-        tuple(1, 2, 1, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information),
-        tuple(2, 6, 2, 11, "javascript:UnusedVariable", "sonarlint", "Remove the declaration of the unused 'plouf' variable.",
-          DiagnosticSeverity.Information));
+      .containsExactly(
+        tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information));
   }
 
   @Test
@@ -77,7 +75,7 @@ class LanguageServerNoTypeScriptMediumTests extends AbstractLanguageServerMedium
     await().atMost(5, SECONDS)
       .untilAsserted(() -> assertThat(client.logs)
         .extracting(withoutTimestamp())
-        .contains("[Debug] Skipped analysis as SonarTS Server is not running"));
+        .contains("[Error] Missing TypeScript dependency"));
   }
 
 }
