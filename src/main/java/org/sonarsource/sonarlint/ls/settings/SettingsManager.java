@@ -198,7 +198,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     Map<String, Object> consoleParams = ((Map<String, Object>) params.getOrDefault(OUTPUT, Collections.emptyMap()));
     boolean showAnalyzerLogs = (Boolean) consoleParams.getOrDefault(SHOW_ANALYZER_LOGS, false);
     boolean showVerboseLogs = (Boolean) consoleParams.getOrDefault(SHOW_VERBOSE_LOGS, false);
-    return new WorkspaceSettings(disableTelemetry, serverConnections, rulesConfiguration.excludedRules(), rulesConfiguration.includedRules(), rulesConfiguration.ruleParameters(), showAnalyzerLogs, showVerboseLogs);
+    return new WorkspaceSettings(disableTelemetry, serverConnections, rulesConfiguration.excludedRules(), rulesConfiguration.includedRules(), rulesConfiguration.ruleParameters(),
+      showAnalyzerLogs, showVerboseLogs);
   }
 
   private static Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params) {
