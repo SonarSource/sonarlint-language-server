@@ -89,7 +89,7 @@ class SettingsManagerTest {
     "    },\n" +
     "    \"xoo:rule4\": {\n" +
     "      \"level\": \"on\",\n" +
-    "      \"params\": { \"param1\": \"123\" }" +
+    "      \"parameters\": { \"param1\": \"123\" }" +
     "    },\n" +
     "    \"xoo:notEvenARule\": \"definitely not a rule\",\n" +
     "    \"somethingNotParsedByRuleKey\": {\n" +

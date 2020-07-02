@@ -65,7 +65,7 @@ class RulesConfiguration {
       if (ruleJson.getValue() instanceof Map) {
         Map<String, Object> config = (Map<String, Object>) ruleJson.getValue();
         this.level = (String) config.get("level");
-        this.parameters = (Map<String, String>) config.get("params");
+        this.parameters = (Map<String, String>) config.get("parameters");
       } else {
         level = null;
         parameters = Collections.emptyMap();
