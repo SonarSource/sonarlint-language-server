@@ -413,7 +413,9 @@ class SettingsManagerTest {
       "      \"level\": \"on\",\n" +
       "      \"parameters\": {\n" +
       "        \"intParam\": 42,\n" +
+      "        \"floatParam\": 123.456,\n" +
       "        \"boolParam\": true,\n" +
+      "        \"nullParam\": null,\n" +
       "        \"stringParam\": \"you get the picture\"\n" +
       "      }\n" +
       "    }\n" +
@@ -425,7 +427,8 @@ class SettingsManagerTest {
     RuleKey key = RuleKey.parse("xoo:rule1");
     assertThat(settings.getRuleParameters()).containsOnlyKeys(key);
     assertThat(settings.getRuleParameters().get(key)).containsOnly(
-      entry("intParam", "42.0"),
+      entry("intParam", "42"),
+      entry("floatParam", "123.456"),
       entry("boolParam", "true"),
       entry("stringParam", "you get the picture"));
   }

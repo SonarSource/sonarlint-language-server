@@ -94,8 +94,19 @@ class RulesConfiguration {
       Map<String, Object> parameters = parametersValue instanceof Map ? (Map<String, Object>) parametersValue : Collections.emptyMap();
       return parameters.entrySet().stream()
         .filter(e -> e.getValue() != null)
-        .map(e -> new AbstractMap.SimpleImmutableEntry<>(e.getKey(), e.getValue().toString()))
+        .map(e -> new AbstractMap.SimpleImmutableEntry<>(e.getKey(), safeStringValue(e.getValue())))
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    private static String safeStringValue(Object paramValue) {
+      if (paramValue instanceof Double) {
+        double parsedValue = (double) paramValue;
+        if (parsedValue == Math.floor(parsedValue)) {
+          // Special case for integer-like 'number' value: return string that can be parsed as integer
+          return Long.toString((long) parsedValue);
+        }
+      }
+      return paramValue.toString();
     }
   }
 }
