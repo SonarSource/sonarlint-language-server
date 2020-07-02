@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.settings;
 
+import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
@@ -60,25 +61,41 @@ class RulesConfiguration {
     final String level;
     final Map<String, String> parameters;
 
+    @SuppressWarnings("unchecked")
     private ConfiguredRule(Map.Entry<String, Object> ruleJson) {
       this.key = safeParseRuleKey(ruleJson);
       if (ruleJson.getValue() instanceof Map) {
         Map<String, Object> config = (Map<String, Object>) ruleJson.getValue();
-        this.level = (String) config.get("level");
-        this.parameters = (Map<String, String>) config.get("parameters");
+        this.level = safeParseLevel(config);
+        this.parameters = safeParseParameters(config);
       } else {
         level = null;
         parameters = Collections.emptyMap();
       }
     }
-  }
 
-  @CheckForNull
-  private static RuleKey safeParseRuleKey(Map.Entry<String, Object> e) {
-    try {
-      return RuleKey.parse(e.getKey());
-    } catch (Exception any) {
-      return null;
+    @CheckForNull
+    private static RuleKey safeParseRuleKey(Map.Entry<String, Object> e) {
+      try {
+        return RuleKey.parse(e.getKey());
+      } catch (Exception any) {
+        return null;
+      }
+    }
+
+    private static String safeParseLevel(Map<String, Object> config) {
+      Object levelValue = config.get("level");
+      return levelValue instanceof String ? (String) levelValue : null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, String> safeParseParameters(Map<String, Object> config) {
+      Object parametersValue = config.get("parameters");
+      Map<String, Object> parameters = parametersValue instanceof Map ? (Map<String, Object>) parametersValue : Collections.emptyMap();
+      return parameters.entrySet().stream()
+        .filter(e -> e.getValue() != null)
+        .map(e -> new AbstractMap.SimpleImmutableEntry<>(e.getKey(), e.getValue().toString()))
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
   }
 }

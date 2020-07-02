@@ -23,7 +23,7 @@ import com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 
-import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class WorkspaceSettingsTests {
@@ -32,87 +32,87 @@ class WorkspaceSettingsTests {
   public static final RuleKey RULE_KEY_2 = new RuleKey("repo2", "rule2");
   private static final WorkspaceSettings SETTINGS = new WorkspaceSettings(false,
     ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
-    asList(RULE_KEY_1),
-    asList(RULE_KEY_2),
+    singletonList(RULE_KEY_1),
+    singletonList(RULE_KEY_2),
     ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),
     false, false);
 
   @Test
-  public void testHashCode() {
-    assertThat(SETTINGS).hasSameHashCodeAs(new WorkspaceSettings(false,
+  void testHashCode() {
+    assertThat(new WorkspaceSettings(false,
       ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
-      asList(RULE_KEY_1),
-      asList(RULE_KEY_2),
+      singletonList(RULE_KEY_1),
+      singletonList(RULE_KEY_2),
       ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),
-      false, false));
+      false, false)).hasSameHashCodeAs(SETTINGS);
   }
 
   @Test
-  public void testEquals() {
-    assertThat(SETTINGS).isEqualTo(SETTINGS);
-    assertThat(SETTINGS).isNotEqualTo(null);
-    assertThat(SETTINGS).isNotEqualTo("foo");
-    assertThat(SETTINGS).isEqualTo(new WorkspaceSettings(false,
-      ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
-      asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule2")),
-      ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false));
-
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(true,
-      ImmutableMap.of("serverId2", new ServerConnectionSettings("serverId2", "serverUrl", "token", "myOrg")),
-      asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule2")),
-      ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false));
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
-      ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl2", "token", "myOrg")),
-      asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule2")),
-      ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false));
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
-      ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token2", "myOrg")),
-      asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule2")),
-      ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false));
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
-      ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2")),
-      asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule2")),
-      ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false));
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
-      ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
-      asList(new RuleKey("repo1", "rule12")),
-      asList(new RuleKey("repo2", "rule2")),
-      ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false));
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
-      ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
-      asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule22")),
-      ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false));
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
-      ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
-      asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule22")),
-      ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false));
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
-      ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
-      asList(RULE_KEY_1),
-      asList(RULE_KEY_2),
-      ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value2")),false, false));
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
-      ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
-      asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule2")),
-      ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),true, false));
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceSettings(false,
-      ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
-      asList(new RuleKey("repo1", "rule1")),
-      asList(new RuleKey("repo2", "rule2")),
-      ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, true));
+  void testEquals() {
+    assertThat(SETTINGS)
+      .isEqualTo(SETTINGS)
+      .isNotEqualTo(null)
+      .isNotEqualTo("foo")
+      .isEqualTo(new WorkspaceSettings(false,
+        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
+        singletonList(new RuleKey("repo1", "rule1")),
+        singletonList(new RuleKey("repo2", "rule2")),
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false))
+      .isNotEqualTo(new WorkspaceSettings(true,
+        ImmutableMap.of("serverId2", new ServerConnectionSettings("serverId2", "serverUrl", "token", "myOrg")),
+        singletonList(new RuleKey("repo1", "rule1")),
+        singletonList(new RuleKey("repo2", "rule2")),
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false))
+      .isNotEqualTo(new WorkspaceSettings(false,
+        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl2", "token", "myOrg")),
+        singletonList(new RuleKey("repo1", "rule1")),
+        singletonList(new RuleKey("repo2", "rule2")),
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false))
+      .isNotEqualTo(new WorkspaceSettings(false,
+        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token2", "myOrg")),
+        singletonList(new RuleKey("repo1", "rule1")),
+        singletonList(new RuleKey("repo2", "rule2")),
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false))
+      .isNotEqualTo(new WorkspaceSettings(false,
+        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2")),
+        singletonList(new RuleKey("repo1", "rule1")),
+        singletonList(new RuleKey("repo2", "rule2")),
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false))
+      .isNotEqualTo(new WorkspaceSettings(false,
+        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
+        singletonList(new RuleKey("repo1", "rule12")),
+        singletonList(new RuleKey("repo2", "rule2")),
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false))
+      .isNotEqualTo(new WorkspaceSettings(false,
+        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
+        singletonList(new RuleKey("repo1", "rule1")),
+        singletonList(new RuleKey("repo2", "rule22")),
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false))
+      .isNotEqualTo(new WorkspaceSettings(false,
+        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
+        singletonList(new RuleKey("repo1", "rule1")),
+        singletonList(new RuleKey("repo2", "rule22")),
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false))
+      .isNotEqualTo(new WorkspaceSettings(false,
+        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
+        singletonList(RULE_KEY_1),
+        singletonList(RULE_KEY_2),
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value2")),false, false))
+      .isNotEqualTo(new WorkspaceSettings(false,
+        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
+        singletonList(new RuleKey("repo1", "rule1")),
+        singletonList(new RuleKey("repo2", "rule2")),
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),true, false))
+      .isNotEqualTo(new WorkspaceSettings(false,
+        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
+        singletonList(new RuleKey("repo1", "rule1")),
+        singletonList(new RuleKey("repo2", "rule2")),
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, true));
   }
 
   @Test
-  public void testToString() {
-    assertThat(SETTINGS.toString()).isEqualTo(
+  void testToString() {
+    assertThat(SETTINGS).hasToString(
       "WorkspaceSettings[disableTelemetry=false,servers={serverId=ServerConnectionSettings[serverId=serverId,serverUrl=serverUrl,token=token,organizationKey=myOrg]},excludedRules=[repo1:rule1],includedRules=[repo2:rule2],ruleParameters={repo2:rule2={param1=value1}},showAnalyzerLogs=false,showVerboseLogs=false]");
   }
 
