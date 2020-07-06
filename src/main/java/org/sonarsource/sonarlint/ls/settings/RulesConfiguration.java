@@ -23,12 +23,15 @@ import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 
 class RulesConfiguration {
+
+  private static final String LEVEL_ON = "on";
 
   private final Set<ConfiguredRule> rules;
 
@@ -44,11 +47,11 @@ class RulesConfiguration {
   }
 
   Collection<RuleKey> excludedRules() {
-    return rules.stream().filter(r -> "off".equals(r.level)).map(r -> r.key).collect(Collectors.toSet());
+    return rules.stream().filter(r -> !LEVEL_ON.equals(r.level)).map(r -> r.key).collect(Collectors.toSet());
   }
 
   Collection<RuleKey> includedRules() {
-    return rules.stream().filter(r -> "on".equals(r.level)).map(r -> r.key).collect(Collectors.toSet());
+    return rules.stream().filter(r -> LEVEL_ON.equals(r.level)).map(r -> r.key).collect(Collectors.toSet());
   }
 
   Map<RuleKey, Map<String, String>> ruleParameters() {
@@ -56,14 +59,14 @@ class RulesConfiguration {
       .collect(Collectors.toMap(r -> r.key, r -> r.parameters));
   }
 
-  private static class ConfiguredRule {
+  static class ConfiguredRule {
     final RuleKey key;
     final String level;
     final Map<String, String> parameters;
 
     @SuppressWarnings("unchecked")
-    private ConfiguredRule(Map.Entry<String, Object> ruleJson) {
-      this.key = safeParseRuleKey(ruleJson);
+    ConfiguredRule(Map.Entry<String, Object> ruleJson) {
+      this.key = safeParseRuleKey(ruleJson.getKey());
       if (ruleJson.getValue() instanceof Map) {
         Map<String, Object> config = (Map<String, Object>) ruleJson.getValue();
         this.level = safeParseLevel(config);
@@ -75,14 +78,15 @@ class RulesConfiguration {
     }
 
     @CheckForNull
-    private static RuleKey safeParseRuleKey(Map.Entry<String, Object> e) {
+    private static RuleKey safeParseRuleKey(String key) {
       try {
-        return RuleKey.parse(e.getKey());
+        return RuleKey.parse(key);
       } catch (Exception any) {
         return null;
       }
     }
 
+    @CheckForNull
     private static String safeParseLevel(Map<String, Object> config) {
       Object levelValue = config.get("level");
       return levelValue instanceof String ? (String) levelValue : null;
@@ -107,6 +111,25 @@ class RulesConfiguration {
         }
       }
       return paramValue.toString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      ConfiguredRule that = (ConfiguredRule) o;
+      return Objects.equals(key, that.key) &&
+        Objects.equals(level, that.level) &&
+        parameters.equals(that.parameters);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(key, level, parameters);
     }
   }
 }
