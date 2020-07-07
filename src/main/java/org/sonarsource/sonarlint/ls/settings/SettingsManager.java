@@ -27,22 +27,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
-import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 import org.sonarsource.sonarlint.ls.Utils;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -198,12 +194,12 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static WorkspaceSettings parseSettings(Map<String, Object> params) {
     boolean disableTelemetry = (Boolean) params.getOrDefault(DISABLE_TELEMETRY, false);
     Map<String, ServerConnectionSettings> serverConnections = parseServerConnections(params);
-    Set<RuleKey> excludedRules = parseRuleKeysMatching(params, SettingsManager.hasLevelSetTo("off"));
-    Set<RuleKey> includedRules = parseRuleKeysMatching(params, SettingsManager.hasLevelSetTo("on"));
+    RulesConfiguration rulesConfiguration = RulesConfiguration.parse(((Map<String, Object>) params.getOrDefault(RULES, Collections.emptyMap())));
     Map<String, Object> consoleParams = ((Map<String, Object>) params.getOrDefault(OUTPUT, Collections.emptyMap()));
     boolean showAnalyzerLogs = (Boolean) consoleParams.getOrDefault(SHOW_ANALYZER_LOGS, false);
     boolean showVerboseLogs = (Boolean) consoleParams.getOrDefault(SHOW_VERBOSE_LOGS, false);
-    return new WorkspaceSettings(disableTelemetry, serverConnections, excludedRules, includedRules, showAnalyzerLogs, showVerboseLogs);
+    return new WorkspaceSettings(disableTelemetry, serverConnections, rulesConfiguration.excludedRules(), rulesConfiguration.includedRules(), rulesConfiguration.ruleParameters(),
+      showAnalyzerLogs, showVerboseLogs);
   }
 
   private static Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params) {
@@ -311,32 +307,6 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       }
     }
     return new WorkspaceFolderSettings(connectionId, projectKey, analyzerProperties, testFilePattern);
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Set<RuleKey> parseRuleKeysMatching(Map<String, Object> params, Predicate<Map.Entry<String, Object>> filter) {
-    return ((Map<String, Object>) params.getOrDefault(RULES, Collections.emptyMap()))
-      .entrySet()
-      .stream()
-      .filter(filter)
-      .map(SettingsManager::safeParseRuleKey)
-      .filter(Objects::nonNull)
-      .collect(Collectors.toSet());
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Predicate<Map.Entry<String, Object>> hasLevelSetTo(String expectedLevel) {
-    return e -> e.getValue() instanceof Map &&
-      expectedLevel.equals(((Map<String, String>) e.getValue()).get("level"));
-  }
-
-  @CheckForNull
-  private static RuleKey safeParseRuleKey(Map.Entry<String, Object> e) {
-    try {
-      return RuleKey.parse(e.getKey());
-    } catch (Exception any) {
-      return null;
-    }
   }
 
   private static Map<String, String> getAnalyzerProperties(Map<String, Object> params) {

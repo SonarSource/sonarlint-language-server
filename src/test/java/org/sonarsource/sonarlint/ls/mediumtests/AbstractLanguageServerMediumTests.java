@@ -131,13 +131,12 @@ abstract class AbstractLanguageServerMediumTests {
     String js = new File("target/plugins/javascript.jar").getAbsoluteFile().toURI().toURL().toString();
     String php = new File("target/plugins/php.jar").getAbsoluteFile().toURI().toURL().toString();
     String py = new File("target/plugins/python.jar").getAbsoluteFile().toURI().toURL().toString();
-    String ts = new File("target/plugins/typescript.jar").getAbsoluteFile().toURI().toURL().toString();
     String html = new File("target/plugins/html.jar").getAbsoluteFile().toURI().toURL().toString();
 
     serverStdOut = new ByteArrayOutputStream();
     serverStdErr = new ByteArrayOutputStream();
     try {
-      new ServerMain(new PrintStream(serverStdOut), new PrintStream(serverStdErr)).startLanguageServer("" + port, java, js, php, py, ts, html);
+      new ServerMain(new PrintStream(serverStdOut), new PrintStream(serverStdErr)).startLanguageServer("" + port, java, js, php, py, html);
     } catch (Exception e) {
       e.printStackTrace();
       future.get(1, TimeUnit.SECONDS);

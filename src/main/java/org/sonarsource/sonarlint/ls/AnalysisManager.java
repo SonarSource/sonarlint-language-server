@@ -307,6 +307,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       .putAllExtraProperties(configureJavaProperties(uri))
       .addExcludedRules(settingsManager.getCurrentSettings().getExcludedRules())
       .addIncludedRules(settingsManager.getCurrentSettings().getIncludedRules())
+      .addRuleParameters(settingsManager.getCurrentSettings().getRuleParameters())
       .build();
     LOG.debug("Analysis triggered on '{}' with configuration: \n{}", uri, configuration.toString());
 
@@ -471,7 +472,9 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     if (oldValue == null) {
       return;
     }
-    if (!Objects.equals(oldValue.getExcludedRules(), newValue.getExcludedRules()) || !Objects.equals(oldValue.getIncludedRules(), newValue.getIncludedRules())) {
+    if (!Objects.equals(oldValue.getExcludedRules(), newValue.getExcludedRules()) ||
+      !Objects.equals(oldValue.getIncludedRules(), newValue.getIncludedRules()) ||
+      !Objects.equals(oldValue.getRuleParameters(), newValue.getRuleParameters())) {
       analyzeAllUnboundOpenFiles();
     }
   }

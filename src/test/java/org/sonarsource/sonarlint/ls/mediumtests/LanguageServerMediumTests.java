@@ -86,20 +86,19 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     emulateConfigurationChangeOnClient("**/*Test.js", true);
 
     String uri = getUri("analyzeSimpleJsFileOnOpen.js");
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
+    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 2, 1, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information),
-        tuple(2, 6, 2, 11, "javascript:UnusedVariable", "sonarlint", "Remove the declaration of the unused 'plouf' variable.",
-          DiagnosticSeverity.Information));
+        tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information),
+        tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information));
   }
 
   @Test
   public void analyzeSimpleJsFileWithCustomRuleConfig() throws Exception {
     String uri = getUri("analyzeSimpleJsFileWithCustomRuleConfig.js");
-    String jsSource = "function foo()\n {\n  alert('toto');\n  var plouf = 0;\n}";
+    String jsSource = "function foo()\n {\n  var toto = 0;\n  var plouf = 0;\n}";
 
     // Default configuration should result in 2 issues: S1442 and UnusedVariable
     emulateConfigurationChangeOnClient("**/*Test.js", null, false, true);
@@ -111,8 +110,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(2, 2, 2, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information),
-        tuple(3, 6, 3, 11, "javascript:UnusedVariable", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information));
+        tuple(2, 6, 2, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information),
+        tuple(3, 6, 3, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information));
 
     client.clear();
 
@@ -120,20 +119,19 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     client.diagnosticsLatch = new CountDownLatch(1);
 
     emulateConfigurationChangeOnClient("**/*Test.js", null,
-      "javascript:UnusedVariable", "off",
+      "javascript:S1481", "off",
       "javascript:S1105", "on");
 
     assertLogContains(
-      "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[javascript:UnusedVariable],includedRules=[javascript:S1105],showAnalyzerLogs=false,showVerboseLogs=false]");
+      "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[javascript:S1481],includedRules=[javascript:S1105],ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=false]");
 
     assertTrue(client.diagnosticsLatch.await(1, TimeUnit.MINUTES));
 
     assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(2, 2, 2, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information),
-        tuple(1, 1, 1, 2, "javascript:S1105", "sonarlint", "Move this open curly brace to the end of the previous line.", DiagnosticSeverity.Information)
-      // Expected issue on javascript:UnusedVariable is suppressed by rule configuration
+        tuple(1, 1, 1, 2, "javascript:S1105", "sonarlint", "Opening curly brace does not appear on the same line as controlling statement.", DiagnosticSeverity.Information)
+        // Expected issues on javascript:S1481 are suppressed by rule configuration
       );
   }
 
@@ -147,7 +145,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(tuple(1, 4, 1, 18, "typescript:S1764", "sonarlint", "Correct one of the identical sub-expressions on both sides of operator \"&&\"",
+      .containsExactly(tuple(1, 13, 1, 18, "typescript:S1764", "sonarlint", "Correct one of the identical sub-expressions on both sides of operator \"&&\"",
         DiagnosticSeverity.Warning));
   }
 
@@ -212,7 +210,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertLogContains(
       "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*Test*},connectionId=<null>,projectKey=<null>]");
 
-    String jsContent = "function foo() {\n  alert('toto');\n}";
+    String jsContent = "function foo() {\n  var toto = 0;\n}";
     String fooTestUri = getUri("fooTest.js");
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(fooTestUri, "javascript", jsContent);
 
@@ -236,11 +234,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   public void analyzeSimpleJsFileOnChange() throws Exception {
     String uri = getUri("analyzeSimpleJsFileOnChange.js");
 
-    List<Diagnostic> diagnostics = didChangeAndWaitForDiagnostics(uri, "function foo() {\n  alert('toto');\n}");
+    List<Diagnostic> diagnostics = didChangeAndWaitForDiagnostics(uri, "function foo() {\n  var toto = 0;\n}");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(tuple(1, 2, 1, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information));
+      .containsExactly(tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information));
   }
 
   @Test
@@ -251,15 +249,16 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     // Emulate two quick changes, should only trigger one analysis
     client.diagnosticsLatch = new CountDownLatch(1);
     lsProxy.getTextDocumentService()
-      .didChange(new DidChangeTextDocumentParams(docId, singletonList(new TextDocumentContentChangeEvent("function foo() {\n  alert('toto');\n}"))));
+      .didChange(new DidChangeTextDocumentParams(docId, singletonList(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n}"))));
     lsProxy.getTextDocumentService()
-      .didChange(new DidChangeTextDocumentParams(docId, singletonList(new TextDocumentContentChangeEvent("function foo() {\n  alert('toto');\n  alert('toto');\n}"))));
+      .didChange(new DidChangeTextDocumentParams(docId, singletonList(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n  var plouf = 0;\n}"))));
     if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
       List<Diagnostic> diagnostics = client.getDiagnostics(uri);
       assertThat(diagnostics)
         .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-        .containsExactly(tuple(1, 2, 1, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information),
-          tuple(2, 2, 2, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information));
+        .containsExactly(
+          tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information),
+          tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information));
     } else {
       throw new AssertionError("No diagnostics received after 1 minute");
     }
@@ -269,11 +268,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   public void analyzeSimpleJsFileOnSave() throws Exception {
     String uri = getUri("foo.js");
 
-    List<Diagnostic> diagnostics = didSaveAndWaitForDiagnostics(uri, "function foo() {\n  alert('toto');\n}");
+    List<Diagnostic> diagnostics = didSaveAndWaitForDiagnostics(uri, "function foo() {\n  var toto = 0;\n}");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(tuple(1, 2, 1, 15, "javascript:S1442", "sonarlint", "Unexpected alert.", DiagnosticSeverity.Information));
+      .containsExactly(tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information));
   }
 
   @Test
@@ -317,7 +316,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     emulateConfigurationChangeOnClient(null, false, false, true);
 
     assertLogContains(
-      "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[],includedRules=[],showAnalyzerLogs=false,showVerboseLogs=true]");
+      "Global settings updated: WorkspaceSettings[disableTelemetry=false,servers={},excludedRules=[],includedRules=[],ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=true]");
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder( "Telemetry enabled");
   }
@@ -463,7 +462,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(withoutTimestamp())
       .containsExactly(
         "[Info] Analyzing file '" + uri + "'...",
-        "[Info] Found 2 issue(s)"));
+        "[Info] Found 1 issue(s)"));
   }
 
   @Test
@@ -481,7 +480,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .containsSubsequence(
         "[Debug] Queuing analysis of file '" + uri + "'",
         "[Info] Analyzing file '" + uri + "'...",
-        "[Info] Found 2 issue(s)"));
+        "[Info] Found 1 issue(s)"));
   }
 
   @Test
@@ -496,15 +495,12 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestamp())
-      .containsExactly(
+      .contains(
         "[Info] Analyzing file '" + uri + "'...",
         "[Info] Index files",
         "[Info] 1 file indexed",
-        // SonarJS
         "[Info] 1 source files to be analyzed",
-        // ESLint-based SonarJS
-        "[Info] 1 source files to be analyzed",
-        "[Info] Found 2 issue(s)"));
+        "[Info] Found 1 issue(s)"));
   }
 
   @Test
@@ -519,13 +515,13 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestamp())
-      .containsSubsequence(
+      .contains(
         "[Info] Analyzing file '" + uri + "'...",
         "[Info] Index files",
         "[Debug] Language of file '" + uri + "' is set to 'js'",
         "[Info] 1 file indexed",
-        "[Debug] Execute Sensor: ESLint-based SonarJS",
-        "[Info] Found 2 issue(s)"));
+        "[Debug] Execute Sensor: JavaScript analysis",
+        "[Info] Found 1 issue(s)"));
   }
 
   private Predicate<? super MessageParams> notFromContextualTSserver() {

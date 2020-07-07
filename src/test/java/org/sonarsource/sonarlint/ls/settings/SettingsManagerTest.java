@@ -87,6 +87,10 @@ class SettingsManagerTest {
     "    \"xoo:rule3\": {\n" +
     "      \"level\": \"on\"\n" +
     "    },\n" +
+    "    \"xoo:rule4\": {\n" +
+    "      \"level\": \"on\",\n" +
+    "      \"parameters\": { \"param1\": \"123\" }" +
+    "    },\n" +
     "    \"xoo:notEvenARule\": \"definitely not a rule\",\n" +
     "    \"somethingNotParsedByRuleKey\": {\n" +
     "      \"level\": \"off\"\n" +
@@ -121,7 +125,7 @@ class SettingsManagerTest {
   }
 
   @Test
-  public void shouldParseFullWellFormedJsonWorkspaceFolderSettings() {
+  void shouldParseFullWellFormedJsonWorkspaceFolderSettings() {
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     underTest.didChangeConfiguration();
     WorkspaceFolderSettings settings = underTest.getCurrentDefaultFolderSettings();
@@ -138,7 +142,7 @@ class SettingsManagerTest {
   }
 
   @Test
-  public void shouldParseFullDeprecatedWellFormedJsonWorkspaceFolderSettings() {
+  void shouldParseFullDeprecatedWellFormedJsonWorkspaceFolderSettings() {
     mockConfigurationRequest(null, DEPRECATED_SAMPLE_CONFIG);
     underTest.didChangeConfiguration();
     WorkspaceFolderSettings settings = underTest.getCurrentDefaultFolderSettings();
@@ -148,16 +152,17 @@ class SettingsManagerTest {
   }
 
   @Test
-  public void shouldParseFullWellFormedJsonWorkspaceSettings() {
+  void shouldParseFullWellFormedJsonWorkspaceSettings() {
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     underTest.didChangeConfiguration();
     WorkspaceSettings settings = underTest.getCurrentSettings();
     assertThat(settings.isDisableTelemetry()).isTrue();
     assertThat(settings.showAnalyzerLogs()).isTrue();
     assertThat(settings.showVerboseLogs()).isTrue();
-    assertThat(settings.getExcludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsExactly(tuple("xoo", "rule1"));
-    assertThat(settings.getExcludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsExactly(tuple("xoo", "rule1"));
-    assertThat(settings.getIncludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsExactly(tuple("xoo", "rule3"));
+    assertThat(settings.getExcludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsOnly(tuple("xoo", "rule1"), tuple("xoo", "rule2"), tuple("xoo", "notEvenARule"));
+    assertThat(settings.getIncludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsOnly(tuple("xoo", "rule3"), tuple("xoo", "rule4"));
+    assertThat(settings.getRuleParameters()).hasSize(1).containsOnlyKeys(RuleKey.parse("xoo:rule4"));
+    assertThat(settings.getRuleParameters().get(RuleKey.parse("xoo:rule4"))).containsOnly(entry("param1", "123"));
     assertThat(settings.hasLocalRuleConfiguration()).isTrue();
     assertThat(settings.getServers()).containsKeys("sq1", "sq2", "sc1", "sc2");
     assertThat(settings.getServers().values())
@@ -170,7 +175,7 @@ class SettingsManagerTest {
   }
 
   @Test
-  public void shouldLogErrorIfIncompleteConnections() {
+  void shouldLogErrorIfIncompleteConnections() {
     mockConfigurationRequest(null, "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"servers\": [\n" +
@@ -205,7 +210,7 @@ class SettingsManagerTest {
   }
 
   @Test
-  public void shouldLogErrorIfDuplicateConnectionId() {
+  void shouldLogErrorIfDuplicateConnectionId() {
     mockConfigurationRequest(null, "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"connections\": {\n" +
@@ -226,7 +231,7 @@ class SettingsManagerTest {
   }
 
   @Test
-  public void shouldLogErrorIfDuplicateConnectionsWithoutId() {
+  void shouldLogErrorIfDuplicateConnectionsWithoutId() {
     mockConfigurationRequest(null, "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"connections\": {\n" +
@@ -247,7 +252,7 @@ class SettingsManagerTest {
   }
 
   @Test
-  public void shouldParseFullDeprecatedWellFormedJsonWorkspaceSettings() {
+  void shouldParseFullDeprecatedWellFormedJsonWorkspaceSettings() {
     mockConfigurationRequest(null, DEPRECATED_SAMPLE_CONFIG);
     underTest.didChangeConfiguration();
 
@@ -260,7 +265,7 @@ class SettingsManagerTest {
   }
 
   @Test
-  public void shouldLogErrorIfNoConnectionToDefault() {
+  void shouldLogErrorIfNoConnectionToDefault() {
     mockConfigurationRequest(null, "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"connections\": {\n" +
@@ -280,7 +285,7 @@ class SettingsManagerTest {
   }
 
   @Test
-  public void shouldDefaultIfOnlyOneConnectionId() {
+  void shouldDefaultIfOnlyOneConnectionId() {
     mockConfigurationRequest(null, "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"connections\": {\n" +
@@ -301,7 +306,7 @@ class SettingsManagerTest {
   }
 
   @Test
-  public void shouldDefaultIfNoConnectionId() {
+  void shouldDefaultIfNoConnectionId() {
     mockConfigurationRequest(null, "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"connections\": {\n" +
@@ -324,7 +329,7 @@ class SettingsManagerTest {
   }
 
   @Test
-  public void shouldLogAnErrorIfAmbiguousConnectionId() {
+  void shouldLogAnErrorIfAmbiguousConnectionId() {
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
 
     mockConfigurationRequest(FOLDER_URI, "{\n" +
@@ -347,7 +352,7 @@ class SettingsManagerTest {
   }
 
   @Test
-  public void shouldLogAnErrorIfUnknownConnectionId() {
+  void shouldLogAnErrorIfUnknownConnectionId() {
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
 
     mockConfigurationRequest(FOLDER_URI, "{\n" +
@@ -371,7 +376,7 @@ class SettingsManagerTest {
   }
 
   @Test
-  public void shouldHaveLocalRuleConfigurationWithDisabledRule() {
+  void shouldHaveLocalRuleConfigurationWithDisabledRule() {
     mockConfigurationRequest(null, "{\n" +
       "  \"rules\": {\n" +
       "    \"xoo:rule1\": {\n" +
@@ -386,7 +391,7 @@ class SettingsManagerTest {
   }
 
   @Test
-  public void shouldHaveLocalRuleConfigurationWithEnabledRule() {
+  void shouldHaveLocalRuleConfigurationWithEnabledRule() {
     mockConfigurationRequest(null, "{\n" +
       "  \"rules\": {\n" +
       "    \"xoo:rule1\": {\n" +
@@ -398,6 +403,34 @@ class SettingsManagerTest {
 
     WorkspaceSettings settings = underTest.getCurrentSettings();
     assertThat(settings.hasLocalRuleConfiguration()).isTrue();
+  }
+
+  @Test
+  void shouldParseScalarParameterValuesWithSomeTolerance() {
+    mockConfigurationRequest(null, "{\n" +
+      "  \"rules\": {\n" +
+      "    \"xoo:rule1\": {\n" +
+      "      \"level\": \"on\",\n" +
+      "      \"parameters\": {\n" +
+      "        \"intParam\": 42,\n" +
+      "        \"floatParam\": 123.456,\n" +
+      "        \"boolParam\": true,\n" +
+      "        \"nullParam\": null,\n" +
+      "        \"stringParam\": \"you get the picture\"\n" +
+      "      }\n" +
+      "    }\n" +
+      "  }\n" +
+      "}\n");
+    underTest.didChangeConfiguration();
+
+    WorkspaceSettings settings = underTest.getCurrentSettings();
+    RuleKey key = RuleKey.parse("xoo:rule1");
+    assertThat(settings.getRuleParameters()).containsOnlyKeys(key);
+    assertThat(settings.getRuleParameters().get(key)).containsOnly(
+      entry("intParam", "42"),
+      entry("floatParam", "123.456"),
+      entry("boolParam", "true"),
+      entry("stringParam", "you get the picture"));
   }
 
   private static Map<String, Object> fromJsonString(String json) {
