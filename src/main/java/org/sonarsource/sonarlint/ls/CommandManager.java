@@ -41,6 +41,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
+import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -83,14 +84,14 @@ public class CommandManager {
         CodeAction actionShowRuleDesc = new CodeAction(titleShowRuleDesc);
         actionShowRuleDesc
           .setCommand(new Command(titleShowRuleDesc, SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, Arrays.asList(ruleKey, params.getTextDocument().getUri())));
-        actionShowRuleDesc.setDiagnostics(Arrays.asList(d));
+        actionShowRuleDesc.setDiagnostics(Collections.singletonList(d));
         actionShowRuleDesc.setKind(CodeActionKind.QuickFix);
         commands.add(Either.forRight(actionShowRuleDesc));
         if (!binding.isPresent()) {
           String titleDeactivate = String.format("Deactivate rule '%s'", ruleKey);
           CodeAction actionDeactivate = new CodeAction(titleDeactivate);
           actionDeactivate.setCommand(new Command(titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, Collections.singletonList(ruleKey)));
-          actionDeactivate.setDiagnostics(Arrays.asList(d));
+          actionDeactivate.setDiagnostics(Collections.singletonList(d));
           actionDeactivate.setKind(CodeActionKind.QuickFix);
           commands.add(Either.forRight(actionDeactivate));
         }
@@ -105,9 +106,7 @@ public class CommandManager {
     analysisManager.getOrCreateStandaloneEngine().getAllRuleDetails()
       .forEach(d -> {
         String languageName = languagesNameByKey.get(d.getLanguageKey());
-        if (!result.containsKey(languageName)) {
-          result.put(languageName, new ArrayList<>());
-        }
+        result.computeIfAbsent(languageName, k -> new ArrayList<>()).add(Rule.of(d));
         result.get(languageName).add(Rule.of(d));
       });
     return result;
@@ -133,7 +132,7 @@ public class CommandManager {
     client.showRuleDescription(new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, type, severity));
   }
 
-  private ResponseErrorException unknownRule(String ruleKey) {
+  private static ResponseErrorException unknownRule(String ruleKey) {
     return new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unknown rule with key: " + ruleKey, null));
   }
 
@@ -173,9 +172,11 @@ public class CommandManager {
   // visible for testing
   static String getHtmlDescription(RuleDetails ruleDetails) {
     String htmlDescription = ruleDetails.getHtmlDescription();
-    String extendedDescription = ruleDetails.getExtendedDescription();
-    if (!extendedDescription.isEmpty()) {
-      htmlDescription += "<div>" + extendedDescription + "</div>";
+    if (ruleDetails instanceof ConnectedRuleDetails) {
+      String extendedDescription = ((ConnectedRuleDetails) ruleDetails).getExtendedDescription();
+      if (!extendedDescription.isEmpty()) {
+        htmlDescription += "<div>" + extendedDescription + "</div>";
+      }
     }
     return htmlDescription;
   }

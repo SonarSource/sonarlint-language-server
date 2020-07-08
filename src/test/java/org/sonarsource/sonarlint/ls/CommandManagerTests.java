@@ -38,8 +38,9 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
+import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
+import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -93,7 +94,7 @@ class CommandManagerTests {
     String htmlDescription = "foo";
     String extendedDescription = "bar";
 
-    RuleDetails ruleDetails = mock(RuleDetails.class);
+    ConnectedRuleDetails ruleDetails = mock(ConnectedRuleDetails.class);
     when(ruleDetails.getHtmlDescription()).thenReturn(htmlDescription);
     when(ruleDetails.getExtendedDescription()).thenReturn("");
 
@@ -141,7 +142,7 @@ class CommandManagerTests {
   @Test
   public void openRuleDescriptionForBoundProject() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
-    RuleDetails ruleDetails = mock(RuleDetails.class);
+    ConnectedRuleDetails ruleDetails = mock(ConnectedRuleDetails.class);
     when(ruleDetails.getKey()).thenReturn(FAKE_RULE_KEY);
     when(ruleDetails.getName()).thenReturn("Name");
     when(ruleDetails.getHtmlDescription()).thenReturn("Desc");
@@ -169,11 +170,10 @@ class CommandManagerTests {
   @Test
   public void openRuleDescriptionForUnboundProject() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.empty());
-    RuleDetails ruleDetails = mock(RuleDetails.class);
+    StandaloneRuleDetails ruleDetails = mock(StandaloneRuleDetails.class);
     when(ruleDetails.getKey()).thenReturn(FAKE_RULE_KEY);
     when(ruleDetails.getName()).thenReturn("Name");
     when(ruleDetails.getHtmlDescription()).thenReturn("Desc");
-    when(ruleDetails.getExtendedDescription()).thenReturn("");
     when(ruleDetails.getType()).thenReturn("Type");
     when(ruleDetails.getSeverity()).thenReturn("Severity");
     when(mockStandaloneEngine.getRuleDetails(FAKE_RULE_KEY)).thenReturn(Optional.of(ruleDetails));
