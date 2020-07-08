@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls;
 
 import com.google.gson.JsonPrimitive;
 import java.net.URI;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import org.eclipse.lsp4j.CodeAction;
@@ -38,10 +39,14 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.sonar.api.server.rule.RuleParamType;
+import org.sonar.api.server.rule.RulesDefinition;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
+import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
+import org.sonarsource.sonarlint.core.container.standalone.rule.DefaultStandaloneRuleParam;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
@@ -90,7 +95,7 @@ class CommandManagerTests {
   }
 
   @Test
-  public void getHtmlDescription_appends_extended_description_when_non_empty() {
+  void getHtmlDescription_appends_extended_description_when_non_empty() {
     String htmlDescription = "foo";
     String extendedDescription = "bar";
 
@@ -105,14 +110,14 @@ class CommandManagerTests {
   }
 
   @Test
-  public void updateAllBinding() {
+  void updateAllBinding() {
     underTest.executeCommand(new ExecuteCommandParams(SONARLINT_UPDATE_ALL_BINDINGS_COMMAND, emptyList()), NOP_CANCEL_TOKEN);
 
     verify(bindingManager).updateAllBindings();
   }
 
   @Test
-  public void noCodeActionsIfNotSonarLintDiagnostic() {
+  void noCodeActionsIfNotSonarLintDiagnostic() {
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(singletonList(new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, "not_sonarlint", "XYZ")))), NOP_CANCEL_TOKEN);
 
@@ -120,7 +125,7 @@ class CommandManagerTests {
   }
 
   @Test
-  public void noDisableRuleForBoundProject() {
+  void noDisableRuleForBoundProject() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
 
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
@@ -130,7 +135,7 @@ class CommandManagerTests {
   }
 
   @Test
-  public void suggestDisableRuleForUnboundProject() {
+  void suggestDisableRuleForUnboundProject() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.empty());
 
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
@@ -140,7 +145,7 @@ class CommandManagerTests {
   }
 
   @Test
-  public void openRuleDescriptionForBoundProject() {
+  void openRuleDescriptionForBoundProject() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
     ConnectedRuleDetails ruleDetails = mock(ConnectedRuleDetails.class);
     when(ruleDetails.getKey()).thenReturn(FAKE_RULE_KEY);
@@ -154,21 +159,23 @@ class CommandManagerTests {
       new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, asList(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
       NOP_CANCEL_TOKEN);
 
-    verify(mockClient).showRuleDescription(new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc", "Type", "Severity"));
+    verify(mockClient).showRuleDescription(new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc", "Type", "Severity", Collections.emptyList()));
   }
 
   @Test
-  public void throwIfUnknownRuleForBoundProject() {
+  void throwIfUnknownRuleForBoundProject() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
     when(mockConnectedEngine.getRuleDetails(FAKE_RULE_KEY)).thenThrow(new IllegalArgumentException());
 
-    assertThrows(ResponseErrorException.class, () -> underTest.executeCommand(
-      new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, asList(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
-      NOP_CANCEL_TOKEN));
+    ExecuteCommandParams params = new ExecuteCommandParams(
+      SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
+      asList(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))
+    );
+    assertThrows(ResponseErrorException.class, () -> underTest.executeCommand(params, NOP_CANCEL_TOKEN));
   }
 
   @Test
-  public void openRuleDescriptionForUnboundProject() {
+  void openRuleDescriptionForUnboundProject() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.empty());
     StandaloneRuleDetails ruleDetails = mock(StandaloneRuleDetails.class);
     when(ruleDetails.getKey()).thenReturn(FAKE_RULE_KEY);
@@ -176,12 +183,21 @@ class CommandManagerTests {
     when(ruleDetails.getHtmlDescription()).thenReturn("Desc");
     when(ruleDetails.getType()).thenReturn("Type");
     when(ruleDetails.getSeverity()).thenReturn("Severity");
+    RulesDefinition.Param apiParam = mock(RulesDefinition.Param.class);
+    when(apiParam.name()).thenReturn("intParam");
+    when(apiParam.type()).thenReturn(RuleParamType.INTEGER);
+    when(apiParam.description()).thenReturn("An integer parameter");
+    when(apiParam.defaultValue()).thenReturn("42");
+    List<StandaloneRuleParam> params = singletonList(new DefaultStandaloneRuleParam(apiParam));
+    when(ruleDetails.paramDetails()).thenReturn(params);
     when(mockStandaloneEngine.getRuleDetails(FAKE_RULE_KEY)).thenReturn(Optional.of(ruleDetails));
     underTest.executeCommand(
       new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, asList(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
       NOP_CANCEL_TOKEN);
 
-    verify(mockClient).showRuleDescription(new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc", "Type", "Severity"));
+    verify(mockClient).showRuleDescription(
+      new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc", "Type", "Severity", params)
+    );
   }
 
 }

@@ -20,35 +20,43 @@
 package org.sonarsource.sonarlint.ls;
 
 import com.google.gson.annotations.Expose;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageClient;
+import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 
 public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
   @JsonRequest("sonarlint/showRuleDescription")
   CompletableFuture<Void> showRuleDescription(ShowRuleDescriptionParams params);
 
-  public static class ShowRuleDescriptionParams {
+  class ShowRuleDescriptionParams {
     @Expose
-    private String key;
+    private final String key;
     @Expose
-    private String name;
+    private final String name;
     @Expose
-    private String htmlDescription;
+    private final String htmlDescription;
     @Expose
-    private String type;
+    private final String type;
     @Expose
-    private String severity;
+    private final String severity;
+    @Expose
+    private final RuleParameter[] parameters;
 
-    public ShowRuleDescriptionParams(String ruleKey, String ruleName, @Nullable String htmlDescription, @Nullable String type, String severity) {
+    public ShowRuleDescriptionParams(String ruleKey, String ruleName, @Nullable String htmlDescription, @Nullable String type, String severity,
+                                     Collection<StandaloneRuleParam> params) {
       this.key = ruleKey;
       this.name = ruleName;
       this.htmlDescription = htmlDescription;
       this.type = type;
       this.severity = severity;
+      this.parameters = params.stream().map(p -> new RuleParameter(p.name(), p.description(), p.defaultValue())).toArray(RuleParameter[]::new);
     }
 
     public String getKey() {
@@ -71,9 +79,15 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       return severity;
     }
 
+    public RuleParameter[] getParameters() {
+      return parameters;
+    }
+
     @Override
     public int hashCode() {
-      return Objects.hash(htmlDescription, key, name, severity, type);
+      int result = Objects.hash(key, name, htmlDescription, type, severity);
+      result = 31 * result + Arrays.hashCode(parameters);
+      return result;
     }
 
     @Override
@@ -86,9 +100,57 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       }
       ShowRuleDescriptionParams other = (ShowRuleDescriptionParams) obj;
       return Objects.equals(htmlDescription, other.htmlDescription) && Objects.equals(key, other.key) && Objects.equals(name, other.name)
-        && Objects.equals(severity, other.severity) && Objects.equals(type, other.type);
+        && Objects.equals(severity, other.severity) && Objects.equals(type, other.type) && Arrays.equals(parameters, other.parameters);
     }
 
+  }
+
+  class RuleParameter {
+    @Expose
+    final String name;
+    @Expose
+    final String description;
+    @Expose
+    final String defaultValue;
+
+    public RuleParameter(String name, @Nullable String description, @Nullable String defaultValue) {
+      this.name = name;
+      this.description = description;
+      this.defaultValue = defaultValue;
+    }
+
+    public String getName() {
+      return name;
+    }
+
+    @CheckForNull
+    public String getDescription() {
+      return description;
+    }
+
+    @CheckForNull
+    public String getDefaultValue() {
+      return defaultValue;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      RuleParameter that = (RuleParameter) o;
+      return name.equals(that.name) &&
+        Objects.equals(description, that.description) &&
+        Objects.equals(defaultValue, that.defaultValue);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(name, description, defaultValue);
+    }
   }
 
   /**

@@ -57,6 +57,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.ls.Rule;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -82,7 +83,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void analyzeSimpleJsFileOnOpen() throws Exception {
+  void analyzeSimpleJsFileOnOpen() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true);
 
     String uri = getUri("analyzeSimpleJsFileOnOpen.js");
@@ -96,7 +97,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void analyzeSimpleJsFileWithCustomRuleConfig() throws Exception {
+  void analyzeSimpleJsFileWithCustomRuleConfig() throws Exception {
     String uri = getUri("analyzeSimpleJsFileWithCustomRuleConfig.js");
     String jsSource = "function foo()\n {\n  var toto = 0;\n  var plouf = 0;\n}";
 
@@ -136,7 +137,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void analyzeSimpleTsFileOnOpen() throws Exception {
+  void analyzeSimpleTsFileOnOpen() throws Exception {
     Path tsconfig = temp.resolve("tsconfig.json");
     Files.write(tsconfig, "{}".getBytes(StandardCharsets.UTF_8));
     String uri = getUri("analyzeSimpleTsFileOnOpen.ts");
@@ -150,7 +151,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void analyzeSimplePythonFileOnOpen() throws Exception {
+  void analyzeSimplePythonFileOnOpen() throws Exception {
     String uri = getUri("analyzeSimplePythonFileOnOpen.py");
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "python", "def foo():\n  print 'toto'\n");
@@ -162,7 +163,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void analyzeSimplePhpFileOnOpen() throws Exception {
+  void analyzeSimplePhpFileOnOpen() throws Exception {
     String uri = getUri("foo.php");
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "php", "<?php\nfunction foo() {\n  echo(\"Hello\");\n}\n?>");
@@ -173,7 +174,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void analyzeSimpleHtmlFileOnOpen() throws Exception {
+  void analyzeSimpleHtmlFileOnOpen() throws Exception {
     String uri = getUri("foo.html");
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "html", "<html><body></body></html>");
@@ -189,7 +190,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void analyzeSimpleJspFileOnOpen() throws Exception {
+  void analyzeSimpleJspFileOnOpen() throws Exception {
     String uri = getUri("foo.html");
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "jsp", "<html><body></body></html>");
@@ -205,7 +206,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void noIssueOnTestJSFiles() throws Exception {
+  void noIssueOnTestJSFiles() throws Exception {
     emulateConfigurationChangeOnClient("{**/*Test*}", null, null, true);
     assertLogContains(
       "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*Test*},connectionId=<null>,projectKey=<null>]");
@@ -231,7 +232,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void analyzeSimpleJsFileOnChange() throws Exception {
+  void analyzeSimpleJsFileOnChange() throws Exception {
     String uri = getUri("analyzeSimpleJsFileOnChange.js");
 
     List<Diagnostic> diagnostics = didChangeAndWaitForDiagnostics(uri, "function foo() {\n  var toto = 0;\n}");
@@ -242,7 +243,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void delayAnalysisOnChange() throws Exception {
+  void delayAnalysisOnChange() throws Exception {
     String uri = getUri("foo.js");
 
     VersionedTextDocumentIdentifier docId = new VersionedTextDocumentIdentifier(uri, 1);
@@ -265,7 +266,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void analyzeSimpleJsFileOnSave() throws Exception {
+  void analyzeSimpleJsFileOnSave() throws Exception {
     String uri = getUri("foo.js");
 
     List<Diagnostic> diagnostics = didSaveAndWaitForDiagnostics(uri, "function foo() {\n  var toto = 0;\n}");
@@ -276,7 +277,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void diagnosticRelatedInfos() throws Exception {
+  void diagnosticRelatedInfos() throws Exception {
     String uri = getUri("foo.js");
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", "function foo(a, b) {  print(a + \" \" + b);\n" +
@@ -294,7 +295,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void cleanDiagnosticsOnClose() throws Exception {
+  void cleanDiagnosticsOnClose() throws Exception {
     String uri = getUri("foo.js");
     client.diagnosticsLatch = new CountDownLatch(1);
     lsProxy.getTextDocumentService()
@@ -305,7 +306,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void optOutTelemetry() throws Exception {
+  void optOutTelemetry() throws Exception {
     // Ensure telemetry is disabled and enable verbose logs
     emulateConfigurationChangeOnClient(null, true, false, true);
 
@@ -322,7 +323,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void testUnknownCommand() throws Exception {
+  void testUnknownCommand() throws Exception {
     try {
       lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("unknown", Collections.emptyList())).get();
       fail("Expected exception");
@@ -335,7 +336,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void test_command_open_standalone_rule_desc_with_unknown_diagnostic_rule() throws Exception {
+  void test_command_open_standalone_rule_desc_with_unknown_diagnostic_rule() throws Exception {
     try {
       lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", singletonList("unknown:rule"))).get();
       fail("Expected exception");
@@ -347,7 +348,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void test_command_open_standalone_rule_desc() throws Exception {
+  void test_command_open_standalone_rule_desc() throws Exception {
     client.showRuleDescriptionLatch = new CountDownLatch(1);
     lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", singletonList("javascript:S930"))).get();
     assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
@@ -357,10 +358,27 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.ruleDesc.getHtmlDescription()).contains("You can easily call a JavaScript function with more arguments than the function needs");
     assertThat(client.ruleDesc.getType()).isEqualTo("BUG");
     assertThat(client.ruleDesc.getSeverity()).isEqualTo("CRITICAL");
+    assertThat(client.ruleDesc.getParameters()).isEmpty();
   }
 
   @Test
-  public void test_command_open_rule_desc_from_code_action() throws Exception {
+  void test_command_open_standalone_rule_desc_with_params() throws Exception {
+    client.showRuleDescriptionLatch = new CountDownLatch(1);
+    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", singletonList("javascript:S103"))).get();
+    assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
+
+    assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S103");
+    assertThat(client.ruleDesc.getName()).isEqualTo("Lines should not be too long");
+    assertThat(client.ruleDesc.getHtmlDescription()).contains("Having to scroll horizontally makes it harder to get a quick overview and understanding of any piece of code");
+    assertThat(client.ruleDesc.getType()).isEqualTo("CODE_SMELL");
+    assertThat(client.ruleDesc.getSeverity()).isEqualTo("MAJOR");
+    assertThat(client.ruleDesc.getParameters()).hasSize(1)
+      .extracting(SonarLintExtendedLanguageClient.RuleParameter::getName, SonarLintExtendedLanguageClient.RuleParameter::getDescription, SonarLintExtendedLanguageClient.RuleParameter::getDefaultValue)
+      .containsExactly(tuple("maximumLineLength", "The maximum authorized line length.", "180"));
+  }
+
+  @Test
+  void test_command_open_rule_desc_from_code_action() throws Exception {
     client.showRuleDescriptionLatch = new CountDownLatch(1);
     lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenRuleDescCodeAction", asList("javascript:S930", "file://foo.js"))).get();
     assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
@@ -373,7 +391,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void testCodeAction_with_diagnostic_rule() throws Exception {
+  void testCodeAction_with_diagnostic_rule() throws Exception {
     Range range = new Range(new Position(1, 0), new Position(1, 10));
     Diagnostic d = new Diagnostic(range, "An issue");
     d.setSource("sonarlint");
@@ -397,7 +415,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void testListAllRules() throws Exception {
+  void testListAllRules() throws Exception {
     Map<String, List<Rule>> result = lsProxy.listAllRules().join();
     assertThat(result).containsOnlyKeys("HTML", "JavaScript", "TypeScript", "PHP", "Python", "Java");
 
@@ -407,7 +425,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void logErrorWhenClientFailedToReturnConfiguration() {
+  void logErrorWhenClientFailedToReturnConfiguration() {
     // No workspaceFolderPath settings registered in the client mock, so it should fail when server will request workspaceFolderPath
     // configuration
     String folderUri = "some://noconfig_uri";
@@ -427,7 +445,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void fetchWorkspaceFolderConfigurationWhenAdded() throws Exception {
+  void fetchWorkspaceFolderConfigurationWhenAdded() throws Exception {
     client.settingsLatch = new CountDownLatch(1);
     String folderUri = "some://added_uri";
     client.folderSettings.put(folderUri, buildSonarLintSettingsSection("another pattern", null, null, true));
@@ -449,7 +467,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void test_analysis_logs_disabled() throws Exception {
+  void test_analysis_logs_disabled() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true, false, false);
     Thread.sleep(1000);
     client.logs.clear();
@@ -466,7 +484,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void test_debug_logs_enabled() throws Exception {
+  void test_debug_logs_enabled() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true, false, true);
     Thread.sleep(1000);
     client.logs.clear();
@@ -484,7 +502,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void test_analysis_logs_enabled() throws Exception {
+  void test_analysis_logs_enabled() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true, true, false);
     Thread.sleep(1000);
     client.logs.clear();
@@ -504,7 +522,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  public void test_analysis_with_debug_logs_enabled() throws Exception {
+  void test_analysis_with_debug_logs_enabled() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true, true, true);
     Thread.sleep(1000);
     client.logs.clear();

@@ -23,6 +23,7 @@ import com.google.gson.JsonPrimitive;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -43,6 +44,8 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
+import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
+import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
@@ -107,16 +110,17 @@ public class CommandManager {
       .forEach(d -> {
         String languageName = languagesNameByKey.get(d.getLanguageKey());
         result.computeIfAbsent(languageName, k -> new ArrayList<>()).add(Rule.of(d));
-        result.get(languageName).add(Rule.of(d));
       });
     return result;
   }
 
   private void openRuleDescription(@Nullable ProjectBindingWrapper binding, String ruleKey) {
     RuleDetails ruleDetails;
+    Collection<StandaloneRuleParam> paramDetails = Collections.emptyList();
     if (binding == null) {
       ruleDetails = analysisManager.getOrCreateStandaloneEngine().getRuleDetails(ruleKey)
         .orElseThrow(() -> unknownRule(ruleKey));
+      paramDetails = ((StandaloneRuleDetails) ruleDetails).paramDetails();
     } else {
       ConnectedSonarLintEngine engine = binding.getEngine();
       try {
@@ -129,7 +133,7 @@ public class CommandManager {
     String htmlDescription = getHtmlDescription(ruleDetails);
     String type = ruleDetails.getType();
     String severity = ruleDetails.getSeverity();
-    client.showRuleDescription(new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, type, severity));
+    client.showRuleDescription(new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, type, severity, paramDetails));
   }
 
   private static ResponseErrorException unknownRule(String ruleKey) {
