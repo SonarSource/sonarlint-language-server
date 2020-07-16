@@ -23,6 +23,7 @@ import com.google.gson.annotations.SerializedName;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageServer;
@@ -65,4 +66,29 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonNotification("sonarlint/didClasspathUpdate")
   void didClasspathUpdate(String projectUri);
 
+  /**
+   * Possible server modes for the <code>redhat.vscode-java</code> Language Server
+   * https://github.com/redhat-developer/vscode-java/blob/5642bf24b89202acf3911fe7a162b6dbcbeea405/src/settings.ts#L198
+   */
+  enum ServerMode {
+    LIGHTWEIGHT("LightWeight"),
+    HYBRID("Hybrid"),
+    STANDARD("Standard");
+
+    private final String serializedForm;
+
+    ServerMode(String serializedForm) {
+      this.serializedForm = serializedForm;
+    }
+
+    static ServerMode of(String serializedForm) {
+      return Stream.of(values())
+        .filter(m -> m.serializedForm.equals(serializedForm))
+        .findFirst()
+        .orElse(ServerMode.LIGHTWEIGHT);
+    }
+  }
+
+  @JsonNotification("sonarlint/didJavaServerModeChange")
+  void didJavaServerModeChange(String serverMode);
 }
