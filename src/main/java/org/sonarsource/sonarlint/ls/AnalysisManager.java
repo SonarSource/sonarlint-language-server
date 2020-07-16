@@ -548,6 +548,14 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     analyzeAllOpenJavaFiles();
   }
 
+  public void didServerModeChange(SonarLintExtendedLanguageServer.ServerMode serverMode) {
+    LOG.debug("Clearing Java config cache on server mode change");
+    javaConfigPerFileURI.clear();
+    if (serverMode == SonarLintExtendedLanguageServer.ServerMode.STANDARD) {
+      analyzeAllOpenJavaFiles();
+    }
+  }
+
   private boolean isTest(WorkspaceFolderSettings settings, URI fileUri, Optional<GetJavaConfigResponse> javaConfig) {
     if (isJava(fileUri)
       && javaConfig

@@ -288,4 +288,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     analysisManager.didClasspathUpdate(projectUri);
   }
 
+  @Override
+  public void didJavaServerModeChange(String serverMode) {
+    analysisManager.didServerModeChange(ServerMode.of(serverMode));
+  }
 }

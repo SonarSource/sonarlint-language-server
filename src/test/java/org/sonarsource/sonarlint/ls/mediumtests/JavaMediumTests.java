@@ -159,4 +159,51 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
         tuple(3, 14, 3, 18, "java:S2699", "sonarlint", "Add at least one assertion to this test case.", DiagnosticSeverity.Error));
   }
 
+
+  @Test
+  void testJavaServerModeUpdateToStandardTriggersNewAnalysis() throws Exception {
+    emulateConfigurationChangeOnClient("**/*Test.js", true, false, true);
+
+    String uri = getUri("testJavaServerModeUpdate.java");
+
+    // Simulate null Java config response due to serverMode=LightWeight
+    client.javaConfigs.put(uri, null);
+
+    lsProxy.getTextDocumentService()
+      .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "java", 1, "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}")));
+    toBeClosed.add(uri);
+
+    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains(
+        "[Debug] Skipping analysis of Java file '" + uri + "' because SonarLint was unable to query project configuration (classpath, source level, ...)"));
+
+    // Prepare config response
+    GetJavaConfigResponse javaConfigResponse = new GetJavaConfigResponse();
+    String projectRoot = "project/root";
+    javaConfigResponse.setProjectRoot(projectRoot);
+    javaConfigResponse.setSourceLevel("1.8");
+    javaConfigResponse.setTest(false);
+    javaConfigResponse.setClasspath(new String[0]);
+    client.javaConfigs.put(uri, javaConfigResponse);
+
+    client.diagnosticsLatch = new CountDownLatch(1);
+
+    // Notify of changes in server mode due to temporary activation of standard mode
+    lsProxy.didJavaServerModeChange("Hybrid");
+    lsProxy.didJavaServerModeChange("Standard");
+
+    List<Diagnostic> diagnostics;
+    if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
+      diagnostics = client.getDiagnostics(uri);
+    } else {
+      throw new AssertionError("No diagnostics received after 1 minute");
+    }
+
+    assertThat(diagnostics)
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactlyInAnyOrder(
+        tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+        tuple(2, 0, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+  }
 }
