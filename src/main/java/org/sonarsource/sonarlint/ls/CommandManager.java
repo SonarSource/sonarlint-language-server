@@ -124,7 +124,7 @@ public class CommandManager {
     } else {
       ConnectedSonarLintEngine engine = binding.getEngine();
       try {
-        ruleDetails = engine.getRuleDetails(ruleKey);
+        ruleDetails = engine.getActiveRuleDetails(ruleKey, binding.getBinding().projectKey());
       } catch (IllegalArgumentException e) {
         throw unknownRule(ruleKey);
       }
