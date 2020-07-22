@@ -43,6 +43,7 @@ import org.sonar.api.server.rule.RuleParamType;
 import org.sonar.api.server.rule.RulesDefinition;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
+import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
@@ -86,6 +87,7 @@ class CommandManagerTests {
     mockBinding = mock(ProjectBindingWrapper.class);
     mockConnectedEngine = mock(ConnectedSonarLintEngine.class);
     when(mockBinding.getEngine()).thenReturn(mockConnectedEngine);
+    when(mockBinding.getBinding()).thenReturn(new ProjectBinding("projectKey", "sqPathPrefix", "idePathPrefix"));
 
     mockClient = mock(SonarLintExtendedLanguageClient.class);
     mockAnalysisManager = mock(AnalysisManager.class);
@@ -154,7 +156,7 @@ class CommandManagerTests {
     when(ruleDetails.getExtendedDescription()).thenReturn("");
     when(ruleDetails.getType()).thenReturn("Type");
     when(ruleDetails.getSeverity()).thenReturn("Severity");
-    when(mockConnectedEngine.getRuleDetails(FAKE_RULE_KEY)).thenReturn(ruleDetails);
+    when(mockConnectedEngine.getActiveRuleDetails(FAKE_RULE_KEY, "projectKey")).thenReturn(ruleDetails);
     underTest.executeCommand(
       new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, asList(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
       NOP_CANCEL_TOKEN);
@@ -165,7 +167,7 @@ class CommandManagerTests {
   @Test
   void throwIfUnknownRuleForBoundProject() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
-    when(mockConnectedEngine.getRuleDetails(FAKE_RULE_KEY)).thenThrow(new IllegalArgumentException());
+    when(mockConnectedEngine.getActiveRuleDetails(FAKE_RULE_KEY, "projectKey")).thenThrow(new IllegalArgumentException());
 
     ExecuteCommandParams params = new ExecuteCommandParams(
       SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
