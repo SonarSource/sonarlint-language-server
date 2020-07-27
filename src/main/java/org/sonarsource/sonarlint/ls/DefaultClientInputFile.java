@@ -111,6 +111,8 @@ public class DefaultClientInputFile implements ClientInputFile {
         return "ts";
       case "html":
         return "web";
+      case "oraclesql":
+        return "plsql";
       default:
         return clientLanguageId;
     }
