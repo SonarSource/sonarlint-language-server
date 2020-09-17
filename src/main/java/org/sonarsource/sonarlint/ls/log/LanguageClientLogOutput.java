@@ -73,6 +73,9 @@ public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChan
 
   @Override
   public void log(String formattedMessage, Level level) {
+    if (formattedMessage.contains("NodeCommandException")) {
+      client.showMessage(new MessageParams(MessageType.Error, prefix("Error", formattedMessage)));
+    }
     if ((!isAnalysis.get() || showAnalyzerLogs) && (showVerboseLogs || (level != Level.DEBUG && level != Level.TRACE))) {
       client.logMessage(new MessageParams(MessageType.Log, addPrefixIfNeeded(level, formattedMessage)));
     }
