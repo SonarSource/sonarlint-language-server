@@ -23,6 +23,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -50,9 +51,9 @@ import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
-import org.sonar.api.internal.apachecommons.lang.StringUtils;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.client.api.common.PluginDetails;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.AnalysisResults;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
@@ -245,8 +246,9 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
         LOG.info("Analyzing file '{}'...", fileUri);
         analysisResults = analyzeStandalone(settings, baseDir, fileUri, content, issueListener, javaConfigOpt);
       }
+      SkippedPluginsNotifier.notifyOnceForSkippedPlugins(analysisResults.results, analysisResults.allPlugins, client);
 
-      telemetry.analysisDoneOnSingleFile(StringUtils.substringAfterLast(fileUri.toString(), "."), analysisResults.analysisTime);
+      telemetry.analysisDoneOnSingleLanguage(analysisResults.results.languagePerFile().values().iterator().next(), analysisResults.analysisTime);
 
       // Ignore files with parsing error
       analysisResults.results.failedAnalysisFiles().stream()
@@ -291,10 +293,12 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   static class AnalysisResultsWrapper {
     private final AnalysisResults results;
     private final int analysisTime;
+    private final Collection<PluginDetails> allPlugins;
 
-    AnalysisResultsWrapper(AnalysisResults results, int analysisTime) {
+    AnalysisResultsWrapper(AnalysisResults results, int analysisTime, Collection<PluginDetails> allPlugins) {
       this.results = results;
       this.analysisTime = analysisTime;
+      this.allPlugins = allPlugins;
     }
   }
 
@@ -312,9 +316,11 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     LOG.debug("Analysis triggered on '{}' with configuration: \n{}", uri, configuration.toString());
 
     StandaloneSonarLintEngine engine = getOrCreateStandaloneEngine();
-    return analyzeWithTiming(() -> engine.analyze(configuration, issueListener, null, null), () -> {
-    });
+    return analyzeWithTiming(() -> engine.analyze(configuration, issueListener, null, null),
+      engine.getPluginDetails(),
+      () -> {});
   }
+
 
   public AnalysisResultsWrapper analyzeConnected(ProjectBindingWrapper binding, WorkspaceFolderSettings settings, Path baseDir, URI uri, String content,
     IssueListener issueListener, boolean shouldFetchServerIssues, Optional<GetJavaConfigResponse> javaConfig) {
@@ -334,18 +340,20 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     IssueListener collector = issues::add;
 
     ConnectedSonarLintEngine engine = binding.getEngine();
-    return analyzeWithTiming(() -> engine.analyze(configuration, collector, null, null), () -> {
-      String filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, uri));
-      ServerIssueTrackerWrapper serverIssueTracker = binding.getServerIssueTracker();
-      serverIssueTracker.matchAndTrack(filePath, issues, issueListener, shouldFetchServerIssues);
-    });
+    return analyzeWithTiming(() -> engine.analyze(configuration, collector, null, null),
+      engine.getPluginDetails(),
+      () -> {
+        String filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, uri));
+        ServerIssueTrackerWrapper serverIssueTracker = binding.getServerIssueTracker();
+        serverIssueTracker.matchAndTrack(filePath, issues, issueListener, shouldFetchServerIssues);
+      });
   }
 
   /**
    * @param analyze Analysis callback
    * @param postAnalysisTask Code that will be logged outside the analysis flag, but still counted in the total analysis duration.
    */
-  private AnalysisResultsWrapper analyzeWithTiming(Supplier<AnalysisResults> analyze, Runnable postAnalysisTask) {
+  private AnalysisResultsWrapper analyzeWithTiming(Supplier<AnalysisResults> analyze, Collection<PluginDetails> allPlugins, Runnable postAnalysisTask) {
     long start = System.currentTimeMillis();
     AnalysisResults analysisResults;
     try {
@@ -358,7 +366,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     postAnalysisTask.run();
 
     int analysisTime = (int) (System.currentTimeMillis() - start);
-    return new AnalysisResultsWrapper(analysisResults, analysisTime);
+    return new AnalysisResultsWrapper(analysisResults, analysisTime, allPlugins);
   }
 
   private static String getFileRelativePath(Path baseDir, URI uri) {

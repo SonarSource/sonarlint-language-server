@@ -28,13 +28,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.sonarsource.sonarlint.core.client.api.common.Language;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
 
 public class DefaultClientInputFile implements ClientInputFile {
 
   private final URI fileUri;
   private final String content;
-  private final String sqLanguage;
+  private final Language sqLanguage;
   private final String relativePath;
   private final boolean isTest;
 
@@ -82,8 +83,8 @@ public class DefaultClientInputFile implements ClientInputFile {
   }
 
   @Override
-  public String language() {
-    return this.sqLanguage;
+  public Language language() {
+    return sqLanguage;
   }
 
   @Override
@@ -92,7 +93,7 @@ public class DefaultClientInputFile implements ClientInputFile {
   }
 
   @CheckForNull
-  private static String toSqLanguage(@Nullable String clientLanguageId) {
+  private static Language toSqLanguage(@Nullable String clientLanguageId) {
     if (clientLanguageId == null) {
       return null;
     }
@@ -103,18 +104,18 @@ public class DefaultClientInputFile implements ClientInputFile {
       case "vue":
       case "vue component":
       case "babel es6 javascript":
-        return "js";
+        return Language.JS;
       case "python":
-        return "py";
+        return Language.PYTHON;
       case "typescript":
       case "typescriptreact":
-        return "ts";
+        return Language.TS;
       case "html":
-        return "web";
+        return Language.HTML;
       case "oraclesql":
-        return "plsql";
+        return Language.PLSQL;
       default:
-        return clientLanguageId;
+        return null;
     }
   }
 }
