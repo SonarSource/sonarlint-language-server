@@ -32,6 +32,9 @@ import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 
 public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
+  @JsonRequest("sonarlint/openJavaHomeSettings")
+  CompletableFuture<Void> openJavaHomeSettings();
+
   @JsonRequest("sonarlint/showRuleDescription")
   CompletableFuture<Void> showRuleDescription(ShowRuleDescriptionParams params);
 

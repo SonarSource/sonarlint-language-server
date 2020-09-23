@@ -312,9 +312,12 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     LOG.debug("Analysis triggered on '{}' with configuration: \n{}", uri, configuration.toString());
 
     StandaloneSonarLintEngine engine = getOrCreateStandaloneEngine();
+    SkippedPluginsNotifier.notifyForSkippedPlugins(engine.getPluginDetails(), null, client);
+
     return analyzeWithTiming(() -> engine.analyze(configuration, issueListener, null, null), () -> {
     });
   }
+
 
   public AnalysisResultsWrapper analyzeConnected(ProjectBindingWrapper binding, WorkspaceFolderSettings settings, Path baseDir, URI uri, String content,
     IssueListener issueListener, boolean shouldFetchServerIssues, Optional<GetJavaConfigResponse> javaConfig) {
@@ -334,6 +337,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     IssueListener collector = issues::add;
 
     ConnectedSonarLintEngine engine = binding.getEngine();
+    SkippedPluginsNotifier.notifyForSkippedPlugins(engine.getPluginDetails(), binding.getServerId(), client);
     return analyzeWithTiming(() -> engine.analyze(configuration, collector, null, null), () -> {
       String filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, uri));
       ServerIssueTrackerWrapper serverIssueTracker = binding.getServerIssueTracker();

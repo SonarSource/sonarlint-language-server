@@ -297,6 +297,11 @@ abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
+    public CompletableFuture<Void> openJavaHomeSettings() {
+      return CompletableFutures.computeAsync(null);
+    }
+
+    @Override
     public CompletableFuture<Void> showRuleDescription(ShowRuleDescriptionParams params) {
       return CompletableFutures.computeAsync(cancelToken -> {
         this.ruleDesc = params;

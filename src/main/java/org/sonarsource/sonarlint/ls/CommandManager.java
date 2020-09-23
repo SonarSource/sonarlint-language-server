@@ -105,10 +105,9 @@ public class CommandManager {
 
   public Map<String, List<Rule>> listAllStandaloneRules() {
     Map<String, List<Rule>> result = new HashMap<>();
-    Map<String, String> languagesNameByKey = analysisManager.getOrCreateStandaloneEngine().getAllLanguagesNameByKey();
     analysisManager.getOrCreateStandaloneEngine().getAllRuleDetails()
       .forEach(d -> {
-        String languageName = languagesNameByKey.get(d.getLanguageKey());
+        String languageName = d.getLanguage().getLabel();
         result.computeIfAbsent(languageName, k -> new ArrayList<>()).add(Rule.of(d));
       });
     return result;
