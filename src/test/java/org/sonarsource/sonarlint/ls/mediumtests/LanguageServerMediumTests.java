@@ -536,7 +536,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .contains(
         "[Info] Analyzing file '" + uri + "'...",
         "[Info] Index files",
-        "[Debug] Language of file '" + uri + "' is set to 'js'",
+        "[Debug] Language of file '" + uri + "' is set to 'JavaScript'",
         "[Info] 1 file indexed",
         "[Debug] Execute Sensor: JavaScript analysis",
         "[Info] Found 1 issue(s)"));

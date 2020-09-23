@@ -298,7 +298,12 @@ abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public CompletableFuture<Void> showSonarLintOutput() {
-      return null;
+      return CompletableFutures.computeAsync(null);
+    }
+
+    @Override
+    public CompletableFuture<Void> openJavaHomeSettings() {
+      return CompletableFutures.computeAsync(null);
     }
 
     @Override

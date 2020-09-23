@@ -35,6 +35,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonRequest("sonarlint/showSonarLintOutput")
   CompletableFuture<Void> showSonarLintOutput();
 
+  @JsonRequest("sonarlint/openJavaHomeSettings")
+  CompletableFuture<Void> openJavaHomeSettings();
+
   @JsonRequest("sonarlint/showRuleDescription")
   CompletableFuture<Void> showRuleDescription(ShowRuleDescriptionParams params);
 

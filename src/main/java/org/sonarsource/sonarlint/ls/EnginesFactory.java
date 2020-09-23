@@ -21,14 +21,18 @@ package org.sonarsource.sonarlint.ls;
 
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.ConnectedSonarLintEngineImpl;
+import org.sonarsource.sonarlint.core.NodeJsHelper;
 import org.sonarsource.sonarlint.core.StandaloneSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.client.api.common.Language;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedGlobalConfiguration;
@@ -59,9 +63,12 @@ public class EnginesFactory {
     Language.PLSQL
   };
 
-  public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput) {
+  private final NodeJsHelper nodeJsHelper;
+
+  public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput, NodeJsHelper nodeJsHelper) {
     this.standaloneAnalyzers = standaloneAnalyzers;
     this.lsLogOutput = lsLogOutput;
+    this.nodeJsHelper = nodeJsHelper;
   }
 
   public StandaloneSonarLintEngine createStandaloneEngine() {
@@ -72,6 +79,8 @@ public class EnginesFactory {
       StandaloneGlobalConfiguration configuration = StandaloneGlobalConfiguration.builder()
         .setExtraProperties(prepareExtraProps())
         .addEnabledLanguages(STANDALONE_LANGUAGES)
+        // TODO Use version from configuration
+        .setNodeJs(nodeJsHelper.getNodeJsPath(), nodeJsHelper.getNodeJsVersion())
         .addPlugins(standaloneAnalyzers.toArray(new URL[0]))
         .setLogOutput(lsLogOutput)
         .build();
@@ -95,6 +104,8 @@ public class EnginesFactory {
       .setExtraProperties(prepareExtraProps())
       .addEnabledLanguages(STANDALONE_LANGUAGES)
       .addEnabledLanguages(CONNECTED_ADDITIONAL_LANGUAGES)
+      // TODO Use version from configuration
+      .setNodeJs(nodeJsHelper.getNodeJsPath(), nodeJsHelper.getNodeJsVersion())
       .setLogOutput(lsLogOutput)
       .build();
 
@@ -119,4 +130,10 @@ public class EnginesFactory {
   public void initialize(@Nullable Path typeScriptPath) {
     this.typeScriptPath = typeScriptPath;
   }
+
+  public static Set<Language> getStandaloneLanguages() {
+    return EnumSet.copyOf(Arrays.asList(STANDALONE_LANGUAGES));
+  }
+
+
 }
