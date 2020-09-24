@@ -71,7 +71,6 @@ public class SkippedPluginsNotifier {
   }
 
   private static void openJavaSettingsRequest(SonarLintExtendedLanguageClient client, String message) {
-    LOG.error("Sending Java Settings Request...");
     ShowMessageRequestParams params = new ShowMessageRequestParams();
     ArrayList<MessageActionItem> actionItems = new ArrayList<>();
     MessageActionItem actionItem = new MessageActionItem();
@@ -82,7 +81,6 @@ public class SkippedPluginsNotifier {
     params.setActions(actionItems);
     params.setMessage(message);
     client.showMessageRequest(params).thenAccept(action -> {
-      LOG.error("Opening Java Settings...");
       client.openJavaHomeSettings();
     });
   }
