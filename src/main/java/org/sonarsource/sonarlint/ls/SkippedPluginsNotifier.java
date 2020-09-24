@@ -19,15 +19,19 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
-import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.services.LanguageClient;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.client.api.common.Language;
 import org.sonarsource.sonarlint.core.client.api.common.PluginDetails;
 import org.sonarsource.sonarlint.core.client.api.common.SkipReason;
@@ -37,12 +41,14 @@ import static org.sonarsource.sonarlint.core.client.api.common.Language.getLangu
 
 public class SkippedPluginsNotifier {
 
+  private static final Logger LOG = Loggers.get(SkippedPluginsNotifier.class);
+
   private static final Set<String> displayedMessages = new HashSet<>();
 
   private SkippedPluginsNotifier() {
   }
 
-  public static void notifyForSkippedPlugins(Collection<PluginDetails> allPlugins, @Nullable String connectionId, LanguageClient client) {
+  public static void notifyForSkippedPlugins(Collection<PluginDetails> allPlugins, @Nullable String connectionId, SonarLintExtendedLanguageClient client) {
     List<PluginDetails> skippedPlugins = allPlugins.stream().filter(p -> p.skipReason().isPresent()).collect(toList());
     if (!skippedPlugins.isEmpty()) {
       List<Language> skippedLanguages = skippedPlugins.stream()
@@ -59,10 +65,26 @@ public class SkippedPluginsNotifier {
       String message = notificationTitle + "\n" + longMessage;
 
       if (displayedMessages.add(message)) {
-        client.showMessage(new MessageParams(MessageType.Error, message));
+        openJavaSettingsRequest(client, message);
       }
-
     }
+  }
+
+  private static void openJavaSettingsRequest(SonarLintExtendedLanguageClient client, String message) {
+    LOG.error("Sending Java Settings Request...");
+    ShowMessageRequestParams params = new ShowMessageRequestParams();
+    ArrayList<MessageActionItem> actionItems = new ArrayList<>();
+    MessageActionItem actionItem = new MessageActionItem();
+    // if it's java requirements failed
+    actionItem.setTitle("Open Java Settings");
+    actionItems.add(actionItem);
+    params.setType(MessageType.Error);
+    params.setActions(actionItems);
+    params.setMessage(message);
+    client.showMessageRequest(params).thenAccept(action -> {
+      LOG.error("Opening Java Settings...");
+      client.openJavaHomeSettings();
+    });
   }
 
   private static String buildLongMessage(@Nullable String connectionId, List<PluginDetails> skippedPlugins, List<Language> skippedLanguages, LanguageClient client) {
