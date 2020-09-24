@@ -23,10 +23,14 @@ import java.time.Clock;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.util.ArrayList;
+import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.client.api.common.LogOutput;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
@@ -74,7 +78,13 @@ public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChan
   @Override
   public void log(String formattedMessage, Level level) {
     if (formattedMessage.contains("NodeCommandException")) {
-      client.showMessage(new MessageParams(MessageType.Error, prefix("Error", formattedMessage)));
+      MessageActionItem actionItem = new MessageActionItem("Show SonarLint Output");
+      ArrayList<MessageActionItem> actionItems = new ArrayList<>();
+      actionItems.add(actionItem);
+      ShowMessageRequestParams params = new ShowMessageRequestParams(actionItems);
+      params.setType(MessageType.Error);
+      params.setMessage("JS/TS analyzer issue. Look at the log output for more details.");
+      client.showMessageRequest(params).thenAccept(action -> ((SonarLintExtendedLanguageClient) client).showSonarLintOutput());
     }
     if ((!isAnalysis.get() || showAnalyzerLogs) && (showVerboseLogs || (level != Level.DEBUG && level != Level.TRACE))) {
       client.logMessage(new MessageParams(MessageType.Log, addPrefixIfNeeded(level, formattedMessage)));
