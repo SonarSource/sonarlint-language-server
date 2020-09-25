@@ -31,6 +31,7 @@ import org.sonarsource.sonarlint.core.client.api.common.PluginDetails;
 import org.sonarsource.sonarlint.core.client.api.common.SkipReason;
 import org.sonarsource.sonarlint.core.container.model.DefaultLoadedAnalyzer;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -39,23 +40,13 @@ import static org.mockito.Mockito.when;
 public class SkippedPluginsNotifierTest {
 
   private SonarLintExtendedLanguageClient languageClient = mock(SonarLintExtendedLanguageClient.class);
-  ShowMessageRequestParams params;
+
   @BeforeEach
   public void init() {
     MessageActionItem actionItem = new MessageActionItem("Open Java Settings");
-    ArrayList<MessageActionItem> actionItems = new ArrayList<>();
-    actionItems.add(actionItem);
-    params = new ShowMessageRequestParams(actionItems);
-    params.setType(MessageType.Error);
-    params.setMessage("Rules not available" + System.lineSeparator() +
-      "Some analyzers from connection '' can not be loaded." + System.lineSeparator() +
-      System.lineSeparator() +
-      " - 'name' requires Java runtime version minVersion or later. Current version is currentVersion." + System.lineSeparator() +
-      System.lineSeparator() +
-      "Learn [how to configure](https://code.visualstudio.com/docs/java/java-tutorial#_setting-up-visual-studio-code-for-java-development) JRE path for VSCode.");
     CompletableFuture<MessageActionItem> completableFuture = CompletableFuture.completedFuture(actionItem);
 
-    when(languageClient.showMessageRequest(params)).thenReturn(completableFuture);
+    when(languageClient.showMessageRequest(any(ShowMessageRequestParams.class))).thenReturn(completableFuture);
   }
 
   @Test
@@ -78,7 +69,7 @@ public class SkippedPluginsNotifierTest {
 
     SkippedPluginsNotifier.notifyForSkippedPlugins(pluginDetails, "", languageClient);
 
-    verify(languageClient).showMessageRequest(params);
+    verify(languageClient).showMessageRequest(any(ShowMessageRequestParams.class));
     verify(languageClient).openJavaHomeSettings();
     verifyNoMoreInteractions(languageClient);
   }
