@@ -47,11 +47,11 @@ public class SkippedPluginsNotifierTest {
     actionItems.add(actionItem);
     params = new ShowMessageRequestParams(actionItems);
     params.setType(MessageType.Error);
-    params.setMessage("Rules not available\n" +
-      "Some analyzers from connection '' can not be loaded.\n" +
-      "\n" +
-      " - 'name' requires Java runtime version minVersion or later. Current version is currentVersion.\n" +
-      "\n" +
+    params.setMessage("Rules not available" + System.lineSeparator() +
+      "Some analyzers from connection '' can not be loaded." + System.lineSeparator() +
+      System.lineSeparator() +
+      " - 'name' requires Java runtime version minVersion or later. Current version is currentVersion." + System.lineSeparator() +
+      System.lineSeparator() +
       "Learn [how to configure](https://code.visualstudio.com/docs/java/java-tutorial#_setting-up-visual-studio-code-for-java-development) JRE path for VSCode.");
     CompletableFuture<MessageActionItem> completableFuture = CompletableFuture.completedFuture(actionItem);
 
