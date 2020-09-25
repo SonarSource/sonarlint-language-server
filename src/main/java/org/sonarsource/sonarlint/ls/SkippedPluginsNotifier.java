@@ -71,14 +71,12 @@ public class SkippedPluginsNotifier {
   }
 
   private static void openJavaSettingsRequest(SonarLintExtendedLanguageClient client, String message) {
-    ShowMessageRequestParams params = new ShowMessageRequestParams();
     ArrayList<MessageActionItem> actionItems = new ArrayList<>();
-    MessageActionItem actionItem = new MessageActionItem();
+    MessageActionItem actionItem = new MessageActionItem("Open Java Settings");
     // if it's java requirements failed
-    actionItem.setTitle("Open Java Settings");
     actionItems.add(actionItem);
+    ShowMessageRequestParams params = new ShowMessageRequestParams(actionItems);
     params.setType(MessageType.Error);
-    params.setActions(actionItems);
     params.setMessage(message);
     client.showMessageRequest(params).thenAccept(action -> {
       client.openJavaHomeSettings();
@@ -133,7 +131,6 @@ public class SkippedPluginsNotifier {
     if (includeVMtips) {
       longMessage
         .append("\nLearn [how to configure](https://code.visualstudio.com/docs/java/java-tutorial#_setting-up-visual-studio-code-for-java-development) JRE path for VSCode.");
-      ((SonarLintExtendedLanguageClient) client).openJavaHomeSettings();
     }
     return longMessage.toString();
   }
