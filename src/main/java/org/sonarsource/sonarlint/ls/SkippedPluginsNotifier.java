@@ -55,7 +55,7 @@ public class SkippedPluginsNotifier {
         .flatMap(p -> getLanguagesByPluginKey(p.key()).stream())
         .filter(l -> EnginesFactory.getStandaloneLanguages().contains(l))
         .collect(toList());
-      String longMessage = buildLongMessage(connectionId, skippedPlugins, skippedLanguages, client);
+      String longMessage = buildLongMessage(connectionId, skippedPlugins, skippedLanguages);
       String notificationTitle;
       if (skippedLanguages.isEmpty()) {
         notificationTitle = "Rules not available";
@@ -83,7 +83,7 @@ public class SkippedPluginsNotifier {
     });
   }
 
-  private static String buildLongMessage(@Nullable String connectionId, List<PluginDetails> skippedPlugins, List<Language> skippedLanguages, LanguageClient client) {
+  static String buildLongMessage(@Nullable String connectionId, List<PluginDetails> skippedPlugins, List<Language> skippedLanguages) {
     boolean includeVMtips = false;
     StringBuilder longMessage = new StringBuilder();
     longMessage.append("Some analyzers");

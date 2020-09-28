@@ -21,6 +21,8 @@ package org.sonarsource.sonarlint.ls;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.EnumSet;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -109,5 +111,24 @@ public class EnginesFactoryTests {
     assertThat(createdEngine).isSameAs(mockEngine);
     ConnectedGlobalConfiguration capturedConfig = argCaptor.getValue();
     assertThat(capturedConfig.extraProperties()).isEmpty();
+  }
+
+  @Test
+  public void get_standalone_languages() {
+    Set<Language> standaloneLanguages = EnginesFactory.getStandaloneLanguages();
+    EnumSet<Language> expectedSetOfStandaloneLanguages = EnumSet.of(
+      Language.HTML,
+      Language.JAVA,
+      Language.JS,
+      Language.PHP,
+      Language.PYTHON,
+      Language.TS
+    );
+
+    assertThat(standaloneLanguages).hasSameSizeAs(expectedSetOfStandaloneLanguages);
+    for (Language language : standaloneLanguages) {
+      assertThat(expectedSetOfStandaloneLanguages).contains(language);
+    }
+
   }
 }

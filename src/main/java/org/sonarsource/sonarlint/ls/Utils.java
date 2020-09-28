@@ -22,9 +22,9 @@ package org.sonarsource.sonarlint.ls;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonSyntaxException;
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ThreadFactory;
 import javax.annotation.CheckForNull;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
@@ -66,7 +66,7 @@ public class Utils {
     Thread.currentThread().interrupt();
   }
 
-  public static Language[] toLanguageArray(EnumSet<Language> languages) {
+  public static Language[] toLanguageArray(Set<Language> languages) {
     Language[] languagesArray = new Language[languages.size()];
     Iterator<Language> iterator = languages.iterator();
     for (int i = 0; i < languages.size(); i++) {
