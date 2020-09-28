@@ -23,7 +23,7 @@ import java.time.Clock;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.util.ArrayList;
+import java.util.Collections;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
@@ -44,6 +44,8 @@ import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
  */
 public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChangeListener {
 
+  static final String SHOW_SONARLINT_OUTPUT_ACTION = "Show SonarLint Output";
+  static final String NODE_COMMAND_EXCEPTION = "NodeCommandException";
   private static final DateTimeFormatter LOG_DATE_FORMAT = new DateTimeFormatterBuilder()
     .appendValue(HOUR_OF_DAY, 2)
     .appendLiteral(':')
@@ -77,18 +79,22 @@ public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChan
 
   @Override
   public void log(String formattedMessage, Level level) {
-    if (formattedMessage.contains("NodeCommandException")) {
-      MessageActionItem actionItem = new MessageActionItem("Show SonarLint Output");
-      ArrayList<MessageActionItem> actionItems = new ArrayList<>();
-      actionItems.add(actionItem);
-      ShowMessageRequestParams params = new ShowMessageRequestParams(actionItems);
-      params.setType(MessageType.Error);
-      params.setMessage("JS/TS analyzer issue. Look at the log output for more details.");
+    if (formattedMessage.contains(NODE_COMMAND_EXCEPTION)) {
+      ShowMessageRequestParams params = getShowMessageRequestParams();
       client.showMessageRequest(params).thenAccept(action -> ((SonarLintExtendedLanguageClient) client).showSonarLintOutput());
+      client.logMessage(new MessageParams(MessageType.Log, addPrefixIfNeeded(level, formattedMessage)));
     }
     if ((!isAnalysis.get() || showAnalyzerLogs) && (showVerboseLogs || (level != Level.DEBUG && level != Level.TRACE))) {
       client.logMessage(new MessageParams(MessageType.Log, addPrefixIfNeeded(level, formattedMessage)));
     }
+  }
+
+  static ShowMessageRequestParams getShowMessageRequestParams() {
+    MessageActionItem actionItem = new MessageActionItem(SHOW_SONARLINT_OUTPUT_ACTION);
+    ShowMessageRequestParams params = new ShowMessageRequestParams(Collections.singletonList(actionItem));
+    params.setType(MessageType.Error);
+    params.setMessage("JS/TS analysis failed. Please check the SonarLint Output for more details.");
+    return params;
   }
 
   private String addPrefixIfNeeded(Level level, String formattedMessage) {

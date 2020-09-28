@@ -22,24 +22,24 @@ package org.sonarsource.sonarlint.ls.log;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
-import org.eclipse.lsp4j.ShowMessageRequestParams;
-import org.eclipse.lsp4j.services.LanguageClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.LogOutput.Level;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
+import static org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput.NODE_COMMAND_EXCEPTION;
+import static org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput.SHOW_SONARLINT_OUTPUT_ACTION;
 
 class LanguageClientLogOutputTests {
 
@@ -133,21 +133,15 @@ class LanguageClientLogOutputTests {
 
   @Test
   public void notification_to_client_for_node_command_exception() {
-
-    MessageActionItem actionItem = new MessageActionItem("Show SonarLint Output");
-    ArrayList<MessageActionItem> actionItems = new ArrayList<>();
-    actionItems.add(actionItem);
-    ShowMessageRequestParams params = new ShowMessageRequestParams(actionItems);
-    params.setType(MessageType.Error);
-    params.setMessage("JS/TS analyzer issue. Look at the log output for more details.");
+    MessageActionItem actionItem = new MessageActionItem(SHOW_SONARLINT_OUTPUT_ACTION);
     CompletableFuture<MessageActionItem> completableFuture = CompletableFuture.completedFuture(actionItem);
+    when(languageClient.showMessageRequest(LanguageClientLogOutput.getShowMessageRequestParams())).thenReturn(completableFuture);
 
-    when(languageClient.showMessageRequest(params)).thenReturn(completableFuture);
+    underTest.log(NODE_COMMAND_EXCEPTION, Level.DEBUG);
 
-    underTest.log("NodeCommandException", Level.DEBUG);
-
-    verify(languageClient).showMessageRequest(params);
+    verify(languageClient).showMessageRequest(LanguageClientLogOutput.getShowMessageRequestParams());
     verify(languageClient).showSonarLintOutput();
+    verify(languageClient).logMessage(any(MessageParams.class));
     verifyNoMoreInteractions(languageClient);
   }
 
