@@ -46,7 +46,26 @@ stages:
         parameters:
           mavenSettingsFilePath: $(mavenSettings.secureFilePath)
       - task: Maven@3
+        displayName: 'Run Maven deploy with Javadoc'
+        condition: ne(variables['Build.Reason'], 'PullRequest')
+        env:
+         ARTIFACTORY_DEPLOY_USERNAME: $(ARTIFACTORY_DEPLOY_USERNAME)
+         ARTIFACTORY_DEPLOY_PASSWORD: $(ARTIFACTORY_DEPLOY_PASSWORD)
+         GIT_SHA1: $(Build.SourceVersion)
+         GITHUB_BRANCH: $(fixedBranch)
+        inputs:
+         goals: 'deploy'
+         options: >-
+           $(commonMavenArguments)
+           -Prelease
+           --settings $(mavenSettings.secureFilePath)
+         publishJUnitResults: false
+         javaHomeOption: 'JDKVersion'
+         jdkVersionOption: '1.11'
+         mavenOptions: $(MAVEN_OPTS)
+      - task: Maven@3
         displayName: 'Run Maven deploy'
+        condition: eq(variables['Build.Reason'], 'PullRequest')
         env:
           ARTIFACTORY_DEPLOY_USERNAME: $(ARTIFACTORY_DEPLOY_USERNAME)
           ARTIFACTORY_DEPLOY_PASSWORD: $(ARTIFACTORY_DEPLOY_PASSWORD)
