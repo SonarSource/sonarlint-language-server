@@ -264,7 +264,7 @@ abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public CompletableFuture<MessageActionItem> showMessageRequest(ShowMessageRequestParams requestParams) {
-      return null;
+      return CompletableFuture.completedFuture(null);
     }
 
     @Override
@@ -294,6 +294,11 @@ abstract class AbstractLanguageServerMediumTests {
         settingsLatch.countDown();
         return result;
       });
+    }
+
+    @Override
+    public CompletableFuture<Void> showSonarLintOutput() {
+      return null;
     }
 
     @Override
