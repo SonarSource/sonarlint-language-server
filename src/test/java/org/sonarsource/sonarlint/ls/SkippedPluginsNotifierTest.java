@@ -20,8 +20,11 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
@@ -59,7 +62,7 @@ public class SkippedPluginsNotifierTest {
   private static List<PluginDetails> pluginDetails = new ArrayList<>();
   private List<Language> skippedLanguages;
   private DefaultLoadedAnalyzer analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE =
-    new DefaultLoadedAnalyzer("key", "name", "version",
+    new DefaultLoadedAnalyzer("java", "java", "version",
       new SkipReason.UnsatisfiedRuntimeRequirement(SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.JRE, "currentJavaVersion", "minJavaVersion"));
   private DefaultLoadedAnalyzer analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs =
     new DefaultLoadedAnalyzer("key", "name", "version",
@@ -105,16 +108,9 @@ public class SkippedPluginsNotifierTest {
 
   @Test
   public void build_long_message_connection_id() {
-    String longMessage = SkippedPluginsNotifier.buildLongMessage(SERVER_ID, Collections.emptyList(), Collections.emptyList());
+    String longMessage = SkippedPluginsNotifier.buildLongMessage(SERVER_ID, analyzerJavaSkipReasonIncompatiblePluginApi, Collections.emptyList());
 
     assertThat(longMessage).contains("from connection").contains(SERVER_ID);
-  }
-
-  @Test
-  public void build_long_message_no_languages() {
-    String longMessage = SkippedPluginsNotifier.buildLongMessage(SERVER_ID, pluginDetails, Collections.emptyList());
-
-    assertThat(longMessage).doesNotContain(SKIPPED_PLUGIN_MESSAGE);
   }
 
   @Test
@@ -122,7 +118,7 @@ public class SkippedPluginsNotifierTest {
     pluginDetails.clear();
     pluginDetails.add(analyzerJavaSkipReasonIncompatiblePluginApi);
     updateSkippedLanguages();
-    String longMessage = SkippedPluginsNotifier.buildLongMessage(SERVER_ID, pluginDetails, skippedLanguages);
+    String longMessage = SkippedPluginsNotifier.buildLongMessage(SERVER_ID, analyzerJavaSkipReasonIncompatiblePluginApi, skippedLanguages);
     Language javaLanguage = (Language) getLanguagesByPluginKey(analyzerJavaSkipReasonIncompatiblePluginApi.key()).toArray()[0];
 
     assertThat(longMessage).contains(SKIPPED_PLUGIN_MESSAGE).contains(javaLanguage.getLanguageKey());
@@ -133,9 +129,9 @@ public class SkippedPluginsNotifierTest {
     pluginDetails.clear();
     pluginDetails.add(analyzerSkipReasonIncompatiblePluginApi);
     updateSkippedLanguages();
-    String longMessage = SkippedPluginsNotifier.buildLongMessage(SERVER_ID, pluginDetails, skippedLanguages);
+    String longMessage = SkippedPluginsNotifier.buildLongMessage(SERVER_ID, analyzerJavaSkipReasonIncompatiblePluginApi, skippedLanguages);
 
-    assertThat(longMessage).contains(INCOMPATIBLE_PLUGIN_API_MESSAGE).contains(analyzerSkipReasonIncompatiblePluginApi.name());
+    assertThat(longMessage).contains(INCOMPATIBLE_PLUGIN_API_MESSAGE).contains(analyzerJavaSkipReasonIncompatiblePluginApi.name());
   }
 
   @Test
@@ -143,7 +139,7 @@ public class SkippedPluginsNotifierTest {
     pluginDetails.clear();
     pluginDetails.add(analyzerSkipReasonUnsatisfiedDependency);
     updateSkippedLanguages();
-    String longMessage = SkippedPluginsNotifier.buildLongMessage(SERVER_ID, pluginDetails, skippedLanguages);
+    String longMessage = SkippedPluginsNotifier.buildLongMessage(SERVER_ID, analyzerSkipReasonUnsatisfiedDependency, skippedLanguages);
     String dependencyKey = ((SkipReason.UnsatisfiedDependency) analyzerSkipReasonUnsatisfiedDependency.skipReason().get()).getDependencyKey();
 
     assertThat(longMessage).contains(UNSATISFIED_DEPENDENCY_MESSAGE)
@@ -156,7 +152,7 @@ public class SkippedPluginsNotifierTest {
     pluginDetails.clear();
     pluginDetails.add(analyzerSkipReasonIncompatiblePluginVersion);
     updateSkippedLanguages();
-    String longMessage = SkippedPluginsNotifier.buildLongMessage(SERVER_ID, pluginDetails, skippedLanguages);
+    String longMessage = SkippedPluginsNotifier.buildLongMessage(SERVER_ID, analyzerSkipReasonIncompatiblePluginVersion, skippedLanguages);
     String minVersion = ((SkipReason.IncompatiblePluginVersion) analyzerSkipReasonIncompatiblePluginVersion.skipReason().get()).getMinVersion();
 
     assertThat(longMessage)
@@ -173,7 +169,7 @@ public class SkippedPluginsNotifierTest {
     pluginDetails.clear();
     pluginDetails.add(analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE);
     updateSkippedLanguages();
-    String longMessage = SkippedPluginsNotifier.buildLongMessage(SERVER_ID, pluginDetails, skippedLanguages);
+    String longMessage = SkippedPluginsNotifier.buildLongMessage(SERVER_ID, analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE, skippedLanguages);
     SkipReason.UnsatisfiedRuntimeRequirement runtimeRequirement = (SkipReason.UnsatisfiedRuntimeRequirement) analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE.skipReason().get();
     String minVersion = runtimeRequirement.getMinVersion();
     String currentVersion = runtimeRequirement.getCurrentVersion();
@@ -192,7 +188,7 @@ public class SkippedPluginsNotifierTest {
     pluginDetails.clear();
     pluginDetails.add(analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs);
     updateSkippedLanguages();
-    String longMessage = SkippedPluginsNotifier.buildLongMessage(SERVER_ID, pluginDetails, skippedLanguages);
+    String longMessage = SkippedPluginsNotifier.buildLongMessage(SERVER_ID, analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs, skippedLanguages);
     SkipReason.UnsatisfiedRuntimeRequirement runtimeRequirement = (SkipReason.UnsatisfiedRuntimeRequirement) analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs.skipReason().get();
     String minVersion = runtimeRequirement.getMinVersion();
     String currentVersion = runtimeRequirement.getCurrentVersion();
@@ -207,9 +203,10 @@ public class SkippedPluginsNotifierTest {
 
 
   private void updateSkippedLanguages() {
+    Set<Language> languageSet = new HashSet<>(Arrays.asList(EnginesFactory.getStandaloneLanguages()));
     skippedLanguages = pluginDetails.stream()
       .flatMap(p -> getLanguagesByPluginKey(p.key()).stream())
-      .filter(l -> EnginesFactory.getStandaloneLanguages().contains(l))
+      .filter(languageSet::contains)
       .collect(toList());
   }
 }

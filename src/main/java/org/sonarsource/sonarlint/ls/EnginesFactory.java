@@ -22,10 +22,8 @@ package org.sonarsource.sonarlint.ls;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonar.api.utils.log.Logger;
@@ -47,19 +45,19 @@ public class EnginesFactory {
   private final Collection<URL> standaloneAnalyzers;
   @CheckForNull
   private Path typeScriptPath;
-  private static final EnumSet<Language> STANDALONE_LANGUAGES = EnumSet.of(
+  private static final Language[] STANDALONE_LANGUAGES = {
     Language.HTML,
     Language.JAVA,
     Language.JS,
     Language.PHP,
     Language.PYTHON,
     Language.TS
-  );
+  };
 
-  private static final EnumSet<Language> CONNECTED_ADDITIONAL_LANGUAGES = EnumSet.of(
+  private static final Language[] CONNECTED_ADDITIONAL_LANGUAGES = {
     Language.APEX,
     Language.PLSQL
-  );
+  };
 
   public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput) {
     this.standaloneAnalyzers = standaloneAnalyzers;
@@ -73,7 +71,7 @@ public class EnginesFactory {
     try {
       StandaloneGlobalConfiguration configuration = StandaloneGlobalConfiguration.builder()
         .setExtraProperties(prepareExtraProps())
-        .addEnabledLanguages(Utils.toLanguageArray(STANDALONE_LANGUAGES))
+        .addEnabledLanguages(STANDALONE_LANGUAGES)
         .addPlugins(standaloneAnalyzers.toArray(new URL[0]))
         .setLogOutput(lsLogOutput)
         .build();
@@ -95,8 +93,8 @@ public class EnginesFactory {
     ConnectedGlobalConfiguration configuration = ConnectedGlobalConfiguration.builder()
       .setServerId(serverId)
       .setExtraProperties(prepareExtraProps())
-      .addEnabledLanguages(Utils.toLanguageArray(STANDALONE_LANGUAGES))
-      .addEnabledLanguages(Utils.toLanguageArray(CONNECTED_ADDITIONAL_LANGUAGES))
+      .addEnabledLanguages(STANDALONE_LANGUAGES)
+      .addEnabledLanguages(CONNECTED_ADDITIONAL_LANGUAGES)
       .setLogOutput(lsLogOutput)
       .build();
 
@@ -122,7 +120,7 @@ public class EnginesFactory {
     this.typeScriptPath = typeScriptPath;
   }
 
-  public static Set<Language> getStandaloneLanguages() {
+  public static Language[] getStandaloneLanguages() {
     return STANDALONE_LANGUAGES;
   }
 

@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -29,7 +30,6 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
-import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.client.api.common.Language;
@@ -50,24 +50,23 @@ public class SkippedPluginsNotifier {
 
   public static void notifyForSkippedPlugins(Collection<PluginDetails> allPlugins, @Nullable String connectionId, SonarLintExtendedLanguageClient client) {
     List<PluginDetails> skippedPlugins = allPlugins.stream().filter(p -> p.skipReason().isPresent()).collect(toList());
-    if (!skippedPlugins.isEmpty()) {
-      List<Language> skippedLanguages = skippedPlugins.stream()
-        .flatMap(p -> getLanguagesByPluginKey(p.key()).stream())
-        .filter(l -> EnginesFactory.getStandaloneLanguages().contains(l))
-        .collect(toList());
-      String longMessage = buildLongMessage(connectionId, skippedPlugins, skippedLanguages);
+    Set<Language> languages = new HashSet<>(Arrays.asList(EnginesFactory.getStandaloneLanguages()));
+    skippedPlugins.stream().forEach(skippedPlugin -> {
+      Set<Language> pluginLanguages = getLanguagesByPluginKey(skippedPlugin.key())
+        .stream().filter(languages::contains).collect(Collectors.toSet());
+      String longMessage = buildLongMessage(connectionId, skippedPlugin, pluginLanguages);
       String notificationTitle;
-      if (skippedLanguages.isEmpty()) {
+      if (pluginLanguages.isEmpty()) {
         notificationTitle = "Rules not available";
       } else {
         notificationTitle = "Language analysis not available";
       }
       String message = notificationTitle + "\n" + longMessage;
 
-      if (displayedMessages.add(message)) {
+      if (pluginLanguages.contains(Language.JAVA) && displayedMessages.add(message)) {
         openJavaSettingsRequest(client, message);
       }
-    }
+    });
   }
 
   private static void openJavaSettingsRequest(SonarLintExtendedLanguageClient client, String message) {
@@ -83,7 +82,7 @@ public class SkippedPluginsNotifier {
     });
   }
 
-  static String buildLongMessage(@Nullable String connectionId, List<PluginDetails> skippedPlugins, List<Language> skippedLanguages) {
+  static String buildLongMessage(@Nullable String connectionId, PluginDetails skippedPlugin, Collection<Language> skippedLanguages) {
     boolean includeVMtips = false;
     StringBuilder longMessage = new StringBuilder();
     longMessage.append("Some analyzers");
@@ -91,22 +90,20 @@ public class SkippedPluginsNotifier {
       longMessage.append(" from connection '").append(connectionId).append("'");
     }
     longMessage.append(" can not be loaded.\n\n");
-    if (!skippedLanguages.isEmpty()) {
-      longMessage.append(String.format("%s analysis will not be available until following requirements are satisfied:%n",
-        skippedLanguages.stream()
-          .map(Language::getLanguageKey)
-          .collect(Collectors.joining(", "))));
-    }
-    for (PluginDetails skippedPlugin : skippedPlugins) {
-      SkipReason skipReason = skippedPlugin.skipReason().orElseThrow(IllegalStateException::new);
-      if (skipReason instanceof SkipReason.IncompatiblePluginApi) {
-        // Should never occurs in standalone mode
-        longMessage.append(String.format(
-          " - '%s' is not compatible with this version of SonarLint. Ensure you are using the latest version of SonarLint and check SonarLint output for details.%n",
-          skippedPlugin.name()));
-      } else if (skipReason instanceof SkipReason.UnsatisfiedDependency) {
-        // Should never occurs in standalone mode
-        SkipReason.UnsatisfiedDependency skipReasonCasted = (SkipReason.UnsatisfiedDependency) skipReason;
+
+    longMessage.append(String.format("%s analysis will not be available until following requirements are satisfied:%n",
+      skippedLanguages.stream().map(Language::getLanguageKey).collect(Collectors.joining(", "))));
+
+
+    SkipReason skipReason = skippedPlugin.skipReason().orElseThrow(IllegalStateException::new);
+    if (skipReason instanceof SkipReason.IncompatiblePluginApi) {
+      // Should never occurs in standalone mode
+      longMessage.append(String.format(
+        " - '%s' is not compatible with this version of SonarLint. Ensure you are using the latest version of SonarLint and check SonarLint output for details.%n",
+        skippedPlugin.name()));
+    } else if (skipReason instanceof SkipReason.UnsatisfiedDependency) {
+      // Should never occurs in standalone mode
+      SkipReason.UnsatisfiedDependency skipReasonCasted = (SkipReason.UnsatisfiedDependency) skipReason;
         longMessage.append(String.format(" - '%s' is missing dependency '%s'%n", skippedPlugin.name(), skipReasonCasted.getDependencyKey()));
       } else if (skipReason instanceof SkipReason.IncompatiblePluginVersion) {
         // Should never occurs in standalone mode
@@ -127,7 +124,7 @@ public class SkippedPluginsNotifier {
         }
         includeVMtips = includeVMtips && skipReasonCasted.getRuntime() == SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.JRE;
       }
-    }
+
     if (includeVMtips) {
       longMessage
         .append("\nLearn [how to configure](https://code.visualstudio.com/docs/java/java-tutorial#_setting-up-visual-studio-code-for-java-development) JRE path for VSCode.");

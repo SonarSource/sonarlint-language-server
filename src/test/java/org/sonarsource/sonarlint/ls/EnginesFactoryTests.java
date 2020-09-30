@@ -115,8 +115,7 @@ public class EnginesFactoryTests {
 
   @Test
   public void get_standalone_languages() {
-    Set<Language> standaloneLanguages = EnginesFactory.getStandaloneLanguages();
-    EnumSet<Language> expectedSetOfStandaloneLanguages = EnumSet.of(
+    assertThat(EnginesFactory.getStandaloneLanguages()).containsExactlyInAnyOrder(
       Language.HTML,
       Language.JAVA,
       Language.JS,
@@ -124,11 +123,5 @@ public class EnginesFactoryTests {
       Language.PYTHON,
       Language.TS
     );
-
-    assertThat(standaloneLanguages).hasSameSizeAs(expectedSetOfStandaloneLanguages);
-    for (Language language : standaloneLanguages) {
-      assertThat(expectedSetOfStandaloneLanguages).contains(language);
-    }
-
   }
 }
