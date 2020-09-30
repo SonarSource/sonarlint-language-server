@@ -54,9 +54,15 @@ stages:
           GITHUB_BRANCH: $(fixedBranch)
         inputs:
           goals: 'deploy'
-          options: >-
-            $(commonMavenArguments)
-            --settings $(mavenSettings.secureFilePath)
+          ${{ if ne(variables['Build.Reason'], 'PullRequest') }}:
+            options: >-
+              $(commonMavenArguments)
+              --settings $(mavenSettings.secureFilePath)
+              -Prelease
+          ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
+            options: >-
+              $(commonMavenArguments)
+              --settings $(mavenSettings.secureFilePath)
           publishJUnitResults: false
           javaHomeOption: 'JDKVersion'
           jdkVersionOption: '1.11'
