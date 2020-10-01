@@ -264,7 +264,7 @@ abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public CompletableFuture<MessageActionItem> showMessageRequest(ShowMessageRequestParams requestParams) {
-      return null;
+      return CompletableFuture.completedFuture(null);
     }
 
     @Override
