@@ -33,7 +33,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionParams;
@@ -61,8 +60,6 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonar.api.utils.log.Loggers;
-import org.sonarsource.sonarlint.core.NodeJsHelper;
-import org.sonarsource.sonarlint.core.client.api.common.Version;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -82,8 +79,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
   private final AnalysisManager analysisManager;
-  // TODO Cleanup
-  private final NodeJsHelper nodeJsHelper;
+  private final NodeJsRuntime nodeJsRuntime;
   private final EnginesFactory enginesFactory;
   private final CommandManager commandManager;
   private final ExecutorService threadPool;
@@ -108,12 +104,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     LanguageClientLogOutput lsLogOutput = new LanguageClientLogOutput(this.client);
     Loggers.setTarget(lsLogOutput);
     this.telemetry = new SonarLintTelemetry();
-    this.nodeJsHelper = new NodeJsHelper();
-    // TODO Add property to configure Node
-    nodeJsHelper.detect(null);
-    this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput, nodeJsHelper);
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager);
+    this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
+    this.settingsManager.addListener(nodeJsRuntime);
+    this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput, nodeJsRuntime);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client);
@@ -155,17 +150,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));
       analysisManager.initialize();
 
-      // TODO Cleanup
-      Supplier<String> nodeVersion = () -> {
-        Version nodeJsVersion = nodeJsHelper.getNodeJsVersion();
-        if (nodeJsVersion != null) {
-          return nodeJsVersion.toString();
-        } else {
-          return null;
-        }
-      };
-
-      telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion, bindingManager::usesConnectedMode, bindingManager::usesSonarCloud, nodeVersion);
+      telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion,
+        bindingManager::usesConnectedMode, bindingManager::usesSonarCloud, nodeJsRuntime::nodeVersion);
 
       InitializeResult result = new InitializeResult();
       ServerCapabilities c = new ServerCapabilities();

@@ -41,10 +41,11 @@ public class WorkspaceSettings {
   private final Map<RuleKey, Map<String, String>> ruleParameters;
   private final boolean showAnalyzerLogs;
   private final boolean showVerboseLogs;
+  private final String pathToNodeExecutable;
 
   public WorkspaceSettings(boolean disableTelemetry, Map<String, ServerConnectionSettings> servers,
     Collection<RuleKey> excludedRules, Collection<RuleKey> includedRules, Map<RuleKey, Map<String, String>> ruleParameters,
-    boolean showAnalyzerLogs, boolean showVerboseLogs) {
+    boolean showAnalyzerLogs, boolean showVerboseLogs, String pathToNodeExecutable) {
     this.disableTelemetry = disableTelemetry;
     this.servers = servers;
     this.excludedRules = excludedRules;
@@ -52,6 +53,7 @@ public class WorkspaceSettings {
     this.ruleParameters = ruleParameters;
     this.showAnalyzerLogs = showAnalyzerLogs;
     this.showVerboseLogs = showVerboseLogs;
+    this.pathToNodeExecutable = pathToNodeExecutable;
   }
 
   public boolean isDisableTelemetry() {
@@ -86,9 +88,13 @@ public class WorkspaceSettings {
     return showVerboseLogs;
   }
 
+  public String pathToNodeExecutable() {
+    return pathToNodeExecutable;
+  }
+
   @Override
   public int hashCode() {
-    return Objects.hash(disableTelemetry, servers, excludedRules, includedRules, showAnalyzerLogs, showVerboseLogs);
+    return Objects.hash(disableTelemetry, servers, excludedRules, includedRules, showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable);
   }
 
   @Override
@@ -105,7 +111,8 @@ public class WorkspaceSettings {
     WorkspaceSettings other = (WorkspaceSettings) obj;
     return disableTelemetry == other.disableTelemetry && Objects.equals(servers, other.servers) && Objects.equals(excludedRules, other.excludedRules)
       && Objects.equals(includedRules, other.includedRules) && Objects.equals(ruleParameters, other.ruleParameters)
-      && Objects.equals(showAnalyzerLogs, other.showAnalyzerLogs) && Objects.equals(showVerboseLogs, other.showVerboseLogs);
+      && Objects.equals(showAnalyzerLogs, other.showAnalyzerLogs) && Objects.equals(showVerboseLogs, other.showVerboseLogs)
+      && Objects.equals(pathToNodeExecutable, other.pathToNodeExecutable);
   }
 
   @Override

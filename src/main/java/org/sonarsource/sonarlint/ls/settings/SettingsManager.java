@@ -66,6 +66,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static final String OUTPUT = "output";
   private static final String SHOW_ANALYZER_LOGS = "showAnalyzerLogs";
   private static final String SHOW_VERBOSE_LOGS = "showVerboseLogs";
+  private static final String PATH_TO_NODE_EXECUTABLE = "pathToNodeExecutable";
 
   private static final Logger LOG = Loggers.get(SettingsManager.class);
 
@@ -161,7 +162,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     if (uri != null) {
       configurationItem.setScopeUri(uri.toString());
     }
-    params.setItems(Arrays.asList(configurationItem));
+    params.setItems(Collections.singletonList(configurationItem));
     return client.configuration(params)
       .handle((r, t) -> {
         if (t != null) {
@@ -193,13 +194,14 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private static WorkspaceSettings parseSettings(Map<String, Object> params) {
     boolean disableTelemetry = (Boolean) params.getOrDefault(DISABLE_TELEMETRY, false);
+    String pathToNodeExecutable = (String) params.get(PATH_TO_NODE_EXECUTABLE);
     Map<String, ServerConnectionSettings> serverConnections = parseServerConnections(params);
     RulesConfiguration rulesConfiguration = RulesConfiguration.parse(((Map<String, Object>) params.getOrDefault(RULES, Collections.emptyMap())));
     Map<String, Object> consoleParams = ((Map<String, Object>) params.getOrDefault(OUTPUT, Collections.emptyMap()));
     boolean showAnalyzerLogs = (Boolean) consoleParams.getOrDefault(SHOW_ANALYZER_LOGS, false);
     boolean showVerboseLogs = (Boolean) consoleParams.getOrDefault(SHOW_VERBOSE_LOGS, false);
     return new WorkspaceSettings(disableTelemetry, serverConnections, rulesConfiguration.excludedRules(), rulesConfiguration.includedRules(), rulesConfiguration.ruleParameters(),
-      showAnalyzerLogs, showVerboseLogs);
+      showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable);
   }
 
   private static Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params) {
