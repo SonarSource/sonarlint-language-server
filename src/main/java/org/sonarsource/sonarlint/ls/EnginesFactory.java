@@ -32,7 +32,6 @@ import javax.annotation.Nullable;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.ConnectedSonarLintEngineImpl;
-import org.sonarsource.sonarlint.core.NodeJsHelper;
 import org.sonarsource.sonarlint.core.StandaloneSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.client.api.common.Language;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedGlobalConfiguration;
@@ -63,12 +62,12 @@ public class EnginesFactory {
     Language.PLSQL
   };
 
-  private final NodeJsHelper nodeJsHelper;
+  private final NodeJsRuntime nodeJsRuntime;
 
-  public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput, NodeJsHelper nodeJsHelper) {
+  public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput, NodeJsRuntime nodeJsRuntime) {
     this.standaloneAnalyzers = standaloneAnalyzers;
     this.lsLogOutput = lsLogOutput;
-    this.nodeJsHelper = nodeJsHelper;
+    this.nodeJsRuntime = nodeJsRuntime;
   }
 
   public StandaloneSonarLintEngine createStandaloneEngine() {
@@ -79,8 +78,7 @@ public class EnginesFactory {
       StandaloneGlobalConfiguration configuration = StandaloneGlobalConfiguration.builder()
         .setExtraProperties(prepareExtraProps())
         .addEnabledLanguages(STANDALONE_LANGUAGES)
-        // TODO Use version from configuration
-        .setNodeJs(nodeJsHelper.getNodeJsPath(), nodeJsHelper.getNodeJsVersion())
+        .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
         .addPlugins(standaloneAnalyzers.toArray(new URL[0]))
         .setLogOutput(lsLogOutput)
         .build();
@@ -104,8 +102,7 @@ public class EnginesFactory {
       .setExtraProperties(prepareExtraProps())
       .addEnabledLanguages(STANDALONE_LANGUAGES)
       .addEnabledLanguages(CONNECTED_ADDITIONAL_LANGUAGES)
-      // TODO Use version from configuration
-      .setNodeJs(nodeJsHelper.getNodeJsPath(), nodeJsHelper.getNodeJsVersion())
+      .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
       .setLogOutput(lsLogOutput)
       .build();
 

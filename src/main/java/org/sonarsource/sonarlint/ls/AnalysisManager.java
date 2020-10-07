@@ -504,6 +504,12 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     }
   }
 
+  private void analyzeAllOpenFiles() {
+    for (URI fileUri : fileContentPerFileURI.keySet()) {
+      analyzeAsync(fileUri, false);
+    }
+  }
+
   private Map<String, String> configureJavaProperties(URI fileUri) {
     Optional<GetJavaConfigResponse> cachedJavaConfigOpt = ofNullable(javaConfigPerFileURI.get(fileUri)).orElse(empty());
     return cachedJavaConfigOpt.map(cachedJavaConfig -> {

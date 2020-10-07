@@ -24,7 +24,6 @@ import java.nio.file.Paths;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.sonarsource.sonarlint.core.NodeJsHelper;
 import org.sonarsource.sonarlint.core.client.api.common.Language;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
@@ -46,7 +45,7 @@ public class EnginesFactoryTests {
 
   @BeforeEach
   public void prepare() throws Exception {
-    underTest = new EnginesFactory(asList(create("file://plugin1.jar").toURL(), create("file://plugin2.jar").toURL()), mock(LanguageClientLogOutput.class), mock(NodeJsHelper.class));
+    underTest = new EnginesFactory(asList(create("file://plugin1.jar").toURL(), create("file://plugin2.jar").toURL()), mock(LanguageClientLogOutput.class), mock(NodeJsRuntime.class));
     underTest = spy(underTest);
   }
 
