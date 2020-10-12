@@ -21,19 +21,16 @@ package org.sonarsource.sonarlint.ls;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
-import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.lang.StringUtils;
 import org.sonarsource.sonarlint.core.NodeJsHelper;
 import org.sonarsource.sonarlint.core.client.api.common.Version;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
-import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
-public class NodeJsRuntime implements WorkspaceSettingsChangeListener {
+public class NodeJsRuntime {
 
   private final SettingsManager settingsManager;
   private final Supplier<NodeJsHelper> nodeJsHelperFactory;
@@ -81,14 +78,5 @@ public class NodeJsRuntime implements WorkspaceSettingsChangeListener {
       init();
     }
     return nodeJsVersion;
-  }
-
-  @Override
-  public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
-    if (oldValue == null || !(Objects.equals(oldValue.pathToNodeExecutable(), newValue.pathToNodeExecutable()))) {
-      init = false;
-      nodeJsPath = null;
-      nodeJsVersion = null;
-    }
   }
 }

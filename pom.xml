@@ -23,7 +23,7 @@
   </issueManagement>
 
   <properties>
-    <sonarlint.core.version>4.14.1.22501</sonarlint.core.version>
+    <sonarlint.core.version>4.14.1.22545</sonarlint.core.version>
     <!-- analyzers used for tests -->
     <sonar.java.version>6.5.0.22421</sonar.java.version>
     <sonar.javascript.version>6.2.1.12157</sonar.javascript.version>
@@ -209,7 +209,7 @@
         <configuration>
           <trimStackTrace>false</trimStackTrace>
           <environmentVariables>
-            <PATH>${basedir}/src/test/resources/fake-ts-project/node;${env.PATH}</PATH>
+            <PATH>${basedir}/src/test/resources/fake-ts-project/node${path.separator}${env.PATH}</PATH>
           </environmentVariables>
         </configuration>
       </plugin>

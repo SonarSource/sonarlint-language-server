@@ -38,6 +38,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonRequest("sonarlint/openJavaHomeSettings")
   CompletableFuture<Void> openJavaHomeSettings();
 
+  @JsonRequest("sonarlint/openPathToNodeSettings")
+  CompletableFuture<Void> openPathToNodeSettings();
+
   @JsonRequest("sonarlint/showRuleDescription")
   CompletableFuture<Void> showRuleDescription(ShowRuleDescriptionParams params);
 

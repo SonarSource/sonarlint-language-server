@@ -53,6 +53,7 @@ import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.client.api.common.Language;
 import org.sonarsource.sonarlint.core.client.api.common.PluginDetails;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.AnalysisResults;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
@@ -248,7 +249,10 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       }
       SkippedPluginsNotifier.notifyOnceForSkippedPlugins(analysisResults.results, analysisResults.allPlugins, client);
 
-      telemetry.analysisDoneOnSingleLanguage(analysisResults.results.languagePerFile().values().iterator().next(), analysisResults.analysisTime);
+      Collection<Language> analyzedLanguages = analysisResults.results.languagePerFile().values();
+      if (!analyzedLanguages.isEmpty()) {
+        telemetry.analysisDoneOnSingleLanguage(analyzedLanguages.iterator().next(), analysisResults.analysisTime);
+      }
 
       // Ignore files with parsing error
       analysisResults.results.failedAnalysisFiles().stream()
@@ -501,12 +505,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       if (isJava(fileUri)) {
         analyzeAsync(fileUri, false);
       }
-    }
-  }
-
-  private void analyzeAllOpenFiles() {
-    for (URI fileUri : fileContentPerFileURI.keySet()) {
-      analyzeAsync(fileUri, false);
     }
   }
 

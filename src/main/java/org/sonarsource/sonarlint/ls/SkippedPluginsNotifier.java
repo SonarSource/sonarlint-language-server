@@ -19,13 +19,15 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import org.eclipse.lsp4j.MessageActionItem;
-import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.sonarsource.sonarlint.core.client.api.common.Language;
@@ -39,6 +41,8 @@ import static java.util.stream.Collectors.toSet;
 public class SkippedPluginsNotifier {
 
   private static final Set<String> displayedMessages = new HashSet<>();
+
+  public static final MessageActionItem ACTION_OPEN_SETTINGS = new MessageActionItem("Open Settings");
 
   private SkippedPluginsNotifier() {
   }
@@ -58,36 +62,30 @@ public class SkippedPluginsNotifier {
             String content = String.format(
               "Java runtime version %s or later is required. Current version is %s.",runtimeRequirement.getMinVersion(), runtimeRequirement.getCurrentVersion()
             );
-            openJavaSettingsRequest(client, formatMessage(title, content));
+            showMessageWithOpenSettingsAction(client, formatMessage(title, content), client::openJavaHomeSettings);
           } else if (runtimeRequirement.getRuntime() == SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.NODEJS) {
             String content = String.format(
               "Node.js runtime version %s or later is required.", runtimeRequirement.getMinVersion());
             if (runtimeRequirement.getCurrentVersion() != null) {
               content += String.format(" Current version is %s.", runtimeRequirement.getCurrentVersion());
             }
-            // TODO Show link to Node path property in the settings
-            showMessageWithoutAction(client, formatMessage(title, content));
+            showMessageWithOpenSettingsAction(client, formatMessage(title, content), client::openPathToNodeSettings);
           }
         }
       });
     });
   }
 
-  private static void openJavaSettingsRequest(SonarLintExtendedLanguageClient client, String message) {
+  private static void showMessageWithOpenSettingsAction(SonarLintExtendedLanguageClient client, String message, Supplier<CompletableFuture<Void>> callback) {
     if (displayedMessages.add(message)) {
-      ShowMessageRequestParams params = new ShowMessageRequestParams(singletonList(new MessageActionItem("Open Java Settings")));
+      ShowMessageRequestParams params = new ShowMessageRequestParams(singletonList(ACTION_OPEN_SETTINGS));
       params.setType(MessageType.Error);
       params.setMessage(message);
-      client.showMessageRequest(params).thenAccept(action -> client.openJavaHomeSettings());
-    }
-  }
-
-  private static void showMessageWithoutAction(SonarLintExtendedLanguageClient client, String longMessage) {
-    if (displayedMessages.add(longMessage)) {
-      MessageParams params = new MessageParams();
-      params.setType(MessageType.Error);
-      params.setMessage(longMessage);
-      client.showMessage(params);
+      client.showMessageRequest(params).thenAccept(action -> {
+        if (ACTION_OPEN_SETTINGS.equals(action)) {
+          callback.get();
+        }
+      });
     }
   }
 
@@ -102,5 +100,10 @@ public class SkippedPluginsNotifier {
    */
   private static String formatMessage(String title, String content) {
     return String.format("%s: %s", title, content);
+  }
+
+  @VisibleForTesting
+  static void clearMessages() {
+    displayedMessages.clear();
   }
 }

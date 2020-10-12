@@ -19,20 +19,20 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import java.io.File;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.mockito.Mockito;
 import org.sonarsource.sonarlint.core.NodeJsHelper;
 import org.sonarsource.sonarlint.core.client.api.common.Version;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class NodeJsRuntimeTest {
 
@@ -80,49 +80,6 @@ class NodeJsRuntimeTest {
     assertThat(underTest.nodeVersion()).isEqualTo(versionString);
 
     verify(settings).pathToNodeExecutable();
-    verify(nodeJsHelper, times(1)).detect(temp.getFileName());
-  }
-
-  @Test
-  void shouldKeepOldSettingsWhenNotChanged() {
-    when(settings.pathToNodeExecutable()).thenReturn(null);
-    WorkspaceSettings newSettings = mock(WorkspaceSettings.class);
-    when(newSettings.pathToNodeExecutable()).thenReturn(null);
-
-    assertThat(underTest.nodeVersion()).isNull();
-    assertThat(underTest.getNodeJsPath()).isNull();
-    assertThat(underTest.getNodeJsVersion()).isNull();
-
-    underTest.onChange(settings, newSettings);
-
-    assertThat(underTest.nodeVersion()).isNull();
-    assertThat(underTest.getNodeJsPath()).isNull();
-    assertThat(underTest.getNodeJsVersion()).isNull();
-
-    verify(nodeJsHelper, times(1)).detect(null);
-  }
-
-  @Test
-  void shouldRedetectWhenNodePathChanges() {
-    when(settings.pathToNodeExecutable()).thenReturn(null);
-    WorkspaceSettings newSettings = mock(WorkspaceSettings.class);
-    String newPathToNodeSettings = temp.getFileName().toString();
-    when(newSettings.pathToNodeExecutable()).thenReturn(newPathToNodeSettings);
-
-    assertThat(underTest.nodeVersion()).isNull();
-    assertThat(underTest.getNodeJsPath()).isNull();
-    assertThat(underTest.getNodeJsVersion()).isNull();
-
-    underTest.onChange(settings, newSettings);
-
-    when(settings.pathToNodeExecutable()).thenReturn(newPathToNodeSettings);
-    when(nodeJsHelper.getNodeJsPath()).thenReturn(temp.resolve("node"));
-    String version = "12.34.56";
-    when(nodeJsHelper.getNodeJsVersion()).thenReturn(Version.create(version));
-
-    assertThat(underTest.nodeVersion()).isEqualTo(version);
-
-    verify(nodeJsHelper, times(1)).detect(null);
     verify(nodeJsHelper, times(1)).detect(temp.getFileName());
   }
 }
