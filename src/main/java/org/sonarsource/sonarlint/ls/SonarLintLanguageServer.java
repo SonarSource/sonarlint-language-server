@@ -107,7 +107,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
-    this.settingsManager.addListener(nodeJsRuntime);
     this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput, nodeJsRuntime);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener(lsLogOutput);

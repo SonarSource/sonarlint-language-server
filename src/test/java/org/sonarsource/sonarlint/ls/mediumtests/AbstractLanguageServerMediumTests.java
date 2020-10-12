@@ -105,7 +105,7 @@ abstract class AbstractLanguageServerMediumTests {
   private static ByteArrayOutputStream serverStdErr;
 
   @BeforeAll
-  public final static void startServer() throws Exception {
+  public static void startServer() throws Exception {
     System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
     serverSocket = new ServerSocket(0);
     int port = serverSocket.getLocalPort();
@@ -159,7 +159,7 @@ abstract class AbstractLanguageServerMediumTests {
   }
 
   @AfterAll
-  public final static void stopServer() throws Exception {
+  public static void stopServer() throws Exception {
     System.clearProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY);
     try {
       if (lsProxy != null) {
@@ -307,6 +307,11 @@ abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
+    public CompletableFuture<Void> openPathToNodeSettings() {
+      return CompletableFutures.computeAsync(null);
+    }
+
+    @Override
     public CompletableFuture<Void> showRuleDescription(ShowRuleDescriptionParams params) {
       return CompletableFutures.computeAsync(cancelToken -> {
         this.ruleDesc = params;
@@ -367,7 +372,7 @@ abstract class AbstractLanguageServerMediumTests {
   }
 
   private static Map<String, Object> buildRulesMap(String... ruleConfigs) {
-    assertThat(ruleConfigs.length % 2).withFailMessage("ruleConfigs must contain 'rule:key', 'level' pairs").isEqualTo(0);
+    assertThat(ruleConfigs.length % 2).withFailMessage("ruleConfigs must contain 'rule:key', 'level' pairs").isZero();
     ImmutableMap.Builder<String, Object> rules = ImmutableMap.builder();
     for (int i = 0; i < ruleConfigs.length; i += 2) {
       rules.put(ruleConfigs[i], ImmutableMap.of("level", ruleConfigs[i + 1]));

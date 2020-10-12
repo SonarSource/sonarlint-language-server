@@ -97,7 +97,7 @@ public class DefaultClientInputFile implements ClientInputFile {
     if (clientLanguageId == null) {
       return null;
     }
-    // See https://microsoft.github.io/language-server-protocol/specification#textdocumentitem
+    // See https://microsoft.github.io/language-server-protocol/specification#textDocumentItem
     switch (clientLanguageId) {
       case "javascript":
       case "javascriptreact":
@@ -114,8 +114,13 @@ public class DefaultClientInputFile implements ClientInputFile {
         return Language.HTML;
       case "oraclesql":
         return Language.PLSQL;
+      case "apex":
+      case "apex-anon":
+        // See https://github.com/forcedotcom/salesforcedx-vscode/blob/5e4b7715d1cb3d1ee2780780ed63f70f58e93b20/packages/salesforcedx-vscode-apex/package.json#L273
+        return Language.APEX;
       default:
-        return null;
+        // Other supported languages map to the same key as the one used in SonarQube/SonarCloud
+        return Language.forKey(clientLanguageId).orElse(null);
     }
   }
 }
