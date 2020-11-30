@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.connected;
 import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.sonarsource.sonarlint.core.client.api.common.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 
@@ -31,8 +32,8 @@ import static org.mockito.Mockito.when;
 
 class DelegatingIssueTests {
 
-  private Issue issue = mock(Issue.class);
-  private DelegatingIssue delegatingIssue = new DelegatingIssue(issue);
+  private final Issue issue = mock(Issue.class);
+  private final DelegatingIssue delegatingIssue = new DelegatingIssue(issue);
 
   @BeforeEach
   public void prepare() {
@@ -47,60 +48,66 @@ class DelegatingIssueTests {
     when(issue.getEndLineOffset()).thenReturn(5);
     when(issue.flows()).thenReturn(Collections.singletonList(mock(Issue.Flow.class)));
     when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
+    when(issue.getTextRange()).thenReturn(mock(TextRange.class));
   }
 
   @Test
-  public void testGetSeverity() {
+  void testGetSeverity() {
     assertThat(delegatingIssue.getSeverity()).isNotEmpty().isEqualTo(issue.getSeverity());
   }
 
   @Test
-  public void testGetType() {
+  void testGetType() {
     assertThat(delegatingIssue.getType()).isNotEmpty().isEqualTo(issue.getType());
   }
 
   @Test
-  public void testGetMessage() {
+  void testGetMessage() {
     assertThat(delegatingIssue.getMessage()).isNotEmpty().isEqualTo(issue.getMessage());
   }
 
   @Test
-  public void testGetRuleKey() {
+  void testGetRuleKey() {
     assertThat(delegatingIssue.getRuleKey()).isNotEmpty().isEqualTo(issue.getRuleKey());
   }
 
   @Test
-  public void testGetRuleName() {
+  void testGetRuleName() {
     assertThat(delegatingIssue.getRuleName()).isNotEmpty().isEqualTo(issue.getRuleName());
   }
 
   @Test
-  public void testGetStartLine() {
+  void testGetStartLine() {
     assertThat(delegatingIssue.getStartLine()).isGreaterThan(0).isEqualTo(issue.getStartLine());
   }
 
   @Test
-  public void testGetStartLineOffset() {
+  void testGetStartLineOffset() {
     assertThat(delegatingIssue.getStartLineOffset()).isGreaterThan(0).isEqualTo(issue.getStartLineOffset());
   }
 
   @Test
-  public void testGetEndLine() {
+  void testGetEndLine() {
     assertThat(delegatingIssue.getEndLine()).isGreaterThan(0).isEqualTo(issue.getEndLine());
   }
 
   @Test
-  public void testGetEndLineOffset() {
+  void testGetEndLineOffset() {
     assertThat(delegatingIssue.getEndLineOffset()).isGreaterThan(0).isEqualTo(issue.getEndLineOffset());
   }
 
   @Test
-  public void testFlows() {
+  void testFlows() {
     assertThat(delegatingIssue.flows()).isNotEmpty().isEqualTo(issue.flows());
   }
 
   @Test
-  public void testGetInputFile() {
+  void testGetInputFile() {
     assertThat(delegatingIssue.getInputFile()).isNotNull().isEqualTo(issue.getInputFile());
+  }
+
+  @Test
+  void testGetTextRange() {
+    assertThat(delegatingIssue.getTextRange()).isNotNull().isEqualTo(issue.getTextRange());
   }
 }

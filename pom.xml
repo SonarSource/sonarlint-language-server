@@ -23,7 +23,7 @@
   </issueManagement>
 
   <properties>
-    <sonarlint.core.version>4.14.1.22545</sonarlint.core.version>
+    <sonarlint.core.version>4.15.0.24749</sonarlint.core.version>
     <!-- analyzers used for tests -->
     <sonar.java.version>6.5.0.22421</sonar.java.version>
     <sonar.javascript.version>6.2.1.12157</sonar.javascript.version>

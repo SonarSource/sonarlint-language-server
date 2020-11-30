@@ -23,6 +23,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonar.api.utils.log.LogTesterJUnit5;
 import org.sonarsource.sonarlint.core.client.api.common.Language;
-import org.sonarsource.sonarlint.core.telemetry.TelemetryClient;
+import org.sonarsource.sonarlint.core.telemetry.TelemetryHttpClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -63,7 +64,7 @@ class SonarLintTelemetryTests {
     when(telemetryManager.isEnabled()).thenReturn(true);
     SonarLintTelemetry telemetry = new SonarLintTelemetry() {
       @Override
-      TelemetryManager newTelemetryManager(Path path, TelemetryClient client, Supplier<Boolean> usesConnectedMode, Supplier<Boolean> usesSonarCloud, Supplier<String> nodeVersion) {
+      TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client, BooleanSupplier usesConnectedMode, BooleanSupplier usesSonarCloud, Supplier<String> nodeVersion) {
         return telemetryManager;
       }
     };
@@ -97,7 +98,7 @@ class SonarLintTelemetryTests {
 
   @Test
   void create_telemetry_manager() {
-    assertThat(telemetry.newTelemetryManager(Paths.get(""), mock(TelemetryClient.class), () -> true, () -> true, () -> "")).isNotNull();
+    assertThat(telemetry.newTelemetryManager(Paths.get(""), mock(TelemetryHttpClient.class), () -> true, () -> true, () -> "")).isNotNull();
   }
 
   @Test
@@ -180,7 +181,7 @@ class SonarLintTelemetryTests {
     when(telemetryManager.isEnabled()).thenReturn(true);
     SonarLintTelemetry telemetry = new SonarLintTelemetry() {
       @Override
-      TelemetryManager newTelemetryManager(Path path, TelemetryClient client, Supplier<Boolean> usesConnectedMode, Supplier<Boolean> usesSonarCloud, Supplier<String> nodeVersion) {
+      TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client, BooleanSupplier usesConnectedMode, BooleanSupplier usesSonarCloud, Supplier<String> nodeVersion) {
         return telemetryManager;
       }
     };
