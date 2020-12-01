@@ -59,7 +59,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     private final RuleParameter[] parameters;
 
     public ShowRuleDescriptionParams(String ruleKey, String ruleName, @Nullable String htmlDescription, @Nullable String type, String severity,
-                                     Collection<StandaloneRuleParam> params) {
+      Collection<StandaloneRuleParam> params) {
       this.key = ruleKey;
       this.name = ruleName;
       this.htmlDescription = htmlDescription;
@@ -169,12 +169,13 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonRequest("sonarlint/getJavaConfig")
   CompletableFuture<GetJavaConfigResponse> getJavaConfig(String fileUri);
 
-  public static class GetJavaConfigResponse {
+  class GetJavaConfigResponse {
 
     private String projectRoot;
     private String sourceLevel;
     private String[] classpath;
     private boolean isTest;
+    private String vmLocation;
 
     public String getProjectRoot() {
       return projectRoot;
@@ -206,6 +207,15 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
     public void setTest(boolean isTest) {
       this.isTest = isTest;
+    }
+
+    @CheckForNull
+    public String getVmLocation() {
+      return vmLocation;
+    }
+
+    public void setVmLocation(String vmLocation) {
+      this.vmLocation = vmLocation;
     }
 
   }

@@ -31,14 +31,14 @@ import static org.sonarsource.sonarlint.ls.AnalysisManager.convert;
 class AnalysisManagerTests {
 
   @Test
-  public void testNotConvertGlobalIssues() {
+  void testNotConvertGlobalIssues() {
     Issue issue = mock(Issue.class);
     when(issue.getStartLine()).thenReturn(null);
     assertThat(convert(issue)).isEmpty();
   }
 
   @Test
-  public void testNotConvertSeverity() {
+  void testNotConvertSeverity() {
     Issue issue = mock(Issue.class);
     when(issue.getStartLine()).thenReturn(1);
     when(issue.getSeverity()).thenReturn("BLOCKER");
