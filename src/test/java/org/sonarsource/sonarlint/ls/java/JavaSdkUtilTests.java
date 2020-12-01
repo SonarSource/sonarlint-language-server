@@ -109,10 +109,10 @@ class JavaSdkUtilTests {
   }
 
   private Path fakeFile(Path baseDir, String filePath) throws IOException {
-    Path file = baseDir.resolve(filePath).toAbsolutePath().normalize();
+    Path file = baseDir.resolve(filePath);
     Files.createDirectories(file.getParent());
     Files.createFile(file);
-    return file;
+    return file.toRealPath();
   }
 
 }
