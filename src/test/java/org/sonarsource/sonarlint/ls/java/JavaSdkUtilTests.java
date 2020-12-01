@@ -96,9 +96,11 @@ class JavaSdkUtilTests {
     Path jsse = fakeFile(javaHome, "../Classes/jsse.jar");
     // rt.jar often symlink to classes.jar
     Files.createDirectories(javaHome.resolve("lib"));
-    Files.createSymbolicLink(javaHome.resolve("lib/rt.jar"), classes);
+    Path rtSymlink = javaHome.resolve("lib/rt.jar");
+    Files.createSymbolicLink(rtSymlink, classes);
 
-    assertThat(JavaSdkUtil.getJdkClassesRoots(javaHome, true)).containsExactlyInAnyOrder(classes, jsse);
+    // We should not have both rtSymlink and classes. Here rtSymlink is returned first
+    assertThat(JavaSdkUtil.getJdkClassesRoots(javaHome, true)).containsExactlyInAnyOrder(rtSymlink, jsse);
   }
 
   @Test
@@ -109,10 +111,10 @@ class JavaSdkUtilTests {
   }
 
   private Path fakeFile(Path baseDir, String filePath) throws IOException {
-    Path file = baseDir.resolve(filePath);
+    Path file = baseDir.resolve(filePath).normalize();
     Files.createDirectories(file.getParent());
     Files.createFile(file);
-    return file.toRealPath();
+    return file;
   }
 
 }

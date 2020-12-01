@@ -81,7 +81,7 @@ public final class JavaSdkUtil {
             // filter out duplicate (symbolically linked) .jar files commonly found in OS X JDK distributions
             continue;
           }
-          rootFiles.add(realPath);
+          rootFiles.add(jarFile);
         }
       }
     }
