@@ -336,6 +336,11 @@ abstract class AbstractLanguageServerMediumTests {
       });
     }
 
+    @Override
+    public CompletableFuture<Void> browseTo(String link) {
+      return CompletableFutures.computeAsync(null);
+    }
+
   }
 
   protected void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, String... ruleConfigs) {

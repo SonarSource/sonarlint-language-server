@@ -1,0 +1,182 @@
+/*
+ * SonarLint Language Server
+ * Copyright (C) 2009-2020 SonarSource SA
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+package org.sonarsource.sonarlint.ls.connected.notifications;
+
+import java.time.ZonedDateTime;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
+import org.eclipse.lsp4j.MessageActionItem;
+import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.ShowMessageRequestParams;
+import org.sonarsource.sonarlint.core.client.api.common.LogOutput;
+import org.sonarsource.sonarlint.core.client.api.common.NotificationConfiguration;
+import org.sonarsource.sonarlint.core.client.api.notifications.LastNotificationTime;
+import org.sonarsource.sonarlint.core.client.api.notifications.ServerNotification;
+import org.sonarsource.sonarlint.core.client.api.notifications.ServerNotificationListener;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
+
+public class ServerNotifications implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
+
+  private final SonarLintExtendedLanguageClient client;
+  private final ProjectBindingManager projectBindingManager;
+  private final SonarLintTelemetry telemetry;
+  private final LanguageClientLogOutput logOutput;
+
+  private final Map<String, ServerConnectionSettings> connections;
+  private final Map<String, Map<String, NotificationConfiguration>> configurationsByProjectKeyByConnectionId;
+
+  public ServerNotifications(SonarLintExtendedLanguageClient client, ProjectBindingManager projectBindingManager, SonarLintTelemetry telemetry, LanguageClientLogOutput output) {
+    this.client = client;
+    this.projectBindingManager = projectBindingManager;
+    this.telemetry = telemetry;
+    this.logOutput = output;
+
+    connections = new HashMap<>();
+    configurationsByProjectKeyByConnectionId = new HashMap<>();
+  }
+
+  @Override
+  public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
+    connections.clear();
+    connections.putAll(newValue.getServerConnections());
+    configurationsByProjectKeyByConnectionId.keySet().forEach(connectionId ->
+      configurationsByProjectKeyByConnectionId.get(connectionId).forEach((projectKey, config) -> {
+        unregisterConfigurationIfExists(connectionId, projectKey);
+        registerConfigurationIfNeeded(connectionId, projectKey);
+      }));
+  }
+
+  @Override
+  public void onChange(@CheckForNull WorkspaceFolderWrapper folder, @CheckForNull WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
+    if (oldValue != null && (!newValue.hasBinding() || connections.get(newValue.getConnectionId()).isDevNotificationsDisabled())) {
+      // Project is now unbound, or bound to a server that has dev notifications disabled => unregister matching config if exists
+      unregisterConfigurationIfExists(oldValue.getConnectionId(), oldValue.getProjectKey());
+    }
+
+    if (newValue.hasBinding()) {
+      registerConfigurationIfNeeded(newValue.getConnectionId(), newValue.getProjectKey());
+    }
+  }
+
+  private void unregisterConfigurationIfExists(@Nullable String oldConnectionId, @Nullable String oldProjectKey) {
+    Map<String, NotificationConfiguration> configsForOldConnectionId = configurationsByProjectKeyByConnectionId.get(oldConnectionId);
+    if (configsForOldConnectionId != null && configsForOldConnectionId.containsKey(oldProjectKey)) {
+      logMessage(String.format("De-registering notifications for %s on %s", oldProjectKey, oldConnectionId));
+      NotificationConfiguration config = configsForOldConnectionId.remove(oldProjectKey);
+      coreNotifications().remove(config.listener());
+    }
+  }
+
+  private void registerConfigurationIfNeeded(@Nullable String connectionId, @Nullable String projectKey) {
+    if (!alreadyHasConfiguration(connectionId, projectKey)) {
+      if(!connections.containsKey(connectionId) || connections.get(connectionId).isDevNotificationsDisabled()) {
+        // Connection is unknown, or has notifications disabled - do nothing
+        return;
+      }
+      logMessage(String.format("Enabling notifications for %s on %s", projectKey, connectionId));
+      NotificationConfiguration newConfiguration = newNotificationConfiguration(connections.get(connectionId), projectKey);
+      coreNotifications().register(newConfiguration);
+      configurationsByProjectKeyByConnectionId.computeIfAbsent(connectionId, k -> new HashMap<>()).put(projectKey, newConfiguration);
+    }
+  }
+
+  private boolean alreadyHasConfiguration(@Nullable String connectionId, @Nullable String projectKey) {
+    return configurationsByProjectKeyByConnectionId.containsKey(connectionId) && configurationsByProjectKeyByConnectionId.get(connectionId).containsKey(projectKey);
+  }
+
+  private static org.sonarsource.sonarlint.core.notifications.ServerNotifications coreNotifications() {
+    return org.sonarsource.sonarlint.core.notifications.ServerNotifications.get();
+  }
+
+  private NotificationConfiguration newNotificationConfiguration(ServerConnectionSettings serverConnectionSettings, String projectKey) {
+    return new NotificationConfiguration(
+      new EventListener(serverConnectionSettings.isSonarCloudAlias()),
+      new ConnectionNotificationTime(),
+      projectKey,
+      () -> projectBindingManager.createServerConfiguration(serverConnectionSettings.getConnectionId()));
+  }
+
+  private void logMessage(String message) {
+    logOutput.log(message, LogOutput.Level.DEBUG);
+  }
+
+  /**
+   * Simply displays the events and discards it
+   */
+  private class EventListener implements ServerNotificationListener {
+
+    private final boolean isSonarCloud;
+
+    EventListener(boolean isSonarCloud) {
+      this.isSonarCloud = isSonarCloud;
+    }
+
+    @Override
+    public void handle(ServerNotification serverNotification) {
+      final String category = serverNotification.category();
+      telemetry.devNotificationsReceived(category);
+      final String label = isSonarCloud ? "SonarCloud" : "SonarQube";
+      ShowMessageRequestParams params = new ShowMessageRequestParams();
+      params.setType(MessageType.Info);
+      params.setMessage(String.format("%s Notification: %s", label, serverNotification.message()));
+      MessageActionItem browseAction = new MessageActionItem();
+      browseAction.setTitle("Open in " + label);
+      params.setActions(Collections.singletonList(browseAction));
+      client.showMessageRequest(params).thenAccept(action -> {
+        if(browseAction.equals(action)) {
+          client.browseTo(serverNotification.link());
+        }
+      });
+    }
+  }
+
+  /**
+   * TODO Persist this value. For now, this is initialized to "now" at initialization of NotificationConfiguration
+   */
+  private static class ConnectionNotificationTime implements LastNotificationTime {
+
+    private ZonedDateTime last;
+
+    @Override
+    public ZonedDateTime get() {
+      if (last == null) {
+        set(ZonedDateTime.now());
+      }
+      return last;
+    }
+
+    @Override
+    public void set(ZonedDateTime dateTime) {
+      last = dateTime;
+    }
+  }
+}

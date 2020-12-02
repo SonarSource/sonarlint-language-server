@@ -154,7 +154,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   @CheckForNull
-  private ServerConfiguration createServerConfiguration(String connectionId) {
+  public ServerConfiguration createServerConfiguration(String connectionId) {
     ServerConnectionSettings serverConnectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
     if (serverConnectionSettings == null) {
       LOG.error("The specified connection id '{}' doesn't exist.", connectionId);
