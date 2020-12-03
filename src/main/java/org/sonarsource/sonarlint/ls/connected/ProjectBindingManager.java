@@ -34,6 +34,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -41,6 +44,12 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.ProgressParams;
+import org.eclipse.lsp4j.WorkDoneProgressBegin;
+import org.eclipse.lsp4j.WorkDoneProgressCreateParams;
+import org.eclipse.lsp4j.WorkDoneProgressEnd;
+import org.eclipse.lsp4j.jsonrpc.CancelChecker;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
@@ -56,6 +65,7 @@ import org.sonarsource.sonarlint.ls.AnalysisManager;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.progress.LSPProgressMonitor;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
@@ -64,6 +74,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 import static java.util.Objects.requireNonNull;
+import static org.sonarsource.sonarlint.ls.Utils.interrupted;
 
 /**
  * Keep a cache of project bindings. Files that are part of a workspace workspaceFolderPath will share the same binding.
@@ -123,7 +134,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       LOG.error("Invalid binding for '{}'", folderRoot);
       return null;
     }
-    Optional<ConnectedSonarLintEngine> engineOpt = getOrCreateConnectedEngine(serverId, serverConfiguration, false);
+    Optional<ConnectedSonarLintEngine> engineOpt = getOrCreateConnectedEngine(serverId, serverConfiguration, false, null, null);
     if (!engineOpt.isPresent()) {
       return null;
     }
@@ -146,41 +157,44 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private ServerConfiguration createServerConfiguration(String serverId) {
     ServerConnectionSettings serverConnectionSettings = settingsManager.getCurrentSettings().getServers().get(serverId);
     if (serverConnectionSettings == null) {
-      LOG.error("The specified serverId '{}' doesn't exist.", serverId);
+      LOG.error("The specified connection id '{}' doesn't exist.", serverId);
       return null;
     }
     return getServerConfiguration(serverConnectionSettings);
   }
 
-  private Optional<ConnectedSonarLintEngine> getOrCreateConnectedEngine(String serverId, ServerConfiguration serverConfiguration, boolean forceUpdate) {
-    return connectedEngineCacheByServerId.computeIfAbsent(serverId, s -> Optional.ofNullable(createConnectedEngineAndUpdateIfNeeded(serverId, serverConfiguration, forceUpdate)));
+  private Optional<ConnectedSonarLintEngine> getOrCreateConnectedEngine(String serverId, ServerConfiguration serverConfiguration, boolean forceUpdate,
+    @Nullable CancelChecker cancelToken, @Nullable Either<String, Number> progressToken) {
+    return connectedEngineCacheByServerId.computeIfAbsent(serverId,
+      s -> Optional.ofNullable(createConnectedEngineAndUpdateIfNeeded(serverId, serverConfiguration, forceUpdate, cancelToken, progressToken)));
   }
 
   @CheckForNull
-  private ConnectedSonarLintEngine createConnectedEngineAndUpdateIfNeeded(String serverId, ServerConfiguration serverConfiguration, boolean forceUpdate) {
-    LOG.debug("Starting connected SonarLint engine for '{}'...", serverId);
+  private ConnectedSonarLintEngine createConnectedEngineAndUpdateIfNeeded(String connectionId, ServerConfiguration serverConfiguration, boolean forceUpdate,
+    @Nullable CancelChecker cancelToken, @Nullable Either<String, Number> progressToken) {
+    LOG.debug("Starting connected SonarLint engine for '{}'...", connectionId);
 
     ConnectedSonarLintEngine engine;
     try {
-      engine = enginesFactory.createConnectedEngine(serverId);
+      engine = enginesFactory.createConnectedEngine(connectionId);
       if (engine.getState() == State.UPDATING) {
         return engine;
       }
     } catch (Exception e) {
-      LOG.error("Error starting connected SonarLint engine for '" + serverId + "'", e);
+      LOG.error("Error starting connected SonarLint engine for '" + connectionId + "'", e);
       return null;
     }
     List<String> failedServerIds = new ArrayList<>();
     try {
       GlobalStorageStatus globalStorageStatus = engine.getGlobalStorageStatus();
       if (forceUpdate || globalStorageStatus == null || globalStorageStatus.isStale() || engine.getState() != State.UPDATED) {
-        updateGlobalStorageAndLogResults(serverConfiguration, engine, failedServerIds, serverId);
+        updateGlobalStorageAndLogResults(serverConfiguration, engine, failedServerIds, connectionId, cancelToken, progressToken);
       }
     } catch (Exception e) {
-      LOG.error("Error updating storage of the connected SonarLint engine '" + serverId + "'", e);
+      LOG.error("Error updating storage of the connected SonarLint engine '" + connectionId + "'", e);
     }
     if (!failedServerIds.isEmpty()) {
-      client.showMessage(new MessageParams(MessageType.Error, "Binding update failed for the server: " + serverId + ". Look to the SonarLint output for details."));
+      client.showMessage(new MessageParams(MessageType.Error, "Binding update failed for the server: " + connectionId + ". Look to the SonarLint output for details."));
       return null;
     }
     return engine;
@@ -309,62 +323,97 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     });
   }
 
-  public void updateAllBindings() {
-    // Clear cached bindings to force rebind during next analysis
-    folderBindingCache.clear();
-    fileBindingCache.clear();
-    Set<String> failedServerIds = new LinkedHashSet<>();
-    // Start by updating all engines that are already started and cached
-    connectedEngineCacheByServerId.forEach((serverId, value) -> {
-      ServerConfiguration serverConfiguration = createServerConfiguration(serverId);
-      if (serverConfiguration != null) {
-        value.ifPresent(engine -> updateGlobalStorageAndLogResults(serverConfiguration, engine, failedServerIds, serverId));
+  public void updateAllBindings(CancelChecker cancelToken, @Nullable Either<String, Number> workDoneToken) {
+    doWithProgress("Update all project bindings", workDoneToken, progressToken -> {
+      // Clear cached bindings to force rebind during next analysis
+      folderBindingCache.clear();
+      fileBindingCache.clear();
+      Set<String> failedServerIds = new LinkedHashSet<>();
+      // Start by updating all engines that are already started and cached
+      connectedEngineCacheByServerId.forEach((connectionId, cachedEngine) -> {
+        ServerConfiguration serverConfiguration = createServerConfiguration(connectionId);
+        if (serverConfiguration != null) {
+          cachedEngine.ifPresent(engine -> updateGlobalStorageAndLogResults(serverConfiguration, engine, failedServerIds, connectionId, cancelToken, progressToken));
+        }
+      });
+      Map<String, Set<String>> updatedProjectsByServer = new HashMap<>();
+      updateBindingIfNecessary(null, updatedProjectsByServer, failedServerIds, cancelToken, progressToken);
+
+      foldersManager.getAll().forEach(f -> updateBindingIfNecessary(f, updatedProjectsByServer, failedServerIds, cancelToken, progressToken));
+      if (failedServerIds.isEmpty()) {
+        return "All SonarLint bindings succesfully updated";
+      } else {
+        String message = String.join(", ", failedServerIds);
+        return "Binding update failed for the following servers: " + message + ". Look to the SonarLint output for details.";
       }
     });
-    Map<String, Set<String>> updatedProjectsByServer = new HashMap<>();
-    updateBindingIfNecessary(null, updatedProjectsByServer, failedServerIds);
+  }
 
-    foldersManager.getAll().forEach(f -> updateBindingIfNecessary(f, updatedProjectsByServer, failedServerIds));
-    if (failedServerIds.isEmpty()) {
-      client.showMessage(new MessageParams(MessageType.Info, "All SonarLint bindings succesfully updated"));
-    } else {
-      String message = String.join(", ", failedServerIds);
-      client.showMessage(new MessageParams(MessageType.Error, "Binding update failed for the following servers: " + message + ". Look to the SonarLint output for details."));
+  private void doWithProgress(String progressTitle, @Nullable Either<String, Number> workDoneToken, Function<Either<String, Number>, String> runnableWithFinalProgressMessage) {
+    Either<String, Number> progressToken = startProgress(progressTitle, workDoneToken);
+    String endMessage = "Failed";
+    try {
+      endMessage = runnableWithFinalProgressMessage.apply(progressToken);
+    } finally {
+      WorkDoneProgressEnd progressEnd = new WorkDoneProgressEnd();
+      progressEnd.setMessage(endMessage);
+      client.notifyProgress(new ProgressParams(progressToken, progressEnd));
     }
   }
 
-  private void updateBindingIfNecessary(@Nullable WorkspaceFolderWrapper folder, Map<String, Set<String>> updatedProjectsByServer, Collection<String> failedServerIds) {
+  private Either<String, Number> startProgress(String title, @Nullable Either<String, Number> workDoneToken) {
+    Either<String, Number> progressToken = workDoneToken != null ? workDoneToken : Either.forLeft("SonarLint" + ThreadLocalRandom.current().nextInt());
+    if (workDoneToken == null) {
+      try {
+        client.createProgress(new WorkDoneProgressCreateParams(progressToken)).get();
+      } catch (InterruptedException e) {
+        interrupted(e);
+      } catch (ExecutionException e) {
+        throw new IllegalStateException(e.getCause());
+      }
+    }
+    WorkDoneProgressBegin progressBegin = new WorkDoneProgressBegin();
+    progressBegin.setTitle(title);
+    progressBegin.setCancellable(true);
+    progressBegin.setPercentage(0);
+    client.notifyProgress(new ProgressParams(progressToken, progressBegin));
+    return progressToken;
+  }
+
+  private void updateBindingIfNecessary(@Nullable WorkspaceFolderWrapper folder, Map<String, Set<String>> updatedProjectsByServer, Collection<String> failedServerIds,
+    @Nullable CancelChecker cancelToken, Either<String, Number> progressToken) {
     WorkspaceFolderSettings folderSettings = folder != null ? folder.getSettings() : settingsManager.getCurrentDefaultFolderSettings();
     Object folderId = folder != null ? folder.getRootPath() : "default folder";
     if (folderSettings.hasBinding()) {
-      String serverId = requireNonNull(folderSettings.getConnectionId());
+      String connectionId = requireNonNull(folderSettings.getConnectionId());
       String projectKey = requireNonNull(folderSettings.getProjectKey());
-      Set<String> alreadyUpdatedProjects = updatedProjectsByServer.get(serverId);
+      Set<String> alreadyUpdatedProjects = updatedProjectsByServer.get(connectionId);
       if (alreadyUpdatedProjects == null || !alreadyUpdatedProjects.contains(projectKey)) {
-        ServerConfiguration serverConfiguration = createServerConfiguration(serverId);
+        ServerConfiguration serverConfiguration = createServerConfiguration(connectionId);
         if (serverConfiguration == null) {
           LOG.error("Invalid binding for '{}'", folderId);
           return;
         }
-        Optional<ConnectedSonarLintEngine> engineOpt = getOrCreateConnectedEngine(serverId, serverConfiguration, true);
+        Optional<ConnectedSonarLintEngine> engineOpt = getOrCreateConnectedEngine(connectionId, serverConfiguration, true, cancelToken, progressToken);
         if (!engineOpt.isPresent()) {
           return;
         }
         try {
-          engineOpt.get().updateProject(serverConfiguration, projectKey, null);
-          updatedProjectsByServer.computeIfAbsent(serverId, s -> new HashSet<>()).add(projectKey);
-        } catch(Exception updateFailed) {
+          engineOpt.get().updateProject(serverConfiguration, projectKey, new LSPProgressMonitor(client, cancelToken, progressToken));
+          updatedProjectsByServer.computeIfAbsent(connectionId, s -> new HashSet<>()).add(projectKey);
+        } catch (Exception updateFailed) {
           LOG.error("Binding update failed for folder '{}'", folderId, updateFailed);
-          failedServerIds.add(serverId);
+          failedServerIds.add(connectionId);
         }
       }
       analysisManager.analyzeAllOpenFilesInFolder(folder);
     }
   }
 
-  private static void updateGlobalStorageAndLogResults(ServerConfiguration serverConfiguration, ConnectedSonarLintEngine engine, Collection<String> failedServerIds, String serverId) {
+  private void updateGlobalStorageAndLogResults(ServerConfiguration serverConfiguration, ConnectedSonarLintEngine engine, Collection<String> failedServerIds,
+    String serverId, @Nullable CancelChecker cancelToken, @Nullable Either<String, Number> progressToken) {
     try {
-      UpdateResult updateResult = engine.update(serverConfiguration, null);
+      UpdateResult updateResult = engine.update(serverConfiguration, progressToken != null ? new LSPProgressMonitor(client, cancelToken, progressToken) : null);
       LOG.info("Global storage status: {}", updateResult.status());
     } catch (Exception e) {
       LOG.error("Error updating storage of the connected SonarLint engine '" + serverId + "'", e);

@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
+import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -100,19 +101,19 @@ class ProjectBindingManagerTests {
   private Path fileInAWorkspaceFolderPath2;
   private Path fileNotInAWorkspaceFolderPath;
   private ProjectBindingManager underTest;
-  private SettingsManager settingsManager = mock(SettingsManager.class);
-  private WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
-  private Map<String, ServerConnectionSettings> servers = new HashMap<String, ServerConnectionSettings>();
-  private EnginesFactory enginesFactory = mock(EnginesFactory.class);
-  private ConnectedSonarLintEngine fakeEngine = mock(ConnectedSonarLintEngine.class);
-  private GlobalStorageStatus globalStorageStatus = mock(GlobalStorageStatus.class);
-  private ProjectStorageStatus projectStorageStatus = mock(ProjectStorageStatus.class);
-  private UpdateResult updateResult = mock(UpdateResult.class);
-  private ConnectedSonarLintEngine fakeEngine2 = mock(ConnectedSonarLintEngine.class);
-  private GlobalStorageStatus globalStorageStatus2 = mock(GlobalStorageStatus.class);
-  private ProjectStorageStatus projectStorageStatus2 = mock(ProjectStorageStatus.class);
-  private UpdateResult updateResult2 = mock(UpdateResult.class);
-  private AnalysisManager analysisManager = mock(AnalysisManager.class);
+  private final SettingsManager settingsManager = mock(SettingsManager.class);
+  private final WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
+  private final Map<String, ServerConnectionSettings> servers = new HashMap<>();
+  private final EnginesFactory enginesFactory = mock(EnginesFactory.class);
+  private final ConnectedSonarLintEngine fakeEngine = mock(ConnectedSonarLintEngine.class);
+  private final GlobalStorageStatus globalStorageStatus = mock(GlobalStorageStatus.class);
+  private final ProjectStorageStatus projectStorageStatus = mock(ProjectStorageStatus.class);
+  private final UpdateResult updateResult = mock(UpdateResult.class);
+  private final ConnectedSonarLintEngine fakeEngine2 = mock(ConnectedSonarLintEngine.class);
+  private final GlobalStorageStatus globalStorageStatus2 = mock(GlobalStorageStatus.class);
+  private final ProjectStorageStatus projectStorageStatus2 = mock(ProjectStorageStatus.class);
+  private final UpdateResult updateResult2 = mock(UpdateResult.class);
+  private final AnalysisManager analysisManager = mock(AnalysisManager.class);
   LanguageClient client = mock(LanguageClient.class);
 
   @BeforeEach
@@ -154,7 +155,7 @@ class ProjectBindingManagerTests {
   }
 
   private static WorkspaceSettings newWorkspaceSettingsWithServers(Map<String, ServerConnectionSettings> servers) {
-    return new WorkspaceSettings(false, servers, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(),false, false, null);
+    return new WorkspaceSettings(false, servers, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), false, false, null);
   }
 
   @Test
@@ -455,11 +456,11 @@ class ProjectBindingManagerTests {
   @Test
 
   public void unbind_when_global_server_deleted() {
-    Map<String, ServerConnectionSettings> servers = new HashMap<String, ServerConnectionSettings>();
+    Map<String, ServerConnectionSettings> servers = new HashMap<>();
     servers.put(SERVER_ID, GLOBAL_SETTINGS);
     WorkspaceSettings settingsWithServer1 = newWorkspaceSettingsWithServers(servers);
 
-    servers = new HashMap<String, ServerConnectionSettings>();
+    servers = new HashMap<>();
     servers.put(SERVER_ID2, GLOBAL_SETTINGS_DIFFERENT_SERVER_ID);
     WorkspaceSettings settingsWithServer2 = newWorkspaceSettingsWithServers(servers);
 
@@ -612,7 +613,7 @@ class ProjectBindingManagerTests {
     Optional<ProjectBindingWrapper> binding2 = underTest.getBinding(fileInAWorkspaceFolderPath2.toUri());
     assertThat(binding2).isNotEmpty();
 
-    underTest.updateAllBindings();
+    underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verify(fakeEngine).update(any(), any());
     verify(fakeEngine).updateProject(any(), eq(PROJECT_KEY), any());
@@ -637,7 +638,7 @@ class ProjectBindingManagerTests {
       .thenReturn(fakeEngine)
       .thenReturn(fakeEngine2);
 
-    underTest.updateAllBindings();
+    underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verify(fakeEngine).update(any(), any());
     verify(fakeEngine).updateProject(any(), eq(PROJECT_KEY), any());
@@ -661,7 +662,7 @@ class ProjectBindingManagerTests {
     when(enginesFactory.createConnectedEngine(anyString()))
       .thenReturn(fakeEngine);
 
-    underTest.updateAllBindings();
+    underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verify(fakeEngine).update(any(), any());
     verify(fakeEngine).updateProject(any(), eq(PROJECT_KEY), any());
@@ -684,7 +685,7 @@ class ProjectBindingManagerTests {
     when(enginesFactory.createConnectedEngine(anyString()))
       .thenReturn(fakeEngine);
 
-    underTest.updateAllBindings();
+    underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verify(fakeEngine).update(any(), any());
     verify(fakeEngine).updateProject(any(), eq(PROJECT_KEY), any());
@@ -701,7 +702,7 @@ class ProjectBindingManagerTests {
 
     when(foldersManager.getAll()).thenReturn(asList(folder));
 
-    underTest.updateAllBindings();
+    underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verifyNoMoreInteractions(analysisManager);
     assertThat(logTester.logs(LoggerLevel.ERROR)).contains("Invalid binding for '" + folder.getRootPath() + "'");
@@ -712,7 +713,7 @@ class ProjectBindingManagerTests {
     mockFileOutsideFolder();
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(BOUND_SETTINGS);
 
-    underTest.updateAllBindings();
+    underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verifyNoMoreInteractions(analysisManager);
     assertThat(logTester.logs(LoggerLevel.ERROR)).contains("Invalid binding for 'default folder'");
@@ -775,9 +776,10 @@ class ProjectBindingManagerTests {
       .when(fakeEngine).updateProject(any(ServerConfiguration.class), eq(projectKey), eq(null));
 
     underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
-    underTest.updateAllBindings();
+    underTest.updateAllBindings(mock(CancelChecker.class), null);
 
-    verify(client, times(1)).showMessage(new MessageParams(MessageType.Error, "Binding update failed for the following servers: " + serverId + ". Look to the SonarLint output for details."));
+    verify(client, times(1))
+      .showMessage(new MessageParams(MessageType.Error, "Binding update failed for the following servers: " + serverId + ". Look to the SonarLint output for details."));
   }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {

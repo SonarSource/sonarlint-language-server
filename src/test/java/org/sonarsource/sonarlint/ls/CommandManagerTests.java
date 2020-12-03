@@ -115,7 +115,7 @@ class CommandManagerTests {
   void updateAllBinding() {
     underTest.executeCommand(new ExecuteCommandParams(SONARLINT_UPDATE_ALL_BINDINGS_COMMAND, emptyList()), NOP_CANCEL_TOKEN);
 
-    verify(bindingManager).updateAllBindings();
+    verify(bindingManager).updateAllBindings(NOP_CANCEL_TOKEN, null);
   }
 
   @Test
@@ -171,8 +171,7 @@ class CommandManagerTests {
 
     ExecuteCommandParams params = new ExecuteCommandParams(
       SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
-      asList(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))
-    );
+      asList(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI)));
     assertThrows(ResponseErrorException.class, () -> underTest.executeCommand(params, NOP_CANCEL_TOKEN));
   }
 
@@ -198,8 +197,7 @@ class CommandManagerTests {
       NOP_CANCEL_TOKEN);
 
     verify(mockClient).showRuleDescription(
-      new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc", "Type", "Severity", params)
-    );
+      new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc", "Type", "Severity", params));
   }
 
 }
