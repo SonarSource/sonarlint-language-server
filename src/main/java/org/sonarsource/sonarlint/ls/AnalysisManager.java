@@ -569,22 +569,23 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       });
   }
 
-  public void didClasspathUpdate(String projectUri) {
+  public void didClasspathUpdate(URI projectUri) {
     for (Iterator<Entry<URI, Optional<GetJavaConfigResponse>>> it = javaConfigPerFileURI.entrySet().iterator(); it.hasNext();) {
       Entry<URI, Optional<GetJavaConfigResponse>> entry = it.next();
-      // If we have cached an empty result, clear the cache on classpath update to give a chance to next analysis to fetch a correct value
-      if (entry.getValue().map(c -> c.getProjectRoot().equals(projectUri)).orElse(true)) {
-        entry.getValue().ifPresent(config -> {
-          String vmLocation = config.getVmLocation();
-          if (vmLocation != null) {
-            jvmClasspathPerJavaHome.remove(Paths.get(vmLocation));
-          }
-        });
+      Optional<GetJavaConfigResponse> cachedResponseOpt = entry.getValue();
+      // If we have cached an empty result, still clear the value on classpath update to force next analysis to re-attempt fetch
+      if (!cachedResponseOpt.isPresent() || sameProject(projectUri, cachedResponseOpt.get())) {
         it.remove();
-        LOG.debug("Evicted Java config cache for {}", entry.getKey());
+        LOG.debug("Evicted Java config cache for file '{}'", entry.getKey());
       }
     }
     analyzeAllOpenJavaFiles();
+  }
+
+  private static boolean sameProject(URI projectUri, GetJavaConfigResponse cachedResponse) {
+    // Compare file and not directly URI because
+    // file:/foo/bar and file:///foo/bar/ are not considered equals by java.net.URI
+    return Paths.get(URI.create(cachedResponse.getProjectRoot())).equals(Paths.get(projectUri));
   }
 
   public void didServerModeChange(SonarLintExtendedLanguageServer.ServerMode serverMode) {

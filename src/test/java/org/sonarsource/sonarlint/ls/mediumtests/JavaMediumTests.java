@@ -32,6 +32,7 @@ import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -161,12 +162,21 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void testClassPathUpdateTriggersNewAnalysis() throws Exception {
+  void testClassPathUpdateEvictCacheAndTriggersNewAnalysis(@TempDir Path projectRoot) throws Exception {
     String uri = getUri("testClassPathUpdate.java");
 
+    String projectRootUri = projectRoot.toUri().toString();
+    // Emulate vscode-java that returns URI with different format in GetJavaConfigResponse and didClasspathUpdate
+    // file:///home/julien/Prog/Projects/plugins/sonar-clirr/
+    // file:/home/julien/Prog/Projects/plugins/sonar-clirr
+    String projectRootUri1 = projectRootUri.endsWith("/") ? projectRootUri : projectRootUri + "/";
+
+    String projectRootUri2 = projectRootUri;
+    projectRootUri2 = projectRootUri2.replace("file:///", "file:/");
+    projectRootUri2 = projectRootUri2.endsWith("/") ? projectRootUri2.substring(0, projectRootUri2.length() - 1) : projectRootUri2;
+
     GetJavaConfigResponse javaConfigResponse = new GetJavaConfigResponse();
-    String projectRoot = "project/root";
-    javaConfigResponse.setProjectRoot(projectRoot);
+    javaConfigResponse.setProjectRoot(projectRootUri1);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(true);
     // Missing deps
@@ -177,11 +187,12 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       "import org.junit.Test;\npublic class FooTest {\n  @Test\n  public void test() {\n String s = \"foo\";\n}\n}");
 
     assertThat(diagnostics).isEmpty();
+    client.logs.clear();
 
     // Update classpath
     javaConfigResponse.setClasspath(new String[] {Paths.get(this.getClass().getResource("/junit-4.12.jar").toURI()).toAbsolutePath().toString()});
     client.diagnosticsLatch = new CountDownLatch(1);
-    lsProxy.didClasspathUpdate(projectRoot);
+    lsProxy.didClasspathUpdate(projectRootUri2);
     if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
       diagnostics = client.getDiagnostics(uri);
     } else {
@@ -192,6 +203,11 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(3, 14, 3, 18, "java:S2699", "sonarlint", "Add at least one assertion to this test case.", DiagnosticSeverity.Error));
+
+    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains(
+        "[Debug] Evicted Java config cache for file '" + uri + "'"));
   }
 
   @Test
