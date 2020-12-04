@@ -50,6 +50,7 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import org.assertj.core.api.iterable.ThrowingExtractor;
+import org.eclipse.lsp4j.ClientInfo;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.Diagnostic;
@@ -59,6 +60,7 @@ import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
 import org.eclipse.lsp4j.InitializeParams;
+import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.InitializedParams;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
@@ -154,7 +156,10 @@ abstract class AbstractLanguageServerMediumTests {
     initializeParams.setTrace("messages");
     initializeParams.setInitializationOptions(initializeOptions);
     initializeParams.setWorkspaceFolders(asList(initFolders));
-    lsProxy.initialize(initializeParams).get();
+    initializeParams.setClientInfo(new ClientInfo("SonarLint LS Medium tests", "1.0"));
+    InitializeResult initializeResult = lsProxy.initialize(initializeParams).get();
+    assertThat(initializeResult.getServerInfo().getName()).isEqualTo("SonarLint Language Server");
+    assertThat(initializeResult.getServerInfo().getVersion()).isNotBlank();
     lsProxy.initialized(new InitializedParams());
   }
 
@@ -320,6 +325,7 @@ abstract class AbstractLanguageServerMediumTests {
       });
     }
 
+    @Override
     public CompletableFuture<GetJavaConfigResponse> getJavaConfig(String fileUri) {
       return CompletableFutures.computeAsync(cancelToken -> {
         return javaConfigs.get(fileUri);

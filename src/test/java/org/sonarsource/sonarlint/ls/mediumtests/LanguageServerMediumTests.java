@@ -132,7 +132,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 1, 1, 2, "javascript:S1105", "sonarlint", "Opening curly brace does not appear on the same line as controlling statement.", DiagnosticSeverity.Information)
-        // Expected issues on javascript:S1481 are suppressed by rule configuration
+      // Expected issues on javascript:S1481 are suppressed by rule configuration
       );
   }
 
@@ -373,7 +373,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.ruleDesc.getType()).isEqualTo("CODE_SMELL");
     assertThat(client.ruleDesc.getSeverity()).isEqualTo("MAJOR");
     assertThat(client.ruleDesc.getParameters()).hasSize(1)
-      .extracting(SonarLintExtendedLanguageClient.RuleParameter::getName, SonarLintExtendedLanguageClient.RuleParameter::getDescription, SonarLintExtendedLanguageClient.RuleParameter::getDefaultValue)
+      .extracting(SonarLintExtendedLanguageClient.RuleParameter::getName, SonarLintExtendedLanguageClient.RuleParameter::getDescription,
+        SonarLintExtendedLanguageClient.RuleParameter::getDefaultValue)
       .containsExactly(tuple("maximumLineLength", "The maximum authorized line length.", "180"));
   }
 

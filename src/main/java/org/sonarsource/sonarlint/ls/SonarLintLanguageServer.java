@@ -19,12 +19,15 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
@@ -33,6 +36,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionParams;
@@ -50,6 +54,7 @@ import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.SaveOptions;
 import org.eclipse.lsp4j.ServerCapabilities;
+import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.TextDocumentSyncOptions;
 import org.eclipse.lsp4j.WorkspaceFoldersOptions;
@@ -142,7 +147,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
       String productName = (String) options.get("productName");
       String productVersion = (String) options.get("productVersion");
-      String ideVersion = (String) options.get("ideVersion");
+      // Don't use params.getClientInfo().getName() because it is currently hardcoded to 'vscode'
+      // until https://github.com/microsoft/vscode-languageserver-node/pull/697 is released
+      // params.getClientInfo().getName()
+      String appName = (String) options.get("appName");
+      String ideVersion = appName + " " + params.getClientInfo().getVersion();
 
       Optional<String> typeScriptPath = Optional.ofNullable((String) options.get(TYPESCRIPT_LOCATION));
 
@@ -152,16 +161,29 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion,
         bindingManager::usesConnectedMode, bindingManager::usesSonarCloud, nodeJsRuntime::nodeVersion);
 
-      InitializeResult result = new InitializeResult();
       ServerCapabilities c = new ServerCapabilities();
       c.setTextDocumentSync(getTextDocumentSyncOptions());
       c.setCodeActionProvider(true);
       c.setExecuteCommandProvider(new ExecuteCommandOptions(CommandManager.SONARLINT_SERVERSIDE_COMMANDS));
       c.setWorkspace(getWorkspaceServerCapabilities());
 
-      result.setCapabilities(c);
-      return result;
+      ServerInfo info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
+
+      return new InitializeResult(c, info);
     });
+  }
+
+  @CheckForNull
+  static String getServerVersion(String fileName) {
+    ClassLoader classLoader = ClassLoader.getSystemClassLoader();
+    try (InputStream is = classLoader.getResourceAsStream(fileName)) {
+      try (InputStreamReader isr = new InputStreamReader(is, StandardCharsets.UTF_8);
+        BufferedReader reader = new BufferedReader(isr)) {
+        return reader.lines().findFirst().orElse(null);
+      }
+    } catch (IOException e) {
+      throw new IllegalStateException("Unable to read server version", e);
+    }
   }
 
   private static WorkspaceServerCapabilities getWorkspaceServerCapabilities() {
