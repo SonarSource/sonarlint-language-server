@@ -68,6 +68,7 @@ import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
@@ -87,6 +88,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final NodeJsRuntime nodeJsRuntime;
   private final EnginesFactory enginesFactory;
   private final CommandManager commandManager;
+  private final ProgressManager progressManager;
   private final ExecutorService threadPool;
 
   /**
@@ -110,12 +112,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     Loggers.setTarget(lsLogOutput);
     this.telemetry = new SonarLintTelemetry();
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
+    this.progressManager = new ProgressManager(client);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
     this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput, nodeJsRuntime);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener(lsLogOutput);
-    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client);
+    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, progressManager);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);
@@ -136,6 +139,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
       this.traceLevel = parseTraceLevel(params.getTrace());
+
+      progressManager.setWorkDoneProgressSupportedByClient(params.getCapabilities().getWindow().getWorkDoneProgress());
 
       workspaceFoldersManager.initialize(params.getWorkspaceFolders());
 
@@ -164,7 +169,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       ServerCapabilities c = new ServerCapabilities();
       c.setTextDocumentSync(getTextDocumentSyncOptions());
       c.setCodeActionProvider(true);
-      c.setExecuteCommandProvider(new ExecuteCommandOptions(CommandManager.SONARLINT_SERVERSIDE_COMMANDS));
+      ExecuteCommandOptions executeCommandOptions = new ExecuteCommandOptions(CommandManager.SONARLINT_SERVERSIDE_COMMANDS);
+      executeCommandOptions.setWorkDoneProgress(true);
+      c.setExecuteCommandProvider(executeCommandOptions);
       c.setWorkspace(getWorkspaceServerCapabilities());
 
       ServerInfo info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
