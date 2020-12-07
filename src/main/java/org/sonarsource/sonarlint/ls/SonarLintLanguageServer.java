@@ -57,6 +57,7 @@ import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.TextDocumentSyncOptions;
+import org.eclipse.lsp4j.WorkDoneProgressCancelParams;
 import org.eclipse.lsp4j.WorkspaceFoldersOptions;
 import org.eclipse.lsp4j.WorkspaceServerCapabilities;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
@@ -74,6 +75,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListen
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 import static java.net.URI.create;
+import static java.util.Optional.ofNullable;
 
 public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer, WorkspaceService, TextDocumentService {
 
@@ -140,7 +142,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       cancelToken.checkCanceled();
       this.traceLevel = parseTraceLevel(params.getTrace());
 
-      progressManager.setWorkDoneProgressSupportedByClient(params.getCapabilities().getWindow().getWorkDoneProgress());
+      progressManager.setWorkDoneProgressSupportedByClient(ofNullable(params.getCapabilities().getWindow().getWorkDoneProgress()).orElse(false));
 
       workspaceFoldersManager.initialize(params.getWorkspaceFolders());
 
@@ -158,7 +160,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       String appName = (String) options.get("appName");
       String ideVersion = appName + " " + params.getClientInfo().getVersion();
 
-      Optional<String> typeScriptPath = Optional.ofNullable((String) options.get(TYPESCRIPT_LOCATION));
+      Optional<String> typeScriptPath = ofNullable((String) options.get(TYPESCRIPT_LOCATION));
 
       enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));
       analysisManager.initialize();
@@ -309,7 +311,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   private static TraceValues parseTraceLevel(@Nullable String trace) {
-    return Optional.ofNullable(trace)
+    return ofNullable(trace)
       .map(String::toUpperCase)
       .map(TraceValues::valueOf)
       .orElse(TraceValues.OFF);
@@ -323,5 +325,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didJavaServerModeChange(String serverMode) {
     analysisManager.didServerModeChange(ServerMode.of(serverMode));
+  }
+
+  @Override
+  public void cancelProgress(WorkDoneProgressCancelParams params) {
+    progressManager.cancelProgress(params);
   }
 }

@@ -337,10 +337,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
       foldersManager.getAll().forEach(f -> updateBindingIfNecessary(f, updatedProjectsByServer, failedServerIds, progress));
       if (failedServerIds.isEmpty()) {
-        progress.end("All SonarLint bindings succesfully updated");
+        client.showMessage(new MessageParams(MessageType.Info, "All SonarLint bindings succesfully updated"));
       } else {
         String message = String.join(", ", failedServerIds);
-        progress.end(message);
+        client.showMessage(new MessageParams(MessageType.Error, "Binding update failed for the following servers: " + message + ". Look to the SonarLint output for details."));
       }
     });
   }

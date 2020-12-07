@@ -19,19 +19,32 @@
  */
 package org.sonarsource.sonarlint.ls.progress;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
+import org.eclipse.lsp4j.WorkDoneProgressCancelParams;
+import org.eclipse.lsp4j.WorkDoneProgressCreateParams;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
-import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.eclipse.lsp4j.services.LanguageClient;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
+
+import static org.sonarsource.sonarlint.ls.Utils.interrupted;
 
 public class ProgressManager {
 
-  private final SonarLintExtendedLanguageClient client;
+  private static final Logger LOG = Loggers.get(ProgressManager.class);
+
+  private final LanguageClient client;
+  private final Map<Either<String, Number>, ProgressFacade> liveProgress = new ConcurrentHashMap<>();
 
   private boolean workDoneProgressSupportedByClient;
 
-  public ProgressManager(SonarLintExtendedLanguageClient client) {
+  public ProgressManager(LanguageClient client) {
     this.client = client;
   }
 
@@ -41,10 +54,23 @@ public class ProgressManager {
 
   public void doWithProgress(String progressTitle, @Nullable Either<String, Number> workDoneToken, CancelChecker cancelToken, Consumer<ProgressFacade> runnableWithProgress) {
     ProgressFacade progress;
+    Either<String, Number> progressToken;
     if (workDoneToken == null && !workDoneProgressSupportedByClient) {
       progress = new NoOpProgressFacade();
+      progressToken = null;
     } else {
-      progress = new LSPProgressFacade(client, workDoneToken, cancelToken);
+      progressToken = workDoneToken != null ? workDoneToken : Either.forLeft("SonarLint" + ThreadLocalRandom.current().nextInt());
+      if (workDoneToken == null) {
+        try {
+          client.createProgress(new WorkDoneProgressCreateParams(progressToken)).get();
+        } catch (InterruptedException e) {
+          interrupted(e);
+        } catch (ExecutionException e) {
+          throw new IllegalStateException(e.getCause());
+        }
+      }
+      progress = new LSProgressMonitor(client, progressToken, cancelToken);
+      liveProgress.put(progressToken, progress);
     }
     progress.start(progressTitle);
     try {
@@ -53,6 +79,18 @@ public class ProgressManager {
       if (!progress.ended()) {
         progress.end(null);
       }
+      if (progressToken != null) {
+        liveProgress.remove(progressToken);
+      }
+    }
+  }
+
+  public void cancelProgress(WorkDoneProgressCancelParams params) {
+    ProgressFacade progressFacade = liveProgress.get(params.getToken());
+    if (progressFacade == null) {
+      LOG.debug("Unable to cancel progress: " + params.getToken());
+    } else {
+      progressFacade.cancel();
     }
   }
 

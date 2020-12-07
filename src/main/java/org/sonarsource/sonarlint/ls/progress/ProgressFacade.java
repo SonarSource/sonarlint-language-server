@@ -32,4 +32,6 @@ public interface ProgressFacade {
 
   ProgressMonitor createCoreMonitor();
 
+  void cancel();
+
 }

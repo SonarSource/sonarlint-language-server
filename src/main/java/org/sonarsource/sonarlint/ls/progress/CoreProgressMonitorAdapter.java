@@ -21,31 +21,37 @@ package org.sonarsource.sonarlint.ls.progress;
 
 import org.sonarsource.sonarlint.core.client.api.common.ProgressMonitor;
 
-public class NoOpProgressFacade implements ProgressFacade {
+public class CoreProgressMonitorAdapter extends ProgressMonitor {
 
-  @Override
-  public boolean ended() {
-    return false;
+  private final LSProgressMonitor monitor;
+
+  public CoreProgressMonitorAdapter(LSProgressMonitor monitor) {
+    this.monitor = monitor;
   }
 
   @Override
-  public void end(String message) {
-    // No-op
+  public boolean isCanceled() {
+    return monitor.isCancelled();
   }
 
   @Override
-  public void start(String title) {
-    // No-op
+  public void executeNonCancelableSection(Runnable nonCancelable) {
+    monitor.disableCancellation();
+    try {
+      nonCancelable.run();
+    } finally {
+      monitor.enableCancellation();
+    }
   }
 
   @Override
-  public ProgressMonitor createCoreMonitor() {
-    return null;
+  public void setMessage(String msg) {
+    monitor.setMessage(msg);
   }
 
   @Override
-  public void cancel() {
-    // No-op
+  public void setFraction(float fraction) {
+    monitor.setFraction(fraction);
   }
 
 }

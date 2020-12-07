@@ -19,40 +19,30 @@
  */
 package org.sonarsource.sonarlint.ls.progress;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.ProgressParams;
 import org.eclipse.lsp4j.WorkDoneProgressBegin;
-import org.eclipse.lsp4j.WorkDoneProgressCreateParams;
 import org.eclipse.lsp4j.WorkDoneProgressEnd;
+import org.eclipse.lsp4j.WorkDoneProgressReport;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.client.api.common.ProgressMonitor;
-import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 
-import static org.sonarsource.sonarlint.ls.Utils.interrupted;
-
-public class LSPProgressFacade implements ProgressFacade {
+public class LSProgressMonitor implements ProgressFacade {
 
   private final Either<String, Number> progressToken;
   private final CancelChecker cancelToken;
-  private final SonarLintExtendedLanguageClient client;
+  private final LanguageClient client;
+  private boolean cancelled;
   private boolean ended;
+  private String lastMessage = null;
+  private Float lastFraction = 0f;
 
-  public LSPProgressFacade(SonarLintExtendedLanguageClient client, @Nullable Either<String, Number> workDoneToken, CancelChecker cancelToken) {
+  public LSProgressMonitor(LanguageClient client, Either<String, Number> progressToken, CancelChecker cancelToken) {
     this.client = client;
     this.cancelToken = cancelToken;
-    this.progressToken = workDoneToken != null ? workDoneToken : Either.forLeft("SonarLint" + ThreadLocalRandom.current().nextInt());
-    if (workDoneToken == null) {
-      try {
-        client.createProgress(new WorkDoneProgressCreateParams(progressToken)).get();
-      } catch (InterruptedException e) {
-        interrupted(e);
-      } catch (ExecutionException e) {
-        throw new IllegalStateException(e.getCause());
-      }
-    }
+    this.progressToken = progressToken;
   }
 
   @Override
@@ -79,7 +69,55 @@ public class LSPProgressFacade implements ProgressFacade {
 
   @Override
   public ProgressMonitor createCoreMonitor() {
-    return new LSPProgressMonitor(client, cancelToken, progressToken);
+    return new CoreProgressMonitorAdapter(this);
+  }
+
+  void enableCancellation() {
+    WorkDoneProgressReport progressReport = prepareProgressReport();
+    progressReport.setCancellable(true);
+    client.notifyProgress(new ProgressParams(progressToken, progressReport));
+  }
+
+  void disableCancellation() {
+    WorkDoneProgressReport progressReport = prepareProgressReport();
+    progressReport.setCancellable(false);
+    client.notifyProgress(new ProgressParams(progressToken, progressReport));
+  }
+
+  private WorkDoneProgressReport prepareProgressReport() {
+    WorkDoneProgressReport progressReport = new WorkDoneProgressReport();
+    // Repeat the last message and percentage in every notification, because contrary to what is documented, VSCode doesn't preserve
+    // the previous one
+    // if you send a progress without message/percentage
+    if (lastMessage != null) {
+      progressReport.setMessage(lastMessage);
+    }
+    if (lastFraction != null) {
+      progressReport.setPercentage((int) (100 * lastFraction));
+    }
+    return progressReport;
+  }
+
+  @Override
+  public void cancel() {
+    disableCancellation();
+    this.cancelled = true;
+  }
+
+  public boolean isCancelled() {
+    return cancelled || cancelToken.isCanceled();
+  }
+
+  void setMessage(String msg) {
+    this.lastMessage = msg;
+    WorkDoneProgressReport progressReport = prepareProgressReport();
+    client.notifyProgress(new ProgressParams(progressToken, progressReport));
+  }
+
+  void setFraction(float fraction) {
+    this.lastFraction = fraction;
+    WorkDoneProgressReport progressReport = prepareProgressReport();
+    client.notifyProgress(new ProgressParams(progressToken, progressReport));
   }
 
 }
