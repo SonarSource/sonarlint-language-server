@@ -68,16 +68,23 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
   public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
     connections.clear();
     connections.putAll(newValue.getServerConnections());
-    configurationsByProjectKeyByConnectionId.keySet().forEach(connectionId ->
-      configurationsByProjectKeyByConnectionId.get(connectionId).forEach((projectKey, config) -> {
+    configurationsByProjectKeyByConnectionId.keySet().forEach(connectionId -> {
+      Map<String, NotificationConfiguration> copyOfConfigurations = new HashMap<>(configurationsByProjectKeyByConnectionId.get(connectionId));
+      copyOfConfigurations.forEach((projectKey, config) -> {
         unregisterConfigurationIfExists(connectionId, projectKey);
         registerConfigurationIfNeeded(connectionId, projectKey);
-      }));
+      });
+    });
   }
 
   @Override
   public void onChange(@CheckForNull WorkspaceFolderWrapper folder, @CheckForNull WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
-    if (oldValue != null && (!newValue.hasBinding() || connections.get(newValue.getConnectionId()).isDevNotificationsDisabled())) {
+    if (oldValue != null && (
+        !newValue.hasBinding() ||
+        !connections.containsKey(newValue.getConnectionId()) ||
+        connections.get(newValue.getConnectionId()).isDevNotificationsDisabled()
+      )
+    ) {
       // Project is now unbound, or bound to a server that has dev notifications disabled => unregister matching config if exists
       unregisterConfigurationIfExists(oldValue.getConnectionId(), oldValue.getProjectKey());
     }
