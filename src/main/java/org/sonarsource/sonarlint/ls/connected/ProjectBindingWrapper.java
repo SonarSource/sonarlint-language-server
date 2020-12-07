@@ -26,20 +26,20 @@ import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 
 public class ProjectBindingWrapper {
 
-  private final String serverId;
+  private final String connectionId;
   private final ProjectBinding binding;
   private final ConnectedSonarLintEngine engine;
   private final ServerIssueTrackerWrapper issueTrackerWrapper;
 
-  public ProjectBindingWrapper(String serverId, ProjectBinding binding, ConnectedSonarLintEngine engine, ServerIssueTrackerWrapper issueTrackerWrapper) {
-    this.serverId = serverId;
+  public ProjectBindingWrapper(String connectionId, ProjectBinding binding, ConnectedSonarLintEngine engine, ServerIssueTrackerWrapper issueTrackerWrapper) {
+    this.connectionId = connectionId;
     this.binding = binding;
     this.engine = engine;
     this.issueTrackerWrapper = issueTrackerWrapper;
   }
 
-  public String getServerId() {
-    return serverId;
+  public String getConnectionId() {
+    return connectionId;
   }
 
   public ProjectBinding getBinding() {

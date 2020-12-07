@@ -31,22 +31,22 @@ public class ServerConnectionSettings {
   static final String SONARCLOUD_URL = "https://sonarcloud.io";
   static final String[] SONARCLOUD_ALIAS = {"https://sonarqube.com", "https://www.sonarqube.com", "https://www.sonarcloud.io", SONARCLOUD_URL};
 
-  private final String serverId;
+  private final String connectionId;
   private final String serverUrl;
   private final String token;
 
   @Nullable
   private final String organizationKey;
 
-  public ServerConnectionSettings(String serverId, String serverUrl, String token, @Nullable String organizationKey) {
-    this.serverId = serverId;
+  public ServerConnectionSettings(String connectionId, String serverUrl, String token, @Nullable String organizationKey) {
+    this.connectionId = connectionId;
     this.serverUrl = serverUrl;
     this.token = token;
     this.organizationKey = organizationKey;
   }
 
-  public String getServerId() {
-    return serverId;
+  public String getConnectionId() {
+    return connectionId;
   }
 
   public String getServerUrl() {
@@ -67,7 +67,7 @@ public class ServerConnectionSettings {
 
   @Override
   public int hashCode() {
-    return Objects.hash(serverId, serverUrl, token, organizationKey);
+    return Objects.hash(connectionId, serverUrl, token, organizationKey);
   }
 
   @Override
@@ -82,7 +82,7 @@ public class ServerConnectionSettings {
       return false;
     }
     ServerConnectionSettings other = (ServerConnectionSettings) obj;
-    return Objects.equals(serverId, other.serverId) && Objects.equals(serverUrl, other.serverUrl) && Objects.equals(token, other.token)
+    return Objects.equals(connectionId, other.connectionId) && Objects.equals(serverUrl, other.serverUrl) && Objects.equals(token, other.token)
       && Objects.equals(organizationKey, other.organizationKey);
   }
 

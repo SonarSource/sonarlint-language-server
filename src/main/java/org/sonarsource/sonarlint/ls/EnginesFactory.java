@@ -96,9 +96,9 @@ public class EnginesFactory {
     return new StandaloneSonarLintEngineImpl(configuration);
   }
 
-  public ConnectedSonarLintEngine createConnectedEngine(String serverId) {
+  public ConnectedSonarLintEngine createConnectedEngine(String connectionId) {
     ConnectedGlobalConfiguration configuration = ConnectedGlobalConfiguration.builder()
-      .setServerId(serverId)
+      .setServerId(connectionId)
       .setExtraProperties(prepareExtraProps())
       .addEnabledLanguages(STANDALONE_LANGUAGES)
       .addEnabledLanguages(CONNECTED_ADDITIONAL_LANGUAGES)
@@ -108,7 +108,7 @@ public class EnginesFactory {
 
     ConnectedSonarLintEngine engine = newConnectedEngine(configuration);
 
-    LOG.debug("Connected SonarLint engine started for '{}'", serverId);
+    LOG.debug("SonarLint engine started for connection '{}'", connectionId);
     return engine;
   }
 
@@ -131,6 +131,5 @@ public class EnginesFactory {
   public static Set<Language> getStandaloneLanguages() {
     return EnumSet.copyOf(Arrays.asList(STANDALONE_LANGUAGES));
   }
-
 
 }

@@ -234,7 +234,7 @@ class ProjectBindingManagerTests {
     assertThat(binding).isNotEmpty();
 
     assertThat(binding.get().getEngine()).isEqualTo(fakeEngine);
-    assertThat(binding.get().getServerId()).isEqualTo(SERVER_ID);
+    assertThat(binding.get().getConnectionId()).isEqualTo(SERVER_ID);
     assertThat(binding.get().getServerIssueTracker()).isNotNull();
     assertThat(binding.get().getBinding()).isEqualTo(FAKE_BINDING);
 
@@ -706,7 +706,7 @@ class ProjectBindingManagerTests {
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verifyNoMoreInteractions(analysisManager);
-    assertThat(logTester.logs(LoggerLevel.ERROR)).contains("Invalid binding for '" + folder.getRootPath() + "'");
+    assertThat(logTester.logs(LoggerLevel.ERROR)).contains("Invalid binding for workspace folder '" + folder.getRootPath() + "'");
   }
 
   @Test
@@ -717,7 +717,7 @@ class ProjectBindingManagerTests {
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verifyNoMoreInteractions(analysisManager);
-    assertThat(logTester.logs(LoggerLevel.ERROR)).contains("Invalid binding for 'default folder'");
+    assertThat(logTester.logs(LoggerLevel.ERROR)).contains("Invalid binding for workspace folder 'default folder'");
   }
 
   @Test
@@ -730,7 +730,7 @@ class ProjectBindingManagerTests {
     when(folderSettings.hasBinding()).thenReturn(true);
     when(folderSettings.getConnectionId()).thenReturn(serverId);
     when(settingsManager.getCurrentSettings()).thenReturn(settings);
-    when(settings.getServers()).thenReturn(servers);
+    when(settings.getServerConnections()).thenReturn(servers);
     ServerConnectionSettings serverConnectionSettings = new ServerConnectionSettings("serverId", "serverUrl", "token", "organizationKey");
     when(servers.get(serverId)).thenReturn(serverConnectionSettings);
     when(globalStorageStatus.isStale()).thenReturn(true);
@@ -747,22 +747,22 @@ class ProjectBindingManagerTests {
     WorkspaceFolderSettings folderSettings = mock(WorkspaceFolderSettings.class);
     WorkspaceSettings settings = mock(WorkspaceSettings.class);
     Map<String, ServerConnectionSettings> servers = mock(Map.class);
-    String serverId = "serverId";
+    String connectionId = "serverId";
     String projectKey = "projectKey";
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(folderSettings);
     when(folderSettings.hasBinding()).thenReturn(true);
-    when(folderSettings.getConnectionId()).thenReturn(serverId);
+    when(folderSettings.getConnectionId()).thenReturn(connectionId);
     when(folderSettings.getProjectKey()).thenReturn(projectKey);
     when(settingsManager.getCurrentSettings()).thenReturn(settings);
-    when(settings.getServers()).thenReturn(servers);
+    when(settings.getServerConnections()).thenReturn(servers);
     ServerConnectionSettings serverConnectionSettings = new ServerConnectionSettings("serverId", "serverUrl", "token", "organizationKey");
-    when(servers.get(serverId)).thenReturn(serverConnectionSettings);
+    when(servers.get(connectionId)).thenReturn(serverConnectionSettings);
     when(globalStorageStatus.isStale()).thenReturn(true);
-    when(enginesFactory.createConnectedEngine(serverId)).thenReturn(fakeEngine);
+    when(enginesFactory.createConnectedEngine(connectionId)).thenReturn(fakeEngine);
     when(settingsManager.getCurrentSettings()).thenReturn(settings);
-    when(settings.getServers()).thenReturn(servers);
-    when(servers.get(serverId)).thenReturn(serverConnectionSettings);
-    when(enginesFactory.createConnectedEngine(serverId)).thenReturn(fakeEngine);
+    when(settings.getServerConnections()).thenReturn(servers);
+    when(servers.get(connectionId)).thenReturn(serverConnectionSettings);
+    when(enginesFactory.createConnectedEngine(connectionId)).thenReturn(fakeEngine);
     when(fakeEngine.update(any(ServerConfiguration.class), any()))
       .thenReturn(mock(UpdateResult.class))
       .thenThrow(new RuntimeException("Boom"));
@@ -780,7 +780,7 @@ class ProjectBindingManagerTests {
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verify(client, times(1))
-      .showMessage(new MessageParams(MessageType.Error, "Binding update failed for the following servers: " + serverId + ". Look to the SonarLint output for details."));
+      .showMessage(new MessageParams(MessageType.Error, "Binding update failed for the following connection(s): " + connectionId + ". Look at the SonarLint output for details."));
   }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {

@@ -35,7 +35,7 @@ import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 public class WorkspaceSettings {
 
   private final boolean disableTelemetry;
-  private final Map<String, ServerConnectionSettings> servers;
+  private final Map<String, ServerConnectionSettings> connections;
   private final Collection<RuleKey> excludedRules;
   private final Collection<RuleKey> includedRules;
   private final Map<RuleKey, Map<String, String>> ruleParameters;
@@ -43,11 +43,11 @@ public class WorkspaceSettings {
   private final boolean showVerboseLogs;
   private final String pathToNodeExecutable;
 
-  public WorkspaceSettings(boolean disableTelemetry, Map<String, ServerConnectionSettings> servers,
+  public WorkspaceSettings(boolean disableTelemetry, Map<String, ServerConnectionSettings> connections,
     Collection<RuleKey> excludedRules, Collection<RuleKey> includedRules, Map<RuleKey, Map<String, String>> ruleParameters,
     boolean showAnalyzerLogs, boolean showVerboseLogs, String pathToNodeExecutable) {
     this.disableTelemetry = disableTelemetry;
-    this.servers = servers;
+    this.connections = connections;
     this.excludedRules = excludedRules;
     this.includedRules = includedRules;
     this.ruleParameters = ruleParameters;
@@ -60,8 +60,8 @@ public class WorkspaceSettings {
     return disableTelemetry;
   }
 
-  public Map<String, ServerConnectionSettings> getServers() {
-    return Collections.unmodifiableMap(servers);
+  public Map<String, ServerConnectionSettings> getServerConnections() {
+    return Collections.unmodifiableMap(connections);
   }
 
   public Collection<RuleKey> getExcludedRules() {
@@ -94,7 +94,7 @@ public class WorkspaceSettings {
 
   @Override
   public int hashCode() {
-    return Objects.hash(disableTelemetry, servers, excludedRules, includedRules, showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable);
+    return Objects.hash(disableTelemetry, connections, excludedRules, includedRules, showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable);
   }
 
   @Override
@@ -109,7 +109,7 @@ public class WorkspaceSettings {
       return false;
     }
     WorkspaceSettings other = (WorkspaceSettings) obj;
-    return disableTelemetry == other.disableTelemetry && Objects.equals(servers, other.servers) && Objects.equals(excludedRules, other.excludedRules)
+    return disableTelemetry == other.disableTelemetry && Objects.equals(connections, other.connections) && Objects.equals(excludedRules, other.excludedRules)
       && Objects.equals(includedRules, other.includedRules) && Objects.equals(ruleParameters, other.ruleParameters)
       && Objects.equals(showAnalyzerLogs, other.showAnalyzerLogs) && Objects.equals(showVerboseLogs, other.showVerboseLogs)
       && Objects.equals(pathToNodeExecutable, other.pathToNodeExecutable);

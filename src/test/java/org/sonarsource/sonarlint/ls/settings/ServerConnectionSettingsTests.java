@@ -51,7 +51,7 @@ class ServerConnectionSettingsTests {
 
   @Test
   public void testToString() {
-    assertThat(WITH_ORG.toString()).isEqualTo("ServerConnectionSettings[serverId=serverId,serverUrl=serverUrl,token=token,organizationKey=myOrg]");
+    assertThat(WITH_ORG.toString()).isEqualTo("ServerConnectionSettings[connectionId=serverId,serverUrl=serverUrl,token=token,organizationKey=myOrg]");
   }
 
 }
