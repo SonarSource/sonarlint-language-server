@@ -34,4 +34,6 @@ public interface ProgressFacade {
 
   void cancel();
 
+  void checkCanceled();
+
 }

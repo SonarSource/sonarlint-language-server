@@ -53,6 +53,7 @@ import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.UpdateResult;
+import org.sonarsource.sonarlint.core.client.api.exceptions.CanceledException;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
 import org.sonarsource.sonarlint.ls.AnalysisManager;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
@@ -327,6 +328,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       Set<String> failedServerIds = new LinkedHashSet<>();
       // Start by updating all engines that are already started and cached
       connectedEngineCacheByServerId.forEach((connectionId, cachedEngine) -> {
+        progress.checkCanceled();
         ServerConfiguration serverConfiguration = createServerConfiguration(connectionId);
         if (serverConfiguration != null) {
           cachedEngine.ifPresent(engine -> updateGlobalStorageAndLogResults(serverConfiguration, engine, failedServerIds, connectionId, progress));
@@ -335,7 +337,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       Map<String, Set<String>> updatedProjectsByServer = new HashMap<>();
       updateBindingIfNecessary(null, updatedProjectsByServer, failedServerIds, progress);
 
-      foldersManager.getAll().forEach(f -> updateBindingIfNecessary(f, updatedProjectsByServer, failedServerIds, progress));
+      foldersManager.getAll().forEach(f -> {
+        progress.checkCanceled();
+        updateBindingIfNecessary(f, updatedProjectsByServer, failedServerIds, progress);
+      });
       if (failedServerIds.isEmpty()) {
         client.showMessage(new MessageParams(MessageType.Info, "All SonarLint bindings succesfully updated"));
       } else {
@@ -366,6 +371,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         try {
           engineOpt.get().updateProject(serverConfiguration, projectKey, progress.createCoreMonitor());
           updatedProjectsByServer.computeIfAbsent(connectionId, s -> new HashSet<>()).add(projectKey);
+        } catch (CanceledException e) {
+          throw e;
         } catch (Exception updateFailed) {
           LOG.error("Binding update failed for folder '{}'", folderId, updateFailed);
           failedServerIds.add(connectionId);
@@ -380,6 +387,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     try {
       UpdateResult updateResult = engine.update(serverConfiguration, progress.createCoreMonitor());
       LOG.info("Global storage status: {}", updateResult.status());
+    } catch (CanceledException e) {
+      throw e;
     } catch (Exception e) {
       LOG.error("Error updating storage of the connected SonarLint engine '" + serverId + "'", e);
       failedServerIds.add(serverId);

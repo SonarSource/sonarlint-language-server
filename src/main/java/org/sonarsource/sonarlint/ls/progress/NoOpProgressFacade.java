@@ -48,4 +48,9 @@ public class NoOpProgressFacade implements ProgressFacade {
     // No-op
   }
 
+  @Override
+  public void checkCanceled() {
+    // No-op
+  }
+
 }

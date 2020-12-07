@@ -32,6 +32,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.client.api.exceptions.CanceledException;
 
 import static org.sonarsource.sonarlint.ls.Utils.interrupted;
 
@@ -75,6 +76,8 @@ public class ProgressManager {
     progress.start(progressTitle);
     try {
       runnableWithProgress.accept(progress);
+    } catch (CanceledException canceled) {
+      LOG.debug("Cancelled");
     } finally {
       if (!progress.ended()) {
         progress.end(null);

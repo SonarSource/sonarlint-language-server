@@ -28,6 +28,7 @@ import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.client.api.common.ProgressMonitor;
+import org.sonarsource.sonarlint.core.client.api.exceptions.CanceledException;
 
 public class LSProgressMonitor implements ProgressFacade {
 
@@ -118,6 +119,13 @@ public class LSProgressMonitor implements ProgressFacade {
     this.lastFraction = fraction;
     WorkDoneProgressReport progressReport = prepareProgressReport();
     client.notifyProgress(new ProgressParams(progressToken, progressReport));
+  }
+
+  @Override
+  public void checkCanceled() {
+    if (isCancelled()) {
+      throw new CanceledException();
+    }
   }
 
 }
