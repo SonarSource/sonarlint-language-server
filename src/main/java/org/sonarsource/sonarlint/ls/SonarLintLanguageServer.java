@@ -288,7 +288,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didClasspathUpdate(String projectUri) {
-    analysisManager.didClasspathUpdate(projectUri);
+    analysisManager.didClasspathUpdate(create(projectUri));
   }
 
   @Override

@@ -72,6 +72,7 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.ServerIssueTrackerWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.java.JavaSdkUtil;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
@@ -100,6 +101,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   private final Map<URI, String> languageIdPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, String> fileContentPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, Optional<GetJavaConfigResponse>> javaConfigPerFileURI = new ConcurrentHashMap<>();
+  private final Map<Path, List<Path>> jvmClasspathPerJavaHome = new ConcurrentHashMap<>();
   // entries in this map mean that the file is "dirty"
   private final Map<URI, Long> eventMap = new ConcurrentHashMap<>();
 
@@ -112,7 +114,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   private final LanguageClientLogOutput lsLogOutput;
   private StandaloneSonarLintEngine standaloneEngine;
 
-  private ExecutorService analysisExecutor;
+  private final ExecutorService analysisExecutor;
 
   public AnalysisManager(LanguageClientLogOutput lsLogOutput, EnginesFactory enginesFactory, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
     WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, ProjectBindingManager bindingManager) {
@@ -322,9 +324,9 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     StandaloneSonarLintEngine engine = getOrCreateStandaloneEngine();
     return analyzeWithTiming(() -> engine.analyze(configuration, issueListener, null, null),
       engine.getPluginDetails(),
-      () -> {});
+      () -> {
+      });
   }
-
 
   public AnalysisResultsWrapper analyzeConnected(ProjectBindingWrapper binding, WorkspaceFolderSettings settings, Path baseDir, URI uri, String content,
     IssueListener issueListener, boolean shouldFetchServerIssues, Optional<GetJavaConfigResponse> javaConfig) {
@@ -512,14 +514,33 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     Optional<GetJavaConfigResponse> cachedJavaConfigOpt = ofNullable(javaConfigPerFileURI.get(fileUri)).orElse(empty());
     return cachedJavaConfigOpt.map(cachedJavaConfig -> {
       Map<String, String> props = new HashMap<>();
+      String vmLocationStr = cachedJavaConfig.getVmLocation();
+      List<Path> jdkClassesRoots = new ArrayList<>();
+      if (vmLocationStr != null) {
+        Path vmLocation = Paths.get(vmLocationStr);
+        jdkClassesRoots = getVmClasspathFromCacheOrCompute(vmLocation);
+      }
+      String classpath = Stream.concat(
+        jdkClassesRoots.stream().map(Path::toAbsolutePath).map(Path::toString),
+        Stream.of(cachedJavaConfig.getClasspath()))
+        .collect(joining(","));
       props.put("sonar.java.source", cachedJavaConfig.getSourceLevel());
       if (!cachedJavaConfig.isTest()) {
-        props.put("sonar.java.libraries", Stream.of(cachedJavaConfig.getClasspath()).collect(joining(",")));
+        props.put("sonar.java.libraries", classpath);
       } else {
-        props.put("sonar.java.test.libraries", Stream.of(cachedJavaConfig.getClasspath()).collect(joining(",")));
+        props.put("sonar.java.test.libraries", classpath);
       }
       return props;
     }).orElse(emptyMap());
+  }
+
+  private List<Path> getVmClasspathFromCacheOrCompute(Path vmLocation) {
+    List<Path> jdkClassesRoots;
+    if (!jvmClasspathPerJavaHome.containsKey(vmLocation)) {
+      jvmClasspathPerJavaHome.put(vmLocation, JavaSdkUtil.getJdkClassesRoots(vmLocation));
+    }
+    jdkClassesRoots = jvmClasspathPerJavaHome.get(vmLocation);
+    return jdkClassesRoots;
   }
 
   /**
@@ -548,16 +569,23 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       });
   }
 
-  public void didClasspathUpdate(String projectUri) {
+  public void didClasspathUpdate(URI projectUri) {
     for (Iterator<Entry<URI, Optional<GetJavaConfigResponse>>> it = javaConfigPerFileURI.entrySet().iterator(); it.hasNext();) {
       Entry<URI, Optional<GetJavaConfigResponse>> entry = it.next();
-      // If we have cached an empty result, clear the cache on classpath update to give a chance to next analysis to fetch a correct value
-      if (entry.getValue().map(c -> c.getProjectRoot().equals(projectUri)).orElse(true)) {
+      Optional<GetJavaConfigResponse> cachedResponseOpt = entry.getValue();
+      // If we have cached an empty result, still clear the value on classpath update to force next analysis to re-attempt fetch
+      if (!cachedResponseOpt.isPresent() || sameProject(projectUri, cachedResponseOpt.get())) {
         it.remove();
-        LOG.debug("Evicted Java config cache for {}", entry.getKey());
+        LOG.debug("Evicted Java config cache for file '{}'", entry.getKey());
       }
     }
     analyzeAllOpenJavaFiles();
+  }
+
+  private static boolean sameProject(URI projectUri, GetJavaConfigResponse cachedResponse) {
+    // Compare file and not directly URI because
+    // file:/foo/bar and file:///foo/bar/ are not considered equals by java.net.URI
+    return Paths.get(URI.create(cachedResponse.getProjectRoot())).equals(Paths.get(projectUri));
   }
 
   public void didServerModeChange(SonarLintExtendedLanguageServer.ServerMode serverMode) {
