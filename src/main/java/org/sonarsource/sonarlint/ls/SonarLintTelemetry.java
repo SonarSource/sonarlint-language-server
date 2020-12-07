@@ -176,6 +176,18 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     }
   }
 
+  public void devNotificationsReceived(String category) {
+    if(enabled()) {
+      telemetry.devNotificationsReceived(category);
+    }
+  }
+
+  public void devNotificationsClicked(String eventType) {
+    if(enabled()) {
+      telemetry.devNotificationsClicked(eventType);
+    }
+  }
+
   public void stop() {
     if (enabled()) {
       telemetry.stop();
@@ -193,11 +205,5 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   @Override
   public void onChange(WorkspaceSettings oldValue, WorkspaceSettings newValue) {
     optOut(newValue.isDisableTelemetry());
-  }
-
-  public void devNotificationsReceived(String category) {
-    if(enabled()) {
-      telemetry.devNotificationsReceived(category);
-    }
   }
 }

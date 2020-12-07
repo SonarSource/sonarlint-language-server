@@ -90,19 +90,19 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
   private void unregisterConfigurationIfExists(@Nullable String oldConnectionId, @Nullable String oldProjectKey) {
     Map<String, NotificationConfiguration> configsForOldConnectionId = configurationsByProjectKeyByConnectionId.get(oldConnectionId);
     if (configsForOldConnectionId != null && configsForOldConnectionId.containsKey(oldProjectKey)) {
-      logMessage(String.format("De-registering notifications for %s on %s", oldProjectKey, oldConnectionId));
+      logDebugMessage(String.format("De-registering notifications for %s on %s", oldProjectKey, oldConnectionId));
       NotificationConfiguration config = configsForOldConnectionId.remove(oldProjectKey);
       coreNotifications().remove(config.listener());
     }
   }
 
-  private void registerConfigurationIfNeeded(@Nullable String connectionId, @Nullable String projectKey) {
+  private void registerConfigurationIfNeeded(String connectionId, String projectKey) {
     if (!alreadyHasConfiguration(connectionId, projectKey)) {
       if(!connections.containsKey(connectionId) || connections.get(connectionId).isDevNotificationsDisabled()) {
         // Connection is unknown, or has notifications disabled - do nothing
         return;
       }
-      logMessage(String.format("Enabling notifications for %s on %s", projectKey, connectionId));
+      logDebugMessage(String.format("Enabling notifications for %s on %s", projectKey, connectionId));
       NotificationConfiguration newConfiguration = newNotificationConfiguration(connections.get(connectionId), projectKey);
       coreNotifications().register(newConfiguration);
       configurationsByProjectKeyByConnectionId.computeIfAbsent(connectionId, k -> new HashMap<>()).put(projectKey, newConfiguration);
@@ -125,14 +125,14 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
       () -> projectBindingManager.createServerConfiguration(serverConnectionSettings.getConnectionId()));
   }
 
-  private void logMessage(String message) {
+  private void logDebugMessage(String message) {
     logOutput.log(message, LogOutput.Level.DEBUG);
   }
 
   /**
    * Simply displays the events and discards it
    */
-  private class EventListener implements ServerNotificationListener {
+  class EventListener implements ServerNotificationListener {
 
     private final boolean isSonarCloud;
 
@@ -153,6 +153,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
       params.setActions(Collections.singletonList(browseAction));
       client.showMessageRequest(params).thenAccept(action -> {
         if(browseAction.equals(action)) {
+          telemetry.devNotificationsClicked(serverNotification.category());
           client.browseTo(serverNotification.link());
         }
       });

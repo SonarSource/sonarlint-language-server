@@ -177,6 +177,41 @@ class SonarLintTelemetryTests {
   }
 
   @Test
+  void devNotificationsReceived_when_enabled() {
+    when(telemetryManager.isEnabled()).thenReturn(true);
+    String eventType = "eventType";
+    telemetry.devNotificationsReceived(eventType);
+    verify(telemetryManager).isEnabled();
+    verify(telemetryManager).devNotificationsReceived(eventType);
+  }
+
+  @Test
+  void devNotificationsReceived_when_disabled() {
+    when(telemetryManager.isEnabled()).thenReturn(false);
+    telemetry.devNotificationsClicked("ignored");
+    verify(telemetryManager).isEnabled();
+    verifyNoMoreInteractions(telemetryManager);
+  }
+
+
+  @Test
+  void devNotificationsClicked_when_enabled() {
+    when(telemetryManager.isEnabled()).thenReturn(true);
+    String eventType = "eventType";
+    telemetry.devNotificationsClicked(eventType);
+    verify(telemetryManager).isEnabled();
+    verify(telemetryManager).devNotificationsClicked(eventType);
+  }
+
+  @Test
+  void devNotificationsClicked_when_disabled() {
+    when(telemetryManager.isEnabled()).thenReturn(false);
+    telemetry.devNotificationsClicked("ignored");
+    verify(telemetryManager).isEnabled();
+    verifyNoMoreInteractions(telemetryManager);
+  }
+
+  @Test
   void should_start_disabled_when_storagePath_null() {
     when(telemetryManager.isEnabled()).thenReturn(true);
     SonarLintTelemetry telemetry = new SonarLintTelemetry() {
