@@ -171,7 +171,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       analysisManager.initialize();
 
       telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion,
-        bindingManager::usesConnectedMode, bindingManager::usesSonarCloud, nodeJsRuntime::nodeVersion);
+        bindingManager::usesConnectedMode, bindingManager::usesSonarCloud, bindingManager::devNotificationsDisabled, nodeJsRuntime::nodeVersion);
 
       ServerCapabilities c = new ServerCapabilities();
       c.setTextDocumentSync(getTextDocumentSyncOptions());

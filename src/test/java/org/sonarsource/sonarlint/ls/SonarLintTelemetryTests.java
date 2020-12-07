@@ -64,11 +64,11 @@ class SonarLintTelemetryTests {
     when(telemetryManager.isEnabled()).thenReturn(true);
     SonarLintTelemetry telemetry = new SonarLintTelemetry() {
       @Override
-      TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client, BooleanSupplier usesConnectedMode, BooleanSupplier usesSonarCloud, Supplier<String> nodeVersion) {
+      TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client, BooleanSupplier usesConnectedMode, BooleanSupplier usesSonarCloud, BooleanSupplier devNotificationsDisabled, Supplier<String> nodeVersion) {
         return telemetryManager;
       }
     };
-    telemetry.init(Paths.get("dummy"), "product", "version", "ideVersion", () -> true, () -> true, () -> "");
+    telemetry.init(Paths.get("dummy"), "product", "version", "ideVersion", () -> true, () -> true, () -> true, () -> "");
     return telemetry;
   }
 
@@ -98,7 +98,7 @@ class SonarLintTelemetryTests {
 
   @Test
   void create_telemetry_manager() {
-    assertThat(telemetry.newTelemetryManager(Paths.get(""), mock(TelemetryHttpClient.class), () -> true, () -> true, () -> "")).isNotNull();
+    assertThat(telemetry.newTelemetryManager(Paths.get(""), mock(TelemetryHttpClient.class), () -> true, () -> true, () -> true, () -> "")).isNotNull();
   }
 
   @Test
@@ -181,11 +181,11 @@ class SonarLintTelemetryTests {
     when(telemetryManager.isEnabled()).thenReturn(true);
     SonarLintTelemetry telemetry = new SonarLintTelemetry() {
       @Override
-      TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client, BooleanSupplier usesConnectedMode, BooleanSupplier usesSonarCloud, Supplier<String> nodeVersion) {
+      TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client, BooleanSupplier usesConnectedMode, BooleanSupplier usesSonarCloud, BooleanSupplier devNotificationsDisabled, Supplier<String> nodeVersion) {
         return telemetryManager;
       }
     };
-    telemetry.init(null, "product", "version", "ideVersion", () -> true, () -> true, () -> "");
+    telemetry.init(null, "product", "version", "ideVersion", () -> true, () -> true, () -> true, () -> "");
     assertThat(telemetry.enabled()).isFalse();
   }
 
