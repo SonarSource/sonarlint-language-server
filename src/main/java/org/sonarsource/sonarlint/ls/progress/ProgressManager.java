@@ -54,13 +54,10 @@ public class ProgressManager {
   }
 
   public void doWithProgress(String progressTitle, @Nullable Either<String, Number> workDoneToken, CancelChecker cancelToken, Consumer<ProgressFacade> runnableWithProgress) {
-    ProgressFacade progress;
-    Either<String, Number> progressToken;
     if (workDoneToken == null && !workDoneProgressSupportedByClient) {
-      progress = new NoOpProgressFacade();
-      progressToken = null;
+      runnableWithProgress.accept(new NoOpProgressFacade());
     } else {
-      progressToken = workDoneToken != null ? workDoneToken : Either.forLeft("SonarLint" + ThreadLocalRandom.current().nextInt());
+      Either<String, Number> progressToken = workDoneToken != null ? workDoneToken : Either.forLeft("SonarLint" + ThreadLocalRandom.current().nextInt());
       if (workDoneToken == null) {
         try {
           client.createProgress(new WorkDoneProgressCreateParams(progressToken)).get();
@@ -70,26 +67,26 @@ public class ProgressManager {
           throw new IllegalStateException(e.getCause());
         }
       }
-      progress = new LSProgressMonitor(client, progressToken, cancelToken);
-      liveProgress.put(progressToken, (LSProgressMonitor) progress);
-    }
-    progress.start(progressTitle);
-    try {
-      runnableWithProgress.accept(progress);
-    } catch (CanceledException canceled) {
-      endIfNotAlreadyEnded(progress, "Canceled");
-    } catch (Exception e) {
-      endIfNotAlreadyEnded(progress, e.getMessage());
-      throw e;
-    } finally {
-      endIfNotAlreadyEnded(progress, null);
-      if (progressToken != null) {
-        liveProgress.remove(progressToken);
+      LSProgressMonitor progress = new LSProgressMonitor(client, progressToken, cancelToken);
+      liveProgress.put(progressToken, progress);
+      progress.start(progressTitle);
+      try {
+        runnableWithProgress.accept(progress);
+      } catch (CanceledException canceled) {
+        endIfNotAlreadyEnded(progress, "Canceled");
+      } catch (Exception e) {
+        endIfNotAlreadyEnded(progress, e.getMessage());
+        throw e;
+      } finally {
+        endIfNotAlreadyEnded(progress, null);
+        if (progressToken != null) {
+          liveProgress.remove(progressToken);
+        }
       }
     }
   }
 
-  private static void endIfNotAlreadyEnded(ProgressFacade progress, @Nullable String msg) {
+  private static void endIfNotAlreadyEnded(LSProgressMonitor progress, @Nullable String msg) {
     if (!progress.ended()) {
       progress.end(msg);
     }

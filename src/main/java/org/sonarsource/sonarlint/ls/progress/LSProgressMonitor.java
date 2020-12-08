@@ -47,8 +47,7 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
     this.progressToken = progressToken;
   }
 
-  @Override
-  public void start(String title) {
+  void start(String title) {
     WorkDoneProgressBegin progressBegin = new WorkDoneProgressBegin();
     progressBegin.setTitle(title);
     progressBegin.setCancellable(true);
@@ -56,8 +55,7 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
     client.notifyProgress(new ProgressParams(progressToken, progressBegin));
   }
 
-  @Override
-  public boolean ended() {
+  boolean ended() {
     return ended;
   }
 

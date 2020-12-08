@@ -27,7 +27,6 @@ import org.eclipse.lsp4j.WorkDoneProgressCreateParams;
 import org.eclipse.lsp4j.WorkDoneProgressEnd;
 import org.eclipse.lsp4j.WorkDoneProgressKind;
 import org.eclipse.lsp4j.WorkDoneProgressNotification;
-import org.eclipse.lsp4j.WorkDoneProgressReport;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
@@ -58,7 +57,6 @@ class ProgressManagerTests {
     AtomicBoolean subsubdone = new AtomicBoolean();
 
     underTest.doWithProgress("Title", null, mock(CancelChecker.class), p -> {
-      p.start("Title");
       p.doInSubProgress("Sub title", 0.1f, subP -> {
         subP.doInSubProgress("Sub sub", 0.1f, subSubP -> subsubdone.set(true));
         subdone.set(true);
@@ -192,6 +190,7 @@ class ProgressManagerTests {
   void test_sub_progress() {
 
     underTest.doWithProgress("Title", FAKE_CLIENT_TOKEN, mock(CancelChecker.class), p -> {
+      p.asCoreMonitor().setMessage("Working");
       // Report 10%
       p.asCoreMonitor().setFraction(0.1f);
       // From 10 to 60%
@@ -200,44 +199,32 @@ class ProgressManagerTests {
         subP.doInSubProgress("SubSub", 0.1f, subSub -> {
           // Should report 12.5% (or 12 if rounded)
           subSub.asCoreMonitor().setFraction(0.5f);
+          // Reports 15%
+          subSub.end("Sub sub ended");
         });
-        // Automatically report 15%
       });
       // Automatically report 60%
     });
 
     ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
-    verify(client, times(6)).notifyProgress(params.capture());
-
-    assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getKind())
-      .containsExactly(
-        tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.begin),
-        tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.report),
-        tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.report),
-        tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.report),
-        tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.report),
-        tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.end));
+    verify(client, times(10)).notifyProgress(params.capture());
 
     WorkDoneProgressNotification start = params.getAllValues().get(0).getValue();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
 
-    WorkDoneProgressNotification progress1 = params.getAllValues().get(1).getValue();
-    assertThat(progress1).isInstanceOf(WorkDoneProgressReport.class);
-    assertThat(((WorkDoneProgressReport) progress1).getPercentage()).isEqualTo(10);
+    assertThat(params.getAllValues().subList(1, 9))
+      .extracting("value.message", "value.percentage")
+      .containsExactly(
+        tuple("Working", 0),
+        tuple("Working", 10),
+        tuple("Sub", 10),
+        tuple("Sub - SubSub", 10),
+        tuple("Sub - SubSub", 12),
+        tuple("Sub - SubSub", 15),
+        tuple("Sub - SubSub - Sub sub ended", 15),
+        tuple("Sub - SubSub - Sub sub ended", 60));
 
-    WorkDoneProgressNotification progress2 = params.getAllValues().get(2).getValue();
-    assertThat(progress2).isInstanceOf(WorkDoneProgressReport.class);
-    assertThat(((WorkDoneProgressReport) progress2).getPercentage()).isEqualTo(12);
-
-    WorkDoneProgressNotification progress3 = params.getAllValues().get(3).getValue();
-    assertThat(progress3).isInstanceOf(WorkDoneProgressReport.class);
-    assertThat(((WorkDoneProgressReport) progress3).getPercentage()).isEqualTo(15);
-
-    WorkDoneProgressNotification progress4 = params.getAllValues().get(4).getValue();
-    assertThat(progress4).isInstanceOf(WorkDoneProgressReport.class);
-    assertThat(((WorkDoneProgressReport) progress4).getPercentage()).isEqualTo(60);
-
-    WorkDoneProgressNotification end = params.getAllValues().get(5).getValue();
+    WorkDoneProgressNotification end = params.getAllValues().get(9).getValue();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isNull();
   }

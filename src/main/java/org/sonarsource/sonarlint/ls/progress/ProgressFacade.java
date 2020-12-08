@@ -25,11 +25,7 @@ import org.sonarsource.sonarlint.core.client.api.common.ProgressMonitor;
 
 public interface ProgressFacade {
 
-  boolean ended();
-
   void end(@Nullable String message);
-
-  void start(String title);
 
   ProgressMonitor asCoreMonitor();
 

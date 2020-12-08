@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.progress;
 
 import java.util.function.Consumer;
+import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.client.api.common.ProgressMonitor;
 
 public class SubProgressMonitor extends ProgressMonitor implements ProgressFacade {
@@ -34,21 +35,15 @@ public class SubProgressMonitor extends ProgressMonitor implements ProgressFacad
     this.title = title;
     this.subFraction = subFraction;
     this.startPercentage = parent.getLastPercentage();
+    parent.setMessage(title);
   }
 
   @Override
-  public boolean ended() {
-    return parent.ended();
-  }
-
-  @Override
-  public void end(String message) {
-    setMessage(message);
-  }
-
-  @Override
-  public void start(String title) {
-    setMessage(title);
+  public void end(@Nullable String message) {
+    setFraction(1.0f);
+    if (message != null) {
+      setMessage(message);
+    }
   }
 
   @Override

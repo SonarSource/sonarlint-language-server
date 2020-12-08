@@ -25,17 +25,7 @@ import org.sonarsource.sonarlint.core.client.api.common.ProgressMonitor;
 public class NoOpProgressFacade implements ProgressFacade {
 
   @Override
-  public boolean ended() {
-    return false;
-  }
-
-  @Override
   public void end(String message) {
-    // No-op
-  }
-
-  @Override
-  public void start(String title) {
     // No-op
   }
 
