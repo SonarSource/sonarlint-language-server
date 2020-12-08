@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.progress;
 
+import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.ProgressParams;
 import org.eclipse.lsp4j.WorkDoneProgressBegin;
@@ -30,7 +31,7 @@ import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.client.api.common.ProgressMonitor;
 import org.sonarsource.sonarlint.core.client.api.exceptions.CanceledException;
 
-public class LSProgressMonitor implements ProgressFacade {
+public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade {
 
   private final Either<String, Number> progressToken;
   private final CancelChecker cancelToken;
@@ -38,7 +39,7 @@ public class LSProgressMonitor implements ProgressFacade {
   private boolean cancelled;
   private boolean ended;
   private String lastMessage = null;
-  private Float lastFraction = 0f;
+  private float lastPercentage = 0.0f;
 
   public LSProgressMonitor(LanguageClient client, Either<String, Number> progressToken, CancelChecker cancelToken) {
     this.client = client;
@@ -69,17 +70,27 @@ public class LSProgressMonitor implements ProgressFacade {
   }
 
   @Override
-  public ProgressMonitor createCoreMonitor() {
-    return new CoreProgressMonitorAdapter(this);
+  public ProgressMonitor asCoreMonitor() {
+    return this;
   }
 
-  void enableCancellation() {
+  @Override
+  public void executeNonCancelableSection(Runnable nonCancelable) {
+    disableCancelation();
+    try {
+      nonCancelable.run();
+    } finally {
+      enableCancelation();
+    }
+  }
+
+  void enableCancelation() {
     WorkDoneProgressReport progressReport = prepareProgressReport();
     progressReport.setCancellable(true);
     client.notifyProgress(new ProgressParams(progressToken, progressReport));
   }
 
-  void disableCancellation() {
+  void disableCancelation() {
     WorkDoneProgressReport progressReport = prepareProgressReport();
     progressReport.setCancellable(false);
     client.notifyProgress(new ProgressParams(progressToken, progressReport));
@@ -93,39 +104,56 @@ public class LSProgressMonitor implements ProgressFacade {
     if (lastMessage != null) {
       progressReport.setMessage(lastMessage);
     }
-    if (lastFraction != null) {
-      progressReport.setPercentage((int) (100 * lastFraction));
-    }
+    progressReport.setPercentage((int) lastPercentage);
     return progressReport;
   }
 
-  @Override
-  public void cancel() {
-    disableCancellation();
+  void cancel() {
     this.cancelled = true;
   }
 
-  public boolean isCancelled() {
+  @Override
+  public boolean isCanceled() {
     return cancelled || cancelToken.isCanceled();
   }
 
-  void setMessage(String msg) {
+  @Override
+  public void setMessage(String msg) {
     this.lastMessage = msg;
     WorkDoneProgressReport progressReport = prepareProgressReport();
     client.notifyProgress(new ProgressParams(progressToken, progressReport));
   }
 
-  void setFraction(float fraction) {
-    this.lastFraction = fraction;
+  @Override
+  public void setFraction(float fraction) {
+    this.setPercentage(100.0f * fraction);
+  }
+
+  void setPercentage(float percentage) {
+    this.lastPercentage = percentage;
     WorkDoneProgressReport progressReport = prepareProgressReport();
     client.notifyProgress(new ProgressParams(progressToken, progressReport));
   }
 
   @Override
   public void checkCanceled() {
-    if (isCancelled()) {
+    if (isCanceled()) {
       throw new CanceledException();
     }
+  }
+
+  @Override
+  public void doInSubProgress(String title, float fraction, Consumer<ProgressFacade> subRunnable) {
+    this.checkCanceled();
+    float endSubPercentage = this.lastPercentage + 100.0f * fraction;
+    subRunnable.accept(new SubProgressMonitor(this, title, fraction));
+    if (lastPercentage < endSubPercentage) {
+      setPercentage((int) endSubPercentage);
+    }
+  }
+
+  float getLastPercentage() {
+    return lastPercentage;
   }
 
 }

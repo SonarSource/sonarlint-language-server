@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.progress;
 
+import java.util.function.Consumer;
 import org.sonarsource.sonarlint.core.client.api.common.ProgressMonitor;
 
 public class NoOpProgressFacade implements ProgressFacade {
@@ -39,13 +40,13 @@ public class NoOpProgressFacade implements ProgressFacade {
   }
 
   @Override
-  public ProgressMonitor createCoreMonitor() {
+  public ProgressMonitor asCoreMonitor() {
     return null;
   }
 
   @Override
-  public void cancel() {
-    // No-op
+  public void doInSubProgress(String connectionId, float fraction, Consumer<ProgressFacade> subRunnable) {
+    subRunnable.accept(this);
   }
 
   @Override

@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.progress;
 
+import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.client.api.common.ProgressMonitor;
 
@@ -30,9 +31,9 @@ public interface ProgressFacade {
 
   void start(String title);
 
-  ProgressMonitor createCoreMonitor();
+  ProgressMonitor asCoreMonitor();
 
-  void cancel();
+  void doInSubProgress(String title, float fraction, Consumer<ProgressFacade> subRunnable);
 
   void checkCanceled();
 

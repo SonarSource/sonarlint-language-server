@@ -41,7 +41,7 @@ public class ProgressManager {
   private static final Logger LOG = Loggers.get(ProgressManager.class);
 
   private final LanguageClient client;
-  private final Map<Either<String, Number>, ProgressFacade> liveProgress = new ConcurrentHashMap<>();
+  private final Map<Either<String, Number>, LSProgressMonitor> liveProgress = new ConcurrentHashMap<>();
 
   private boolean workDoneProgressSupportedByClient;
 
@@ -71,25 +71,32 @@ public class ProgressManager {
         }
       }
       progress = new LSProgressMonitor(client, progressToken, cancelToken);
-      liveProgress.put(progressToken, progress);
+      liveProgress.put(progressToken, (LSProgressMonitor) progress);
     }
     progress.start(progressTitle);
     try {
       runnableWithProgress.accept(progress);
     } catch (CanceledException canceled) {
-      LOG.debug("Cancelled");
+      endIfNotAlreadyEnded(progress, "Canceled");
+    } catch (Exception e) {
+      endIfNotAlreadyEnded(progress, e.getMessage());
+      throw e;
     } finally {
-      if (!progress.ended()) {
-        progress.end(null);
-      }
+      endIfNotAlreadyEnded(progress, null);
       if (progressToken != null) {
         liveProgress.remove(progressToken);
       }
     }
   }
 
+  private static void endIfNotAlreadyEnded(ProgressFacade progress, @Nullable String msg) {
+    if (!progress.ended()) {
+      progress.end(msg);
+    }
+  }
+
   public void cancelProgress(WorkDoneProgressCancelParams params) {
-    ProgressFacade progressFacade = liveProgress.get(params.getToken());
+    LSProgressMonitor progressFacade = liveProgress.get(params.getToken());
     if (progressFacade == null) {
       LOG.debug("Unable to cancel progress: " + params.getToken());
     } else {
