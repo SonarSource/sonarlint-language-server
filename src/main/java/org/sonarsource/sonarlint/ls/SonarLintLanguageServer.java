@@ -57,6 +57,7 @@ import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.TextDocumentSyncOptions;
+import org.eclipse.lsp4j.WorkDoneProgressCancelParams;
 import org.eclipse.lsp4j.WorkspaceFoldersOptions;
 import org.eclipse.lsp4j.WorkspaceServerCapabilities;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
@@ -68,11 +69,13 @@ import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 import static java.net.URI.create;
+import static java.util.Optional.ofNullable;
 
 public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer, WorkspaceService, TextDocumentService {
 
@@ -87,6 +90,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final NodeJsRuntime nodeJsRuntime;
   private final EnginesFactory enginesFactory;
   private final CommandManager commandManager;
+  private final ProgressManager progressManager;
   private final ExecutorService threadPool;
 
   /**
@@ -110,12 +114,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     Loggers.setTarget(lsLogOutput);
     this.telemetry = new SonarLintTelemetry();
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
+    this.progressManager = new ProgressManager(client);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
     this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput, nodeJsRuntime);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener(lsLogOutput);
-    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client);
+    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, progressManager);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);
@@ -137,6 +142,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       cancelToken.checkCanceled();
       this.traceLevel = parseTraceLevel(params.getTrace());
 
+      progressManager.setWorkDoneProgressSupportedByClient(ofNullable(params.getCapabilities().getWindow().getWorkDoneProgress()).orElse(false));
+
       workspaceFoldersManager.initialize(params.getWorkspaceFolders());
 
       Map<String, Object> options = Utils.parseToMap(params.getInitializationOptions());
@@ -153,7 +160,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       String appName = (String) options.get("appName");
       String ideVersion = appName + " " + params.getClientInfo().getVersion();
 
-      Optional<String> typeScriptPath = Optional.ofNullable((String) options.get(TYPESCRIPT_LOCATION));
+      Optional<String> typeScriptPath = ofNullable((String) options.get(TYPESCRIPT_LOCATION));
 
       enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));
       analysisManager.initialize();
@@ -164,7 +171,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       ServerCapabilities c = new ServerCapabilities();
       c.setTextDocumentSync(getTextDocumentSyncOptions());
       c.setCodeActionProvider(true);
-      c.setExecuteCommandProvider(new ExecuteCommandOptions(CommandManager.SONARLINT_SERVERSIDE_COMMANDS));
+      ExecuteCommandOptions executeCommandOptions = new ExecuteCommandOptions(CommandManager.SONARLINT_SERVERSIDE_COMMANDS);
+      executeCommandOptions.setWorkDoneProgress(true);
+      c.setExecuteCommandProvider(executeCommandOptions);
       c.setWorkspace(getWorkspaceServerCapabilities());
 
       ServerInfo info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
@@ -302,7 +311,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   private static TraceValues parseTraceLevel(@Nullable String trace) {
-    return Optional.ofNullable(trace)
+    return ofNullable(trace)
       .map(String::toUpperCase)
       .map(TraceValues::valueOf)
       .orElse(TraceValues.OFF);
@@ -316,5 +325,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didJavaServerModeChange(String serverMode) {
     analysisManager.didServerModeChange(ServerMode.of(serverMode));
+  }
+
+  @Override
+  public void cancelProgress(WorkDoneProgressCancelParams params) {
+    progressManager.cancelProgress(params);
   }
 }

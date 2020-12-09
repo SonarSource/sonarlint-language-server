@@ -142,7 +142,7 @@ public class CommandManager {
   public void executeCommand(ExecuteCommandParams params, CancelChecker cancelToken) {
     switch (params.getCommand()) {
       case SONARLINT_UPDATE_ALL_BINDINGS_COMMAND:
-        bindingManager.updateAllBindings();
+        bindingManager.updateAllBindings(cancelToken, params.getWorkDoneToken());
         break;
       case SONARLINT_OPEN_STANDALONE_RULE_DESCRIPTION_COMMAND:
         handleOpenStandaloneRuleDescriptionCommand(params);

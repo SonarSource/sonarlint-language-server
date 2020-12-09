@@ -220,12 +220,12 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     List<Map<String, String>> deprecatedServersEntries = (List<Map<String, String>>) connectedModeMap.getOrDefault("servers", Collections.emptyList());
     deprecatedServersEntries.forEach(m -> {
       if (checkRequiredAttribute(m, "server", SERVER_ID, SERVER_URL, TOKEN)) {
-        String serverId = m.get(SERVER_ID);
+        String connectionId = m.get(SERVER_ID);
         String url = m.get(SERVER_URL);
         String token = m.get(TOKEN);
         String organization = m.get(ORGANIZATION_KEY);
-        ServerConnectionSettings connectionSettings = new ServerConnectionSettings(serverId, url, token, organization);
-        addIfUniqueConnectionId(serverConnections, serverId, connectionSettings);
+        ServerConnectionSettings connectionSettings = new ServerConnectionSettings(connectionId, url, token, organization);
+        addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
       }
     });
   }
@@ -294,16 +294,16 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         projectKey = projectBinding.get("projectKey");
         connectionId = projectBinding.getOrDefault(SERVER_ID, projectBinding.get(CONNECTION_ID));
         if (isBlank(connectionId)) {
-          if (currentSettings.getServers().isEmpty()) {
+          if (currentSettings.getServerConnections().isEmpty()) {
             LOG.error("No SonarQube/SonarCloud connections defined for your binding. Please update your settings.");
-          } else if (currentSettings.getServers().size() == 1) {
-            connectionId = currentSettings.getServers().keySet().iterator().next();
+          } else if (currentSettings.getServerConnections().size() == 1) {
+            connectionId = currentSettings.getServerConnections().keySet().iterator().next();
           } else {
             LOG.error("Multiple connections defined in your settings. Please specify a 'connectionId' in your binding with one of [{}] to disambiguate.",
-              currentSettings.getServers().keySet().stream().collect(Collectors.joining(",")));
+              currentSettings.getServerConnections().keySet().stream().collect(Collectors.joining(",")));
             connectionId = null;
           }
-        } else if (!currentSettings.getServers().containsKey(connectionId)) {
+        } else if (!currentSettings.getServerConnections().containsKey(connectionId)) {
           LOG.error("No SonarQube/SonarCloud connections defined for your binding with id '{}'. Please update your settings.", connectionId);
         }
       }

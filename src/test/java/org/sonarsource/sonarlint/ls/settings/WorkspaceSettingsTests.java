@@ -57,57 +57,57 @@ class WorkspaceSettingsTests {
         ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
         singletonList(new RuleKey("repo1", "rule1")),
         singletonList(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false, "path/to/node"))
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(true,
         ImmutableMap.of("serverId2", new ServerConnectionSettings("serverId2", "serverUrl", "token", "myOrg")),
         singletonList(new RuleKey("repo1", "rule1")),
         singletonList(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false, "path/to/node"))
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
         ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl2", "token", "myOrg")),
         singletonList(new RuleKey("repo1", "rule1")),
         singletonList(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false, "path/to/node"))
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
         ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token2", "myOrg")),
         singletonList(new RuleKey("repo1", "rule1")),
         singletonList(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false, "path/to/node"))
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
         ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2")),
         singletonList(new RuleKey("repo1", "rule1")),
         singletonList(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false, "path/to/node"))
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
         ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
         singletonList(new RuleKey("repo1", "rule12")),
         singletonList(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false, "path/to/node"))
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
         ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
         singletonList(new RuleKey("repo1", "rule1")),
         singletonList(new RuleKey("repo2", "rule22")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false, "path/to/node"))
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
         ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
         singletonList(new RuleKey("repo1", "rule1")),
         singletonList(new RuleKey("repo2", "rule22")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, false, "path/to/node"))
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
         ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
         singletonList(RULE_KEY_1),
         singletonList(RULE_KEY_2),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value2")),false, false, "path/to/node"))
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value2")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
         ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
         singletonList(new RuleKey("repo1", "rule1")),
         singletonList(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),true, false, "path/to/node"))
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), true, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
         ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
         singletonList(new RuleKey("repo1", "rule1")),
         singletonList(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),false, true, "path/to/node"))
+        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, true, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
         ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg")),
         singletonList(RULE_KEY_1),
@@ -119,7 +119,7 @@ class WorkspaceSettingsTests {
   @Test
   void testToString() {
     assertThat(SETTINGS).hasToString(
-      "WorkspaceSettings[disableTelemetry=false,servers={serverId=ServerConnectionSettings[serverId=serverId,serverUrl=serverUrl,token=token,organizationKey=myOrg]},excludedRules=[repo1:rule1],includedRules=[repo2:rule2],ruleParameters={repo2:rule2={param1=value1}},showAnalyzerLogs=false,showVerboseLogs=false,pathToNodeExecutable=path/to/node]");
+      "WorkspaceSettings[disableTelemetry=false,connections={serverId=ServerConnectionSettings[connectionId=serverId,serverUrl=serverUrl,token=token,organizationKey=myOrg]},excludedRules=[repo1:rule1],includedRules=[repo2:rule2],ruleParameters={repo2:rule2={param1=value1}},showAnalyzerLogs=false,showVerboseLogs=false,pathToNodeExecutable=path/to/node]");
   }
 
 }

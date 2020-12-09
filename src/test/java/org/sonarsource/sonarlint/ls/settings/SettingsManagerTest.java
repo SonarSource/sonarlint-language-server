@@ -164,9 +164,9 @@ class SettingsManagerTest {
     assertThat(settings.getRuleParameters()).hasSize(1).containsOnlyKeys(RuleKey.parse("xoo:rule4"));
     assertThat(settings.getRuleParameters().get(RuleKey.parse("xoo:rule4"))).containsOnly(entry("param1", "123"));
     assertThat(settings.hasLocalRuleConfiguration()).isTrue();
-    assertThat(settings.getServers()).containsKeys("sq1", "sq2", "sc1", "sc2");
-    assertThat(settings.getServers().values())
-      .extracting(ServerConnectionSettings::getServerId, ServerConnectionSettings::getServerUrl, ServerConnectionSettings::getToken, ServerConnectionSettings::getOrganizationKey)
+    assertThat(settings.getServerConnections()).containsKeys("sq1", "sq2", "sc1", "sc2");
+    assertThat(settings.getServerConnections().values())
+      .extracting(ServerConnectionSettings::getConnectionId, ServerConnectionSettings::getServerUrl, ServerConnectionSettings::getToken, ServerConnectionSettings::getOrganizationKey)
       .containsExactlyInAnyOrder(
         tuple("sq1", "https://mysonarqube1.mycompany.org", "ab12", null),
         tuple("sq2", "https://mysonarqube2.mycompany.org", "cd34", null),
@@ -198,7 +198,7 @@ class SettingsManagerTest {
     underTest.didChangeConfiguration();
 
     WorkspaceSettings settings = underTest.getCurrentSettings();
-    assertThat(settings.getServers()).isEmpty();
+    assertThat(settings.getServerConnections()).isEmpty();
     assertThat(logTester.logs(LoggerLevel.ERROR))
       .containsExactly("Incomplete server connection configuration. Required parameters must not be blank: serverId.",
         "Incomplete server connection configuration. Required parameters must not be blank: serverUrl.",
@@ -226,7 +226,7 @@ class SettingsManagerTest {
     underTest.didChangeConfiguration();
 
     WorkspaceSettings settings = underTest.getCurrentSettings();
-    assertThat(settings.getServers()).containsKeys("dup");
+    assertThat(settings.getServerConnections()).containsKeys("dup");
     assertThat(logTester.logs(LoggerLevel.ERROR)).containsExactly("Multiple server connections with the same identifier 'dup'. Fix your settings.");
   }
 
@@ -247,7 +247,7 @@ class SettingsManagerTest {
     underTest.didChangeConfiguration();
 
     WorkspaceSettings settings = underTest.getCurrentSettings();
-    assertThat(settings.getServers()).containsKeys("<default>");
+    assertThat(settings.getServerConnections()).containsKeys("<default>");
     assertThat(logTester.logs(LoggerLevel.ERROR)).containsExactly("Please specify a unique 'connectionId' in your settings for each of the SonarQube/SonarCloud connections.");
   }
 
@@ -257,9 +257,9 @@ class SettingsManagerTest {
     underTest.didChangeConfiguration();
 
     WorkspaceSettings settings = underTest.getCurrentSettings();
-    assertThat(settings.getServers()).containsKeys("server1", "sc");
-    assertThat(settings.getServers().values())
-      .extracting(ServerConnectionSettings::getServerId, ServerConnectionSettings::getServerUrl, ServerConnectionSettings::getToken, ServerConnectionSettings::getOrganizationKey)
+    assertThat(settings.getServerConnections()).containsKeys("server1", "sc");
+    assertThat(settings.getServerConnections().values())
+      .extracting(ServerConnectionSettings::getConnectionId, ServerConnectionSettings::getServerUrl, ServerConnectionSettings::getToken, ServerConnectionSettings::getOrganizationKey)
       .containsExactlyInAnyOrder(tuple("server1", "https://mysonarqube.mycompany.org", "ab12", null),
         tuple("sc", "https://sonarcloud.io", "cd34", "myOrga"));
   }
@@ -321,7 +321,7 @@ class SettingsManagerTest {
       "}\n");
     underTest.didChangeConfiguration();
 
-    assertThat(underTest.getCurrentSettings().getServers().keySet()).containsExactly("<default>");
+    assertThat(underTest.getCurrentSettings().getServerConnections().keySet()).containsExactly("<default>");
 
     WorkspaceFolderSettings settings = underTest.getCurrentDefaultFolderSettings();
     assertThat(settings.getConnectionId()).isEqualTo("<default>");
