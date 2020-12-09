@@ -117,18 +117,21 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
 
   @Override
   public void setMessage(String msg) {
-    this.lastMessage = msg;
-    WorkDoneProgressReport progressReport = prepareProgressReport();
-    client.notifyProgress(new ProgressParams(progressToken, progressReport));
+    sendReport(msg, null);
   }
 
   @Override
   public void setFraction(float fraction) {
-    this.setPercentage(100.0f * fraction);
+    sendReport(null, 100.0f * fraction);
   }
 
-  void setPercentage(float percentage) {
-    this.lastPercentage = percentage;
+  void sendReport(@Nullable String message, @Nullable Float percentage) {
+    if (percentage != null) {
+      this.lastPercentage = percentage;
+    }
+    if (message != null) {
+      this.lastMessage = message;
+    }
     WorkDoneProgressReport progressReport = prepareProgressReport();
     client.notifyProgress(new ProgressParams(progressToken, progressReport));
   }
@@ -143,10 +146,13 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
   @Override
   public void doInSubProgress(String title, float fraction, Consumer<ProgressFacade> subRunnable) {
     this.checkCanceled();
-    float endSubPercentage = this.lastPercentage + 100.0f * fraction;
-    subRunnable.accept(new SubProgressMonitor(this, title, fraction));
-    if (lastPercentage < endSubPercentage) {
-      setPercentage((int) endSubPercentage);
+
+    SubProgressMonitor subProgressMonitor = new SubProgressMonitor(this, title, fraction);
+    subRunnable.accept(subProgressMonitor);
+
+    if (!subProgressMonitor.ended) {
+      // Automatic end
+      subProgressMonitor.sendReport("Completed", 100.0f);
     }
   }
 

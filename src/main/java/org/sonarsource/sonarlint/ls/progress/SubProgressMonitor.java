@@ -29,6 +29,7 @@ public class SubProgressMonitor extends ProgressMonitor implements ProgressFacad
   private final String title;
   private final float subFraction;
   private final float startPercentage;
+  boolean ended;
 
   public SubProgressMonitor(LSProgressMonitor parent, String title, float subFraction) {
     this.parent = parent;
@@ -40,10 +41,8 @@ public class SubProgressMonitor extends ProgressMonitor implements ProgressFacad
 
   @Override
   public void end(@Nullable String message) {
-    setFraction(1.0f);
-    if (message != null) {
-      setMessage(message);
-    }
+    this.ended = true;
+    sendReport(message, 100.0f);
   }
 
   @Override
@@ -56,11 +55,12 @@ public class SubProgressMonitor extends ProgressMonitor implements ProgressFacad
     parent.checkCanceled();
 
     float subSubFraction = this.subFraction * subFraction;
-    subRunnable.accept(new SubProgressMonitor(parent, title + " - " + subTitle, subSubFraction));
+    SubProgressMonitor subProgressMonitor = new SubProgressMonitor(parent, title + " - " + subTitle, subSubFraction);
+    subRunnable.accept(subProgressMonitor);
 
-    float endSubPercentage = startPercentage + 100.0f * subSubFraction;
-    if (parent.getLastPercentage() < endSubPercentage) {
-      parent.setPercentage((int) endSubPercentage);
+    if (!subProgressMonitor.ended) {
+      // Automatic end
+      subProgressMonitor.sendReport("Completed", 100.0f);
     }
   }
 
@@ -71,7 +71,7 @@ public class SubProgressMonitor extends ProgressMonitor implements ProgressFacad
 
   @Override
   public void setMessage(String msg) {
-    parent.setMessage(title + " - " + msg);
+    sendReport(msg, null);
   }
 
   @Override
@@ -81,7 +81,11 @@ public class SubProgressMonitor extends ProgressMonitor implements ProgressFacad
 
   @Override
   public void setFraction(float fraction) {
-    parent.setPercentage(startPercentage + 100.0f * fraction * subFraction);
+    sendReport(null, 100.0f * fraction);
+  }
+
+  void sendReport(@Nullable String message, @Nullable Float percentage) {
+    parent.sendReport(message == null ? null : (title + " - " + message), percentage == null ? null : (startPercentage + percentage * subFraction));
   }
 
   @Override

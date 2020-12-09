@@ -23,6 +23,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.eclipse.lsp4j.ProgressParams;
 import org.eclipse.lsp4j.WorkDoneProgressBegin;
+import org.eclipse.lsp4j.WorkDoneProgressCancelParams;
 import org.eclipse.lsp4j.WorkDoneProgressCreateParams;
 import org.eclipse.lsp4j.WorkDoneProgressEnd;
 import org.eclipse.lsp4j.WorkDoneProgressKind;
@@ -137,10 +138,32 @@ class ProgressManagerTests {
   }
 
   @Test
-  void should_stop_progress_if_canceled() {
+  void should_stop_progress_if_canceled_by_cancel_token() {
     CancelChecker cancelChecker = mock(CancelChecker.class);
     underTest.doWithProgress("Title", FAKE_CLIENT_TOKEN, cancelChecker, p -> {
       when(cancelChecker.isCanceled()).thenReturn(true);
+      p.checkCanceled();
+    });
+
+    ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
+    verify(client, times(2)).notifyProgress(params.capture());
+
+    assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getKind())
+      .containsExactly(
+        tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.begin),
+        tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.end));
+
+    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue();
+    assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
+    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue();
+    assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
+    assertThat(((WorkDoneProgressEnd) end).getMessage()).isEqualTo("Canceled");
+  }
+
+  @Test
+  void should_stop_progress_if_canceled_by_client_request() {
+    underTest.doWithProgress("Title", FAKE_CLIENT_TOKEN, mock(CancelChecker.class), p -> {
+      underTest.cancelProgress(new WorkDoneProgressCancelParams(FAKE_CLIENT_TOKEN));
       p.checkCanceled();
     });
 
@@ -188,7 +211,6 @@ class ProgressManagerTests {
 
   @Test
   void test_sub_progress() {
-
     underTest.doWithProgress("Title", FAKE_CLIENT_TOKEN, mock(CancelChecker.class), p -> {
       p.asCoreMonitor().setMessage("Working");
       // Report 10%
@@ -196,35 +218,70 @@ class ProgressManagerTests {
       // From 10 to 60%
       p.doInSubProgress("Sub", 0.5f, subP -> {
         // From 10 to 15%
-        subP.doInSubProgress("SubSub", 0.1f, subSub -> {
+        subP.doInSubProgress("SubSub1", 0.1f, subSub -> {
           // Should report 12.5% (or 12 if rounded)
           subSub.asCoreMonitor().setFraction(0.5f);
           // Reports 15%
           subSub.end("Sub sub ended");
         });
+        // From 15 to 20%
+        subP.doInSubProgress("SubSub2", 0.1f, subSub -> {
+          // Should report 17.5% (or 17 if rounded)
+          subSub.asCoreMonitor().setFraction(0.5f);
+        }); // Automatically reports 20%
       });
-      // Automatically report 60%
+      // Automatically reports 60%
     });
 
     ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
-    verify(client, times(10)).notifyProgress(params.capture());
+    verify(client, times(12)).notifyProgress(params.capture());
 
     WorkDoneProgressNotification start = params.getAllValues().get(0).getValue();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
 
-    assertThat(params.getAllValues().subList(1, 9))
+    assertThat(params.getAllValues().subList(1, 11))
       .extracting("value.message", "value.percentage")
       .containsExactly(
         tuple("Working", 0),
         tuple("Working", 10),
         tuple("Sub", 10),
-        tuple("Sub - SubSub", 10),
-        tuple("Sub - SubSub", 12),
-        tuple("Sub - SubSub", 15),
-        tuple("Sub - SubSub - Sub sub ended", 15),
-        tuple("Sub - SubSub - Sub sub ended", 60));
+        tuple("Sub - SubSub1", 10),
+        tuple("Sub - SubSub1", 12),
+        tuple("Sub - SubSub1 - Sub sub ended", 15),
+        tuple("Sub - SubSub2", 15),
+        tuple("Sub - SubSub2", 17),
+        tuple("Sub - SubSub2 - Completed", 20),
+        tuple("Sub - Completed", 60));
 
-    WorkDoneProgressNotification end = params.getAllValues().get(9).getValue();
+    WorkDoneProgressNotification end = params.getAllValues().get(11).getValue();
+    assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
+    assertThat(((WorkDoneProgressEnd) end).getMessage()).isNull();
+  }
+
+  @Test
+  void test_non_cancelable_section() {
+    underTest.doWithProgress("Title", FAKE_CLIENT_TOKEN, mock(CancelChecker.class), p -> {
+      p.doInSubProgress("Sub", 0.5f, subP -> {
+        subP.asCoreMonitor().executeNonCancelableSection(() -> subP.asCoreMonitor().setMessage("Non cancelable"));
+      });
+    });
+
+    ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
+    verify(client, times(7)).notifyProgress(params.capture());
+
+    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue();
+    assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
+
+    assertThat(params.getAllValues().subList(1, 6))
+      .extracting("value.message", "value.percentage", "value.cancellable")
+      .containsExactly(
+        tuple("Sub", 0, null),
+        tuple("Sub", 0, false),
+        tuple("Sub - Non cancelable", 0, null),
+        tuple("Sub - Non cancelable", 0, true),
+        tuple("Sub - Completed", 50, null));
+
+    WorkDoneProgressNotification end = params.getAllValues().get(6).getValue();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isNull();
   }

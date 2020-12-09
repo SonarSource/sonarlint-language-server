@@ -79,9 +79,7 @@ public class ProgressManager {
         throw e;
       } finally {
         endIfNotAlreadyEnded(progress, null);
-        if (progressToken != null) {
-          liveProgress.remove(progressToken);
-        }
+        liveProgress.remove(progressToken);
       }
     }
   }
