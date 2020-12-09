@@ -220,13 +220,13 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private static void parseDeprecatedServerEntries(Map<String, Object> connectedModeMap, Map<String, ServerConnectionSettings> serverConnections) {
     @SuppressWarnings("unchecked")
-    List<Map<String, String>> deprecatedServersEntries = (List<Map<String, String>>) connectedModeMap.getOrDefault("servers", Collections.emptyList());
+    List<Map<String, Object>> deprecatedServersEntries = (List<Map<String, Object>>) connectedModeMap.getOrDefault("servers", Collections.emptyList());
     deprecatedServersEntries.forEach(m -> {
       if (checkRequiredAttribute(m, "server", SERVER_ID, SERVER_URL, TOKEN)) {
-        String connectionId = m.get(SERVER_ID);
-        String url = m.get(SERVER_URL);
-        String token = m.get(TOKEN);
-        String organization = m.get(ORGANIZATION_KEY);
+        String connectionId = (String) m.get(SERVER_ID);
+        String url = (String) m.get(SERVER_URL);
+        String token = (String) m.get(TOKEN);
+        String organization = (String) m.get(ORGANIZATION_KEY);
         ServerConnectionSettings connectionSettings = new ServerConnectionSettings(connectionId, url, token, organization, false);
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
       }
@@ -235,13 +235,13 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private static void parseSonarQubeConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
     @SuppressWarnings("unchecked")
-    List<Map<String, String>> sonarqubeEntries = (List<Map<String, String>>) connectionsMap.getOrDefault("sonarqube", Collections.emptyList());
+    List<Map<String, Object>> sonarqubeEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarqube", Collections.emptyList());
     sonarqubeEntries.forEach(m -> {
       if (checkRequiredAttribute(m, "SonarQube server", SERVER_URL, TOKEN)) {
-        String connectionId = defaultIfBlank(m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
-        String url = m.get(SERVER_URL);
-        String token = m.get(TOKEN);
-        boolean disableNotifications = Boolean.getBoolean(m.getOrDefault(DISABLE_NOTIFICATIONS, "false"));
+        String connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
+        String url = (String) m.get(SERVER_URL);
+        String token = (String) m.get(TOKEN);
+        boolean disableNotifications = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
         ServerConnectionSettings connectionSettings = new ServerConnectionSettings(connectionId, url, token, null, disableNotifications);
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
       }
@@ -250,22 +250,22 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private static void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
     @SuppressWarnings("unchecked")
-    List<Map<String, String>> sonarcloudEntries = (List<Map<String, String>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
+    List<Map<String, Object>> sonarcloudEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
     sonarcloudEntries.forEach(m -> {
 
       if (checkRequiredAttribute(m, "SonarCloud", ORGANIZATION_KEY, TOKEN)) {
-        String connectionId = defaultIfBlank(m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
-        String organizationKey = m.get(ORGANIZATION_KEY);
-        String token = m.get(TOKEN);
-        boolean disableNotifs = Boolean.getBoolean(m.getOrDefault(DISABLE_NOTIFICATIONS, "false"));
+        String connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
+        String organizationKey = (String) m.get(ORGANIZATION_KEY);
+        String token = (String) m.get(TOKEN);
+        boolean disableNotifs = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
         ServerConnectionSettings connectionSettings = new ServerConnectionSettings(connectionId, ServerConnectionSettings.SONARCLOUD_URL, token, organizationKey, disableNotifs);
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
       }
     });
   }
 
-  private static boolean checkRequiredAttribute(Map<String, String> map, String label, String... requiredAttributes) {
-    List<String> missing = stream(requiredAttributes).filter(att -> isBlank(map.get(att))).collect(Collectors.toList());
+  private static boolean checkRequiredAttribute(Map<String, Object> map, String label, String... requiredAttributes) {
+    List<String> missing = stream(requiredAttributes).filter(att -> isBlank((String) map.get(att))).collect(Collectors.toList());
     if (!missing.isEmpty()) {
       LOG.error("Incomplete {} connection configuration. Required parameters must not be blank: {}.", label, String.join(",", missing));
       return false;
