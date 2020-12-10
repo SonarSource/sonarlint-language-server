@@ -25,33 +25,35 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ServerConnectionSettingsTests {
 
-  private static final ServerConnectionSettings WITHOUT_ORG = new ServerConnectionSettings("serverId", "serverUrl", "token", null);
-  private static final ServerConnectionSettings WITH_ORG = new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg");
+  private static final ServerConnectionSettings WITHOUT_ORG = new ServerConnectionSettings("serverId", "serverUrl", "token", null, false);
+  private static final ServerConnectionSettings WITH_ORG = new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false);
 
   @Test
-  public void testHashCode() {
-    assertThat(WITH_ORG.hashCode()).isEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg").hashCode());
-    assertThat(WITHOUT_ORG.hashCode()).isEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", null).hashCode());
+  void testHashCode() {
+    assertThat(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false)).hasSameHashCodeAs(WITH_ORG);
+    assertThat(new ServerConnectionSettings("serverId", "serverUrl", "token", null, false)).hasSameHashCodeAs(WITHOUT_ORG);
   }
 
   @Test
-  public void testEquals() {
-    assertThat(WITH_ORG).isEqualTo(WITH_ORG);
-    assertThat(WITH_ORG).isNotEqualTo(null);
-    assertThat(WITH_ORG).isNotEqualTo("foo");
-    assertThat(WITH_ORG).isEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg"));
-    assertThat(WITHOUT_ORG).isEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", null));
-    assertThat(WITHOUT_ORG).isNotEqualTo(WITH_ORG);
-
-    assertThat(WITH_ORG).isNotEqualTo(new ServerConnectionSettings("serverId2", "serverUrl", "token", "myOrg"));
-    assertThat(WITH_ORG).isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl2", "token", "myOrg"));
-    assertThat(WITH_ORG).isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token2", "myOrg"));
-    assertThat(WITH_ORG).isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2"));
+  void testEquals() {
+    assertThat(WITH_ORG)
+      .isEqualTo(WITH_ORG)
+      .isEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false))
+      .isNotEqualTo(null)
+      .isNotEqualTo("foo")
+      .isNotEqualTo(new ServerConnectionSettings("serverId2", "serverUrl", "token", "myOrg", false))
+      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl2", "token", "myOrg", false))
+      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token2", "myOrg", false))
+      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2", false))
+      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2", true));
+    assertThat(WITHOUT_ORG)
+      .isEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", null, false))
+      .isNotEqualTo(WITH_ORG);
   }
 
   @Test
-  public void testToString() {
-    assertThat(WITH_ORG.toString()).isEqualTo("ServerConnectionSettings[connectionId=serverId,serverUrl=serverUrl,token=token,organizationKey=myOrg]");
+  void testToString() {
+    assertThat(WITH_ORG).hasToString("ServerConnectionSettings[connectionId=serverId,serverUrl=serverUrl,token=token,disableNotifications=false,organizationKey=myOrg]");
   }
 
 }

@@ -34,15 +34,17 @@ public class ServerConnectionSettings {
   private final String connectionId;
   private final String serverUrl;
   private final String token;
+  private final boolean disableNotifications;
 
   @Nullable
   private final String organizationKey;
 
-  public ServerConnectionSettings(String connectionId, String serverUrl, String token, @Nullable String organizationKey) {
+  public ServerConnectionSettings(String connectionId, String serverUrl, String token, @Nullable String organizationKey, boolean disableNotifications) {
     this.connectionId = connectionId;
     this.serverUrl = serverUrl;
     this.token = token;
     this.organizationKey = organizationKey;
+    this.disableNotifications = disableNotifications;
   }
 
   public String getConnectionId() {
@@ -65,9 +67,13 @@ public class ServerConnectionSettings {
     return Arrays.asList(SONARCLOUD_ALIAS).contains(serverUrl);
   }
 
+  public boolean isDevNotificationsDisabled() {
+    return disableNotifications;
+  }
+
   @Override
   public int hashCode() {
-    return Objects.hash(connectionId, serverUrl, token, organizationKey);
+    return Objects.hash(connectionId, serverUrl, token, organizationKey, disableNotifications);
   }
 
   @Override
@@ -83,7 +89,7 @@ public class ServerConnectionSettings {
     }
     ServerConnectionSettings other = (ServerConnectionSettings) obj;
     return Objects.equals(connectionId, other.connectionId) && Objects.equals(serverUrl, other.serverUrl) && Objects.equals(token, other.token)
-      && Objects.equals(organizationKey, other.organizationKey);
+      && Objects.equals(organizationKey, other.organizationKey) && this.disableNotifications == other.disableNotifications;
   }
 
   @Override

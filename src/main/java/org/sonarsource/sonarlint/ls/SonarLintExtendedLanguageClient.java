@@ -220,4 +220,6 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
   }
 
+  @JsonRequest("sonarlint/browseTo")
+  CompletableFuture<Void> browseTo(String link);
 }

@@ -22,10 +22,12 @@ package org.sonarsource.sonarlint.ls;
 import com.google.common.annotations.VisibleForTesting;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import org.sonar.api.utils.log.Logger;
@@ -33,7 +35,8 @@ import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.client.api.common.Language;
 import org.sonarsource.sonarlint.core.client.api.common.TelemetryClientConfig;
 import org.sonarsource.sonarlint.core.client.api.util.SonarLintUtils;
-import org.sonarsource.sonarlint.core.telemetry.TelemetryClient;
+import org.sonarsource.sonarlint.core.telemetry.TelemetryClientAttributesProvider;
+import org.sonarsource.sonarlint.core.telemetry.TelemetryHttpClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -85,16 +88,17 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   }
 
   public void init(@Nullable String productKey, @Nullable String telemetryStorage, String productName, String productVersion, String ideVersion,
-    Supplier<Boolean> usesConnectedMode,
-    Supplier<Boolean> usesSonarCloud,
+    BooleanSupplier usesConnectedMode,
+    BooleanSupplier usesSonarCloud,
+    BooleanSupplier devNotificationsDisabled,
     Supplier<String> nodeVersion) {
     Path storagePath = getStoragePath(productKey, telemetryStorage);
-    init(storagePath, productName, productVersion, ideVersion, usesConnectedMode, usesSonarCloud, nodeVersion);
+    init(storagePath, productName, productVersion, ideVersion, usesConnectedMode, usesSonarCloud, devNotificationsDisabled, nodeVersion);
   }
 
   // Visible for testing
-  void init(@Nullable Path storagePath, String productName, String productVersion, String ideVersion, Supplier<Boolean> usesConnectedMode,
-    Supplier<Boolean> usesSonarCloud, Supplier<String> nodeVersion) {
+  void init(@Nullable Path storagePath, String productName, String productVersion, String ideVersion, BooleanSupplier usesConnectedMode,
+    BooleanSupplier usesSonarCloud, BooleanSupplier devNotificationsDisabled, Supplier<String> nodeVersion) {
     if (storagePath == null) {
       LOG.info("Telemetry disabled because storage path is null");
       return;
@@ -104,8 +108,8 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
       return;
     }
     TelemetryClientConfig clientConfig = getTelemetryClientConfig();
-    TelemetryClient client = new TelemetryClient(clientConfig, productName, productVersion, ideVersion);
-    this.telemetry = newTelemetryManager(storagePath, client, usesConnectedMode, usesSonarCloud, nodeVersion);
+    TelemetryHttpClient client = new TelemetryHttpClient(clientConfig, productName, productVersion, ideVersion);
+    this.telemetry = newTelemetryManager(storagePath, client, usesConnectedMode, usesSonarCloud, devNotificationsDisabled, nodeVersion);
     try {
       this.scheduler = executorFactory.get();
       this.scheduledFuture = scheduler.scheduleWithFixedDelay(this::upload,
@@ -128,8 +132,29 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     return telemetryStorage != null ? Paths.get(telemetryStorage) : null;
   }
 
-  TelemetryManager newTelemetryManager(Path path, TelemetryClient client, Supplier<Boolean> usesConnectedMode, Supplier<Boolean> usesSonarCloud, Supplier<String> nodeVersion) {
-    return new TelemetryManager(path, client, usesConnectedMode, usesSonarCloud, nodeVersion);
+  TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client, BooleanSupplier usesConnectedMode, BooleanSupplier usesSonarCloud,
+      BooleanSupplier devNotificationsDisabled, Supplier<String> nodeVersion) {
+    return new TelemetryManager(path, client, new TelemetryClientAttributesProvider() {
+      @Override
+      public boolean usesConnectedMode() {
+        return usesConnectedMode.getAsBoolean();
+      }
+
+      @Override
+      public boolean useSonarCloud() {
+        return usesSonarCloud.getAsBoolean();
+      }
+
+      @Override
+      public Optional<String> nodeVersion() {
+        return Optional.ofNullable(nodeVersion.get());
+      }
+
+      @Override
+      public boolean devNotificationsDisabled() {
+        return devNotificationsDisabled.getAsBoolean();
+      }
+    });
   }
 
   @VisibleForTesting
@@ -148,6 +173,18 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   public void analysisDoneOnSingleLanguage(Language language, int analysisTimeMs) {
     if (enabled()) {
       telemetry.analysisDoneOnSingleLanguage(language, analysisTimeMs);
+    }
+  }
+
+  public void devNotificationsReceived(String category) {
+    if(enabled()) {
+      telemetry.devNotificationsReceived(category);
+    }
+  }
+
+  public void devNotificationsClicked(String eventType) {
+    if(enabled()) {
+      telemetry.devNotificationsClicked(eventType);
     }
   }
 

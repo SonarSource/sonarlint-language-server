@@ -82,8 +82,8 @@ class ProjectBindingManagerTests {
   private static final ProjectBinding FAKE_BINDING2 = new ProjectBinding(PROJECT_KEY2, "sqPrefix2", "idePrefix2");
   private static final String CONNECTION_ID = "myServer";
   private static final String SERVER_ID2 = "myServer2";
-  private static final ServerConnectionSettings GLOBAL_SETTINGS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null);
-  private static final ServerConnectionSettings GLOBAL_SETTINGS_DIFFERENT_SERVER_ID = new ServerConnectionSettings(SERVER_ID2, "http://foo2", "token2", null);
+  private static final ServerConnectionSettings GLOBAL_SETTINGS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, true);
+  private static final ServerConnectionSettings GLOBAL_SETTINGS_DIFFERENT_SERVER_ID = new ServerConnectionSettings(SERVER_ID2, "http://foo2", "token2", null, true);
   private static final WorkspaceFolderSettings UNBOUND_SETTINGS = new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null);
   private static final WorkspaceFolderSettings BOUND_SETTINGS = new WorkspaceFolderSettings(CONNECTION_ID, PROJECT_KEY, Collections.emptyMap(), null);
   private static final WorkspaceFolderSettings BOUND_SETTINGS2 = new WorkspaceFolderSettings(SERVER_ID2, PROJECT_KEY2, Collections.emptyMap(), null);
@@ -338,7 +338,7 @@ class ProjectBindingManagerTests {
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(new WorkspaceFolderSettings("sonarcloud", PROJECT_KEY, Collections.emptyMap(), null));
 
     mockFileInABoundWorkspaceFolder();
-    servers.put("sonarcloud", new ServerConnectionSettings("sonarcloud", "https://sonarcloud.io", "token", null));
+    servers.put("sonarcloud", new ServerConnectionSettings("sonarcloud", "https://sonarcloud.io", "token", null, true));
 
     when(fakeEngine.calculatePathPrefixes(eq(PROJECT_KEY), any())).thenReturn(FAKE_BINDING);
 
@@ -730,7 +730,7 @@ class ProjectBindingManagerTests {
     when(folderSettings.getConnectionId()).thenReturn(serverId);
     when(settingsManager.getCurrentSettings()).thenReturn(settings);
     when(settings.getServerConnections()).thenReturn(servers);
-    ServerConnectionSettings serverConnectionSettings = new ServerConnectionSettings("serverId", "serverUrl", "token", "organizationKey");
+    ServerConnectionSettings serverConnectionSettings = new ServerConnectionSettings("serverId", "serverUrl", "token", "organizationKey", true);
     when(servers.get(serverId)).thenReturn(serverConnectionSettings);
     when(globalStorageStatus.isStale()).thenReturn(true);
     when(enginesFactory.createConnectedEngine(serverId)).thenReturn(fakeEngine);
@@ -754,7 +754,7 @@ class ProjectBindingManagerTests {
     when(folderSettings.getProjectKey()).thenReturn(projectKey);
     when(settingsManager.getCurrentSettings()).thenReturn(settings);
     when(settings.getServerConnections()).thenReturn(servers);
-    ServerConnectionSettings serverConnectionSettings = new ServerConnectionSettings("serverId", "serverUrl", "token", "organizationKey");
+    ServerConnectionSettings serverConnectionSettings = new ServerConnectionSettings("serverId", "serverUrl", "token", "organizationKey", true);
     when(servers.get(connectionId)).thenReturn(serverConnectionSettings);
     when(globalStorageStatus.isStale()).thenReturn(true);
     when(enginesFactory.createConnectedEngine(connectionId)).thenReturn(fakeEngine);

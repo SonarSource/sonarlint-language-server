@@ -67,6 +67,7 @@ import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
@@ -86,6 +87,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
+  private final ServerNotifications serverNotifications;
   private final AnalysisManager analysisManager;
   private final NodeJsRuntime nodeJsRuntime;
   private final EnginesFactory enginesFactory;
@@ -124,6 +126,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);
+    this.serverNotifications = new ServerNotifications(client, bindingManager, workspaceFoldersManager, telemetry, lsLogOutput);
+    this.settingsManager.addListener((WorkspaceSettingsChangeListener) serverNotifications);
+    this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) serverNotifications);
     this.analysisManager = new AnalysisManager(lsLogOutput, enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager);
     bindingManager.setAnalysisManager(analysisManager);
     this.settingsManager.addListener(analysisManager);
@@ -166,7 +171,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       analysisManager.initialize();
 
       telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion,
-        bindingManager::usesConnectedMode, bindingManager::usesSonarCloud, nodeJsRuntime::nodeVersion);
+        bindingManager::usesConnectedMode, bindingManager::usesSonarCloud, bindingManager::devNotificationsDisabled, nodeJsRuntime::nodeVersion);
 
       ServerCapabilities c = new ServerCapabilities();
       c.setTextDocumentSync(getTextDocumentSyncOptions());
