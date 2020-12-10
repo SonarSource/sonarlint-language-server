@@ -37,6 +37,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
@@ -58,6 +59,8 @@ class ServerNotificationsTest {
 
   private final ProjectBindingManager projectBindingManager = mock(ProjectBindingManager.class);
 
+  private final WorkspaceFoldersManager workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
+
   private final SonarLintTelemetry telemetry = mock(SonarLintTelemetry.class);
 
   private final LanguageClientLogOutput output = mock(LanguageClientLogOutput.class);
@@ -66,12 +69,12 @@ class ServerNotificationsTest {
 
   @BeforeEach
   public void setup() {
-    underTest = new ServerNotifications(client, projectBindingManager, telemetry, output);
+    underTest = new ServerNotifications(client, projectBindingManager, workspaceFoldersManager, telemetry, output);
   }
 
   @AfterEach
   public void finish() {
-    verifyNoMoreInteractions(client, projectBindingManager, telemetry, output);
+    verifyNoMoreInteractions(client, projectBindingManager, workspaceFoldersManager, telemetry, output);
   }
 
   @AfterAll
@@ -104,6 +107,7 @@ class ServerNotificationsTest {
     underTest.onChange(folder2, null, newFolderSettings2);
 
     verify(output, times(1)).log("Enabling notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
+    verify(workspaceFoldersManager).getAll();
   }
 
   @Test
@@ -127,6 +131,7 @@ class ServerNotificationsTest {
 
     verify(output, times(1)).log("Enabling notifications for project 'projectKey1' on connection 'connectionId'", LogOutput.Level.DEBUG);
     verify(output, times(1)).log("Enabling notifications for project 'projectKey2' on connection 'connectionId'", LogOutput.Level.DEBUG);
+    verify(workspaceFoldersManager).getAll();
   }
 
   @Test
@@ -148,6 +153,32 @@ class ServerNotificationsTest {
     underTest.onChange(folder, newFolderSettings1, newFolderSettings2);
 
     verify(output, times(1)).log("De-registering notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
+    verify(workspaceFoldersManager).getAll();
+  }
+
+  @Test
+  void doNothingOnUnknownConnectionThenRegisterOnWorkspaceSettingsChange() {
+    String connectionId = "connectionId";
+    String projectKey = "projectKey";
+
+    // Initially, do not put any connection settings
+    WorkspaceSettings newWorkspaceSettings = mock(WorkspaceSettings.class);
+    underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
+
+    // Try to bind to unknown connection
+    WorkspaceFolderWrapper folder = mock(WorkspaceFolderWrapper.class);
+    WorkspaceFolderSettings newFolderSettings = new WorkspaceFolderSettings(connectionId, projectKey, Collections.emptyMap(), null);
+    underTest.onChange(folder, null, newFolderSettings);
+
+    // Then fix connection settings with known connection
+    WorkspaceSettings newWorkspaceSettings2 = mock(WorkspaceSettings.class);
+    when(newWorkspaceSettings2.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false)));
+    when(folder.getSettings()).thenReturn(newFolderSettings);
+    when(workspaceFoldersManager.getAll()).thenReturn(Collections.singleton(folder));
+    underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings2);
+
+    verify(output, times(1)).log("Enabling notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
+    verify(workspaceFoldersManager, times(2)).getAll();
   }
 
   @Test
@@ -163,12 +194,14 @@ class ServerNotificationsTest {
     underTest.onChange(mock(WorkspaceFolderWrapper.class), mock(WorkspaceFolderSettings.class), newFolderSettings);
 
     verifyZeroInteractions(output);
+    verify(workspaceFoldersManager).getAll();
   }
 
   @Test
   void doNothingOnEmptyWorkspaceSettings() {
     underTest.onChange(null, mock(WorkspaceSettings.class));
     verifyZeroInteractions(output);
+    verify(workspaceFoldersManager).getAll();
   }
 
   @Test
@@ -190,6 +223,7 @@ class ServerNotificationsTest {
 
     verify(output, times(1)).log("De-registering notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
     verify(output, times(2)).log("Enabling notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
+    verify(workspaceFoldersManager, times(2)).getAll();
   }
 
   @Test

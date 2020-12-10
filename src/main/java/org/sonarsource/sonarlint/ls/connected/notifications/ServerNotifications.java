@@ -37,6 +37,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
@@ -48,15 +49,18 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
 
   private final SonarLintExtendedLanguageClient client;
   private final ProjectBindingManager projectBindingManager;
+  private final WorkspaceFoldersManager workspaceFoldersManager;
   private final SonarLintTelemetry telemetry;
   private final LanguageClientLogOutput logOutput;
 
   private final Map<String, ServerConnectionSettings> connections;
   private final Map<String, Map<String, NotificationConfiguration>> configurationsByProjectKeyByConnectionId;
 
-  public ServerNotifications(SonarLintExtendedLanguageClient client, ProjectBindingManager projectBindingManager, SonarLintTelemetry telemetry, LanguageClientLogOutput output) {
+  public ServerNotifications(SonarLintExtendedLanguageClient client, ProjectBindingManager projectBindingManager, WorkspaceFoldersManager workspaceFoldersManager,
+      SonarLintTelemetry telemetry, LanguageClientLogOutput output) {
     this.client = client;
     this.projectBindingManager = projectBindingManager;
+    this.workspaceFoldersManager = workspaceFoldersManager;
     this.telemetry = telemetry;
     this.logOutput = output;
 
@@ -75,6 +79,10 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
         registerConfigurationIfNeeded(connectionId, projectKey);
       });
     });
+    workspaceFoldersManager.getAll().stream()
+      .map(WorkspaceFolderWrapper::getSettings)
+      .filter(WorkspaceFolderSettings::hasBinding)
+      .forEach(s -> registerConfigurationIfNeeded(s.getConnectionId(), s.getProjectKey()));
   }
 
   @Override
