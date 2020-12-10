@@ -97,7 +97,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
   private void unregisterConfigurationIfExists(@Nullable String oldConnectionId, @Nullable String oldProjectKey) {
     Map<String, NotificationConfiguration> configsForOldConnectionId = configurationsByProjectKeyByConnectionId.get(oldConnectionId);
     if (configsForOldConnectionId != null && configsForOldConnectionId.containsKey(oldProjectKey)) {
-      logDebugMessage(String.format("De-registering notifications for %s on %s", oldProjectKey, oldConnectionId));
+      logDebugMessage(String.format("De-registering notifications for project '%s' on connection '%s'", oldProjectKey, oldConnectionId));
       NotificationConfiguration config = configsForOldConnectionId.remove(oldProjectKey);
       coreNotifications().remove(config.listener());
     }
@@ -109,7 +109,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
         // Connection is unknown, or has notifications disabled - do nothing
         return;
       }
-      logDebugMessage(String.format("Enabling notifications for %s on %s", projectKey, connectionId));
+      logDebugMessage(String.format("Enabling notifications for project '%s' on connection '%s'", projectKey, connectionId));
       NotificationConfiguration newConfiguration = newNotificationConfiguration(connections.get(connectionId), projectKey);
       coreNotifications().register(newConfiguration);
       configurationsByProjectKeyByConnectionId.computeIfAbsent(connectionId, k -> new HashMap<>()).put(projectKey, newConfiguration);

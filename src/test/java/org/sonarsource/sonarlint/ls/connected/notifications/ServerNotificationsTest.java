@@ -103,7 +103,7 @@ class ServerNotificationsTest {
     WorkspaceFolderSettings newFolderSettings2 = new WorkspaceFolderSettings(connectionId, projectKey, Collections.emptyMap(), null);
     underTest.onChange(folder2, null, newFolderSettings2);
 
-    verify(output, times(1)).log("Enabling notifications for projectKey on connectionId", LogOutput.Level.DEBUG);
+    verify(output, times(1)).log("Enabling notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
   }
 
   @Test
@@ -125,8 +125,8 @@ class ServerNotificationsTest {
     WorkspaceFolderSettings newFolderSettings2 = new WorkspaceFolderSettings(connectionId, projectKey2, Collections.emptyMap(), null);
     underTest.onChange(folder2, null, newFolderSettings2);
 
-    verify(output, times(1)).log("Enabling notifications for projectKey1 on connectionId", LogOutput.Level.DEBUG);
-    verify(output, times(1)).log("Enabling notifications for projectKey2 on connectionId", LogOutput.Level.DEBUG);
+    verify(output, times(1)).log("Enabling notifications for project 'projectKey1' on connection 'connectionId'", LogOutput.Level.DEBUG);
+    verify(output, times(1)).log("Enabling notifications for project 'projectKey2' on connection 'connectionId'", LogOutput.Level.DEBUG);
   }
 
   @Test
@@ -142,12 +142,12 @@ class ServerNotificationsTest {
     WorkspaceFolderSettings newFolderSettings1 = new WorkspaceFolderSettings(connectionId, projectKey, Collections.emptyMap(), null);
     underTest.onChange(folder, null, newFolderSettings1);
 
-    verify(output, times(1)).log("Enabling notifications for projectKey on connectionId", LogOutput.Level.DEBUG);
+    verify(output, times(1)).log("Enabling notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
 
     WorkspaceFolderSettings newFolderSettings2 = new WorkspaceFolderSettings("otherConnectionId", projectKey, Collections.emptyMap(), null);
     underTest.onChange(folder, newFolderSettings1, newFolderSettings2);
 
-    verify(output, times(1)).log("De-registering notifications for projectKey on connectionId", LogOutput.Level.DEBUG);
+    verify(output, times(1)).log("De-registering notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
   }
 
   @Test
@@ -188,8 +188,8 @@ class ServerNotificationsTest {
     when(newWorkspaceSettings2.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, new ServerConnectionSettings(connectionId, "http://other.sq", "token", null, false)));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings2);
 
-    verify(output, times(1)).log("De-registering notifications for projectKey on connectionId", LogOutput.Level.DEBUG);
-    verify(output, times(2)).log("Enabling notifications for projectKey on connectionId", LogOutput.Level.DEBUG);
+    verify(output, times(1)).log("De-registering notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
+    verify(output, times(2)).log("Enabling notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
   }
 
   @Test
