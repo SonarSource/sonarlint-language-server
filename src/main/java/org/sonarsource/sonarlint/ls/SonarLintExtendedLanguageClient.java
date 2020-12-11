@@ -222,4 +222,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
   @JsonRequest("sonarlint/browseTo")
   CompletableFuture<Void> browseTo(String link);
+
+  @JsonRequest("sonarlint/disableNotifications")
+  CompletableFuture<Void> disableNotifications(String connectionId, boolean isSonarCloud);
 }

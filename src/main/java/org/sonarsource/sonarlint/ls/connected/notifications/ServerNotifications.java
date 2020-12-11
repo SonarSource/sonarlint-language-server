@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.connected.notifications;
 
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -134,7 +135,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
 
   private NotificationConfiguration newNotificationConfiguration(ServerConnectionSettings serverConnectionSettings, String projectKey) {
     return new NotificationConfiguration(
-      new EventListener(serverConnectionSettings.isSonarCloudAlias()),
+      new EventListener(serverConnectionSettings.getConnectionId(), serverConnectionSettings.isSonarCloudAlias()),
       new ConnectionNotificationTime(),
       projectKey,
       () -> projectBindingManager.createServerConfiguration(serverConnectionSettings.getConnectionId()));
@@ -149,9 +150,11 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
    */
   class EventListener implements ServerNotificationListener {
 
+    private final String connectionId;
     private final boolean isSonarCloud;
 
-    EventListener(boolean isSonarCloud) {
+    EventListener(String connectionId, boolean isSonarCloud) {
+      this.connectionId = connectionId;
       this.isSonarCloud = isSonarCloud;
     }
 
@@ -165,11 +168,15 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
       params.setMessage(String.format("%s Notification: %s", label, serverNotification.message()));
       MessageActionItem browseAction = new MessageActionItem();
       browseAction.setTitle("Open in " + label);
-      params.setActions(Collections.singletonList(browseAction));
+      MessageActionItem disableAction = new MessageActionItem();
+      disableAction.setTitle(String.format("Disable for connection '%s'", connectionId));
+      params.setActions(Arrays.asList(browseAction, disableAction));
       client.showMessageRequest(params).thenAccept(action -> {
         if(browseAction.equals(action)) {
           telemetry.devNotificationsClicked(serverNotification.category());
           client.browseTo(serverNotification.link());
+        } else if (disableAction.equals(action)) {
+          client.disableNotifications(connectionId, isSonarCloud);
         }
       });
     }

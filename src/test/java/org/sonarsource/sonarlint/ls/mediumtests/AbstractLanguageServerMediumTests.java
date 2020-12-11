@@ -341,6 +341,10 @@ abstract class AbstractLanguageServerMediumTests {
       return CompletableFutures.computeAsync(null);
     }
 
+    @Override
+    public CompletableFuture<Void> disableNotifications(String connectionId, boolean isSonarCloud) {
+      return CompletableFutures.computeAsync(null);
+    }
   }
 
   protected void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, String... ruleConfigs) {
