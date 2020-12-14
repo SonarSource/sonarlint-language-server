@@ -342,7 +342,7 @@ abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public CompletableFuture<Void> disableNotifications(DisableNotificationsRequest request) {
+    public CompletableFuture<Void> openConnectionSettings(boolean isSonarCloud) {
       return CompletableFutures.computeAsync(null);
     }
   }

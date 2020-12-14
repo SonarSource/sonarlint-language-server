@@ -34,7 +34,6 @@ import org.sonarsource.sonarlint.core.client.api.notifications.LastNotificationT
 import org.sonarsource.sonarlint.core.client.api.notifications.ServerNotification;
 import org.sonarsource.sonarlint.core.client.api.notifications.ServerNotificationListener;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
-import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.DisableNotificationsRequest;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -47,6 +46,8 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 public class ServerNotifications implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
+
+  private static final MessageActionItem SETTINGS_ACTION = new MessageActionItem("Open Settings");
 
   private final SonarLintExtendedLanguageClient client;
   private final ProjectBindingManager projectBindingManager;
@@ -135,7 +136,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
 
   private NotificationConfiguration newNotificationConfiguration(ServerConnectionSettings serverConnectionSettings, String projectKey) {
     return new NotificationConfiguration(
-      new EventListener(serverConnectionSettings.getConnectionId(), serverConnectionSettings.isSonarCloudAlias()),
+      new EventListener(serverConnectionSettings.isSonarCloudAlias()),
       new ConnectionNotificationTime(),
       projectKey,
       () -> projectBindingManager.createServerConfiguration(serverConnectionSettings.getConnectionId()));
@@ -150,11 +151,9 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
    */
   class EventListener implements ServerNotificationListener {
 
-    private final String connectionId;
     private final boolean isSonarCloud;
 
-    EventListener(String connectionId, boolean isSonarCloud) {
-      this.connectionId = connectionId;
+    EventListener(boolean isSonarCloud) {
       this.isSonarCloud = isSonarCloud;
     }
 
@@ -166,17 +165,14 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
       ShowMessageRequestParams params = new ShowMessageRequestParams();
       params.setType(MessageType.Info);
       params.setMessage(String.format("%s Notification: %s", label, serverNotification.message()));
-      MessageActionItem browseAction = new MessageActionItem();
-      browseAction.setTitle("Open in " + label);
-      MessageActionItem disableAction = new MessageActionItem();
-      disableAction.setTitle(String.format("Disable for connection '%s'", connectionId));
-      params.setActions(Arrays.asList(browseAction, disableAction));
+      MessageActionItem browseAction = new MessageActionItem("Show on " + label);
+      params.setActions(Arrays.asList(browseAction, SETTINGS_ACTION));
       client.showMessageRequest(params).thenAccept(action -> {
         if(browseAction.equals(action)) {
           telemetry.devNotificationsClicked(serverNotification.category());
           client.browseTo(serverNotification.link());
-        } else if (disableAction.equals(action)) {
-          client.disableNotifications(new DisableNotificationsRequest(connectionId, isSonarCloud));
+        } else if (SETTINGS_ACTION.equals(action)) {
+          client.openConnectionSettings(isSonarCloud);
         }
       });
     }
