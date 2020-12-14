@@ -223,6 +223,24 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonRequest("sonarlint/browseTo")
   CompletableFuture<Void> browseTo(String link);
 
+  class DisableNotificationsRequest {
+    private final String connectionId;
+    private final boolean isSonarCloud;
+
+    public DisableNotificationsRequest(String connectionId, boolean isSonarCloud) {
+      this.connectionId = connectionId;
+      this.isSonarCloud = isSonarCloud;
+    }
+
+    public String getConnectionId() {
+      return connectionId;
+    }
+
+    public boolean isSonarCloud() {
+      return isSonarCloud;
+    }
+  }
+
   @JsonRequest("sonarlint/disableNotifications")
-  CompletableFuture<Void> disableNotifications(String connectionId, boolean isSonarCloud);
+  CompletableFuture<Void> disableNotifications(DisableNotificationsRequest request);
 }

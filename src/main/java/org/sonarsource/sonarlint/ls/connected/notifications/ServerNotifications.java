@@ -21,7 +21,6 @@ package org.sonarsource.sonarlint.ls.connected.notifications;
 
 import java.time.ZonedDateTime;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.CheckForNull;
@@ -35,6 +34,7 @@ import org.sonarsource.sonarlint.core.client.api.notifications.LastNotificationT
 import org.sonarsource.sonarlint.core.client.api.notifications.ServerNotification;
 import org.sonarsource.sonarlint.core.client.api.notifications.ServerNotificationListener;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.DisableNotificationsRequest;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -176,7 +176,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
           telemetry.devNotificationsClicked(serverNotification.category());
           client.browseTo(serverNotification.link());
         } else if (disableAction.equals(action)) {
-          client.disableNotifications(connectionId, isSonarCloud);
+          client.disableNotifications(new DisableNotificationsRequest(connectionId, isSonarCloud));
         }
       });
     }

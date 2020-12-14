@@ -35,6 +35,7 @@ import org.sonarsource.sonarlint.core.client.api.common.LogOutput;
 import org.sonarsource.sonarlint.core.client.api.notifications.ServerNotification;
 import org.sonarsource.sonarlint.core.container.model.DefaultServerNotification;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.DisableNotificationsRequest;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -228,7 +229,7 @@ class ServerNotificationsTest {
   }
 
   @Test
-  void shouldShowSonarQubeNotificationToUserAndClickOnNotification() {
+  void shouldShowSonarQubeNotificationToUserAndClickOnNotificationLink() {
     String connectionId = "connectionId";
     ServerNotifications.EventListener listener = underTest.new EventListener(connectionId, false);
     String category = "category";
@@ -251,6 +252,37 @@ class ServerNotificationsTest {
       .containsExactly("SonarQube Notification: message", Arrays.asList(browseAction, disableAction));
     verify(telemetry).devNotificationsClicked(category);
     verify(client).browseTo(link);
+  }
+
+  @Test
+  void shouldShowSonarQubeNotificationToUserAndClickOnDisable() {
+    String connectionId = "connectionId";
+    ServerNotifications.EventListener listener = underTest.new EventListener(connectionId, false);
+    String category = "category";
+    String message = "message";
+    String link = "http://some.link";
+    String projectKey = "projectKey";
+    ServerNotification notification = new DefaultServerNotification(category, message, link, projectKey, ZonedDateTime.now());
+
+    MessageActionItem browseAction = new MessageActionItem("Open in SonarQube");
+    MessageActionItem disableAction = new MessageActionItem("Disable for connection 'connectionId'");
+    when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(disableAction));
+
+    listener.handle(notification);
+
+    verify(telemetry).devNotificationsReceived(category);
+    ArgumentCaptor<ShowMessageRequestParams> messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
+    verify(client).showMessageRequest(messageCaptor.capture());
+    ShowMessageRequestParams shownMessage = messageCaptor.getValue();
+    assertThat(shownMessage).extracting(ShowMessageRequestParams::getMessage, ShowMessageRequestParams::getActions)
+      .containsExactly("SonarQube Notification: message", Arrays.asList(browseAction, disableAction));
+
+    ArgumentCaptor<DisableNotificationsRequest> requestCaptor = ArgumentCaptor.forClass(DisableNotificationsRequest.class);
+    verify(client).disableNotifications(requestCaptor.capture());
+    DisableNotificationsRequest actualRequest = requestCaptor.getValue();
+    assertThat(actualRequest)
+      .extracting(DisableNotificationsRequest::getConnectionId, DisableNotificationsRequest::isSonarCloud)
+      .containsExactly(connectionId, false);
   }
 
   @Test
