@@ -20,7 +20,7 @@
 package org.sonarsource.sonarlint.ls.connected.notifications;
 
 import java.time.ZonedDateTime;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.CheckForNull;
@@ -46,6 +46,8 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 public class ServerNotifications implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
+
+  private static final MessageActionItem SETTINGS_ACTION = new MessageActionItem("Open Settings");
 
   private final SonarLintExtendedLanguageClient client;
   private final ProjectBindingManager projectBindingManager;
@@ -163,13 +165,14 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
       ShowMessageRequestParams params = new ShowMessageRequestParams();
       params.setType(MessageType.Info);
       params.setMessage(String.format("%s Notification: %s", label, serverNotification.message()));
-      MessageActionItem browseAction = new MessageActionItem();
-      browseAction.setTitle("Open in " + label);
-      params.setActions(Collections.singletonList(browseAction));
+      MessageActionItem browseAction = new MessageActionItem("Show on " + label);
+      params.setActions(Arrays.asList(browseAction, SETTINGS_ACTION));
       client.showMessageRequest(params).thenAccept(action -> {
         if(browseAction.equals(action)) {
           telemetry.devNotificationsClicked(serverNotification.category());
           client.browseTo(serverNotification.link());
+        } else if (SETTINGS_ACTION.equals(action)) {
+          client.openConnectionSettings(isSonarCloud);
         }
       });
     }

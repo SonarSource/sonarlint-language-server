@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.connected.notifications;
 
 
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.MessageActionItem;
@@ -227,7 +228,7 @@ class ServerNotificationsTest {
   }
 
   @Test
-  void shouldShowSonarQubeNotificationToUserAndClickOnNotification() {
+  void shouldShowSonarQubeNotificationToUserAndClickOnNotificationLink() {
     ServerNotifications.EventListener listener = underTest.new EventListener(false);
     String category = "category";
     String message = "message";
@@ -235,8 +236,10 @@ class ServerNotificationsTest {
     String projectKey = "projectKey";
     ServerNotification notification = new DefaultServerNotification(category, message, link, projectKey, ZonedDateTime.now());
 
-    MessageActionItem browseAction = new MessageActionItem("Open in SonarQube");
+    MessageActionItem browseAction = new MessageActionItem("Show on SonarQube");
+    MessageActionItem settingsAction = new MessageActionItem("Open Settings");
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(browseAction));
+
     listener.handle(notification);
 
     verify(telemetry).devNotificationsReceived(category);
@@ -244,9 +247,34 @@ class ServerNotificationsTest {
     verify(client).showMessageRequest(messageCaptor.capture());
     ShowMessageRequestParams shownMessage = messageCaptor.getValue();
     assertThat(shownMessage).extracting(ShowMessageRequestParams::getMessage, ShowMessageRequestParams::getActions)
-      .containsExactly("SonarQube Notification: message", Collections.singletonList(browseAction));
+      .containsExactly("SonarQube Notification: message", Arrays.asList(browseAction, settingsAction));
     verify(telemetry).devNotificationsClicked(category);
     verify(client).browseTo(link);
+  }
+
+  @Test
+  void shouldShowSonarQubeNotificationToUserAndOpenSettings() {
+    ServerNotifications.EventListener listener = underTest.new EventListener(false);
+    String category = "category";
+    String message = "message";
+    String link = "http://some.link";
+    String projectKey = "projectKey";
+    ServerNotification notification = new DefaultServerNotification(category, message, link, projectKey, ZonedDateTime.now());
+
+    MessageActionItem browseAction = new MessageActionItem("Show on SonarQube");
+    MessageActionItem settingsAction = new MessageActionItem("Open Settings");
+    when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(settingsAction));
+
+    listener.handle(notification);
+
+    verify(telemetry).devNotificationsReceived(category);
+    ArgumentCaptor<ShowMessageRequestParams> messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
+    verify(client).showMessageRequest(messageCaptor.capture());
+    ShowMessageRequestParams shownMessage = messageCaptor.getValue();
+    assertThat(shownMessage).extracting(ShowMessageRequestParams::getMessage, ShowMessageRequestParams::getActions)
+      .containsExactly("SonarQube Notification: message", Arrays.asList(browseAction, settingsAction));
+
+    verify(client).openConnectionSettings(false);
   }
 
   @Test
@@ -258,8 +286,10 @@ class ServerNotificationsTest {
     String projectKey = "projectKey";
     ServerNotification notification = new DefaultServerNotification(category, message, link, projectKey, ZonedDateTime.now());
 
-    MessageActionItem browseAction = new MessageActionItem("Open in SonarCloud");
+    MessageActionItem browseAction = new MessageActionItem("Show on SonarCloud");
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(null));
+    MessageActionItem settingsAction = new MessageActionItem("Open Settings");
+
     listener.handle(notification);
 
     verify(telemetry).devNotificationsReceived(category);
@@ -267,7 +297,7 @@ class ServerNotificationsTest {
     verify(client).showMessageRequest(messageCaptor.capture());
     ShowMessageRequestParams shownMessage = messageCaptor.getValue();
     assertThat(shownMessage).extracting(ShowMessageRequestParams::getMessage, ShowMessageRequestParams::getActions)
-      .containsExactly("SonarCloud Notification: message", Collections.singletonList(browseAction));
+      .containsExactly("SonarCloud Notification: message", Arrays.asList(browseAction, settingsAction));
     verify(telemetry, never()).devNotificationsClicked(category);
   }
 

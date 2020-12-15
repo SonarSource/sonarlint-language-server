@@ -41,6 +41,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonRequest("sonarlint/openPathToNodeSettings")
   CompletableFuture<Void> openPathToNodeSettings();
 
+  @JsonRequest("sonarlint/openConnectionSettings")
+  CompletableFuture<Void> openConnectionSettings(boolean isSonarCloud);
+
   @JsonRequest("sonarlint/showRuleDescription")
   CompletableFuture<Void> showRuleDescription(ShowRuleDescriptionParams params);
 
