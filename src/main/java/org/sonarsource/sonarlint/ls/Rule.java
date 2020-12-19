@@ -37,6 +37,14 @@ public class Rule {
   @Expose
   private boolean activeByDefault;
 
+  @SerializedName("severity")
+  @Expose
+  private String severity;
+
+  @SerializedName("type")
+  @Expose
+  private  String type;
+
   public String getKey() {
     return key;
   }
@@ -49,13 +57,19 @@ public class Rule {
     return activeByDefault;
   }
 
-  public Rule(String key, String name, boolean activeByDefault) {
+  public String getSeverity() {
+    return severity;
+  }
+
+  public Rule(String key, String name, boolean activeByDefault,String severity,String type) {
     this.key = key;
     this.name = name;
     this.activeByDefault = activeByDefault;
+    this.severity = severity;
+    this.type = type;
   }
 
   public static Rule of(StandaloneRuleDetails d) {
-    return new Rule(d.getKey(), d.getName(), d.isActiveByDefault());
+    return new Rule(d.getKey(), d.getName(), d.isActiveByDefault(),d.getSeverity(),d.getType());
   }
 }
