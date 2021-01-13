@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -89,6 +91,7 @@ class JavaSdkUtilTests {
   }
 
   @Test
+  @DisabledOnOs(OS.WINDOWS)
   void testAppleJdk6Mac(@TempDir Path tmp) throws IOException {
     Path javaHome = tmp.resolve("JavaVirtualMachines/1.6.0.jdk/Contents/Home");
     // ../Classes folder is included
