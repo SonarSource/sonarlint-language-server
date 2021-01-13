@@ -67,6 +67,7 @@ import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.connected.SecurityHotspotsApiServer;
 import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -94,6 +95,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final CommandManager commandManager;
   private final ProgressManager progressManager;
   private final ExecutorService threadPool;
+  private final SecurityHotspotsApiServer securityHotspotsApiServer;
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
@@ -133,6 +135,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     bindingManager.setAnalysisManager(analysisManager);
     this.settingsManager.addListener(analysisManager);
     this.commandManager = new CommandManager(client, bindingManager, analysisManager);
+    this.securityHotspotsApiServer = new SecurityHotspotsApiServer(lsLogOutput);
     launcher.startListening();
   }
 
@@ -163,13 +166,16 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       // until https://github.com/microsoft/vscode-languageserver-node/pull/697 is released
       // params.getClientInfo().getName()
       String appName = (String) options.get("appName");
-      String ideVersion = appName + " " + params.getClientInfo().getVersion();
+      String workspaceName = (String) options.get("workspaceName");
+      String clientVersion = params.getClientInfo().getVersion();
+      String ideVersion = appName + " " + clientVersion;
 
       Optional<String> typeScriptPath = ofNullable((String) options.get(TYPESCRIPT_LOCATION));
 
       enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));
       analysisManager.initialize();
 
+      securityHotspotsApiServer.init(appName, clientVersion, workspaceName);
       telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion,
         bindingManager::usesConnectedMode, bindingManager::usesSonarCloud, bindingManager::devNotificationsDisabled, nodeJsRuntime::nodeVersion);
 
@@ -222,6 +228,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<Object> shutdown() {
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
+      securityHotspotsApiServer.shutdown();
       analysisManager.shutdown();
       bindingManager.shutdown();
       telemetry.stop();
