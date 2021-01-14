@@ -57,6 +57,7 @@ import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.UpdateResult;
 import org.sonarsource.sonarlint.core.client.api.exceptions.CanceledException;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
+import org.sonarsource.sonarlint.core.util.StringUtils;
 import org.sonarsource.sonarlint.ls.AnalysisManager;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -200,7 +201,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return engine;
   }
 
-  private static ServerConfiguration getServerConfiguration(ServerConnectionSettings serverConnectionSettings) {
+  static ServerConfiguration getServerConfiguration(ServerConnectionSettings serverConnectionSettings) {
     return ServerConfiguration.builder()
       .url(serverConnectionSettings.getServerUrl())
       .token(serverConnectionSettings.getToken())
@@ -443,5 +444,14 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       LOG.error("Error updating the local storage of the connection with id '" + connectionId + "'", e);
       failedConnectionIds.add(connectionId);
     }
+  }
+
+  Optional<ServerConfiguration> getServerConnectionSettingsForUrl(String url) {
+    return settingsManager.getCurrentSettings().getServerConnections()
+            .values()
+            .stream()
+            .filter(it -> StringUtils.equalsIgnoringTrailingSlash(it.getServerUrl(), url))
+            .findFirst()
+            .map(ProjectBindingManager::getServerConfiguration);
   }
 }

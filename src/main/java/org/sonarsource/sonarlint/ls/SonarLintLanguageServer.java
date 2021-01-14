@@ -66,8 +66,9 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.WsHelperImpl;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.SecurityHotspotsApiServer;
+import org.sonarsource.sonarlint.ls.connected.SecurityHotspotsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -95,7 +96,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final CommandManager commandManager;
   private final ProgressManager progressManager;
   private final ExecutorService threadPool;
-  private final SecurityHotspotsApiServer securityHotspotsApiServer;
+  private final SecurityHotspotsHandlerServer securityHotspotsHandlerServer;
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
@@ -135,7 +136,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     bindingManager.setAnalysisManager(analysisManager);
     this.settingsManager.addListener(analysisManager);
     this.commandManager = new CommandManager(client, bindingManager, analysisManager);
-    this.securityHotspotsApiServer = new SecurityHotspotsApiServer(lsLogOutput);
+    this.securityHotspotsHandlerServer = new SecurityHotspotsHandlerServer(lsLogOutput, bindingManager, client, new WsHelperImpl(), this.telemetry);
     launcher.startListening();
   }
 
@@ -175,7 +176,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));
       analysisManager.initialize();
 
-      securityHotspotsApiServer.init(appName, clientVersion, workspaceName);
+      securityHotspotsHandlerServer.init(appName, clientVersion, workspaceName);
       telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion,
         bindingManager::usesConnectedMode, bindingManager::usesSonarCloud, bindingManager::devNotificationsDisabled, nodeJsRuntime::nodeVersion);
 
@@ -228,7 +229,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<Object> shutdown() {
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
-      securityHotspotsApiServer.shutdown();
+      securityHotspotsHandlerServer.shutdown();
       analysisManager.shutdown();
       bindingManager.shutdown();
       telemetry.stop();

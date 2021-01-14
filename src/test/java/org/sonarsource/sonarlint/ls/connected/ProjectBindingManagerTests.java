@@ -782,6 +782,18 @@ class ProjectBindingManagerTests {
       .showMessage(new MessageParams(MessageType.Error, "Binding update failed for the following connection(s): " + connectionId + ". Look at the SonarLint output for details."));
   }
 
+  @Test
+  void should_get_server_settings_for_unknown_url() {
+    assertThat(underTest.getServerConnectionSettingsForUrl("https://unknown.url")).isEmpty();
+  }
+
+  @Test
+  void should_get_server_settings_for_known_url() {
+    mockFileInABoundWorkspaceFolder();
+    assertThat(underTest.getServerConnectionSettingsForUrl(GLOBAL_SETTINGS.getServerUrl() + "/"))
+      .hasValueSatisfying(s -> assertThat(s.getUrl()).isEqualTo(GLOBAL_SETTINGS.getServerUrl()));
+  }
+
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {
     WorkspaceFolderWrapper folder = mockFileInAFolder();
     folder.setSettings(BOUND_SETTINGS);

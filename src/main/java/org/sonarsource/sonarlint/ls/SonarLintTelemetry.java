@@ -206,4 +206,8 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   public void onChange(WorkspaceSettings oldValue, WorkspaceSettings newValue) {
     optOut(newValue.isDisableTelemetry());
   }
+
+  public void showHotspotRequestReceived() {
+    telemetry.showHotspotRequestReceived();
+  }
 }

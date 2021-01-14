@@ -25,8 +25,10 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -46,10 +48,18 @@ import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.http.protocol.HttpContext;
 import org.apache.hc.core5.io.CloseMode;
 import org.apache.hc.core5.net.URLEncodedUtils;
+import org.eclipse.lsp4j.MessageActionItem;
+import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.sonarsource.sonarlint.core.client.api.common.LogOutput;
+import org.sonarsource.sonarlint.core.client.api.connected.GetSecurityHotspotRequestParams;
+import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
+import org.sonarsource.sonarlint.core.client.api.connected.WsHelper;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
-public class SecurityHotspotsApiServer {
+public class SecurityHotspotsHandlerServer {
 
   static final int STARTING_PORT = 64120;
   static final int ENDING_PORT = 64130;
@@ -57,12 +67,21 @@ public class SecurityHotspotsApiServer {
   private static final int INVALID_PORT = -1;
 
   private final LanguageClientLogOutput output;
+  private final ProjectBindingManager bindingManager;
+  private final SonarLintExtendedLanguageClient client;
+  private final WsHelper wsHelper;
+  private final SonarLintTelemetry telemetry;
 
   private HttpServer server;
   private int port;
 
-  public SecurityHotspotsApiServer(LanguageClientLogOutput output) {
+  public SecurityHotspotsHandlerServer(LanguageClientLogOutput output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client, WsHelper wsHelper,
+      SonarLintTelemetry telemetry) {
     this.output = output;
+    this.bindingManager = bindingManager;
+    this.client = client;
+    this.wsHelper = wsHelper;
+    this.telemetry = telemetry;
   }
 
   public void init(String ideName, String clientVersion, @Nullable String workspaceName) {
@@ -80,20 +99,20 @@ public class SecurityHotspotsApiServer {
           .setSocketConfig(socketConfig)
           .addFilterFirst("CORS", new CorsFilter())
           .register("/sonarlint/api/status", new StatusRequestHandler(ideName, clientVersion, workspaceName))
-          .register("/sonarlint/api/hotspots/show", new ShowHotspotRequestHandler(output))
+          .register("/sonarlint/api/hotspots/show", new ShowHotspotRequestHandler(output, bindingManager, client, wsHelper, telemetry))
           .create();
         startedServer.start();
         port = triedPort;
       } catch (Exception t) {
-        output.log("Error while starting port: " + t.getMessage(), LogOutput.Level.ERROR);
+        output.log("Error while starting port: " + t.getMessage(), LogOutput.Level.DEBUG);
         triedPort++;
       }
     }
     if (port > 0) {
-      output.log("Started hotspots server on port " + port, LogOutput.Level.INFO);
+      output.log("Started security hotspot handler on port " + port, LogOutput.Level.INFO);
       server = startedServer;
     } else {
-      output.log("Unable to start hotspots server", LogOutput.Level.ERROR);
+      output.log("Unable to start security hotspot handler", LogOutput.Level.ERROR);
       server = null;
     }
   }
@@ -167,9 +186,18 @@ public class SecurityHotspotsApiServer {
 
   private static class ShowHotspotRequestHandler implements HttpRequestHandler {
     private final LanguageClientLogOutput output;
+    private final ProjectBindingManager bindingManager;
+    private final SonarLintExtendedLanguageClient client;
+    private final WsHelper wsHelper;
+    private final SonarLintTelemetry telemetry;
 
-    public ShowHotspotRequestHandler(LanguageClientLogOutput output) {
+    public ShowHotspotRequestHandler(LanguageClientLogOutput output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client, WsHelper wsHelper,
+        SonarLintTelemetry telemetry) {
       this.output = output;
+      this.bindingManager = bindingManager;
+      this.client = client;
+      this.wsHelper = wsHelper;
+      this.telemetry = telemetry;
     }
 
     @Override
@@ -185,13 +213,41 @@ public class SecurityHotspotsApiServer {
       if (!params.containsKey("server") || !params.containsKey("project") || !params.containsKey("hotspot")) {
         response.setCode(HttpURLConnection.HTTP_BAD_REQUEST);
       } else {
-        String serverKey = params.get("server");
+        String serverUrl = params.get("server");
         String project = params.get("project");
         String hotspot = params.get("hotspot");
-        output.log(String.format("Opening hotspot %s for project %s of server %s", hotspot, project, serverKey), LogOutput.Level.INFO);
+
+        output.log(String.format("Opening hotspot %s for project %s of server %s", hotspot, project, serverUrl), LogOutput.Level.INFO);
+        telemetry.showHotspotRequestReceived();
+        Optional<ServerConfiguration> serverSettings = bindingManager.getServerConnectionSettingsForUrl(serverUrl);
+        // TODO Replace with ifPresentOrElse when we move to Java 9+
+        if(serverSettings.isPresent()) {
+          showHotspot(hotspot, project, serverSettings.get());
+        } else {
+          showUnknownServer(serverUrl);
+        }
         response.setCode(HttpURLConnection.HTTP_OK);
         response.setEntity(new StringEntity("OK"));
       }
+    }
+
+    void showHotspot(String hotspotKey, String projectKey, ServerConfiguration configuration) {
+      wsHelper.getHotspot(configuration, new GetSecurityHotspotRequestParams(hotspotKey, projectKey))
+              .ifPresent(client::showHotspot);
+    }
+
+    void showUnknownServer(String url) {
+      ShowMessageRequestParams params = new ShowMessageRequestParams();
+      params.setMessage("No SonarQube connection settings found for URL " + url);
+      params.setType(MessageType.Error);
+      MessageActionItem showSettingsAction = new MessageActionItem("Open Settings");
+      params.setActions(Collections.singletonList(showSettingsAction));
+      client.showMessageRequest(params)
+        .thenAccept(action -> {
+          if (showSettingsAction.equals(action)) {
+            client.openConnectionSettings(false);
+          }
+        });
     }
   }
 }

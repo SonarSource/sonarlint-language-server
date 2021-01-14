@@ -149,7 +149,7 @@ class ServerIssueTrackerWrapperTests {
     engine = mock(ConnectedSonarLintEngine.class);
     tracker = newTracker(baseDir, engine);
     matchAndTrack(tracker, "dummy", issues, true);
-    verify(engine).downloadServerIssues(any(), any(), any());
+    verify(engine).downloadServerIssues(any(), any(), any(), any());
     verifyNoMoreInteractions(engine);
   }
 
@@ -196,13 +196,13 @@ class ServerIssueTrackerWrapperTests {
     // basic setup to prevent NPEs
     when(serverIssue.creationDate()).thenReturn(Instant.ofEpochMilli(++counter));
     when(serverIssue.resolution()).thenReturn("");
-    when(serverIssue.checksum()).thenReturn("dummy checksum " + (++counter));
+    when(serverIssue.lineHash()).thenReturn("dummy checksum " + (++counter));
 
     // if issue itself is a mock, need to extract value to variable first
     // as Mockito doesn't handle nested mocking inside mocking
 
     String message = issue.getMessage();
-    when(serverIssue.message()).thenReturn(message);
+    when(serverIssue.getMessage()).thenReturn(message);
 
     // copy fields to match during tracking
 
@@ -210,7 +210,7 @@ class ServerIssueTrackerWrapperTests {
     when(serverIssue.ruleKey()).thenReturn(ruleKey);
 
     Integer startLine = issue.getStartLine();
-    when(serverIssue.line()).thenReturn(startLine);
+    when(serverIssue.getStartLine()).thenReturn(startLine);
 
     return serverIssue;
   }
