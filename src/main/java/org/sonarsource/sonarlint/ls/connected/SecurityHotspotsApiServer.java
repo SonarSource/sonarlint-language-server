@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ContentType;
@@ -64,7 +65,7 @@ public class SecurityHotspotsApiServer {
     this.output = output;
   }
 
-  public void init(String ideName, String clientVersion, String workspaceName) {
+  public void init(String ideName, String clientVersion, @Nullable String workspaceName) {
     final SocketConfig socketConfig = SocketConfig.custom()
       .setSoTimeout(15, TimeUnit.SECONDS)
       .setTcpNoDelay(true)
@@ -84,10 +85,11 @@ public class SecurityHotspotsApiServer {
         startedServer.start();
         port = triedPort;
       } catch (Exception t) {
+        output.log("Error while starting port: " + t.getMessage(), LogOutput.Level.ERROR);
         triedPort++;
       }
     }
-    if (startedServer != null) {
+    if (port > 0) {
       output.log("Started hotspots server on port " + port, LogOutput.Level.INFO);
       server = startedServer;
     } else {
@@ -101,8 +103,12 @@ public class SecurityHotspotsApiServer {
     return port;
   }
 
+  boolean isStarted() {
+    return server != null;
+  }
+
   public void shutdown() {
-    if(server != null) {
+    if(isStarted()) {
       server.close(CloseMode.IMMEDIATE);
       port = INVALID_PORT;
     }
@@ -113,7 +119,7 @@ public class SecurityHotspotsApiServer {
     private final String clientVersion;
     private final String workspaceName;
 
-    public StatusRequestHandler(String ideName, String clientVersion, String workspaceName) {
+    public StatusRequestHandler(String ideName, String clientVersion, @Nullable String workspaceName) {
       this.ideName = ideName;
       this.clientVersion = clientVersion;
       this.workspaceName = workspaceName;
@@ -121,7 +127,8 @@ public class SecurityHotspotsApiServer {
 
     @Override
     public void handle(ClassicHttpRequest request, ClassicHttpResponse response, HttpContext context) throws HttpException, IOException {
-      response.setEntity(new StringEntity(new Gson().toJson(new StatusResponse(ideName, clientVersion + " - " + workspaceName)), ContentType.APPLICATION_JSON));
+      String description = clientVersion + " - " + (workspaceName == null ? "(no open folder)" : workspaceName);
+      response.setEntity(new StringEntity(new Gson().toJson(new StatusResponse(ideName, description)), ContentType.APPLICATION_JSON));
     }
   }
 
