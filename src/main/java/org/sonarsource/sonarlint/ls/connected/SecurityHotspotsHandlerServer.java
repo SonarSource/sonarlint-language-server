@@ -56,6 +56,7 @@ import org.sonarsource.sonarlint.core.client.api.connected.GetSecurityHotspotReq
 import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.WsHelper;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowHotspotParams;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
@@ -233,6 +234,7 @@ public class SecurityHotspotsHandlerServer {
 
     void showHotspot(String hotspotKey, String projectKey, ServerConfiguration configuration) {
       wsHelper.getHotspot(configuration, new GetSecurityHotspotRequestParams(hotspotKey, projectKey))
+              .map(h -> new ShowHotspotParams(hotspotKey, h))
               .ifPresent(client::showHotspot);
     }
 

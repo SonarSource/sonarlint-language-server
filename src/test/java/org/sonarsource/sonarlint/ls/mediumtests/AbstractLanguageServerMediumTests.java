@@ -331,7 +331,7 @@ abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public CompletableFuture<Void> showHotspot(RemoteHotspot h) {
+    public CompletableFuture<Void> showHotspot(ShowHotspotParams h) {
       return CompletableFutures.computeAsync(null);
     }
 

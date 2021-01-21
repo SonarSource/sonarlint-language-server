@@ -41,6 +41,7 @@ import org.sonarsource.sonarlint.core.client.api.connected.RemoteHotspot;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.WsHelper;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowHotspotParams;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
@@ -182,7 +183,11 @@ class SecurityHotspotsHandlerServerTest {
     assertThat(passedParams.hotspotKey).isEqualTo(hotspot);
     assertThat(passedParams.projectKey).isEqualTo(project);
 
-    verify(client).showHotspot(remoteHotspot);
+    ArgumentCaptor<ShowHotspotParams> showHotspotCaptor = ArgumentCaptor.forClass(ShowHotspotParams.class);
+    verify(client).showHotspot(showHotspotCaptor.capture());
+    assertThat(showHotspotCaptor.getValue())
+      .extracting(ShowHotspotParams::getKey, ShowHotspotParams::getHotspot)
+      .containsExactly(hotspot, remoteHotspot);
     verify(telemetry).showHotspotRequestReceived();
   }
 

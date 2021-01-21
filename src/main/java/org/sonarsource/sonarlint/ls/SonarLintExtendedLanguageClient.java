@@ -48,8 +48,28 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonRequest("sonarlint/showRuleDescription")
   CompletableFuture<Void> showRuleDescription(ShowRuleDescriptionParams params);
 
+  class ShowHotspotParams {
+    @Expose
+    private final String key;
+    @Expose
+    private final RemoteHotspot hotspot;
+
+    public ShowHotspotParams(String key, RemoteHotspot hotspot) {
+      this.key = key;
+      this.hotspot = hotspot;
+    }
+
+    public String getKey() {
+      return key;
+    }
+
+    public RemoteHotspot getHotspot() {
+      return hotspot;
+    }
+  }
+
   @JsonRequest("sonarlint/showHotspot")
-  CompletableFuture<Void> showHotspot(RemoteHotspot hotspot);
+  CompletableFuture<Void> showHotspot(ShowHotspotParams params);
 
   class ShowRuleDescriptionParams {
     @Expose
