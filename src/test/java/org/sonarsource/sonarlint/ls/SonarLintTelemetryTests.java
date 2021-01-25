@@ -212,6 +212,22 @@ class SonarLintTelemetryTests {
   }
 
   @Test
+  void showHotspotRequestReceived_when_enabled() {
+    when(telemetryManager.isEnabled()).thenReturn(true);
+    telemetry.showHotspotRequestReceived();
+    verify(telemetryManager).isEnabled();
+    verify(telemetryManager).showHotspotRequestReceived();
+  }
+
+  @Test
+  void showHotspotRequestReceived_when_disabled() {
+    when(telemetryManager.isEnabled()).thenReturn(false);
+    telemetry.showHotspotRequestReceived();
+    verify(telemetryManager).isEnabled();
+    verifyNoMoreInteractions(telemetryManager);
+  }
+
+  @Test
   void should_start_disabled_when_storagePath_null() {
     when(telemetryManager.isEnabled()).thenReturn(true);
     SonarLintTelemetry telemetry = new SonarLintTelemetry() {
