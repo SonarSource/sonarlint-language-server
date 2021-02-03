@@ -23,6 +23,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -95,6 +96,7 @@ public class SecurityHotspotsHandlerServer {
     while(port < 0 && triedPort <= ENDING_PORT) {
       try {
         startedServer = ServerBootstrap.bootstrap()
+          .setLocalAddress(InetAddress.getLoopbackAddress())
           .setListenerPort(triedPort)
           .setSocketConfig(socketConfig)
           .addFilterFirst("CORS", new CorsFilter())
