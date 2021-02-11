@@ -33,12 +33,12 @@ import javax.annotation.Nullable;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.client.api.common.Language;
-import org.sonarsource.sonarlint.core.client.api.common.TelemetryClientConfig;
 import org.sonarsource.sonarlint.core.client.api.util.SonarLintUtils;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryClientAttributesProvider;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryHttpClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
@@ -52,13 +52,15 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   @VisibleForTesting
   ScheduledFuture<?> scheduledFuture;
   private ScheduledExecutorService scheduler;
+  private ApacheHttpClient httpClient;
 
-  public SonarLintTelemetry() {
-    this(() -> Executors.newScheduledThreadPool(1, Utils.threadFactory("SonarLint Telemetry", false)));
+  public SonarLintTelemetry(ApacheHttpClient httpClient) {
+    this(() -> Executors.newScheduledThreadPool(1, Utils.threadFactory("SonarLint Telemetry", false)), httpClient);
   }
 
-  public SonarLintTelemetry(Supplier<ScheduledExecutorService> executorFactory) {
+  public SonarLintTelemetry(Supplier<ScheduledExecutorService> executorFactory, ApacheHttpClient httpClient) {
     this.executorFactory = executorFactory;
+    this.httpClient = httpClient;
   }
 
   private void optOut(boolean optOut) {
@@ -75,12 +77,6 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
         }
       }
     }
-  }
-
-  private static TelemetryClientConfig getTelemetryClientConfig() {
-    return new TelemetryClientConfig.Builder()
-      .userAgent("SonarLint")
-      .build();
   }
 
   public boolean enabled() {
@@ -107,8 +103,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
       LOG.info("Telemetry disabled by system property");
       return;
     }
-    TelemetryClientConfig clientConfig = getTelemetryClientConfig();
-    TelemetryHttpClient client = new TelemetryHttpClient(clientConfig, productName, productVersion, ideVersion);
+    TelemetryHttpClient client = new TelemetryHttpClient(productName, productVersion, ideVersion, httpClient);
     this.telemetry = newTelemetryManager(storagePath, client, usesConnectedMode, usesSonarCloud, devNotificationsDisabled, nodeVersion);
     try {
       this.scheduler = executorFactory.get();

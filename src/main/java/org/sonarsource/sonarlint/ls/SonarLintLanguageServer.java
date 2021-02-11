@@ -66,11 +66,11 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonar.api.utils.log.Loggers;
-import org.sonarsource.sonarlint.core.WsHelperImpl;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.SecurityHotspotsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -97,6 +97,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ProgressManager progressManager;
   private final ExecutorService threadPool;
   private final SecurityHotspotsHandlerServer securityHotspotsHandlerServer;
+  private final ApacheHttpClient httpClient;
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
@@ -114,10 +115,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .create();
 
     this.client = launcher.getRemoteProxy();
-
+    this.httpClient = ApacheHttpClient.create();
     LanguageClientLogOutput lsLogOutput = new LanguageClientLogOutput(this.client);
     Loggers.setTarget(lsLogOutput);
-    this.telemetry = new SonarLintTelemetry();
+    this.telemetry = new SonarLintTelemetry(httpClient);
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.progressManager = new ProgressManager(client);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager);
@@ -125,7 +126,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput, nodeJsRuntime);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener(lsLogOutput);
-    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, progressManager);
+    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, progressManager, httpClient);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);
@@ -136,7 +137,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     bindingManager.setAnalysisManager(analysisManager);
     this.settingsManager.addListener(analysisManager);
     this.commandManager = new CommandManager(client, bindingManager, analysisManager);
-    this.securityHotspotsHandlerServer = new SecurityHotspotsHandlerServer(lsLogOutput, bindingManager, client, new WsHelperImpl(), this.telemetry);
+    this.securityHotspotsHandlerServer = new SecurityHotspotsHandlerServer(lsLogOutput, bindingManager, client, this.telemetry);
     launcher.startListening();
   }
 
@@ -235,6 +236,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       telemetry.stop();
       settingsManager.shutdown();
       threadPool.shutdown();
+      httpClient.close();
+      serverNotifications.shutdown();
       return new Object();
     });
   }

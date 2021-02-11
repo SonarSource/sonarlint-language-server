@@ -33,11 +33,11 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -149,7 +149,7 @@ class ServerIssueTrackerWrapperTests {
     engine = mock(ConnectedSonarLintEngine.class);
     tracker = newTracker(baseDir, engine);
     matchAndTrack(tracker, "dummy", issues, true);
-    verify(engine).downloadServerIssues(any(), any(), any());
+    verify(engine).downloadServerIssues(any(), any(), any(), any(), anyBoolean(), any());
     verifyNoMoreInteractions(engine);
   }
 
@@ -164,10 +164,9 @@ class ServerIssueTrackerWrapperTests {
   }
 
   private ServerIssueTrackerWrapper newTracker(Path baseDir, ConnectedSonarLintEngine engine) {
-    ServerConfiguration serverConfiguration = mock(ServerConfiguration.class);
     String projectKey = "project1";
     ProjectBinding projectBinding = new ProjectBinding(projectKey, "", "");
-    return new ServerIssueTrackerWrapper(engine, serverConfiguration, projectBinding);
+    return new ServerIssueTrackerWrapper(engine, new ProjectBindingManager.EndpointParamsAndHttpClient(), projectBinding);
   }
 
   private ServerIssueTrackerWrapper newTracker(Path baseDir) {
@@ -196,13 +195,13 @@ class ServerIssueTrackerWrapperTests {
     // basic setup to prevent NPEs
     when(serverIssue.creationDate()).thenReturn(Instant.ofEpochMilli(++counter));
     when(serverIssue.resolution()).thenReturn("");
-    when(serverIssue.checksum()).thenReturn("dummy checksum " + (++counter));
+    when(serverIssue.lineHash()).thenReturn("dummy checksum " + (++counter));
 
     // if issue itself is a mock, need to extract value to variable first
     // as Mockito doesn't handle nested mocking inside mocking
 
     String message = issue.getMessage();
-    when(serverIssue.message()).thenReturn(message);
+    when(serverIssue.getMessage()).thenReturn(message);
 
     // copy fields to match during tracking
 
@@ -210,7 +209,7 @@ class ServerIssueTrackerWrapperTests {
     when(serverIssue.ruleKey()).thenReturn(ruleKey);
 
     Integer startLine = issue.getStartLine();
-    when(serverIssue.line()).thenReturn(startLine);
+    when(serverIssue.getStartLine()).thenReturn(startLine);
 
     return serverIssue;
   }

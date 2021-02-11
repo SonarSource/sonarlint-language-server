@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 import com.google.gson.Gson;
-
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
@@ -29,23 +28,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
 import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.sonarsource.sonarlint.core.client.api.connected.GetSecurityHotspotRequestParams;
-import org.sonarsource.sonarlint.core.client.api.connected.RemoteHotspot;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
-import org.sonarsource.sonarlint.core.client.api.connected.WsHelper;
+import org.sonarsource.sonarlint.core.serverapi.hotspot.GetSecurityHotspotRequestParams;
+import org.sonarsource.sonarlint.core.serverapi.hotspot.HotspotApi;
+import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspot;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.entry;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class SecurityHotspotsHandlerServerTest {
 
@@ -54,11 +57,11 @@ class SecurityHotspotsHandlerServerTest {
   private final SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   private final LanguageClientLogOutput output = mock(LanguageClientLogOutput.class);
   private final SonarLintTelemetry telemetry = mock(SonarLintTelemetry.class);
-  private final WsHelper wsHelper = mock(WsHelper.class);
+  private final HotspotApi hotspotApi = mock(HotspotApi.class);
 
   @BeforeEach
   void setUp() {
-    server = new SecurityHotspotsHandlerServer(output, bindingManager, client, wsHelper, telemetry);
+    server = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry, (e, c) -> hotspotApi);
   }
 
   @AfterEach
@@ -113,7 +116,7 @@ class SecurityHotspotsHandlerServerTest {
     String workspaceName2 = "palap";
     server.init(ideName, clientVersion, workspaceName1);
 
-    SecurityHotspotsHandlerServer otherServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, wsHelper, telemetry);
+    SecurityHotspotsHandlerServer otherServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry);
     try {
       otherServer.init(ideName, clientVersion, workspaceName2);
       assertThat(otherServer.getPort()).isNotEqualTo(server.getPort());
@@ -133,14 +136,14 @@ class SecurityHotspotsHandlerServerTest {
     int lastPortTried = SecurityHotspotsHandlerServer.STARTING_PORT;
     try {
       while (lastPortTried < SecurityHotspotsHandlerServer.ENDING_PORT) {
-        SecurityHotspotsHandlerServer triedServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, wsHelper, telemetry);
+        SecurityHotspotsHandlerServer triedServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry);
         triedServer.init(ideName, clientVersion, "sample-" + serverId);
         assertThat(triedServer.isStarted()).isTrue();
         startedServers.add(triedServer);
         lastPortTried = triedServer.getPort();
       }
 
-      SecurityHotspotsHandlerServer failedServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, wsHelper, telemetry);
+      SecurityHotspotsHandlerServer failedServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry);
       failedServer.init(ideName, clientVersion, "sample-" + serverId);
       assertThat(failedServer.isStarted()).isFalse();
     } finally {
@@ -156,10 +159,9 @@ class SecurityHotspotsHandlerServerTest {
     String clientVersion = "1.42";
     String workspaceName = "polop";
     server.init(ideName, clientVersion, workspaceName);
-    ServerConfiguration serverConfiguration = mock(ServerConfiguration.class);
-    RemoteHotspot remoteHotspot = mock(RemoteHotspot.class);
-    when(bindingManager.getServerConnectionSettingsForUrl(anyString())).thenReturn(Optional.of(serverConfiguration));
-    when(wsHelper.getHotspot(eq(serverConfiguration), any(GetSecurityHotspotRequestParams.class))).thenReturn(Optional.of(remoteHotspot));
+    ServerHotspot remoteHotspot = mock(ServerHotspot.class);
+    when(bindingManager.getServerConnectionSettingsForUrl(anyString())).thenReturn(Optional.of(new ProjectBindingManager.EndpointParamsAndHttpClient()));
+    when(hotspotApi.fetch(any(GetSecurityHotspotRequestParams.class))).thenReturn(Optional.of(remoteHotspot));
 
 
     int port = server.getPort();
@@ -177,7 +179,7 @@ class SecurityHotspotsHandlerServerTest {
     verify(bindingManager).getServerConnectionSettingsForUrl(server);
 
     ArgumentCaptor<GetSecurityHotspotRequestParams> getHotspotParamsCaptor = ArgumentCaptor.forClass(GetSecurityHotspotRequestParams.class);
-    verify(wsHelper).getHotspot(eq(serverConfiguration), getHotspotParamsCaptor.capture());
+    verify(hotspotApi).fetch(getHotspotParamsCaptor.capture());
     GetSecurityHotspotRequestParams passedParams = getHotspotParamsCaptor.getValue();
     assertThat(passedParams.hotspotKey).isEqualTo(hotspot);
     assertThat(passedParams.projectKey).isEqualTo(project);

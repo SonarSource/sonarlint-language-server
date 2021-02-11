@@ -34,6 +34,7 @@ import org.sonarsource.sonarlint.core.client.api.common.Language;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryHttpClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,7 +63,7 @@ class SonarLintTelemetryTests {
 
   private SonarLintTelemetry createTelemetry() {
     when(telemetryManager.isEnabled()).thenReturn(true);
-    SonarLintTelemetry telemetry = new SonarLintTelemetry() {
+    SonarLintTelemetry telemetry = new SonarLintTelemetry(mock(ApacheHttpClient.class)) {
       @Override
       TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client, BooleanSupplier usesConnectedMode, BooleanSupplier usesSonarCloud, BooleanSupplier devNotificationsDisabled, Supplier<String> nodeVersion) {
         return telemetryManager;
@@ -230,7 +231,7 @@ class SonarLintTelemetryTests {
   @Test
   void should_start_disabled_when_storagePath_null() {
     when(telemetryManager.isEnabled()).thenReturn(true);
-    SonarLintTelemetry telemetry = new SonarLintTelemetry() {
+    SonarLintTelemetry telemetry = new SonarLintTelemetry(mock(ApacheHttpClient.class)) {
       @Override
       TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client, BooleanSupplier usesConnectedMode, BooleanSupplier usesSonarCloud, BooleanSupplier devNotificationsDisabled, Supplier<String> nodeVersion) {
         return telemetryManager;
