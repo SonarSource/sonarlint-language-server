@@ -153,11 +153,8 @@ stages:
       displayName: SonarQube analysis on Next
       variables:
         MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
-        MAVEN_OPTS: '-Xmx4096m -Dmaven.repo.local=$(MAVEN_CACHE_FOLDER) -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/sonarqubeerror'
+        MAVEN_OPTS: '-Xmx3072m -Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
       steps:
-      - bash: |
-          cd /tmp
-          mkdir sonarqubeerror
       - task: Cache@2
         inputs:
           key: 'maven | "$(Agent.OS)" | **/pom.xml'
@@ -182,9 +179,6 @@ stages:
           mavenOptions: $(MAVEN_OPTS)
           sonarQubeRunAnalysis: true
           sqMavenPluginVersionChoice: 'latest'
-      - publish: /tmp/sonarqubeerror
-        artifact: SonarQubeOutOfmemory
-        condition: always()
 - template: promote-stage.yml@commonTemplates
   parameters:
     stageDependencies:

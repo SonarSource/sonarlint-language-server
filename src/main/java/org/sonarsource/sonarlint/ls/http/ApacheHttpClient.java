@@ -44,7 +44,7 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
 
   public static final Timeout CONNECTION_TIMEOUT = Timeout.ofSeconds(30);
   private static final Timeout RESPONSE_TIMEOUT = Timeout.ofMinutes(10);
-  private static final String USER_AGENT = "SonarLint Language Server";
+  private static final String USER_AGENT = "SonarLint VSCode";
 
   private final CloseableHttpClient client;
   @CheckForNull

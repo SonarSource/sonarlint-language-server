@@ -24,10 +24,13 @@ import java.io.InputStream;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonarsource.sonarlint.core.serverapi.HttpClient;
 
 public class ApacheHttpResponse implements HttpClient.Response {
 
+  private static final Logger LOG = LoggerFactory.getLogger(ApacheHttpResponse.class);
   private static final String BODY_ERROR_MESSAGE = "Error reading body content";
   private String requestUrl;
   private ClassicHttpResponse response;
@@ -47,9 +50,7 @@ public class ApacheHttpResponse implements HttpClient.Response {
   public String bodyAsString() {
     try {
       return EntityUtils.toString(response.getEntity());
-    } catch (IOException e) {
-      throw new RuntimeException(BODY_ERROR_MESSAGE, e);
-    } catch (ParseException e) {
+    } catch (IOException | ParseException e) {
       throw new RuntimeException(BODY_ERROR_MESSAGE, e);
     }
   }
@@ -68,7 +69,7 @@ public class ApacheHttpResponse implements HttpClient.Response {
     try {
       response.close();
     } catch (IOException e) {
-      //GlobalLogOutput.get().logError("Cannot close HttpClient", e)
+      LOG.error("Can't close response: ", e);
     }
   }
 
