@@ -100,6 +100,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
   private final Map<URI, String> languageIdPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, String> fileContentPerFileURI = new ConcurrentHashMap<>();
+  private final Map<URI, List<Issue>> issuesPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, Optional<GetJavaConfigResponse>> javaConfigPerFileURI = new ConcurrentHashMap<>();
   private final Map<Path, List<Path>> jvmClasspathPerJavaHome = new ConcurrentHashMap<>();
   // entries in this map mean that the file is "dirty"
@@ -191,6 +192,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     languageIdPerFileURI.remove(fileUri);
     fileContentPerFileURI.remove(fileUri);
     javaConfigPerFileURI.remove(fileUri);
+    issuesPerFileURI.remove(fileUri);
     eventMap.remove(fileUri);
     client.publishDiagnostics(newPublishDiagnostics(fileUri));
   }
@@ -216,8 +218,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       return;
     }
     String content = fileContentPerFileURI.get(fileUri);
-    Map<URI, PublishDiagnosticsParams> files = new HashMap<>();
-    files.put(fileUri, newPublishDiagnostics(fileUri));
+    ArrayList<Issue> newIssues = new ArrayList<>();
+    issuesPerFileURI.put(fileUri, newIssues);
 
     Optional<WorkspaceFolderWrapper> workspaceFolder = workspaceFoldersManager.findFolderForFile(fileUri);
 
@@ -228,7 +230,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       // Default to take file parent dir if file is not part of any workspace
       .orElse(Paths.get(fileUri).getParent());
 
-    IssueListener issueListener = createIssueListener(files);
+    IssueListener issueListener = createIssueListener();
 
     Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(fileUri);
     AnalysisResultsWrapper analysisResults;
@@ -259,15 +261,16 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       // Ignore files with parsing error
       analysisResults.results.failedAnalysisFiles().stream()
         .map(ClientInputFile::getClientObject)
-        .forEach(files::remove);
+        .map(URI.class::cast)
+        .forEach(issuesPerFileURI::remove);
     } catch (Exception e) {
       LOG.error("Analysis failed.", e);
     }
 
     // Check if file has not being closed during the analysis
     if (fileContentPerFileURI.containsKey(fileUri)) {
-      LOG.info("Found {} issue(s)", files.values().stream().mapToInt(p -> p.getDiagnostics().size()).sum());
-      files.values().forEach(client::publishDiagnostics);
+      LOG.info("Found {} issue(s)", newIssues.size());
+      client.publishDiagnostics(newPublishDiagnostics(fileUri));
     }
   }
 
@@ -285,15 +288,26 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     return javaConfigOpt;
   }
 
-  private static IssueListener createIssueListener(Map<URI, PublishDiagnosticsParams> files) {
+  private IssueListener createIssueListener() {
     return issue -> {
       ClientInputFile inputFile = issue.getInputFile();
       if (inputFile != null) {
         URI uri = inputFile.getClientObject();
-        PublishDiagnosticsParams publish = files.computeIfAbsent(uri, AnalysisManager::newPublishDiagnostics);
-        convert(issue).ifPresent(publish.getDiagnostics()::add);
+        issuesPerFileURI.computeIfAbsent(uri, u -> new ArrayList<>()).add(issue);
       }
     };
+  }
+
+  Optional<Issue> getIssueForDiagnostic(URI fileUri, Diagnostic d) {
+    return issuesPerFileURI.getOrDefault(fileUri, Collections.emptyList())
+      .stream()
+      .filter(i -> i.getRuleKey().equals(d.getCode().getLeft())
+        && i.getStartLine() - 1 == d.getRange().getStart().getLine()
+        && i.getStartLineOffset() == d.getRange().getStart().getCharacter()
+        && i.getEndLine() - 1 == d.getRange().getEnd().getLine()
+        && i.getEndLineOffset() == d.getRange().getEnd().getCharacter()
+      )
+      .findFirst();
   }
 
   static class AnalysisResultsWrapper {
@@ -391,6 +405,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       diagnostic.setMessage(issue.getMessage());
       diagnostic.setSource(SONARLINT_SOURCE);
 
+      diagnostic.setData("polop");
+
       List<Flow> flows = issue.flows();
       // If multiple flows with more than 1 location, keep only the first flow
       if (flows.size() > 1 && flows.stream().anyMatch(f -> f.locations().size() > 1)) {
@@ -450,10 +466,15 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
         location.getEndLineOffset()));
   }
 
-  private static PublishDiagnosticsParams newPublishDiagnostics(URI newUri) {
+  private PublishDiagnosticsParams newPublishDiagnostics(URI newUri) {
     PublishDiagnosticsParams p = new PublishDiagnosticsParams();
 
-    p.setDiagnostics(new ArrayList<>());
+    p.setDiagnostics(issuesPerFileURI.getOrDefault(newUri, new ArrayList<>())
+      .stream()
+      .map(AnalysisManager::convert)
+      .filter(Optional::isPresent)
+      .map(Optional::get)
+      .collect(Collectors.toList()));
     p.setUri(newUri.toString());
 
     return p;
