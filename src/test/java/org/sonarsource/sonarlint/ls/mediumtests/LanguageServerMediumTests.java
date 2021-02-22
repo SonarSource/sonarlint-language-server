@@ -58,6 +58,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -160,6 +161,26 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
         tuple(1, 2, 1, 7, "python:PrintStatementUsage", "sonarlint", "Replace print statement by built-in function.", DiagnosticSeverity.Warning));
+  }
+
+  @Test
+  void analyzePythonFileWithDuplicatedStringOnOpen() throws Exception {
+    String uri = getUri("analyzePythonFileWithDuplicatedStringOnOpen.py");
+
+    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "python", "def foo():\n  print('/toto')\n  print('/toto')\n  print('/toto')\n");
+
+    assertThat(diagnostics)
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(1, 8, 1, 15, "python:S1192", "sonarlint", "Define a constant instead of duplicating this literal '/toto' 3 times.", DiagnosticSeverity.Error));
+
+    Diagnostic d = diagnostics.get(0);
+    CodeActionParams codeActionParams = new CodeActionParams(new TextDocumentIdentifier(uri), d.getRange(), new CodeActionContext(singletonList(d)));
+    List<Either<Command, CodeAction>> list = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
+    assertThat(list).hasSize(3);
+    CodeAction allLocationsAction = list.get(1).getRight();
+    assertThat(allLocationsAction.getCommand().getCommand()).isEqualTo(ShowAllLocationsCommand.ID);
+    assertThat(allLocationsAction.getCommand().getArguments()).hasSize(1);
   }
 
   @Test

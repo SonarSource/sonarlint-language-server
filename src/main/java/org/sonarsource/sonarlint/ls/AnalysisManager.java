@@ -301,13 +301,12 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   Optional<Issue> getIssueForDiagnostic(URI fileUri, Diagnostic d) {
     return issuesPerFileURI.getOrDefault(fileUri, Collections.emptyList())
       .stream()
-      .filter(i -> i.getRuleKey().equals(d.getCode().getLeft())
-        && i.getStartLine() - 1 == d.getRange().getStart().getLine()
-        && i.getStartLineOffset() == d.getRange().getStart().getCharacter()
-        && i.getEndLine() - 1 == d.getRange().getEnd().getLine()
-        && i.getEndLineOffset() == d.getRange().getEnd().getCharacter()
-      )
+      .filter(i -> i.getRuleKey().equals(d.getCode().getLeft()) && locationMatches(i, d))
       .findFirst();
+  }
+
+  static boolean locationMatches(Issue i, Diagnostic d) {
+    return position(i).equals(d.getRange());
   }
 
   static class AnalysisResultsWrapper {
@@ -556,12 +555,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   }
 
   private List<Path> getVmClasspathFromCacheOrCompute(Path vmLocation) {
-    List<Path> jdkClassesRoots;
-    if (!jvmClasspathPerJavaHome.containsKey(vmLocation)) {
-      jvmClasspathPerJavaHome.put(vmLocation, JavaSdkUtil.getJdkClassesRoots(vmLocation));
-    }
-    jdkClassesRoots = jvmClasspathPerJavaHome.get(vmLocation);
-    return jdkClassesRoots;
+    return jvmClasspathPerJavaHome.computeIfAbsent(vmLocation, JavaSdkUtil::getJdkClassesRoots);
   }
 
   /**

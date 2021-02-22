@@ -144,8 +144,13 @@ class CommandManagerTests {
   void suggestDisableRuleForUnboundProject() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.empty());
 
+    Diagnostic d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
+
+    Issue issue = mock(Issue.class);
+    when(mockAnalysisManager.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
+
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
-      new CodeActionContext(singletonList(new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ")))), NOP_CANCEL_TOKEN);
+      new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("Open description of SonarLint rule 'XYZ'", "Deactivate rule 'XYZ'");
   }
