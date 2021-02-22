@@ -298,24 +298,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void diagnosticRelatedInfos() throws Exception {
-    String uri = getUri("foo.js");
-
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", "function foo(a, b) {  print(a + \" \" + b);\n" +
-      "}\n" +
-      "foo(\"a\", \"b\", \"c\");\n");
-
-    assertThat(diagnostics)
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(
-        tuple(2, 0, 2, 18, "javascript:S930", "sonarlint", "This function expects 2 arguments, but 3 were provided.", DiagnosticSeverity.Error));
-
-    assertThat(diagnostics.get(0).getRelatedInformation())
-      .extracting("location.range.start.line", "location.range.start.character", "location.range.end.line", "location.range.end.character", "location.uri", "message")
-      .containsExactly(tuple(0, 13, 0, 17, uri, "Formal parameters"));
-  }
-
-  @Test
   void cleanDiagnosticsOnClose() throws Exception {
     String uri = getUri("foo.js");
     client.diagnosticsLatch = new CountDownLatch(1);

@@ -45,9 +45,7 @@ import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.Diagnostic;
-import org.eclipse.lsp4j.DiagnosticRelatedInformation;
 import org.eclipse.lsp4j.DiagnosticSeverity;
-import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
@@ -58,9 +56,7 @@ import org.sonarsource.sonarlint.core.client.api.common.PluginDetails;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.AnalysisResults;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue.Flow;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueLocation;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedAnalysisConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneAnalysisConfiguration;
@@ -81,7 +77,6 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singleton;
-import static java.util.Objects.nonNull;
 import static java.util.Optional.empty;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.joining;
@@ -406,25 +401,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
       diagnostic.setData("polop");
 
-      List<Flow> flows = issue.flows();
-      // If multiple flows with more than 1 location, keep only the first flow
-      if (flows.size() > 1 && flows.stream().anyMatch(f -> f.locations().size() > 1)) {
-        flows = Collections.singletonList(flows.get(0));
-      }
-      diagnostic.setRelatedInformation(flows
-        .stream()
-        .flatMap(f -> f.locations().stream())
-        // Message is mandatory in lsp
-        .filter(l -> nonNull(l.getMessage()))
-        // Ignore global issue locations
-        .filter(l -> nonNull(l.getInputFile()))
-        .map(l -> {
-          DiagnosticRelatedInformation rel = new DiagnosticRelatedInformation();
-          rel.setMessage(l.getMessage());
-          rel.setLocation(new Location(l.getInputFile().uri().toString(), position(l)));
-          return rel;
-        }).collect(Collectors.toList()));
-
       return Optional.of(diagnostic);
     }
     return Optional.empty();
@@ -453,16 +429,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       new Position(
         issue.getEndLine() - 1,
         issue.getEndLineOffset()));
-  }
-
-  private static Range position(IssueLocation location) {
-    return new Range(
-      new Position(
-        location.getStartLine() - 1,
-        location.getStartLineOffset()),
-      new Position(
-        location.getEndLine() - 1,
-        location.getEndLineOffset()));
   }
 
   private PublishDiagnosticsParams newPublishDiagnostics(URI newUri) {
