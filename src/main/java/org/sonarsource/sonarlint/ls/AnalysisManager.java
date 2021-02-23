@@ -396,10 +396,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       diagnostic.setSeverity(severity);
       diagnostic.setRange(range);
       diagnostic.setCode(issue.getRuleKey());
-      diagnostic.setMessage(issue.getMessage());
+      diagnostic.setMessage(message(issue));
       diagnostic.setSource(SONARLINT_SOURCE);
-
-      diagnostic.setData("polop");
 
       return Optional.of(diagnostic);
     }
@@ -429,6 +427,22 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       new Position(
         issue.getEndLine() - 1,
         issue.getEndLineOffset()));
+  }
+
+  static String message(Issue issue) {
+    if (issue.flows().isEmpty()) {
+      return issue.getMessage();
+    } else if (issue.flows().size() == 1) {
+      int nbLocations = issue.flows().get(0).locations().size();
+      return String.format("%s [+%d %s]", issue.getMessage(), nbLocations, pluralize(nbLocations, "location"));
+    } else {
+      int nbFlows = issue.flows().size();
+      return String.format("%s [+%d %s]", issue.getMessage(), nbFlows, pluralize(nbFlows, "flow"));
+    }
+  }
+
+  private static String pluralize(long quantity, String name) {
+    return quantity > 1 ? (name + "s") : name;
   }
 
   private PublishDiagnosticsParams newPublishDiagnostics(URI newUri) {
