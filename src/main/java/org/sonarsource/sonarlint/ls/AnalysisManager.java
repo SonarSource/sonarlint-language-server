@@ -432,8 +432,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   static String message(Issue issue) {
     if (issue.flows().isEmpty()) {
       return issue.getMessage();
-    } else if (issue.flows().size() == 1) {
-      int nbLocations = issue.flows().get(0).locations().size();
+    } else if (issue.flows().stream().allMatch(f -> f.locations().size() == 1)) {
+      int nbLocations = issue.flows().size();
       return String.format("%s [+%d %s]", issue.getMessage(), nbLocations, pluralize(nbLocations, "location"));
     } else {
       int nbFlows = issue.flows().size();

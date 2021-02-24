@@ -110,6 +110,37 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  void analyzeSimpleJavaFileWithFlows() throws Exception {
+    String uri = getUri("AnalyzeSimpleJavaFileWithFlows.java");
+
+    GetJavaConfigResponse javaConfigResponse = new GetJavaConfigResponse();
+    javaConfigResponse.setSourceLevel("1.8");
+    javaConfigResponse.setTest(false);
+    javaConfigResponse.setClasspath(new String[0]);
+    client.javaConfigs.put(uri, javaConfigResponse);
+
+    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "java",
+      "public class AnalyzeSimpleJavaFileWithFlows {\n" +
+      "  private AnalyzeSimpleJavaFileWithFlows() {}\n" +
+      "  static int computeValue(int input) {\n" +
+      "    String message = \"polop\";\n" +
+      "    if (input == 42) {\n" +
+      "      message = null;\n" +
+      "    }\n" +
+      "    return doSomeThingWith(message);\n" +
+      "  }\n" +
+      "  private static int doSomeThingWith(String param) {\n" +
+      "    return param.length();\n" +
+      "  }\n" +
+      "}");
+
+    assertThat(diagnostics)
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(7, 11, 7, 26, "java:S2259", "sonarlint", "\"NullPointerException\" will be thrown when invoking method \"doSomeThingWith()\". [+1 flow]", DiagnosticSeverity.Warning));
+  }
+
+  @Test
   void analyzeSimpleJavaFilePassVmClasspath() throws Exception {
     Path javaHome = Paths.get(System.getProperty("java.home"));
     Path currentJdkHome = javaHome.endsWith("jre") ? javaHome.getParent() : javaHome;
