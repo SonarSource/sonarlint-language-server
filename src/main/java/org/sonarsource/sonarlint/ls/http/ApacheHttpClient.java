@@ -89,11 +89,11 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
       CloseableHttpResponse httpResponse = client.execute(httpRequest);
       return new ApacheHttpResponse(httpRequest.getRequestUri(), httpResponse);
     } catch (IOException e) {
-      throw new RuntimeException("Error processing HTTP request", e);
+      throw new IllegalStateException("Error processing HTTP request", e);
     }
   }
 
-  private String basic(String username, String password) {
+  private static String basic(String username, String password) {
     String usernameAndPassword = username + ":" + password;
     String encoded = Base64.getEncoder().encodeToString(usernameAndPassword.getBytes(StandardCharsets.ISO_8859_1));
     return "Basic " + encoded;

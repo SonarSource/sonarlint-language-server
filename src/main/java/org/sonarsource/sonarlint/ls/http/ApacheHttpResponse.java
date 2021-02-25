@@ -51,7 +51,7 @@ public class ApacheHttpResponse implements HttpClient.Response {
     try {
       return EntityUtils.toString(response.getEntity());
     } catch (IOException | ParseException e) {
-      throw new RuntimeException(BODY_ERROR_MESSAGE, e);
+      throw new IllegalStateException(BODY_ERROR_MESSAGE, e);
     }
   }
 
@@ -60,7 +60,7 @@ public class ApacheHttpResponse implements HttpClient.Response {
     try {
       return response.getEntity().getContent();
     } catch (IOException e) {
-      throw new RuntimeException(BODY_ERROR_MESSAGE, e);
+      throw new IllegalStateException(BODY_ERROR_MESSAGE, e);
     }
   }
 

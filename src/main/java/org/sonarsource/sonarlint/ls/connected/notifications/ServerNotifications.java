@@ -58,7 +58,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
 
   private final Map<String, ServerConnectionSettings> connections;
   private final Map<String, Map<String, NotificationConfiguration>> configurationsByProjectKeyByConnectionId;
-  private final org.sonarsource.sonarlint.core.notifications.ServerNotificationsRegistry serverNotificationsRegistry;
+  private final ServerNotificationsRegistry serverNotificationsRegistry;
 
   public ServerNotifications(SonarLintExtendedLanguageClient client, ProjectBindingManager projectBindingManager, WorkspaceFoldersManager workspaceFoldersManager,
       SonarLintTelemetry telemetry, LanguageClientLogOutput output) {

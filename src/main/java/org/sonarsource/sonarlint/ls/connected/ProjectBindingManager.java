@@ -407,8 +407,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         failedConnectionIds.add(connectionId);
         return;
       }
-      subProgress.doInSubProgress("Update global storage", 0.5f, s -> updateGlobalStorageAndLogResults(endpointParamsAndHttpClient, engineOpt.get(), failedConnectionIds, connectionId, s));
-      subProgress.doInSubProgress("Update projects storages", 0.5f, s -> tryUpdateBoundProjectsStorage(projetKeys, endpointParamsAndHttpClient, engineOpt.get(), s));
+      subProgress.doInSubProgress("Update global storage", 0.5f, s -> updateGlobalStorageAndLogResults(
+        endpointParamsAndHttpClient, engineOpt.get(), failedConnectionIds, connectionId, s));
+      subProgress.doInSubProgress("Update projects storages", 0.5f, s -> tryUpdateBoundProjectsStorage(
+        projetKeys, endpointParamsAndHttpClient, engineOpt.get(), s));
     });
   }
 
@@ -452,7 +454,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   }
 
-  private static void updateGlobalStorageAndLogResults(EndpointParamsAndHttpClient endpointParamsAndHttpClient, ConnectedSonarLintEngine engine, Collection<String> failedConnectionIds,
+  private static void updateGlobalStorageAndLogResults(EndpointParamsAndHttpClient endpointParamsAndHttpClient,
+    ConnectedSonarLintEngine engine, Collection<String> failedConnectionIds,
     String connectionId, ProgressFacade progress) {
     try {
       UpdateResult updateResult = engine.update(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), progress.asCoreMonitor());
