@@ -47,6 +47,7 @@ import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEng
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
+import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 
@@ -75,7 +76,7 @@ public class CommandManager {
   }
 
   public List<Either<Command, CodeAction>> computeCodeActions(CodeActionParams params, CancelChecker cancelToken) {
-    List<Either<Command, CodeAction>> commands = new ArrayList<>();
+    List<Either<Command, CodeAction>> codeActions = new ArrayList<>();
     URI uri = create(params.getTextDocument().getUri());
     Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(uri);
     for (Diagnostic d : params.getContext().getDiagnostics()) {
@@ -84,23 +85,28 @@ public class CommandManager {
         String ruleKey = d.getCode().getLeft();
         cancelToken.checkCanceled();
         String titleShowRuleDesc = String.format("Open description of SonarLint rule '%s'", ruleKey);
-        CodeAction actionShowRuleDesc = new CodeAction(titleShowRuleDesc);
-        actionShowRuleDesc
-          .setCommand(new Command(titleShowRuleDesc, SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, Arrays.asList(ruleKey, params.getTextDocument().getUri())));
-        actionShowRuleDesc.setDiagnostics(Collections.singletonList(d));
-        actionShowRuleDesc.setKind(CodeActionKind.QuickFix);
-        commands.add(Either.forRight(actionShowRuleDesc));
+        codeActions.add(newQuickFix(d, titleShowRuleDesc, SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, Arrays.asList(ruleKey, params.getTextDocument().getUri())));
+        analysisManager.getIssueForDiagnostic(uri, d).ifPresent(issue -> {
+          if (! issue.flows().isEmpty()) {
+            String titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
+            codeActions.add(newQuickFix(d, titleShowAllLocations, ShowAllLocationsCommand.ID, Collections.singletonList(ShowAllLocationsCommand.params(issue))));
+          }
+        });
         if (!binding.isPresent()) {
           String titleDeactivate = String.format("Deactivate rule '%s'", ruleKey);
-          CodeAction actionDeactivate = new CodeAction(titleDeactivate);
-          actionDeactivate.setCommand(new Command(titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, Collections.singletonList(ruleKey)));
-          actionDeactivate.setDiagnostics(Collections.singletonList(d));
-          actionDeactivate.setKind(CodeActionKind.QuickFix);
-          commands.add(Either.forRight(actionDeactivate));
+          codeActions.add(newQuickFix(d, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, Collections.singletonList(ruleKey)));
         }
       }
     }
-    return commands;
+    return codeActions;
+  }
+
+  private static Either<Command, CodeAction> newQuickFix(Diagnostic diag, String title, String command, List<Object> params) {
+    CodeAction newCodeAction = new CodeAction(title);
+    newCodeAction.setCommand(new Command(title, command, params));
+    newCodeAction.setKind(CodeActionKind.QuickFix);
+    newCodeAction.setDiagnostics(Collections.singletonList(diag));
+    return Either.forRight(newCodeAction);
   }
 
   public Map<String, List<Rule>> listAllStandaloneRules() {

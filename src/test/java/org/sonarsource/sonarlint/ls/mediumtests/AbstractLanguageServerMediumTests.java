@@ -411,11 +411,7 @@ abstract class AbstractLanguageServerMediumTests {
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(docId, singletonList(new TextDocumentContentChangeEvent(content))));
     toBeClosed.add(uri);
-    if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
-      return client.getDiagnostics(uri);
-    } else {
-      throw new AssertionError("No diagnostics received after 1 minute");
-    }
+    return awaitDiagnosticsForOneMinute(uri);
   }
 
   protected List<Diagnostic> didOpenAndWaitForDiagnostics(String uri, String languageId, String content) throws InterruptedException {
@@ -423,11 +419,7 @@ abstract class AbstractLanguageServerMediumTests {
     lsProxy.getTextDocumentService()
       .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, languageId, 1, content)));
     toBeClosed.add(uri);
-    if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
-      return client.getDiagnostics(uri);
-    } else {
-      throw new AssertionError("No diagnostics received after 1 minute");
-    }
+    return awaitDiagnosticsForOneMinute(uri);
   }
 
   protected List<Diagnostic> didSaveAndWaitForDiagnostics(String uri, String content) throws InterruptedException {
@@ -435,6 +427,10 @@ abstract class AbstractLanguageServerMediumTests {
     client.diagnosticsLatch = new CountDownLatch(1);
     lsProxy.getTextDocumentService()
       .didSave(new DidSaveTextDocumentParams(docId, content));
+    return awaitDiagnosticsForOneMinute(uri);
+  }
+
+  private List<Diagnostic> awaitDiagnosticsForOneMinute(String uri) throws InterruptedException {
     if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
       return client.getDiagnostics(uri);
     } else {
