@@ -29,6 +29,8 @@ import org.sonarsource.sonarlint.core.client.api.common.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueLocation;
+import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
+import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
 
 public final class ShowAllLocationsCommand {
 
@@ -51,6 +53,15 @@ public final class ShowAllLocationsCommand {
       this.severity = issue.getSeverity();
       this.ruleKey = issue.getRuleKey();
       this.flows = issue.flows().stream().map(Flow::new).collect(Collectors.toList());
+    }
+
+    public Param(ServerIssue issue) {
+      // TODO Rebuild from filePath
+      this.fileUri = null;
+      this.message = issue.getMessage();
+      this.severity = issue.severity();
+      this.ruleKey = issue.ruleKey();
+      this.flows = issue.getFlows().stream().map(Flow::new).collect(Collectors.toList());
     }
 
     public URI getFileUri() {
@@ -81,6 +92,10 @@ public final class ShowAllLocationsCommand {
       this.locations = flow.locations().stream().map(Location::new).collect(Collectors.toList());
     }
 
+    private Flow(ServerIssue.Flow flow) {
+      this.locations = flow.locations().stream().map(Location::new).collect(Collectors.toList());
+    }
+
     public List<Location> getLocations() {
       return locations;
     }
@@ -94,6 +109,13 @@ public final class ShowAllLocationsCommand {
     private Location(IssueLocation location) {
       this.textRange = location.getTextRange();
       this.uri = nullableUri(location.getInputFile());
+      this.message = location.getMessage();
+    }
+
+    private Location(ServerIssueLocation location) {
+      this.textRange = location.getTextRange();
+      // TODO Rebuild from filePath
+      this.uri = null;
       this.message = location.getMessage();
     }
 
@@ -111,6 +133,10 @@ public final class ShowAllLocationsCommand {
   }
 
   public static Param params(Issue issue) {
+    return new Param(issue);
+  }
+
+  public static Param params(ServerIssue issue) {
     return new Param(issue);
   }
 

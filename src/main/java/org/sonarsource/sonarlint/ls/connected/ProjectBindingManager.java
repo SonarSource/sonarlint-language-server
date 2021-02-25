@@ -418,7 +418,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     ProgressFacade progress) {
     projetKeys.forEach(projectKey -> progress.doInSubProgress(projectKey, 1.0f / projectKey.length(), subProgress -> {
       try {
-        engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, false, subProgress.asCoreMonitor());
+        engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, true, subProgress.asCoreMonitor());
       } catch (CanceledException e) {
         throw e;
       } catch (Exception updateFailed) {

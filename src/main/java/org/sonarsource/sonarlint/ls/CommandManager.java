@@ -53,6 +53,7 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 
 import static java.net.URI.create;
 import static org.sonarsource.sonarlint.ls.AnalysisManager.SONARLINT_SOURCE;
+import static org.sonarsource.sonarlint.ls.AnalysisManager.SONARQUBE_TAINT_SOURCE;
 
 public class CommandManager {
 
@@ -96,6 +97,13 @@ public class CommandManager {
           String titleDeactivate = String.format("Deactivate rule '%s'", ruleKey);
           codeActions.add(newQuickFix(d, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, Collections.singletonList(ruleKey)));
         }
+      } else if (SONARQUBE_TAINT_SOURCE.equals(d.getSource())) {
+        analysisManager.getServerIssueForDiagnostic(uri, d).ifPresent(issue -> {
+          if (! issue.getFlows().isEmpty()) {
+            String titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", issue.ruleKey());
+            codeActions.add(newQuickFix(d, titleShowAllLocations, ShowAllLocationsCommand.ID, Collections.singletonList(ShowAllLocationsCommand.params(issue))));
+          }
+        });
       }
     }
     return codeActions;

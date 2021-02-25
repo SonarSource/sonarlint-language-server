@@ -62,7 +62,7 @@ public class ServerIssueTrackerWrapper {
 
     cachingIssueTracker.matchAndTrackAsNew(filePath, toTrackables(issues));
     if (shouldFetchServerIssues) {
-      tracker.update(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), engine, projectBinding, Collections.singleton(filePath), false);
+      tracker.update(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), engine, projectBinding, Collections.singleton(filePath), true);
     } else {
       tracker.update(engine, projectBinding, Collections.singleton(filePath));
     }

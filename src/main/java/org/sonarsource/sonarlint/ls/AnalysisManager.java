@@ -45,7 +45,9 @@ import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.DiagnosticRelatedInformation;
 import org.eclipse.lsp4j.DiagnosticSeverity;
+import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
@@ -59,6 +61,8 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedAnalysisConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
+import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
+import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneAnalysisConfiguration;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
@@ -77,6 +81,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singleton;
+import static java.util.Objects.nonNull;
 import static java.util.Optional.empty;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.joining;
@@ -88,14 +93,17 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
   private static final Logger LOG = Loggers.get(AnalysisManager.class);
 
+  private static final String SECURITY_REPOSITORY_HINT = "security";
   public static final String TYPESCRIPT_PATH_PROP = "sonar.typescript.internal.typescriptLocation";
   static final String SONARLINT_SOURCE = "sonarlint";
+  static final String SONARQUBE_TAINT_SOURCE = "SonarQube Taint Analyzer";
 
   private final SonarLintExtendedLanguageClient client;
 
   private final Map<URI, String> languageIdPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, String> fileContentPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, List<Issue>> issuesPerFileURI = new ConcurrentHashMap<>();
+  private final Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile = new ConcurrentHashMap<>();
   private final Map<URI, Optional<GetJavaConfigResponse>> javaConfigPerFileURI = new ConcurrentHashMap<>();
   private final Map<Path, List<Path>> jvmClasspathPerJavaHome = new ConcurrentHashMap<>();
   // entries in this map mean that the file is "dirty"
@@ -188,6 +196,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     fileContentPerFileURI.remove(fileUri);
     javaConfigPerFileURI.remove(fileUri);
     issuesPerFileURI.remove(fileUri);
+    taintVulnerabilitiesPerFile.remove(fileUri);
     eventMap.remove(fileUri);
     client.publishDiagnostics(newPublishDiagnostics(fileUri));
   }
@@ -213,8 +222,9 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       return;
     }
     String content = fileContentPerFileURI.get(fileUri);
-    ArrayList<Issue> newIssues = new ArrayList<>();
+    List<Issue> newIssues = new ArrayList<>();
     issuesPerFileURI.put(fileUri, newIssues);
+    taintVulnerabilitiesPerFile.put(fileUri, new ArrayList<>());
 
     Optional<WorkspaceFolderWrapper> workspaceFolder = workspaceFoldersManager.findFolderForFile(fileUri);
 
@@ -269,6 +279,24 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     }
   }
 
+  private static Optional<Diagnostic> convert(ServerIssue issue) {
+    if (issue.getStartLine() != null) {
+      Range range = position(issue);
+      Diagnostic diagnostic = new Diagnostic();
+      DiagnosticSeverity severity = severity(issue.severity());
+
+      diagnostic.setSeverity(severity);
+      diagnostic.setRange(range);
+      diagnostic.setCode(issue.ruleKey());
+      // TODO Add +n flows/locations
+      diagnostic.setMessage(issue.getMessage());
+      diagnostic.setSource(SONARQUBE_TAINT_SOURCE);
+
+      return Optional.of(diagnostic);
+    }
+    return Optional.empty();
+  }
+
   private Optional<GetJavaConfigResponse> getJavaConfigFromCacheOrFetch(URI fileUri) {
     Optional<GetJavaConfigResponse> javaConfigOpt;
     try {
@@ -300,7 +328,18 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       .findFirst();
   }
 
+  Optional<ServerIssue> getServerIssueForDiagnostic(URI fileUri, Diagnostic d) {
+    return taintVulnerabilitiesPerFile.getOrDefault(fileUri, Collections.emptyList())
+      .stream()
+      .filter(i -> i.ruleKey().equals(d.getCode().getLeft()) && locationMatches(i, d))
+      .findFirst();
+  }
+
   static boolean locationMatches(Issue i, Diagnostic d) {
+    return position(i).equals(d.getRange());
+  }
+
+  static boolean locationMatches(ServerIssue i, Diagnostic d) {
     return position(i).equals(d.getRange());
   }
 
@@ -360,6 +399,11 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
         String filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, uri));
         ServerIssueTrackerWrapper serverIssueTracker = binding.getServerIssueTracker();
         serverIssueTracker.matchAndTrack(filePath, issues, issueListener, shouldFetchServerIssues);
+        List<ServerIssue> serverIssues = engine.getServerIssues(binding.getBinding(), filePath);
+        taintVulnerabilitiesPerFile.put(uri, serverIssues.stream()
+          .filter(it -> it.ruleKey().contains(SECURITY_REPOSITORY_HINT))
+          .filter(it -> it.resolution().isEmpty())
+          .collect(Collectors.toList()));
       });
   }
 
@@ -429,6 +473,16 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
         issue.getEndLineOffset()));
   }
 
+  private static Range position(ServerIssueLocation issue) {
+    return new Range(
+      new Position(
+        issue.getStartLine() - 1,
+        issue.getStartLineOffset()),
+      new Position(
+        issue.getEndLine() - 1,
+        issue.getEndLineOffset()));
+  }
+
   static String message(Issue issue) {
     if (issue.flows().isEmpty()) {
       return issue.getMessage();
@@ -448,9 +502,14 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   private PublishDiagnosticsParams newPublishDiagnostics(URI newUri) {
     PublishDiagnosticsParams p = new PublishDiagnosticsParams();
 
-    p.setDiagnostics(issuesPerFileURI.getOrDefault(newUri, new ArrayList<>())
+    Stream<Optional<Diagnostic>> localDiagnostics = issuesPerFileURI.getOrDefault(newUri, new ArrayList<>())
       .stream()
-      .map(AnalysisManager::convert)
+      .map(AnalysisManager::convert);
+    Stream<Optional<Diagnostic>> taintDiagnostics = taintVulnerabilitiesPerFile.getOrDefault(newUri, new ArrayList<>())
+      .stream()
+      .map(AnalysisManager::convert);
+
+    p.setDiagnostics(Stream.concat(localDiagnostics, taintDiagnostics)
       .filter(Optional::isPresent)
       .map(Optional::get)
       .collect(Collectors.toList()));
