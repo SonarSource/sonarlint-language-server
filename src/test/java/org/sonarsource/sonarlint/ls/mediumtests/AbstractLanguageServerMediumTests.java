@@ -81,7 +81,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
-import org.sonarsource.sonarlint.core.client.api.connected.RemoteHotspot;
+import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspot;
 import org.sonarsource.sonarlint.ls.ServerMain;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
@@ -331,7 +331,7 @@ abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public CompletableFuture<Void> showHotspot(RemoteHotspot h) {
+    public CompletableFuture<Void> showHotspot(ServerHotspot h) {
       return CompletableFutures.computeAsync(null);
     }
 

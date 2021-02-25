@@ -27,7 +27,6 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
 import org.sonarsource.sonarlint.core.tracking.CachingIssueTracker;
 import org.sonarsource.sonarlint.core.tracking.CachingIssueTrackerImpl;
 import org.sonarsource.sonarlint.core.tracking.InMemoryIssueTrackerCache;
@@ -38,16 +37,16 @@ import org.sonarsource.sonarlint.core.tracking.Trackable;
 public class ServerIssueTrackerWrapper {
 
   private final ConnectedSonarLintEngine engine;
-  private final ServerConfiguration serverConfiguration;
+  private final ProjectBindingManager.EndpointParamsAndHttpClient endpointParamsAndHttpClient;
   private final ProjectBinding projectBinding;
 
   private final IssueTrackerCache issueTrackerCache;
   private final CachingIssueTracker cachingIssueTracker;
   private final org.sonarsource.sonarlint.core.tracking.ServerIssueTracker tracker;
 
-  ServerIssueTrackerWrapper(ConnectedSonarLintEngine engine, ServerConfiguration serverConfiguration, ProjectBinding projectBinding) {
+  ServerIssueTrackerWrapper(ConnectedSonarLintEngine engine, ProjectBindingManager.EndpointParamsAndHttpClient endpointParamsAndHttpClient, ProjectBinding projectBinding) {
     this.engine = engine;
-    this.serverConfiguration = serverConfiguration;
+    this.endpointParamsAndHttpClient = endpointParamsAndHttpClient;
     this.projectBinding = projectBinding;
 
     this.issueTrackerCache = new InMemoryIssueTrackerCache();
@@ -63,7 +62,7 @@ public class ServerIssueTrackerWrapper {
 
     cachingIssueTracker.matchAndTrackAsNew(filePath, toTrackables(issues));
     if (shouldFetchServerIssues) {
-      tracker.update(serverConfiguration, engine, projectBinding, Collections.singleton(filePath));
+      tracker.update(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), engine, projectBinding, Collections.singleton(filePath), false);
     } else {
       tracker.update(engine, projectBinding, Collections.singleton(filePath));
     }

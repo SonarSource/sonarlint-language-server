@@ -28,8 +28,8 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.sonarsource.sonarlint.core.client.api.connected.RemoteHotspot;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
+import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspot;
 
 public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
@@ -49,7 +49,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   CompletableFuture<Void> showRuleDescription(ShowRuleDescriptionParams params);
 
   @JsonRequest("sonarlint/showHotspot")
-  CompletableFuture<Void> showHotspot(RemoteHotspot hotspot);
+  CompletableFuture<Void> showHotspot(ServerHotspot hotspot);
 
   class ShowRuleDescriptionParams {
     @Expose

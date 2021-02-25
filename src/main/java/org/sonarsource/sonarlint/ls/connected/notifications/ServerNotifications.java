@@ -33,6 +33,7 @@ import org.sonarsource.sonarlint.core.client.api.common.NotificationConfiguratio
 import org.sonarsource.sonarlint.core.client.api.notifications.LastNotificationTime;
 import org.sonarsource.sonarlint.core.client.api.notifications.ServerNotification;
 import org.sonarsource.sonarlint.core.client.api.notifications.ServerNotificationListener;
+import org.sonarsource.sonarlint.core.notifications.ServerNotificationsRegistry;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -57,6 +58,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
 
   private final Map<String, ServerConnectionSettings> connections;
   private final Map<String, Map<String, NotificationConfiguration>> configurationsByProjectKeyByConnectionId;
+  private final ServerNotificationsRegistry serverNotificationsRegistry;
 
   public ServerNotifications(SonarLintExtendedLanguageClient client, ProjectBindingManager projectBindingManager, WorkspaceFoldersManager workspaceFoldersManager,
       SonarLintTelemetry telemetry, LanguageClientLogOutput output) {
@@ -68,6 +70,12 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
 
     connections = new HashMap<>();
     configurationsByProjectKeyByConnectionId = new HashMap<>();
+    serverNotificationsRegistry = new ServerNotificationsRegistry();
+
+  }
+
+  public void shutdown() {
+    serverNotificationsRegistry.stop();
   }
 
   @Override
@@ -109,7 +117,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
     if (configsForOldConnectionId != null && configsForOldConnectionId.containsKey(oldProjectKey)) {
       logDebugMessage(String.format("De-registering notifications for project '%s' on connection '%s'", oldProjectKey, oldConnectionId));
       NotificationConfiguration config = configsForOldConnectionId.remove(oldProjectKey);
-      coreNotifications().remove(config.listener());
+      serverNotificationsRegistry.remove(config.listener());
     }
   }
 
@@ -121,7 +129,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
       }
       logDebugMessage(String.format("Enabling notifications for project '%s' on connection '%s'", projectKey, connectionId));
       NotificationConfiguration newConfiguration = newNotificationConfiguration(connections.get(connectionId), projectKey);
-      coreNotifications().register(newConfiguration);
+      serverNotificationsRegistry.register(newConfiguration);
       configurationsByProjectKeyByConnectionId.computeIfAbsent(connectionId, k -> new HashMap<>()).put(projectKey, newConfiguration);
     }
   }
@@ -130,16 +138,14 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
     return configurationsByProjectKeyByConnectionId.containsKey(connectionId) && configurationsByProjectKeyByConnectionId.get(connectionId).containsKey(projectKey);
   }
 
-  private static org.sonarsource.sonarlint.core.notifications.ServerNotifications coreNotifications() {
-    return org.sonarsource.sonarlint.core.notifications.ServerNotifications.get();
-  }
 
   private NotificationConfiguration newNotificationConfiguration(ServerConnectionSettings serverConnectionSettings, String projectKey) {
     return new NotificationConfiguration(
       new EventListener(serverConnectionSettings.isSonarCloudAlias()),
       new ConnectionNotificationTime(),
       projectKey,
-      () -> projectBindingManager.createServerConfiguration(serverConnectionSettings.getConnectionId()));
+      () -> projectBindingManager.createServerConfiguration(serverConnectionSettings.getConnectionId()).getEndpointParams(),
+      () -> projectBindingManager.createServerConfiguration(serverConnectionSettings.getConnectionId()).getHttpClient());
   }
 
   private void logDebugMessage(String message) {

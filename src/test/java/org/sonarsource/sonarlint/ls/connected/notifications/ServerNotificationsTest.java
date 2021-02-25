@@ -26,7 +26,6 @@ import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -76,11 +75,7 @@ class ServerNotificationsTest {
   @AfterEach
   public void finish() {
     verifyNoMoreInteractions(client, projectBindingManager, workspaceFoldersManager, telemetry, output);
-  }
-
-  @AfterAll
-  public static void cleanup() {
-    org.sonarsource.sonarlint.core.notifications.ServerNotifications.get().stop();
+    underTest.shutdown();
   }
 
   @Test

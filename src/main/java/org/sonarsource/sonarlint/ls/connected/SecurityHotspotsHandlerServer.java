@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.hc.core5.http.ClassicHttpRequest;
@@ -53,9 +54,11 @@ import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.sonarsource.sonarlint.core.client.api.common.LogOutput;
-import org.sonarsource.sonarlint.core.client.api.connected.GetSecurityHotspotRequestParams;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerConfiguration;
-import org.sonarsource.sonarlint.core.client.api.connected.WsHelper;
+import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
+import org.sonarsource.sonarlint.core.serverapi.HttpClient;
+import org.sonarsource.sonarlint.core.serverapi.ServerApi;
+import org.sonarsource.sonarlint.core.serverapi.hotspot.GetSecurityHotspotRequestParams;
+import org.sonarsource.sonarlint.core.serverapi.hotspot.HotspotApi;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -70,19 +73,25 @@ public class SecurityHotspotsHandlerServer {
   private final LanguageClientLogOutput output;
   private final ProjectBindingManager bindingManager;
   private final SonarLintExtendedLanguageClient client;
-  private final WsHelper wsHelper;
+  private final BiFunction<EndpointParams, HttpClient, HotspotApi> hotspotApiFactory;
   private final SonarLintTelemetry telemetry;
 
   private HttpServer server;
   private int port;
 
-  public SecurityHotspotsHandlerServer(LanguageClientLogOutput output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client, WsHelper wsHelper,
+  public SecurityHotspotsHandlerServer(LanguageClientLogOutput output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client,
       SonarLintTelemetry telemetry) {
+    this(output, bindingManager, client, telemetry, (e, c) -> new ServerApi(e, c).hotspot());
+  }
+
+  SecurityHotspotsHandlerServer(LanguageClientLogOutput output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client,
+    SonarLintTelemetry telemetry,
+    BiFunction<EndpointParams, HttpClient, HotspotApi> hotspotApiFactory) {
     this.output = output;
     this.bindingManager = bindingManager;
     this.client = client;
-    this.wsHelper = wsHelper;
     this.telemetry = telemetry;
+    this.hotspotApiFactory = hotspotApiFactory;
   }
 
   public void init(String ideName, String clientVersion, @Nullable String workspaceName) {
@@ -101,7 +110,7 @@ public class SecurityHotspotsHandlerServer {
           .setSocketConfig(socketConfig)
           .addFilterFirst("CORS", new CorsFilter())
           .register("/sonarlint/api/status", new StatusRequestHandler(ideName, clientVersion, workspaceName))
-          .register("/sonarlint/api/hotspots/show", new ShowHotspotRequestHandler(output, bindingManager, client, wsHelper, telemetry))
+          .register("/sonarlint/api/hotspots/show", new ShowHotspotRequestHandler(output, bindingManager, client, telemetry))
           .create();
         startedServer.start();
         port = triedPort;
@@ -186,19 +195,17 @@ public class SecurityHotspotsHandlerServer {
     }
   }
 
-  private static class ShowHotspotRequestHandler implements HttpRequestHandler {
+  private class ShowHotspotRequestHandler implements HttpRequestHandler {
     private final LanguageClientLogOutput output;
     private final ProjectBindingManager bindingManager;
     private final SonarLintExtendedLanguageClient client;
-    private final WsHelper wsHelper;
     private final SonarLintTelemetry telemetry;
 
-    public ShowHotspotRequestHandler(LanguageClientLogOutput output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client, WsHelper wsHelper,
+    public ShowHotspotRequestHandler(LanguageClientLogOutput output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client,
         SonarLintTelemetry telemetry) {
       this.output = output;
       this.bindingManager = bindingManager;
       this.client = client;
-      this.wsHelper = wsHelper;
       this.telemetry = telemetry;
     }
 
@@ -221,7 +228,7 @@ public class SecurityHotspotsHandlerServer {
 
         output.log(String.format("Opening hotspot %s for project %s of server %s", hotspot, project, serverUrl), LogOutput.Level.INFO);
         telemetry.showHotspotRequestReceived();
-        Optional<ServerConfiguration> serverSettings = bindingManager.getServerConnectionSettingsForUrl(serverUrl);
+        Optional<ProjectBindingManager.EndpointParamsAndHttpClient> serverSettings = bindingManager.getServerConnectionSettingsForUrl(serverUrl);
         // TODO Replace with ifPresentOrElse when we move to Java 9+
         if(serverSettings.isPresent()) {
           showHotspot(hotspot, project, serverSettings.get());
@@ -233,9 +240,9 @@ public class SecurityHotspotsHandlerServer {
       }
     }
 
-    void showHotspot(String hotspotKey, String projectKey, ServerConfiguration configuration) {
-      wsHelper.getHotspot(configuration, new GetSecurityHotspotRequestParams(hotspotKey, projectKey))
-              .ifPresent(client::showHotspot);
+    void showHotspot(String hotspotKey, String projectKey, ProjectBindingManager.EndpointParamsAndHttpClient endpointParamsAndHttpClient) {
+      HotspotApi hotspotApi = hotspotApiFactory.apply(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient());
+      hotspotApi.fetch(new GetSecurityHotspotRequestParams(hotspotKey, projectKey)).ifPresent(client::showHotspot);
     }
 
     void showUnknownServer(String url) {
