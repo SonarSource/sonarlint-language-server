@@ -101,7 +101,9 @@ public class CommandManager {
         analysisManager.getServerIssueForDiagnostic(uri, d).ifPresent(issue -> {
           if (! issue.getFlows().isEmpty()) {
             String titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", issue.ruleKey());
-            codeActions.add(newQuickFix(d, titleShowAllLocations, ShowAllLocationsCommand.ID, Collections.singletonList(ShowAllLocationsCommand.params(issue))));
+            codeActions.add(
+              newQuickFix(d, titleShowAllLocations, ShowAllLocationsCommand.ID, Collections.singletonList(
+                ShowAllLocationsCommand.params(issue, bindingManager::serverPathToFileUri))));
           }
         });
       }

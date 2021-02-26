@@ -45,9 +45,7 @@ import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.Diagnostic;
-import org.eclipse.lsp4j.DiagnosticRelatedInformation;
 import org.eclipse.lsp4j.DiagnosticSeverity;
-import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
@@ -81,7 +79,6 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singleton;
-import static java.util.Objects.nonNull;
 import static java.util.Optional.empty;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.joining;
@@ -97,6 +94,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   public static final String TYPESCRIPT_PATH_PROP = "sonar.typescript.internal.typescriptLocation";
   static final String SONARLINT_SOURCE = "sonarlint";
   static final String SONARQUBE_TAINT_SOURCE = "SonarQube Taint Analyzer";
+
+  private static final String MESSAGE_WITH_PLURALIZED_SUFFIX = "%s [+%d %s]";
 
   private final SonarLintExtendedLanguageClient client;
 
@@ -279,24 +278,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     }
   }
 
-  private static Optional<Diagnostic> convert(ServerIssue issue) {
-    if (issue.getStartLine() != null) {
-      Range range = position(issue);
-      Diagnostic diagnostic = new Diagnostic();
-      DiagnosticSeverity severity = severity(issue.severity());
-
-      diagnostic.setSeverity(severity);
-      diagnostic.setRange(range);
-      diagnostic.setCode(issue.ruleKey());
-      // TODO Add +n flows/locations
-      diagnostic.setMessage(issue.getMessage());
-      diagnostic.setSource(SONARQUBE_TAINT_SOURCE);
-
-      return Optional.of(diagnostic);
-    }
-    return Optional.empty();
-  }
-
   private Optional<GetJavaConfigResponse> getJavaConfigFromCacheOrFetch(URI fileUri) {
     Optional<GetJavaConfigResponse> javaConfigOpt;
     try {
@@ -448,6 +429,23 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     return Optional.empty();
   }
 
+  private static Optional<Diagnostic> convert(ServerIssue issue) {
+    if (issue.getStartLine() != null) {
+      Range range = position(issue);
+      Diagnostic diagnostic = new Diagnostic();
+      DiagnosticSeverity severity = severity(issue.severity());
+
+      diagnostic.setSeverity(severity);
+      diagnostic.setRange(range);
+      diagnostic.setCode(issue.ruleKey());
+      diagnostic.setMessage(message(issue));
+      diagnostic.setSource(SONARQUBE_TAINT_SOURCE);
+
+      return Optional.of(diagnostic);
+    }
+    return Optional.empty();
+  }
+
   private static DiagnosticSeverity severity(String severity) {
     switch (severity.toUpperCase(Locale.ENGLISH)) {
       case "BLOCKER":
@@ -488,11 +486,16 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       return issue.getMessage();
     } else if (issue.flows().stream().allMatch(f -> f.locations().size() == 1)) {
       int nbLocations = issue.flows().size();
-      return String.format("%s [+%d %s]", issue.getMessage(), nbLocations, pluralize(nbLocations, "location"));
+      return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issue.getMessage(), nbLocations, pluralize(nbLocations, "location"));
     } else {
       int nbFlows = issue.flows().size();
-      return String.format("%s [+%d %s]", issue.getMessage(), nbFlows, pluralize(nbFlows, "flow"));
+      return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issue.getMessage(), nbFlows, pluralize(nbFlows, "flow"));
     }
+  }
+
+  static String message(ServerIssue issue) {
+    int nbFlows = issue.getFlows().size();
+    return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issue.getMessage(), nbFlows, pluralize(nbFlows, "flow"));
   }
 
   private static String pluralize(long quantity, String name) {

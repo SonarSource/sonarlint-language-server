@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.connected;
 
+import java.io.File;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -89,7 +90,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final ConcurrentMap<URI, Optional<ProjectBindingWrapper>> fileBindingCache = new ConcurrentHashMap<>();
   private final ConcurrentMap<String, Optional<ConnectedSonarLintEngine>> connectedEngineCacheByConnectionId = new ConcurrentHashMap<>();
   private final ProgressManager progressManager;
-  private ApacheHttpClient httpClient;
+  private final ApacheHttpClient httpClient;
   private final LanguageClient client;
   private final EnginesFactory enginesFactory;
   private AnalysisManager analysisManager;
@@ -475,5 +476,24 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       .filter(it -> StringUtils.equalsIgnoringTrailingSlash(it.getServerUrl(), url))
       .findFirst()
       .map(this::getServerConfiguration);
+  }
+
+  public Optional<URI> serverPathToFileUri(String serverPath) {
+    return folderBindingCache.entrySet().stream()
+      .filter(e -> e.getValue().isPresent())
+      .map(e -> tryResolveLocalFile(serverPath, e.getKey(), e.getValue().get()))
+      .filter(Optional::isPresent)
+      .map(Optional::get)
+      .map(File::toURI)
+      .findFirst();
+  }
+
+  private static Optional<File> tryResolveLocalFile(String serverPath, URI folderUri, ProjectBindingWrapper binding) {
+    return binding.getBinding()
+      .serverPathToIdePath(serverPath)
+      // Try to resolve local path in matching folder
+      .map(Paths.get(folderUri)::resolve)
+      .map(Path::toFile)
+      .filter(File::exists);
   }
 }

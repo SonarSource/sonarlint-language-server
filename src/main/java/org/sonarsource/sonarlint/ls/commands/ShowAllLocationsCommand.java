@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.commands;
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -55,13 +56,12 @@ public final class ShowAllLocationsCommand {
       this.flows = issue.flows().stream().map(Flow::new).collect(Collectors.toList());
     }
 
-    public Param(ServerIssue issue) {
-      // TODO Rebuild from filePath
-      this.fileUri = null;
+    public Param(ServerIssue issue, Function<String, Optional<URI>> pathResolver) {
+      this.fileUri = pathResolver.apply(issue.getFilePath()).orElse(null);
       this.message = issue.getMessage();
       this.severity = issue.severity();
       this.ruleKey = issue.ruleKey();
-      this.flows = issue.getFlows().stream().map(Flow::new).collect(Collectors.toList());
+      this.flows = issue.getFlows().stream().map(f -> new Flow(f, pathResolver)).collect(Collectors.toList());
     }
 
     public URI getFileUri() {
@@ -92,8 +92,8 @@ public final class ShowAllLocationsCommand {
       this.locations = flow.locations().stream().map(Location::new).collect(Collectors.toList());
     }
 
-    private Flow(ServerIssue.Flow flow) {
-      this.locations = flow.locations().stream().map(Location::new).collect(Collectors.toList());
+    private Flow(ServerIssue.Flow flow, Function<String, Optional<URI>> pathResolver) {
+      this.locations = flow.locations().stream().map(l -> new Location(l, pathResolver)).collect(Collectors.toList());
     }
 
     public List<Location> getLocations() {
@@ -112,10 +112,9 @@ public final class ShowAllLocationsCommand {
       this.message = location.getMessage();
     }
 
-    private Location(ServerIssueLocation location) {
+    private Location(ServerIssueLocation location, Function<String, Optional<URI>> pathResolver) {
       this.textRange = location.getTextRange();
-      // TODO Rebuild from filePath
-      this.uri = null;
+      this.uri = pathResolver.apply(location.getFilePath()).orElse(null);
       this.message = location.getMessage();
     }
 
@@ -136,8 +135,8 @@ public final class ShowAllLocationsCommand {
     return new Param(issue);
   }
 
-  public static Param params(ServerIssue issue) {
-    return new Param(issue);
+  public static Param params(ServerIssue issue, Function<String, Optional<URI>> pathResolver) {
+    return new Param(issue, pathResolver);
   }
 
   @CheckForNull
