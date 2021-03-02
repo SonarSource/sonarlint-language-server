@@ -20,14 +20,18 @@
 package org.sonarsource.sonarlint.ls.commands;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueLocation;
+import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
+import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -77,4 +81,28 @@ class ShowAllLocationsCommandTest {
     assertThat(params.getFlows().get(0).getLocations()).hasSize(2);
     assertThat(params.getFlows().get(1).getLocations()).hasSize(1);
   }
+
+  @Test
+  void pathResolverTest() {
+    ServerIssue issue = mock(ServerIssue.class);
+    when(issue.getFilePath()).thenReturn("filePath");
+    ServerIssue.Flow flow = mock(ServerIssue.Flow.class);
+    when(issue.getFlows()).thenReturn(Collections.singletonList(flow));
+    ServerIssueLocation location = mock(ServerIssueLocation.class);
+    when(location.getFilePath()).thenReturn("locationFilePath");
+    when(flow.locations()).thenReturn(Collections.singletonList(location));
+
+    ShowAllLocationsCommand.Param param = new ShowAllLocationsCommand.Param(issue, (s) -> {
+      try {
+        return Optional.of(new URI(s));
+      } catch (URISyntaxException e) {
+        e.printStackTrace();
+        return Optional.empty();
+      }
+    });
+
+    assertThat(param.getFileUri()).hasToString("filePath");
+    assertThat(param.getFlows().get(0).getLocations().get(0).getUri()).hasToString("locationFilePath");
+  }
+
 }

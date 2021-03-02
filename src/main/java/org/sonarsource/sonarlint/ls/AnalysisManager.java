@@ -102,7 +102,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   private final Map<URI, String> languageIdPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, String> fileContentPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, List<Issue>> issuesPerFileURI = new ConcurrentHashMap<>();
-  private final Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile = new ConcurrentHashMap<>();
+  private final Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile;
   private final Map<URI, Optional<GetJavaConfigResponse>> javaConfigPerFileURI = new ConcurrentHashMap<>();
   private final Map<Path, List<Path>> jvmClasspathPerJavaHome = new ConcurrentHashMap<>();
   // entries in this map mean that the file is "dirty"
@@ -121,6 +121,12 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
   public AnalysisManager(LanguageClientLogOutput lsLogOutput, EnginesFactory enginesFactory, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
     WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, ProjectBindingManager bindingManager) {
+    this(lsLogOutput, enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager, new ConcurrentHashMap<>());
+  }
+
+  public AnalysisManager(LanguageClientLogOutput lsLogOutput, EnginesFactory enginesFactory, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
+    WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, ProjectBindingManager bindingManager,
+    Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile) {
     this.lsLogOutput = lsLogOutput;
     this.enginesFactory = enginesFactory;
     this.client = client;
@@ -130,6 +136,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     this.bindingManager = bindingManager;
     this.analysisExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint analysis", false));
     this.watcher = new EventWatcher();
+    this.taintVulnerabilitiesPerFile = taintVulnerabilitiesPerFile;
   }
 
   synchronized StandaloneSonarLintEngine getOrCreateStandaloneEngine() {
@@ -309,7 +316,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       .findFirst();
   }
 
-  Optional<ServerIssue> getServerIssueForDiagnostic(URI fileUri, Diagnostic d) {
+  Optional<ServerIssue> getTaintVulnerabilityForDiagnostic(URI fileUri, Diagnostic d) {
     return taintVulnerabilitiesPerFile.getOrDefault(fileUri, Collections.emptyList())
       .stream()
       .filter(i -> i.ruleKey().equals(d.getCode().getLeft()) && locationMatches(i, d))
@@ -429,7 +436,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     return Optional.empty();
   }
 
-  private static Optional<Diagnostic> convert(ServerIssue issue) {
+  static Optional<Diagnostic> convert(ServerIssue issue) {
     if (issue.getStartLine() != null) {
       Range range = position(issue);
       Diagnostic diagnostic = new Diagnostic();

@@ -42,10 +42,11 @@ import org.junit.jupiter.api.Test;
 import org.sonar.api.server.rule.RuleParamType;
 import org.sonar.api.server.rule.RulesDefinition;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueLocation;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
+import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
+import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
@@ -65,6 +66,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.AnalysisManager.SONARLINT_SOURCE;
+import static org.sonarsource.sonarlint.ls.AnalysisManager.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_UPDATE_ALL_BINDINGS_COMMAND;
 import static org.sonarsource.sonarlint.ls.CommandManager.getHtmlDescription;
@@ -154,6 +156,27 @@ class CommandManagerTests {
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("Open description of SonarLint rule 'XYZ'", "Deactivate rule 'XYZ'");
   }
+
+  @Test
+  void codeActionsForTaint() {
+    when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.empty());
+
+    Diagnostic d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARQUBE_TAINT_SOURCE, "XYZ");
+
+    ServerIssue issue = mock(ServerIssue.class);
+    when(issue.ruleKey()).thenReturn("ruleKey");
+    ServerIssue.Flow flow = mock(ServerIssue.Flow.class);
+    when(issue.getFlows()).thenReturn(Collections.singletonList(flow));
+    ServerIssueLocation location = mock(ServerIssueLocation.class);
+    when(flow.locations()).thenReturn(Collections.singletonList(location));
+    when(mockAnalysisManager.getTaintVulnerabilityForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
+
+    List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
+      new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
+
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("Show all locations for taint vulnerability 'ruleKey'");
+  }
+
 
   @Test
   void suggestShowAllLocationsForIssueWithFlows() {

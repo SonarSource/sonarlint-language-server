@@ -19,13 +19,16 @@
  */
 package org.sonarsource.sonarlint.ls.connected;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
@@ -101,6 +104,7 @@ class ProjectBindingManagerTests {
   private Path fileInAWorkspaceFolderPath;
   private Path fileInAWorkspaceFolderPath2;
   private Path fileNotInAWorkspaceFolderPath;
+  Map<URI, Optional<ProjectBindingWrapper>> folderBindingCache;
   private ProjectBindingManager underTest;
   private final SettingsManager settingsManager = mock(SettingsManager.class);
   private final WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
@@ -151,7 +155,8 @@ class ProjectBindingManagerTests {
     when(fakeEngine2.getProjectStorageStatus(PROJECT_KEY)).thenReturn(projectStorageStatus2);
     when(fakeEngine2.update(any(), any(), any())).thenReturn(updateResult2);
 
-    underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, new ProgressManager(client), mock(ApacheHttpClient.class));
+    folderBindingCache = new ConcurrentHashMap<>();
+    underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, new ProgressManager(client), mock(ApacheHttpClient.class), folderBindingCache);
     underTest.setAnalysisManager(analysisManager);
   }
 
@@ -792,6 +797,28 @@ class ProjectBindingManagerTests {
     mockFileInABoundWorkspaceFolder();
     assertThat(underTest.getServerConnectionSettingsForUrl(GLOBAL_SETTINGS.getServerUrl() + "/"))
       .hasValueSatisfying(s -> assertThat(s.getEndpointParams().getBaseUrl()).isEqualTo(GLOBAL_SETTINGS.getServerUrl()));
+  }
+
+  @Test
+  void should_return_empty_optional_on_invalid_path() {
+    Optional<URI> uri = underTest.serverPathToFileUri("invalidPath");
+
+    assertThat(uri).isEmpty();
+  }
+
+  @Test
+  void should_return_optional_on_valid_path() {
+    String serverPath = "src/test/resources/sample-folder/Test.java";
+    ProjectBindingWrapper projectBindingWrapperMock = mock(ProjectBindingWrapper.class);
+    ProjectBinding projectBinding = mock(ProjectBinding.class);
+    when(projectBindingWrapperMock.getBinding()).thenReturn(projectBinding);
+    when((projectBinding.serverPathToIdePath(serverPath))).thenReturn(Optional.of(serverPath));
+    folderBindingCache.put(new File(".").toURI(), Optional.of(projectBindingWrapperMock));
+
+    Optional<URI> uri = underTest.serverPathToFileUri(serverPath);
+
+    assertThat(uri).isNotEmpty();
+    assertThat(uri.get().toString()).contains("src/test/resources/sample-folder/Test.java");
   }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {

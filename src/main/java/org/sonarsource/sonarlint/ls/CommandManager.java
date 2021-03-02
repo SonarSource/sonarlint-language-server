@@ -98,8 +98,8 @@ public class CommandManager {
           codeActions.add(newQuickFix(d, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, Collections.singletonList(ruleKey)));
         }
       } else if (SONARQUBE_TAINT_SOURCE.equals(d.getSource())) {
-        analysisManager.getServerIssueForDiagnostic(uri, d).ifPresent(issue -> {
-          if (! issue.getFlows().isEmpty()) {
+        analysisManager.getTaintVulnerabilityForDiagnostic(uri, d).ifPresent(issue -> {
+          if (!issue.getFlows().isEmpty()) {
             String titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", issue.ruleKey());
             codeActions.add(
               newQuickFix(d, titleShowAllLocations, ShowAllLocationsCommand.ID, Collections.singletonList(

@@ -86,7 +86,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private final WorkspaceFoldersManager foldersManager;
   private final SettingsManager settingsManager;
-  private final ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache = new ConcurrentHashMap<>();
+  private Map<URI, Optional<ProjectBindingWrapper>> folderBindingCache;
   private final ConcurrentMap<URI, Optional<ProjectBindingWrapper>> fileBindingCache = new ConcurrentHashMap<>();
   private final ConcurrentMap<String, Optional<ConnectedSonarLintEngine>> connectedEngineCacheByConnectionId = new ConcurrentHashMap<>();
   private final ProgressManager progressManager;
@@ -97,13 +97,20 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClient client,
     ProgressManager progressManager, ApacheHttpClient httpClient) {
+    this(enginesFactory, foldersManager, settingsManager, client, progressManager, httpClient, new ConcurrentHashMap<>());
+  }
+
+  public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClient client,
+    ProgressManager progressManager, ApacheHttpClient httpClient, Map<URI, Optional<ProjectBindingWrapper>> folderBindingCache) {
     this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
     this.client = client;
     this.progressManager = progressManager;
     this.httpClient = httpClient;
+    this.folderBindingCache = folderBindingCache;
   }
+
 
   // Can't use constructor injection because of cyclic dependency
   public void setAnalysisManager(AnalysisManager analysisManager) {
@@ -489,6 +496,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   private static Optional<File> tryResolveLocalFile(String serverPath, URI folderUri, ProjectBindingWrapper binding) {
+    LOG.info("Server path: " + serverPath + " Folder URI: " + folderUri);
     return binding.getBinding()
       .serverPathToIdePath(serverPath)
       // Try to resolve local path in matching folder
