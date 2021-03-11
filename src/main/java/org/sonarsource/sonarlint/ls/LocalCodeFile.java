@@ -23,7 +23,7 @@ import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import javax.annotation.CheckForNull;
@@ -38,8 +38,8 @@ public class LocalCodeFile {
     File localFile = new File(uri);
     if (localFile.exists()) {
       try {
-        // TODO Find the right charset ???
-        lines = Files.readLines(localFile, Charset.defaultCharset());
+        // TODO Find the right character set to use?
+        this.lines = Files.readLines(localFile, StandardCharsets.UTF_8);
       } catch(IOException ioe) {
         this.lines = Collections.emptyList();
       }
@@ -59,7 +59,7 @@ public class LocalCodeFile {
         return null;
       } else {
         StringBuilder snippet = new StringBuilder();
-        int maxLine = Math.min(lines.size(), range.getEndLine() - 1);
+        int maxLine = Math.min(lines.size() - 1, range.getEndLine() - 1);
         int startOffset = range.getStartLineOffset();
         do {
           String currentLine = lines.get(lineIndex);

@@ -20,7 +20,9 @@
 package org.sonarsource.sonarlint.ls.commands;
 
 import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -57,12 +59,12 @@ public final class ShowAllLocationsCommand {
       this.flows = issue.flows().stream().map(Flow::new).collect(Collectors.toList());
     }
 
-    public Param(ServerIssue issue, Function<String, Optional<URI>> pathResolver) {
+    public Param(ServerIssue issue, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localFileCache) {
       this.fileUri = pathResolver.apply(issue.getFilePath()).orElse(null);
       this.message = issue.getMessage();
       this.severity = issue.severity();
       this.ruleKey = issue.ruleKey();
-      this.flows = issue.getFlows().stream().map(f -> new Flow(f, pathResolver)).collect(Collectors.toList());
+      this.flows = issue.getFlows().stream().map(f -> new Flow(f, pathResolver, localFileCache)).collect(Collectors.toList());
     }
 
     public URI getFileUri() {
@@ -93,8 +95,8 @@ public final class ShowAllLocationsCommand {
       this.locations = flow.locations().stream().map(Location::new).collect(Collectors.toList());
     }
 
-    private Flow(ServerIssue.Flow flow, Function<String, Optional<URI>> pathResolver) {
-      this.locations = flow.locations().stream().map(l -> new Location(l, pathResolver)).collect(Collectors.toList());
+    private Flow(ServerIssue.Flow flow, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localFileCache) {
+      this.locations = flow.locations().stream().map(l -> new Location(l, pathResolver, localFileCache)).collect(Collectors.toList());
     }
 
     public List<Location> getLocations() {
@@ -105,6 +107,7 @@ public final class ShowAllLocationsCommand {
   static class Location {
     private final TextRange textRange;
     private final URI uri;
+    private final String filePath;
     private final String message;
     private final boolean exists;
     private final boolean codeMatches;
@@ -112,20 +115,22 @@ public final class ShowAllLocationsCommand {
     private Location(IssueLocation location) {
       this.textRange = location.getTextRange();
       this.uri = nullableUri(location.getInputFile());
+      this.filePath = this.uri == null ? null : this.uri.getPath();
       this.message = location.getMessage();
       this.exists = true;
       this.codeMatches = true;
     }
 
-    private Location(ServerIssueLocation location, Function<String, Optional<URI>> pathResolver) {
+    private Location(ServerIssueLocation location, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localCodeCache) {
       this.textRange = location.getTextRange();
       this.uri = pathResolver.apply(location.getFilePath()).orElse(null);
+      this.filePath = location.getFilePath();
       this.message = location.getMessage();
       if (this.uri == null) {
         this.exists = false;
         this.codeMatches = false;
       } else {
-        String localCode = LocalCodeFile.from(this.uri).codeAt(this.textRange);
+        String localCode = localCodeCache.computeIfAbsent(this.uri, LocalCodeFile::from).codeAt(this.textRange);
         if (localCode == null) {
           this.exists = false;
           this.codeMatches = false;
@@ -143,6 +148,10 @@ public final class ShowAllLocationsCommand {
 
     public URI getUri() {
       return uri;
+    }
+
+    public String getFilePath() {
+      return filePath;
     }
 
     public String getMessage() {
@@ -163,7 +172,7 @@ public final class ShowAllLocationsCommand {
   }
 
   public static Param params(ServerIssue issue, Function<String, Optional<URI>> pathResolver) {
-    return new Param(issue, pathResolver);
+    return new Param(issue, pathResolver, new HashMap<>());
   }
 
   @CheckForNull
