@@ -21,6 +21,9 @@ package org.sonarsource.sonarlint.ls.commands;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -94,15 +97,15 @@ class ShowAllLocationsCommandTest {
 
     ShowAllLocationsCommand.Param param = new ShowAllLocationsCommand.Param(issue, (s) -> {
       try {
-        return Optional.of(new URI(s));
-      } catch (URISyntaxException e) {
+        return Optional.of(Paths.get(s).toUri());
+      } catch (InvalidPathException e) {
         e.printStackTrace();
         return Optional.empty();
       }
     });
 
-    assertThat(param.getFileUri()).hasToString("filePath");
-    assertThat(param.getFlows().get(0).getLocations().get(0).getUri()).hasToString("locationFilePath");
+    assertThat(param.getFileUri().toString()).endsWith("filePath");
+    assertThat(param.getFlows().get(0).getLocations().get(0).getUri().toString()).endsWith("locationFilePath");
   }
 
 }
