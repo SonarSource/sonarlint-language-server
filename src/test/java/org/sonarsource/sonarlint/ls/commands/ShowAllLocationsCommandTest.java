@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.TextRange;
@@ -34,6 +35,7 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueLocation;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
+import org.sonarsource.sonarlint.ls.LocalCodeFile;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -90,21 +92,50 @@ class ShowAllLocationsCommandTest {
     when(issue.getFilePath()).thenReturn("filePath");
     ServerIssue.Flow flow = mock(ServerIssue.Flow.class);
     when(issue.getFlows()).thenReturn(Collections.singletonList(flow));
-    ServerIssueLocation location = mock(ServerIssueLocation.class);
-    when(location.getFilePath()).thenReturn("locationFilePath");
-    when(flow.locations()).thenReturn(Collections.singletonList(location));
+
+    String locationFilePath = "locationFilePath";
+
+    ServerIssueLocation location1 = mock(ServerIssueLocation.class);
+    when(location1.getFilePath()).thenReturn(locationFilePath);
+    TextRange range1 = new TextRange(0, 1, 1, 1);
+    when(location1.getTextRange()).thenReturn(range1);
+    when(location1.getCodeSnippet()).thenReturn("some code");
+
+    ServerIssueLocation location2 = mock(ServerIssueLocation.class);
+    when(location2.getFilePath()).thenReturn(locationFilePath);
+    TextRange range2 = new TextRange(2, 1, 2, 1);
+    when(location2.getTextRange()).thenReturn(range2);
+    when(location2.getCodeSnippet()).thenReturn("other code");
+
+    when(flow.locations()).thenReturn(Arrays.asList(location1, location2));
+
+    LocalCodeFile mockCodeFile = mock(LocalCodeFile.class);
+    when(mockCodeFile.codeAt(range1)).thenReturn("some code");
+    when(mockCodeFile.codeAt(range2)).thenReturn(null);
+    Map<URI, LocalCodeFile> cache = new HashMap<>();
+    cache.put(Paths.get(locationFilePath).toUri(), mockCodeFile);
 
     ShowAllLocationsCommand.Param param = new ShowAllLocationsCommand.Param(issue, (s) -> {
       try {
         return Optional.of(Paths.get(s).toUri());
       } catch (InvalidPathException e) {
-        e.printStackTrace();
         return Optional.empty();
       }
-    }, new HashMap<>());
+    }, cache);
 
     assertThat(param.getFileUri().toString()).endsWith("filePath");
-    assertThat(param.getFlows().get(0).getLocations().get(0).getUri().toString()).endsWith("locationFilePath");
+    List<ShowAllLocationsCommand.Location> allLocations = param.getFlows().get(0).getLocations();
+    ShowAllLocationsCommand.Location firstLocation = allLocations.get(0);
+    assertThat(firstLocation.getUri().toString()).endsWith(locationFilePath);
+    assertThat(firstLocation.getFilePath()).isEqualTo(locationFilePath);
+    assertThat(firstLocation.getExists()).isTrue();
+    assertThat(firstLocation.getCodeMatches()).isTrue();
+
+    ShowAllLocationsCommand.Location secondLocation = allLocations.get(1);
+    assertThat(secondLocation.getUri().toString()).endsWith(locationFilePath);
+    assertThat(firstLocation.getFilePath()).isEqualTo(locationFilePath);
+    assertThat(secondLocation.getExists()).isFalse();
+    assertThat(secondLocation.getCodeMatches()).isFalse();
   }
 
 }
