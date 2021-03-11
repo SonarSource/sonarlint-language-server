@@ -25,7 +25,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.sonarsource.sonarlint.core.client.api.common.TextRange;
 
@@ -53,20 +52,27 @@ class LocalCodeFileTest {
 
   private static Stream<Arguments> argumentsForValidRange() {
     return Stream.of(
+      Arguments.of(1, 0, 1, 0, ""),
       Arguments.of(2, 0, 2, 11, "Second line"),
       Arguments.of(2, 3, 2, 15, "ond line"),
       Arguments.of(2, 3, 3, 5, "ond line\nThird"),
-      Arguments.of(1, 0, 3, 10, "First line\nSecond line\nThird line")
+      Arguments.of(1, 3, 2, 15, "st line\nSecond line"),
+      Arguments.of(1, 0, 3, 10, "First line\nSecond line\nThird line"),
+      Arguments.of(3, 0, 5, 15, "Third line")
     );
   }
 
   @ParameterizedTest(name = "codeAt(range({0}, {1}, {2}, {3})) should be null")
-  @CsvSource({
-    "5,0,5,11",
-    "2,12,2,15"
-  })
+  @MethodSource("argumentsForInvalidRange")
   void shouldNotFindInvalidRange(int startLine, int startLineOffset, int endLine, int endLineOffset) {
     assertThat(underTest.codeAt(range(startLine, startLineOffset, endLine, endLineOffset))).isNull();
+  }
+
+  private static Stream<Arguments> argumentsForInvalidRange() {
+    return Stream.of(
+      Arguments.of(5, 0, 5, 11),
+      Arguments.of(2, 12, 2, 15)
+    );
   }
 
   private static TextRange range(int startLine, int startLineOffset, int endLine, int endLineOffset) {
