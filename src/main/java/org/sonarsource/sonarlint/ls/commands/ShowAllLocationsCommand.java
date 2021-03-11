@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.commands;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
@@ -59,7 +60,8 @@ public final class ShowAllLocationsCommand {
       this.flows = issue.flows().stream().map(Flow::new).collect(Collectors.toList());
     }
 
-    public Param(ServerIssue issue, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localFileCache) {
+    @VisibleForTesting
+    Param(ServerIssue issue, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localFileCache) {
       this.fileUri = pathResolver.apply(issue.getFilePath()).orElse(null);
       this.message = issue.getMessage();
       this.severity = issue.severity();
