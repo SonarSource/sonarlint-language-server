@@ -32,6 +32,7 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueLocation;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
+import org.sonarsource.sonarlint.ls.LocalCodeFile;
 
 public final class ShowAllLocationsCommand {
 
@@ -105,17 +106,35 @@ public final class ShowAllLocationsCommand {
     private final TextRange textRange;
     private final URI uri;
     private final String message;
+    private final boolean exists;
+    private final boolean codeMatches;
 
     private Location(IssueLocation location) {
       this.textRange = location.getTextRange();
       this.uri = nullableUri(location.getInputFile());
       this.message = location.getMessage();
+      this.exists = true;
+      this.codeMatches = true;
     }
 
     private Location(ServerIssueLocation location, Function<String, Optional<URI>> pathResolver) {
       this.textRange = location.getTextRange();
       this.uri = pathResolver.apply(location.getFilePath()).orElse(null);
       this.message = location.getMessage();
+      if (this.uri == null) {
+        this.exists = false;
+        this.codeMatches = false;
+      } else {
+        String localCode = LocalCodeFile.from(this.uri).codeAt(this.textRange);
+        if (localCode == null) {
+          this.exists = false;
+          this.codeMatches = false;
+        } else {
+          this.exists = true;
+          String remoteSnippet = location.getCodeSnippet();
+          this.codeMatches = remoteSnippet != null && remoteSnippet.equals(localCode);
+        }
+      }
     }
 
     public TextRange getTextRange() {
@@ -128,6 +147,14 @@ public final class ShowAllLocationsCommand {
 
     public String getMessage() {
       return message;
+    }
+
+    public boolean getExists() {
+      return exists;
+    }
+
+    public boolean getCodeMatches() {
+      return codeMatches;
     }
   }
 
