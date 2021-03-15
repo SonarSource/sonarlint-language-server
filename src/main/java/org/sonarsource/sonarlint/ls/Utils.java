@@ -22,6 +22,9 @@ package org.sonarsource.sonarlint.ls;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonSyntaxException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 import javax.annotation.CheckForNull;
@@ -61,5 +64,14 @@ public class Utils {
   public static void interrupted(InterruptedException e) {
     LOG.debug("Interrupted!", e);
     Thread.currentThread().interrupt();
+  }
+
+  public static String encodeUriComponent(String toEncode) {
+    try {
+      return URLEncoder.encode(toEncode, StandardCharsets.UTF_8.name());
+    } catch (UnsupportedEncodingException e) {
+      // Should not happen on a standard JVM
+      throw new IllegalStateException(e);
+    }
   }
 }

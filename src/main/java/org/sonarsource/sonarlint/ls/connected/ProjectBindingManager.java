@@ -496,7 +496,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   private static Optional<File> tryResolveLocalFile(String serverPath, URI folderUri, ProjectBindingWrapper binding) {
-    LOG.info("Server path: " + serverPath + " Folder URI: " + folderUri);
     return binding.getBinding()
       .serverPathToIdePath(serverPath)
       // Try to resolve local path in matching folder

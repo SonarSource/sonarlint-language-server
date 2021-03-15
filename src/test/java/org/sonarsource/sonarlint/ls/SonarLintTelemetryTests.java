@@ -229,6 +229,38 @@ class SonarLintTelemetryTests {
   }
 
   @Test
+  void taintVulnerabilitiesInvestigatedLocally_when_enabled() {
+    when(telemetryManager.isEnabled()).thenReturn(true);
+    telemetry.taintVulnerabilitiesInvestigatedLocally();
+    verify(telemetryManager).isEnabled();
+    verify(telemetryManager).taintVulnerabilitiesInvestigatedLocally();
+  }
+
+  @Test
+  void taintVulnerabilitiesInvestigatedLocally_when_disabled() {
+    when(telemetryManager.isEnabled()).thenReturn(false);
+    telemetry.taintVulnerabilitiesInvestigatedLocally();
+    verify(telemetryManager).isEnabled();
+    verifyNoMoreInteractions(telemetryManager);
+  }
+
+  @Test
+  void taintVulnerabilitiesInvestigatedRemotely_when_enabled() {
+    when(telemetryManager.isEnabled()).thenReturn(true);
+    telemetry.taintVulnerabilitiesInvestigatedRemotely();
+    verify(telemetryManager).isEnabled();
+    verify(telemetryManager).taintVulnerabilitiesInvestigatedRemotely();
+  }
+
+  @Test
+  void taintVulnerabilitiesInvestigatedRemotely_when_disabled() {
+    when(telemetryManager.isEnabled()).thenReturn(false);
+    telemetry.taintVulnerabilitiesInvestigatedRemotely();
+    verify(telemetryManager).isEnabled();
+    verifyNoMoreInteractions(telemetryManager);
+  }
+
+  @Test
   void should_start_disabled_when_storagePath_null() {
     when(telemetryManager.isEnabled()).thenReturn(true);
     SonarLintTelemetry telemetry = new SonarLintTelemetry(mock(ApacheHttpClient.class)) {

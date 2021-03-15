@@ -136,8 +136,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.analysisManager = new AnalysisManager(lsLogOutput, enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager);
     bindingManager.setAnalysisManager(analysisManager);
     this.settingsManager.addListener(analysisManager);
-    this.commandManager = new CommandManager(client, bindingManager, analysisManager);
-    this.securityHotspotsHandlerServer = new SecurityHotspotsHandlerServer(lsLogOutput, bindingManager, client, this.telemetry);
+    this.commandManager = new CommandManager(client, settingsManager, bindingManager, analysisManager, telemetry);
+    this.securityHotspotsHandlerServer = new SecurityHotspotsHandlerServer(lsLogOutput, bindingManager, client, telemetry);
     launcher.startListening();
   }
 

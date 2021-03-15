@@ -50,6 +50,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDesc
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 import static java.net.URI.create;
 import static org.sonarsource.sonarlint.ls.AnalysisManager.SONARLINT_SOURCE;
@@ -61,19 +62,29 @@ public class CommandManager {
   static final String SONARLINT_OPEN_STANDALONE_RULE_DESCRIPTION_COMMAND = "SonarLint.OpenStandaloneRuleDesc";
   static final String SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND = "SonarLint.OpenRuleDescCodeAction";
   static final String SONARLINT_UPDATE_ALL_BINDINGS_COMMAND = "SonarLint.UpdateAllBindings";
+  static final String SONARLINT_BROWSE_TAINT_VULNERABILITY = "SonarLint.BrowseTaintVulnerability";
   static final List<String> SONARLINT_SERVERSIDE_COMMANDS = Arrays.asList(
-    SONARLINT_UPDATE_ALL_BINDINGS_COMMAND, SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, SONARLINT_OPEN_STANDALONE_RULE_DESCRIPTION_COMMAND);
+    SONARLINT_UPDATE_ALL_BINDINGS_COMMAND,
+    SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
+    SONARLINT_OPEN_STANDALONE_RULE_DESCRIPTION_COMMAND,
+    SONARLINT_BROWSE_TAINT_VULNERABILITY
+  );
   // Client side
   static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
 
   private final SonarLintExtendedLanguageClient client;
+  private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
   private final AnalysisManager analysisManager;
+  private final SonarLintTelemetry telemetry;
 
-  CommandManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager, AnalysisManager analysisManager) {
+  CommandManager(SonarLintExtendedLanguageClient client, SettingsManager settingsManager, ProjectBindingManager bindingManager, AnalysisManager analysisManager,
+    SonarLintTelemetry telemetry) {
     this.client = client;
+    this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
     this.analysisManager = analysisManager;
+    this.telemetry = telemetry;
   }
 
   public List<Either<Command, CodeAction>> computeCodeActions(CodeActionParams params, CancelChecker cancelToken) {
@@ -97,14 +108,22 @@ public class CommandManager {
           codeActions.add(newQuickFix(d, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, Collections.singletonList(ruleKey)));
         }
       } else if (SONARQUBE_TAINT_SOURCE.equals(d.getSource())) {
-        addRuleDescriptionCodeAction(params, codeActions, d, d.getCode().getLeft());
+        String ruleKey = d.getCode().getLeft();
+        addRuleDescriptionCodeAction(params, codeActions, d, ruleKey);
         analysisManager.getTaintVulnerabilityForDiagnostic(uri, d).ifPresent(issue -> {
           if (!issue.getFlows().isEmpty()) {
-            String titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", issue.ruleKey());
+            String titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", ruleKey);
             codeActions.add(
               newQuickFix(d, titleShowAllLocations, ShowAllLocationsCommand.ID, Collections.singletonList(
                 ShowAllLocationsCommand.params(issue, bindingManager::serverPathToFileUri))));
           }
+          binding.ifPresent(b -> {
+            String title = String.format("Open taint vulnerability '%s' on '%s'", ruleKey, b.getConnectionId());
+            String serverUrl = settingsManager.getCurrentSettings().getServerConnections().get(b.getConnectionId()).getServerUrl();
+            String projectKey = Utils.encodeUriComponent(b.getBinding().projectKey());
+            String issueUrl = String.format("%s/project/issues?id=%s&issues=%s&open=%s", serverUrl, projectKey, issue.key(), issue.key());
+            codeActions.add(newQuickFix(d, title, SONARLINT_BROWSE_TAINT_VULNERABILITY, Collections.singletonList(issueUrl)));
+          });
         });
       }
     }
@@ -171,6 +190,9 @@ public class CommandManager {
       case SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND:
         handleOpenRuleDescriptionFromCodeActionCommand(params);
         break;
+      case SONARLINT_BROWSE_TAINT_VULNERABILITY:
+        handleBrowseTaintVulnerability(params);
+        break;
       default:
         throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported command: " + params.getCommand(), null));
     }
@@ -186,6 +208,12 @@ public class CommandManager {
     URI uri = create(getAsString(params.getArguments().get(1)));
     Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(uri);
     openRuleDescription(binding.orElse(null), ruleKey);
+  }
+
+  private void handleBrowseTaintVulnerability(ExecuteCommandParams params) {
+    String taintUrl = getAsString(params.getArguments().get(0));
+    telemetry.taintVulnerabilitiesInvestigatedRemotely();
+    client.browseTo(taintUrl);
   }
 
   // https://github.com/eclipse/lsp4j/issues/126

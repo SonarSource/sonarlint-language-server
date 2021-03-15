@@ -189,6 +189,18 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     }
   }
 
+  public void taintVulnerabilitiesInvestigatedLocally() {
+    if(enabled()) {
+      telemetry.taintVulnerabilitiesInvestigatedLocally();
+    }
+  }
+
+  public void taintVulnerabilitiesInvestigatedRemotely() {
+    if(enabled()) {
+      telemetry.taintVulnerabilitiesInvestigatedRemotely();
+    }
+  }
+
   public void stop() {
     if (enabled()) {
       telemetry.stop();
