@@ -21,6 +21,8 @@ package org.sonarsource.sonarlint.ls.commands;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.net.URI;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +53,7 @@ public final class ShowAllLocationsCommand {
     private final String severity;
     private final String ruleKey;
     private final List<Flow> flows;
+    private final String creationDate;
 
     private Param(Issue issue) {
       this.fileUri = nullableUri(issue.getInputFile());
@@ -58,6 +61,7 @@ public final class ShowAllLocationsCommand {
       this.severity = issue.getSeverity();
       this.ruleKey = issue.getRuleKey();
       this.flows = issue.flows().stream().map(Flow::new).collect(Collectors.toList());
+      this.creationDate = null;
     }
 
     @VisibleForTesting
@@ -67,6 +71,7 @@ public final class ShowAllLocationsCommand {
       this.severity = issue.severity();
       this.ruleKey = issue.ruleKey();
       this.flows = issue.getFlows().stream().map(f -> new Flow(f, pathResolver, localFileCache)).collect(Collectors.toList());
+      this.creationDate = DateTimeFormatter.ISO_DATE_TIME.format(issue.creationDate().atOffset(ZoneOffset.UTC));
     }
 
     public URI getFileUri() {
@@ -83,6 +88,11 @@ public final class ShowAllLocationsCommand {
 
     public String getRuleKey() {
       return ruleKey;
+    }
+
+    @CheckForNull
+    public String getCreationDate() {
+      return creationDate;
     }
 
     public List<Flow> getFlows() {

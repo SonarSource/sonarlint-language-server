@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls;
 
 import com.google.gson.JsonPrimitive;
 import java.net.URI;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -165,6 +166,7 @@ class CommandManagerTests {
 
     ServerIssue issue = mock(ServerIssue.class);
     when(issue.ruleKey()).thenReturn("ruleKey");
+    when(issue.creationDate()).thenReturn(Instant.EPOCH);
     ServerIssue.Flow flow = mock(ServerIssue.Flow.class);
     when(issue.getFlows()).thenReturn(Collections.singletonList(flow));
     ServerIssueLocation location = mock(ServerIssueLocation.class);

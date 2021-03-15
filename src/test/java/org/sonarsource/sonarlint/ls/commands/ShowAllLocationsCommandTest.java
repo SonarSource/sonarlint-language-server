@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.commands;
 import java.net.URI;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -92,6 +93,7 @@ class ShowAllLocationsCommandTest {
     when(issue.getFilePath()).thenReturn("filePath");
     ServerIssue.Flow flow = mock(ServerIssue.Flow.class);
     when(issue.getFlows()).thenReturn(Collections.singletonList(flow));
+    when(issue.creationDate()).thenReturn(Instant.EPOCH);
 
     String locationFilePath = "locationFilePath";
 
@@ -123,6 +125,7 @@ class ShowAllLocationsCommandTest {
       }
     }, cache);
 
+    assertThat(param.getCreationDate()).isEqualTo("1970-01-01T00:00:00Z");
     assertThat(param.getFileUri().toString()).endsWith("filePath");
     List<ShowAllLocationsCommand.Location> allLocations = param.getFlows().get(0).getLocations();
     ShowAllLocationsCommand.Location firstLocation = allLocations.get(0);
