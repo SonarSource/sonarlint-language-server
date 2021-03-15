@@ -85,8 +85,7 @@ public class CommandManager {
       if (SONARLINT_SOURCE.equals(d.getSource())) {
         String ruleKey = d.getCode().getLeft();
         cancelToken.checkCanceled();
-        String titleShowRuleDesc = String.format("Open description of SonarLint rule '%s'", ruleKey);
-        codeActions.add(newQuickFix(d, titleShowRuleDesc, SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, Arrays.asList(ruleKey, params.getTextDocument().getUri())));
+        addRuleDescriptionCodeAction(params, codeActions, d, ruleKey);
         analysisManager.getIssueForDiagnostic(uri, d).ifPresent(issue -> {
           if (! issue.flows().isEmpty()) {
             String titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
@@ -98,6 +97,7 @@ public class CommandManager {
           codeActions.add(newQuickFix(d, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, Collections.singletonList(ruleKey)));
         }
       } else if (SONARQUBE_TAINT_SOURCE.equals(d.getSource())) {
+        addRuleDescriptionCodeAction(params, codeActions, d, d.getCode().getLeft());
         analysisManager.getTaintVulnerabilityForDiagnostic(uri, d).ifPresent(issue -> {
           if (!issue.getFlows().isEmpty()) {
             String titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", issue.ruleKey());
@@ -109,6 +109,11 @@ public class CommandManager {
       }
     }
     return codeActions;
+  }
+
+  private static void addRuleDescriptionCodeAction(CodeActionParams params, List<Either<Command, CodeAction>> codeActions, Diagnostic d, String ruleKey) {
+    String titleShowRuleDesc = String.format("Open description of SonarLint rule '%s'", ruleKey);
+    codeActions.add(newQuickFix(d, titleShowRuleDesc, SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, Arrays.asList(ruleKey, params.getTextDocument().getUri())));
   }
 
   private static Either<Command, CodeAction> newQuickFix(Diagnostic diag, String title, String command, List<Object> params) {

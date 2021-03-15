@@ -176,9 +176,11 @@ class CommandManagerTests {
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
 
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("Show all locations for taint vulnerability 'ruleKey'");
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
+      "Open description of SonarLint rule 'XYZ'",
+      "Show all locations for taint vulnerability 'ruleKey'"
+    );
   }
-
 
   @Test
   void suggestShowAllLocationsForIssueWithFlows() {
