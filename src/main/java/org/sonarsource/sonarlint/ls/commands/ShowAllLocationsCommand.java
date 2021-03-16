@@ -47,7 +47,7 @@ public final class ShowAllLocationsCommand {
     // NOP
   }
 
-  static class Param {
+  public static class Param {
     private final URI fileUri;
     private final String message;
     private final String severity;

@@ -73,6 +73,7 @@ import static org.sonarsource.sonarlint.ls.AnalysisManager.SONARLINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisManager.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_BROWSE_TAINT_VULNERABILITY;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND;
+import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_UPDATE_ALL_BINDINGS_COMMAND;
 import static org.sonarsource.sonarlint.ls.CommandManager.getHtmlDescription;
 
@@ -277,5 +278,22 @@ class CommandManagerTests {
     underTest.executeCommand(new ExecuteCommandParams(SONARLINT_BROWSE_TAINT_VULNERABILITY, singletonList(new JsonPrimitive(issueUrl))), NOP_CANCEL_TOKEN);
     verify(mockTelemetry).taintVulnerabilitiesInvestigatedRemotely();
     verify(mockClient).browseTo(issueUrl);
+  }
+
+  @Test
+  void showTaintVulnerabilityFlows() {
+    String issueKey = "someIssueKey";
+    ServerIssue issue = mock(ServerIssue.class);
+    when(issue.ruleKey()).thenReturn("ruleKey");
+    when(issue.creationDate()).thenReturn(Instant.EPOCH);
+    ServerIssue.Flow flow = mock(ServerIssue.Flow.class);
+    when(issue.getFlows()).thenReturn(Collections.singletonList(flow));
+    ServerIssueLocation location = mock(ServerIssueLocation.class);
+    when(flow.locations()).thenReturn(Collections.singletonList(location));
+    when(mockAnalysisManager.getTaintVulnerabilityByKey(issueKey)).thenReturn(Optional.of(issue));
+
+    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, singletonList(new JsonPrimitive(issueKey))), NOP_CANCEL_TOKEN);
+    verify(mockAnalysisManager).getTaintVulnerabilityByKey(issueKey);
+    verify(mockTelemetry).taintVulnerabilitiesInvestigatedLocally();
   }
 }

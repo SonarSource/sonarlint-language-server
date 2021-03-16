@@ -30,6 +30,7 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspot;
+import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
 public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
@@ -50,6 +51,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
   @JsonRequest("sonarlint/showHotspot")
   CompletableFuture<Void> showHotspot(ServerHotspot hotspot);
+
+  @JsonRequest("sonarlint/showTaintVulnerability")
+  CompletableFuture<Void> showTaintVulnerability(ShowAllLocationsCommand.Param params);
 
   class ShowRuleDescriptionParams {
     @Expose

@@ -63,11 +63,13 @@ public class CommandManager {
   static final String SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND = "SonarLint.OpenRuleDescCodeAction";
   static final String SONARLINT_UPDATE_ALL_BINDINGS_COMMAND = "SonarLint.UpdateAllBindings";
   static final String SONARLINT_BROWSE_TAINT_VULNERABILITY = "SonarLint.BrowseTaintVulnerability";
+  static final String SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS = "SonarLint.ShowTaintVulnerabilityFlows";
   static final List<String> SONARLINT_SERVERSIDE_COMMANDS = Arrays.asList(
     SONARLINT_UPDATE_ALL_BINDINGS_COMMAND,
     SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
     SONARLINT_OPEN_STANDALONE_RULE_DESCRIPTION_COMMAND,
-    SONARLINT_BROWSE_TAINT_VULNERABILITY
+    SONARLINT_BROWSE_TAINT_VULNERABILITY,
+    SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS
   );
   // Client side
   static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
@@ -113,9 +115,7 @@ public class CommandManager {
         analysisManager.getTaintVulnerabilityForDiagnostic(uri, d).ifPresent(issue -> {
           if (!issue.getFlows().isEmpty()) {
             String titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", ruleKey);
-            codeActions.add(
-              newQuickFix(d, titleShowAllLocations, ShowAllLocationsCommand.ID, Collections.singletonList(
-                ShowAllLocationsCommand.params(issue, bindingManager::serverPathToFileUri))));
+            codeActions.add(newQuickFix(d, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, Collections.singletonList(issue.key())));
           }
           binding.ifPresent(b -> {
             String title = String.format("Open taint vulnerability '%s' on '%s'", ruleKey, b.getConnectionId());
@@ -193,6 +193,9 @@ public class CommandManager {
       case SONARLINT_BROWSE_TAINT_VULNERABILITY:
         handleBrowseTaintVulnerability(params);
         break;
+      case SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS:
+        handleShowTaintVulnerabilityFlows(params);
+        break;
       default:
         throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported command: " + params.getCommand(), null));
     }
@@ -214,6 +217,15 @@ public class CommandManager {
     String taintUrl = getAsString(params.getArguments().get(0));
     telemetry.taintVulnerabilitiesInvestigatedRemotely();
     client.browseTo(taintUrl);
+  }
+
+  private void handleShowTaintVulnerabilityFlows(ExecuteCommandParams params) {
+    String issueKey = getAsString(params.getArguments().get(0));
+    analysisManager.getTaintVulnerabilityByKey(issueKey)
+      .ifPresent(i -> {
+        telemetry.taintVulnerabilitiesInvestigatedLocally();
+        client.showTaintVulnerability(ShowAllLocationsCommand.params(i, bindingManager::serverPathToFileUri));
+      });
   }
 
   // https://github.com/eclipse/lsp4j/issues/126

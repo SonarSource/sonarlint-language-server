@@ -86,6 +86,7 @@ import org.sonarsource.sonarlint.ls.ServerMain;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
+import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -332,6 +333,11 @@ abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public CompletableFuture<Void> showHotspot(ServerHotspot h) {
+      return CompletableFutures.computeAsync(null);
+    }
+
+    @Override
+    public CompletableFuture<Void> showTaintVulnerability(ShowAllLocationsCommand.Param params) {
       return CompletableFutures.computeAsync(null);
     }
 

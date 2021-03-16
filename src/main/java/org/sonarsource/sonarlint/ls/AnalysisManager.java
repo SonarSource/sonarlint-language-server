@@ -323,6 +323,13 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       .findFirst();
   }
 
+  Optional<ServerIssue> getTaintVulnerabilityByKey(String issueId) {
+    return taintVulnerabilitiesPerFile.values().stream()
+      .flatMap(List::stream)
+      .filter(i -> issueId.equals(i.key()))
+      .findFirst();
+  }
+
   static boolean locationMatches(Issue i, Diagnostic d) {
     return position(i).equals(d.getRange());
   }

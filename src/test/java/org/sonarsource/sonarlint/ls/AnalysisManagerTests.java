@@ -115,10 +115,20 @@ class AnalysisManagerTests {
     when(issue.ruleKey()).thenReturn("ruleKey");
     taintVulnerabilitiesPerFile.put(uri, Collections.singletonList(issue));
 
-    Optional<ServerIssue> serverIssue = underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic);
-
-    assertThat(serverIssue).contains(issue);
+    assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).hasValue(issue);
   }
 
+  @Test
+  void testGetServerIssueByKey() throws Exception {
+    URI uri = new URI("/");
+    ServerIssue issue = mock(ServerIssue.class);
+    String issueKey = "key";
+    when(issue.key()).thenReturn(issueKey);
+
+    taintVulnerabilitiesPerFile.put(uri, Collections.singletonList(issue));
+
+    assertThat(underTest.getTaintVulnerabilityByKey(issueKey)).hasValue(issue);
+    assertThat(underTest.getTaintVulnerabilityByKey("otherKey")).isEmpty();
+  }
 
 }
