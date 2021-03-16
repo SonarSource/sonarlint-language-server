@@ -53,6 +53,7 @@ public final class ShowAllLocationsCommand {
     private final String severity;
     private final String ruleKey;
     private final List<Flow> flows;
+    private final String connectionId;
     private final String creationDate;
 
     private Param(Issue issue) {
@@ -61,16 +62,18 @@ public final class ShowAllLocationsCommand {
       this.severity = issue.getSeverity();
       this.ruleKey = issue.getRuleKey();
       this.flows = issue.flows().stream().map(Flow::new).collect(Collectors.toList());
+      this.connectionId = null;
       this.creationDate = null;
     }
 
     @VisibleForTesting
-    Param(ServerIssue issue, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localFileCache) {
+    Param(ServerIssue issue, String connectionId, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localFileCache) {
       this.fileUri = pathResolver.apply(issue.getFilePath()).orElse(null);
       this.message = issue.getMessage();
       this.severity = issue.severity();
       this.ruleKey = issue.ruleKey();
       this.flows = issue.getFlows().stream().map(f -> new Flow(f, pathResolver, localFileCache)).collect(Collectors.toList());
+      this.connectionId = connectionId;
       this.creationDate = DateTimeFormatter.ISO_DATE_TIME.format(issue.creationDate().atOffset(ZoneOffset.UTC));
     }
 
@@ -88,6 +91,11 @@ public final class ShowAllLocationsCommand {
 
     public String getRuleKey() {
       return ruleKey;
+    }
+
+    @CheckForNull
+    public String getConnectionId() {
+      return connectionId;
     }
 
     @CheckForNull
@@ -183,8 +191,8 @@ public final class ShowAllLocationsCommand {
     return new Param(issue);
   }
 
-  public static Param params(ServerIssue issue, Function<String, Optional<URI>> pathResolver) {
-    return new Param(issue, pathResolver, new HashMap<>());
+  public static Param params(ServerIssue issue, String connectionId, Function<String, Optional<URI>> pathResolver) {
+    return new Param(issue, connectionId, pathResolver, new HashMap<>());
   }
 
   @CheckForNull

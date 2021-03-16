@@ -110,20 +110,19 @@ public class CommandManager {
           codeActions.add(newQuickFix(d, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, Collections.singletonList(ruleKey)));
         }
       } else if (SONARQUBE_TAINT_SOURCE.equals(d.getSource())) {
+        ProjectBindingWrapper actualBinding = binding.orElseThrow(() -> new IllegalStateException("Binding not found for taint vulnerability"));
         String ruleKey = d.getCode().getLeft();
         addRuleDescriptionCodeAction(params, codeActions, d, ruleKey);
         analysisManager.getTaintVulnerabilityForDiagnostic(uri, d).ifPresent(issue -> {
           if (!issue.getFlows().isEmpty()) {
             String titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", ruleKey);
-            codeActions.add(newQuickFix(d, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, Collections.singletonList(issue.key())));
+            codeActions.add(newQuickFix(d, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, Arrays.asList(issue.key(), actualBinding.getConnectionId())));
           }
-          binding.ifPresent(b -> {
-            String title = String.format("Open taint vulnerability '%s' on '%s'", ruleKey, b.getConnectionId());
-            String serverUrl = settingsManager.getCurrentSettings().getServerConnections().get(b.getConnectionId()).getServerUrl();
-            String projectKey = Utils.encodeUriComponent(b.getBinding().projectKey());
-            String issueUrl = String.format("%s/project/issues?id=%s&issues=%s&open=%s", serverUrl, projectKey, issue.key(), issue.key());
-            codeActions.add(newQuickFix(d, title, SONARLINT_BROWSE_TAINT_VULNERABILITY, Collections.singletonList(issueUrl)));
-          });
+          String title = String.format("Open taint vulnerability '%s' on '%s'", ruleKey, actualBinding.getConnectionId());
+          String serverUrl = settingsManager.getCurrentSettings().getServerConnections().get(actualBinding.getConnectionId()).getServerUrl();
+          String projectKey = Utils.encodeUriComponent(actualBinding.getBinding().projectKey());
+          String issueUrl = String.format("%s/project/issues?id=%s&issues=%s&open=%s", serverUrl, projectKey, issue.key(), issue.key());
+          codeActions.add(newQuickFix(d, title, SONARLINT_BROWSE_TAINT_VULNERABILITY, Collections.singletonList(issueUrl)));
         });
       }
     }
@@ -221,10 +220,11 @@ public class CommandManager {
 
   private void handleShowTaintVulnerabilityFlows(ExecuteCommandParams params) {
     String issueKey = getAsString(params.getArguments().get(0));
+    String connectionId = getAsString(params.getArguments().get(1));
     analysisManager.getTaintVulnerabilityByKey(issueKey)
-      .ifPresent(i -> {
+      .ifPresent(issue -> {
         telemetry.taintVulnerabilitiesInvestigatedLocally();
-        client.showTaintVulnerability(ShowAllLocationsCommand.params(i, bindingManager::serverPathToFileUri));
+        client.showTaintVulnerability(ShowAllLocationsCommand.params(issue, connectionId, bindingManager::serverPathToFileUri));
       });
   }
 

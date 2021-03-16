@@ -283,6 +283,7 @@ class CommandManagerTests {
   @Test
   void showTaintVulnerabilityFlows() {
     String issueKey = "someIssueKey";
+    String connectionId = "connectionId";
     ServerIssue issue = mock(ServerIssue.class);
     when(issue.ruleKey()).thenReturn("ruleKey");
     when(issue.creationDate()).thenReturn(Instant.EPOCH);
@@ -292,7 +293,8 @@ class CommandManagerTests {
     when(flow.locations()).thenReturn(Collections.singletonList(location));
     when(mockAnalysisManager.getTaintVulnerabilityByKey(issueKey)).thenReturn(Optional.of(issue));
 
-    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, singletonList(new JsonPrimitive(issueKey))), NOP_CANCEL_TOKEN);
+    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, asList(new JsonPrimitive(issueKey), new JsonPrimitive(connectionId))),
+      NOP_CANCEL_TOKEN);
     verify(mockAnalysisManager).getTaintVulnerabilityByKey(issueKey);
     verify(mockTelemetry).taintVulnerabilitiesInvestigatedLocally();
   }

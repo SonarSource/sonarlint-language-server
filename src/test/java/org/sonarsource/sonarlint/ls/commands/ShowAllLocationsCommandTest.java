@@ -85,6 +85,8 @@ class ShowAllLocationsCommandTest {
     assertThat(params.getFlows()).hasSize(2);
     assertThat(params.getFlows().get(0).getLocations()).hasSize(2);
     assertThat(params.getFlows().get(1).getLocations()).hasSize(1);
+    assertThat(params.getConnectionId()).isNull();
+    assertThat(params.getCreationDate()).isNull();
   }
 
   @Test
@@ -117,14 +119,11 @@ class ShowAllLocationsCommandTest {
     Map<URI, LocalCodeFile> cache = new HashMap<>();
     cache.put(Paths.get(locationFilePath).toUri(), mockCodeFile);
 
-    ShowAllLocationsCommand.Param param = new ShowAllLocationsCommand.Param(issue, (s) -> {
-      try {
-        return Optional.of(Paths.get(s).toUri());
-      } catch (InvalidPathException e) {
-        return Optional.empty();
-      }
-    }, cache);
+    String connectionId = "connectionId";
 
+    ShowAllLocationsCommand.Param param = new ShowAllLocationsCommand.Param(issue, connectionId, ShowAllLocationsCommandTest::resolvePath, cache);
+
+    assertThat(param.getConnectionId()).isEqualTo(connectionId);
     assertThat(param.getCreationDate()).isEqualTo("1970-01-01T00:00:00Z");
     assertThat(param.getFileUri().toString()).endsWith("filePath");
     List<ShowAllLocationsCommand.Location> allLocations = param.getFlows().get(0).getLocations();
@@ -141,4 +140,11 @@ class ShowAllLocationsCommandTest {
     assertThat(secondLocation.getCodeMatches()).isFalse();
   }
 
+  private static Optional<URI> resolvePath(String s) {
+    try {
+      return Optional.of(Paths.get(s).toUri());
+    } catch (InvalidPathException e) {
+      return Optional.empty();
+    }
+  }
 }
