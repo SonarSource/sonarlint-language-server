@@ -137,7 +137,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(7, 11, 7, 26, "java:S2259", "sonarlint", "\"NullPointerException\" will be thrown when invoking method \"doSomeThingWith()\". [+1 flow]", DiagnosticSeverity.Warning));
+        tuple(7, 11, 7, 26, "java:S2259", "sonarlint", "\"NullPointerException\" will be thrown when invoking method \"doSomeThingWith()\". [+5 locations]", DiagnosticSeverity.Warning));
   }
 
   @Test

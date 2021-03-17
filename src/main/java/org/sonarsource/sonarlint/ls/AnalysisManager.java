@@ -96,6 +96,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   static final String SONARQUBE_TAINT_SOURCE = "SonarQube Taint Analyzer";
 
   private static final String MESSAGE_WITH_PLURALIZED_SUFFIX = "%s [+%d %s]";
+  private static final String ITEM_LOCATION = "location";
+  private static final String ITEM_FLOW = "flow";
 
   private final SonarLintExtendedLanguageClient client;
 
@@ -498,22 +500,33 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   static String message(Issue issue) {
     if (issue.flows().isEmpty()) {
       return issue.getMessage();
+    } else if (issue.flows().size() == 1) {
+      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.flows().get(0).locations().size(), ITEM_LOCATION);
     } else if (issue.flows().stream().allMatch(f -> f.locations().size() == 1)) {
       int nbLocations = issue.flows().size();
-      return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issue.getMessage(), nbLocations, pluralize(nbLocations, "location"));
+      return buildMessageWithPluralizedSuffix(issue.getMessage(), nbLocations, ITEM_LOCATION);
     } else {
       int nbFlows = issue.flows().size();
-      return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issue.getMessage(), nbFlows, pluralize(nbFlows, "flow"));
+      return buildMessageWithPluralizedSuffix(issue.getMessage(), nbFlows, ITEM_FLOW);
     }
   }
 
   static String message(ServerIssue issue) {
-    int nbFlows = issue.getFlows().size();
-    return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issue.getMessage(), nbFlows, pluralize(nbFlows, "flow"));
+    if (issue.getFlows().isEmpty()) {
+      return issue.getMessage();
+    } else if (issue.getFlows().size() == 1) {
+      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.getFlows().get(0).locations().size(), ITEM_LOCATION);
+    } else {
+      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.getFlows().size(), ITEM_FLOW);
+    }
   }
 
-  private static String pluralize(long quantity, String name) {
-    return quantity > 1 ? (name + "s") : name;
+  private static String buildMessageWithPluralizedSuffix(@Nullable String issueMessage, long nbItems, String itemName) {
+    return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issueMessage, nbItems, pluralize(nbItems, itemName));
+  }
+
+  private static String pluralize(long nbItems, String itemName) {
+    return nbItems > 1 ? (itemName + "s") : itemName;
   }
 
   private PublishDiagnosticsParams newPublishDiagnostics(URI newUri) {

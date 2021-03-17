@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
+import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -85,6 +87,9 @@ class AnalysisManagerTests {
   void testIssueConversion() {
     ServerIssue issue = mock(ServerIssue.class);
     ServerIssue.Flow flow = mock(ServerIssue.Flow.class);
+    ServerIssueLocation loc1 = mock(ServerIssueLocation.class);
+    ServerIssueLocation loc2 = mock(ServerIssueLocation.class);
+    when(flow.locations()).thenReturn(Arrays.asList(loc1, loc2));
     when(issue.getStartLine()).thenReturn(1);
     when(issue.severity()).thenReturn("BLOCKER");
     when(issue.ruleKey()).thenReturn("ruleKey");
@@ -93,7 +98,7 @@ class AnalysisManagerTests {
 
     Diagnostic diagnostic = convert(issue).get();
 
-    assertThat(diagnostic.getMessage()).isEqualTo("message [+1 flow]");
+    assertThat(diagnostic.getMessage()).isEqualTo("message [+2 locations]");
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Error);
     assertThat(diagnostic.getSource()).isEqualTo("SonarQube Taint Analyzer");
     assertThat(diagnostic.getCode().getLeft()).isEqualTo("ruleKey");
