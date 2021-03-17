@@ -484,7 +484,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(withoutTimestamp())
       .containsExactly(
         "[Info] Analyzing file '" + uri + "'...",
-        "[Info] Found 1 issue(s)"));
+        "[Info] Found 1 issue"));
   }
 
   @Test
@@ -502,7 +502,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .containsSubsequence(
         "[Debug] Queuing analysis of file '" + uri + "'",
         "[Info] Analyzing file '" + uri + "'...",
-        "[Info] Found 1 issue(s)"));
+        "[Info] Found 1 issue"));
   }
 
   @Test
@@ -522,7 +522,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
         "[Info] Index files",
         "[Info] 1 file indexed",
         "[Info] 1 source files to be analyzed",
-        "[Info] Found 1 issue(s)"));
+        "[Info] Found 1 issue"));
   }
 
   @Test
@@ -543,7 +543,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
         "[Debug] Language of file '" + uri + "' is set to 'JavaScript'",
         "[Info] 1 file indexed",
         "[Debug] Execute Sensor: JavaScript analysis",
-        "[Info] Found 1 issue(s)"));
+        "[Info] Found 1 issue"));
   }
 
   private Predicate<? super MessageParams> notFromContextualTSserver() {

@@ -82,6 +82,7 @@ import static java.util.Collections.singleton;
 import static java.util.Optional.empty;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.joining;
+import static org.sonarsource.sonarlint.ls.Utils.pluralize;
 
 public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
@@ -282,7 +283,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
     // Check if file has not being closed during the analysis
     if (fileContentPerFileURI.containsKey(fileUri)) {
-      LOG.info("Found {} issue(s)", newIssues.size());
+      int foundIssues = newIssues.size();
+      LOG.info("Found {} {}", foundIssues, pluralize(foundIssues, "issue"));
       client.publishDiagnostics(newPublishDiagnostics(fileUri));
     }
   }
@@ -398,7 +400,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
         serverIssueTracker.matchAndTrack(filePath, issues, issueListener, shouldFetchServerIssues);
         List<ServerIssue> serverIssues = engine.getServerIssues(binding.getBinding(), filePath);
         if (!serverIssues.isEmpty()) {
-          LOG.info("Fetched {} vulnerabilities from {}", serverIssues.size(), binding.getConnectionId());
+          int fetchedIssues = serverIssues.size();
+          LOG.info("Fetched {} {} from {}", fetchedIssues, pluralize(fetchedIssues, "vulnerability", "vulnerabilities"), binding.getConnectionId());
         }
         taintVulnerabilitiesPerFile.put(uri, serverIssues.stream()
           .filter(it -> it.ruleKey().contains(SECURITY_REPOSITORY_HINT))
@@ -526,10 +529,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
   private static String buildMessageWithPluralizedSuffix(@Nullable String issueMessage, long nbItems, String itemName) {
     return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issueMessage, nbItems, pluralize(nbItems, itemName));
-  }
-
-  private static String pluralize(long nbItems, String itemName) {
-    return nbItems > 1 ? (itemName + "s") : itemName;
   }
 
   private PublishDiagnosticsParams newPublishDiagnostics(URI newUri) {

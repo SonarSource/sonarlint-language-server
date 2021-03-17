@@ -74,4 +74,12 @@ public class Utils {
       throw new IllegalStateException(e);
     }
   }
+
+  public static String pluralize(long nbItems, String itemName) {
+    return pluralize(nbItems, itemName, itemName + "s");
+  }
+
+  public static String pluralize(long nbItems, String singular, String plural) {
+    return nbItems == 1 ? singular : plural;
+  }
 }
