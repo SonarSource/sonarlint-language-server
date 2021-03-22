@@ -66,15 +66,6 @@ public class Utils {
     Thread.currentThread().interrupt();
   }
 
-  public static String encodeUriComponent(String toEncode) {
-    try {
-      return URLEncoder.encode(toEncode, StandardCharsets.UTF_8.name());
-    } catch (UnsupportedEncodingException e) {
-      // Should not happen on a standard JVM
-      throw new IllegalStateException(e);
-    }
-  }
-
   public static String pluralize(long nbItems, String itemName) {
     return pluralize(nbItems, itemName, itemName + "s");
   }
