@@ -34,6 +34,7 @@ import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.ConnectedSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.StandaloneSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.client.api.common.Language;
+import org.sonarsource.sonarlint.core.client.api.common.ModulesProvider;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneGlobalConfiguration;
@@ -63,11 +64,13 @@ public class EnginesFactory {
   };
 
   private final NodeJsRuntime nodeJsRuntime;
+  private final ModulesProvider modulesProvider;
 
-  public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput, NodeJsRuntime nodeJsRuntime) {
+  public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput, NodeJsRuntime nodeJsRuntime, ModulesProvider modulesProvider) {
     this.standaloneAnalyzers = standaloneAnalyzers;
     this.lsLogOutput = lsLogOutput;
     this.nodeJsRuntime = nodeJsRuntime;
+    this.modulesProvider = modulesProvider;
   }
 
   public StandaloneSonarLintEngine createStandaloneEngine() {
@@ -80,6 +83,7 @@ public class EnginesFactory {
         .addEnabledLanguages(STANDALONE_LANGUAGES)
         .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
         .addPlugins(standaloneAnalyzers.toArray(new URL[0]))
+        .setModulesProvider(modulesProvider)
         .setLogOutput(lsLogOutput)
         .build();
 
@@ -103,6 +107,7 @@ public class EnginesFactory {
       .addEnabledLanguages(STANDALONE_LANGUAGES)
       .addEnabledLanguages(CONNECTED_ADDITIONAL_LANGUAGES)
       .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
+      .setModulesProvider(modulesProvider)
       .setLogOutput(lsLogOutput)
       .build();
 
