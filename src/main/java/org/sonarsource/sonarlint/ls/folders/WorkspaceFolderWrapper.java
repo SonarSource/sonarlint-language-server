@@ -51,6 +51,10 @@ public class WorkspaceFolderWrapper {
     return Paths.get(uri);
   }
 
+  public WorkspaceFolder getLspFolder() {
+    return lspFolder;
+  }
+
   public URI getUri() {
     return uri;
   }

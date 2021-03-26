@@ -44,7 +44,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     Path fakeTypeScriptProjectPath = Paths.get("src/test/resources/fake-ts-project").toAbsolutePath();
 
     client.settingsLatch = new CountDownLatch(1);
-    String folderUri = "some://init_uri";
+    String folderUri = "file:///init_uri";
     client.folderSettings.put(folderUri, buildSonarLintSettingsSection("some pattern", null, null, true));
 
     initialize(ImmutableMap.<String, String>builder()
