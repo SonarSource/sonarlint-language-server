@@ -58,6 +58,7 @@ import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.TextDocumentSyncOptions;
 import org.eclipse.lsp4j.WorkDoneProgressCancelParams;
+import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.eclipse.lsp4j.WorkspaceFoldersOptions;
 import org.eclipse.lsp4j.WorkspaceServerCapabilities;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
@@ -69,8 +70,12 @@ import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.SecurityHotspotsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
+import org.sonarsource.sonarlint.ls.file.FileLanguageCache;
+import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersProvider;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
+import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -98,6 +103,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ExecutorService threadPool;
   private final SecurityHotspotsHandlerServer securityHotspotsHandlerServer;
   private final ApacheHttpClient httpClient;
+  private final FileLanguageCache fileLanguageCache = new FileLanguageCache();
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
@@ -123,7 +129,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.progressManager = new ProgressManager(client);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClient);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
-    this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput, nodeJsRuntime);
+    FileTypeClassifier fileTypeClassifier = new FileTypeClassifier(fileLanguageCache);
+    JavaConfigCache javaConfigCache = new JavaConfigCache(client, fileLanguageCache);
+    this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput, nodeJsRuntime,
+      new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, javaConfigCache));
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, progressManager);
@@ -133,7 +142,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.serverNotifications = new ServerNotifications(client, workspaceFoldersManager, telemetry, lsLogOutput);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) serverNotifications);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) serverNotifications);
-    this.analysisManager = new AnalysisManager(lsLogOutput, enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager);
+    this.analysisManager = new AnalysisManager(lsLogOutput, enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager, fileTypeClassifier,
+      fileLanguageCache, javaConfigCache);
+    this.workspaceFoldersManager.addListener(analysisManager);
     bindingManager.setAnalysisManager(analysisManager);
     this.settingsManager.addListener(analysisManager);
     this.commandManager = new CommandManager(client, settingsManager, bindingManager, analysisManager, telemetry);
@@ -141,9 +152,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     launcher.startListening();
   }
 
-  static SonarLintLanguageServer bySocket(int port, Collection<URL> analyzers) throws IOException {
+  static void bySocket(int port, Collection<URL> analyzers) throws IOException {
     Socket socket = new Socket("localhost", port);
-    return new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers);
+    new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers);
   }
 
   @Override
@@ -318,7 +329,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParams params) {
-    workspaceFoldersManager.didChangeWorkspaceFolders(params.getEvent());
+    WorkspaceFoldersChangeEvent event = params.getEvent();
+    workspaceFoldersManager.didChangeWorkspaceFolders(event);
   }
 
   @Override

@@ -31,7 +31,7 @@ import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.client.api.common.Language;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
 
-public class DefaultClientInputFile implements ClientInputFile {
+public class AnalysisClientInputFile implements ClientInputFile {
 
   private final URI fileUri;
   private final String content;
@@ -39,7 +39,7 @@ public class DefaultClientInputFile implements ClientInputFile {
   private final String relativePath;
   private final boolean isTest;
 
-  public DefaultClientInputFile(URI uri, String relativePath, String content, boolean isTest, @Nullable String clientLanguageId) {
+  public AnalysisClientInputFile(URI uri, String relativePath, String content, boolean isTest, @Nullable String clientLanguageId) {
     this.relativePath = relativePath;
     this.fileUri = uri;
     this.content = content;
@@ -78,7 +78,7 @@ public class DefaultClientInputFile implements ClientInputFile {
   }
 
   @Override
-  public InputStream inputStream() throws IOException {
+  public InputStream inputStream() {
     return new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
   }
 
