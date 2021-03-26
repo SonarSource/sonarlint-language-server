@@ -106,6 +106,7 @@ public class DefaultClientInputFile implements ClientInputFile {
       case "babel es6 javascript":
         return Language.JS;
       case "python":
+      case "py":
         return Language.PYTHON;
       case "typescript":
       case "typescriptreact":

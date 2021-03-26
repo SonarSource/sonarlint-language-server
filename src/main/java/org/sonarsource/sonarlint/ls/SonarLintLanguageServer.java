@@ -36,6 +36,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.CodeAction;
@@ -58,6 +59,7 @@ import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.TextDocumentSyncOptions;
 import org.eclipse.lsp4j.WorkDoneProgressCancelParams;
+import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.eclipse.lsp4j.WorkspaceFoldersOptions;
 import org.eclipse.lsp4j.WorkspaceServerCapabilities;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
@@ -65,11 +67,15 @@ import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
+import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.SecurityHotspotsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
+import org.sonarsource.sonarlint.ls.file.FileLanguageCache;
+import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersProvider;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
@@ -78,10 +84,12 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListen
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 import static java.net.URI.create;
+import static java.util.Optional.empty;
 import static java.util.Optional.ofNullable;
 
 public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer, WorkspaceService, TextDocumentService {
 
+  private static final Logger LOG = Loggers.get(SonarLintLanguageServer.class);
   private static final String TYPESCRIPT_LOCATION = "typeScriptLocation";
 
   private final SonarLintExtendedLanguageClient client;
@@ -98,6 +106,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ExecutorService threadPool;
   private final SecurityHotspotsHandlerServer securityHotspotsHandlerServer;
   private final ApacheHttpClient httpClient;
+  private final FileLanguageCache fileLanguageCache = new FileLanguageCache();
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
@@ -123,7 +132,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.progressManager = new ProgressManager(client);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClient);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
-    this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput, nodeJsRuntime);
+    FileTypeClassifier fileTypeClassifier = new FileTypeClassifier(fileLanguageCache);
+    this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput, nodeJsRuntime, new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, this::getJavaConfigFromCacheOrFetch));
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, progressManager);
@@ -133,7 +143,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.serverNotifications = new ServerNotifications(client, workspaceFoldersManager, telemetry, lsLogOutput);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) serverNotifications);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) serverNotifications);
-    this.analysisManager = new AnalysisManager(lsLogOutput, enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager);
+    this.analysisManager = new AnalysisManager(lsLogOutput, enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager, fileTypeClassifier, fileLanguageCache, uri -> getJavaConfigFromCacheOrFetch(uri));
+    this.workspaceFoldersManager.addListener(analysisManager);
     bindingManager.setAnalysisManager(analysisManager);
     this.settingsManager.addListener(analysisManager);
     this.commandManager = new CommandManager(client, settingsManager, bindingManager, analysisManager, telemetry);
@@ -144,6 +155,46 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   static SonarLintLanguageServer bySocket(int port, Collection<URL> analyzers) throws IOException {
     Socket socket = new Socket("localhost", port);
     return new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers);
+  }
+
+  public Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> getJavaConfigFromCacheOrFetch(URI fileUri) {
+    Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> javaConfigOpt;
+    try {
+      javaConfigOpt = getJavaConfigFromCacheOrFetchAsync(fileUri).get(1, TimeUnit.MINUTES);
+    } catch (InterruptedException e) {
+      Utils.interrupted(e);
+      javaConfigOpt = empty();
+    } catch (Exception e) {
+      LOG.warn("Unable to get Java config", e);
+      javaConfigOpt = empty();
+    }
+    return javaConfigOpt;
+  }
+
+  /**
+   * Try to fetch Java config. In case of any error, cache an empty result to avoid repeted calls.
+   */
+  private CompletableFuture<Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse>> getJavaConfigFromCacheOrFetchAsync(URI fileUri) {
+    if (!fileLanguageCache.isJava(fileUri)) {
+      return CompletableFuture.completedFuture(Optional.empty());
+    }
+    Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> javaConfigFromCache = analysisManager.javaConfigPerFileURI.get(fileUri);
+    if (javaConfigFromCache != null) {
+      return CompletableFuture.completedFuture(javaConfigFromCache);
+    }
+    return client.getJavaConfig(fileUri.toString())
+      .handle((r, t) -> {
+        if (t != null) {
+          LOG.error("Unable to fetch Java configuration of file " + fileUri, t);
+        }
+        return r;
+      })
+      .thenApply(javaConfig -> {
+        Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> configOpt = ofNullable(javaConfig);
+        analysisManager.javaConfigPerFileURI.put(fileUri, configOpt);
+        LOG.debug("Cached Java config for file '{}'", fileUri);
+        return configOpt;
+      });
   }
 
   @Override
@@ -318,7 +369,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParams params) {
-    workspaceFoldersManager.didChangeWorkspaceFolders(params.getEvent());
+    WorkspaceFoldersChangeEvent event = params.getEvent();
+    workspaceFoldersManager.didChangeWorkspaceFolders(event);
   }
 
   @Override

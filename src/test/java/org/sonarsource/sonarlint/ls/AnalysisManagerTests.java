@@ -36,7 +36,10 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.file.FileLanguageCache;
+import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.java.JavaConfigProvider;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
@@ -54,8 +57,9 @@ class AnalysisManagerTests {
   @BeforeEach
   void prepare() {
     taintVulnerabilitiesPerFile = new ConcurrentHashMap<>();
+    FileLanguageCache fileLanguageCache = new FileLanguageCache();
     underTest = new AnalysisManager(mock(LanguageClientLogOutput.class), mock(EnginesFactory.class), mock(SonarLintExtendedLanguageClient.class), mock(SonarLintTelemetry.class),
-      mock(WorkspaceFoldersManager.class), mock(SettingsManager.class), mock(ProjectBindingManager.class), taintVulnerabilitiesPerFile);
+      mock(WorkspaceFoldersManager.class), mock(SettingsManager.class), mock(ProjectBindingManager.class), new FileTypeClassifier(fileLanguageCache), fileLanguageCache, mock(JavaConfigProvider.class), taintVulnerabilitiesPerFile);
 
   }
 
