@@ -46,6 +46,10 @@ public class LocalCodeFile {
     }
   }
 
+  public String content() {
+    return String.join("\n", lines);
+  }
+
   @CheckForNull
   public String codeAt(@Nullable TextRange range) {
     if (range == null) {

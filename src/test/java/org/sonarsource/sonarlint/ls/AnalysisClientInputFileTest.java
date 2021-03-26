@@ -28,12 +28,12 @@ import org.sonarsource.sonarlint.core.client.api.common.Language;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class DefaultClientInputFileTest {
+class AnalysisClientInputFileTest {
 
   @ParameterizedTest(name = "Should detect {0} as {1}")
   @MethodSource("provideParametersForLanguageDetection")
   void shouldDetectLanguage(String clientLanguageId, Language expected) {
-    assertThat(new DefaultClientInputFile(null, null, "", false, clientLanguageId).language())
+    assertThat(new AnalysisClientInputFile(null, null, "", false, clientLanguageId).language())
       .isEqualTo(expected);
   }
 

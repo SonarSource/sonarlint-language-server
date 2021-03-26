@@ -34,15 +34,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -56,7 +53,9 @@ import org.eclipse.lsp4j.Range;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.client.api.common.Language;
+import org.sonarsource.sonarlint.core.client.api.common.ModuleInfo;
 import org.sonarsource.sonarlint.core.client.api.common.PluginDetails;
+import org.sonarsource.sonarlint.core.client.api.common.SonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.AnalysisResults;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
@@ -72,8 +71,14 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfi
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.ServerIssueTrackerWrapper;
+import org.sonarsource.sonarlint.ls.file.FileLanguageCache;
+import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
+import org.sonarsource.sonarlint.ls.file.FolderFileSystem;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersProvider;
+import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.java.JavaSdkUtil;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -83,12 +88,10 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singleton;
-import static java.util.Optional.empty;
-import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.joining;
 import static org.sonarsource.sonarlint.ls.Utils.pluralize;
 
-public class AnalysisManager implements WorkspaceSettingsChangeListener {
+public class AnalysisManager implements WorkspaceSettingsChangeListener, WorkspaceFolderLifecycleListener {
 
   private static final int DELAY_MS = 500;
   private static final int QUEUE_POLLING_PERIOD_MS = 200;
@@ -106,11 +109,12 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
   private final SonarLintExtendedLanguageClient client;
 
-  private final Map<URI, String> languageIdPerFileURI = new ConcurrentHashMap<>();
+  private final FileTypeClassifier fileTypeClassifier;
+  private final FileLanguageCache fileLanguageCache;
+  private final JavaConfigCache javaConfigCache;
   private final Map<URI, String> fileContentPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, Map<String, Issue>> issuesPerIdPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile;
-  private final Map<URI, Optional<GetJavaConfigResponse>> javaConfigPerFileURI = new ConcurrentHashMap<>();
   private final Map<Path, List<Path>> jvmClasspathPerJavaHome = new ConcurrentHashMap<>();
   // entries in this map mean that the file is "dirty"
   private final Map<URI, Long> eventMap = new ConcurrentHashMap<>();
@@ -127,12 +131,15 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   private final ExecutorService analysisExecutor;
 
   public AnalysisManager(LanguageClientLogOutput lsLogOutput, EnginesFactory enginesFactory, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
-    WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, ProjectBindingManager bindingManager) {
-    this(lsLogOutput, enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager, new ConcurrentHashMap<>());
+    WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, ProjectBindingManager bindingManager, FileTypeClassifier fileTypeClassifier,
+    FileLanguageCache fileLanguageCache, JavaConfigCache javaConfigCache) {
+    this(lsLogOutput, enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager, fileTypeClassifier, fileLanguageCache, javaConfigCache,
+      new ConcurrentHashMap<>());
   }
 
   public AnalysisManager(LanguageClientLogOutput lsLogOutput, EnginesFactory enginesFactory, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
-    WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, ProjectBindingManager bindingManager,
+    WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, ProjectBindingManager bindingManager, FileTypeClassifier fileTypeClassifier,
+    FileLanguageCache fileLanguageCache, JavaConfigCache javaConfigCache,
     Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile) {
     this.lsLogOutput = lsLogOutput;
     this.enginesFactory = enginesFactory;
@@ -141,6 +148,9 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
+    this.fileTypeClassifier = fileTypeClassifier;
+    this.fileLanguageCache = fileLanguageCache;
+    this.javaConfigCache = javaConfigCache;
     this.analysisExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint analysis", false));
     this.watcher = new EventWatcher();
     this.taintVulnerabilitiesPerFile = taintVulnerabilitiesPerFile;
@@ -154,7 +164,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   }
 
   public void didOpen(URI fileUri, String languageId, String fileContent) {
-    languageIdPerFileURI.put(fileUri, languageId);
+    fileLanguageCache.put(fileUri, languageId);
     fileContentPerFileURI.put(fileUri, fileContent);
     analyzeAsync(fileUri, true);
   }
@@ -162,6 +172,26 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   public void didChange(URI fileUri, String fileContent) {
     fileContentPerFileURI.put(fileUri, fileContent);
     eventMap.put(fileUri, System.currentTimeMillis());
+  }
+
+  private SonarLintEngine findEngineFor(WorkspaceFolderWrapper folder) {
+    return bindingManager.getBinding(folder)
+      .map(ProjectBindingWrapper::getEngine)
+      .map(SonarLintEngine.class::cast)
+      .orElseGet(this::getOrCreateStandaloneEngine);
+  }
+
+  @Override
+  public void added(WorkspaceFolderWrapper addedFolder) {
+    analysisExecutor.execute(() -> {
+      FolderFileSystem folderFileSystem = new FolderFileSystem(addedFolder, javaConfigCache, fileTypeClassifier);
+      findEngineFor(addedFolder).declareModule(new ModuleInfo(WorkspaceFoldersProvider.key(addedFolder), folderFileSystem));
+    });
+  }
+
+  @Override
+  public void removed(WorkspaceFolderWrapper removedFolder) {
+    analysisExecutor.execute(() -> findEngineFor(removedFolder).stopModule(WorkspaceFoldersProvider.key(removedFolder)));
   }
 
   private class EventWatcher extends Thread {
@@ -205,9 +235,9 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
   public void didClose(URI fileUri) {
     LOG.debug("File '{}' closed. Cleaning diagnostics.", fileUri);
-    languageIdPerFileURI.remove(fileUri);
+    fileLanguageCache.remove(fileUri);
     fileContentPerFileURI.remove(fileUri);
-    javaConfigPerFileURI.remove(fileUri);
+    javaConfigCache.remove(fileUri);
     issuesPerIdPerFileURI.remove(fileUri);
     taintVulnerabilitiesPerFile.remove(fileUri);
     eventMap.remove(fileUri);
@@ -229,8 +259,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   }
 
   private void analyze(URI fileUri, boolean shouldFetchServerIssues) {
-    final Optional<GetJavaConfigResponse> javaConfigOpt = getJavaConfigFromCacheOrFetch(fileUri);
-    if (isJava(fileUri) && !javaConfigOpt.isPresent()) {
+    final Optional<GetJavaConfigResponse> javaConfigOpt = javaConfigCache.getOrFetch(fileUri);
+    if (fileLanguageCache.isJava(fileUri) && !javaConfigOpt.isPresent()) {
       LOG.debug("Skipping analysis of Java file '{}' because SonarLint was unable to query project configuration (classpath, source level, ...)", fileUri);
       return;
     }
@@ -248,9 +278,9 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     WorkspaceFolderSettings settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
       .orElse(settingsManager.getCurrentDefaultFolderSettings());
 
-    Path baseDir = workspaceFolder.map(WorkspaceFolderWrapper::getRootPath)
+    URI baseDirUri = workspaceFolder.map(WorkspaceFolderWrapper::getUri)
       // Default to take file parent dir if file is not part of any workspace
-      .orElse(Paths.get(fileUri).getParent());
+      .orElse(Paths.get(fileUri).getParent().toUri());
 
     IssueListener issueListener = createIssueListener();
 
@@ -261,17 +291,17 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
         ConnectedSonarLintEngine connectedEngine = binding.get().getEngine();
         if (!connectedEngine.getExcludedFiles(binding.get().getBinding(),
           singleton(fileUri),
-          uri -> getFileRelativePath(baseDir, uri),
-          uri -> isTest(settings, uri, javaConfigOpt))
+          uri -> getFileRelativePath(Paths.get(baseDirUri), uri),
+          uri -> fileTypeClassifier.isTest(settings, uri, javaConfigOpt))
           .isEmpty()) {
           LOG.debug("Skip analysis of excluded file: {}", fileUri);
           return;
         }
         LOG.info("Analyzing file '{}'...", fileUri);
-        analysisResults = analyzeConnected(binding.get(), settings, baseDir, fileUri, content, issueListener, shouldFetchServerIssues, javaConfigOpt);
+        analysisResults = analyzeConnected(binding.get(), settings, baseDirUri, fileUri, content, issueListener, shouldFetchServerIssues, javaConfigOpt);
       } else {
         LOG.info("Analyzing file '{}'...", fileUri);
-        analysisResults = analyzeStandalone(settings, baseDir, fileUri, content, issueListener, javaConfigOpt);
+        analysisResults = analyzeStandalone(settings, baseDirUri, fileUri, content, issueListener, javaConfigOpt);
       }
       SkippedPluginsNotifier.notifyOnceForSkippedPlugins(analysisResults.results, analysisResults.allPlugins, client);
 
@@ -297,20 +327,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     }
   }
 
-  private Optional<GetJavaConfigResponse> getJavaConfigFromCacheOrFetch(URI fileUri) {
-    Optional<GetJavaConfigResponse> javaConfigOpt;
-    try {
-      javaConfigOpt = getJavaConfigFromCacheOrFetchAsync(fileUri).get(1, TimeUnit.MINUTES);
-    } catch (InterruptedException e) {
-      Utils.interrupted(e);
-      javaConfigOpt = empty();
-    } catch (Exception e) {
-      LOG.warn("Unable to get Java config", e);
-      javaConfigOpt = empty();
-    }
-    return javaConfigOpt;
-  }
-
   private IssueListener createIssueListener() {
     return issue -> {
       ClientInputFile inputFile = issue.getInputFile();
@@ -332,7 +348,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     } else {
       return issuesForFile.values()
         .stream()
-        .filter(i ->  i.getRuleKey().equals(d.getCode().getLeft()) && locationMatches(i, d))
+        .filter(i -> i.getRuleKey().equals(d.getCode().getLeft()) && locationMatches(i, d))
         .findFirst();
     }
   }
@@ -379,11 +395,14 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     }
   }
 
-  private AnalysisResultsWrapper analyzeStandalone(WorkspaceFolderSettings settings, Path baseDir, URI uri, String content, IssueListener issueListener,
-    Optional<GetJavaConfigResponse> javaConfig) {
+  private AnalysisResultsWrapper analyzeStandalone(WorkspaceFolderSettings settings, URI baseDirUri, URI uri, String content, IssueListener issueListener,
+    Optional<GetJavaConfigResponse> javaConfigOpt) {
+    Path baseDir = Paths.get(baseDirUri);
     StandaloneAnalysisConfiguration configuration = StandaloneAnalysisConfiguration.builder()
       .setBaseDir(baseDir)
-      .addInputFiles(new DefaultClientInputFile(uri, getFileRelativePath(baseDir, uri), content, isTest(settings, uri, javaConfig), languageIdPerFileURI.get(uri)))
+      .setModuleKey(baseDirUri)
+      .addInputFiles(new AnalysisClientInputFile(uri, getFileRelativePath(baseDir, uri), content, fileTypeClassifier.isTest(settings, uri, javaConfigOpt),
+        fileLanguageCache.getLanguageFor(uri)))
       .putAllExtraProperties(settings.getAnalyzerProperties())
       .putAllExtraProperties(configureJavaProperties(uri))
       .addExcludedRules(settingsManager.getCurrentSettings().getExcludedRules())
@@ -399,12 +418,15 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       });
   }
 
-  public AnalysisResultsWrapper analyzeConnected(ProjectBindingWrapper binding, WorkspaceFolderSettings settings, Path baseDir, URI uri, String content,
+  public AnalysisResultsWrapper analyzeConnected(ProjectBindingWrapper binding, WorkspaceFolderSettings settings, URI baseDirUri, URI uri, String content,
     IssueListener issueListener, boolean shouldFetchServerIssues, Optional<GetJavaConfigResponse> javaConfig) {
+    Path baseDir = Paths.get(baseDirUri);
     ConnectedAnalysisConfiguration configuration = ConnectedAnalysisConfiguration.builder()
       .setProjectKey(settings.getProjectKey())
       .setBaseDir(baseDir)
-      .addInputFile(new DefaultClientInputFile(uri, getFileRelativePath(baseDir, uri), content, isTest(settings, uri, javaConfig), languageIdPerFileURI.get(uri)))
+      .setModuleKey(baseDirUri)
+      .addInputFile(
+        new AnalysisClientInputFile(uri, getFileRelativePath(baseDir, uri), content, fileTypeClassifier.isTest(settings, uri, javaConfig), fileLanguageCache.getLanguageFor(uri)))
       .putAllExtraProperties(settings.getAnalyzerProperties())
       .putAllExtraProperties(configureJavaProperties(uri))
       .build();
@@ -629,15 +651,14 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
   private void analyzeAllOpenJavaFiles() {
     for (URI fileUri : fileContentPerFileURI.keySet()) {
-      if (isJava(fileUri)) {
+      if (fileLanguageCache.isJava(fileUri)) {
         analyzeAsync(fileUri, false);
       }
     }
   }
 
   private Map<String, String> configureJavaProperties(URI fileUri) {
-    Optional<GetJavaConfigResponse> cachedJavaConfigOpt = ofNullable(javaConfigPerFileURI.get(fileUri)).orElse(empty());
-    return cachedJavaConfigOpt.map(cachedJavaConfig -> {
+    return javaConfigCache.get(fileUri).map(cachedJavaConfig -> {
       Map<String, String> props = new HashMap<>();
       String vmLocationStr = cachedJavaConfig.getVmLocation();
       List<Path> jdkClassesRoots = new ArrayList<>();
@@ -651,7 +672,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
         Stream.of(cachedJavaConfig.getClasspath()))
         .filter(path -> {
           boolean exists = new File(path).exists();
-          if(!exists) {
+          if (!exists) {
             LOG.debug(String.format("Classpath '%s' from configuration does not exist, skipped", path));
           }
           return exists;
@@ -671,76 +692,17 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     return jvmClasspathPerJavaHome.computeIfAbsent(vmLocation, JavaSdkUtil::getJdkClassesRoots);
   }
 
-  /**
-   * Try to fetch Java config. In case of any error, cache an empty result to avoid repeted calls.
-   */
-  private CompletableFuture<Optional<GetJavaConfigResponse>> getJavaConfigFromCacheOrFetchAsync(URI fileUri) {
-    if (!isJava(fileUri)) {
-      return CompletableFuture.completedFuture(Optional.empty());
-    }
-    Optional<GetJavaConfigResponse> javaConfigFromCache = javaConfigPerFileURI.get(fileUri);
-    if (javaConfigFromCache != null) {
-      return CompletableFuture.completedFuture(javaConfigFromCache);
-    }
-    return client.getJavaConfig(fileUri.toString())
-      .handle((r, t) -> {
-        if (t != null) {
-          LOG.error("Unable to fetch Java configuration of file " + fileUri, t);
-        }
-        return r;
-      })
-      .thenApply(javaConfig -> {
-        Optional<GetJavaConfigResponse> configOpt = ofNullable(javaConfig);
-        javaConfigPerFileURI.put(fileUri, configOpt);
-        LOG.debug("Cached Java config for file '{}'", fileUri);
-        return configOpt;
-      });
-  }
-
   public void didClasspathUpdate(URI projectUri) {
-    for (Iterator<Entry<URI, Optional<GetJavaConfigResponse>>> it = javaConfigPerFileURI.entrySet().iterator(); it.hasNext();) {
-      Entry<URI, Optional<GetJavaConfigResponse>> entry = it.next();
-      Optional<GetJavaConfigResponse> cachedResponseOpt = entry.getValue();
-      // If we have cached an empty result, still clear the value on classpath update to force next analysis to re-attempt fetch
-      if (!cachedResponseOpt.isPresent() || sameProject(projectUri, cachedResponseOpt.get())) {
-        it.remove();
-        LOG.debug("Evicted Java config cache for file '{}'", entry.getKey());
-      }
-    }
+    javaConfigCache.clear(projectUri);
     analyzeAllOpenJavaFiles();
-  }
-
-  private static boolean sameProject(URI projectUri, GetJavaConfigResponse cachedResponse) {
-    // Compare file and not directly URI because
-    // file:/foo/bar and file:///foo/bar/ are not considered equals by java.net.URI
-    return Paths.get(URI.create(cachedResponse.getProjectRoot())).equals(Paths.get(projectUri));
   }
 
   public void didServerModeChange(SonarLintExtendedLanguageServer.ServerMode serverMode) {
     LOG.debug("Clearing Java config cache on server mode change");
-    javaConfigPerFileURI.clear();
+    javaConfigCache.clear();
     if (serverMode == SonarLintExtendedLanguageServer.ServerMode.STANDARD) {
       analyzeAllOpenJavaFiles();
     }
-  }
-
-  private boolean isTest(WorkspaceFolderSettings settings, URI fileUri, Optional<GetJavaConfigResponse> javaConfig) {
-    if (isJava(fileUri)
-      && javaConfig
-        .map(GetJavaConfigResponse::isTest)
-        .orElse(false)) {
-      LOG.debug("Classified as test by vscode-java");
-      return true;
-    }
-    if (settings.getTestMatcher().matches(Paths.get(fileUri))) {
-      LOG.debug("Classified as test by configured 'testFilePattern' setting");
-      return true;
-    }
-    return false;
-  }
-
-  private boolean isJava(URI fileUri) {
-    return "java".equals(languageIdPerFileURI.get(fileUri));
   }
 
 }

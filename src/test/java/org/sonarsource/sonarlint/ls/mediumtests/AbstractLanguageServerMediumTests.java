@@ -291,18 +291,22 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public CompletableFuture<List<Object>> configuration(ConfigurationParams configurationParams) {
       return CompletableFutures.computeAsync(cancelToken -> {
-        assertThat(configurationParams.getItems()).extracting(ConfigurationItem::getSection).containsExactly("sonarlint");
-        List<Object> result = new ArrayList<>(configurationParams.getItems().size());
-        for (ConfigurationItem item : configurationParams.getItems()) {
-          if (item.getScopeUri() == null) {
-            result.add(globalSettings);
-          } else {
-            result
-              .add(Optional.ofNullable(folderSettings.get(item.getScopeUri()))
-                .orElseThrow(() -> new IllegalStateException("No settings mocked for workspaceFolderPath " + item.getScopeUri())));
+        List<Object> result;
+        try {
+          assertThat(configurationParams.getItems()).extracting(ConfigurationItem::getSection).containsExactly("sonarlint");
+          result = new ArrayList<>(configurationParams.getItems().size());
+          for (ConfigurationItem item : configurationParams.getItems()) {
+            if (item.getScopeUri() == null) {
+              result.add(globalSettings);
+            } else {
+              result
+                .add(Optional.ofNullable(folderSettings.get(item.getScopeUri()))
+                  .orElseThrow(() -> new IllegalStateException("No settings mocked for workspaceFolderPath " + item.getScopeUri())));
+            }
           }
+        } finally {
+          settingsLatch.countDown();
         }
-        settingsLatch.countDown();
         return result;
       });
     }
