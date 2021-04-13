@@ -399,14 +399,15 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
         ServerIssueTrackerWrapper serverIssueTracker = binding.getServerIssueTracker();
         serverIssueTracker.matchAndTrack(filePath, issues, issueListener, shouldFetchServerIssues);
         List<ServerIssue> serverIssues = engine.getServerIssues(binding.getBinding(), filePath);
-        if (!serverIssues.isEmpty()) {
-          int fetchedIssues = serverIssues.size();
-          LOG.info("Fetched {} {} from {}", fetchedIssues, pluralize(fetchedIssues, "vulnerability", "vulnerabilities"), binding.getConnectionId());
-        }
+
         taintVulnerabilitiesPerFile.put(uri, serverIssues.stream()
           .filter(it -> it.ruleKey().contains(SECURITY_REPOSITORY_HINT))
           .filter(it -> it.resolution().isEmpty())
           .collect(Collectors.toList()));
+        int foundVulnerabilities = taintVulnerabilitiesPerFile.getOrDefault(uri, Collections.emptyList()).size();
+        if (foundVulnerabilities > 0) {
+          LOG.info("Fetched {} {} from {}", foundVulnerabilities, pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), binding.getConnectionId());
+        }
       });
   }
 
