@@ -23,6 +23,7 @@ import com.google.common.collect.ImmutableMap;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -76,7 +77,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     GetJavaConfigResponse javaConfigResponse = new GetJavaConfigResponse();
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
-    javaConfigResponse.setClasspath(new String[0]);
+    javaConfigResponse.setClasspath(new String[] { "/does/not/exist" });
     client.javaConfigs.put(uri, javaConfigResponse);
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
@@ -87,12 +88,12 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
         tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
         tuple(2, 0, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
 
+    String ignoredMsg = "[Debug] Classpath '/does/not/exist' from configuration does not exist, skipped";
     String cacheMsg = "[Debug] Cached Java config for file '" + uri + "'";
     await().atMost(5, SECONDS).untilAsserted(() -> {
       assertThat(client.logs)
         .extracting(withoutTimestamp())
-        .contains(
-          cacheMsg);
+        .containsAll(Arrays.asList(ignoredMsg, cacheMsg));
     });
 
     client.logs.clear();

@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import java.io.File;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -615,6 +616,13 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       String classpath = Stream.concat(
         jdkClassesRoots.stream().map(Path::toAbsolutePath).map(Path::toString),
         Stream.of(cachedJavaConfig.getClasspath()))
+        .filter(path -> {
+          boolean exists = new File(path).exists();
+          if(!exists) {
+            LOG.debug(String.format("Classpath '%s' from configuration does not exist, skipped", path));
+          }
+          return exists;
+        })
         .collect(joining(","));
       props.put("sonar.java.source", cachedJavaConfig.getSourceLevel());
       if (!cachedJavaConfig.isTest()) {
