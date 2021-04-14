@@ -41,7 +41,7 @@ public class ProgressManager {
   private static final Logger LOG = Loggers.get(ProgressManager.class);
 
   private final LanguageClient client;
-  private final Map<Either<String, Number>, LSProgressMonitor> liveProgress = new ConcurrentHashMap<>();
+  private final Map<Either<String, Integer>, LSProgressMonitor> liveProgress = new ConcurrentHashMap<>();
 
   private boolean workDoneProgressSupportedByClient;
 
@@ -53,11 +53,11 @@ public class ProgressManager {
     this.workDoneProgressSupportedByClient = supported;
   }
 
-  public void doWithProgress(String progressTitle, @Nullable Either<String, Number> workDoneToken, CancelChecker cancelToken, Consumer<ProgressFacade> runnableWithProgress) {
+  public void doWithProgress(String progressTitle, @Nullable Either<String, Integer> workDoneToken, CancelChecker cancelToken, Consumer<ProgressFacade> runnableWithProgress) {
     if (workDoneToken == null && !workDoneProgressSupportedByClient) {
       runnableWithProgress.accept(new NoOpProgressFacade());
     } else {
-      Either<String, Number> progressToken = workDoneToken != null ? workDoneToken : Either.forLeft("SonarLint" + ThreadLocalRandom.current().nextInt());
+      Either<String, Integer> progressToken = workDoneToken != null ? workDoneToken : Either.forLeft("SonarLint" + ThreadLocalRandom.current().nextInt());
       if (workDoneToken == null) {
         try {
           client.createProgress(new WorkDoneProgressCreateParams(progressToken)).get();
