@@ -33,7 +33,7 @@ import org.sonarsource.sonarlint.core.client.api.exceptions.CanceledException;
 
 public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade {
 
-  private final Either<String, Number> progressToken;
+  private final Either<String, Integer> progressToken;
   private final CancelChecker cancelToken;
   private final LanguageClient client;
   private boolean cancelled;
@@ -41,7 +41,7 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
   private String lastMessage = null;
   private float lastPercentage = 0.0f;
 
-  public LSProgressMonitor(LanguageClient client, Either<String, Number> progressToken, CancelChecker cancelToken) {
+  public LSProgressMonitor(LanguageClient client, Either<String, Integer> progressToken, CancelChecker cancelToken) {
     this.client = client;
     this.cancelToken = cancelToken;
     this.progressToken = progressToken;
@@ -52,7 +52,7 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
     progressBegin.setTitle(title);
     progressBegin.setCancellable(true);
     progressBegin.setPercentage(0);
-    client.notifyProgress(new ProgressParams(progressToken, progressBegin));
+    client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressBegin)));
   }
 
   boolean ended() {
@@ -63,7 +63,7 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
   public void end(@Nullable String message) {
     WorkDoneProgressEnd progressEnd = new WorkDoneProgressEnd();
     progressEnd.setMessage(message);
-    client.notifyProgress(new ProgressParams(progressToken, progressEnd));
+    client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressEnd)));
     this.ended = true;
   }
 
@@ -85,13 +85,13 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
   void enableCancelation() {
     WorkDoneProgressReport progressReport = prepareProgressReport();
     progressReport.setCancellable(true);
-    client.notifyProgress(new ProgressParams(progressToken, progressReport));
+    client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressReport)));
   }
 
   void disableCancelation() {
     WorkDoneProgressReport progressReport = prepareProgressReport();
     progressReport.setCancellable(false);
-    client.notifyProgress(new ProgressParams(progressToken, progressReport));
+    client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressReport)));
   }
 
   private WorkDoneProgressReport prepareProgressReport() {
@@ -133,7 +133,7 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
       this.lastMessage = message;
     }
     WorkDoneProgressReport progressReport = prepareProgressReport();
-    client.notifyProgress(new ProgressParams(progressToken, progressReport));
+    client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressReport)));
   }
 
   @Override

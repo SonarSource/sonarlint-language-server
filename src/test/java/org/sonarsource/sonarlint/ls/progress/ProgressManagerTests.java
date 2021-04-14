@@ -45,7 +45,7 @@ import static org.mockito.Mockito.when;
 
 class ProgressManagerTests {
 
-  private static final Either<String, Number> FAKE_CLIENT_TOKEN = Either.forLeft("foo");
+  private static final Either<String, Integer> FAKE_CLIENT_TOKEN = Either.forLeft("foo");
   private final LanguageClient client = mock(LanguageClient.class);
   private final ProgressManager underTest = new ProgressManager(client);
 
@@ -82,14 +82,14 @@ class ProgressManagerTests {
     ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(2)).notifyProgress(params.capture());
 
-    assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getKind())
+    assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getLeft().getKind())
       .containsExactly(
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.begin),
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.end));
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue();
+    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
-    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue();
+    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isNull();
   }
@@ -103,14 +103,14 @@ class ProgressManagerTests {
     ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(2)).notifyProgress(params.capture());
 
-    assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getKind())
+    assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getLeft().getKind())
       .containsExactly(
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.begin),
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.end));
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue();
+    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
-    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue();
+    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isEqualTo("Completed");
   }
@@ -125,14 +125,14 @@ class ProgressManagerTests {
     ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(2)).notifyProgress(params.capture());
 
-    assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getKind())
+    assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getLeft().getKind())
       .containsExactly(
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.begin),
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.end));
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue();
+    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
-    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue();
+    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isEqualTo("An error");
   }
@@ -148,14 +148,14 @@ class ProgressManagerTests {
     ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(2)).notifyProgress(params.capture());
 
-    assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getKind())
+    assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getLeft().getKind())
       .containsExactly(
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.begin),
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.end));
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue();
+    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
-    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue();
+    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isEqualTo("Canceled");
   }
@@ -170,14 +170,14 @@ class ProgressManagerTests {
     ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(2)).notifyProgress(params.capture());
 
-    assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getKind())
+    assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getLeft().getKind())
       .containsExactly(
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.begin),
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.end));
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue();
+    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
-    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue();
+    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isEqualTo("Canceled");
   }
@@ -192,19 +192,19 @@ class ProgressManagerTests {
     underTest.doWithProgress("Title", null, mock(CancelChecker.class), p -> {
     });
 
-    Either<String, Number> generatedToken = createParams.getValue().getToken();
+    Either<String, Integer> generatedToken = createParams.getValue().getToken();
 
     ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(2)).notifyProgress(params.capture());
 
-    assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getKind())
+    assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getLeft().getKind())
       .containsExactly(
         tuple(generatedToken, WorkDoneProgressKind.begin),
         tuple(generatedToken, WorkDoneProgressKind.end));
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue();
+    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
-    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue();
+    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isNull();
   }
@@ -236,11 +236,11 @@ class ProgressManagerTests {
     ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(12)).notifyProgress(params.capture());
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue();
+    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
 
     assertThat(params.getAllValues().subList(1, 11))
-      .extracting("value.message", "value.percentage")
+      .extracting("value.left.message", "value.left.percentage")
       .containsExactly(
         tuple("Working", 0),
         tuple("Working", 10),
@@ -253,7 +253,7 @@ class ProgressManagerTests {
         tuple("Sub - SubSub2 - Completed", 20),
         tuple("Sub - Completed", 60));
 
-    WorkDoneProgressNotification end = params.getAllValues().get(11).getValue();
+    WorkDoneProgressNotification end = params.getAllValues().get(11).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isNull();
   }
@@ -269,11 +269,11 @@ class ProgressManagerTests {
     ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(7)).notifyProgress(params.capture());
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue();
+    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
 
     assertThat(params.getAllValues().subList(1, 6))
-      .extracting("value.message", "value.percentage", "value.cancellable")
+      .extracting("value.left.message", "value.left.percentage", "value.left.cancellable")
       .containsExactly(
         tuple("Sub", 0, null),
         tuple("Sub", 0, false),
@@ -281,7 +281,7 @@ class ProgressManagerTests {
         tuple("Sub - Non cancelable", 0, true),
         tuple("Sub - Completed", 50, null));
 
-    WorkDoneProgressNotification end = params.getAllValues().get(6).getValue();
+    WorkDoneProgressNotification end = params.getAllValues().get(6).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isNull();
   }

@@ -388,7 +388,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     });
   }
 
-  public void updateAllBindings(CancelChecker cancelToken, @Nullable Either<String, Number> workDoneToken) {
+  public void updateAllBindings(CancelChecker cancelToken, @Nullable Either<String, Integer> workDoneToken) {
     progressManager.doWithProgress("Update bindings", workDoneToken, cancelToken, progress -> {
       // Clear cached bindings to force rebind during next analysis
       folderBindingCache.clear();
