@@ -97,7 +97,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-abstract class AbstractLanguageServerMediumTests {
+public abstract class AbstractLanguageServerMediumTests {
 
   @TempDir
   Path temp;

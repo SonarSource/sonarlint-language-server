@@ -35,7 +35,6 @@ import org.sonarsource.sonarlint.core.client.api.notifications.ServerNotificatio
 import org.sonarsource.sonarlint.core.container.model.DefaultServerNotification;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
@@ -58,8 +57,6 @@ class ServerNotificationsTest {
 
   private final SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
 
-  private final ProjectBindingManager projectBindingManager = mock(ProjectBindingManager.class);
-
   private final WorkspaceFoldersManager workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
 
   private final SonarLintTelemetry telemetry = mock(SonarLintTelemetry.class);
@@ -72,12 +69,12 @@ class ServerNotificationsTest {
 
   @BeforeEach
   public void setup() {
-    underTest = new ServerNotifications(client, projectBindingManager, workspaceFoldersManager, telemetry, output);
+    underTest = new ServerNotifications(client, workspaceFoldersManager, telemetry, output);
   }
 
   @AfterEach
   public void finish() {
-    verifyNoMoreInteractions(client, projectBindingManager, workspaceFoldersManager, telemetry, output);
+    verifyNoMoreInteractions(client, workspaceFoldersManager, telemetry, output);
     underTest.shutdown();
   }
 

@@ -42,7 +42,8 @@ public class ServerConnectionSettings {
   private final String organizationKey;
   private final EndpointParamsAndHttpClient serverConfiguration;
 
-  public ServerConnectionSettings(String connectionId, String serverUrl, String token, @Nullable String organizationKey, boolean disableNotifications, ApacheHttpClient httpClient) {
+  public ServerConnectionSettings(String connectionId, String serverUrl, String token, @Nullable String organizationKey,
+                                  boolean disableNotifications, ApacheHttpClient httpClient) {
     this.connectionId = connectionId;
     this.serverUrl = serverUrl;
     this.token = token;
