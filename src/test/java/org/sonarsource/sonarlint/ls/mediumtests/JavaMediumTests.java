@@ -86,7 +86,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-        tuple(2, 0, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+        tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
 
     String ignoredMsg = "[Debug] Classpath '/does/not/exist' from configuration does not exist, skipped";
     String cacheMsg = "[Debug] Cached Java config for file '" + uri + "'";
@@ -164,13 +164,17 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-        tuple(2, 0, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+        tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
 
+    String jrtFsJarPath = currentJdkHome.resolve(isModular ? "lib/jrt-fs.jar" : "jre/lib/rt.jar").toString();
     await().atMost(5, SECONDS).untilAsserted(() -> {
       assertThat(client.logs)
         .extracting(withoutTimestamp())
-        .containsSubsequence("[Debug] ----- Classpath analyzed by Squid:",
-          isModular ? "[Debug] " + currentJdkHome.resolve("lib/jrt-fs.jar") : "[Debug] " + currentJdkHome.resolve("jre/lib/rt.jar").toString());
+        .containsSubsequence(
+          "[Debug] Property 'sonar.java.jdkHome' set with: " + currentJdkHome,
+          "[Debug] Property 'sonar.java.jdkHome' resolved with:" + System.lineSeparator() + "["+ jrtFsJarPath + "]",
+          "[Debug] Property 'sonar.java.libraries' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]"
+        );
     });
   }
 
@@ -286,6 +290,6 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-        tuple(2, 0, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+        tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
   }
 }
