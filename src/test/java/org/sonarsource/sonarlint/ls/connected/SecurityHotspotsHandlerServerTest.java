@@ -40,6 +40,7 @@ import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspot;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -160,7 +161,7 @@ class SecurityHotspotsHandlerServerTest {
     String workspaceName = "polop";
     server.init(ideName, clientVersion, workspaceName);
     ServerHotspot remoteHotspot = mock(ServerHotspot.class);
-    when(bindingManager.getServerConnectionSettingsForUrl(anyString())).thenReturn(Optional.of(new ProjectBindingManager.EndpointParamsAndHttpClient()));
+    when(bindingManager.getServerConnectionSettingsForUrl(anyString())).thenReturn(Optional.of(new ServerConnectionSettings.EndpointParamsAndHttpClient(null, null)));
     when(hotspotApi.fetch(any(GetSecurityHotspotRequestParams.class))).thenReturn(Optional.of(remoteHotspot));
 
 

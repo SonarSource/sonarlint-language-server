@@ -34,6 +34,7 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -166,7 +167,7 @@ class ServerIssueTrackerWrapperTests {
   private ServerIssueTrackerWrapper newTracker(Path baseDir, ConnectedSonarLintEngine engine) {
     String projectKey = "project1";
     ProjectBinding projectBinding = new ProjectBinding(projectKey, "", "");
-    return new ServerIssueTrackerWrapper(engine, new ProjectBindingManager.EndpointParamsAndHttpClient(), projectBinding);
+    return new ServerIssueTrackerWrapper(engine, new ServerConnectionSettings.EndpointParamsAndHttpClient(null, null), projectBinding);
   }
 
   private ServerIssueTrackerWrapper newTracker(Path baseDir) {

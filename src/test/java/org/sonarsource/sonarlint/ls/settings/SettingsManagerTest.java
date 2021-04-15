@@ -37,6 +37,7 @@ import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 import org.sonarsource.sonarlint.ls.Utils;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -120,7 +121,7 @@ class SettingsManagerTest {
   @BeforeEach
   public void prepare() {
     foldersManager = mock(WorkspaceFoldersManager.class);
-    underTest = new SettingsManager(mock(LanguageClient.class), foldersManager);
+    underTest = new SettingsManager(mock(LanguageClient.class), foldersManager, mock(ApacheHttpClient.class));
     underTest = spy(underTest);
   }
 

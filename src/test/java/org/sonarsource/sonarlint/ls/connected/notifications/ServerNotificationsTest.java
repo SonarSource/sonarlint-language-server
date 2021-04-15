@@ -38,6 +38,7 @@ import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
@@ -65,6 +66,8 @@ class ServerNotificationsTest {
 
   private final LanguageClientLogOutput output = mock(LanguageClientLogOutput.class);
 
+  private final ApacheHttpClient httpClient = mock(ApacheHttpClient.class);
+
   private ServerNotifications underTest;
 
   @BeforeEach
@@ -90,7 +93,8 @@ class ServerNotificationsTest {
     String projectKey = "projectKey";
 
     WorkspaceSettings newWorkspaceSettings = mock(WorkspaceSettings.class);
-    when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false)));
+    ServerConnectionSettings settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClient);
+    when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
 
     WorkspaceFolderWrapper folder1 = mock(WorkspaceFolderWrapper.class);
@@ -113,7 +117,8 @@ class ServerNotificationsTest {
     String projectKey2 = "projectKey2";
 
     WorkspaceSettings newWorkspaceSettings = mock(WorkspaceSettings.class);
-    when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false)));
+    ServerConnectionSettings settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClient);
+    when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
 
     WorkspaceFolderWrapper folder1 = mock(WorkspaceFolderWrapper.class);
@@ -136,7 +141,8 @@ class ServerNotificationsTest {
     String projectKey = "projectKey";
 
     WorkspaceSettings newWorkspaceSettings = mock(WorkspaceSettings.class);
-    when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false)));
+    ServerConnectionSettings settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClient);
+    when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
 
     WorkspaceFolderWrapper folder = mock(WorkspaceFolderWrapper.class);
@@ -168,7 +174,8 @@ class ServerNotificationsTest {
 
     // Then fix connection settings with known connection
     WorkspaceSettings newWorkspaceSettings2 = mock(WorkspaceSettings.class);
-    when(newWorkspaceSettings2.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false)));
+    ServerConnectionSettings settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClient);
+    when(newWorkspaceSettings2.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
     when(folder.getSettings()).thenReturn(newFolderSettings);
     when(workspaceFoldersManager.getAll()).thenReturn(Collections.singleton(folder));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings2);
@@ -183,7 +190,8 @@ class ServerNotificationsTest {
     String projectKey = "projectKey";
 
     WorkspaceSettings newWorkspaceSettings = mock(WorkspaceSettings.class);
-    when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, new ServerConnectionSettings(connectionId, "", "", null, true)));
+    ServerConnectionSettings serverConnectionSettings = new ServerConnectionSettings(connectionId, "", "", null, true, httpClient);
+    when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, serverConnectionSettings));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
 
     WorkspaceFolderSettings newFolderSettings = new WorkspaceFolderSettings(connectionId, projectKey, Collections.emptyMap(), null);
@@ -206,7 +214,8 @@ class ServerNotificationsTest {
     String projectKey = "projectKey";
 
     WorkspaceSettings newWorkspaceSettings1 = mock(WorkspaceSettings.class);
-    when(newWorkspaceSettings1.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false)));
+    ServerConnectionSettings serverConnectionSettings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClient);
+    when(newWorkspaceSettings1.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, serverConnectionSettings));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings1);
 
     WorkspaceFolderWrapper folder = mock(WorkspaceFolderWrapper.class);
@@ -214,7 +223,8 @@ class ServerNotificationsTest {
     underTest.onChange(folder, null, newFolderSettings);
 
     WorkspaceSettings newWorkspaceSettings2 = mock(WorkspaceSettings.class);
-    when(newWorkspaceSettings2.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, new ServerConnectionSettings(connectionId, "http://other.sq", "token", null, false)));
+    ServerConnectionSettings settings = new ServerConnectionSettings(connectionId, "http://other.sq", "token", null, false, httpClient);
+    when(newWorkspaceSettings2.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings2);
 
     verify(output, times(1)).log("De-registering notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);

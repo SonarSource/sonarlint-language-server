@@ -57,17 +57,16 @@ import org.sonarsource.sonarlint.core.client.api.connected.ProjectStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.UpdateResult;
 import org.sonarsource.sonarlint.core.client.api.exceptions.CanceledException;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
-import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.util.StringUtils;
 import org.sonarsource.sonarlint.ls.AnalysisManager;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.progress.NoOpProgressFacade;
 import org.sonarsource.sonarlint.ls.progress.ProgressFacade;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings.EndpointParamsAndHttpClient;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
@@ -86,28 +85,26 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private final WorkspaceFoldersManager foldersManager;
   private final SettingsManager settingsManager;
-  private Map<URI, Optional<ProjectBindingWrapper>> folderBindingCache;
+  private final Map<URI, Optional<ProjectBindingWrapper>> folderBindingCache;
   private final ConcurrentMap<URI, Optional<ProjectBindingWrapper>> fileBindingCache = new ConcurrentHashMap<>();
   private final ConcurrentMap<String, Optional<ConnectedSonarLintEngine>> connectedEngineCacheByConnectionId = new ConcurrentHashMap<>();
   private final ProgressManager progressManager;
-  private final ApacheHttpClient httpClient;
   private final LanguageClient client;
   private final EnginesFactory enginesFactory;
   private AnalysisManager analysisManager;
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClient client,
-    ProgressManager progressManager, ApacheHttpClient httpClient) {
-    this(enginesFactory, foldersManager, settingsManager, client, progressManager, httpClient, new ConcurrentHashMap<>());
+    ProgressManager progressManager) {
+    this(enginesFactory, foldersManager, settingsManager, client, progressManager, new ConcurrentHashMap<>());
   }
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClient client,
-    ProgressManager progressManager, ApacheHttpClient httpClient, Map<URI, Optional<ProjectBindingWrapper>> folderBindingCache) {
+    ProgressManager progressManager, Map<URI, Optional<ProjectBindingWrapper>> folderBindingCache) {
     this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
     this.client = client;
     this.progressManager = progressManager;
-    this.httpClient = httpClient;
     this.folderBindingCache = folderBindingCache;
   }
 
@@ -141,7 +138,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   @CheckForNull
   private ProjectBindingWrapper computeProjectBinding(WorkspaceFolderSettings settings, Path folderRoot) {
     String connectionId = requireNonNull(settings.getConnectionId());
-    EndpointParamsAndHttpClient endpointParamsAndHttpClient = createServerConfiguration(connectionId);
+    EndpointParamsAndHttpClient endpointParamsAndHttpClient = getServerConfigurationFor(connectionId);
     if (endpointParamsAndHttpClient == null) {
       LOG.error("Invalid binding for '{}'", folderRoot);
       return null;
@@ -154,7 +151,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     String projectKey = requireNonNull(settings.getProjectKey());
     ProjectStorageStatus projectStorageStatus = engine.getProjectStorageStatus(projectKey);
     if (projectStorageStatus == null || projectStorageStatus.isStale()) {
-      engine.updateProject(endpointParamsAndHttpClient.endpointParams, endpointParamsAndHttpClient.httpClient, projectKey, false, null);
+      engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, false, null);
     }
     Collection<String> ideFilePaths = FileUtils.allRelativePathsForFilesInTree(folderRoot);
     ProjectBinding projectBinding = engine.calculatePathPrefixes(projectKey, ideFilePaths);
@@ -166,28 +163,14 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   @CheckForNull
-  public EndpointParamsAndHttpClient createServerConfiguration(String connectionId) {
+  public EndpointParamsAndHttpClient getServerConfigurationFor(String connectionId) {
     ServerConnectionSettings serverConnectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
     if (serverConnectionSettings == null) {
       LOG.error("The specified connection id '{}' doesn't exist.", connectionId);
       return null;
     }
-    return getServerConfiguration(serverConnectionSettings);
+    return serverConnectionSettings.getServerConfiguration();
   }
-
-  public static class EndpointParamsAndHttpClient {
-    private EndpointParams endpointParams;
-    private ApacheHttpClient httpClient;
-
-    public EndpointParams getEndpointParams() {
-      return endpointParams;
-    }
-
-    public ApacheHttpClient getHttpClient() {
-      return httpClient;
-    }
-  }
-
 
   private Optional<ConnectedSonarLintEngine> getOrCreateConnectedEngine(
     String connectionId, EndpointParamsAndHttpClient endpointParamsAndHttpClient, boolean autoUpdate, ProgressFacade progress) {
@@ -197,7 +180,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   @CheckForNull
   private ConnectedSonarLintEngine createConnectedEngineAndUpdateIfNeeded(String connectionId, EndpointParamsAndHttpClient endpointParamsAndHttpClient, boolean autoUpdate,
-    ProgressFacade progress) {
+                                                                          ProgressFacade progress) {
     LOG.debug("Starting connected SonarLint engine for '{}'...", connectionId);
 
     ConnectedSonarLintEngine engine;
@@ -224,17 +207,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       return null;
     }
     return engine;
-  }
-
-  EndpointParamsAndHttpClient getServerConfiguration(ServerConnectionSettings serverConnectionSettings) {
-    EndpointParams endpointParams = new EndpointParams(
-      serverConnectionSettings.getServerUrl(),
-      serverConnectionSettings.isSonarCloudAlias(),
-      serverConnectionSettings.getOrganizationKey());
-    EndpointParamsAndHttpClient endpointParamsAndHttpClient = new EndpointParamsAndHttpClient();
-    endpointParamsAndHttpClient.endpointParams = endpointParams;
-    endpointParamsAndHttpClient.httpClient = httpClient.withToken(serverConnectionSettings.getToken());
-    return endpointParamsAndHttpClient;
   }
 
   public boolean usesConnectedMode() {
@@ -403,9 +375,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   private void tryUpdateConnectionAndBoundProjectsStorages(Map<String, Set<String>> projectKeyByConnectionIdsToUpdate, ProgressFacade progress,
-    Set<String> failedConnectionIds, String connectionId, Set<String> projetKeys) {
+    Set<String> failedConnectionIds, String connectionId, Set<String> projectKeys) {
     progress.doInSubProgress(connectionId, 1.0f / projectKeyByConnectionIdsToUpdate.size(), subProgress -> {
-      EndpointParamsAndHttpClient endpointParamsAndHttpClient = createServerConfiguration(connectionId);
+      EndpointParamsAndHttpClient endpointParamsAndHttpClient = getServerConfigurationFor(connectionId);
       if (endpointParamsAndHttpClient == null) {
         failedConnectionIds.add(connectionId);
         return;
@@ -418,13 +390,13 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       subProgress.doInSubProgress("Update global storage", 0.5f, s -> updateGlobalStorageAndLogResults(
         endpointParamsAndHttpClient, engineOpt.get(), failedConnectionIds, connectionId, s));
       subProgress.doInSubProgress("Update projects storages", 0.5f, s -> tryUpdateBoundProjectsStorage(
-        projetKeys, endpointParamsAndHttpClient, engineOpt.get(), s));
+        projectKeys, endpointParamsAndHttpClient, engineOpt.get(), s));
     });
   }
 
-  private static void tryUpdateBoundProjectsStorage(Set<String> projetKeys, EndpointParamsAndHttpClient endpointParamsAndHttpClient, ConnectedSonarLintEngine engine,
+  private static void tryUpdateBoundProjectsStorage(Set<String> projectKeys, EndpointParamsAndHttpClient endpointParamsAndHttpClient, ConnectedSonarLintEngine engine,
     ProgressFacade progress) {
-    projetKeys.forEach(projectKey -> progress.doInSubProgress(projectKey, 1.0f / projectKey.length(), subProgress -> {
+    projectKeys.forEach(projectKey -> progress.doInSubProgress(projectKey, 1.0f / projectKey.length(), subProgress -> {
       try {
         engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, true, subProgress.asCoreMonitor());
       } catch (CanceledException e) {
@@ -482,7 +454,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       .stream()
       .filter(it -> StringUtils.equalsIgnoringTrailingSlash(it.getServerUrl(), url))
       .findFirst()
-      .map(this::getServerConfiguration);
+      .map(ServerConnectionSettings::getServerConfiguration);
   }
 
   public Optional<URI> serverPathToFileUri(String serverPath) {

@@ -121,12 +121,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.telemetry = new SonarLintTelemetry(httpClient);
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.progressManager = new ProgressManager(client);
-    this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager);
+    this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClient);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
     this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput, nodeJsRuntime);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener(lsLogOutput);
-    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, progressManager, httpClient);
+    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, progressManager);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);

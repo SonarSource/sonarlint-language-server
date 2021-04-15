@@ -33,18 +33,19 @@ import org.sonarsource.sonarlint.core.tracking.InMemoryIssueTrackerCache;
 import org.sonarsource.sonarlint.core.tracking.IssueTrackable;
 import org.sonarsource.sonarlint.core.tracking.IssueTrackerCache;
 import org.sonarsource.sonarlint.core.tracking.Trackable;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 public class ServerIssueTrackerWrapper {
 
   private final ConnectedSonarLintEngine engine;
-  private final ProjectBindingManager.EndpointParamsAndHttpClient endpointParamsAndHttpClient;
+  private final ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient;
   private final ProjectBinding projectBinding;
 
   private final IssueTrackerCache issueTrackerCache;
   private final CachingIssueTracker cachingIssueTracker;
   private final org.sonarsource.sonarlint.core.tracking.ServerIssueTracker tracker;
 
-  ServerIssueTrackerWrapper(ConnectedSonarLintEngine engine, ProjectBindingManager.EndpointParamsAndHttpClient endpointParamsAndHttpClient, ProjectBinding projectBinding) {
+  ServerIssueTrackerWrapper(ConnectedSonarLintEngine engine, ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient, ProjectBinding projectBinding) {
     this.engine = engine;
     this.endpointParamsAndHttpClient = endpointParamsAndHttpClient;
     this.projectBinding = projectBinding;

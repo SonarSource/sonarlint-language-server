@@ -62,6 +62,7 @@ import org.sonarsource.sonarlint.core.serverapi.hotspot.HotspotApi;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 public class SecurityHotspotsHandlerServer {
 
@@ -228,7 +229,7 @@ public class SecurityHotspotsHandlerServer {
 
         output.log(String.format("Opening hotspot %s for project %s of server %s", hotspot, project, serverUrl), LogOutput.Level.INFO);
         telemetry.showHotspotRequestReceived();
-        Optional<ProjectBindingManager.EndpointParamsAndHttpClient> serverSettings = bindingManager.getServerConnectionSettingsForUrl(serverUrl);
+        Optional<ServerConnectionSettings.EndpointParamsAndHttpClient> serverSettings = bindingManager.getServerConnectionSettingsForUrl(serverUrl);
         // TODO Replace with ifPresentOrElse when we move to Java 9+
         if(serverSettings.isPresent()) {
           showHotspot(hotspot, project, serverSettings.get());
@@ -240,7 +241,7 @@ public class SecurityHotspotsHandlerServer {
       }
     }
 
-    void showHotspot(String hotspotKey, String projectKey, ProjectBindingManager.EndpointParamsAndHttpClient endpointParamsAndHttpClient) {
+    void showHotspot(String hotspotKey, String projectKey, ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient) {
       HotspotApi hotspotApi = hotspotApiFactory.apply(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient());
       hotspotApi.fetch(new GetSecurityHotspotRequestParams(hotspotKey, projectKey)).ifPresent(client::showHotspot);
     }
