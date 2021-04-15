@@ -321,15 +321,23 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   Optional<Issue> getIssueForDiagnostic(URI fileUri, Diagnostic d) {
     return issuesPerFileURI.getOrDefault(fileUri, Collections.emptyList())
       .stream()
-      .filter(i -> i.getRuleKey().equals(d.getCode().getLeft()) && locationMatches(i, d))
+      .filter(i ->  i.getRuleKey().equals(d.getCode().getLeft()) && locationMatches(i, d))
       .findFirst();
   }
 
   Optional<ServerIssue> getTaintVulnerabilityForDiagnostic(URI fileUri, Diagnostic d) {
     return taintVulnerabilitiesPerFile.getOrDefault(fileUri, Collections.emptyList())
       .stream()
-      .filter(i -> i.ruleKey().equals(d.getCode().getLeft()) && locationMatches(i, d))
+      .filter(i -> hasSameKey(d, i) || hasSameRuleKeyAndLocation(d, i))
       .findFirst();
+  }
+
+  private static boolean hasSameKey(Diagnostic d, ServerIssue i) {
+    return d.getData() != null && d.getData().equals(i.key());
+  }
+
+  private static boolean hasSameRuleKeyAndLocation(Diagnostic d, ServerIssue i) {
+    return i.ruleKey().equals(d.getCode().getLeft()) && locationMatches(i, d);
   }
 
   Optional<ServerIssue> getTaintVulnerabilityByKey(String issueId) {
@@ -468,6 +476,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       diagnostic.setCode(issue.ruleKey());
       diagnostic.setMessage(message(issue));
       diagnostic.setSource(SONARQUBE_TAINT_SOURCE);
+      diagnostic.setData(issue.key());
 
       return Optional.of(diagnostic);
     }
