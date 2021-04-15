@@ -19,7 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls.settings;
 
-import java.lang.reflect.Field;
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;
 import java.util.Collections;
@@ -99,12 +98,7 @@ public class WorkspaceFolderSettings {
 
   @Override
   public String toString() {
-    return (new ReflectionToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE) {
-      @Override
-      protected boolean accept(Field f) {
-        return super.accept(f) && !f.getName().equals("testMatcher");
-      }
-    }).toString();
+    return new ReflectionToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).setExcludeFieldNames(new String[]{"testMatcher"}).toString();
   }
 
 }

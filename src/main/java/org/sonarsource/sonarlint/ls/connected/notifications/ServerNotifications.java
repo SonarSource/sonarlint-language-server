@@ -144,8 +144,8 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
       new EventListener(serverConnectionSettings.isSonarCloudAlias()),
       new ConnectionNotificationTime(),
       projectKey,
-      () -> projectBindingManager.createServerConfiguration(serverConnectionSettings.getConnectionId()).getEndpointParams(),
-      () -> projectBindingManager.createServerConfiguration(serverConnectionSettings.getConnectionId()).getHttpClient());
+      () -> serverConnectionSettings.getServerConfiguration().getEndpointParams(),
+      () -> serverConnectionSettings.getServerConfiguration().getHttpClient());
   }
 
   private void logDebugMessage(String message) {

@@ -42,6 +42,7 @@ import org.sonarsource.sonarlint.ls.Utils;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 
 import static java.util.Arrays.stream;
 import static org.apache.commons.lang.StringUtils.defaultIfBlank;
@@ -72,6 +73,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private final LanguageClient client;
   private final WorkspaceFoldersManager foldersManager;
+  private final ApacheHttpClient httpClient;
 
   private WorkspaceSettings currentSettings = null;
   private final CountDownLatch initLatch = new CountDownLatch(1);
@@ -83,9 +85,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private final List<WorkspaceSettingsChangeListener> globalListeners = new ArrayList<>();
   private final List<WorkspaceFolderSettingsChangeListener> folderListeners = new ArrayList<>();
 
-  public SettingsManager(LanguageClient client, WorkspaceFoldersManager foldersManager) {
+  public SettingsManager(LanguageClient client, WorkspaceFoldersManager foldersManager, ApacheHttpClient httpClient) {
     this.client = client;
     this.foldersManager = foldersManager;
+    this.httpClient = httpClient;
     this.executor = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint settings manager", false));
   }
 
@@ -121,7 +124,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     executor.execute(() -> {
       try {
         Map<String, Object> workspaceSettingsMap = requestSonarLintConfigurationAsync(null).get(1, TimeUnit.MINUTES);
-        WorkspaceSettings newWorkspaceSettings = parseSettings(workspaceSettingsMap);
+        WorkspaceSettings newWorkspaceSettings = parseSettings(workspaceSettingsMap, httpClient);
         WorkspaceSettings oldWorkspaceSettings = currentSettings;
         this.currentSettings = newWorkspaceSettings;
         WorkspaceFolderSettings newDefaultFolderSettings = parseFolderSettings(workspaceSettingsMap);
@@ -192,10 +195,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     }
   }
 
-  private static WorkspaceSettings parseSettings(Map<String, Object> params) {
+  private static WorkspaceSettings parseSettings(Map<String, Object> params, ApacheHttpClient httpClient) {
     boolean disableTelemetry = (Boolean) params.getOrDefault(DISABLE_TELEMETRY, false);
     String pathToNodeExecutable = (String) params.get(PATH_TO_NODE_EXECUTABLE);
-    Map<String, ServerConnectionSettings> serverConnections = parseServerConnections(params);
+    Map<String, ServerConnectionSettings> serverConnections = parseServerConnections(params, httpClient);
     @SuppressWarnings("unchecked")
     RulesConfiguration rulesConfiguration = RulesConfiguration.parse(((Map<String, Object>) params.getOrDefault(RULES, Collections.emptyMap())));
     @SuppressWarnings("unchecked")
@@ -206,19 +209,19 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable);
   }
 
-  private static Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params) {
+  private static Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params, ApacheHttpClient httpClient) {
     @SuppressWarnings("unchecked")
     Map<String, Object> connectedModeMap = (Map<String, Object>) params.getOrDefault("connectedMode", Collections.emptyMap());
     Map<String, ServerConnectionSettings> serverConnections = new HashMap<>();
-    parseDeprecatedServerEntries(connectedModeMap, serverConnections);
+    parseDeprecatedServerEntries(connectedModeMap, serverConnections, httpClient);
     @SuppressWarnings("unchecked")
     Map<String, Object> connectionsMap = (Map<String, Object>) connectedModeMap.getOrDefault("connections", Collections.emptyMap());
-    parseSonarQubeConnections(connectionsMap, serverConnections);
-    parseSonarCloudConnections(connectionsMap, serverConnections);
+    parseSonarQubeConnections(connectionsMap, serverConnections, httpClient);
+    parseSonarCloudConnections(connectionsMap, serverConnections, httpClient);
     return serverConnections;
   }
 
-  private static void parseDeprecatedServerEntries(Map<String, Object> connectedModeMap, Map<String, ServerConnectionSettings> serverConnections) {
+  private static void parseDeprecatedServerEntries(Map<String, Object> connectedModeMap, Map<String, ServerConnectionSettings> serverConnections, ApacheHttpClient httpClient) {
     @SuppressWarnings("unchecked")
     List<Map<String, Object>> deprecatedServersEntries = (List<Map<String, Object>>) connectedModeMap.getOrDefault("servers", Collections.emptyList());
     deprecatedServersEntries.forEach(m -> {
@@ -227,13 +230,13 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         String url = (String) m.get(SERVER_URL);
         String token = (String) m.get(TOKEN);
         String organization = (String) m.get(ORGANIZATION_KEY);
-        ServerConnectionSettings connectionSettings = new ServerConnectionSettings(connectionId, url, token, organization, false);
+        ServerConnectionSettings connectionSettings = new ServerConnectionSettings(connectionId, url, token, organization, false, httpClient);
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
       }
     });
   }
 
-  private static void parseSonarQubeConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
+  private static void parseSonarQubeConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections, ApacheHttpClient httpClient) {
     @SuppressWarnings("unchecked")
     List<Map<String, Object>> sonarqubeEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarqube", Collections.emptyList());
     sonarqubeEntries.forEach(m -> {
@@ -242,13 +245,13 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         String url = (String) m.get(SERVER_URL);
         String token = (String) m.get(TOKEN);
         boolean disableNotifications = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
-        ServerConnectionSettings connectionSettings = new ServerConnectionSettings(connectionId, url, token, null, disableNotifications);
+        ServerConnectionSettings connectionSettings = new ServerConnectionSettings(connectionId, url, token, null, disableNotifications, httpClient);
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
       }
     });
   }
 
-  private static void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
+  private static void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections, ApacheHttpClient httpClient) {
     @SuppressWarnings("unchecked")
     List<Map<String, Object>> sonarcloudEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
     sonarcloudEntries.forEach(m -> {
@@ -258,7 +261,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         String organizationKey = (String) m.get(ORGANIZATION_KEY);
         String token = (String) m.get(TOKEN);
         boolean disableNotifs = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
-        ServerConnectionSettings connectionSettings = new ServerConnectionSettings(connectionId, ServerConnectionSettings.SONARCLOUD_URL, token, organizationKey, disableNotifs);
+        ServerConnectionSettings connectionSettings = new ServerConnectionSettings(connectionId, ServerConnectionSettings.SONARCLOUD_URL, token, organizationKey, disableNotifs, httpClient);
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
       }
     });
