@@ -93,6 +93,7 @@ class AnalysisManagerTests {
     when(issue.severity()).thenReturn("BLOCKER");
     when(issue.ruleKey()).thenReturn("ruleKey");
     when(issue.getMessage()).thenReturn("message");
+    when(issue.key()).thenReturn("issueKey");
     when(issue.getFlows()).thenReturn(Collections.singletonList(flow));
 
     Diagnostic diagnostic = convert(issue).get();
@@ -101,10 +102,11 @@ class AnalysisManagerTests {
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     assertThat(diagnostic.getSource()).isEqualTo("SonarQube Taint Analyzer");
     assertThat(diagnostic.getCode().getLeft()).isEqualTo("ruleKey");
+    assertThat(diagnostic.getData()).isEqualTo("issueKey");
   }
 
   @Test
-  void testGetServerIssueForDiagnostic() throws Exception {
+  void testGetServerIssueForDiagnosticBasedOnLocation() throws Exception {
     URI uri = new URI("/");
     ServerIssue issue = mock(ServerIssue.class);
     when(issue.getStartLine()).thenReturn(228);
@@ -120,6 +122,34 @@ class AnalysisManagerTests {
     taintVulnerabilitiesPerFile.put(uri, Collections.singletonList(issue));
 
     assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).hasValue(issue);
+  }
+
+  @Test
+  void testGetServerIssueForDiagnosticBasedOnKey() throws Exception {
+    URI uri = new URI("/");
+    ServerIssue issue = mock(ServerIssue.class);
+    when(issue.key()).thenReturn("issueKey");
+
+    Diagnostic diagnostic = mock(Diagnostic.class);
+    when(diagnostic.getData()).thenReturn("issueKey");
+    taintVulnerabilitiesPerFile.put(uri, Collections.singletonList(issue));
+
+    assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).hasValue(issue);
+  }
+
+  @Test
+  void testGetServerIssueForDiagnosticNotFound() throws Exception {
+    URI uri = new URI("/");
+    ServerIssue issue = mock(ServerIssue.class);
+    when(issue.ruleKey()).thenReturn("someRuleKey");
+    when(issue.key()).thenReturn("issueKey");
+
+    Diagnostic diagnostic = mock(Diagnostic.class);
+    when(diagnostic.getData()).thenReturn("anotherKey");
+    when(diagnostic.getCode()).thenReturn(Either.forLeft("anotherRuleKey"));
+    taintVulnerabilitiesPerFile.put(uri, Collections.singletonList(issue));
+
+    assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).isEmpty();
   }
 
   @Test
