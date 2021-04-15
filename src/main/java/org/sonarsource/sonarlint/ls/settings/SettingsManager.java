@@ -261,8 +261,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         String organizationKey = (String) m.get(ORGANIZATION_KEY);
         String token = (String) m.get(TOKEN);
         boolean disableNotifs = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
-        ServerConnectionSettings connectionSettings = new ServerConnectionSettings(connectionId, ServerConnectionSettings.SONARCLOUD_URL, token, organizationKey, disableNotifs, httpClient);
-        addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
+        addIfUniqueConnectionId(serverConnections, connectionId,
+          new ServerConnectionSettings(connectionId, ServerConnectionSettings.SONARCLOUD_URL, token, organizationKey, disableNotifs, httpClient));
       }
     });
   }

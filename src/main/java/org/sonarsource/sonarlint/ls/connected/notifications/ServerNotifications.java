@@ -36,7 +36,6 @@ import org.sonarsource.sonarlint.core.client.api.notifications.ServerNotificatio
 import org.sonarsource.sonarlint.core.notifications.ServerNotificationsRegistry;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -51,7 +50,6 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
   private static final MessageActionItem SETTINGS_ACTION = new MessageActionItem("Open Settings");
 
   private final SonarLintExtendedLanguageClient client;
-  private final ProjectBindingManager projectBindingManager;
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final SonarLintTelemetry telemetry;
   private final LanguageClientLogOutput logOutput;
@@ -60,10 +58,9 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
   private final Map<String, Map<String, NotificationConfiguration>> configurationsByProjectKeyByConnectionId;
   private final ServerNotificationsRegistry serverNotificationsRegistry;
 
-  public ServerNotifications(SonarLintExtendedLanguageClient client, ProjectBindingManager projectBindingManager, WorkspaceFoldersManager workspaceFoldersManager,
+  public ServerNotifications(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager workspaceFoldersManager,
       SonarLintTelemetry telemetry, LanguageClientLogOutput output) {
     this.client = client;
-    this.projectBindingManager = projectBindingManager;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.telemetry = telemetry;
     this.logOutput = output;
@@ -144,8 +141,8 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
       new EventListener(serverConnectionSettings.isSonarCloudAlias()),
       new ConnectionNotificationTime(),
       projectKey,
-      () -> serverConnectionSettings.getServerConfiguration().getEndpointParams(),
-      () -> serverConnectionSettings.getServerConfiguration().getHttpClient());
+      serverConnectionSettings.getServerConfiguration()::getEndpointParams,
+      serverConnectionSettings.getServerConfiguration()::getHttpClient);
   }
 
   private void logDebugMessage(String message) {
