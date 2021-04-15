@@ -612,6 +612,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       if (vmLocationStr != null) {
         Path vmLocation = Paths.get(vmLocationStr);
         jdkClassesRoots = getVmClasspathFromCacheOrCompute(vmLocation);
+        props.put("sonar.java.jdkHome", vmLocationStr);
       }
       String classpath = Stream.concat(
         jdkClassesRoots.stream().map(Path::toAbsolutePath).map(Path::toString),
