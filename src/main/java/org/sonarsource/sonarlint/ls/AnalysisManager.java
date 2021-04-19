@@ -232,6 +232,10 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       return;
     }
     String content = fileContentPerFileURI.get(fileUri);
+    if (content == null) {
+      LOG.debug("Skipping analysis of file '{}', content has disappeared", fileUri);
+      return;
+    }
     List<Issue> newIssues = new ArrayList<>();
     issuesPerFileURI.put(fileUri, newIssues);
     taintVulnerabilitiesPerFile.put(fileUri, new ArrayList<>());

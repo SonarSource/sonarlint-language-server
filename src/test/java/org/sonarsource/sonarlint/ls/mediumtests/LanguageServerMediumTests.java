@@ -41,12 +41,15 @@ import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
+import org.eclipse.lsp4j.DidOpenTextDocumentParams;
+import org.eclipse.lsp4j.DidSaveTextDocumentParams;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
+import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
@@ -305,6 +308,34 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
     assertTrue(client.diagnosticsLatch.await(1, TimeUnit.MINUTES));
 
+    assertThat(client.getDiagnostics(uri)).isEmpty();
+  }
+
+  @Test
+  void noAnalysisOnNullContent() throws Exception {
+    emulateConfigurationChangeOnClient("**/*Test.js", true, true, true);
+    Thread.sleep(1000);
+    client.logs.clear();
+
+    String uri = getUri("foo.py");
+    client.diagnosticsLatch = new CountDownLatch(1);
+    VersionedTextDocumentIdentifier docId = new VersionedTextDocumentIdentifier(uri, 1);
+
+    // SLVSCODE-157 - Open/Close/Open/Close triggers a race condition that nullifies content
+    lsProxy.getTextDocumentService()
+      .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
+    lsProxy.getTextDocumentService()
+      .didClose(new DidCloseTextDocumentParams(docId));
+    lsProxy.getTextDocumentService()
+      .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
+    lsProxy.getTextDocumentService()
+      .didClose(new DidCloseTextDocumentParams(docId));
+
+    await().atMost(1, TimeUnit.MINUTES).untilAsserted(
+      () -> assertThat(client.logs).extracting(withoutTimestamp()).contains(
+        "[Debug] Skipping analysis of file '" + uri + "', content has disappeared"
+      )
+    );
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
