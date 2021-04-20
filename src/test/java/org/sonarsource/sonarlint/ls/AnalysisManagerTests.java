@@ -24,7 +24,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
@@ -72,9 +71,9 @@ class AnalysisManagerTests {
     when(issue.getStartLine()).thenReturn(1);
     when(issue.getSeverity()).thenReturn("BLOCKER");
     when(issue.getMessage()).thenReturn("Do this, don't do that");
-    assertThat(convert(issue).get().getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+    assertThat(convert(issue).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn("CRITICAL");
-    assertThat(convert(issue).get().getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+    assertThat(convert(issue).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn("MAJOR");
     assertThat(convert(issue).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn("MINOR");
@@ -99,7 +98,7 @@ class AnalysisManagerTests {
     Diagnostic diagnostic = convert(issue).get();
 
     assertThat(diagnostic.getMessage()).isEqualTo("message [+2 locations]");
-    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     assertThat(diagnostic.getSource()).isEqualTo("SonarQube Taint Analyzer");
     assertThat(diagnostic.getCode().getLeft()).isEqualTo("ruleKey");
   }
