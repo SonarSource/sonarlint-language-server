@@ -474,7 +474,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     switch (severity.toUpperCase(Locale.ENGLISH)) {
       case "BLOCKER":
       case "CRITICAL":
-        return DiagnosticSeverity.Error;
       case "MAJOR":
         return DiagnosticSeverity.Warning;
       case "MINOR":
