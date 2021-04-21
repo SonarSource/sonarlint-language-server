@@ -98,7 +98,7 @@ public class EnginesFactory {
 
   public ConnectedSonarLintEngine createConnectedEngine(String connectionId) {
     ConnectedGlobalConfiguration configuration = ConnectedGlobalConfiguration.builder()
-      .setServerId(connectionId)
+      .setConnectionId(connectionId)
       .setExtraProperties(prepareExtraProps())
       .addEnabledLanguages(STANDALONE_LANGUAGES)
       .addEnabledLanguages(CONNECTED_ADDITIONAL_LANGUAGES)
