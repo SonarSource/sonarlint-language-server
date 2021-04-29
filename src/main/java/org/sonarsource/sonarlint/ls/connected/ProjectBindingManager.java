@@ -151,7 +151,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   void checkForBindingUpdates() {
-    LOG.info("Checking binding updates");
+    LOG.debug("Checking binding updates");
     forEachBoundFolder((folder, settings) -> {
       String connectionId = requireNonNull(settings.getConnectionId());
       getStartedConnectedEngine(connectionId)

@@ -431,6 +431,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     Diagnostic d = new Diagnostic(range, "An issue");
     d.setSource("sonarlint");
     d.setCode("javascript:S930");
+    d.setData("uuid");
     CodeActionParams codeActionParams = new CodeActionParams(new TextDocumentIdentifier("file://foo.js"), range, new CodeActionContext(singletonList(d)));
     List<Either<Command, CodeAction>> list = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
     assertThat(list).hasSize(2);

@@ -41,6 +41,7 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.AnalysisManager.convert;
@@ -62,24 +63,25 @@ class AnalysisManagerTests {
   void testNotConvertGlobalIssues() {
     Issue issue = mock(Issue.class);
     when(issue.getStartLine()).thenReturn(null);
-    assertThat(convert(issue)).isEmpty();
+    assertThat(convert(entry("id", issue))).isEmpty();
   }
 
   @Test
   void testNotConvertSeverity() {
+    String id = "id";
     Issue issue = mock(Issue.class);
     when(issue.getStartLine()).thenReturn(1);
     when(issue.getSeverity()).thenReturn("BLOCKER");
     when(issue.getMessage()).thenReturn("Do this, don't do that");
-    assertThat(convert(issue).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(convert(entry(id, issue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn("CRITICAL");
-    assertThat(convert(issue).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(convert(entry(id, issue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn("MAJOR");
-    assertThat(convert(issue).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(convert(entry(id, issue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn("MINOR");
-    assertThat(convert(issue).get().getSeverity()).isEqualTo(DiagnosticSeverity.Information);
+    assertThat(convert(entry(id, issue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Information);
     when(issue.getSeverity()).thenReturn("INFO");
-    assertThat(convert(issue).get().getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
+    assertThat(convert(entry(id, issue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
   }
 
   @Test
