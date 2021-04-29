@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import com.google.gson.JsonPrimitive;
 import java.io.File;
 import java.net.URI;
 import java.nio.file.Path;
@@ -26,6 +27,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -35,6 +37,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -105,7 +108,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
 
   private final Map<URI, String> languageIdPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, String> fileContentPerFileURI = new ConcurrentHashMap<>();
-  private final Map<URI, List<Issue>> issuesPerFileURI = new ConcurrentHashMap<>();
+  private final Map<URI, Map<String, Issue>> issuesPerIdPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile;
   private final Map<URI, Optional<GetJavaConfigResponse>> javaConfigPerFileURI = new ConcurrentHashMap<>();
   private final Map<Path, List<Path>> jvmClasspathPerJavaHome = new ConcurrentHashMap<>();
@@ -205,7 +208,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     languageIdPerFileURI.remove(fileUri);
     fileContentPerFileURI.remove(fileUri);
     javaConfigPerFileURI.remove(fileUri);
-    issuesPerFileURI.remove(fileUri);
+    issuesPerIdPerFileURI.remove(fileUri);
     taintVulnerabilitiesPerFile.remove(fileUri);
     eventMap.remove(fileUri);
     client.publishDiagnostics(newPublishDiagnostics(fileUri));
@@ -236,8 +239,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       LOG.debug("Skipping analysis of file '{}', content has disappeared", fileUri);
       return;
     }
-    List<Issue> newIssues = new ArrayList<>();
-    issuesPerFileURI.put(fileUri, newIssues);
+    Map<String, Issue> newIssuesPerId = new HashMap<>();
+    issuesPerIdPerFileURI.put(fileUri, newIssuesPerId);
     taintVulnerabilitiesPerFile.put(fileUri, new ArrayList<>());
 
     Optional<WorkspaceFolderWrapper> workspaceFolder = workspaceFoldersManager.findFolderForFile(fileUri);
@@ -281,14 +284,14 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       analysisResults.results.failedAnalysisFiles().stream()
         .map(ClientInputFile::getClientObject)
         .map(URI.class::cast)
-        .forEach(issuesPerFileURI::remove);
+        .forEach(issuesPerIdPerFileURI::remove);
     } catch (Exception e) {
       LOG.error("Analysis failed.", e);
     }
 
     // Check if file has not being closed during the analysis
     if (fileContentPerFileURI.containsKey(fileUri)) {
-      int foundIssues = newIssues.size();
+      int foundIssues = newIssuesPerId.size();
       LOG.info("Found {} {}", foundIssues, pluralize(foundIssues, "issue"));
       client.publishDiagnostics(newPublishDiagnostics(fileUri));
     }
@@ -313,16 +316,25 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       ClientInputFile inputFile = issue.getInputFile();
       if (inputFile != null) {
         URI uri = inputFile.getClientObject();
-        issuesPerFileURI.computeIfAbsent(uri, u -> new ArrayList<>()).add(issue);
+        issuesPerIdPerFileURI.computeIfAbsent(uri, u -> new HashMap<>()).put(UUID.randomUUID().toString(), issue);
       }
     };
   }
 
   Optional<Issue> getIssueForDiagnostic(URI fileUri, Diagnostic d) {
-    return issuesPerFileURI.getOrDefault(fileUri, Collections.emptyList())
-      .stream()
-      .filter(i ->  i.getRuleKey().equals(d.getCode().getLeft()) && locationMatches(i, d))
-      .findFirst();
+    Map<String, Issue> issuesForFile = issuesPerIdPerFileURI.getOrDefault(fileUri, emptyMap());
+    String issueKey = Optional.ofNullable(d.getData())
+      .map(JsonPrimitive.class::cast)
+      .map(JsonPrimitive::getAsString)
+      .orElse(null);
+    if (issuesForFile.containsKey(issueKey)) {
+      return Optional.of(issuesForFile.get(issueKey));
+    } else {
+      return issuesForFile.values()
+        .stream()
+        .filter(i ->  i.getRuleKey().equals(d.getCode().getLeft()) && locationMatches(i, d))
+        .findFirst();
+    }
   }
 
   Optional<ServerIssue> getTaintVulnerabilityForDiagnostic(URI fileUri, Diagnostic d) {
@@ -448,7 +460,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
     return baseDir.relativize(Paths.get(uri)).toString();
   }
 
-  static Optional<Diagnostic> convert(Issue issue) {
+  static Optional<Diagnostic> convert(Map.Entry<String, Issue> entry) {
+    Issue issue = entry.getValue();
     if (issue.getStartLine() != null) {
       Range range = position(issue);
       Diagnostic diagnostic = new Diagnostic();
@@ -459,6 +472,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
       diagnostic.setCode(issue.getRuleKey());
       diagnostic.setMessage(message(issue));
       diagnostic.setSource(SONARLINT_SOURCE);
+      diagnostic.setData(entry.getKey());
 
       return Optional.of(diagnostic);
     }
@@ -548,20 +562,26 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener {
   private PublishDiagnosticsParams newPublishDiagnostics(URI newUri) {
     PublishDiagnosticsParams p = new PublishDiagnosticsParams();
 
-    Stream<Optional<Diagnostic>> localDiagnostics = issuesPerFileURI.getOrDefault(newUri, new ArrayList<>())
+    Stream<Optional<Diagnostic>> localDiagnostics = issuesPerIdPerFileURI.getOrDefault(newUri, Collections.emptyMap()).entrySet()
       .stream()
       .map(AnalysisManager::convert);
-    Stream<Optional<Diagnostic>> taintDiagnostics = taintVulnerabilitiesPerFile.getOrDefault(newUri, new ArrayList<>())
+    Stream<Optional<Diagnostic>> taintDiagnostics = taintVulnerabilitiesPerFile.getOrDefault(newUri, Collections.emptyList())
       .stream()
       .map(AnalysisManager::convert);
 
     p.setDiagnostics(Stream.concat(localDiagnostics, taintDiagnostics)
       .filter(Optional::isPresent)
       .map(Optional::get)
+      .sorted(AnalysisManager.byLineNumber())
       .collect(Collectors.toList()));
     p.setUri(newUri.toString());
 
     return p;
+  }
+
+  private static Comparator<? super Diagnostic> byLineNumber() {
+    return Comparator.comparing((Diagnostic d) -> d.getRange().getStart().getLine())
+      .thenComparing(Diagnostic::getMessage);
   }
 
   public void initialize() {
