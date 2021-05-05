@@ -186,7 +186,10 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
 
   @Override
   public void added(WorkspaceFolderWrapper addedFolder) {
-    analysisExecutor.execute(() -> findEngineFor(addedFolder).declareModule(new ModuleInfo(WorkspaceFoldersProvider.key(addedFolder), null)));
+    analysisExecutor.execute(() -> {
+      FolderFileSystem folderFileSystem = new FolderFileSystem(addedFolder, javaConfigProvider, fileTypeClassifier);
+      findEngineFor(addedFolder).declareModule(new ModuleInfo(WorkspaceFoldersProvider.key(addedFolder), folderFileSystem));
+    });
   }
 
   @Override
