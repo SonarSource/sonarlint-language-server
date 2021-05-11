@@ -324,7 +324,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didChangeWatchedFiles(DidChangeWatchedFilesParams params) {
-    // No watched files
+    analysisManager.didChangeWatchedFiles(params.getChanges());
   }
 
   @Override
