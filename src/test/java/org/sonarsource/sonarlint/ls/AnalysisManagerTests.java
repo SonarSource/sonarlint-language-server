@@ -24,28 +24,42 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
+import org.eclipse.lsp4j.FileChangeType;
+import org.eclipse.lsp4j.FileEvent;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.sonarsource.sonarlint.core.client.api.common.ClientModuleFileEvent;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
+import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.file.FileLanguageCache;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
+import org.sonarsource.sonarlint.plugin.api.module.file.ModuleFileEvent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.AnalysisManager.convert;
 
@@ -175,4 +189,64 @@ class AnalysisManagerTests {
     assertThat(underTest.getTaintVulnerabilityByKey("otherKey")).isEmpty();
   }
 
+  @Test
+  void dontForwardFileEventToEngineWhenOutsideOfFolder() {
+    StandaloneSonarLintEngine sonarLintEngine = mock(StandaloneSonarLintEngine.class);
+    when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
+
+    underTest.didChangeWatchedFiles(Collections.singletonList(new FileEvent("uri", FileChangeType.Created)));
+
+    verifyZeroInteractions(sonarLintEngine);
+  }
+
+  @Test
+  void forwardFileCreatedEventToEngineWhenInsideOfFolder() {
+    ArgumentCaptor<ClientModuleFileEvent> fileEventArgumentCaptor = ArgumentCaptor.forClass(ClientModuleFileEvent.class);
+    final URI folderURI = URI.create("file:///folder");
+    StandaloneSonarLintEngine sonarLintEngine = mock(StandaloneSonarLintEngine.class);
+    when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
+    WorkspaceFolderWrapper folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
+    folder.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
+    when(foldersManager.findFolderForFile(any())).thenReturn(Optional.of(folder));
+
+    underTest.didChangeWatchedFiles(Collections.singletonList(new FileEvent("file:///folder/file.py", FileChangeType.Created)));
+
+    verify(sonarLintEngine).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
+    ClientModuleFileEvent fileEvent = fileEventArgumentCaptor.getValue();
+    assertThat(fileEvent.type()).isEqualTo(ModuleFileEvent.Type.CREATED);
+  }
+
+  @Test
+  void forwardFileModifiedEventToEngineWhenInsideOfFolder() {
+    ArgumentCaptor<ClientModuleFileEvent> fileEventArgumentCaptor = ArgumentCaptor.forClass(ClientModuleFileEvent.class);
+    final URI folderURI = URI.create("file:///folder");
+    StandaloneSonarLintEngine sonarLintEngine = mock(StandaloneSonarLintEngine.class);
+    when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
+    WorkspaceFolderWrapper folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
+    folder.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
+    when(foldersManager.findFolderForFile(any())).thenReturn(Optional.of(folder));
+
+    underTest.didChangeWatchedFiles(Collections.singletonList(new FileEvent("file:///folder/file.py", FileChangeType.Changed)));
+
+    verify(sonarLintEngine).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
+    ClientModuleFileEvent fileEvent = fileEventArgumentCaptor.getValue();
+    assertThat(fileEvent.type()).isEqualTo(ModuleFileEvent.Type.MODIFIED);
+  }
+
+  @Test
+  void forwardFileDeletedEventToEngineWhenInsideOfFolder() {
+    ArgumentCaptor<ClientModuleFileEvent> fileEventArgumentCaptor = ArgumentCaptor.forClass(ClientModuleFileEvent.class);
+    final URI folderURI = URI.create("file:///folder");
+    StandaloneSonarLintEngine sonarLintEngine = mock(StandaloneSonarLintEngine.class);
+    when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
+    WorkspaceFolderWrapper folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
+    folder.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
+    when(foldersManager.findFolderForFile(any())).thenReturn(Optional.of(folder));
+
+    underTest.didChangeWatchedFiles(Collections.singletonList(new FileEvent("file:///folder/file.py", FileChangeType.Deleted)));
+
+    verify(sonarLintEngine).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
+    ClientModuleFileEvent fileEvent = fileEventArgumentCaptor.getValue();
+    assertThat(fileEvent.type()).isEqualTo(ModuleFileEvent.Type.DELETED);
+  }
 }
