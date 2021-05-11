@@ -47,11 +47,14 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
+import org.eclipse.lsp4j.FileChangeType;
+import org.eclipse.lsp4j.FileEvent;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.client.api.common.ClientModuleFileEvent;
 import org.sonarsource.sonarlint.core.client.api.common.Language;
 import org.sonarsource.sonarlint.core.client.api.common.ModuleInfo;
 import org.sonarsource.sonarlint.core.client.api.common.PluginDetails;
@@ -74,6 +77,7 @@ import org.sonarsource.sonarlint.ls.connected.ServerIssueTrackerWrapper;
 import org.sonarsource.sonarlint.ls.file.FileLanguageCache;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.FolderFileSystem;
+import org.sonarsource.sonarlint.ls.folders.InFolderClientInputFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
@@ -85,6 +89,7 @@ import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
+import org.sonarsource.sonarlint.plugin.api.module.file.ModuleFileEvent;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singleton;
@@ -161,6 +166,38 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       standaloneEngine = enginesFactory.createStandaloneEngine();
     }
     return standaloneEngine;
+  }
+
+  public void didChangeWatchedFiles(List<FileEvent> changes) {
+    changes.forEach(f -> {
+      URI fileUri = URI.create(f.getUri());
+      workspaceFoldersManager.findFolderForFile(fileUri)
+        .ifPresent(folder -> {
+          WorkspaceFolderSettings settings = folder.getSettings();
+          Path baseDir = folder.getRootPath();
+
+          Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(fileUri);
+
+          SonarLintEngine engineForFile = binding.isPresent() ? binding.get().getEngine() : getOrCreateStandaloneEngine();
+
+          Optional<GetJavaConfigResponse> javaConfig = javaConfigCache.getOrFetch(fileUri);
+          ClientInputFile inputFile = new InFolderClientInputFile(fileUri, getFileRelativePath(baseDir, fileUri), fileTypeClassifier.isTest(settings, fileUri, javaConfig));
+
+          engineForFile.fireModuleFileEvent(WorkspaceFoldersProvider.key(folder), ClientModuleFileEvent.of(inputFile, translate(f.getType())));
+        });
+    });
+  }
+
+  private static ModuleFileEvent.Type translate(FileChangeType type) {
+    switch (type) {
+      case Created:
+        return ModuleFileEvent.Type.CREATED;
+      case Changed:
+        return ModuleFileEvent.Type.MODIFIED;
+      case Deleted:
+        return ModuleFileEvent.Type.DELETED;
+    }
+    throw new IllegalArgumentException("Unknown event type: " + type);
   }
 
   public void didOpen(URI fileUri, String languageId, String fileContent) {
