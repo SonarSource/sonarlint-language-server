@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.file;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -55,14 +56,15 @@ class FolderFileSystemTest {
     FileTypeClassifier fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(false);
     WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
-    folderWrapper.setSettings(new WorkspaceFolderSettings(null,null, Collections.emptyMap(), null));
+    folderWrapper.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
     FolderFileSystem folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
     Stream<ClientInputFile> files = folderFileSystem.files("py", InputFile.Type.MAIN);
 
     assertThat(files)
-      .extracting(ClientInputFile::getPath, FolderFileSystemTest::getFileContents, ClientInputFile::isTest)
-      .containsExactly(tuple(pythonFile.toAbsolutePath().toString(), "", false));
+      .extracting(ClientInputFile::getPath, FolderFileSystemTest::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
+        ClientInputFile::relativePath, ClientInputFile::uri)
+      .containsExactly(tuple(pythonFile.toAbsolutePath().toString(), "", false, StandardCharsets.UTF_8, pythonFile.toUri(), "file.py", pythonFile.toUri()));
   }
 
   private static String getFileContents(ClientInputFile file) {
