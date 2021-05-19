@@ -131,15 +131,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
    * @return empty if the folder is unbound
    */
   public Optional<ProjectBindingWrapper> getBinding(WorkspaceFolderWrapper folder) {
-    return folderBindingCache.computeIfAbsent(folder.getUri(), k -> {
-      WorkspaceFolderSettings settings = folder.getSettings();
-      if (!settings.hasBinding()) {
-        return Optional.empty();
-      } else {
-        Path folderRoot = folder.getRootPath();
-        return Optional.ofNullable(computeProjectBinding(settings, folderRoot));
-      }
-    });
+    return getBinding(Optional.of(folder), folder.getUri());
   }
 
   /**
@@ -150,8 +142,12 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   public Optional<ProjectBindingWrapper> getBinding(URI fileUri) {
     Optional<WorkspaceFolderWrapper> folder = foldersManager.findFolderForFile(fileUri);
     URI cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
+    return getBinding(folder, cacheKey);
+  }
+
+  private Optional<ProjectBindingWrapper> getBinding(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {
     Map<URI, Optional<ProjectBindingWrapper>> bindingCache = folder.isPresent() ? folderBindingCache : fileBindingCache;
-    return bindingCache.computeIfAbsent(cacheKey, k -> {
+    return bindingCache.computeIfAbsent(fileUri, k -> {
       WorkspaceFolderSettings settings = folder.map(WorkspaceFolderWrapper::getSettings)
         .orElse(settingsManager.getCurrentDefaultFolderSettings());
       if (!settings.hasBinding()) {

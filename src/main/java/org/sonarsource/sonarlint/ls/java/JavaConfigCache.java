@@ -60,10 +60,6 @@ public class JavaConfigCache {
     javaConfigPerFileURI.clear();
   }
 
-  public void allConfigs(BiConsumer<URI, Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse>> consumer){
-    javaConfigPerFileURI.forEach(consumer);
-  }
-
   public Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> getOrFetch(URI fileUri) {
     Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> javaConfigOpt;
     try {

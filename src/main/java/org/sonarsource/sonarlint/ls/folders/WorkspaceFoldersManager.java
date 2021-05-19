@@ -87,9 +87,6 @@ public class WorkspaceFoldersManager {
     }
     return addedWrapper;
   }
-  public Optional<WorkspaceFolderWrapper> findFolder(URI uri) {
-    return Optional.ofNullable(folders.get(uri));
-  }
 
   public Optional<WorkspaceFolderWrapper> findFolderForFile(URI uri) {
     List<URI> folderUriCandidates = folders.keySet().stream()
