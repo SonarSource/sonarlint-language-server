@@ -48,6 +48,7 @@ public class FolderFileSystem implements ClientFileSystem {
     WorkspaceFolderSettings settings = folder.getSettings();
     try {
       return Files.walk(folder.getRootPath())
+        .filter(Files::isRegularFile)
         .filter(filePath -> filePath.toString().endsWith("." + suffix))
         .filter(filePath -> typeMatches(filePath.toUri(), type, settings))
         .map(filePath -> toClientInputFile(filePath, type));
@@ -56,9 +57,24 @@ public class FolderFileSystem implements ClientFileSystem {
     }
   }
 
+  @Override
+  public Stream<ClientInputFile> files() {
+    WorkspaceFolderSettings settings = folder.getSettings();
+    try {
+      return Files.walk(folder.getRootPath())
+        .filter(Files::isRegularFile)
+        .map(filePath -> toClientInputFile(filePath, isTestFile(settings, filePath.toUri()) ? InputFile.Type.TEST : InputFile.Type.MAIN));
+    } catch (IOException e) {
+      throw new IllegalStateException("Cannot browse the files", e);
+    }
+  }
+
   private boolean typeMatches(URI uri, InputFile.Type type, WorkspaceFolderSettings settings) {
-    boolean isTestFile = fileTypeClassifier.isTest(settings, uri, javaConfigCache.getOrFetch(uri));
-    return isTestType(type) == isTestFile;
+    return isTestType(type) == isTestFile(settings, uri);
+  }
+
+  private boolean isTestFile(WorkspaceFolderSettings settings, URI fileUri) {
+    return fileTypeClassifier.isTest(settings, fileUri, javaConfigCache.getOrFetch(fileUri));
   }
 
   private static boolean isTestType(InputFile.Type type) {
