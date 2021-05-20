@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.file;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,6 +37,7 @@ import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -52,7 +54,7 @@ class FolderFileSystemTest {
   }
 
   @Test
-  void should_provide_files_of_requested_type_and_suffix() {
+  void should_provide_main_files_of_requested_suffix() {
     FileTypeClassifier fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(false);
     WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
@@ -65,6 +67,71 @@ class FolderFileSystemTest {
       .extracting(ClientInputFile::getPath, FolderFileSystemTest::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
         ClientInputFile::relativePath, ClientInputFile::uri)
       .containsExactly(tuple(pythonFile.toAbsolutePath().toString(), "", false, StandardCharsets.UTF_8, pythonFile.toUri(), "file.py", pythonFile.toUri()));
+  }
+
+  @Test
+  void should_provide_test_files_of_requested_suffix() {
+    FileTypeClassifier fileTypeClassifier = mock(FileTypeClassifier.class);
+    when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(true);
+    WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
+    folderWrapper.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
+    FolderFileSystem folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
+
+    Stream<ClientInputFile> files = folderFileSystem.files("py", InputFile.Type.TEST);
+
+    assertThat(files)
+      .extracting(ClientInputFile::getPath, FolderFileSystemTest::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
+        ClientInputFile::relativePath, ClientInputFile::uri)
+      .containsExactly(tuple(pythonFile.toAbsolutePath().toString(), "", true, StandardCharsets.UTF_8, pythonFile.toUri(), "file.py", pythonFile.toUri()));
+  }
+
+  @Test
+  void should_provide_all_main_files() {
+    FileTypeClassifier fileTypeClassifier = mock(FileTypeClassifier.class);
+    when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(false);
+    WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
+    folderWrapper.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
+    FolderFileSystem folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
+
+    Stream<ClientInputFile> files = folderFileSystem.files();
+
+    assertThat(files)
+      .extracting(ClientInputFile::getPath, FolderFileSystemTest::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
+        ClientInputFile::relativePath, ClientInputFile::uri)
+      .containsExactly(tuple(pythonFile.toAbsolutePath().toString(), "", false, StandardCharsets.UTF_8, pythonFile.toUri(), "file.py", pythonFile.toUri()));
+  }
+
+  @Test
+  void should_provide_all_test_files() {
+    FileTypeClassifier fileTypeClassifier = mock(FileTypeClassifier.class);
+    when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(true);
+    WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
+    folderWrapper.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
+    FolderFileSystem folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
+
+    Stream<ClientInputFile> files = folderFileSystem.files();
+
+    assertThat(files)
+      .extracting(ClientInputFile::getPath, FolderFileSystemTest::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
+        ClientInputFile::relativePath, ClientInputFile::uri)
+      .containsExactly(tuple(pythonFile.toAbsolutePath().toString(), "", true, StandardCharsets.UTF_8, pythonFile.toUri(), "file.py", pythonFile.toUri()));
+  }
+
+  @Test
+  void should_throw_an_exception_when_folder_does_not_exist() {
+    FileTypeClassifier fileTypeClassifier = mock(FileTypeClassifier.class);
+    when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(false);
+    WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(URI.create("file:///wrong_path"), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
+    folderWrapper.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
+    FolderFileSystem folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
+
+    Throwable throwable = catchThrowable(folderFileSystem::files);
+    Throwable throwableWithFiltering = catchThrowable(() -> folderFileSystem.files("suffix", InputFile.Type.TEST));
+
+    assertThat(throwable)
+      .hasMessage("Cannot browse the files");
+    assertThat(throwableWithFiltering)
+      .hasMessage("Cannot browse the files");
   }
 
   private static String getFileContents(ClientInputFile file) {
