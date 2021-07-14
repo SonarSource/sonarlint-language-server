@@ -183,6 +183,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       String clientVersion = params.getClientInfo().getVersion();
       String ideVersion = appName + " " + clientVersion;
 
+      httpClient.setUserAgent(productName);
+
       Optional<String> typeScriptPath = ofNullable((String) options.get(TYPESCRIPT_LOCATION));
 
       enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));

@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.http;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.function.Function;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.hc.client5.http.classic.methods.HttpDelete;
@@ -44,22 +45,32 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
 
   public static final Timeout CONNECTION_TIMEOUT = Timeout.ofSeconds(30);
   private static final Timeout RESPONSE_TIMEOUT = Timeout.ofMinutes(10);
-  private static final String USER_AGENT = "SonarLint VSCode";
 
-  private final CloseableHttpClient client;
+  private final Function<String, CloseableHttpClient> httpClientFactory;
+  private CloseableHttpClient client;
+  private String userAgent;
   @CheckForNull
   private final String login;
   @CheckForNull
   private final String password;
 
-  private ApacheHttpClient(CloseableHttpClient client, @Nullable String login, @Nullable String password) {
-    this.client = client;
+  private ApacheHttpClient(@Nullable String login, @Nullable String password) {
     this.login = login;
     this.password = password;
+    this.httpClientFactory = ua -> HttpClients.custom()
+      .useSystemProperties()
+      .setUserAgent(ua)
+      .setDefaultRequestConfig(
+        RequestConfig.copy(RequestConfig.DEFAULT)
+          .setConnectionRequestTimeout(CONNECTION_TIMEOUT)
+          .setResponseTimeout(RESPONSE_TIMEOUT)
+          .build()
+      )
+      .build();
   }
 
   public ApacheHttpClient withToken(String token) {
-    return new ApacheHttpClient(client, token, null);
+    return new ApacheHttpClient(token, null);
   }
 
   @Override
@@ -86,6 +97,9 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
       if (login != null) {
         httpRequest.setHeader("Authorization", basic(login, password == null ? "" : password));
       }
+      if (client == null) {
+        client = httpClientFactory.apply(userAgent);
+      }
       CloseableHttpResponse httpResponse = client.execute(httpRequest);
       return new ApacheHttpResponse(httpRequest.getRequestUri(), httpResponse);
     } catch (IOException e) {
@@ -101,24 +115,19 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
 
   public void close() {
     try {
-      client.close();
+      if (client != null) {
+        client.close();
+      }
     } catch (IOException e) {
       LOG.error("Unable to close http client: ", e.getMessage());
     }
   }
 
   public static ApacheHttpClient create() {
-    CloseableHttpClient httpClient = HttpClients.custom()
-      .useSystemProperties()
-      .setUserAgent(USER_AGENT)
-      .setDefaultRequestConfig(
-        RequestConfig.copy(RequestConfig.DEFAULT)
-          .setConnectionRequestTimeout(CONNECTION_TIMEOUT)
-          .setResponseTimeout(RESPONSE_TIMEOUT)
-          .build()
-      )
-      .build();
-    return new ApacheHttpClient(httpClient, null, null);
+    return new ApacheHttpClient(null, null);
   }
 
+  public void setUserAgent(String userAgent) {
+    this.userAgent = userAgent;
+  }
 }
