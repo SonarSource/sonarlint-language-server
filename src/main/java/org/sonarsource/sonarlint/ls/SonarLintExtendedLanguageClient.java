@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls;
 
 import com.google.gson.annotations.Expose;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Objects;

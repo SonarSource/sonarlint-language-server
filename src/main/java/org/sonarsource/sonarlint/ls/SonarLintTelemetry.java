@@ -22,6 +22,8 @@ package org.sonarsource.sonarlint.ls;
 import com.google.common.annotations.VisibleForTesting;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -148,6 +150,18 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
       @Override
       public boolean devNotificationsDisabled() {
         return devNotificationsDisabled.getAsBoolean();
+      }
+
+      @Override
+      public Collection<String> getNonDefaultEnabledRules() {
+        // TODO telemetry
+        return Collections.emptyList();
+      }
+
+      @Override
+      public Collection<String> getDefaultDisabledRules() {
+        // TODO telemetry
+        return Collections.emptyList();
       }
     });
   }

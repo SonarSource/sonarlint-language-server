@@ -55,6 +55,7 @@ public class EnginesFactory {
     Language.JS,
     Language.PHP,
     Language.PYTHON,
+    Language.SECRETS,
     Language.TS
   };
 
@@ -106,6 +107,7 @@ public class EnginesFactory {
       .setExtraProperties(prepareExtraProps())
       .addEnabledLanguages(STANDALONE_LANGUAGES)
       .addEnabledLanguages(CONNECTED_ADDITIONAL_LANGUAGES)
+      // addExtraPlugin
       .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
       .setModulesProvider(modulesProvider)
       .setLogOutput(lsLogOutput)
