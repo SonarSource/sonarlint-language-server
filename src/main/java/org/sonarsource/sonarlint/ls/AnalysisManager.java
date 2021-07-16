@@ -37,9 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
@@ -205,7 +203,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   public void didOpen(URI fileUri, String languageId, String fileContent) {
     fileLanguageCache.put(fileUri, languageId);
     fileContentPerFileURI.put(fileUri, fileContent);
-    // TODO VCS check
     analyzeAsync(fileUri, true);
   }
 

@@ -154,13 +154,11 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
       @Override
       public Collection<String> getNonDefaultEnabledRules() {
-        // TODO telemetry
         return Collections.emptyList();
       }
 
       @Override
       public Collection<String> getDefaultDisabledRules() {
-        // TODO telemetry
         return Collections.emptyList();
       }
     });
