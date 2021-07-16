@@ -22,9 +22,6 @@ package org.sonarsource.sonarlint.ls;
 import com.google.common.annotations.VisibleForTesting;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -36,7 +33,6 @@ import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.client.api.common.Language;
 import org.sonarsource.sonarlint.core.client.api.util.SonarLintUtils;
-import org.sonarsource.sonarlint.core.telemetry.TelemetryClientAttributesProvider;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryHttpClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
@@ -131,37 +127,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
   TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client, BooleanSupplier usesConnectedMode, BooleanSupplier usesSonarCloud,
       BooleanSupplier devNotificationsDisabled, Supplier<String> nodeVersion) {
-    return new TelemetryManager(path, client, new TelemetryClientAttributesProvider() {
-      @Override
-      public boolean usesConnectedMode() {
-        return usesConnectedMode.getAsBoolean();
-      }
-
-      @Override
-      public boolean useSonarCloud() {
-        return usesSonarCloud.getAsBoolean();
-      }
-
-      @Override
-      public Optional<String> nodeVersion() {
-        return Optional.ofNullable(nodeVersion.get());
-      }
-
-      @Override
-      public boolean devNotificationsDisabled() {
-        return devNotificationsDisabled.getAsBoolean();
-      }
-
-      @Override
-      public Collection<String> getNonDefaultEnabledRules() {
-        return Collections.emptyList();
-      }
-
-      @Override
-      public Collection<String> getDefaultDisabledRules() {
-        return Collections.emptyList();
-      }
-    });
+    return new TelemetryManager(path, client, new TelemetryClientAttributesProviderImpl(usesConnectedMode, usesSonarCloud, devNotificationsDisabled, nodeVersion));
   }
 
   @VisibleForTesting
