@@ -55,6 +55,7 @@ public class EnginesFactory {
     Language.JS,
     Language.PHP,
     Language.PYTHON,
+    Language.SECRETS,
     Language.TS
   };
 
