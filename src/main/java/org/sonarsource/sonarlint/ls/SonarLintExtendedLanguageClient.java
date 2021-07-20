@@ -55,6 +55,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonRequest("sonarlint/showTaintVulnerability")
   CompletableFuture<Void> showTaintVulnerability(ShowAllLocationsCommand.Param params);
 
+  @JsonRequest("sonarlint/notIgnoredByScm")
+  CompletableFuture<Boolean> notIgnoredByScm(String fileUri);
+
   class ShowRuleDescriptionParams {
     @Expose
     private final String key;
