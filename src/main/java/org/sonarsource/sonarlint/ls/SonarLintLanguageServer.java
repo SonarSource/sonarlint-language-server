@@ -29,10 +29,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -52,6 +49,8 @@ import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.SaveOptions;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.ServerInfo;
@@ -104,6 +103,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final SecurityHotspotsHandlerServer securityHotspotsHandlerServer;
   private final ApacheHttpClient httpClient;
   private final FileLanguageCache fileLanguageCache = new FileLanguageCache();
+  private final Set<String> filesIgnoredByVcsCache = new HashSet<>();
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
@@ -274,25 +274,40 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didOpen(DidOpenTextDocumentParams params) {
     URI uri = create(params.getTextDocument().getUri());
-    analysisManager.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText());
+    client.notIgnoredByScm(uri.getPath()).thenAccept(notIgnoredByScm -> {
+      if (notIgnoredByScm) {
+        analysisManager.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText());
+      } else {
+        filesIgnoredByVcsCache.add(params.getTextDocument().getUri());
+        client.logMessage(new MessageParams(MessageType.Log, "Skip analysis for SCM ignored file: " + uri));
+      }
+    });
   }
 
   @Override
   public void didChange(DidChangeTextDocumentParams params) {
-    URI uri = create(params.getTextDocument().getUri());
-    analysisManager.didChange(uri, params.getContentChanges().get(0).getText());
+    String filePath = params.getTextDocument().getUri();
+    URI uri = create(filePath);
+    if(!filesIgnoredByVcsCache.contains(filePath)) {
+      analysisManager.didChange(uri, params.getContentChanges().get(0).getText());
+    }
   }
 
   @Override
   public void didClose(DidCloseTextDocumentParams params) {
-    URI uri = create(params.getTextDocument().getUri());
+    String filePath = params.getTextDocument().getUri();
+    URI uri = create(filePath);
+    filesIgnoredByVcsCache.remove(filePath);
     analysisManager.didClose(uri);
   }
 
   @Override
   public void didSave(DidSaveTextDocumentParams params) {
-    URI uri = create(params.getTextDocument().getUri());
-    analysisManager.didSave(uri, params.getText());
+    String filePath = params.getTextDocument().getUri();
+    URI uri = create(filePath);
+    if(!filesIgnoredByVcsCache.contains(filePath)) {
+      analysisManager.didSave(uri, params.getText());
+    }
   }
 
   @Override
