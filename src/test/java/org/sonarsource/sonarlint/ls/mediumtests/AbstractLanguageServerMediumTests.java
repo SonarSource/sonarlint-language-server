@@ -243,6 +243,7 @@ public abstract class AbstractLanguageServerMediumTests {
     CountDownLatch diagnosticsLatch = new CountDownLatch(0);
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
     ShowRuleDescriptionParams ruleDesc;
+    boolean notIgnoredByScm = true;
 
     void clear() {
       diagnostics.clear();
@@ -343,6 +344,12 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public CompletableFuture<Void> showTaintVulnerability(ShowAllLocationsCommand.Param params) {
       return CompletableFutures.computeAsync(null);
+    }
+
+    @Override
+    public CompletableFuture<Boolean> notIgnoredByScm(String fileUri) {
+      // TODO wind way to
+      return CompletableFutures.computeAsync(cancelToken -> notIgnoredByScm);
     }
 
     @Override
