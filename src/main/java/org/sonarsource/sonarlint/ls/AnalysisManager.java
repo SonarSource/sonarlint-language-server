@@ -49,6 +49,8 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.FileChangeType;
 import org.eclipse.lsp4j.FileEvent;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
@@ -132,6 +134,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   private final EventWatcher watcher;
   private final LanguageClientLogOutput lsLogOutput;
   private StandaloneSonarLintEngine standaloneEngine;
+  private final Map<String, Boolean> filesIgnoredByScmCache = new HashMap<>();
 
   private final ExecutorService analysisExecutor;
 
@@ -279,6 +282,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     taintVulnerabilitiesPerFile.remove(fileUri);
     eventMap.remove(fileUri);
     client.publishDiagnostics(newPublishDiagnostics(fileUri));
+    filesIgnoredByScmCache.clear();
   }
 
   public void didSave(URI fileUri, String fileContent) {
@@ -299,6 +303,15 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     final Optional<GetJavaConfigResponse> javaConfigOpt = javaConfigCache.getOrFetch(fileUri);
     if (fileLanguageCache.isJava(fileUri) && !javaConfigOpt.isPresent()) {
       LOG.debug("Skipping analysis of Java file '{}' because SonarLint was unable to query project configuration (classpath, source level, ...)", fileUri);
+      return;
+    }
+    String filePath = fileUri.getPath();
+    if (!filesIgnoredByScmCache.containsKey(filePath)) {
+      Boolean isIgnoredByScm = client.isIgnoredByScm(filePath).join();
+      filesIgnoredByScmCache.put(filePath, isIgnoredByScm);
+    }
+    if (filesIgnoredByScmCache.containsKey(filePath) && filesIgnoredByScmCache.get(filePath)) {
+      client.logMessage(new MessageParams(MessageType.Log, "Skip analysis for SCM ignored file: " + fileUri));
       return;
     }
     String content = fileContentPerFileURI.get(fileUri);

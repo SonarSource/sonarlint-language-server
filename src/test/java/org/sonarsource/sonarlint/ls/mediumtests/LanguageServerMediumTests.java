@@ -42,7 +42,6 @@ import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
-import org.eclipse.lsp4j.DidSaveTextDocumentParams;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.Position;
@@ -342,7 +341,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     String uri = getUri("foo.py");
     client.diagnosticsLatch = new CountDownLatch(1);
-    client.notIgnoredByScm = false;
+    client.isIgnoredByScm = true;
     VersionedTextDocumentIdentifier docId = new VersionedTextDocumentIdentifier(uri, 1);
 
     // SLVSCODE-157 - Open/Close/Open/Close triggers a race condition that nullifies content
@@ -361,7 +360,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
                     .contains("Skip analysis for SCM ignored file: " + uri)
     );
     assertThat(client.getDiagnostics(uri)).isEmpty();
-    client.notIgnoredByScm = true;
+    client.isIgnoredByScm = false;
   }
 
   @Test

@@ -243,7 +243,7 @@ public abstract class AbstractLanguageServerMediumTests {
     CountDownLatch diagnosticsLatch = new CountDownLatch(0);
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
     ShowRuleDescriptionParams ruleDesc;
-    boolean notIgnoredByScm = true;
+    boolean isIgnoredByScm = false;
 
     void clear() {
       diagnostics.clear();
@@ -347,8 +347,8 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public CompletableFuture<Boolean> notIgnoredByScm(String fileUri) {
-      return CompletableFutures.computeAsync(cancelToken -> notIgnoredByScm);
+    public CompletableFuture<Boolean> isIgnoredByScm(String fileUri) {
+      return CompletableFutures.computeAsync(cancelToken -> isIgnoredByScm);
     }
 
     @Override
