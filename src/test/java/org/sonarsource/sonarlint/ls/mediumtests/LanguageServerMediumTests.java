@@ -361,6 +361,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
                     .contains("Skip analysis for SCM ignored file: " + uri)
     );
     assertThat(client.getDiagnostics(uri)).isEmpty();
+    client.notIgnoredByScm = true;
   }
 
   @Test
