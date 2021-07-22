@@ -49,8 +49,6 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.FileChangeType;
 import org.eclipse.lsp4j.FileEvent;
-import org.eclipse.lsp4j.MessageParams;
-import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
@@ -306,12 +304,9 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       return;
     }
     String filePath = fileUri.getPath();
-    if (!filesIgnoredByScmCache.containsKey(filePath)) {
-      Boolean isIgnoredByScm = client.isIgnoredByScm(filePath).join();
-      filesIgnoredByScmCache.put(filePath, isIgnoredByScm);
-    }
-    if (filesIgnoredByScmCache.containsKey(filePath) && filesIgnoredByScmCache.get(filePath)) {
-      client.logMessage(new MessageParams(MessageType.Log, "Skip analysis for SCM ignored file: " + fileUri));
+    Boolean isIgnored = filesIgnoredByScmCache.computeIfAbsent(filePath, s -> client.isIgnoredByScm(s).join());
+    if (isIgnored) {
+      LOG.debug("Skip analysis for SCM ignored file: " + fileUri);
       return;
     }
     String content = fileContentPerFileURI.get(fileUri);

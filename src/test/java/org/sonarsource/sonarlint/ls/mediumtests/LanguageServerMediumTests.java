@@ -57,6 +57,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -83,6 +84,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .put("productName", "SLCORE tests")
       .put("productVersion", "0.1")
       .build());
+  }
+
+  @BeforeEach
+  public void prepare() {
+    client.isIgnoredByScm = false;
   }
 
   @Test
@@ -347,20 +353,12 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     // SLVSCODE-157 - Open/Close/Open/Close triggers a race condition that nullifies content
     lsProxy.getTextDocumentService()
             .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
-    lsProxy.getTextDocumentService()
-            .didClose(new DidCloseTextDocumentParams(docId));
-    lsProxy.getTextDocumentService()
-            .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
-    lsProxy.getTextDocumentService()
-            .didClose(new DidCloseTextDocumentParams(docId));
-
 
     await().atMost(1, TimeUnit.MINUTES).untilAsserted(
             () -> assertThat(client.logs).extracting(withoutTimestamp())
-                    .contains("Skip analysis for SCM ignored file: " + uri)
+                    .contains("[Debug] Skip analysis for SCM ignored file: " + uri)
     );
-    assertThat(client.getDiagnostics(uri)).isEmpty();
-    client.isIgnoredByScm = false;
+    assertThat(client.getDiagnostics(uri)).isNull();
   }
 
   @Test
