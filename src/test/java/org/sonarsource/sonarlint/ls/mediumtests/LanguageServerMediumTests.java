@@ -336,7 +336,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.getTextDocumentService()
       .didClose(new DidCloseTextDocumentParams(docId));
 
-    assertThat(client.getDiagnostics(uri)).isNull();
+    assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
   @Test
@@ -348,9 +348,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     String uri = getUri("foo.py");
     client.diagnosticsLatch = new CountDownLatch(1);
     client.isIgnoredByScm = true;
-    VersionedTextDocumentIdentifier docId = new VersionedTextDocumentIdentifier(uri, 1);
 
-    // SLVSCODE-157 - Open/Close/Open/Close triggers a race condition that nullifies content
     lsProxy.getTextDocumentService()
             .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
 

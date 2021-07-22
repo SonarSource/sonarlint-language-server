@@ -306,7 +306,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     String filePath = fileUri.getPath();
     Boolean isIgnored = filesIgnoredByScmCache.computeIfAbsent(filePath, s -> client.isIgnoredByScm(s).join());
     if (isIgnored) {
-      LOG.debug("Skip analysis for SCM ignored file: " + fileUri);
+      LOG.debug("Skip analysis for SCM ignored file: '{}'", fileUri);
       return;
     }
     String content = fileContentPerFileURI.get(fileUri);
