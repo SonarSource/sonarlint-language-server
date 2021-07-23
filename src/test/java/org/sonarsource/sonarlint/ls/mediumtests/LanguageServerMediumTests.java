@@ -336,7 +336,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.getTextDocumentService()
       .didClose(new DidCloseTextDocumentParams(docId));
 
-    assertThat(client.getDiagnostics(uri)).isEmpty();
+    assertThat(client.getDiagnostics(uri)).isNull();
   }
 
   @Test
@@ -354,7 +354,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     await().atMost(1, TimeUnit.MINUTES).untilAsserted(
             () -> assertThat(client.logs).extracting(withoutTimestamp())
-                    .contains("[Debug] Skip analysis for SCM ignored file: " + uri)
+                    .contains("[Debug] Skip analysis for SCM ignored file: '" + uri + "'")
     );
     assertThat(client.getDiagnostics(uri)).isNull();
   }
