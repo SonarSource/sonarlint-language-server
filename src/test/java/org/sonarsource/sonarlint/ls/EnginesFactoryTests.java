@@ -36,6 +36,7 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import static java.net.URI.create;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -124,5 +125,13 @@ public class EnginesFactoryTests {
       Language.SECRETS,
       Language.TS
     );
+  }
+
+  @Test
+  public void resolve_extra_plugin_key() {
+    assertThat(EnginesFactory.resolvePluginKey("file:///sonarsecrets.jar")).isEqualTo(Language.SECRETS.getPluginKey());
+    assertThatThrownBy(() -> EnginesFactory.resolvePluginKey("file:///unknown.jar"))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessageContaining("Unknown analyzer.");
   }
 }

@@ -78,4 +78,16 @@ class ServerMainTests {
       .contains("Invalid argument at position 3. Expected an URL.");
   }
 
+  @Test
+  public void testInvalidExtraPluginURL() {
+
+    RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
+      underTest.startLanguageServer("1", "-analyzers", "http://analyzer.jar", "-extraAnalyzers", "http/invalid");
+    });
+
+    assertThat(thrown).hasMessage("exit called");
+    assertThat(err.toString(StandardCharsets.UTF_8))
+      .contains("Invalid argument at position 5. Expected an URL.");
+  }
+
 }

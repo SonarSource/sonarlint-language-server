@@ -120,11 +120,11 @@ public class EnginesFactory {
     return engine;
   }
 
-  private static String resolvePluginKey(String pluginUrl) {
+  static String resolvePluginKey(String pluginUrl) {
     if(pluginUrl.contains("sonarsecrets")) {
       return Language.SECRETS.getPluginKey();
     }
-    throw new IllegalStateException("Unknown analyzer url");
+    throw new IllegalStateException("Unknown analyzer.");
   }
 
   private Map<String, String> prepareExtraProps() {
