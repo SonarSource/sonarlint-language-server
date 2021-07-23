@@ -70,12 +70,12 @@ class ServerMainTests {
   public void testInvalidPluginURL() {
 
     RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
-      underTest.startLanguageServer("1", "http/invalid");
+      underTest.startLanguageServer("1", "-analyzers", "http/invalid");
     });
 
     assertThat(thrown).hasMessage("exit called");
     assertThat(err.toString(StandardCharsets.UTF_8))
-      .contains("Invalid argument at position 2. Expected an URL.");
+      .contains("Invalid argument at position 3. Expected an URL.");
   }
 
 }

@@ -25,8 +25,13 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 public class ServerMain {
+
+  private static final String ANALYZERS_KEY = "-analyzers";
+  private static final String EXTRA_ANALYZERS_KEY = "-extraAnalyzers";
 
   private PrintStream out;
   private PrintStream err;
@@ -40,6 +45,24 @@ public class ServerMain {
     new ServerMain(System.out, System.err).startLanguageServer(args);
   }
 
+  static int getIndexOfParam(String param, String[] args) {
+    for (int i = 0; i < args.length; i++) {
+      if(args[i].equals(param)) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  static int getIndexOfNextParam(int start, String[] args) {
+    for (int i = start + 1; i < args.length; i++) {
+      if(args[i].startsWith("-")) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   public void startLanguageServer(String... args) {
     if (args.length < 1) {
       err.println("Usage: java -jar sonarlint-server.jar <jsonRpcPort> [file:///path/to/analyzer1.jar [file:///path/to/analyzer2.jar] ...]");
@@ -47,27 +70,53 @@ public class ServerMain {
     }
     int jsonRpcPort = parsePortArgument(args);
 
-    Collection<URL> analyzers = new ArrayList<>();
-    if (args.length > 1) {
-      for (int i = 1; i < args.length; i++) {
-        try {
-          analyzers.add(new URL(args[i]));
-        } catch (MalformedURLException e) {
-          err.println("Invalid argument at position " + (i + 1) + ". Expected an URL.");
-          e.printStackTrace(err);
-          exitWithError();
-        }
-      }
-    }
+    Collection<URL> analyzers = extractAnalyzers(args);
+    Collection<URL> extraAnalyzers = extractExtraAnalyzers(args);
 
     out.println("Binding to " + jsonRpcPort);
     try {
-      SonarLintLanguageServer.bySocket(jsonRpcPort, analyzers);
+      SonarLintLanguageServer.bySocket(jsonRpcPort, analyzers, extraAnalyzers);
     } catch (IOException e) {
       err.println("Unable to connect to the client");
       e.printStackTrace(err);
       exitWithError();
     }
+  }
+
+  Collection<URL> extractAnalyzers(String[] args) {
+    int indexOfAnalyzersParam = getIndexOfParam(ANALYZERS_KEY, args);
+    if (indexOfAnalyzersParam == -1) {
+      err.println("Usage: java -jar sonarlint-server.jar <jsonRpcPort> [file:///path/to/analyzer1.jar [file:///path/to/analyzer2.jar] ...]");
+      exitWithError();
+    }
+    int nextParam = getIndexOfNextParam(indexOfAnalyzersParam, args);
+
+    return extractAnalyzersUrlsToList(args, indexOfAnalyzersParam, nextParam);
+  }
+
+  Collection<URL> extractExtraAnalyzers(String[] args) {
+    int indexOfExtraAnalyzersParam = getIndexOfParam(EXTRA_ANALYZERS_KEY, args);
+    if(indexOfExtraAnalyzersParam == -1) {
+      return Collections.emptyList();
+    }
+    return extractAnalyzersUrlsToList(args, indexOfExtraAnalyzersParam, args.length);
+  }
+
+  List<URL> extractAnalyzersUrlsToList(String[] args, int from, int to) {
+    if(to == -1) {
+      to = args.length;
+    }
+    List<URL> analyzers = new ArrayList<>();
+    for (int i = from + 1; i < to; i++) {
+      try {
+        analyzers.add(new URL(args[i]));
+      } catch (MalformedURLException e) {
+        err.println("Invalid argument at position " + (i + 1) + ". Expected an URL.");
+        e.printStackTrace(err);
+        exitWithError();
+      }
+    }
+    return analyzers;
   }
 
   private int parsePortArgument(String... args) {

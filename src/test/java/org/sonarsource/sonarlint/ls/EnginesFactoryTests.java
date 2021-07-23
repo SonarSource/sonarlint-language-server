@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -46,7 +47,7 @@ public class EnginesFactoryTests {
 
   @BeforeEach
   public void prepare() throws Exception {
-    underTest = new EnginesFactory(asList(create("file://plugin1.jar").toURL(), create("file://plugin2.jar").toURL()), mock(LanguageClientLogOutput.class), mock(NodeJsRuntime.class), mock(ModulesProvider.class));
+    underTest = new EnginesFactory(asList(create("file://plugin1.jar").toURL(), create("file://plugin2.jar").toURL()), mock(LanguageClientLogOutput.class), mock(NodeJsRuntime.class), mock(ModulesProvider.class), Collections.emptyList());
     underTest = spy(underTest);
   }
 

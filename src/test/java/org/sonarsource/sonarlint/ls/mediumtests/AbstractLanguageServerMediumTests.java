@@ -142,7 +142,7 @@ public abstract class AbstractLanguageServerMediumTests {
     serverStdOut = new ByteArrayOutputStream();
     serverStdErr = new ByteArrayOutputStream();
     try {
-      new ServerMain(new PrintStream(serverStdOut), new PrintStream(serverStdErr)).startLanguageServer("" + port, java, js, php, py, html);
+      new ServerMain(new PrintStream(serverStdOut), new PrintStream(serverStdErr)).startLanguageServer("" + port, "-analyzers", java, js, php, py, html);
     } catch (Exception e) {
       e.printStackTrace();
       future.get(1, TimeUnit.SECONDS);
