@@ -42,7 +42,6 @@ import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
-import org.eclipse.lsp4j.DidSaveTextDocumentParams;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.Position;
@@ -58,6 +57,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -84,6 +84,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .put("productName", "SLCORE tests")
       .put("productVersion", "0.1")
       .build());
+  }
+
+  @BeforeEach
+  public void prepare() {
+    client.isIgnoredByScm = false;
   }
 
   @Test
@@ -331,12 +336,27 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.getTextDocumentService()
       .didClose(new DidCloseTextDocumentParams(docId));
 
+    assertThat(client.getDiagnostics(uri)).isNull();
+  }
+
+  @Test
+  void vcsIgnoredShouldNotAnalyzed() throws Exception {
+    emulateConfigurationChangeOnClient("**/*Test.js", true, true, true);
+    Thread.sleep(1000);
+    client.logs.clear();
+
+    String uri = getUri("foo.py");
+    client.diagnosticsLatch = new CountDownLatch(1);
+    client.isIgnoredByScm = true;
+
+    lsProxy.getTextDocumentService()
+            .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
+
     await().atMost(1, TimeUnit.MINUTES).untilAsserted(
-      () -> assertThat(client.logs).extracting(withoutTimestamp()).contains(
-        "[Debug] Skipping analysis of file '" + uri + "', content has disappeared"
-      )
+            () -> assertThat(client.logs).extracting(withoutTimestamp())
+                    .contains("[Debug] Skip analysis for SCM ignored file: '" + uri + "'")
     );
-    assertThat(client.getDiagnostics(uri)).isEmpty();
+    assertThat(client.getDiagnostics(uri)).isNull();
   }
 
   @Test
