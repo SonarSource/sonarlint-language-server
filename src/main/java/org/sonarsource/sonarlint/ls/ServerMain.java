@@ -23,7 +23,11 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 public class ServerMain {
 
@@ -47,7 +51,7 @@ public class ServerMain {
 
   static int getIndexOfNextParam(int start, String[] args) {
     for (int i = start + 1; i < args.length; i++) {
-      if(args[i].startsWith("-")) {
+      if (args[i].startsWith("-")) {
         return i;
       }
     }
@@ -87,14 +91,14 @@ public class ServerMain {
 
   Collection<URL> extractExtraAnalyzers(String[] args) {
     int indexOfExtraAnalyzersParam = Arrays.asList(args).indexOf(EXTRA_ANALYZERS_KEY);
-    if(indexOfExtraAnalyzersParam == -1) {
+    if (indexOfExtraAnalyzersParam == -1) {
       return Collections.emptyList();
     }
     return extractAnalyzersUrlsToList(args, indexOfExtraAnalyzersParam, args.length);
   }
 
   List<URL> extractAnalyzersUrlsToList(String[] args, int from, int to) {
-    if(to == -1) {
+    if (to == -1) {
       to = args.length;
     }
     List<URL> analyzers = new ArrayList<>();

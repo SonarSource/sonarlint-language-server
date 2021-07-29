@@ -20,12 +20,16 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.io.PrintStream;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.shaded.org.apache.commons.io.output.ByteArrayOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
@@ -90,6 +94,51 @@ class ServerMainTests {
     assertThat(thrown).hasMessage("exit called");
     assertThat(err.toString(StandardCharsets.UTF_8))
       .contains("Invalid argument at position 5. Expected an URL.");
+  }
+
+  @Test
+  public void testExtractingAnalyzersPositive() {
+    String[] args = {"-analyzers", "http://url1.jar", "http://url2.jar"};
+    Collection<URL> urls = underTest.extractAnalyzers(args);
+    assertThat(urls).extracting(URL::getProtocol, URL::getHost)
+            .containsExactly(tuple("http", "url1.jar"), tuple("http", "url2.jar"));
+  }
+
+  @Test
+  public void testExtractingAnalyzersExitsIfNoKey() {
+    String[] args = {"http://url1.jar", "http://url2.jar"};
+
+    assertThrows(RuntimeException.class, ()-> underTest.extractAnalyzers(args));
+  }
+
+  @Test
+  public void testExtractingAnalyzersExitsOnMalformedUrl() {
+    String[] args = {"-analyzers", "url1"};
+
+    assertThrows(RuntimeException.class, ()-> underTest.extractAnalyzers(args));
+  }
+
+  @Test
+  public void testExtractingExtraAnalyzersPositive() {
+    String[] args = {"-extraAnalyzers", "http://url1.jar", "http://url2.jar"};
+    Collection<URL> urls = underTest.extractExtraAnalyzers(args);
+    assertThat(urls).extracting(URL::getProtocol, URL::getHost)
+            .containsExactly(tuple("http", "url1.jar"), tuple("http", "url2.jar"));
+  }
+
+  @Test
+  public void testExtractingExtraAnalyzersReturnsEmptyListIfNoKey() {
+    String[] args = {"http://url1.jar", "http://url2.jar"};
+
+    Collection<URL> urls = underTest.extractExtraAnalyzers(args);
+    assertThat(urls).isEmpty();
+  }
+
+  @Test
+  public void testExtractingExtraAnalyzersExitsOnMalformedUrl() {
+    String[] args = {"-extraAnalyzers", "url1"};
+
+    assertThrows(RuntimeException.class, ()-> underTest.extractExtraAnalyzers(args));
   }
 
 }
