@@ -51,7 +51,9 @@ class ServerMainTests {
 
     assertThat(thrown).hasMessage("exit called");
     assertThat(err.toString(StandardCharsets.UTF_8))
-      .isEqualTo("Usage: java -jar sonarlint-server.jar <jsonRpcPort> [file:///path/to/analyzer1.jar [file:///path/to/analyzer2.jar] ...]" + System.lineSeparator());
+      .isEqualTo("Usage: java -jar sonarlint-server.jar <jsonRpcPort> " +
+              "[-analyzers file:///path/to/analyzer1.jar [file:///path/to/analyzer2.jar] ...] " +
+              "[-extraAnalyzers file:///path/to/analyzer3.jar [file:///path/to/analyzer4.jar] ...]" + System.lineSeparator());
   }
 
   @Test

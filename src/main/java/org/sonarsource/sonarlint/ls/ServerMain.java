@@ -23,15 +23,15 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 public class ServerMain {
 
   private static final String ANALYZERS_KEY = "-analyzers";
   private static final String EXTRA_ANALYZERS_KEY = "-extraAnalyzers";
+  private static final String USAGE = "Usage: java -jar sonarlint-server.jar <jsonRpcPort> " +
+          "[-analyzers file:///path/to/analyzer1.jar [file:///path/to/analyzer2.jar] ...] " +
+          "[-extraAnalyzers file:///path/to/analyzer3.jar [file:///path/to/analyzer4.jar] ...]";
 
   private PrintStream out;
   private PrintStream err;
@@ -45,15 +45,6 @@ public class ServerMain {
     new ServerMain(System.out, System.err).startLanguageServer(args);
   }
 
-  static int getIndexOfParam(String param, String[] args) {
-    for (int i = 0; i < args.length; i++) {
-      if(args[i].equals(param)) {
-        return i;
-      }
-    }
-    return -1;
-  }
-
   static int getIndexOfNextParam(int start, String[] args) {
     for (int i = start + 1; i < args.length; i++) {
       if(args[i].startsWith("-")) {
@@ -65,7 +56,7 @@ public class ServerMain {
 
   public void startLanguageServer(String... args) {
     if (args.length < 1) {
-      err.println("Usage: java -jar sonarlint-server.jar <jsonRpcPort> [file:///path/to/analyzer1.jar [file:///path/to/analyzer2.jar] ...]");
+      err.println(USAGE);
       exitWithError();
     }
     int jsonRpcPort = parsePortArgument(args);
@@ -84,9 +75,9 @@ public class ServerMain {
   }
 
   Collection<URL> extractAnalyzers(String[] args) {
-    int indexOfAnalyzersParam = getIndexOfParam(ANALYZERS_KEY, args);
+    int indexOfAnalyzersParam = Arrays.asList(args).indexOf(ANALYZERS_KEY);
     if (indexOfAnalyzersParam == -1) {
-      err.println("Usage: java -jar sonarlint-server.jar <jsonRpcPort> [file:///path/to/analyzer1.jar [file:///path/to/analyzer2.jar] ...]");
+      err.println(USAGE);
       exitWithError();
     }
     int nextParam = getIndexOfNextParam(indexOfAnalyzersParam, args);
@@ -95,7 +86,7 @@ public class ServerMain {
   }
 
   Collection<URL> extractExtraAnalyzers(String[] args) {
-    int indexOfExtraAnalyzersParam = getIndexOfParam(EXTRA_ANALYZERS_KEY, args);
+    int indexOfExtraAnalyzersParam = Arrays.asList(args).indexOf(EXTRA_ANALYZERS_KEY);
     if(indexOfExtraAnalyzersParam == -1) {
       return Collections.emptyList();
     }

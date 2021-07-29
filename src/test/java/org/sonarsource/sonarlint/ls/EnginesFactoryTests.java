@@ -129,8 +129,8 @@ public class EnginesFactoryTests {
 
   @Test
   public void resolve_extra_plugin_key() {
-    assertThat(EnginesFactory.resolvePluginKey("file:///sonarsecrets.jar")).isEqualTo(Language.SECRETS.getPluginKey());
-    assertThatThrownBy(() -> EnginesFactory.resolvePluginKey("file:///unknown.jar"))
+    assertThat(EnginesFactory.guessPluginKey("file:///sonarsecrets.jar")).isEqualTo(Language.SECRETS.getPluginKey());
+    assertThatThrownBy(() -> EnginesFactory.guessPluginKey("file:///unknown.jar"))
       .isInstanceOf(IllegalStateException.class)
       .hasMessageContaining("Unknown analyzer.");
   }

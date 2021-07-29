@@ -113,15 +113,15 @@ public class EnginesFactory {
       .setModulesProvider(modulesProvider)
       .setLogOutput(lsLogOutput);
 
-    extraAnalyzers.forEach(analyzer-> builder.addExtraPlugin(resolvePluginKey(analyzer.getPath()), analyzer));
+    extraAnalyzers.forEach(analyzer-> builder.addExtraPlugin(guessPluginKey(analyzer.getPath()), analyzer));
     ConnectedSonarLintEngine engine = newConnectedEngine(builder.build());
 
     LOG.debug("SonarLint engine started for connection '{}'", connectionId);
     return engine;
   }
 
-  static String resolvePluginKey(String pluginUrl) {
-    if(pluginUrl.contains("sonarsecrets")) {
+  static String guessPluginKey(String pluginUrl) {
+    if (pluginUrl.contains("sonarsecrets")) {
       return Language.SECRETS.getPluginKey();
     }
     throw new IllegalStateException("Unknown analyzer.");
