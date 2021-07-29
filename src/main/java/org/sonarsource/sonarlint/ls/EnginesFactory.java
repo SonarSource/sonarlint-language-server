@@ -66,12 +66,14 @@ public class EnginesFactory {
 
   private final NodeJsRuntime nodeJsRuntime;
   private final ModulesProvider modulesProvider;
+  private final Collection<URL> extraAnalyzers;
 
-  public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput, NodeJsRuntime nodeJsRuntime, ModulesProvider modulesProvider) {
+  public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput, NodeJsRuntime nodeJsRuntime, ModulesProvider modulesProvider, Collection<URL> extraAnalyzers) {
     this.standaloneAnalyzers = standaloneAnalyzers;
     this.lsLogOutput = lsLogOutput;
     this.nodeJsRuntime = nodeJsRuntime;
     this.modulesProvider = modulesProvider;
+    this.extraAnalyzers = extraAnalyzers;
   }
 
   public StandaloneSonarLintEngine createStandaloneEngine() {
@@ -102,20 +104,27 @@ public class EnginesFactory {
   }
 
   public ConnectedSonarLintEngine createConnectedEngine(String connectionId) {
-    ConnectedGlobalConfiguration configuration = ConnectedGlobalConfiguration.builder()
+    ConnectedGlobalConfiguration.Builder builder = ConnectedGlobalConfiguration.builder()
       .setConnectionId(connectionId)
       .setExtraProperties(prepareExtraProps())
       .addEnabledLanguages(STANDALONE_LANGUAGES)
       .addEnabledLanguages(CONNECTED_ADDITIONAL_LANGUAGES)
       .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
       .setModulesProvider(modulesProvider)
-      .setLogOutput(lsLogOutput)
-      .build();
+      .setLogOutput(lsLogOutput);
 
-    ConnectedSonarLintEngine engine = newConnectedEngine(configuration);
+    extraAnalyzers.forEach(analyzer-> builder.addExtraPlugin(guessPluginKey(analyzer.getPath()), analyzer));
+    ConnectedSonarLintEngine engine = newConnectedEngine(builder.build());
 
     LOG.debug("SonarLint engine started for connection '{}'", connectionId);
     return engine;
+  }
+
+  static String guessPluginKey(String pluginUrl) {
+    if (pluginUrl.contains("sonarsecrets")) {
+      return Language.SECRETS.getPluginKey();
+    }
+    throw new IllegalStateException("Unknown analyzer.");
   }
 
   private Map<String, String> prepareExtraProps() {

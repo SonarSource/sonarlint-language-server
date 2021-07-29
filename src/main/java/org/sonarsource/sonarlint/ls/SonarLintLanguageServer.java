@@ -110,7 +110,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
    */
   private TraceValues traceLevel;
 
-  SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<URL> analyzers) {
+  SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<URL> analyzers, Collection<URL> extraAnalyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
     Launcher<SonarLintExtendedLanguageClient> launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
       .setLocalService(this)
@@ -132,7 +132,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     FileTypeClassifier fileTypeClassifier = new FileTypeClassifier(fileLanguageCache);
     JavaConfigCache javaConfigCache = new JavaConfigCache(client, fileLanguageCache);
     this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput, nodeJsRuntime,
-      new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, javaConfigCache));
+      new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, javaConfigCache), extraAnalyzers);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, progressManager);
@@ -152,9 +152,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     launcher.startListening();
   }
 
-  static void bySocket(int port, Collection<URL> analyzers) throws IOException {
+  static void bySocket(int port, Collection<URL> analyzers, Collection<URL> extraAnalyzers) throws IOException {
     Socket socket = new Socket("localhost", port);
-    new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers);
+    new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers, extraAnalyzers);
   }
 
   @Override
