@@ -20,55 +20,73 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Optional;
-import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryClientAttributesProvider;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 
 public class TelemetryClientAttributesProviderImpl implements TelemetryClientAttributesProvider {
 
+  private final SettingsManager settingsManager;
+  private final ProjectBindingManager bindingManager;
+  private final NodeJsRuntime nodeJsRuntime;
+  private final StandaloneEngineManager standaloneEngineManager;
 
-  private final BooleanSupplier usesConnectedMode;
-  private final BooleanSupplier usesSonarCloud;
-  private final BooleanSupplier devNotificationsDisabled;
-  private final Supplier<String> nodeVersion;
-
-  public TelemetryClientAttributesProviderImpl(BooleanSupplier usesConnectedMode, BooleanSupplier usesSonarCloud,
-    BooleanSupplier devNotificationsDisabled, Supplier<String> nodeVersion) {
-    this.usesConnectedMode = usesConnectedMode;
-    this.usesSonarCloud = usesSonarCloud;
-    this.devNotificationsDisabled = devNotificationsDisabled;
-    this.nodeVersion = nodeVersion;
+  public TelemetryClientAttributesProviderImpl(SettingsManager settingsManager, ProjectBindingManager bindingManager, NodeJsRuntime nodeJsRuntime,
+    StandaloneEngineManager standaloneEngineManager) {
+    this.settingsManager = settingsManager;
+    this.bindingManager = bindingManager;
+    this.nodeJsRuntime = nodeJsRuntime;
+    this.standaloneEngineManager = standaloneEngineManager;
   }
 
   @Override
   public boolean usesConnectedMode() {
-    return usesConnectedMode.getAsBoolean();
+    return bindingManager.usesConnectedMode();
   }
 
   @Override
   public boolean useSonarCloud() {
-    return usesSonarCloud.getAsBoolean();
+    return bindingManager.usesSonarCloud();
   }
 
   @Override
   public Optional<String> nodeVersion() {
-    return Optional.ofNullable(nodeVersion.get());
+    return Optional.ofNullable(nodeJsRuntime.nodeVersion());
   }
 
   @Override
   public boolean devNotificationsDisabled() {
-    return devNotificationsDisabled.getAsBoolean();
+    return bindingManager.devNotificationsDisabled();
   }
 
   @Override
   public Collection<String> getNonDefaultEnabledRules() {
-    return Collections.emptyList();
+    Set<String> enabled = settingsManager.getCurrentSettings().getIncludedRules().stream().map(r -> r.toString()).collect(Collectors.toSet());
+    if (!enabled.isEmpty()) {
+      enabled.removeAll(getDefaultEnabledRules());
+    }
+    return enabled;
+  }
+
+  private Set<String> getDefaultEnabledRules() {
+    return standaloneEngineManager.getOrCreateStandaloneEngine().getAllRuleDetails().stream()
+      .filter(StandaloneRuleDetails::isActiveByDefault)
+      .map(StandaloneRuleDetails::getKey)
+      .collect(Collectors.toSet());
   }
 
   @Override
   public Collection<String> getDefaultDisabledRules() {
-    return Collections.emptyList();
+    Set<String> disabled = settingsManager.getCurrentSettings().getExcludedRules().stream().map(r -> r.toString()).collect(Collectors.toSet());
+    if (!disabled.isEmpty()) {
+      Set<String> defaultEnabledRules = getDefaultEnabledRules();
+      disabled.removeIf(r -> !defaultEnabledRules.contains(r));
+    }
+    return disabled;
   }
 }

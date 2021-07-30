@@ -36,6 +36,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -89,6 +90,7 @@ import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
+import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.plugin.api.module.file.ModuleFileEvent;
 
 import static java.util.Collections.emptyMap;
@@ -126,30 +128,29 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   private final Map<URI, Long> eventMap = new ConcurrentHashMap<>();
 
   private final SonarLintTelemetry telemetry;
-  private final EnginesFactory enginesFactory;
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
   private final EventWatcher watcher;
   private final LanguageClientLogOutput lsLogOutput;
-  private StandaloneSonarLintEngine standaloneEngine;
   private final Map<String, Boolean> filesIgnoredByScmCache = new HashMap<>();
+  private final StandaloneEngineManager standaloneEngineManager;
 
   private final ExecutorService analysisExecutor;
 
-  public AnalysisManager(LanguageClientLogOutput lsLogOutput, EnginesFactory enginesFactory, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
+  public AnalysisManager(LanguageClientLogOutput lsLogOutput, StandaloneEngineManager standaloneEngineManager, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
     WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, ProjectBindingManager bindingManager, FileTypeClassifier fileTypeClassifier,
     FileLanguageCache fileLanguageCache, JavaConfigCache javaConfigCache) {
-    this(lsLogOutput, enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager, fileTypeClassifier, fileLanguageCache, javaConfigCache,
+    this(lsLogOutput, standaloneEngineManager, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager, fileTypeClassifier, fileLanguageCache, javaConfigCache,
       new ConcurrentHashMap<>());
   }
 
-  public AnalysisManager(LanguageClientLogOutput lsLogOutput, EnginesFactory enginesFactory, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
+  public AnalysisManager(LanguageClientLogOutput lsLogOutput, StandaloneEngineManager standaloneEngineManager, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
     WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, ProjectBindingManager bindingManager, FileTypeClassifier fileTypeClassifier,
     FileLanguageCache fileLanguageCache, JavaConfigCache javaConfigCache,
     Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile) {
     this.lsLogOutput = lsLogOutput;
-    this.enginesFactory = enginesFactory;
+    this.standaloneEngineManager = standaloneEngineManager;
     this.client = client;
     this.telemetry = telemetry;
     this.workspaceFoldersManager = workspaceFoldersManager;
@@ -163,13 +164,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     this.taintVulnerabilitiesPerFile = taintVulnerabilitiesPerFile;
   }
 
-  synchronized StandaloneSonarLintEngine getOrCreateStandaloneEngine() {
-    if (standaloneEngine == null) {
-      standaloneEngine = enginesFactory.createStandaloneEngine();
-    }
-    return standaloneEngine;
-  }
-
   public void didChangeWatchedFiles(List<FileEvent> changes) {
     changes.forEach(f -> {
       URI fileUri = URI.create(f.getUri());
@@ -180,7 +174,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
 
           Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(fileUri);
 
-          SonarLintEngine engineForFile = binding.isPresent() ? binding.get().getEngine() : getOrCreateStandaloneEngine();
+          SonarLintEngine engineForFile = binding.isPresent() ? binding.get().getEngine() : standaloneEngineManager.getOrCreateStandaloneEngine();
 
           Optional<GetJavaConfigResponse> javaConfig = javaConfigCache.getOrFetch(fileUri);
           ClientInputFile inputFile = new InFolderClientInputFile(fileUri, getFileRelativePath(baseDir, fileUri), fileTypeClassifier.isTest(settings, fileUri, javaConfig));
@@ -217,7 +211,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     return bindingManager.getBinding(folder)
       .map(ProjectBindingWrapper::getEngine)
       .map(SonarLintEngine.class::cast)
-      .orElseGet(this::getOrCreateStandaloneEngine);
+      .orElseGet(standaloneEngineManager::getOrCreateStandaloneEngine);
   }
 
   @Override
@@ -370,7 +364,15 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       int foundIssues = newIssuesPerId.size();
       LOG.info("Found {} {}", foundIssues, pluralize(foundIssues, "issue"));
       client.publishDiagnostics(newPublishDiagnostics(fileUri));
+      telemetry.addReportedRules(collectAllRuleKeys(issuesPerIdPerFileURI));
     }
+  }
+
+  private Set<String> collectAllRuleKeys(Map<URI, Map<String, Issue>> issuesPerIdPerFileURI) {
+    return issuesPerIdPerFileURI.values().stream()
+      .flatMap(m -> m.values().stream())
+      .map(Issue::getRuleKey)
+      .collect(Collectors.toSet());
   }
 
   private IssueListener createIssueListener() {
@@ -465,7 +467,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       .build();
     LOG.debug("Analysis triggered on '{}' with configuration: \n{}", uri, configuration.toString());
 
-    StandaloneSonarLintEngine engine = getOrCreateStandaloneEngine();
+    StandaloneSonarLintEngine engine = standaloneEngineManager.getOrCreateStandaloneEngine();
     return analyzeWithTiming(() -> engine.analyze(configuration, issueListener, null, null),
       engine.getPluginDetails(),
       () -> {
@@ -669,9 +671,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     watcher.stopWatcher();
     eventMap.clear();
     analysisExecutor.shutdown();
-    if (standaloneEngine != null) {
-      standaloneEngine.stop();
-    }
   }
 
   public void analyzeAllOpenFilesInFolder(@Nullable WorkspaceFolderWrapper folder) {

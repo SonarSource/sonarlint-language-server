@@ -75,7 +75,7 @@ class SecurityHotspotsHandlerServerTest {
     String ideName = "SonarSource Editor";
     String clientVersion = "1.42";
     String workspaceName = "polop";
-    server.init(ideName, clientVersion, workspaceName);
+    server.initialize(ideName, clientVersion, workspaceName);
 
     int port = server.getPort();
     assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
@@ -94,7 +94,7 @@ class SecurityHotspotsHandlerServerTest {
   void shouldStartServerAndReplyToStatusRequestWhenNoFolderIsOpen() throws Exception {
     String ideName = "SonarSource Editor";
     String clientVersion = "1.42";
-    server.init(ideName, clientVersion, null);
+    server.initialize(ideName, clientVersion, null);
 
     int port = server.getPort();
     assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
@@ -115,11 +115,11 @@ class SecurityHotspotsHandlerServerTest {
     String clientVersion = "1.42";
     String workspaceName1 = "polop";
     String workspaceName2 = "palap";
-    server.init(ideName, clientVersion, workspaceName1);
+    server.initialize(ideName, clientVersion, workspaceName1);
 
     SecurityHotspotsHandlerServer otherServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry);
     try {
-      otherServer.init(ideName, clientVersion, workspaceName2);
+      otherServer.initialize(ideName, clientVersion, workspaceName2);
       assertThat(otherServer.getPort()).isNotEqualTo(server.getPort());
     } finally {
       otherServer.shutdown();
@@ -138,14 +138,14 @@ class SecurityHotspotsHandlerServerTest {
     try {
       while (lastPortTried < SecurityHotspotsHandlerServer.ENDING_PORT) {
         SecurityHotspotsHandlerServer triedServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry);
-        triedServer.init(ideName, clientVersion, "sample-" + serverId);
+        triedServer.initialize(ideName, clientVersion, "sample-" + serverId);
         assertThat(triedServer.isStarted()).isTrue();
         startedServers.add(triedServer);
         lastPortTried = triedServer.getPort();
       }
 
       SecurityHotspotsHandlerServer failedServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry);
-      failedServer.init(ideName, clientVersion, "sample-" + serverId);
+      failedServer.initialize(ideName, clientVersion, "sample-" + serverId);
       assertThat(failedServer.isStarted()).isFalse();
     } finally {
       for(SecurityHotspotsHandlerServer serverToShutdown: startedServers) {
@@ -159,7 +159,7 @@ class SecurityHotspotsHandlerServerTest {
     String ideName = "SonarSource Editor";
     String clientVersion = "1.42";
     String workspaceName = "polop";
-    server.init(ideName, clientVersion, workspaceName);
+    server.initialize(ideName, clientVersion, workspaceName);
     ServerHotspot remoteHotspot = mock(ServerHotspot.class);
     when(bindingManager.getServerConnectionSettingsForUrl(anyString())).thenReturn(Optional.of(new ServerConnectionSettings.EndpointParamsAndHttpClient(null, null)));
     when(hotspotApi.fetch(any(GetSecurityHotspotRequestParams.class))).thenReturn(Optional.of(remoteHotspot));
@@ -194,7 +194,7 @@ class SecurityHotspotsHandlerServerTest {
     String ideName = "SonarSource Editor";
     String clientVersion = "1.42";
     String workspaceName = "polop";
-    server.init(ideName, clientVersion, workspaceName);
+    server.initialize(ideName, clientVersion, workspaceName);
     when(bindingManager.getServerConnectionSettingsForUrl(anyString())).thenReturn(Optional.empty());
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(new MessageActionItem("Open Settings")));
 
@@ -222,7 +222,7 @@ class SecurityHotspotsHandlerServerTest {
     String ideName = "SonarSource Editor";
     String clientVersion = "1.42";
     String workspaceName = "polop";
-    server.init(ideName, clientVersion, workspaceName);
+    server.initialize(ideName, clientVersion, workspaceName);
 
     int port = server.getPort();
     assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
@@ -239,7 +239,7 @@ class SecurityHotspotsHandlerServerTest {
     String ideName = "SonarSource Editor";
     String clientVersion = "1.42";
     String workspaceName = "polop";
-    server.init(ideName, clientVersion, workspaceName);
+    server.initialize(ideName, clientVersion, workspaceName);
 
     int port = server.getPort();
     assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
@@ -256,7 +256,7 @@ class SecurityHotspotsHandlerServerTest {
     String ideName = "SonarSource Editor";
     String clientVersion = "1.42";
     String workspaceName = "polop";
-    server.init(ideName, clientVersion, workspaceName);
+    server.initialize(ideName, clientVersion, workspaceName);
 
     int port = server.getPort();
     assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
