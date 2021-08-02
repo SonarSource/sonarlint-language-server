@@ -19,9 +19,17 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
+import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
+import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -35,17 +43,23 @@ class TelemetryClientAttributesProviderImplTest {
 
 
   TelemetryClientAttributesProviderImpl underTest;
+  WorkspaceSettings workspaceSettings;
+  StandaloneEngineManager standaloneEngineManager;
+  StandaloneSonarLintEngine standaloneSonarLintEngine;
 
   @BeforeEach
   public void init() {
     NodeJsRuntime nodeJsRuntime = mock(NodeJsRuntime.class);
     when(nodeJsRuntime.nodeVersion()).thenReturn("nodeVersion");
     SettingsManager settingsManager = mock(SettingsManager.class);
-    WorkspaceSettings workspaceSettings = mock(WorkspaceSettings.class);
+    workspaceSettings = mock(WorkspaceSettings.class);
+    standaloneEngineManager = mock(StandaloneEngineManager.class);
+    standaloneSonarLintEngine = mock(StandaloneSonarLintEngine.class);
+    when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(standaloneSonarLintEngine);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     when(workspaceSettings.getExcludedRules()).thenReturn(Collections.emptyList());
     when(workspaceSettings.getIncludedRules()).thenReturn(Collections.emptyList());
-    underTest = new TelemetryClientAttributesProviderImpl(settingsManager, mock(ProjectBindingManager.class), nodeJsRuntime, mock(StandaloneEngineManager.class));
+    underTest = new TelemetryClientAttributesProviderImpl(settingsManager, mock(ProjectBindingManager.class), nodeJsRuntime, standaloneEngineManager);
   }
 
   @Test
@@ -69,6 +83,80 @@ class TelemetryClientAttributesProviderImplTest {
   void testTelemetry() {
     assertThat(underTest.getDefaultDisabledRules()).isEmpty();
     assertThat(underTest.getNonDefaultEnabledRules()).isEmpty();
+  }
+
+  @Test
+  void testGetNonDefaultEnabledRules() {
+    List<RuleKey> rules = new ArrayList<>();
+    RuleKey ruleKey1 = mock(RuleKey.class);
+    RuleKey ruleKey2 = mock(RuleKey.class);
+    when(ruleKey1.toString()).thenReturn("ruleKey1");
+    when(ruleKey2.toString()).thenReturn("ruleKey2");
+    rules.add(ruleKey1);
+    rules.add(ruleKey2);
+    when(workspaceSettings.getIncludedRules()).thenReturn(rules);
+    when(standaloneSonarLintEngine.getAllRuleDetails()).thenReturn(Collections.emptyList());
+
+    Collection<String> nonDefaultEnabledRules = underTest.getNonDefaultEnabledRules();
+
+    assertThat(nonDefaultEnabledRules).containsExactly("ruleKey2", "ruleKey1");
+  }
+
+  @Test
+  void testGetNonDefaultEnabledFilteringRules() {
+    List<RuleKey> rules = new ArrayList<>();
+    RuleKey ruleKey1 = mock(RuleKey.class);
+    RuleKey ruleKey2 = mock(RuleKey.class);
+    when(ruleKey1.toString()).thenReturn("ruleKey1");
+    when(ruleKey2.toString()).thenReturn("ruleKey2");
+    rules.add(ruleKey1);
+    rules.add(ruleKey2);
+    StandaloneRuleDetails standaloneRule1 = mock(StandaloneRuleDetails.class);
+    when(standaloneRule1.getKey()).thenReturn("ruleKey2");
+    when(standaloneRule1.isActiveByDefault()).thenReturn(true);
+    when(workspaceSettings.getIncludedRules()).thenReturn(rules);
+    when(standaloneSonarLintEngine.getAllRuleDetails()).thenReturn(Collections.singletonList(standaloneRule1));
+
+    Collection<String> nonDefaultEnabledRules = underTest.getNonDefaultEnabledRules();
+
+    assertThat(nonDefaultEnabledRules).containsExactly("ruleKey1");
+  }
+
+  @Test
+  void testGetDefaultDisabledRules() {
+    List<RuleKey> rules = new ArrayList<>();
+    RuleKey ruleKey1 = mock(RuleKey.class);
+    RuleKey ruleKey2 = mock(RuleKey.class);
+    when(ruleKey1.toString()).thenReturn("ruleKey1");
+    when(ruleKey2.toString()).thenReturn("ruleKey2");
+    rules.add(ruleKey1);
+    rules.add(ruleKey2);
+    when(workspaceSettings.getExcludedRules()).thenReturn(rules);
+    when(standaloneSonarLintEngine.getAllRuleDetails()).thenReturn(Collections.emptyList());
+
+    Collection<String> nonDefaultEnabledRules = underTest.getDefaultDisabledRules();
+
+    assertThat(nonDefaultEnabledRules).isEmpty();
+  }
+
+  @Test
+  void testGetDefaultDisabledFilteringRules() {
+    List<RuleKey> rules = new ArrayList<>();
+    RuleKey ruleKey1 = mock(RuleKey.class);
+    RuleKey ruleKey2 = mock(RuleKey.class);
+    when(ruleKey1.toString()).thenReturn("ruleKey1");
+    when(ruleKey2.toString()).thenReturn("ruleKey2");
+    rules.add(ruleKey1);
+    rules.add(ruleKey2);
+    StandaloneRuleDetails standaloneRule1 = mock(StandaloneRuleDetails.class);
+    when(standaloneRule1.getKey()).thenReturn("ruleKey1");
+    when(standaloneRule1.isActiveByDefault()).thenReturn(true);
+    when(workspaceSettings.getExcludedRules()).thenReturn(rules);
+    when(standaloneSonarLintEngine.getAllRuleDetails()).thenReturn(Collections.singletonList(standaloneRule1));
+
+    Collection<String> nonDefaultEnabledRules = underTest.getDefaultDisabledRules();
+
+    assertThat(nonDefaultEnabledRules).containsExactly("ruleKey1");
   }
 
 }
