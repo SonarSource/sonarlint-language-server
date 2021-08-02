@@ -19,12 +19,17 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
+import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
+import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class TelemetryClientAttributesProviderImplTest {
 
@@ -33,9 +38,14 @@ class TelemetryClientAttributesProviderImplTest {
 
   @BeforeEach
   public void init() {
-    BooleanSupplier falseSupplier = () -> false;
-    Supplier<String> nodeVersionSupplier = () -> "nodeVersion";
-    underTest = new TelemetryClientAttributesProviderImpl(falseSupplier, falseSupplier, falseSupplier, nodeVersionSupplier);
+    NodeJsRuntime nodeJsRuntime = mock(NodeJsRuntime.class);
+    when(nodeJsRuntime.nodeVersion()).thenReturn("nodeVersion");
+    SettingsManager settingsManager = mock(SettingsManager.class);
+    WorkspaceSettings workspaceSettings = mock(WorkspaceSettings.class);
+    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
+    when(workspaceSettings.getExcludedRules()).thenReturn(Collections.emptyList());
+    when(workspaceSettings.getIncludedRules()).thenReturn(Collections.emptyList());
+    underTest = new TelemetryClientAttributesProviderImpl(settingsManager, mock(ProjectBindingManager.class), nodeJsRuntime, mock(StandaloneEngineManager.class));
   }
 
   @Test

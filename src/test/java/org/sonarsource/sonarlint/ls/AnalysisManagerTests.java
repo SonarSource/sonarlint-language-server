@@ -51,12 +51,14 @@ import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
+import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.plugin.api.module.file.ModuleFileEvent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -70,7 +72,7 @@ class AnalysisManagerTests {
   Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile;
   private EnginesFactory enginesFactory;
   private WorkspaceFoldersManager foldersManager;
-  private SonarLintExtendedLanguageClient languageClient;
+  private StandaloneEngineManager standaloneEngineManager;
 
   @BeforeEach
   void prepare() {
@@ -78,8 +80,8 @@ class AnalysisManagerTests {
     FileLanguageCache fileLanguageCache = new FileLanguageCache();
     enginesFactory = mock(EnginesFactory.class);
     foldersManager = mock(WorkspaceFoldersManager.class);
-    languageClient = mock(SonarLintExtendedLanguageClient.class);
-    underTest = new AnalysisManager(mock(LanguageClientLogOutput.class), enginesFactory, languageClient, mock(SonarLintTelemetry.class),
+    standaloneEngineManager = mock(StandaloneEngineManager.class);
+    underTest = new AnalysisManager(mock(LanguageClientLogOutput.class), standaloneEngineManager, mock(SonarLintExtendedLanguageClient.class), mock(SonarLintTelemetry.class),
       foldersManager, mock(SettingsManager.class), mock(ProjectBindingManager.class), new FileTypeClassifier(fileLanguageCache), fileLanguageCache, mock(JavaConfigCache.class), taintVulnerabilitiesPerFile);
 
   }
@@ -211,6 +213,8 @@ class AnalysisManagerTests {
     WorkspaceFolderWrapper folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
     folder.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
     when(foldersManager.findFolderForFile(any())).thenReturn(Optional.of(folder));
+    doNothing().when(sonarLintEngine).fireModuleFileEvent(any(), any());
+    when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(sonarLintEngine);
 
     underTest.didChangeWatchedFiles(Collections.singletonList(new FileEvent("file:///folder/file.py", FileChangeType.Created)));
 
@@ -228,6 +232,8 @@ class AnalysisManagerTests {
     WorkspaceFolderWrapper folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
     folder.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
     when(foldersManager.findFolderForFile(any())).thenReturn(Optional.of(folder));
+    doNothing().when(sonarLintEngine).fireModuleFileEvent(any(), any());
+    when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(sonarLintEngine);
 
     underTest.didChangeWatchedFiles(Collections.singletonList(new FileEvent("file:///folder/file.py", FileChangeType.Changed)));
 
@@ -245,6 +251,8 @@ class AnalysisManagerTests {
     WorkspaceFolderWrapper folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
     folder.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
     when(foldersManager.findFolderForFile(any())).thenReturn(Optional.of(folder));
+    doNothing().when(sonarLintEngine).fireModuleFileEvent(any(), any());
+    when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(sonarLintEngine);
 
     underTest.didChangeWatchedFiles(Collections.singletonList(new FileEvent("file:///folder/file.py", FileChangeType.Deleted)));
 
