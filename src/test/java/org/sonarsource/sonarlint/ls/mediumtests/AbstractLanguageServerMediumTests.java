@@ -352,6 +352,11 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
+    public CompletableFuture<Void> showFirstSecretDetectionNotification() {
+      return CompletableFutures.computeAsync(null);
+    }
+
+    @Override
     public CompletableFuture<GetJavaConfigResponse> getJavaConfig(String fileUri) {
       return CompletableFutures.computeAsync(cancelToken -> {
         return javaConfigs.get(fileUri);

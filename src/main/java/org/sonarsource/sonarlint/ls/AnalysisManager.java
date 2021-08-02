@@ -117,6 +117,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   private final FileTypeClassifier fileTypeClassifier;
   private final FileLanguageCache fileLanguageCache;
   private final JavaConfigCache javaConfigCache;
+  private boolean firstSecretIssueDetected;
   private final Map<URI, String> fileContentPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, Map<String, Issue>> issuesPerIdPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile;
@@ -374,12 +375,20 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
 
   private IssueListener createIssueListener() {
     return issue -> {
+      showFirstSecretDetectionNotificationIfNeeded(issue);
       ClientInputFile inputFile = issue.getInputFile();
       if (inputFile != null) {
         URI uri = inputFile.getClientObject();
         issuesPerIdPerFileURI.computeIfAbsent(uri, u -> new HashMap<>()).put(UUID.randomUUID().toString(), issue);
       }
     };
+  }
+
+  void showFirstSecretDetectionNotificationIfNeeded(Issue issue) {
+    if (!firstSecretIssueDetected && issue.getRuleKey().startsWith(Language.SECRETS.getPluginKey())) {
+      client.showFirstSecretDetectionNotification();
+      firstSecretIssueDetected = true;
+    }
   }
 
   Optional<Issue> getIssueForDiagnostic(URI fileUri, Diagnostic d) {
@@ -651,7 +660,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       .thenComparing(Diagnostic::getMessage);
   }
 
-  public void initialize() {
+  public void initialize(Boolean firstSecretDetected) {
+    firstSecretIssueDetected = firstSecretDetected;
     watcher.start();
   }
 
