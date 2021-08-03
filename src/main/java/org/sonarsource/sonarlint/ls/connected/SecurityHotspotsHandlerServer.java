@@ -95,7 +95,7 @@ public class SecurityHotspotsHandlerServer {
     this.hotspotApiFactory = hotspotApiFactory;
   }
 
-  public void init(String ideName, String clientVersion, @Nullable String workspaceName) {
+  public void initialize(String ideName, String clientVersion, @Nullable String workspaceName) {
     final SocketConfig socketConfig = SocketConfig.custom()
       .setSoTimeout(15, TimeUnit.SECONDS)
       .setTcpNoDelay(true)

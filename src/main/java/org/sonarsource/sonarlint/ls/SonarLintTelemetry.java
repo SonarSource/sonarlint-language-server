@@ -22,11 +22,11 @@ package org.sonarsource.sonarlint.ls;
 import com.google.common.annotations.VisibleForTesting;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import org.sonar.api.utils.log.Logger;
@@ -36,29 +36,44 @@ import org.sonarsource.sonarlint.core.client.api.util.SonarLintUtils;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryHttpClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
+import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 
 public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   public static final String DISABLE_PROPERTY_KEY = "sonarlint.telemetry.disabled";
   private static final Logger LOG = Loggers.get(SonarLintTelemetry.class);
 
   private final Supplier<ScheduledExecutorService> executorFactory;
+  private final ApacheHttpClient httpClient;
+  private final SettingsManager settingsManager;
+  private final ProjectBindingManager bindingManager;
+  private final NodeJsRuntime nodeJsRuntime;
+  private final StandaloneEngineManager standaloneEngineManager;
+
   private TelemetryManager telemetry;
 
   @VisibleForTesting
   ScheduledFuture<?> scheduledFuture;
   private ScheduledExecutorService scheduler;
-  private ApacheHttpClient httpClient;
 
-  public SonarLintTelemetry(ApacheHttpClient httpClient) {
-    this(() -> Executors.newScheduledThreadPool(1, Utils.threadFactory("SonarLint Telemetry", false)), httpClient);
+  public SonarLintTelemetry(ApacheHttpClient httpClient, SettingsManager settingsManager, ProjectBindingManager bindingManager, NodeJsRuntime nodeJsRuntime,
+    StandaloneEngineManager standaloneEngineManager) {
+    this(() -> Executors.newScheduledThreadPool(1, Utils.threadFactory("SonarLint Telemetry", false)), httpClient, settingsManager, bindingManager, nodeJsRuntime,
+      standaloneEngineManager);
   }
 
-  public SonarLintTelemetry(Supplier<ScheduledExecutorService> executorFactory, ApacheHttpClient httpClient) {
+  public SonarLintTelemetry(Supplier<ScheduledExecutorService> executorFactory, ApacheHttpClient httpClient, SettingsManager settingsManager, ProjectBindingManager bindingManager,
+    NodeJsRuntime nodeJsRuntime, StandaloneEngineManager standaloneEngineManager) {
     this.executorFactory = executorFactory;
     this.httpClient = httpClient;
+    this.settingsManager = settingsManager;
+    this.bindingManager = bindingManager;
+    this.nodeJsRuntime = nodeJsRuntime;
+    this.standaloneEngineManager = standaloneEngineManager;
   }
 
   private void optOut(boolean optOut) {
@@ -81,18 +96,13 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     return telemetry != null && telemetry.isEnabled();
   }
 
-  public void init(@Nullable String productKey, @Nullable String telemetryStorage, String productName, String productVersion, String ideVersion,
-    BooleanSupplier usesConnectedMode,
-    BooleanSupplier usesSonarCloud,
-    BooleanSupplier devNotificationsDisabled,
-    Supplier<String> nodeVersion) {
+  public void initialize(@Nullable String productKey, @Nullable String telemetryStorage, String productName, String productVersion, String ideVersion) {
     Path storagePath = getStoragePath(productKey, telemetryStorage);
-    init(storagePath, productName, productVersion, ideVersion, usesConnectedMode, usesSonarCloud, devNotificationsDisabled, nodeVersion);
+    init(storagePath, productName, productVersion, ideVersion);
   }
 
   // Visible for testing
-  void init(@Nullable Path storagePath, String productName, String productVersion, String ideVersion, BooleanSupplier usesConnectedMode,
-    BooleanSupplier usesSonarCloud, BooleanSupplier devNotificationsDisabled, Supplier<String> nodeVersion) {
+  void init(@Nullable Path storagePath, String productName, String productVersion, String ideVersion) {
     if (storagePath == null) {
       LOG.info("Telemetry disabled because storage path is null");
       return;
@@ -102,7 +112,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
       return;
     }
     TelemetryHttpClient client = new TelemetryHttpClient(productName, productVersion, ideVersion, httpClient);
-    this.telemetry = newTelemetryManager(storagePath, client, usesConnectedMode, usesSonarCloud, devNotificationsDisabled, nodeVersion);
+    this.telemetry = newTelemetryManager(storagePath, client);
     try {
       this.scheduler = executorFactory.get();
       this.scheduledFuture = scheduler.scheduleWithFixedDelay(this::upload,
@@ -125,9 +135,8 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     return telemetryStorage != null ? Paths.get(telemetryStorage) : null;
   }
 
-  TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client, BooleanSupplier usesConnectedMode, BooleanSupplier usesSonarCloud,
-      BooleanSupplier devNotificationsDisabled, Supplier<String> nodeVersion) {
-    return new TelemetryManager(path, client, new TelemetryClientAttributesProviderImpl(usesConnectedMode, usesSonarCloud, devNotificationsDisabled, nodeVersion));
+  TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client) {
+    return new TelemetryManager(path, client, new TelemetryClientAttributesProviderImpl(settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager));
   }
 
   @VisibleForTesting
@@ -149,32 +158,38 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     }
   }
 
+  public void addReportedRules(Set<String> ruleKeys) {
+    if (enabled()) {
+      telemetry.addReportedRules(ruleKeys);
+    }
+  }
+
   public void devNotificationsReceived(String category) {
-    if(enabled()) {
+    if (enabled()) {
       telemetry.devNotificationsReceived(category);
     }
   }
 
   public void devNotificationsClicked(String eventType) {
-    if(enabled()) {
+    if (enabled()) {
       telemetry.devNotificationsClicked(eventType);
     }
   }
 
   public void showHotspotRequestReceived() {
-    if(enabled()) {
+    if (enabled()) {
       telemetry.showHotspotRequestReceived();
     }
   }
 
   public void taintVulnerabilitiesInvestigatedLocally() {
-    if(enabled()) {
+    if (enabled()) {
       telemetry.taintVulnerabilitiesInvestigatedLocally();
     }
   }
 
   public void taintVulnerabilitiesInvestigatedRemotely() {
-    if(enabled()) {
+    if (enabled()) {
       telemetry.taintVulnerabilitiesInvestigatedRemotely();
     }
   }

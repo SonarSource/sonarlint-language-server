@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionContext;
 import org.eclipse.lsp4j.CodeActionParams;
@@ -58,6 +59,7 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
+import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -94,6 +96,7 @@ class CommandManagerTests {
   private StandaloneSonarLintEngine mockStandaloneEngine;
   private SettingsManager mockSettingsManager;
   private SonarLintTelemetry mockTelemetry;
+  private StandaloneEngineManager standaloneEngineManager;
 
   @BeforeEach
   public void prepareMocks() {
@@ -107,9 +110,10 @@ class CommandManagerTests {
     mockClient = mock(SonarLintExtendedLanguageClient.class);
     mockAnalysisManager = mock(AnalysisManager.class);
     mockStandaloneEngine = mock(StandaloneSonarLintEngine.class);
-    when(mockAnalysisManager.getOrCreateStandaloneEngine()).thenReturn(mockStandaloneEngine);
+    standaloneEngineManager = mock(StandaloneEngineManager.class);
+    when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(mockStandaloneEngine);
     mockTelemetry = mock(SonarLintTelemetry.class);
-    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, mockAnalysisManager, mockTelemetry);
+    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, mockAnalysisManager, mockTelemetry, standaloneEngineManager);
   }
 
   @Test
@@ -264,6 +268,10 @@ class CommandManagerTests {
     List<StandaloneRuleParam> params = singletonList(new DefaultStandaloneRuleParam(apiParam));
     when(ruleDetails.paramDetails()).thenReturn(params);
     when(mockStandaloneEngine.getRuleDetails(FAKE_RULE_KEY)).thenReturn(Optional.of(ruleDetails));
+    StandaloneSonarLintEngine sonarLintEngine = mock(StandaloneSonarLintEngine.class);
+    when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(sonarLintEngine);
+    when(sonarLintEngine.getRuleDetails("javascript:S1234")).thenReturn(Optional.of(ruleDetails));
+
     underTest.executeCommand(
       new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, asList(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
       NOP_CANCEL_TOKEN);

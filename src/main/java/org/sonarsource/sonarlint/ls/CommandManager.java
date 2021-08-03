@@ -52,6 +52,7 @@ import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 
 import static java.net.URI.create;
 import static org.sonarsource.sonarlint.ls.AnalysisManager.SONARLINT_SOURCE;
@@ -70,8 +71,7 @@ public class CommandManager {
     SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
     SONARLINT_OPEN_STANDALONE_RULE_DESCRIPTION_COMMAND,
     SONARLINT_BROWSE_TAINT_VULNERABILITY,
-    SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS
-  );
+    SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS);
   // Client side
   static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
 
@@ -80,14 +80,16 @@ public class CommandManager {
   private final ProjectBindingManager bindingManager;
   private final AnalysisManager analysisManager;
   private final SonarLintTelemetry telemetry;
+  private final StandaloneEngineManager standaloneEngineManager;
 
   CommandManager(SonarLintExtendedLanguageClient client, SettingsManager settingsManager, ProjectBindingManager bindingManager, AnalysisManager analysisManager,
-    SonarLintTelemetry telemetry) {
+    SonarLintTelemetry telemetry, StandaloneEngineManager standaloneEngineManager) {
     this.client = client;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
     this.analysisManager = analysisManager;
     this.telemetry = telemetry;
+    this.standaloneEngineManager = standaloneEngineManager;
   }
 
   public List<Either<Command, CodeAction>> computeCodeActions(CodeActionParams params, CancelChecker cancelToken) {
@@ -101,7 +103,7 @@ public class CommandManager {
         cancelToken.checkCanceled();
         addRuleDescriptionCodeAction(params, codeActions, d, ruleKey);
         analysisManager.getIssueForDiagnostic(uri, d).ifPresent(issue -> {
-          if (! issue.flows().isEmpty()) {
+          if (!issue.flows().isEmpty()) {
             String titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
             codeActions.add(newQuickFix(d, titleShowAllLocations, ShowAllLocationsCommand.ID, Collections.singletonList(ShowAllLocationsCommand.params(issue))));
           }
@@ -145,7 +147,7 @@ public class CommandManager {
 
   public Map<String, List<Rule>> listAllStandaloneRules() {
     Map<String, List<Rule>> result = new HashMap<>();
-    analysisManager.getOrCreateStandaloneEngine().getAllRuleDetails()
+    standaloneEngineManager.getOrCreateStandaloneEngine().getAllRuleDetails()
       .forEach(d -> {
         String languageName = d.getLanguage().getLabel();
         result.computeIfAbsent(languageName, k -> new ArrayList<>()).add(Rule.of(d));
@@ -157,7 +159,7 @@ public class CommandManager {
     RuleDetails ruleDetails;
     Collection<StandaloneRuleParam> paramDetails = Collections.emptyList();
     if (binding == null) {
-      ruleDetails = analysisManager.getOrCreateStandaloneEngine().getRuleDetails(ruleKey)
+      ruleDetails = standaloneEngineManager.getOrCreateStandaloneEngine().getRuleDetails(ruleKey)
         .orElseThrow(() -> unknownRule(ruleKey));
       paramDetails = ((StandaloneRuleDetails) ruleDetails).paramDetails();
     } else {

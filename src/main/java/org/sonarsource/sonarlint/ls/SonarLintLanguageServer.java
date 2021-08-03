@@ -81,6 +81,7 @@ import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
+import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 
 import static java.net.URI.create;
 import static java.util.Optional.ofNullable;
@@ -98,6 +99,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final AnalysisManager analysisManager;
   private final NodeJsRuntime nodeJsRuntime;
   private final EnginesFactory enginesFactory;
+  private final StandaloneEngineManager standaloneEngineManager;
   private final CommandManager commandManager;
   private final ProgressManager progressManager;
   private final ExecutorService threadPool;
@@ -124,7 +126,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.httpClient = ApacheHttpClient.create();
     LanguageClientLogOutput lsLogOutput = new LanguageClientLogOutput(this.client);
     Loggers.setTarget(lsLogOutput);
-    this.telemetry = new SonarLintTelemetry(httpClient);
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.progressManager = new ProgressManager(client);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClient);
@@ -133,21 +134,24 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     JavaConfigCache javaConfigCache = new JavaConfigCache(client, fileLanguageCache);
     this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput, nodeJsRuntime,
       new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, javaConfigCache), extraAnalyzers);
-    this.settingsManager.addListener(telemetry);
+    this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, progressManager);
+    this.telemetry = new SonarLintTelemetry(httpClient, settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager);
+    this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);
     this.serverNotifications = new ServerNotifications(client, workspaceFoldersManager, telemetry, lsLogOutput);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) serverNotifications);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) serverNotifications);
-    this.analysisManager = new AnalysisManager(lsLogOutput, enginesFactory, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager, fileTypeClassifier,
+    this.analysisManager = new AnalysisManager(lsLogOutput, standaloneEngineManager, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager,
+      fileTypeClassifier,
       fileLanguageCache, javaConfigCache);
     this.workspaceFoldersManager.addListener(analysisManager);
     bindingManager.setAnalysisManager(analysisManager);
     this.settingsManager.addListener(analysisManager);
-    this.commandManager = new CommandManager(client, settingsManager, bindingManager, analysisManager, telemetry);
+    this.commandManager = new CommandManager(client, settingsManager, bindingManager, analysisManager, telemetry, standaloneEngineManager);
     this.securityHotspotsHandlerServer = new SecurityHotspotsHandlerServer(lsLogOutput, bindingManager, client, telemetry);
     launcher.startListening();
   }
@@ -188,9 +192,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));
       analysisManager.initialize(firstSecretDetected);
 
-      securityHotspotsHandlerServer.init(appName, clientVersion, workspaceName);
-      telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion,
-        bindingManager::usesConnectedMode, bindingManager::usesSonarCloud, bindingManager::devNotificationsDisabled, nodeJsRuntime::nodeVersion);
+      securityHotspotsHandlerServer.initialize(appName, clientVersion, workspaceName);
+      telemetry.initialize(productKey, telemetryStorage, productName, productVersion, ideVersion);
 
       ServerCapabilities c = new ServerCapabilities();
       c.setTextDocumentSync(getTextDocumentSyncOptions());
@@ -249,6 +252,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       threadPool.shutdown();
       httpClient.close();
       serverNotifications.shutdown();
+      standaloneEngineManager.shutdown();
       return new Object();
     });
   }
