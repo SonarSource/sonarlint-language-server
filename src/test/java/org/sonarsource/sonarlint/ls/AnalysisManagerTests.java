@@ -59,6 +59,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.AnalysisManager.convert;
@@ -69,6 +70,7 @@ class AnalysisManagerTests {
   Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile;
   private EnginesFactory enginesFactory;
   private WorkspaceFoldersManager foldersManager;
+  private SonarLintExtendedLanguageClient languageClient;
 
   @BeforeEach
   void prepare() {
@@ -76,7 +78,8 @@ class AnalysisManagerTests {
     FileLanguageCache fileLanguageCache = new FileLanguageCache();
     enginesFactory = mock(EnginesFactory.class);
     foldersManager = mock(WorkspaceFoldersManager.class);
-    underTest = new AnalysisManager(mock(LanguageClientLogOutput.class), enginesFactory, mock(SonarLintExtendedLanguageClient.class), mock(SonarLintTelemetry.class),
+    languageClient = mock(SonarLintExtendedLanguageClient.class);
+    underTest = new AnalysisManager(mock(LanguageClientLogOutput.class), enginesFactory, languageClient, mock(SonarLintTelemetry.class),
       foldersManager, mock(SettingsManager.class), mock(ProjectBindingManager.class), new FileTypeClassifier(fileLanguageCache), fileLanguageCache, mock(JavaConfigCache.class), taintVulnerabilitiesPerFile);
 
   }
@@ -248,5 +251,17 @@ class AnalysisManagerTests {
     verify(sonarLintEngine).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
     ClientModuleFileEvent fileEvent = fileEventArgumentCaptor.getValue();
     assertThat(fileEvent.type()).isEqualTo(ModuleFileEvent.Type.DELETED);
+  }
+
+  @Test
+  void showFirstSecretDetectedNotification() {
+    Issue issue = mock(Issue.class);
+    when(issue.getRuleKey()).thenReturn("secrets:123");
+
+
+    underTest.showFirstSecretDetectionNotificationIfNeeded(issue);
+
+    verify(languageClient).showFirstSecretDetectionNotification();
+    verifyNoMoreInteractions(languageClient);
   }
 }

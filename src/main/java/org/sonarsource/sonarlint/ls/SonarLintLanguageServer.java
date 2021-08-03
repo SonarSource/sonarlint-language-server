@@ -182,11 +182,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       String workspaceName = (String) options.get("workspaceName");
       String clientVersion = params.getClientInfo().getVersion();
       String ideVersion = appName + " " + clientVersion;
-
+      boolean firstSecretDetected = Boolean.parseBoolean((String) options.get("firstSecretDetected"));
       Optional<String> typeScriptPath = ofNullable((String) options.get(TYPESCRIPT_LOCATION));
 
       enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));
-      analysisManager.initialize();
+      analysisManager.initialize(firstSecretDetected);
 
       securityHotspotsHandlerServer.init(appName, clientVersion, workspaceName);
       telemetry.init(productKey, telemetryStorage, productName, productVersion, ideVersion,
