@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
@@ -294,4 +295,15 @@ class SonarLintTelemetryTests {
     String productKey = "vim";
     assertThat(getStoragePath(productKey, "dummy")).isEqualTo(TelemetryPathManager.getPath(productKey));
   }
+
+  @Test
+  void addReportedRules() {
+    when(telemetryManager.isEnabled()).thenReturn(true);
+    String rule = "ruleKey";
+    Set<String> strings = Collections.singleton(rule);
+    telemetry.addReportedRules(strings);
+    verify(telemetryManager).isEnabled();
+    verify(telemetryManager).addReportedRules(strings);
+  }
+
 }

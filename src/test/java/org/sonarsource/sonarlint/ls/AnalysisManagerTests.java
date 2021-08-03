@@ -73,6 +73,7 @@ class AnalysisManagerTests {
   private EnginesFactory enginesFactory;
   private WorkspaceFoldersManager foldersManager;
   private StandaloneEngineManager standaloneEngineManager;
+  private SonarLintExtendedLanguageClient languageClient;
 
   @BeforeEach
   void prepare() {
@@ -81,7 +82,8 @@ class AnalysisManagerTests {
     enginesFactory = mock(EnginesFactory.class);
     foldersManager = mock(WorkspaceFoldersManager.class);
     standaloneEngineManager = mock(StandaloneEngineManager.class);
-    underTest = new AnalysisManager(mock(LanguageClientLogOutput.class), standaloneEngineManager, mock(SonarLintExtendedLanguageClient.class), mock(SonarLintTelemetry.class),
+    languageClient = mock(SonarLintExtendedLanguageClient.class);
+    underTest = new AnalysisManager(mock(LanguageClientLogOutput.class), standaloneEngineManager, languageClient, mock(SonarLintTelemetry.class),
       foldersManager, mock(SettingsManager.class), mock(ProjectBindingManager.class), new FileTypeClassifier(fileLanguageCache), fileLanguageCache, mock(JavaConfigCache.class), taintVulnerabilitiesPerFile);
 
   }
@@ -265,7 +267,6 @@ class AnalysisManagerTests {
   void showFirstSecretDetectedNotification() {
     Issue issue = mock(Issue.class);
     when(issue.getRuleKey()).thenReturn("secrets:123");
-
 
     underTest.showFirstSecretDetectionNotificationIfNeeded(issue);
 
