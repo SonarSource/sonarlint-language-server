@@ -133,7 +133,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   private final ProjectBindingManager bindingManager;
   private final EventWatcher watcher;
   private final LanguageClientLogOutput lsLogOutput;
-  private final Map<String, Boolean> filesIgnoredByScmCache = new ConcurrentHashMap<>();
+  private final ScmIgnoredCache filesIgnoredByScmCache;
   private final StandaloneEngineManager standaloneEngineManager;
 
   private final ExecutorService analysisExecutor;
@@ -162,6 +162,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     this.analysisExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint analysis", false));
     this.watcher = new EventWatcher();
     this.taintVulnerabilitiesPerFile = taintVulnerabilitiesPerFile;
+    this.filesIgnoredByScmCache = new ScmIgnoredCache(client);
   }
 
   public void didChangeWatchedFiles(List<FileEvent> changes) {
@@ -275,7 +276,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     taintVulnerabilitiesPerFile.remove(fileUri);
     eventMap.remove(fileUri);
     client.publishDiagnostics(newPublishDiagnostics(fileUri));
-    filesIgnoredByScmCache.clear();
+    filesIgnoredByScmCache.remove(fileUri);
   }
 
   public void didSave(URI fileUri, String fileContent) {
@@ -298,9 +299,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       LOG.debug("Skipping analysis of Java file '{}' because SonarLint was unable to query project configuration (classpath, source level, ...)", fileUri);
       return;
     }
-    String filePath = fileUri.getPath();
-    Boolean isIgnored = filesIgnoredByScmCache.computeIfAbsent(filePath, s -> client.isIgnoredByScm(s).join());
-    if (isIgnored) {
+    Boolean isIgnored = filesIgnoredByScmCache.isIgnored(fileUri);
+    if (Boolean.TRUE.equals(isIgnored)) {
       LOG.debug("Skip analysis for SCM ignored file: '{}'", fileUri);
       return;
     }

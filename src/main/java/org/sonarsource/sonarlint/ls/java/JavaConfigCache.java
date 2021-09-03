@@ -27,7 +27,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -75,7 +74,7 @@ public class JavaConfigCache {
   }
 
   /**
-   * Try to fetch Java config. In case of any error, cache an empty result to avoid repeted calls.
+   * Try to fetch Java config. In case of any error, cache an empty result to avoid repeated calls.
    */
   private CompletableFuture<Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse>> getOrFetchAsync(URI fileUri) {
     if (!fileLanguageCache.isJava(fileUri)) {
