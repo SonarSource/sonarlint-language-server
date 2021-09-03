@@ -19,23 +19,17 @@
  */
 package org.sonarsource.sonarlint.ls.http;
 
-import java.io.IOException;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import org.apache.hc.core5.http.ClassicHttpResponse;
-import org.apache.hc.core5.http.ParseException;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.sonarsource.sonarlint.core.serverapi.HttpClient;
 
 public class ApacheHttpResponse implements HttpClient.Response {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ApacheHttpResponse.class);
-  private static final String BODY_ERROR_MESSAGE = "Error reading body content";
-  private String requestUrl;
-  private ClassicHttpResponse response;
+  private final String requestUrl;
+  private final SimpleHttpResponse response;
 
-  public ApacheHttpResponse(String requestUrl, ClassicHttpResponse response) {
+  public ApacheHttpResponse(String requestUrl, SimpleHttpResponse response) {
     this.requestUrl = requestUrl;
     this.response = response;
   }
@@ -45,32 +39,19 @@ public class ApacheHttpResponse implements HttpClient.Response {
     return response.getCode();
   }
 
-
   @Override
   public String bodyAsString() {
-    try {
-      return EntityUtils.toString(response.getEntity());
-    } catch (IOException | ParseException e) {
-      throw new IllegalStateException(BODY_ERROR_MESSAGE, e);
-    }
+    return response.getBodyText();
   }
 
   @Override
   public InputStream bodyAsStream() {
-    try {
-      return response.getEntity().getContent();
-    } catch (IOException e) {
-      throw new IllegalStateException(BODY_ERROR_MESSAGE, e);
-    }
+    return new ByteArrayInputStream(response.getBodyBytes());
   }
 
   @Override
   public void close() {
-    try {
-      response.close();
-    } catch (IOException e) {
-      LOG.error("Can't close response: ", e);
-    }
+    // nothing to do
   }
 
   @Override

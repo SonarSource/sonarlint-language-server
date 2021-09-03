@@ -20,10 +20,11 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryClientAttributesProvider;
@@ -69,7 +70,7 @@ public class TelemetryClientAttributesProviderImpl implements TelemetryClientAtt
   @Override
   public Collection<String> getNonDefaultEnabledRules() {
     Set<String> enabled = settingsManager.getCurrentSettings().getIncludedRules()
-            .stream().map(RuleKey::toString).collect(Collectors.toSet());
+      .stream().map(RuleKey::toString).collect(Collectors.toSet());
     if (!enabled.isEmpty()) {
       enabled.removeAll(getDefaultEnabledRules());
     }
@@ -86,11 +87,16 @@ public class TelemetryClientAttributesProviderImpl implements TelemetryClientAtt
   @Override
   public Collection<String> getDefaultDisabledRules() {
     Set<String> disabled = settingsManager.getCurrentSettings().getExcludedRules()
-            .stream().map(RuleKey::toString).collect(Collectors.toSet());
+      .stream().map(RuleKey::toString).collect(Collectors.toSet());
     if (!disabled.isEmpty()) {
       Set<String> defaultEnabledRules = getDefaultEnabledRules();
       disabled.removeIf(r -> !defaultEnabledRules.contains(r));
     }
     return disabled;
+  }
+
+  @Override
+  public Map<String, Object> additionalAttributes() {
+    return Collections.emptyMap();
   }
 }

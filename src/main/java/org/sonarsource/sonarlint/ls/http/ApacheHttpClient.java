@@ -22,18 +22,20 @@ package org.sonarsource.sonarlint.ls.http;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.apache.hc.client5.http.classic.methods.HttpDelete;
-import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
+import org.apache.hc.client5.http.async.methods.SimpleHttpRequest;
+import org.apache.hc.client5.http.async.methods.SimpleHttpRequests;
+import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
+import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
+import org.apache.hc.core5.concurrent.FutureCallback;
 import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.util.Timeout;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
@@ -46,13 +48,13 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
   private static final Timeout RESPONSE_TIMEOUT = Timeout.ofMinutes(10);
   private static final String USER_AGENT = "SonarLint VSCode";
 
-  private final CloseableHttpClient client;
+  private final CloseableHttpAsyncClient client;
   @CheckForNull
   private final String login;
   @CheckForNull
   private final String password;
 
-  private ApacheHttpClient(CloseableHttpClient client, @Nullable String login, @Nullable String password) {
+  private ApacheHttpClient(CloseableHttpAsyncClient client, @Nullable String login, @Nullable String password) {
     this.client = client;
     this.login = login;
     this.password = password;
@@ -63,34 +65,67 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
   }
 
   @Override
-  public Response get(String s) {
-    return execute(new HttpGet(s));
+  public Response get(String url) {
+    return executeSync(SimpleHttpRequests.get(url));
+  }
+
+  @Override
+  public CompletableFuture<Response> getAsync(String url) {
+    return executeAsync(SimpleHttpRequests.get(url));
   }
 
   @Override
   public Response post(String url, String contentType, String body) {
-    HttpPost httpPost = new HttpPost(url);
-    httpPost.setEntity(new StringEntity(body, ContentType.parse(contentType)));
-    return execute(httpPost);
+    SimpleHttpRequest httpPost = SimpleHttpRequests.post(url);
+    httpPost.setBody(body, ContentType.parse(contentType));
+    return executeSync(httpPost);
   }
 
   @Override
   public Response delete(String url, String contentType, String body) {
-    HttpDelete httpDelete = new HttpDelete(url);
-    httpDelete.setEntity(new StringEntity(body, ContentType.parse(contentType)));
-    return execute(httpDelete);
+    SimpleHttpRequest httpDelete = SimpleHttpRequests.delete(url);
+    httpDelete.setBody(body, ContentType.parse(contentType));
+    return executeSync(httpDelete);
   }
 
-  private Response execute(HttpUriRequestBase httpRequest) {
+  private Response executeSync(SimpleHttpRequest httpRequest) {
     try {
-      if (login != null) {
-        httpRequest.setHeader("Authorization", basic(login, password == null ? "" : password));
-      }
-      CloseableHttpResponse httpResponse = client.execute(httpRequest);
-      return new ApacheHttpResponse(httpRequest.getRequestUri(), httpResponse);
-    } catch (IOException e) {
-      throw new IllegalStateException("Error processing HTTP request", e);
+      return executeAsync(httpRequest).get();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted!", e);
+    } catch (ExecutionException e) {
+      throw new IllegalStateException(e.getMessage(), e.getCause());
     }
+  }
+
+  private CompletableFuture<Response> executeAsync(SimpleHttpRequest httpRequest) {
+    if (login != null) {
+      httpRequest.setHeader("Authorization", basic(login, password == null ? "" : password));
+    }
+    CompletableFuture<Response> futureResponse = new CompletableFuture<>();
+    Future<SimpleHttpResponse> httpFuture = client.execute(httpRequest, new FutureCallback<SimpleHttpResponse>() {
+
+      @Override
+      public void completed(SimpleHttpResponse result) {
+        futureResponse.complete(new ApacheHttpResponse(httpRequest.getRequestUri(), result));
+      }
+
+      @Override
+      public void failed(Exception ex) {
+        futureResponse.completeExceptionally(ex);
+      }
+
+      @Override
+      public void cancelled() {
+        // nothing to do, the completable future is already canceled
+      }
+    });
+    return futureResponse.whenComplete((r, t) -> {
+      if (t instanceof CancellationException) {
+        httpFuture.cancel(false);
+      }
+    });
   }
 
   private static String basic(String username, String password) {
@@ -108,16 +143,16 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
   }
 
   public static ApacheHttpClient create() {
-    CloseableHttpClient httpClient = HttpClients.custom()
+    CloseableHttpAsyncClient httpClient = HttpAsyncClients.custom()
       .useSystemProperties()
       .setUserAgent(USER_AGENT)
       .setDefaultRequestConfig(
         RequestConfig.copy(RequestConfig.DEFAULT)
           .setConnectionRequestTimeout(CONNECTION_TIMEOUT)
           .setResponseTimeout(RESPONSE_TIMEOUT)
-          .build()
-      )
+          .build())
       .build();
+    httpClient.start();
     return new ApacheHttpClient(httpClient, null, null);
   }
 
