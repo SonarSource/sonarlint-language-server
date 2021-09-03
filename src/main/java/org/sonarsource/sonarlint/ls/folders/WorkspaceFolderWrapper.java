@@ -25,8 +25,8 @@ import java.nio.file.Paths;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
@@ -61,7 +61,7 @@ public class WorkspaceFolderWrapper {
   }
 
   /**
-   * Get non null settings, waiting for them to be initialized 
+   * Get non null settings, waiting for them to be initialized
    */
   public WorkspaceFolderSettings getSettings() {
     try {

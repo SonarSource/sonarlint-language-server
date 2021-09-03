@@ -31,7 +31,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
-import org.apache.commons.lang.SystemUtils;
+import org.apache.commons.lang3.SystemUtils;
 
 /**
  * Adapted from https://github.com/JetBrains/intellij-community/blob/83c8bf83bddbde6e4fa0d4ab6294a43387089e09/jps/model-impl/src/org/jetbrains/jps/model/java/impl/JavaSdkUtil.java

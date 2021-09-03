@@ -45,8 +45,8 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 
 import static java.util.Arrays.stream;
-import static org.apache.commons.lang.StringUtils.defaultIfBlank;
-import static org.apache.commons.lang.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.sonarsource.sonarlint.ls.Utils.interrupted;
 
 public class SettingsManager implements WorkspaceFolderLifecycleListener {
