@@ -133,7 +133,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   private final ProjectBindingManager bindingManager;
   private final EventWatcher watcher;
   private final LanguageClientLogOutput lsLogOutput;
-  private final Map<String, Boolean> filesIgnoredByScmCache = new HashMap<>();
+  private final Map<String, Boolean> filesIgnoredByScmCache = new ConcurrentHashMap<>();
   private final StandaloneEngineManager standaloneEngineManager;
 
   private final ExecutorService analysisExecutor;
