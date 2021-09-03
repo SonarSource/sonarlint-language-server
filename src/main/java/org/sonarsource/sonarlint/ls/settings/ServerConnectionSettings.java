@@ -23,8 +23,8 @@ import java.util.Arrays;
 import java.util.Objects;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
-import org.apache.commons.lang.builder.ReflectionToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 
@@ -43,7 +43,7 @@ public class ServerConnectionSettings {
   private final EndpointParamsAndHttpClient serverConfiguration;
 
   public ServerConnectionSettings(String connectionId, String serverUrl, String token, @Nullable String organizationKey,
-                                  boolean disableNotifications, ApacheHttpClient httpClient) {
+    boolean disableNotifications, ApacheHttpClient httpClient) {
     this.connectionId = connectionId;
     this.serverUrl = serverUrl;
     this.token = token;
@@ -108,7 +108,7 @@ public class ServerConnectionSettings {
 
   @Override
   public String toString() {
-    return new ReflectionToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).setExcludeFieldNames(new String[]{"serverConfiguration"}).toString();
+    return new ReflectionToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).setExcludeFieldNames("serverConfiguration").toString();
   }
 
   public static class EndpointParamsAndHttpClient {

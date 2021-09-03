@@ -24,8 +24,8 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import javax.annotation.concurrent.Immutable;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 
 /**

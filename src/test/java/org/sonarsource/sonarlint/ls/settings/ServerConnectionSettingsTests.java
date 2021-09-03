@@ -56,7 +56,7 @@ class ServerConnectionSettingsTests {
 
   @Test
   void testToString() {
-    assertThat(WITH_ORG).hasToString("ServerConnectionSettings[connectionId=serverId,serverUrl=serverUrl,token=token,disableNotifications=false,organizationKey=myOrg]");
+    assertThat(WITH_ORG).hasToString("ServerConnectionSettings[connectionId=serverId,disableNotifications=false,organizationKey=myOrg,serverUrl=serverUrl,token=token]");
   }
 
 }

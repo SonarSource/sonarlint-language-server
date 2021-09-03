@@ -24,7 +24,7 @@ import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sonarsource.sonarlint.core.NodeJsHelper;
 import org.sonarsource.sonarlint.core.client.api.common.Version;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;

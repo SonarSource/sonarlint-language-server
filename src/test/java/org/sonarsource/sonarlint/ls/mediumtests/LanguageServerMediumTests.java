@@ -114,7 +114,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     emulateConfigurationChangeOnClient("**/*Test.js", null, false, true);
 
     assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=**/*Test.js,connectionId=<null>,projectKey=<null>]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,projectKey=<null>,testFilePattern=**/*Test.js]");
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", jsSource);
     assertThat(diagnostics)
@@ -133,7 +133,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "javascript:S1105", "on");
 
     assertLogContains(
-      "Global settings updated: WorkspaceSettings[disableTelemetry=false,connections={},excludedRules=[javascript:S1481],includedRules=[javascript:S1105],ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=false,pathToNodeExecutable=<null>]");
+      "Global settings updated: WorkspaceSettings[connections={},disableTelemetry=false,excludedRules=[javascript:S1481],includedRules=[javascript:S1105],pathToNodeExecutable=<null>,ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=false]");
 
     assertTrue(client.diagnosticsLatch.await(1, TimeUnit.MINUTES));
 
@@ -238,7 +238,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void noIssueOnTestJSFiles() throws Exception {
     emulateConfigurationChangeOnClient("{**/*Test*}", null, null, true);
     assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*Test*},connectionId=<null>,projectKey=<null>]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,projectKey=<null>,testFilePattern={**/*Test*}]");
 
     String jsContent = "function foo() {\n  var toto = 0;\n}";
     String fooTestUri = getUri("fooTest.js");
@@ -249,7 +249,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     emulateConfigurationChangeOnClient("{**/*MyTest*}", null, null, true);
     assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern={**/*MyTest*},connectionId=<null>,projectKey=<null>]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,projectKey=<null>,testFilePattern={**/*MyTest*}]");
 
     diagnostics = didChangeAndWaitForDiagnostics(fooTestUri, jsContent);
     assertThat(diagnostics).hasSize(1);
@@ -350,12 +350,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     client.isIgnoredByScm = true;
 
     lsProxy.getTextDocumentService()
-            .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
+      .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
 
     await().atMost(1, TimeUnit.MINUTES).untilAsserted(
-            () -> assertThat(client.logs).extracting(withoutTimestamp())
-                    .contains("[Debug] Skip analysis for SCM ignored file: '" + uri + "'")
-    );
+      () -> assertThat(client.logs).extracting(withoutTimestamp())
+        .contains("[Debug] Skip analysis for SCM ignored file: '" + uri + "'"));
     assertThat(client.getDiagnostics(uri)).isNull();
   }
 
@@ -371,7 +370,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     emulateConfigurationChangeOnClient(null, false, false, true);
 
     assertLogContains(
-      "Global settings updated: WorkspaceSettings[disableTelemetry=false,connections={},excludedRules=[],includedRules=[],ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=true,pathToNodeExecutable=<null>]");
+      "Global settings updated: WorkspaceSettings[connections={},disableTelemetry=false,excludedRules=[],includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=true]");
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder( "Telemetry enabled");
   }
@@ -513,7 +512,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       awaitLatch(client.settingsLatch);
 
       assertLogContains(
-        "Workspace folder 'WorkspaceFolder[uri=file:///added_uri,name=Added]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},testFilePattern=another pattern,connectionId=<null>,projectKey=<null>]");
+        "Workspace folder 'WorkspaceFolder[name=Added,uri=file:///added_uri]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,projectKey=<null>,testFilePattern=another pattern]");
     } finally {
       lsProxy.getWorkspaceService()
         .didChangeWorkspaceFolders(

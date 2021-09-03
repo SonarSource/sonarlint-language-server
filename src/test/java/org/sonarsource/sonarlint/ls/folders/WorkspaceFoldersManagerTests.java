@@ -44,7 +44,7 @@ class WorkspaceFoldersManagerTests {
   @RegisterExtension
   public LogTesterJUnit5 logTester = new LogTesterJUnit5();
 
-  private WorkspaceFoldersManager underTest = new WorkspaceFoldersManager();
+  private final WorkspaceFoldersManager underTest = new WorkspaceFoldersManager();
 
   @Test
   public void findFolderForFile_returns_correct_folder_when_exists() {
@@ -155,7 +155,7 @@ class WorkspaceFoldersManagerTests {
 
     assertThat(underTest.getAll()).extracting(WorkspaceFolderWrapper::getRootPath).containsExactly(basedir);
     assertThat(logTester.logs()).containsExactly("Processing didChangeWorkspaceFolders event",
-      "Folder WorkspaceFolder[uri=" + basedir.toUri() + ",name=<null>] added");
+      "Folder WorkspaceFolder[name=<null>,uri=" + basedir.toUri() + "] added");
 
     logTester.clear();
 
@@ -164,7 +164,7 @@ class WorkspaceFoldersManagerTests {
 
     assertThat(underTest.getAll()).extracting(WorkspaceFolderWrapper::getRootPath).containsExactly(basedir);
     assertThat(logTester.logs()).containsExactly("Processing didChangeWorkspaceFolders event",
-      "Registered workspace folder WorkspaceFolder[uri=" + basedir.toUri() + ",name=<null>] was already added");
+      "Registered workspace folder WorkspaceFolder[name=<null>,uri=" + basedir.toUri() + "] was already added");
   }
 
   @Test
@@ -181,7 +181,7 @@ class WorkspaceFoldersManagerTests {
 
     assertThat(underTest.getAll()).isEmpty();
     assertThat(logTester.logs()).containsExactly("Processing didChangeWorkspaceFolders event",
-      "Folder WorkspaceFolder[uri=" + basedir.toUri() + ",name=<null>] removed");
+      "Folder WorkspaceFolder[name=<null>,uri=" + basedir.toUri() + "] removed");
 
     logTester.clear();
 
