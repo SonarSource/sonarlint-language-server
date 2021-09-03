@@ -155,7 +155,7 @@ public abstract class AbstractLanguageServerMediumTests {
     lsProxy = future.get();
   }
 
-  protected static void initialize(Map<String, String> initializeOptions, WorkspaceFolder... initFolders) throws InterruptedException, ExecutionException {
+  protected static void initialize(Map<String, Object> initializeOptions, WorkspaceFolder... initFolders) throws InterruptedException, ExecutionException {
     InitializeParams initializeParams = new InitializeParams();
     initializeParams.setTrace("messages");
     initializeParams.setInitializationOptions(initializeOptions);

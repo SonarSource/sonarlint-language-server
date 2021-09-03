@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -38,13 +37,15 @@ public class TelemetryClientAttributesProviderImpl implements TelemetryClientAtt
   private final ProjectBindingManager bindingManager;
   private final NodeJsRuntime nodeJsRuntime;
   private final StandaloneEngineManager standaloneEngineManager;
+  private final Map<String, Object> additionalAttributes;
 
   public TelemetryClientAttributesProviderImpl(SettingsManager settingsManager, ProjectBindingManager bindingManager, NodeJsRuntime nodeJsRuntime,
-    StandaloneEngineManager standaloneEngineManager) {
+    StandaloneEngineManager standaloneEngineManager, Map<String, Object> additionalAttributes) {
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
     this.nodeJsRuntime = nodeJsRuntime;
     this.standaloneEngineManager = standaloneEngineManager;
+    this.additionalAttributes = additionalAttributes;
   }
 
   @Override
@@ -97,6 +98,6 @@ public class TelemetryClientAttributesProviderImpl implements TelemetryClientAtt
 
   @Override
   public Map<String, Object> additionalAttributes() {
-    return Collections.emptyMap();
+    return additionalAttributes;
   }
 }

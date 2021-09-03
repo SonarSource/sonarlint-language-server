@@ -78,11 +78,13 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   public static void initialize() throws Exception {
     Path fakeTypeScriptProjectPath = Paths.get("src/test/resources/fake-ts-project").toAbsolutePath();
 
-    initialize(ImmutableMap.<String, String>builder()
+    initialize(ImmutableMap.<String, Object>builder()
       .put("typeScriptLocation", fakeTypeScriptProjectPath.resolve("node_modules").toString())
       .put("telemetryStorage", "not/exists")
       .put("productName", "SLCORE tests")
       .put("productVersion", "0.1")
+      .put("additionalAttributes", ImmutableMap.<String, String>builder()
+        .put("extra", "value").build())
       .build());
   }
 

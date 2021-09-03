@@ -22,10 +22,9 @@ package org.sonarsource.sonarlint.ls;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -68,13 +67,13 @@ class SonarLintTelemetryTests {
   private SonarLintTelemetry createTelemetry() {
     when(telemetryManager.isEnabled()).thenReturn(true);
     SonarLintTelemetry telemetry = new SonarLintTelemetry(mock(ApacheHttpClient.class), mock(SettingsManager.class),
-            mock(ProjectBindingManager.class), mock(NodeJsRuntime.class), mock(StandaloneEngineManager.class)) {
+      mock(ProjectBindingManager.class), mock(NodeJsRuntime.class), mock(StandaloneEngineManager.class)) {
       @Override
       TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client) {
         return telemetryManager;
       }
     };
-    telemetry.init(Paths.get("dummy"), "product", "version", "ideVersion");
+    telemetry.init(Paths.get("dummy"), "product", "version", "ideVersion", new HashMap<>());
     return telemetry;
   }
 
@@ -199,7 +198,6 @@ class SonarLintTelemetryTests {
     verifyNoMoreInteractions(telemetryManager);
   }
 
-
   @Test
   void devNotificationsClicked_when_enabled() {
     when(telemetryManager.isEnabled()).thenReturn(true);
@@ -269,13 +267,13 @@ class SonarLintTelemetryTests {
   void should_start_disabled_when_storagePath_null() {
     when(telemetryManager.isEnabled()).thenReturn(true);
     SonarLintTelemetry telemetry = new SonarLintTelemetry(mock(ApacheHttpClient.class), mock(SettingsManager.class),
-            mock(ProjectBindingManager.class), mock(NodeJsRuntime.class), mock(StandaloneEngineManager.class)) {
+      mock(ProjectBindingManager.class), mock(NodeJsRuntime.class), mock(StandaloneEngineManager.class)) {
       @Override
       TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client) {
         return telemetryManager;
       }
     };
-    telemetry.init(null, "product", "version", "ideVersion");
+    telemetry.init(null, "product", "version", "ideVersion", new HashMap<>());
     assertThat(telemetry.enabled()).isFalse();
   }
 

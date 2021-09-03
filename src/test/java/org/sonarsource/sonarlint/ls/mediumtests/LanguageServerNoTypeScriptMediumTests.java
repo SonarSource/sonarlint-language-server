@@ -38,7 +38,7 @@ class LanguageServerNoTypeScriptMediumTests extends AbstractLanguageServerMedium
 
   @BeforeAll
   public static void initialize() throws Exception {
-    initialize(ImmutableMap.<String, String>builder()
+    initialize(ImmutableMap.<String, Object>builder()
       // Missing "typeScriptLocation"
       .put("telemetryStorage", "not/exists")
       .put("productName", "SLCORE tests")

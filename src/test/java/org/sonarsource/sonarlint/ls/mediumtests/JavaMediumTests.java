@@ -45,7 +45,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @BeforeAll
   public static void initialize() throws Exception {
-    initialize(ImmutableMap.<String, String>builder()
+    initialize(ImmutableMap.<String, Object>builder()
       .put("telemetryStorage", "not/exists")
       .put("productName", "SLCORE tests")
       .put("productVersion", "0.1")
@@ -77,7 +77,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     GetJavaConfigResponse javaConfigResponse = new GetJavaConfigResponse();
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
-    javaConfigResponse.setClasspath(new String[] { "/does/not/exist" });
+    javaConfigResponse.setClasspath(new String[] {"/does/not/exist"});
     client.javaConfigs.put(uri, javaConfigResponse);
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
@@ -122,23 +122,24 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "java",
       "public class AnalyzeSimpleJavaFileWithFlows {\n" +
-      "  private AnalyzeSimpleJavaFileWithFlows() {}\n" +
-      "  static int computeValue(int input) {\n" +
-      "    String message = \"polop\";\n" +
-      "    if (input == 42) {\n" +
-      "      message = null;\n" +
-      "    }\n" +
-      "    return doSomeThingWith(message);\n" +
-      "  }\n" +
-      "  private static int doSomeThingWith(String param) {\n" +
-      "    return param.length();\n" +
-      "  }\n" +
-      "}");
+        "  private AnalyzeSimpleJavaFileWithFlows() {}\n" +
+        "  static int computeValue(int input) {\n" +
+        "    String message = \"polop\";\n" +
+        "    if (input == 42) {\n" +
+        "      message = null;\n" +
+        "    }\n" +
+        "    return doSomeThingWith(message);\n" +
+        "  }\n" +
+        "  private static int doSomeThingWith(String param) {\n" +
+        "    return param.length();\n" +
+        "  }\n" +
+        "}");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(7, 11, 7, 26, "java:S2259", "sonarlint", "\"NullPointerException\" will be thrown when invoking method \"doSomeThingWith()\". [+5 locations]", DiagnosticSeverity.Warning));
+        tuple(7, 11, 7, 26, "java:S2259", "sonarlint", "\"NullPointerException\" will be thrown when invoking method \"doSomeThingWith()\". [+5 locations]",
+          DiagnosticSeverity.Warning));
   }
 
   @Test
@@ -172,9 +173,8 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
         .extracting(withoutTimestamp())
         .containsSubsequence(
           "[Debug] Property 'sonar.java.jdkHome' set with: " + currentJdkHome,
-          "[Debug] Property 'sonar.java.jdkHome' resolved with:" + System.lineSeparator() + "["+ jrtFsJarPath + "]",
-          "[Debug] Property 'sonar.java.libraries' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]"
-        );
+          "[Debug] Property 'sonar.java.jdkHome' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]",
+          "[Debug] Property 'sonar.java.libraries' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]");
     });
   }
 

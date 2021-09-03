@@ -47,7 +47,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     String folderUri = "file:///init_uri";
     client.folderSettings.put(folderUri, buildSonarLintSettingsSection("some pattern", null, null, true));
 
-    initialize(ImmutableMap.<String, String>builder()
+    initialize(ImmutableMap.<String, Object>builder()
       .put("typeScriptLocation", fakeTypeScriptProjectPath.resolve("node_modules").toString())
       .put("telemetryStorage", "not/exists")
       .put("productName", "SLCORE tests")
