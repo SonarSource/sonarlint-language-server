@@ -30,6 +30,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -179,21 +180,19 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
       String productName = (String) options.get("productName");
       String productVersion = (String) options.get("productVersion");
-      // Don't use params.getClientInfo().getName() because it is currently hardcoded to 'vscode'
-      // until https://github.com/microsoft/vscode-languageserver-node/pull/697 is released
-      // params.getClientInfo().getName()
-      String appName = (String) options.get("appName");
+      String appName = params.getClientInfo().getName();
       String workspaceName = (String) options.get("workspaceName");
       String clientVersion = params.getClientInfo().getVersion();
       String ideVersion = appName + " " + clientVersion;
       boolean firstSecretDetected = Boolean.parseBoolean((String) options.get("firstSecretDetected"));
       Optional<String> typeScriptPath = ofNullable((String) options.get(TYPESCRIPT_LOCATION));
+      Map<String, Object> additionalAttributes = ofNullable((Map<String, Object>) options.get("additionalAttributes")).orElse(Collections.emptyMap());
 
       enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));
       analysisManager.initialize(firstSecretDetected);
 
       securityHotspotsHandlerServer.initialize(appName, clientVersion, workspaceName);
-      telemetry.initialize(productKey, telemetryStorage, productName, productVersion, ideVersion);
+      telemetry.initialize(productKey, telemetryStorage, productName, productVersion, ideVersion, additionalAttributes);
 
       ServerCapabilities c = new ServerCapabilities();
       c.setTextDocumentSync(getTextDocumentSyncOptions());

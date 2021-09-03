@@ -22,11 +22,11 @@ package org.sonarsource.sonarlint.ls;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
@@ -35,17 +35,18 @@ import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class TelemetryClientAttributesProviderImplTest {
 
-
-  TelemetryClientAttributesProviderImpl underTest;
-  WorkspaceSettings workspaceSettings;
-  StandaloneEngineManager standaloneEngineManager;
-  StandaloneSonarLintEngine standaloneSonarLintEngine;
+  private TelemetryClientAttributesProviderImpl underTest;
+  private WorkspaceSettings workspaceSettings;
+  private StandaloneEngineManager standaloneEngineManager;
+  private StandaloneSonarLintEngine standaloneSonarLintEngine;
+  private Map<String, Object> additionalAttributes;
 
   @BeforeEach
   public void init() {
@@ -59,7 +60,8 @@ class TelemetryClientAttributesProviderImplTest {
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     when(workspaceSettings.getExcludedRules()).thenReturn(Collections.emptyList());
     when(workspaceSettings.getIncludedRules()).thenReturn(Collections.emptyList());
-    underTest = new TelemetryClientAttributesProviderImpl(settingsManager, mock(ProjectBindingManager.class), nodeJsRuntime, standaloneEngineManager);
+    additionalAttributes = new HashMap<>();
+    underTest = new TelemetryClientAttributesProviderImpl(settingsManager, mock(ProjectBindingManager.class), nodeJsRuntime, standaloneEngineManager, additionalAttributes);
   }
 
   @Test
@@ -83,6 +85,13 @@ class TelemetryClientAttributesProviderImplTest {
   void testTelemetry() {
     assertThat(underTest.getDefaultDisabledRules()).isEmpty();
     assertThat(underTest.getNonDefaultEnabledRules()).isEmpty();
+    assertThat(underTest.additionalAttributes()).isEmpty();
+  }
+
+  @Test
+  void testAdditionalAttributes() {
+    additionalAttributes.put("key", "value");
+    assertThat(underTest.additionalAttributes()).containsEntry("key", "value");
   }
 
   @Test

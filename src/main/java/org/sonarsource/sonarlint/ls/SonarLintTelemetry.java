@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls;
 import com.google.common.annotations.VisibleForTesting;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -59,6 +60,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   @VisibleForTesting
   ScheduledFuture<?> scheduledFuture;
   private ScheduledExecutorService scheduler;
+  private Map<String, Object> additionalAttributes;
 
   public SonarLintTelemetry(ApacheHttpClient httpClient, SettingsManager settingsManager, ProjectBindingManager bindingManager, NodeJsRuntime nodeJsRuntime,
     StandaloneEngineManager standaloneEngineManager) {
@@ -96,13 +98,15 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     return telemetry != null && telemetry.isEnabled();
   }
 
-  public void initialize(@Nullable String productKey, @Nullable String telemetryStorage, String productName, String productVersion, String ideVersion) {
+  public void initialize(@Nullable String productKey, @Nullable String telemetryStorage, String productName, String productVersion, String ideVersion,
+    Map<String, Object> additionalAttributes) {
     Path storagePath = getStoragePath(productKey, telemetryStorage);
-    init(storagePath, productName, productVersion, ideVersion);
+    init(storagePath, productName, productVersion, ideVersion, additionalAttributes);
   }
 
   // Visible for testing
-  void init(@Nullable Path storagePath, String productName, String productVersion, String ideVersion) {
+  void init(@Nullable Path storagePath, String productName, String productVersion, String ideVersion, Map<String, Object> additionalAttributes) {
+    this.additionalAttributes = additionalAttributes;
     if (storagePath == null) {
       LOG.info("Telemetry disabled because storage path is null");
       return;
@@ -136,7 +140,8 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   }
 
   TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client) {
-    return new TelemetryManager(path, client, new TelemetryClientAttributesProviderImpl(settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager));
+    return new TelemetryManager(path, client,
+      new TelemetryClientAttributesProviderImpl(settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager, additionalAttributes));
   }
 
   @VisibleForTesting
