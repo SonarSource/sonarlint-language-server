@@ -280,20 +280,20 @@ class SonarLintTelemetryTests {
   }
 
   @Test
-  void getStoragePath_should_return_null_when_configuration_missing() {
+  void getStoragePath_should_return_null_when_product_key_missing() {
     assertThat(getStoragePath(null, null)).isNull();
   }
 
   @Test
-  void getStoragePath_should_return_old_path_when_product_key_missing() {
-    String oldStorage = "dummy";
-    assertThat(getStoragePath(null, oldStorage)).isEqualTo(Paths.get(oldStorage));
+  void getStoragePath_should_return_null_when_client_path_is_missing() {
+    assertThat(getStoragePath("vim", null)).isNull();
   }
 
   @Test
-  void getStoragePath_should_return_new_path_when_product_key_present() {
-    String productKey = "vim";
-    assertThat(getStoragePath(productKey, "dummy")).isEqualTo(TelemetryPathManager.getPath(productKey));
+  void getStoragePath_should_migrate_and_return_client_path_when_product_key_and_config_present() {
+    String telemetryStorage = "dummy";
+    Path clientPath = Paths.get(telemetryStorage);
+    assertThat(getStoragePath("vim", telemetryStorage)).isEqualTo(clientPath);
   }
 
   @Test

@@ -174,7 +174,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       Map<String, Object> options = Utils.parseToMap(params.getInitializationOptions());
 
       String productKey = (String) options.get("productKey");
-      // deprecated, will be ignored when productKey present
+      // SLLS-38 - Migrate from "common" productKey-based location to client-provided persistent location
       String telemetryStorage = (String) options.get("telemetryStorage");
 
       String productName = (String) options.get("productName");
