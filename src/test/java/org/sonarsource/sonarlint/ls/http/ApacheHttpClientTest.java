@@ -26,6 +26,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.Header;
@@ -36,19 +40,25 @@ import org.apache.hc.core5.http.impl.bootstrap.ServerBootstrap;
 import org.apache.hc.core5.http.io.HttpRequestHandler;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.http.protocol.HttpContext;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.serverapi.HttpClient;
+import org.sonarsource.sonarlint.core.serverapi.HttpClient.Response;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.awaitility.Awaitility.await;
 
 class ApacheHttpClientTest {
 
+  private static final String WAIT_FOREVER = "/waitForever";
   private static HttpServer server;
   private static String serverBase;
   private static RecordingHandler handler;
@@ -76,9 +86,24 @@ class ApacheHttpClientTest {
     handler.reset();
   }
 
+  @AfterEach
+  void close() {
+    underTest.close();
+  }
+
   @Test
   void get_request_test() {
     HttpClient.Response response = underTest.get(serverBase);
+    String responseString = response.bodyAsString();
+
+    assertThat(response.isSuccessful()).isTrue();
+    assertThat(responseString).isNotEmpty();
+    handler.assertRequest(Method.GET.name(), "/");
+  }
+
+  @Test
+  void get_async_request_test() throws InterruptedException, ExecutionException {
+    HttpClient.Response response = underTest.getAsync(serverBase).get();
     String responseString = response.bodyAsString();
 
     assertThat(response.isSuccessful()).isTrue();
@@ -118,13 +143,37 @@ class ApacheHttpClientTest {
       "Authorization", "Basic " + Base64.getEncoder().encodeToString("token:".getBytes(StandardCharsets.UTF_8)));
   }
 
+  @Test
+  void test_cancel_request() throws InterruptedException, ExecutionException {
+    CompletableFuture<Response> response = underTest.getAsync(serverBase + WAIT_FOREVER);
+    List<Object> result = new ArrayList<>();
+    Thread t = new Thread(() -> {
+      try {
+        Response httpResponse = response.get();
+        result.add(httpResponse);
+      } catch (Exception e) {
+        result.add(e);
+      }
+    });
+    t.start();
+
+    await().atMost(20, SECONDS).untilAsserted(() -> handler.assertRequest(Method.GET.name(), WAIT_FOREVER));
+
+    response.cancel(true);
+
+    t.join(1_000);
+
+    assertThat(result).hasSize(1);
+    assertThat(result.get(0)).asInstanceOf(InstanceOfAssertFactories.THROWABLE).isInstanceOf(CancellationException.class);
+  }
+
   private static class RecordingHandler implements HttpRequestHandler {
 
     public static final String DEFAULT_RESPONSE_BODY = "OK";
     private final List<ClassicHttpRequest> requests;
 
     private RecordingHandler() {
-      requests = new ArrayList<>();
+      requests = new CopyOnWriteArrayList<>();
     }
 
     private void reset() {
@@ -134,9 +183,17 @@ class ApacheHttpClientTest {
     @Override
     public void handle(ClassicHttpRequest request, ClassicHttpResponse response, HttpContext context) throws HttpException, IOException {
       requests.add(request);
-      response.setCode(HttpURLConnection.HTTP_OK);
-      response.setHeader("Content-Type", "text/plain");
-      response.setEntity(new StringEntity(DEFAULT_RESPONSE_BODY));
+      if (request.getPath().startsWith(WAIT_FOREVER)) {
+        try {
+          Thread.sleep(10_000);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      } else {
+        response.setCode(HttpURLConnection.HTTP_OK);
+        response.setHeader("Content-Type", "text/plain");
+        response.setEntity(new StringEntity(DEFAULT_RESPONSE_BODY));
+      }
     }
 
     private void assertRequest(String method, String path, String... headers) {
@@ -146,7 +203,7 @@ class ApacheHttpClientTest {
       assertThat(requests).extracting(ClassicHttpRequest::getMethod, ClassicHttpRequest::getPath)
         .containsExactly(tuple(method, path));
       if (headers.length > 0) {
-        Tuple[] nameValues = new Tuple[headers.length/2];
+        Tuple[] nameValues = new Tuple[headers.length / 2];
         for (int hIndex = 0; hIndex < headers.length; hIndex += 2) {
           nameValues[hIndex / 2] = tuple(headers[hIndex], headers[hIndex + 1]);
         }
