@@ -35,6 +35,7 @@ import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
 import org.apache.hc.core5.concurrent.FutureCallback;
 import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpHeaders;
 import org.apache.hc.core5.util.Timeout;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
@@ -49,18 +50,15 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
 
   private final CloseableHttpAsyncClient client;
   @CheckForNull
-  private final String login;
-  @CheckForNull
-  private final String password;
+  private final String token;
 
-  private ApacheHttpClient(CloseableHttpAsyncClient client, @Nullable String login, @Nullable String password) {
+  ApacheHttpClient(CloseableHttpAsyncClient client, @Nullable String token) {
     this.client = client;
-    this.login = login;
-    this.password = password;
+    this.token = token;
   }
 
   public ApacheHttpClient withToken(String token) {
-    return new ApacheHttpClient(client, token, null);
+    return new ApacheHttpClient(client, token);
   }
 
   @Override
@@ -99,32 +97,46 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
   }
 
   private CompletableFuture<Response> executeAsync(SimpleRequestBuilder httpRequest) {
-    if (login != null) {
-      httpRequest.setHeader("Authorization", basic(login, password == null ? "" : password));
+    if (token != null) {
+      httpRequest.setHeader(HttpHeaders.AUTHORIZATION, basic(token, ""));
     }
-    CompletableFuture<Response> futureResponse = new CompletableFuture<>();
-    Future<SimpleHttpResponse> httpFuture = client.execute(httpRequest.build(), new FutureCallback<SimpleHttpResponse>() {
+    CompletableFutureWrapper futureWrapper = new CompletableFutureWrapper(httpRequest);
+    Future<SimpleHttpResponse> httpFuture = client.execute(httpRequest.build(), futureWrapper);
+    futureWrapper.wrapped = httpFuture;
+    return futureWrapper;
+  }
 
-      @Override
-      public void completed(SimpleHttpResponse result) {
-        futureResponse.complete(new ApacheHttpResponse(httpRequest.getUri().toString(), result));
-      }
+  private static final class CompletableFutureWrapper extends CompletableFuture<Response> implements FutureCallback<SimpleHttpResponse> {
 
-      @Override
-      public void failed(Exception ex) {
-        futureResponse.completeExceptionally(ex);
-      }
+    private Future<SimpleHttpResponse> wrapped;
+    private final SimpleRequestBuilder httpRequest;
 
-      @Override
-      public void cancelled() {
-        // nothing to do, the completable future is already canceled
+    CompletableFutureWrapper(SimpleRequestBuilder httpRequest) {
+      this.httpRequest = httpRequest;
+    }
+
+    @Override
+    public void completed(SimpleHttpResponse result) {
+      this.complete(new ApacheHttpResponse(httpRequest.getUri().toString(), result));
+    }
+
+    @Override
+    public void failed(Exception ex) {
+      this.completeExceptionally(ex);
+    }
+
+    @Override
+    public void cancelled() {
+      this.completeExceptionally(new CancellationException());
+    }
+
+    @Override
+    public boolean cancel(boolean mayInterruptIfRunning) {
+      if (wrapped != null) {
+        return wrapped.cancel(mayInterruptIfRunning);
       }
-    });
-    return futureResponse.whenComplete((r, t) -> {
-      if (t instanceof CancellationException) {
-        httpFuture.cancel(false);
-      }
-    });
+      return super.cancel(mayInterruptIfRunning);
+    }
   }
 
   private static String basic(String username, String password) {
@@ -152,7 +164,7 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
           .build())
       .build();
     httpClient.start();
-    return new ApacheHttpClient(httpClient, null, null);
+    return new ApacheHttpClient(httpClient, null);
   }
 
 }
