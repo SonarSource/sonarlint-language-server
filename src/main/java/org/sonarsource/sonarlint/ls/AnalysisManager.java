@@ -299,7 +299,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       LOG.debug("Skipping analysis of Java file '{}' because SonarLint was unable to query project configuration (classpath, source level, ...)", fileUri);
       return;
     }
-    Boolean isIgnored = filesIgnoredByScmCache.isIgnored(fileUri);
+    Boolean isIgnored = filesIgnoredByScmCache.isIgnored(fileUri).orElse(false);
     if (Boolean.TRUE.equals(isIgnored)) {
       LOG.debug("Skip analysis for SCM ignored file: '{}'", fileUri);
       return;
