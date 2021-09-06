@@ -21,16 +21,19 @@ package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 
+import static java.util.Optional.ofNullable;
+
 public class ScmIgnoredCache {
   private static final Logger LOG = Loggers.get(ScmIgnoredCache.class);
   private final SonarLintExtendedLanguageClient client;
-  public final Map<URI, Boolean> filesIgnoredByUri = new ConcurrentHashMap<>();
+  public final Map<URI, Optional<Boolean>> filesIgnoredByUri = new ConcurrentHashMap<>();
 
   public ScmIgnoredCache(SonarLintExtendedLanguageClient client) {
     this.client = client;
@@ -40,24 +43,24 @@ public class ScmIgnoredCache {
     filesIgnoredByUri.remove(fileUri);
   }
 
-  public Boolean isIgnored(URI fileUri) {
-    Boolean isIgnored;
+  public Optional<Boolean> isIgnored(URI fileUri) {
+    Optional<Boolean> isIgnored;
     try {
       isIgnored = getOrFetchAsync(fileUri).get(1, TimeUnit.MINUTES);
     } catch (InterruptedException e) {
       Utils.interrupted(e);
-      isIgnored = false;
+      isIgnored = Optional.empty();
     } catch (Exception e) {
       LOG.warn("Unable to get SCM ignore status", e);
-      isIgnored = false;
+      isIgnored = Optional.empty();
     }
     return isIgnored;
   }
 
-  private CompletableFuture<Boolean> getOrFetchAsync(URI fileUri) {
-    Boolean isIgnored = filesIgnoredByUri.get(fileUri);
-    if (isIgnored != null) {
-      return CompletableFuture.completedFuture(isIgnored);
+  private CompletableFuture<Optional<Boolean>> getOrFetchAsync(URI fileUri) {
+    Optional<Boolean> isIgnoredFromCache = filesIgnoredByUri.get(fileUri);
+    if (isIgnoredFromCache != null) {
+      return CompletableFuture.completedFuture(isIgnoredFromCache);
     }
     return client.isIgnoredByScm(fileUri.toString())
       .handle((r, t) -> {
@@ -67,9 +70,10 @@ public class ScmIgnoredCache {
         return r;
       })
       .thenApply(ignored -> {
-        filesIgnoredByUri.put(fileUri, ignored);
+        Optional<Boolean> ignoredOpt = ofNullable(ignored);
+        filesIgnoredByUri.put(fileUri, ignoredOpt);
         LOG.debug("Cached SCM ignore status for file '{}'", fileUri);
-        return ignored;
+        return ignoredOpt;
       });
   }
 
