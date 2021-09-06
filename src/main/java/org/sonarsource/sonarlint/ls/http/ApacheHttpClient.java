@@ -28,9 +28,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.apache.hc.client5.http.async.methods.SimpleHttpRequest;
-import org.apache.hc.client5.http.async.methods.SimpleHttpRequests;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
+import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
@@ -66,29 +65,29 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
 
   @Override
   public Response get(String url) {
-    return executeSync(SimpleHttpRequests.get(url));
+    return executeSync(SimpleRequestBuilder.get(url));
   }
 
   @Override
   public CompletableFuture<Response> getAsync(String url) {
-    return executeAsync(SimpleHttpRequests.get(url));
+    return executeAsync(SimpleRequestBuilder.get(url));
   }
 
   @Override
   public Response post(String url, String contentType, String body) {
-    SimpleHttpRequest httpPost = SimpleHttpRequests.post(url);
+    SimpleRequestBuilder httpPost = SimpleRequestBuilder.post(url);
     httpPost.setBody(body, ContentType.parse(contentType));
     return executeSync(httpPost);
   }
 
   @Override
   public Response delete(String url, String contentType, String body) {
-    SimpleHttpRequest httpDelete = SimpleHttpRequests.delete(url);
+    SimpleRequestBuilder httpDelete = SimpleRequestBuilder.delete(url);
     httpDelete.setBody(body, ContentType.parse(contentType));
     return executeSync(httpDelete);
   }
 
-  private Response executeSync(SimpleHttpRequest httpRequest) {
+  private Response executeSync(SimpleRequestBuilder httpRequest) {
     try {
       return executeAsync(httpRequest).get();
     } catch (InterruptedException e) {
@@ -99,16 +98,16 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
     }
   }
 
-  private CompletableFuture<Response> executeAsync(SimpleHttpRequest httpRequest) {
+  private CompletableFuture<Response> executeAsync(SimpleRequestBuilder httpRequest) {
     if (login != null) {
       httpRequest.setHeader("Authorization", basic(login, password == null ? "" : password));
     }
     CompletableFuture<Response> futureResponse = new CompletableFuture<>();
-    Future<SimpleHttpResponse> httpFuture = client.execute(httpRequest, new FutureCallback<SimpleHttpResponse>() {
+    Future<SimpleHttpResponse> httpFuture = client.execute(httpRequest.build(), new FutureCallback<SimpleHttpResponse>() {
 
       @Override
       public void completed(SimpleHttpResponse result) {
-        futureResponse.complete(new ApacheHttpResponse(httpRequest.getRequestUri(), result));
+        futureResponse.complete(new ApacheHttpResponse(httpRequest.getUri().toString(), result));
       }
 
       @Override
