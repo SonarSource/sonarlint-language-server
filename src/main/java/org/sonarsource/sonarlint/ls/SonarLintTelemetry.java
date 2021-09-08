@@ -130,12 +130,13 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
   @VisibleForTesting
   static Path getStoragePath(@Nullable String productKey, @Nullable String telemetryStorage) {
-    Path clientProvidedPath = telemetryStorage != null ? Paths.get(telemetryStorage) : null;
-    if (productKey != null && clientProvidedPath != null) {
-      Path commonProductPath = TelemetryPathManager.getPath(productKey);
-      TelemetryPathManager.migrate(commonProductPath, clientProvidedPath);
+    if (productKey != null) {
+      if (telemetryStorage != null) {
+        TelemetryPathManager.migrate(productKey, Paths.get(telemetryStorage));
+      }
+      return TelemetryPathManager.getPath(productKey);
     }
-    return clientProvidedPath;
+    return telemetryStorage != null ? Paths.get(telemetryStorage) : null;
   }
 
   TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client) {
