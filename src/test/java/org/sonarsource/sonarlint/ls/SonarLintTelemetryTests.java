@@ -78,7 +78,7 @@ class SonarLintTelemetryTests {
   }
 
   @Test
-  void disable_property_should_disable_telemetry() throws Exception {
+  void disable_property_should_disable_telemetry() {
     assertThat(createTelemetry().enabled()).isTrue();
 
     System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
@@ -259,6 +259,22 @@ class SonarLintTelemetryTests {
   void taintVulnerabilitiesInvestigatedRemotely_when_disabled() {
     when(telemetryManager.isEnabled()).thenReturn(false);
     telemetry.taintVulnerabilitiesInvestigatedRemotely();
+    verify(telemetryManager).isEnabled();
+    verifyNoMoreInteractions(telemetryManager);
+  }
+
+  @Test
+  void addQuickFixAppliedForRule_when_enabled() {
+    when(telemetryManager.isEnabled()).thenReturn(true);
+    telemetry.addQuickFixAppliedForRule("repo:key");
+    verify(telemetryManager).isEnabled();
+    verify(telemetryManager).addQuickFixAppliedForRule("repo:key");
+  }
+
+  @Test
+  void addQuickFixAppliedForRule_when_disabled() {
+    when(telemetryManager.isEnabled()).thenReturn(false);
+    telemetry.addQuickFixAppliedForRule("repo:key");
     verify(telemetryManager).isEnabled();
     verifyNoMoreInteractions(telemetryManager);
   }
