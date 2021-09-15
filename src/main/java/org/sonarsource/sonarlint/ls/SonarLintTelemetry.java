@@ -199,6 +199,12 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     }
   }
 
+  public void addQuickFixAppliedForRule(String ruleKey) {
+    if (enabled()) {
+      telemetry.addQuickFixAppliedForRule(ruleKey);
+    }
+  }
+
   public void stop() {
     if (enabled()) {
       telemetry.stop();

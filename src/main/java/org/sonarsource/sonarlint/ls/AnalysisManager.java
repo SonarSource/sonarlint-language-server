@@ -121,6 +121,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   private final JavaConfigCache javaConfigCache;
   private boolean firstSecretIssueDetected;
   private final Map<URI, String> fileContentPerFileURI = new ConcurrentHashMap<>();
+  private final Map<URI, Integer> documentVersionPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, Map<String, Issue>> issuesPerIdPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile;
   private final Map<Path, List<Path>> jvmClasspathPerJavaHome = new ConcurrentHashMap<>();
@@ -197,15 +198,17 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     throw new IllegalArgumentException("Unknown event type: " + type);
   }
 
-  public void didOpen(URI fileUri, String languageId, String fileContent) {
+  public void didOpen(URI fileUri, String languageId, String fileContent, int version) {
     fileLanguageCache.put(fileUri, languageId);
     fileContentPerFileURI.put(fileUri, fileContent);
+    documentVersionPerFileURI.put(fileUri, version);
     analyzeAsync(fileUri, true);
   }
 
-  public void didChange(URI fileUri, String fileContent) {
+  public void didChange(URI fileUri, String fileContent, int version) {
     fileContentPerFileURI.put(fileUri, fileContent);
     eventMap.put(fileUri, System.currentTimeMillis());
+    documentVersionPerFileURI.put(fileUri, version);
   }
 
   private SonarLintEngine findEngineFor(WorkspaceFolderWrapper folder) {
@@ -273,6 +276,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     fileContentPerFileURI.remove(fileUri);
     javaConfigCache.remove(fileUri);
     issuesPerIdPerFileURI.remove(fileUri);
+    documentVersionPerFileURI.remove(fileUri);
     taintVulnerabilitiesPerFile.remove(fileUri);
     eventMap.remove(fileUri);
     client.publishDiagnostics(newPublishDiagnostics(fileUri));
@@ -391,6 +395,11 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       client.showFirstSecretDetectionNotification();
       firstSecretIssueDetected = true;
     }
+  }
+
+  @CheckForNull
+  Integer getDocumentVersion(URI fileUri) {
+    return documentVersionPerFileURI.get(fileUri);
   }
 
   Optional<Issue> getIssueForDiagnostic(URI fileUri, Diagnostic d) {
