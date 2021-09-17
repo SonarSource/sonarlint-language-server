@@ -49,6 +49,8 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
+import org.sonar.api.batch.fs.TextRange;
+import org.sonarsource.sonarlint.core.client.api.common.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.client.api.common.QuickFix;
 import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
@@ -118,7 +120,7 @@ public class CommandManager {
           CodeAction newCodeAction = new CodeAction(fix.message());
           newCodeAction.setKind(CodeActionKind.QuickFix);
           newCodeAction.setDiagnostics(Collections.singletonList(d));
-          newCodeAction.setEdit(newWorkspaceEdit(fix, analysisManager.getDocumentVersion(uri)));
+          newCodeAction.setEdit(newWorkspaceEdit(fix, analysisManager.getAnalyzedVersion(uri)));
           newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, Collections.singletonList(ruleKey)));
           codeActions.add(Either.forRight(newCodeAction));
         }));
@@ -156,21 +158,34 @@ public class CommandManager {
   private static WorkspaceEdit newWorkspaceEdit(QuickFix fix, @Nullable Integer documentVersion) {
     WorkspaceEdit edit = new WorkspaceEdit();
     edit.setDocumentChanges(
-    fix.inputFileEdits().stream().map(fileEdit -> {
-      TextDocumentEdit documentEdit = new TextDocumentEdit();
-      documentEdit.setTextDocument(new VersionedTextDocumentIdentifier(fileEdit.target().uri().toString(), documentVersion));
-      documentEdit.setEdits(fileEdit.textEdits().stream().map(textEdit -> {
-        TextEdit lspEdit = new TextEdit();
-        lspEdit.setNewText(textEdit.newText());
-        Range lspRange = new Range();
-        lspRange.setStart(new Position(textEdit.range().start().line() - 1, textEdit.range().start().lineOffset()));
-        lspRange.setEnd(new Position(textEdit.range().end().line() - 1, textEdit.range().end().lineOffset()));
-        lspEdit.setRange(lspRange);
-        return lspEdit;
-      }).collect(Collectors.toList()));
-      return Either.<TextDocumentEdit, ResourceOperation>forLeft(documentEdit);
-    }).collect(Collectors.toList()));
+    fix.inputFileEdits().stream()
+      .map(fileEdit -> newLspDocumentEdit(fileEdit, documentVersion))
+      .collect(Collectors.toList()));
     return edit;
+  }
+
+  private static Either<TextDocumentEdit, ResourceOperation> newLspDocumentEdit(ClientInputFileEdit fileEdit, @Nullable Integer documentVersion) {
+    TextDocumentEdit documentEdit = new TextDocumentEdit();
+    documentEdit.setTextDocument(new VersionedTextDocumentIdentifier(fileEdit.target().uri().toString(), documentVersion));
+    documentEdit.setEdits(fileEdit.textEdits().stream()
+      .map(CommandManager::newLspTextEdit)
+      .collect(Collectors.toList()));
+    return Either.forLeft(documentEdit);
+  }
+
+  private static TextEdit newLspTextEdit(org.sonarsource.sonarlint.core.client.api.common.TextEdit textEdit) {
+    TextEdit lspEdit = new TextEdit();
+    lspEdit.setNewText(textEdit.newText());
+    Range lspRange = newLspRange(textEdit.range());
+    lspEdit.setRange(lspRange);
+    return lspEdit;
+  }
+
+  private static Range newLspRange(TextRange range) {
+    Range lspRange = new Range();
+    lspRange.setStart(new Position(range.start().line() - 1, range.start().lineOffset()));
+    lspRange.setEnd(new Position(range.end().line() - 1, range.end().lineOffset()));
+    return lspRange;
   }
 
   private static void addRuleDescriptionCodeAction(CodeActionParams params, List<Either<Command, CodeAction>> codeActions, Diagnostic d, String ruleKey) {
