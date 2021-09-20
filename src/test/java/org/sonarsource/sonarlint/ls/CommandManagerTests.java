@@ -43,6 +43,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonar.api.server.rule.RuleParamType;
 import org.sonar.api.server.rule.RulesDefinition;
+import org.sonarsource.sonarlint.core.client.api.common.ClientInputFileEdit;
+import org.sonarsource.sonarlint.core.client.api.common.QuickFix;
+import org.sonarsource.sonarlint.core.client.api.common.TextEdit;
+import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
@@ -52,6 +56,8 @@ import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
+import org.sonarsource.sonarlint.core.container.analysis.filesystem.DefaultTextPointer;
+import org.sonarsource.sonarlint.core.container.analysis.filesystem.DefaultTextRange;
 import org.sonarsource.sonarlint.core.container.standalone.rule.DefaultStandaloneRuleParam;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -169,6 +175,35 @@ class CommandManagerTests {
       new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("Open description of SonarLint rule 'XYZ'", "Deactivate rule 'XYZ'");
+  }
+
+  @Test
+  void showQuickFixFromAnalyzer() {
+    URI fileUri = URI.create(FILE_URI);
+    when(bindingManager.getBinding(fileUri)).thenReturn(Optional.empty());
+
+    Diagnostic d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
+
+    Issue issue = mock(Issue.class);
+    when(mockAnalysisManager.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
+
+    TextEdit textEdit = mock(TextEdit.class);
+    when(textEdit.newText()).thenReturn("");
+    when(textEdit.range()).thenReturn(new DefaultTextRange(new DefaultTextPointer(1, 0), new DefaultTextPointer(1, 1)));
+    ClientInputFileEdit edit = mock(ClientInputFileEdit.class);
+    when(edit.textEdits()).thenReturn(Collections.singletonList(textEdit));
+    ClientInputFile target = mock(ClientInputFile.class);
+    when(target.uri()).thenReturn(fileUri);
+    when(edit.target()).thenReturn(target);
+    QuickFix fix = mock(QuickFix.class);
+    when(fix.message()).thenReturn("Fix the issue!");
+    when(fix.inputFileEdits()).thenReturn(Collections.singletonList(edit));
+    when(issue.quickFixes()).thenReturn(Collections.singletonList(fix));
+
+    List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
+      new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
+
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsExactly("Fix the issue!", "Open description of SonarLint rule 'XYZ'", "Deactivate rule 'XYZ'");
   }
 
   @Test

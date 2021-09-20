@@ -277,13 +277,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didOpen(DidOpenTextDocumentParams params) {
     URI uri = create(params.getTextDocument().getUri());
-    analysisManager.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText());
+    analysisManager.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
   }
 
   @Override
   public void didChange(DidChangeTextDocumentParams params) {
     URI uri = create(params.getTextDocument().getUri());
-    analysisManager.didChange(uri, params.getContentChanges().get(0).getText());
+    analysisManager.didChange(uri, params.getContentChanges().get(0).getText(), params.getTextDocument().getVersion());
   }
 
   @Override

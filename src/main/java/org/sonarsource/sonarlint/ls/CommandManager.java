@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionKind;
@@ -36,12 +37,23 @@ import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.ExecuteCommandParams;
+import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.ResourceOperation;
+import org.eclipse.lsp4j.TextDocumentEdit;
+import org.eclipse.lsp4j.TextEdit;
+import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
+import org.eclipse.lsp4j.WorkspaceEdit;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
+import org.sonar.api.batch.fs.TextRange;
+import org.sonarsource.sonarlint.core.client.api.common.ClientInputFileEdit;
+import org.sonarsource.sonarlint.core.client.api.common.QuickFix;
 import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
+import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
@@ -61,12 +73,14 @@ import static org.sonarsource.sonarlint.ls.AnalysisManager.SONARQUBE_TAINT_SOURC
 public class CommandManager {
 
   // Server side
+  static final String SONARLINT_QUICK_FIX_APPLIED = "SonarLint.QuickFixApplied";
   static final String SONARLINT_OPEN_STANDALONE_RULE_DESCRIPTION_COMMAND = "SonarLint.OpenStandaloneRuleDesc";
   static final String SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND = "SonarLint.OpenRuleDescCodeAction";
   static final String SONARLINT_UPDATE_ALL_BINDINGS_COMMAND = "SonarLint.UpdateAllBindings";
   static final String SONARLINT_BROWSE_TAINT_VULNERABILITY = "SonarLint.BrowseTaintVulnerability";
   static final String SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS = "SonarLint.ShowTaintVulnerabilityFlows";
   static final List<String> SONARLINT_SERVERSIDE_COMMANDS = Arrays.asList(
+    SONARLINT_QUICK_FIX_APPLIED,
     SONARLINT_UPDATE_ALL_BINDINGS_COMMAND,
     SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
     SONARLINT_OPEN_STANDALONE_RULE_DESCRIPTION_COMMAND,
@@ -101,8 +115,17 @@ public class CommandManager {
       if (SONARLINT_SOURCE.equals(d.getSource())) {
         String ruleKey = d.getCode().getLeft();
         cancelToken.checkCanceled();
+        Optional<Issue> issueForDiagnostic = analysisManager.getIssueForDiagnostic(uri, d);
+        issueForDiagnostic.ifPresent(issue -> issue.quickFixes().forEach(fix -> {
+          CodeAction newCodeAction = new CodeAction(fix.message());
+          newCodeAction.setKind(CodeActionKind.QuickFix);
+          newCodeAction.setDiagnostics(Collections.singletonList(d));
+          newCodeAction.setEdit(newWorkspaceEdit(fix, analysisManager.getAnalyzedVersion(uri)));
+          newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, Collections.singletonList(ruleKey)));
+          codeActions.add(Either.forRight(newCodeAction));
+        }));
         addRuleDescriptionCodeAction(params, codeActions, d, ruleKey);
-        analysisManager.getIssueForDiagnostic(uri, d).ifPresent(issue -> {
+        issueForDiagnostic.ifPresent(issue -> {
           if (!issue.flows().isEmpty()) {
             String titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
             codeActions.add(newQuickFix(d, titleShowAllLocations, ShowAllLocationsCommand.ID, Collections.singletonList(ShowAllLocationsCommand.params(issue))));
@@ -130,6 +153,39 @@ public class CommandManager {
       }
     }
     return codeActions;
+  }
+
+  private static WorkspaceEdit newWorkspaceEdit(QuickFix fix, @Nullable Integer documentVersion) {
+    WorkspaceEdit edit = new WorkspaceEdit();
+    edit.setDocumentChanges(
+    fix.inputFileEdits().stream()
+      .map(fileEdit -> newLspDocumentEdit(fileEdit, documentVersion))
+      .collect(Collectors.toList()));
+    return edit;
+  }
+
+  private static Either<TextDocumentEdit, ResourceOperation> newLspDocumentEdit(ClientInputFileEdit fileEdit, @Nullable Integer documentVersion) {
+    TextDocumentEdit documentEdit = new TextDocumentEdit();
+    documentEdit.setTextDocument(new VersionedTextDocumentIdentifier(fileEdit.target().uri().toString(), documentVersion));
+    documentEdit.setEdits(fileEdit.textEdits().stream()
+      .map(CommandManager::newLspTextEdit)
+      .collect(Collectors.toList()));
+    return Either.forLeft(documentEdit);
+  }
+
+  private static TextEdit newLspTextEdit(org.sonarsource.sonarlint.core.client.api.common.TextEdit textEdit) {
+    TextEdit lspEdit = new TextEdit();
+    lspEdit.setNewText(textEdit.newText());
+    Range lspRange = newLspRange(textEdit.range());
+    lspEdit.setRange(lspRange);
+    return lspEdit;
+  }
+
+  private static Range newLspRange(TextRange range) {
+    Range lspRange = new Range();
+    lspRange.setStart(new Position(range.start().line() - 1, range.start().lineOffset()));
+    lspRange.setEnd(new Position(range.end().line() - 1, range.end().lineOffset()));
+    return lspRange;
   }
 
   private static void addRuleDescriptionCodeAction(CodeActionParams params, List<Either<Command, CodeAction>> codeActions, Diagnostic d, String ruleKey) {
@@ -183,6 +239,9 @@ public class CommandManager {
 
   public void executeCommand(ExecuteCommandParams params, CancelChecker cancelToken) {
     switch (params.getCommand()) {
+      case SONARLINT_QUICK_FIX_APPLIED:
+        telemetry.addQuickFixAppliedForRule(getAsString(params.getArguments().get(0)));
+        break;
       case SONARLINT_UPDATE_ALL_BINDINGS_COMMAND:
         bindingManager.updateAllBindings(cancelToken, params.getWorkDoneToken());
         break;
