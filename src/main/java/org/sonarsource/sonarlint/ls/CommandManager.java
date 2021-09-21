@@ -116,8 +116,6 @@ public class CommandManager {
       if (SONARLINT_SOURCE.equals(d.getSource())) {
         String ruleKey = d.getCode().getLeft();
         cancelToken.checkCanceled();
-
-
         Optional<Issue> issueForDiagnostic = analysisManager.getIssueForDiagnostic(uri, d);
         issueForDiagnostic.ifPresent(issue -> issue.quickFixes().forEach(fix -> {
           String quickFixTitle = String.format("SonarLint '%s': '%s'", ruleKey, fix.message());
