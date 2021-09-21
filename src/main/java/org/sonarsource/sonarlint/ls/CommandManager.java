@@ -88,6 +88,7 @@ public class CommandManager {
     SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS);
   // Client side
   static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
+  static final String SONARLINT_CODE_ACTION_KIND = "sonarlint.codeaction";
 
   private final SonarLintExtendedLanguageClient client;
   private final SettingsManager settingsManager;
@@ -115,25 +116,28 @@ public class CommandManager {
       if (SONARLINT_SOURCE.equals(d.getSource())) {
         String ruleKey = d.getCode().getLeft();
         cancelToken.checkCanceled();
+
+
         Optional<Issue> issueForDiagnostic = analysisManager.getIssueForDiagnostic(uri, d);
         issueForDiagnostic.ifPresent(issue -> issue.quickFixes().forEach(fix -> {
-          CodeAction newCodeAction = new CodeAction(fix.message());
+          String quickFixTitle = String.format("SonarLint '%s': '%s'", ruleKey, fix.message());
+          CodeAction newCodeAction = new CodeAction(quickFixTitle);
           newCodeAction.setKind(CodeActionKind.QuickFix);
           newCodeAction.setDiagnostics(Collections.singletonList(d));
           newCodeAction.setEdit(newWorkspaceEdit(fix, analysisManager.getAnalyzedVersion(uri)));
-          newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, Collections.singletonList(ruleKey)));
+          newCodeAction.setCommand(new Command(quickFixTitle, SONARLINT_QUICK_FIX_APPLIED, Collections.singletonList(ruleKey)));
           codeActions.add(Either.forRight(newCodeAction));
         }));
         addRuleDescriptionCodeAction(params, codeActions, d, ruleKey);
         issueForDiagnostic.ifPresent(issue -> {
           if (!issue.flows().isEmpty()) {
             String titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
-            codeActions.add(newQuickFix(d, titleShowAllLocations, ShowAllLocationsCommand.ID, Collections.singletonList(ShowAllLocationsCommand.params(issue))));
+            codeActions.add(newCodeAction(d, titleShowAllLocations, ShowAllLocationsCommand.ID, Collections.singletonList(ShowAllLocationsCommand.params(issue))));
           }
         });
         if (!binding.isPresent()) {
           String titleDeactivate = String.format("Deactivate rule '%s'", ruleKey);
-          codeActions.add(newQuickFix(d, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, Collections.singletonList(ruleKey)));
+          codeActions.add(newCodeAction(d, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, Collections.singletonList(ruleKey)));
         }
       } else if (SONARQUBE_TAINT_SOURCE.equals(d.getSource())) {
         ProjectBindingWrapper actualBinding = binding.orElseThrow(() -> new IllegalStateException("Binding not found for taint vulnerability"));
@@ -142,13 +146,13 @@ public class CommandManager {
         analysisManager.getTaintVulnerabilityForDiagnostic(uri, d).ifPresent(issue -> {
           if (!issue.getFlows().isEmpty()) {
             String titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", ruleKey);
-            codeActions.add(newQuickFix(d, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, Arrays.asList(issue.key(), actualBinding.getConnectionId())));
+            codeActions.add(newCodeAction(d, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, Arrays.asList(issue.key(), actualBinding.getConnectionId())));
           }
           String title = String.format("Open taint vulnerability '%s' on '%s'", ruleKey, actualBinding.getConnectionId());
           String serverUrl = settingsManager.getCurrentSettings().getServerConnections().get(actualBinding.getConnectionId()).getServerUrl();
           String projectKey = StringUtils.urlEncode(actualBinding.getBinding().projectKey());
           String issueUrl = String.format("%s/project/issues?id=%s&issues=%s&open=%s", serverUrl, projectKey, issue.key(), issue.key());
-          codeActions.add(newQuickFix(d, title, SONARLINT_BROWSE_TAINT_VULNERABILITY, Collections.singletonList(issueUrl)));
+          codeActions.add(newCodeAction(d, title, SONARLINT_BROWSE_TAINT_VULNERABILITY, Collections.singletonList(issueUrl)));
         });
       }
     }
@@ -190,13 +194,13 @@ public class CommandManager {
 
   private static void addRuleDescriptionCodeAction(CodeActionParams params, List<Either<Command, CodeAction>> codeActions, Diagnostic d, String ruleKey) {
     String titleShowRuleDesc = String.format("Open description of SonarLint rule '%s'", ruleKey);
-    codeActions.add(newQuickFix(d, titleShowRuleDesc, SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, Arrays.asList(ruleKey, params.getTextDocument().getUri())));
+    codeActions.add(newCodeAction(d, titleShowRuleDesc, SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, Arrays.asList(ruleKey, params.getTextDocument().getUri())));
   }
 
-  private static Either<Command, CodeAction> newQuickFix(Diagnostic diag, String title, String command, List<Object> params) {
+  private static Either<Command, CodeAction> newCodeAction(Diagnostic diag, String title, String command, List<Object> params) {
     CodeAction newCodeAction = new CodeAction(title);
     newCodeAction.setCommand(new Command(title, command, params));
-    newCodeAction.setKind(CodeActionKind.QuickFix);
+    newCodeAction.setKind(SONARLINT_CODE_ACTION_KIND);
     newCodeAction.setDiagnostics(Collections.singletonList(diag));
     return Either.forRight(newCodeAction);
   }

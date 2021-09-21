@@ -28,6 +28,7 @@ import java.util.Optional;
 
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionContext;
+import org.eclipse.lsp4j.CodeActionKind;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.Diagnostic;
@@ -71,6 +72,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -80,6 +82,7 @@ import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.AnalysisManager.SONARLINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisManager.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_BROWSE_TAINT_VULNERABILITY;
+import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_CODE_ACTION_KIND;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_UPDATE_ALL_BINDINGS_COMMAND;
@@ -159,7 +162,8 @@ class CommandManagerTests {
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(singletonList(new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ")))), NOP_CANCEL_TOKEN);
 
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("Open description of SonarLint rule 'XYZ'");
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle(), c -> c.getRight().getKind())
+      .containsOnly(tuple("Open description of SonarLint rule 'XYZ'", SONARLINT_CODE_ACTION_KIND));
   }
 
   @Test
@@ -174,7 +178,9 @@ class CommandManagerTests {
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
 
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("Open description of SonarLint rule 'XYZ'", "Deactivate rule 'XYZ'");
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle(), c -> c.getRight().getKind())
+      .containsOnly(tuple("Open description of SonarLint rule 'XYZ'", SONARLINT_CODE_ACTION_KIND),
+        tuple("Deactivate rule 'XYZ'", SONARLINT_CODE_ACTION_KIND));
   }
 
   @Test
@@ -203,7 +209,10 @@ class CommandManagerTests {
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
 
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsExactly("Fix the issue!", "Open description of SonarLint rule 'XYZ'", "Deactivate rule 'XYZ'");
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle(), c -> c.getRight().getKind())
+      .containsOnly(tuple("Open description of SonarLint rule 'XYZ'", SONARLINT_CODE_ACTION_KIND),
+        tuple("Deactivate rule 'XYZ'", SONARLINT_CODE_ACTION_KIND),
+        tuple("SonarLint 'XYZ': 'Fix the issue!'", CodeActionKind.QuickFix));
   }
 
   @Test
@@ -232,11 +241,10 @@ class CommandManagerTests {
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
 
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
-      "Open description of SonarLint rule 'ruleKey'",
-      "Show all locations for taint vulnerability 'ruleKey'",
-      "Open taint vulnerability 'ruleKey' on 'connectionId'"
-    );
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle(), c -> c.getRight().getKind())
+      .containsOnly(tuple("Open description of SonarLint rule 'ruleKey'", SONARLINT_CODE_ACTION_KIND),
+        tuple("Show all locations for taint vulnerability 'ruleKey'", SONARLINT_CODE_ACTION_KIND),
+        tuple("Open taint vulnerability 'ruleKey' on 'connectionId'", SONARLINT_CODE_ACTION_KIND));
   }
 
   @Test
@@ -254,7 +262,10 @@ class CommandManagerTests {
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
 
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("Open description of SonarLint rule 'XYZ'", "Deactivate rule 'XYZ'", "Show all locations for issue 'XYZ'");
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle(), c -> c.getRight().getKind())
+      .containsOnly(tuple("Open description of SonarLint rule 'XYZ'", SONARLINT_CODE_ACTION_KIND),
+        tuple("Deactivate rule 'XYZ'", SONARLINT_CODE_ACTION_KIND),
+        tuple("Show all locations for issue 'XYZ'", SONARLINT_CODE_ACTION_KIND));
   }
 
   @Test
