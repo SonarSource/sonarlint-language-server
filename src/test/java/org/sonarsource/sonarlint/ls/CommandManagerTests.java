@@ -159,7 +159,7 @@ class CommandManagerTests {
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(singletonList(new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ")))), NOP_CANCEL_TOKEN);
 
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("Open description of SonarLint rule 'XYZ'");
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("SonarLint: Open description of rule 'XYZ'");
   }
 
   @Test
@@ -174,7 +174,11 @@ class CommandManagerTests {
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
 
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("Open description of SonarLint rule 'XYZ'", "Deactivate rule 'XYZ'");
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle())
+      .containsOnly(
+        "SonarLint: Open description of rule 'XYZ'",
+        "SonarLint: Deactivate rule 'XYZ'"
+      );
   }
 
   @Test
@@ -203,7 +207,12 @@ class CommandManagerTests {
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
 
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsExactly("Fix the issue!", "Open description of SonarLint rule 'XYZ'", "Deactivate rule 'XYZ'");
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle())
+      .containsExactly(
+        "SonarLint: Fix the issue!",
+        "SonarLint: Open description of rule 'XYZ'",
+        "SonarLint: Deactivate rule 'XYZ'"
+      );
   }
 
   @Test
@@ -233,9 +242,9 @@ class CommandManagerTests {
       new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
-      "Open description of SonarLint rule 'ruleKey'",
-      "Show all locations for taint vulnerability 'ruleKey'",
-      "Open taint vulnerability 'ruleKey' on 'connectionId'"
+      "SonarLint: Open description of rule 'ruleKey'",
+      "SonarLint: Show all locations for taint vulnerability 'ruleKey'",
+      "SonarLint: Open taint vulnerability 'ruleKey' on 'connectionId'"
     );
   }
 
@@ -254,7 +263,12 @@ class CommandManagerTests {
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
 
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("Open description of SonarLint rule 'XYZ'", "Deactivate rule 'XYZ'", "Show all locations for issue 'XYZ'");
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle())
+      .containsOnly(
+        "SonarLint: Open description of rule 'XYZ'",
+        "SonarLint: Deactivate rule 'XYZ'",
+        "SonarLint: Show all locations for issue 'XYZ'"
+      );
   }
 
   @Test

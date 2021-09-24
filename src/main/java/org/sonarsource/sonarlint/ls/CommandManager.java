@@ -89,6 +89,8 @@ public class CommandManager {
   // Client side
   static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
 
+  static final String SONARLINT_ACTION_PREFIX = "SonarLint: ";
+
   private final SonarLintExtendedLanguageClient client;
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
@@ -117,7 +119,7 @@ public class CommandManager {
         cancelToken.checkCanceled();
         Optional<Issue> issueForDiagnostic = analysisManager.getIssueForDiagnostic(uri, d);
         issueForDiagnostic.ifPresent(issue -> issue.quickFixes().forEach(fix -> {
-          CodeAction newCodeAction = new CodeAction(fix.message());
+          CodeAction newCodeAction = new CodeAction(SONARLINT_ACTION_PREFIX + fix.message());
           newCodeAction.setKind(CodeActionKind.QuickFix);
           newCodeAction.setDiagnostics(Collections.singletonList(d));
           newCodeAction.setEdit(newWorkspaceEdit(fix, analysisManager.getAnalyzedVersion(uri)));
@@ -189,12 +191,12 @@ public class CommandManager {
   }
 
   private static void addRuleDescriptionCodeAction(CodeActionParams params, List<Either<Command, CodeAction>> codeActions, Diagnostic d, String ruleKey) {
-    String titleShowRuleDesc = String.format("Open description of SonarLint rule '%s'", ruleKey);
+    String titleShowRuleDesc = String.format("Open description of rule '%s'", ruleKey);
     codeActions.add(newQuickFix(d, titleShowRuleDesc, SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, Arrays.asList(ruleKey, params.getTextDocument().getUri())));
   }
 
   private static Either<Command, CodeAction> newQuickFix(Diagnostic diag, String title, String command, List<Object> params) {
-    CodeAction newCodeAction = new CodeAction(title);
+    CodeAction newCodeAction = new CodeAction(SONARLINT_ACTION_PREFIX + title);
     newCodeAction.setCommand(new Command(title, command, params));
     newCodeAction.setKind(CodeActionKind.QuickFix);
     newCodeAction.setDiagnostics(Collections.singletonList(diag));
