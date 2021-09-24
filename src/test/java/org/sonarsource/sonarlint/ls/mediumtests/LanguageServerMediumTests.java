@@ -457,14 +457,14 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     List<Either<Command, CodeAction>> list = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
     assertThat(list).hasSize(2);
     CodeAction codeAction = list.get(0).getRight();
-    assertThat(codeAction.getTitle()).isEqualTo("Open description of SonarLint rule 'javascript:S930'");
+    assertThat(codeAction.getTitle()).isEqualTo("SonarLint: Open description of rule 'javascript:S930'");
     Command openRuleDesc = codeAction.getCommand();
     assertThat(openRuleDesc.getCommand()).isEqualTo("SonarLint.OpenRuleDescCodeAction");
     assertThat(openRuleDesc.getArguments()).hasSize(2);
     assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(0)).getAsString()).isEqualTo("javascript:S930");
     assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(1)).getAsString()).isEqualTo("file://foo.js");
     CodeAction disableRuleCodeAction = list.get(1).getRight();
-    assertThat(disableRuleCodeAction.getTitle()).isEqualTo("Deactivate rule 'javascript:S930'");
+    assertThat(disableRuleCodeAction.getTitle()).isEqualTo("SonarLint: Deactivate rule 'javascript:S930'");
     Command disableRule = disableRuleCodeAction.getCommand();
     assertThat(disableRule.getCommand()).isEqualTo("SonarLint.DeactivateRule");
     assertThat(disableRule.getArguments()).hasSize(1);
