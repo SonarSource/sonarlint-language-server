@@ -49,10 +49,10 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
-import org.sonar.api.batch.fs.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.client.api.common.QuickFix;
 import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
+import org.sonarsource.sonarlint.core.client.api.common.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
@@ -67,6 +67,7 @@ import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 
 import static java.net.URI.create;
+import static org.sonar.api.utils.Preconditions.checkNotNull;
 import static org.sonarsource.sonarlint.ls.AnalysisManager.SONARLINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisManager.SONARQUBE_TAINT_SOURCE;
 
@@ -184,9 +185,13 @@ public class CommandManager {
   }
 
   private static Range newLspRange(TextRange range) {
+    checkNotNull(range.getStartLine());
+    checkNotNull(range.getStartLineOffset());
+    checkNotNull(range.getEndLine());
+    checkNotNull(range.getEndLineOffset());
     Range lspRange = new Range();
-    lspRange.setStart(new Position(range.start().line() - 1, range.start().lineOffset()));
-    lspRange.setEnd(new Position(range.end().line() - 1, range.end().lineOffset()));
+    lspRange.setStart(new Position(range.getStartLine() - 1, range.getStartLineOffset()));
+    lspRange.setEnd(new Position(range.getEndLine() - 1, range.getEndLineOffset()));
     return lspRange;
   }
 

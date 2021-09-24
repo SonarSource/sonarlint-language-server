@@ -46,6 +46,7 @@ import org.sonar.api.server.rule.RulesDefinition;
 import org.sonarsource.sonarlint.core.client.api.common.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.client.api.common.QuickFix;
 import org.sonarsource.sonarlint.core.client.api.common.TextEdit;
+import org.sonarsource.sonarlint.core.client.api.common.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
@@ -56,8 +57,6 @@ import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
-import org.sonarsource.sonarlint.core.container.analysis.filesystem.DefaultTextPointer;
-import org.sonarsource.sonarlint.core.container.analysis.filesystem.DefaultTextRange;
 import org.sonarsource.sonarlint.core.container.standalone.rule.DefaultStandaloneRuleParam;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -193,7 +192,7 @@ class CommandManagerTests {
 
     TextEdit textEdit = mock(TextEdit.class);
     when(textEdit.newText()).thenReturn("");
-    when(textEdit.range()).thenReturn(new DefaultTextRange(new DefaultTextPointer(1, 0), new DefaultTextPointer(1, 1)));
+    when(textEdit.range()).thenReturn(new TextRange(1, 0,1, 1));
     ClientInputFileEdit edit = mock(ClientInputFileEdit.class);
     when(edit.textEdits()).thenReturn(Collections.singletonList(textEdit));
     ClientInputFile target = mock(ClientInputFile.class);
