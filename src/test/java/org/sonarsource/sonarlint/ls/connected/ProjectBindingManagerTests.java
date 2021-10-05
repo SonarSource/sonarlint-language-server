@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.lsp4j.MessageParams;
@@ -837,6 +838,7 @@ class ProjectBindingManagerTests {
     StorageUpdateCheckResult checkResult = mock(StorageUpdateCheckResult.class);
     when(checkResult.needUpdate()).thenReturn(true);
     when(fakeEngine.checkIfGlobalStorageNeedUpdate(any(), any(), any())).thenReturn(checkResult);
+    when(bindingUpdateNotification.notifyBindingUpdateAvailable(anyString())).thenReturn(CompletableFuture.completedFuture(true));
 
     underTest.checkForBindingUpdates();
 
@@ -856,6 +858,7 @@ class ProjectBindingManagerTests {
     StorageUpdateCheckResult projectCheckResult = mock(StorageUpdateCheckResult.class);
     when(projectCheckResult.needUpdate()).thenReturn(true);
     when(fakeEngine.checkIfProjectStorageNeedUpdate(any(), any(), any(), any())).thenReturn(projectCheckResult);
+    when(bindingUpdateNotification.notifyBindingUpdateAvailable(anyString())).thenReturn(CompletableFuture.completedFuture(true));
 
     underTest.checkForBindingUpdates();
 
