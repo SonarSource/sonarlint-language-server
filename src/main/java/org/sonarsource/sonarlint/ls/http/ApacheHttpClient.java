@@ -36,6 +36,7 @@ import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
 import org.apache.hc.core5.concurrent.FutureCallback;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http2.HttpVersionPolicy;
 import org.apache.hc.core5.util.Timeout;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
@@ -161,6 +162,7 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
           .setConnectionRequestTimeout(CONNECTION_TIMEOUT)
           .setResponseTimeout(RESPONSE_TIMEOUT)
           .build())
+      .setVersionPolicy(HttpVersionPolicy.FORCE_HTTP_1)
       .build();
     httpClient.start();
     return new ApacheHttpClient(httpClient, null);
