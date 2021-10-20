@@ -45,7 +45,7 @@ public class FolderFileSystem implements ClientFileSystem {
 
   @Override
   public Stream<ClientInputFile> files(String suffix, InputFile.Type type) {
-    WorkspaceFolderSettings settings = folder.getSettings();
+    var settings = folder.getSettings();
     try {
       return Files.walk(folder.getRootPath())
         .filter(Files::isRegularFile)
@@ -59,7 +59,7 @@ public class FolderFileSystem implements ClientFileSystem {
 
   @Override
   public Stream<ClientInputFile> files() {
-    WorkspaceFolderSettings settings = folder.getSettings();
+    var settings = folder.getSettings();
     try {
       return Files.walk(folder.getRootPath())
         .filter(Files::isRegularFile)

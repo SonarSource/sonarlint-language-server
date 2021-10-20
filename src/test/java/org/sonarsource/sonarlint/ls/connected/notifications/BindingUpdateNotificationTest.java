@@ -42,7 +42,7 @@ class BindingUpdateNotificationTest {
     // returning any item will trigger the update request
     when(languageClient.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(new MessageActionItem()));
 
-    CompletableFuture<Boolean> shouldUpdateBinding = bindingUpdateNotification.notifyBindingUpdateAvailable("projectKey");
+    var shouldUpdateBinding = bindingUpdateNotification.notifyBindingUpdateAvailable("projectKey");
 
     assertThat(shouldUpdateBinding).isCompletedWithValue(true);
   }
@@ -51,28 +51,28 @@ class BindingUpdateNotificationTest {
   void should_not_request_update_when_user_dismisses_notification() {
     when(languageClient.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(null));
 
-    CompletableFuture<Boolean> shouldUpdateBinding = bindingUpdateNotification.notifyBindingUpdateAvailable("projectKey");
+    var shouldUpdateBinding = bindingUpdateNotification.notifyBindingUpdateAvailable("projectKey");
 
     assertThat(shouldUpdateBinding).isCompletedWithValue(false);
   }
 
   @Test
   void should_wait_for_client_response_before_updating_binding() {
-    CompletableFuture<MessageActionItem> completableFuture = new CompletableFuture<>();
+    var completableFuture = new CompletableFuture<MessageActionItem>();
     when(languageClient.showMessageRequest(any())).thenReturn(completableFuture);
 
-    CompletableFuture<Boolean> shouldUpdateBinding = bindingUpdateNotification.notifyBindingUpdateAvailable("projectKey");
+    var shouldUpdateBinding = bindingUpdateNotification.notifyBindingUpdateAvailable("projectKey");
 
     assertThat(shouldUpdateBinding).isNotCompleted();
   }
 
   @Test
   void should_not_show_notification_for_a_given_project_key_when_one_is_already_active() {
-    CompletableFuture<MessageActionItem> completableFuture = new CompletableFuture<>();
+    var completableFuture = new CompletableFuture<MessageActionItem>();
     when(languageClient.showMessageRequest(any())).thenReturn(completableFuture);
 
     bindingUpdateNotification.notifyBindingUpdateAvailable("projectKey");
-    CompletableFuture<Boolean> shouldUpdateBinding = bindingUpdateNotification.notifyBindingUpdateAvailable("projectKey");
+    var shouldUpdateBinding = bindingUpdateNotification.notifyBindingUpdateAvailable("projectKey");
 
     assertThat(shouldUpdateBinding).isCompletedWithValue(false);
   }

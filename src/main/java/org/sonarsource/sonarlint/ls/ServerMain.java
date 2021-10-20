@@ -37,8 +37,8 @@ public class ServerMain {
           "[-analyzers file:///path/to/analyzer1.jar [file:///path/to/analyzer2.jar] ...] " +
           "[-extraAnalyzers file:///path/to/analyzer3.jar [file:///path/to/analyzer4.jar] ...]";
 
-  private PrintStream out;
-  private PrintStream err;
+  private final PrintStream out;
+  private final PrintStream err;
 
   public ServerMain(PrintStream out, PrintStream err) {
     this.out = out;
@@ -63,10 +63,10 @@ public class ServerMain {
       err.println(USAGE);
       exitWithError();
     }
-    int jsonRpcPort = parsePortArgument(args);
+    var jsonRpcPort = parsePortArgument(args);
 
-    Collection<URL> analyzers = extractAnalyzers(args);
-    Collection<URL> extraAnalyzers = extractExtraAnalyzers(args);
+    var analyzers = extractAnalyzers(args);
+    var extraAnalyzers = extractExtraAnalyzers(args);
 
     out.println("Binding to " + jsonRpcPort);
     try {
@@ -79,18 +79,18 @@ public class ServerMain {
   }
 
   Collection<URL> extractAnalyzers(String[] args) {
-    int indexOfAnalyzersParam = Arrays.asList(args).indexOf(ANALYZERS_KEY);
+    var indexOfAnalyzersParam = Arrays.asList(args).indexOf(ANALYZERS_KEY);
     if (indexOfAnalyzersParam == -1) {
       err.println(USAGE);
       exitWithError();
     }
-    int nextParam = getIndexOfNextParam(indexOfAnalyzersParam, args);
+    var nextParam = getIndexOfNextParam(indexOfAnalyzersParam, args);
 
     return extractAnalyzersUrlsToList(args, indexOfAnalyzersParam, nextParam);
   }
 
   Collection<URL> extractExtraAnalyzers(String[] args) {
-    int indexOfExtraAnalyzersParam = Arrays.asList(args).indexOf(EXTRA_ANALYZERS_KEY);
+    var indexOfExtraAnalyzersParam = Arrays.asList(args).indexOf(EXTRA_ANALYZERS_KEY);
     if (indexOfExtraAnalyzersParam == -1) {
       return Collections.emptyList();
     }
@@ -101,8 +101,8 @@ public class ServerMain {
     if (to == -1) {
       to = args.length;
     }
-    List<URL> analyzers = new ArrayList<>();
-    for (int i = from + 1; i < to; i++) {
+    var analyzers = new ArrayList<URL>();
+    for (var i = from + 1; i < to; i++) {
       try {
         analyzers.add(new URL(args[i]));
       } catch (MalformedURLException e) {

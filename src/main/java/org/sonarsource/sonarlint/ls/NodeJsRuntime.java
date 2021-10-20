@@ -28,7 +28,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.sonarsource.sonarlint.core.NodeJsHelper;
 import org.sonarsource.sonarlint.core.client.api.common.Version;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
-import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
 public class NodeJsRuntime {
 
@@ -48,8 +47,8 @@ public class NodeJsRuntime {
   }
 
   private void init() {
-    WorkspaceSettings currentSettings = settingsManager.getCurrentSettings();
-    NodeJsHelper helper = nodeJsHelperFactory.get();
+    var currentSettings = settingsManager.getCurrentSettings();
+    var helper = nodeJsHelperFactory.get();
     helper.detect(Optional.ofNullable(currentSettings.pathToNodeExecutable())
       .filter(StringUtils::isNotEmpty)
       .map(Paths::get)

@@ -51,7 +51,7 @@ public class BindingUpdateNotification {
   }
 
   private static ShowMessageRequestParams shouldUpdateBindingRequest(String projectKey) {
-    ShowMessageRequestParams requestParams = new ShowMessageRequestParams(singletonList(new MessageActionItem("Update")));
+    var requestParams = new ShowMessageRequestParams(singletonList(new MessageActionItem("Update")));
     requestParams.setMessage("SonarLint - A binding update is available for project " + projectKey);
     return requestParams;
   }

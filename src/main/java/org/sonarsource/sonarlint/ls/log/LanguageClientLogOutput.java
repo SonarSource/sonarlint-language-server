@@ -80,7 +80,7 @@ public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChan
   @Override
   public void log(String formattedMessage, Level level) {
     if (formattedMessage.contains(NODE_COMMAND_EXCEPTION)) {
-      ShowMessageRequestParams params = getShowMessageRequestParams();
+      var params = getShowMessageRequestParams();
       client.showMessageRequest(params).thenAccept(action -> ((SonarLintExtendedLanguageClient) client).showSonarLintOutput());
       client.logMessage(new MessageParams(MessageType.Log, addPrefixIfNeeded(level, formattedMessage)));
     }
@@ -90,8 +90,8 @@ public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChan
   }
 
   static ShowMessageRequestParams getShowMessageRequestParams() {
-    MessageActionItem actionItem = new MessageActionItem(SHOW_SONARLINT_OUTPUT_ACTION);
-    ShowMessageRequestParams params = new ShowMessageRequestParams(Collections.singletonList(actionItem));
+    var actionItem = new MessageActionItem(SHOW_SONARLINT_OUTPUT_ACTION);
+    var params = new ShowMessageRequestParams(Collections.singletonList(actionItem));
     params.setType(MessageType.Error);
     params.setMessage("JS/TS analysis failed. Please check the SonarLint Output for more details.");
     return params;

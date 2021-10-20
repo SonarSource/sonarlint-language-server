@@ -21,7 +21,6 @@ package org.sonarsource.sonarlint.ls.java;
 
 import java.net.URI;
 import java.nio.file.Paths;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -80,9 +79,8 @@ public class JavaConfigCache {
     if (!fileLanguageCache.isJava(fileUri)) {
       return CompletableFuture.completedFuture(Optional.empty());
     }
-    Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> javaConfigFromCache = javaConfigPerFileURI.get(fileUri);
-    if (javaConfigFromCache != null) {
-      return CompletableFuture.completedFuture(javaConfigFromCache);
+    if (javaConfigPerFileURI.containsKey(fileUri)) {
+      return CompletableFuture.completedFuture(javaConfigPerFileURI.get(fileUri));
     }
     return client.getJavaConfig(fileUri.toString())
       .handle((r, t) -> {
@@ -92,7 +90,7 @@ public class JavaConfigCache {
         return r;
       })
       .thenApply(javaConfig -> {
-        Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> configOpt = ofNullable(javaConfig);
+        var configOpt = ofNullable(javaConfig);
         javaConfigPerFileURI.put(fileUri, configOpt);
         LOG.debug("Cached Java config for file '{}'", fileUri);
         return configOpt;
@@ -100,11 +98,11 @@ public class JavaConfigCache {
   }
 
   public void clear(URI projectUri) {
-    for (Iterator<Map.Entry<URI, Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse>>> it = javaConfigPerFileURI.entrySet().iterator(); it.hasNext();) {
-      Map.Entry<URI, Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse>> entry = it.next();
-      Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> cachedResponseOpt = entry.getValue();
+    for (var it = javaConfigPerFileURI.entrySet().iterator(); it.hasNext();) {
+      var entry = it.next();
+      var cachedResponseOpt = entry.getValue();
       // If we have cached an empty result, still clear the value on classpath update to force next analysis to re-attempt fetch
-      if (!cachedResponseOpt.isPresent() || sameProject(projectUri, cachedResponseOpt.get())) {
+      if (cachedResponseOpt.isEmpty() || sameProject(projectUri, cachedResponseOpt.get())) {
         it.remove();
         LOG.debug("Evicted Java config cache for file '{}'", entry.getKey());
       }

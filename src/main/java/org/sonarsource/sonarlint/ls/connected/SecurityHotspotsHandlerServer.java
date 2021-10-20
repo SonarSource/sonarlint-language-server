@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.connected;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
+import com.google.gson.annotations.Expose;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
@@ -28,18 +29,13 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.HttpException;
-import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.http.impl.bootstrap.HttpServer;
 import org.apache.hc.core5.http.impl.bootstrap.ServerBootstrap;
 import org.apache.hc.core5.http.io.HttpFilterChain;
@@ -49,7 +45,7 @@ import org.apache.hc.core5.http.io.SocketConfig;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.http.protocol.HttpContext;
 import org.apache.hc.core5.io.CloseMode;
-import org.apache.hc.core5.net.URLEncodedUtils;
+import org.apache.hc.core5.net.URIBuilder;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
@@ -96,12 +92,12 @@ public class SecurityHotspotsHandlerServer {
   }
 
   public void initialize(String ideName, String clientVersion, @Nullable String workspaceName) {
-    final SocketConfig socketConfig = SocketConfig.custom()
+    final var socketConfig = SocketConfig.custom()
       .setSoTimeout(15, TimeUnit.SECONDS)
       .setTcpNoDelay(true)
       .build();
     port = INVALID_PORT;
-    int triedPort = STARTING_PORT;
+    var triedPort = STARTING_PORT;
     HttpServer startedServer = null;
     while(port < 0 && triedPort <= ENDING_PORT) {
       try {
@@ -153,18 +149,20 @@ public class SecurityHotspotsHandlerServer {
     public StatusRequestHandler(String ideName, String clientVersion, @Nullable String workspaceName) {
       this.ideName = ideName;
       this.clientVersion = clientVersion;
-      this.workspaceName = workspaceName;
+      this.workspaceName = workspaceName == null ? "(no open folder)" : workspaceName;
     }
 
     @Override
     public void handle(ClassicHttpRequest request, ClassicHttpResponse response, HttpContext context) throws HttpException, IOException {
-      String description = clientVersion + " - " + (workspaceName == null ? "(no open folder)" : workspaceName);
+      var description = clientVersion + " - " + workspaceName;
       response.setEntity(new StringEntity(new Gson().toJson(new StatusResponse(ideName, description)), ContentType.APPLICATION_JSON));
     }
   }
 
   private static class StatusResponse {
+    @Expose
     private final String ideName;
+    @Expose
     private final String description;
 
     public StatusResponse(String ideName, String description) {
@@ -178,7 +176,7 @@ public class SecurityHotspotsHandlerServer {
     @Override
     public void handle(ClassicHttpRequest request, HttpFilterChain.ResponseTrigger responseTrigger, HttpContext context, HttpFilterChain chain)
       throws HttpException, IOException {
-      Header origin = request.getHeader("Origin");
+      var origin = request.getHeader("Origin");
       chain.proceed(request, new HttpFilterChain.ResponseTrigger() {
         @Override
         public void sendInformation(ClassicHttpResponse classicHttpResponse) throws HttpException, IOException {
@@ -212,45 +210,43 @@ public class SecurityHotspotsHandlerServer {
 
     @Override
     public void handle(ClassicHttpRequest request, ClassicHttpResponse response, HttpContext context) throws HttpException, IOException {
-      Map<String, String> params = new HashMap<>();
+      var params = new HashMap<String, String>();
       try {
-        params = URLEncodedUtils.parse(request.getUri(), StandardCharsets.UTF_8)
-          .stream()
-          .collect(Collectors.toMap(NameValuePair::getName, NameValuePair::getValue));
+        new URIBuilder(request.getUri(), StandardCharsets.UTF_8)
+          .getQueryParams()
+          .forEach(p -> params.put(p.getName(), p.getValue()));
       } catch (URISyntaxException e) {
         // Ignored
       }
       if (!params.containsKey("server") || !params.containsKey("project") || !params.containsKey("hotspot")) {
         response.setCode(HttpURLConnection.HTTP_BAD_REQUEST);
       } else {
-        String serverUrl = params.get("server");
-        String project = params.get("project");
-        String hotspot = params.get("hotspot");
+        var serverUrl = params.get("server");
+        var project = params.get("project");
+        var hotspot = params.get("hotspot");
 
         output.log(String.format("Opening hotspot %s for project %s of server %s", hotspot, project, serverUrl), LogOutput.Level.INFO);
         telemetry.showHotspotRequestReceived();
-        Optional<ServerConnectionSettings.EndpointParamsAndHttpClient> serverSettings = bindingManager.getServerConnectionSettingsForUrl(serverUrl);
-        // TODO Replace with ifPresentOrElse when we move to Java 9+
-        if(serverSettings.isPresent()) {
-          showHotspot(hotspot, project, serverSettings.get());
-        } else {
-          showUnknownServer(serverUrl);
-        }
+        var serverSettings = bindingManager.getServerConnectionSettingsForUrl(serverUrl);
+        serverSettings.ifPresentOrElse(
+          settings -> showHotspot(hotspot, project, settings),
+          () -> showUnknownServer(serverUrl)
+        );
         response.setCode(HttpURLConnection.HTTP_OK);
         response.setEntity(new StringEntity("OK"));
       }
     }
 
     void showHotspot(String hotspotKey, String projectKey, ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient) {
-      HotspotApi hotspotApi = hotspotApiFactory.apply(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient());
+      var hotspotApi = hotspotApiFactory.apply(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient());
       hotspotApi.fetch(new GetSecurityHotspotRequestParams(hotspotKey, projectKey)).ifPresent(client::showHotspot);
     }
 
     void showUnknownServer(String url) {
-      ShowMessageRequestParams params = new ShowMessageRequestParams();
+      var params = new ShowMessageRequestParams();
       params.setMessage("No SonarQube connection settings found for URL " + url);
       params.setType(MessageType.Error);
-      MessageActionItem showSettingsAction = new MessageActionItem("Open Settings");
+      var showSettingsAction = new MessageActionItem("Open Settings");
       params.setActions(Collections.singletonList(showSettingsAction));
       client.showMessageRequest(params)
         .thenAccept(action -> {

@@ -111,7 +111,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
     @Override
     public int hashCode() {
-      int result = Objects.hash(key, name, htmlDescription, type, severity);
+      var result = Objects.hash(key, name, htmlDescription, type, severity);
       result = 31 * result + Arrays.hashCode(parameters);
       return result;
     }
@@ -124,7 +124,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       if (!(obj instanceof ShowRuleDescriptionParams)) {
         return false;
       }
-      ShowRuleDescriptionParams other = (ShowRuleDescriptionParams) obj;
+      var other = (ShowRuleDescriptionParams) obj;
       return Objects.equals(htmlDescription, other.htmlDescription) && Objects.equals(key, other.key) && Objects.equals(name, other.name)
         && Objects.equals(severity, other.severity) && Objects.equals(type, other.type) && Arrays.equals(parameters, other.parameters);
     }
@@ -167,7 +167,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
-      RuleParameter that = (RuleParameter) o;
+      var that = (RuleParameter) o;
       return name.equals(that.name) &&
         Objects.equals(description, that.description) &&
         Objects.equals(defaultValue, that.defaultValue);

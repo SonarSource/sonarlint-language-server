@@ -35,7 +35,7 @@ public class LocalCodeFile {
   private List<String> lines;
 
   private LocalCodeFile(URI uri) {
-    File localFile = new File(uri);
+    var localFile = new File(uri);
     if (localFile.exists()) {
       try {
         // TODO Find the right character set to use?
@@ -55,20 +55,20 @@ public class LocalCodeFile {
     if (range == null) {
       return null;
     }
-    int lineIndex = range.getStartLine() - 1;
+    var lineIndex = range.getStartLine() - 1;
     if (lines.size() < lineIndex) {
       return null;
     } else {
       if (lines.get(lineIndex).length() < range.getStartLineOffset()) {
         return null;
       } else {
-        StringBuilder snippet = new StringBuilder();
-        int maxLine = Math.min(lines.size() - 1, range.getEndLine() - 1);
-        int startOffset = range.getStartLineOffset();
+        var snippet = new StringBuilder();
+        var maxLine = Math.min(lines.size() - 1, range.getEndLine() - 1);
+        var startOffset = range.getStartLineOffset();
         do {
-          String currentLine = lines.get(lineIndex);
+          var currentLine = lines.get(lineIndex);
           if(lineIndex == maxLine) {
-            int endOffset = Math.min(currentLine.length(), range.getEndLineOffset());
+            var endOffset = Math.min(currentLine.length(), range.getEndLineOffset());
             snippet.append(currentLine.substring(startOffset, endOffset));
           } else {
             snippet.append(currentLine.substring(startOffset)).append('\n');

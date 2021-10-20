@@ -123,12 +123,12 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   public void didChangeConfiguration() {
     executor.execute(() -> {
       try {
-        Map<String, Object> workspaceSettingsMap = requestSonarLintConfigurationAsync(null).get(1, TimeUnit.MINUTES);
-        WorkspaceSettings newWorkspaceSettings = parseSettings(workspaceSettingsMap, httpClient);
-        WorkspaceSettings oldWorkspaceSettings = currentSettings;
+        var workspaceSettingsMap = requestSonarLintConfigurationAsync(null).get(1, TimeUnit.MINUTES);
+        var newWorkspaceSettings = parseSettings(workspaceSettingsMap, httpClient);
+        var oldWorkspaceSettings = currentSettings;
         this.currentSettings = newWorkspaceSettings;
-        WorkspaceFolderSettings newDefaultFolderSettings = parseFolderSettings(workspaceSettingsMap);
-        WorkspaceFolderSettings oldDefaultFolderSettings = currentDefaultSettings;
+        var newDefaultFolderSettings = parseFolderSettings(workspaceSettingsMap);
+        var oldDefaultFolderSettings = currentDefaultSettings;
         this.currentDefaultSettings = newDefaultFolderSettings;
         initLatch.countDown();
 
@@ -159,8 +159,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   // Visible for testing
   CompletableFuture<Map<String, Object>> requestSonarLintConfigurationAsync(@Nullable URI uri) {
     LOG.debug("Fetching configuration for folder '{}'", uri);
-    ConfigurationParams params = new ConfigurationParams();
-    ConfigurationItem configurationItem = new ConfigurationItem();
+    var params = new ConfigurationParams();
+    var configurationItem = new ConfigurationItem();
     configurationItem.setSection(SONARLINT_CONFIGURATION_NAMESPACE);
     if (uri != null) {
       configurationItem.setScopeUri(uri.toString());
@@ -178,9 +178,9 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private void updateWorkspaceFolderSettings(WorkspaceFolderWrapper f, boolean notifyOnChange) {
     try {
-      Map<String, Object> folderSettingsMap = requestSonarLintConfigurationAsync(f.getUri()).get();
-      WorkspaceFolderSettings newSettings = parseFolderSettings(folderSettingsMap);
-      WorkspaceFolderSettings old = f.getRawSettings();
+      var folderSettingsMap = requestSonarLintConfigurationAsync(f.getUri()).get();
+      var newSettings = parseFolderSettings(folderSettingsMap);
+      var old = f.getRawSettings();
       if (!Objects.equals(old, newSettings)) {
         f.setSettings(newSettings);
         LOG.debug("Workspace folder '{}' configuration updated: {}", f, newSettings);
@@ -196,26 +196,26 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   }
 
   private static WorkspaceSettings parseSettings(Map<String, Object> params, ApacheHttpClient httpClient) {
-    boolean disableTelemetry = (Boolean) params.getOrDefault(DISABLE_TELEMETRY, false);
-    String pathToNodeExecutable = (String) params.get(PATH_TO_NODE_EXECUTABLE);
-    Map<String, ServerConnectionSettings> serverConnections = parseServerConnections(params, httpClient);
+    var disableTelemetry = (Boolean) params.getOrDefault(DISABLE_TELEMETRY, false);
+    var pathToNodeExecutable = (String) params.get(PATH_TO_NODE_EXECUTABLE);
+    var serverConnections = parseServerConnections(params, httpClient);
     @SuppressWarnings("unchecked")
-    RulesConfiguration rulesConfiguration = RulesConfiguration.parse(((Map<String, Object>) params.getOrDefault(RULES, Collections.emptyMap())));
+    var rulesConfiguration = RulesConfiguration.parse(((Map<String, Object>) params.getOrDefault(RULES, Collections.emptyMap())));
     @SuppressWarnings("unchecked")
-    Map<String, Object> consoleParams = ((Map<String, Object>) params.getOrDefault(OUTPUT, Collections.emptyMap()));
-    boolean showAnalyzerLogs = (Boolean) consoleParams.getOrDefault(SHOW_ANALYZER_LOGS, false);
-    boolean showVerboseLogs = (Boolean) consoleParams.getOrDefault(SHOW_VERBOSE_LOGS, false);
+    var consoleParams = ((Map<String, Object>) params.getOrDefault(OUTPUT, Collections.emptyMap()));
+    var showAnalyzerLogs = (Boolean) consoleParams.getOrDefault(SHOW_ANALYZER_LOGS, false);
+    var showVerboseLogs = (Boolean) consoleParams.getOrDefault(SHOW_VERBOSE_LOGS, false);
     return new WorkspaceSettings(disableTelemetry, serverConnections, rulesConfiguration.excludedRules(), rulesConfiguration.includedRules(), rulesConfiguration.ruleParameters(),
       showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable);
   }
 
   private static Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params, ApacheHttpClient httpClient) {
     @SuppressWarnings("unchecked")
-    Map<String, Object> connectedModeMap = (Map<String, Object>) params.getOrDefault("connectedMode", Collections.emptyMap());
-    Map<String, ServerConnectionSettings> serverConnections = new HashMap<>();
+    var connectedModeMap = (Map<String, Object>) params.getOrDefault("connectedMode", Collections.emptyMap());
+    var serverConnections = new HashMap<String, ServerConnectionSettings>();
     parseDeprecatedServerEntries(connectedModeMap, serverConnections, httpClient);
     @SuppressWarnings("unchecked")
-    Map<String, Object> connectionsMap = (Map<String, Object>) connectedModeMap.getOrDefault("connections", Collections.emptyMap());
+    var connectionsMap = (Map<String, Object>) connectedModeMap.getOrDefault("connections", Collections.emptyMap());
     parseSonarQubeConnections(connectionsMap, serverConnections, httpClient);
     parseSonarCloudConnections(connectionsMap, serverConnections, httpClient);
     return serverConnections;
@@ -223,14 +223,14 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private static void parseDeprecatedServerEntries(Map<String, Object> connectedModeMap, Map<String, ServerConnectionSettings> serverConnections, ApacheHttpClient httpClient) {
     @SuppressWarnings("unchecked")
-    List<Map<String, Object>> deprecatedServersEntries = (List<Map<String, Object>>) connectedModeMap.getOrDefault("servers", Collections.emptyList());
+    var deprecatedServersEntries = (List<Map<String, Object>>) connectedModeMap.getOrDefault("servers", Collections.emptyList());
     deprecatedServersEntries.forEach(m -> {
       if (checkRequiredAttribute(m, "server", SERVER_ID, SERVER_URL, TOKEN)) {
-        String connectionId = (String) m.get(SERVER_ID);
-        String url = (String) m.get(SERVER_URL);
-        String token = (String) m.get(TOKEN);
-        String organization = (String) m.get(ORGANIZATION_KEY);
-        ServerConnectionSettings connectionSettings = new ServerConnectionSettings(connectionId, url, token, organization, false, httpClient);
+        var connectionId = (String) m.get(SERVER_ID);
+        var url = (String) m.get(SERVER_URL);
+        var token = (String) m.get(TOKEN);
+        var organization = (String) m.get(ORGANIZATION_KEY);
+        var connectionSettings = new ServerConnectionSettings(connectionId, url, token, organization, false, httpClient);
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
       }
     });
@@ -238,14 +238,14 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private static void parseSonarQubeConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections, ApacheHttpClient httpClient) {
     @SuppressWarnings("unchecked")
-    List<Map<String, Object>> sonarqubeEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarqube", Collections.emptyList());
+    var sonarqubeEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarqube", Collections.emptyList());
     sonarqubeEntries.forEach(m -> {
       if (checkRequiredAttribute(m, "SonarQube server", SERVER_URL, TOKEN)) {
-        String connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
-        String url = (String) m.get(SERVER_URL);
-        String token = (String) m.get(TOKEN);
-        boolean disableNotifications = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
-        ServerConnectionSettings connectionSettings = new ServerConnectionSettings(connectionId, url, token, null, disableNotifications, httpClient);
+        var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
+        var url = (String) m.get(SERVER_URL);
+        var token = (String) m.get(TOKEN);
+        var disableNotifications = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
+        var connectionSettings = new ServerConnectionSettings(connectionId, url, token, null, disableNotifications, httpClient);
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
       }
     });
@@ -253,14 +253,14 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private static void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections, ApacheHttpClient httpClient) {
     @SuppressWarnings("unchecked")
-    List<Map<String, Object>> sonarcloudEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
+    var sonarcloudEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
     sonarcloudEntries.forEach(m -> {
 
       if (checkRequiredAttribute(m, "SonarCloud", ORGANIZATION_KEY, TOKEN)) {
-        String connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
-        String organizationKey = (String) m.get(ORGANIZATION_KEY);
-        String token = (String) m.get(TOKEN);
-        boolean disableNotifs = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
+        var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
+        var organizationKey = (String) m.get(ORGANIZATION_KEY);
+        var token = (String) m.get(TOKEN);
+        var disableNotifs = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
         addIfUniqueConnectionId(serverConnections, connectionId,
           new ServerConnectionSettings(connectionId, ServerConnectionSettings.SONARCLOUD_URL, token, organizationKey, disableNotifs, httpClient));
       }
@@ -268,7 +268,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   }
 
   private static boolean checkRequiredAttribute(Map<String, Object> map, String label, String... requiredAttributes) {
-    List<String> missing = stream(requiredAttributes).filter(att -> isBlank((String) map.get(att))).collect(Collectors.toList());
+    var missing = stream(requiredAttributes).filter(att -> isBlank((String) map.get(att))).collect(Collectors.toList());
     if (!missing.isEmpty()) {
       LOG.error("Incomplete {} connection configuration. Required parameters must not be blank: {}.", label, String.join(",", missing));
       return false;
@@ -290,15 +290,15 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   // Visible for testing
   WorkspaceFolderSettings parseFolderSettings(Map<String, Object> params) {
-    String testFilePattern = (String) params.get(TEST_FILE_PATTERN);
-    Map<String, String> analyzerProperties = getAnalyzerProperties(params);
+    var testFilePattern = (String) params.get(TEST_FILE_PATTERN);
+    var analyzerProperties = getAnalyzerProperties(params);
     String connectionId = null;
     String projectKey = null;
     @SuppressWarnings("unchecked")
-    Map<String, Object> connectedModeMap = (Map<String, Object>) params.getOrDefault("connectedMode", Collections.emptyMap());
+    var connectedModeMap = (Map<String, Object>) params.getOrDefault("connectedMode", Collections.emptyMap());
     if (connectedModeMap.containsKey(PROJECT)) {
       @SuppressWarnings("unchecked")
-      Map<String, String> projectBinding = (Map<String, String>) connectedModeMap.get(PROJECT);
+      var projectBinding = (Map<String, String>) connectedModeMap.get(PROJECT);
       // params.connectedMode.project is present but empty when there is no project binding
       if (!projectBinding.isEmpty()) {
         projectKey = projectBinding.get("projectKey");
@@ -323,7 +323,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private static Map<String, String> getAnalyzerProperties(Map<String, Object> params) {
     @SuppressWarnings("unchecked")
-    Map<String, String> map = (Map<String, String>) params.get(ANALYZER_PROPERTIES);
+    var map = (Map<String, String>) params.get(ANALYZER_PROPERTIES);
     if (map == null) {
       return Collections.emptyMap();
     }

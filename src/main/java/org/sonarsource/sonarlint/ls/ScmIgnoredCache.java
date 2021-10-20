@@ -58,9 +58,8 @@ public class ScmIgnoredCache {
   }
 
   private CompletableFuture<Optional<Boolean>> getOrFetchAsync(URI fileUri) {
-    Optional<Boolean> isIgnoredFromCache = filesIgnoredByUri.get(fileUri);
-    if (isIgnoredFromCache != null) {
-      return CompletableFuture.completedFuture(isIgnoredFromCache);
+    if (filesIgnoredByUri.containsKey(fileUri)) {
+      return CompletableFuture.completedFuture(filesIgnoredByUri.get(fileUri));
     }
     return client.isIgnoredByScm(fileUri.toString())
       .handle((r, t) -> {
@@ -70,7 +69,7 @@ public class ScmIgnoredCache {
         return r;
       })
       .thenApply(ignored -> {
-        Optional<Boolean> ignoredOpt = ofNullable(ignored);
+        var ignoredOpt = ofNullable(ignored);
         filesIgnoredByUri.put(fileUri, ignoredOpt);
         LOG.debug("Cached SCM ignore status for file '{}'", fileUri);
         return ignoredOpt;

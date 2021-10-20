@@ -52,7 +52,7 @@ public class WorkspaceFoldersProvider implements ModulesProvider {
   }
 
   private ModuleInfo createModuleInfo(WorkspaceFolderWrapper folder) {
-    FolderFileSystem clientFileWalker = new FolderFileSystem(folder, javaConfigCache, fileTypeClassifier);
+    var clientFileWalker = new FolderFileSystem(folder, javaConfigCache, fileTypeClassifier);
     return new ModuleInfo(key(folder), clientFileWalker);
   }
 }

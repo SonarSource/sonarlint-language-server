@@ -91,7 +91,7 @@ public class WorkspaceFolderSettings {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    WorkspaceFolderSettings other = (WorkspaceFolderSettings) obj;
+    var other = (WorkspaceFolderSettings) obj;
     return Objects.equals(connectionId, other.connectionId) && Objects.equals(projectKey, other.projectKey) && Objects.equals(analyzerProperties, other.analyzerProperties)
       && Objects.equals(testFilePattern, other.testFilePattern);
   }

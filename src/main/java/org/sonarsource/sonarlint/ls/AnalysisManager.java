@@ -29,7 +29,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -65,16 +64,13 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedAnalysisConfiguration;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneAnalysisConfiguration;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
-import org.sonarsource.sonarlint.ls.connected.ServerIssueTrackerWrapper;
 import org.sonarsource.sonarlint.ls.file.FileLanguageCache;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.FolderFileSystem;
@@ -172,15 +168,15 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       URI fileUri = URI.create(f.getUri());
       workspaceFoldersManager.findFolderForFile(fileUri)
         .ifPresent(folder -> {
-          WorkspaceFolderSettings settings = folder.getSettings();
-          Path baseDir = folder.getRootPath();
+          var settings = folder.getSettings();
+          var baseDir = folder.getRootPath();
 
-          Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(fileUri);
+          var binding = bindingManager.getBinding(fileUri);
 
-          SonarLintEngine engineForFile = binding.isPresent() ? binding.get().getEngine() : standaloneEngineManager.getOrCreateStandaloneEngine();
+          var engineForFile = binding.isPresent() ? binding.get().getEngine() : standaloneEngineManager.getOrCreateStandaloneEngine();
 
-          Optional<GetJavaConfigResponse> javaConfig = javaConfigCache.getOrFetch(fileUri);
-          ClientInputFile inputFile = new InFolderClientInputFile(fileUri, getFileRelativePath(baseDir, fileUri), fileTypeClassifier.isTest(settings, fileUri, javaConfig));
+          var javaConfig = javaConfigCache.getOrFetch(fileUri);
+          var inputFile = new InFolderClientInputFile(fileUri, getFileRelativePath(baseDir, fileUri), fileTypeClassifier.isTest(settings, fileUri, javaConfig));
 
           engineForFile.fireModuleFileEvent(WorkspaceFoldersProvider.key(folder), ClientModuleFileEvent.of(inputFile, translate(f.getType())));
         });
@@ -222,7 +218,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   @Override
   public void added(WorkspaceFolderWrapper addedFolder) {
     analysisExecutor.execute(() -> {
-      FolderFileSystem folderFileSystem = new FolderFileSystem(addedFolder, javaConfigCache, fileTypeClassifier);
+      var folderFileSystem = new FolderFileSystem(addedFolder, javaConfigCache, fileTypeClassifier);
       findEngineFor(addedFolder).declareModule(new ModuleInfo(WorkspaceFoldersProvider.key(addedFolder), folderFileSystem));
     });
   }
@@ -258,11 +254,11 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     }
 
     private void checkTimers() {
-      long t = System.currentTimeMillis();
+      var t = System.currentTimeMillis();
 
-      Iterator<Map.Entry<URI, Long>> it = eventMap.entrySet().iterator();
+      var it = eventMap.entrySet().iterator();
       while (it.hasNext()) {
-        Map.Entry<URI, Long> e = it.next();
+        var e = it.next();
         if (e.getValue() + DELAY_MS < t) {
           analyzeAsync(e.getKey(), false);
           it.remove();
@@ -300,12 +296,12 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   }
 
   private void analyze(URI fileUri, boolean shouldFetchServerIssues) {
-    final Optional<GetJavaConfigResponse> javaConfigOpt = javaConfigCache.getOrFetch(fileUri);
-    if (fileLanguageCache.isJava(fileUri) && !javaConfigOpt.isPresent()) {
+    final var javaConfigOpt = javaConfigCache.getOrFetch(fileUri);
+    if (fileLanguageCache.isJava(fileUri) && javaConfigOpt.isEmpty()) {
       LOG.debug("Skipping analysis of Java file '{}' because SonarLint was unable to query project configuration (classpath, source level, ...)", fileUri);
       return;
     }
-    Boolean isIgnored = filesIgnoredByScmCache.isIgnored(fileUri).orElse(false);
+    var isIgnored = filesIgnoredByScmCache.isIgnored(fileUri).orElse(false);
     if (Boolean.TRUE.equals(isIgnored)) {
       LOG.debug("Skip analysis for SCM ignored file: '{}'", fileUri);
       return;
@@ -315,31 +311,31 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       analyzedVersionPerFileURI.put(fileUri, knownVersionPerFileURI.get(fileUri));
     }
 
-    String content = fileContentPerFileURI.get(fileUri);
+    var content = fileContentPerFileURI.get(fileUri);
     if (content == null) {
       LOG.debug("Skipping analysis of file '{}', content has disappeared", fileUri);
       return;
     }
-    Map<String, Issue> newIssuesPerId = new HashMap<>();
+    var newIssuesPerId = new HashMap<String, Issue>();
     issuesPerIdPerFileURI.put(fileUri, newIssuesPerId);
     taintVulnerabilitiesPerFile.put(fileUri, new ArrayList<>());
 
-    Optional<WorkspaceFolderWrapper> workspaceFolder = workspaceFoldersManager.findFolderForFile(fileUri);
+    var workspaceFolder = workspaceFoldersManager.findFolderForFile(fileUri);
 
-    WorkspaceFolderSettings settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
+    var settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
       .orElse(settingsManager.getCurrentDefaultFolderSettings());
 
-    URI baseDirUri = workspaceFolder.map(WorkspaceFolderWrapper::getUri)
+    var baseDirUri = workspaceFolder.map(WorkspaceFolderWrapper::getUri)
       // Default to take file parent dir if file is not part of any workspace
       .orElse(Paths.get(fileUri).getParent().toUri());
 
-    IssueListener issueListener = createIssueListener();
+    var issueListener = createIssueListener();
 
-    Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(fileUri);
+    var binding = bindingManager.getBinding(fileUri);
     AnalysisResultsWrapper analysisResults;
     try {
       if (binding.isPresent()) {
-        ConnectedSonarLintEngine connectedEngine = binding.get().getEngine();
+        var connectedEngine = binding.get().getEngine();
         if (!connectedEngine.getExcludedFiles(binding.get().getBinding(),
           singleton(fileUri),
           uri -> getFileRelativePath(Paths.get(baseDirUri), uri),
@@ -356,7 +352,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       }
       SkippedPluginsNotifier.notifyOnceForSkippedPlugins(analysisResults.results, analysisResults.allPlugins, client);
 
-      Collection<Language> analyzedLanguages = analysisResults.results.languagePerFile().values();
+      var analyzedLanguages = analysisResults.results.languagePerFile().values();
       if (!analyzedLanguages.isEmpty()) {
         telemetry.analysisDoneOnSingleLanguage(analyzedLanguages.iterator().next(), analysisResults.analysisTime);
       }
@@ -372,14 +368,14 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
 
     // Check if file has not being closed during the analysis
     if (fileContentPerFileURI.containsKey(fileUri)) {
-      int foundIssues = newIssuesPerId.size();
+      var foundIssues = newIssuesPerId.size();
       LOG.info("Found {} {}", foundIssues, pluralize(foundIssues, "issue"));
       client.publishDiagnostics(newPublishDiagnostics(fileUri));
-      telemetry.addReportedRules(collectAllRuleKeys(issuesPerIdPerFileURI));
+      telemetry.addReportedRules(collectAllRuleKeys());
     }
   }
 
-  private Set<String> collectAllRuleKeys(Map<URI, Map<String, Issue>> issuesPerIdPerFileURI) {
+  private Set<String> collectAllRuleKeys() {
     return issuesPerIdPerFileURI.values().stream()
       .flatMap(m -> m.values().stream())
       .map(Issue::getRuleKey)
@@ -389,7 +385,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   private IssueListener createIssueListener() {
     return issue -> {
       showFirstSecretDetectionNotificationIfNeeded(issue);
-      ClientInputFile inputFile = issue.getInputFile();
+      var inputFile = issue.getInputFile();
       if (inputFile != null) {
         URI uri = inputFile.getClientObject();
         issuesPerIdPerFileURI.computeIfAbsent(uri, u -> new HashMap<>()).put(UUID.randomUUID().toString(), issue);
@@ -410,8 +406,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   }
 
   Optional<Issue> getIssueForDiagnostic(URI fileUri, Diagnostic d) {
-    Map<String, Issue> issuesForFile = issuesPerIdPerFileURI.getOrDefault(fileUri, emptyMap());
-    String issueKey = Optional.ofNullable(d.getData())
+    var issuesForFile = issuesPerIdPerFileURI.getOrDefault(fileUri, emptyMap());
+    var issueKey = Optional.ofNullable(d.getData())
       .map(JsonPrimitive.class::cast)
       .map(JsonPrimitive::getAsString)
       .orElse(null);
@@ -469,8 +465,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
 
   private AnalysisResultsWrapper analyzeStandalone(WorkspaceFolderSettings settings, URI baseDirUri, URI uri, String content, IssueListener issueListener,
     Optional<GetJavaConfigResponse> javaConfigOpt) {
-    Path baseDir = Paths.get(baseDirUri);
-    StandaloneAnalysisConfiguration configuration = StandaloneAnalysisConfiguration.builder()
+    var baseDir = Paths.get(baseDirUri);
+    var configuration = StandaloneAnalysisConfiguration.builder()
       .setBaseDir(baseDir)
       .setModuleKey(baseDirUri)
       .addInputFiles(new AnalysisClientInputFile(uri, getFileRelativePath(baseDir, uri), content, fileTypeClassifier.isTest(settings, uri, javaConfigOpt),
@@ -483,7 +479,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       .build();
     LOG.debug("Analysis triggered on '{}' with configuration: \n{}", uri, configuration.toString());
 
-    StandaloneSonarLintEngine engine = standaloneEngineManager.getOrCreateStandaloneEngine();
+    var engine = standaloneEngineManager.getOrCreateStandaloneEngine();
     return analyzeWithTiming(() -> engine.analyze(configuration, issueListener, null, null),
       engine.getPluginDetails(),
       () -> {
@@ -492,8 +488,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
 
   public AnalysisResultsWrapper analyzeConnected(ProjectBindingWrapper binding, WorkspaceFolderSettings settings, URI baseDirUri, URI uri, String content,
     IssueListener issueListener, boolean shouldFetchServerIssues, Optional<GetJavaConfigResponse> javaConfig) {
-    Path baseDir = Paths.get(baseDirUri);
-    ConnectedAnalysisConfiguration configuration = ConnectedAnalysisConfiguration.builder()
+    var baseDir = Paths.get(baseDirUri);
+    var configuration = ConnectedAnalysisConfiguration.builder()
       .setProjectKey(settings.getProjectKey())
       .setBaseDir(baseDir)
       .setModuleKey(baseDirUri)
@@ -507,17 +503,16 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     }
     LOG.debug("Analysis triggered on '{}' with configuration: \n{}", uri, configuration.toString());
 
-    List<Issue> issues = new LinkedList<>();
-    IssueListener collector = issues::add;
+    var issues = new LinkedList<Issue>();
 
-    ConnectedSonarLintEngine engine = binding.getEngine();
-    return analyzeWithTiming(() -> engine.analyze(configuration, collector, null, null),
+    var engine = binding.getEngine();
+    return analyzeWithTiming(() -> engine.analyze(configuration, issues::add, null, null),
       engine.getPluginDetails(),
       () -> {
-        String filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, uri));
-        ServerIssueTrackerWrapper serverIssueTracker = binding.getServerIssueTracker();
+        var filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, uri));
+        var serverIssueTracker = binding.getServerIssueTracker();
         serverIssueTracker.matchAndTrack(filePath, issues, issueListener, shouldFetchServerIssues);
-        List<ServerIssue> serverIssues = engine.getServerIssues(binding.getBinding(), filePath);
+        var serverIssues = engine.getServerIssues(binding.getBinding(), filePath);
 
         taintVulnerabilitiesPerFile.put(uri, serverIssues.stream()
           .filter(it -> it.ruleKey().contains(SECURITY_REPOSITORY_HINT))
@@ -555,11 +550,11 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   }
 
   static Optional<Diagnostic> convert(Map.Entry<String, Issue> entry) {
-    Issue issue = entry.getValue();
+    var issue = entry.getValue();
     if (issue.getStartLine() != null) {
-      Range range = position(issue);
-      Diagnostic diagnostic = new Diagnostic();
-      DiagnosticSeverity severity = severity(issue.getSeverity());
+      var range = position(issue);
+      var diagnostic = new Diagnostic();
+      var severity = severity(issue.getSeverity());
 
       diagnostic.setSeverity(severity);
       diagnostic.setRange(range);
@@ -575,9 +570,9 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
 
   static Optional<Diagnostic> convert(ServerIssue issue) {
     if (issue.getStartLine() != null) {
-      Range range = position(issue);
-      Diagnostic diagnostic = new Diagnostic();
-      DiagnosticSeverity severity = severity(issue.severity());
+      var range = position(issue);
+      var diagnostic = new Diagnostic();
+      var severity = severity(issue.severity());
 
       diagnostic.setSeverity(severity);
       diagnostic.setRange(range);
@@ -654,12 +649,12 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   }
 
   private PublishDiagnosticsParams newPublishDiagnostics(URI newUri) {
-    PublishDiagnosticsParams p = new PublishDiagnosticsParams();
+    var p = new PublishDiagnosticsParams();
 
-    Stream<Optional<Diagnostic>> localDiagnostics = issuesPerIdPerFileURI.getOrDefault(newUri, Collections.emptyMap()).entrySet()
+    var localDiagnostics = issuesPerIdPerFileURI.getOrDefault(newUri, Collections.emptyMap()).entrySet()
       .stream()
       .map(AnalysisManager::convert);
-    Stream<Optional<Diagnostic>> taintDiagnostics = taintVulnerabilitiesPerFile.getOrDefault(newUri, Collections.emptyList())
+    var taintDiagnostics = taintVulnerabilitiesPerFile.getOrDefault(newUri, Collections.emptyList())
       .stream()
       .map(AnalysisManager::convert);
 
@@ -691,7 +686,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
 
   public void analyzeAllOpenFilesInFolder(@Nullable WorkspaceFolderWrapper folder) {
     for (URI fileUri : fileContentPerFileURI.keySet()) {
-      Optional<WorkspaceFolderWrapper> actualFolder = workspaceFoldersManager.findFolderForFile(fileUri);
+      var actualFolder = workspaceFoldersManager.findFolderForFile(fileUri);
       if (actualFolder.map(f -> f.equals(folder)).orElse(folder == null)) {
         analyzeAsync(fileUri, false);
       }
@@ -711,16 +706,15 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   }
 
   private void analyzeAllUnboundOpenFiles() {
-    for (URI fileUri : fileContentPerFileURI.keySet()) {
-      Optional<ProjectBindingWrapper> binding = bindingManager.getBinding(fileUri);
-      if (!binding.isPresent()) {
+    for (var fileUri : fileContentPerFileURI.keySet()) {
+      if (bindingManager.getBinding(fileUri).isEmpty()) {
         analyzeAsync(fileUri, false);
       }
     }
   }
 
   private void analyzeAllOpenJavaFiles() {
-    for (URI fileUri : fileContentPerFileURI.keySet()) {
+    for (var fileUri : fileContentPerFileURI.keySet()) {
       if (fileLanguageCache.isJava(fileUri)) {
         analyzeAsync(fileUri, false);
       }
@@ -730,14 +724,14 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   private Map<String, String> configureJavaProperties(URI fileUri) {
     return javaConfigCache.get(fileUri).map(cachedJavaConfig -> {
       Map<String, String> props = new HashMap<>();
-      String vmLocationStr = cachedJavaConfig.getVmLocation();
+      var vmLocationStr = cachedJavaConfig.getVmLocation();
       List<Path> jdkClassesRoots = new ArrayList<>();
       if (vmLocationStr != null) {
-        Path vmLocation = Paths.get(vmLocationStr);
+        var vmLocation = Paths.get(vmLocationStr);
         jdkClassesRoots = getVmClasspathFromCacheOrCompute(vmLocation);
         props.put("sonar.java.jdkHome", vmLocationStr);
       }
-      String classpath = Stream.concat(
+      var classpath = Stream.concat(
         jdkClassesRoots.stream().map(Path::toAbsolutePath).map(Path::toString),
         Stream.of(cachedJavaConfig.getClasspath()))
         .filter(path -> {

@@ -100,7 +100,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
   public void initialize(@Nullable String productKey, @Nullable String telemetryStorage, String productName, String productVersion, String ideVersion,
     Map<String, Object> additionalAttributes) {
-    Path storagePath = getStoragePath(productKey, telemetryStorage);
+    var storagePath = getStoragePath(productKey, telemetryStorage);
     init(storagePath, productName, productVersion, ideVersion, additionalAttributes);
   }
 
@@ -115,7 +115,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
       LOG.info("Telemetry disabled by system property");
       return;
     }
-    TelemetryHttpClient client = new TelemetryHttpClient(productName, productVersion, ideVersion, httpClient);
+    var client = new TelemetryHttpClient(productName, productVersion, ideVersion, httpClient);
     this.telemetry = newTelemetryManager(storagePath, client);
     try {
       this.scheduler = executorFactory.get();

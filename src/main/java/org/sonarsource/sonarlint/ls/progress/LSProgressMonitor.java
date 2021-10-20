@@ -48,7 +48,7 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
   }
 
   void start(String title) {
-    WorkDoneProgressBegin progressBegin = new WorkDoneProgressBegin();
+    var progressBegin = new WorkDoneProgressBegin();
     progressBegin.setTitle(title);
     progressBegin.setCancellable(true);
     progressBegin.setPercentage(0);
@@ -61,7 +61,7 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
 
   @Override
   public void end(@Nullable String message) {
-    WorkDoneProgressEnd progressEnd = new WorkDoneProgressEnd();
+    var progressEnd = new WorkDoneProgressEnd();
     progressEnd.setMessage(message);
     client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressEnd)));
     this.ended = true;
@@ -83,19 +83,19 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
   }
 
   void enableCancelation() {
-    WorkDoneProgressReport progressReport = prepareProgressReport();
+    var progressReport = prepareProgressReport();
     progressReport.setCancellable(true);
     client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressReport)));
   }
 
   void disableCancelation() {
-    WorkDoneProgressReport progressReport = prepareProgressReport();
+    var progressReport = prepareProgressReport();
     progressReport.setCancellable(false);
     client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressReport)));
   }
 
   private WorkDoneProgressReport prepareProgressReport() {
-    WorkDoneProgressReport progressReport = new WorkDoneProgressReport();
+    var progressReport = new WorkDoneProgressReport();
     // Repeat the last message and percentage in every notification, because contrary to what is documented, VSCode doesn't preserve
     // the previous one
     // if you send a progress without message/percentage
@@ -132,7 +132,7 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
     if (message != null) {
       this.lastMessage = message;
     }
-    WorkDoneProgressReport progressReport = prepareProgressReport();
+    var progressReport = prepareProgressReport();
     client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressReport)));
   }
 
@@ -147,7 +147,7 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
   public void doInSubProgress(String title, float fraction, Consumer<ProgressFacade> subRunnable) {
     this.checkCanceled();
 
-    SubProgressMonitor subProgressMonitor = new SubProgressMonitor(this, title, fraction);
+    var subProgressMonitor = new SubProgressMonitor(this, title, fraction);
     subRunnable.accept(subProgressMonitor);
 
     if (!subProgressMonitor.ended) {

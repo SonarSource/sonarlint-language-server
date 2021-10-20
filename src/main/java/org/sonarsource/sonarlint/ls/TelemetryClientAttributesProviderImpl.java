@@ -70,7 +70,7 @@ public class TelemetryClientAttributesProviderImpl implements TelemetryClientAtt
 
   @Override
   public Collection<String> getNonDefaultEnabledRules() {
-    Set<String> enabled = settingsManager.getCurrentSettings().getIncludedRules()
+    var enabled = settingsManager.getCurrentSettings().getIncludedRules()
       .stream().map(RuleKey::toString).collect(Collectors.toSet());
     if (!enabled.isEmpty()) {
       enabled.removeAll(getDefaultEnabledRules());
@@ -87,10 +87,10 @@ public class TelemetryClientAttributesProviderImpl implements TelemetryClientAtt
 
   @Override
   public Collection<String> getDefaultDisabledRules() {
-    Set<String> disabled = settingsManager.getCurrentSettings().getExcludedRules()
+    var disabled = settingsManager.getCurrentSettings().getExcludedRules()
       .stream().map(RuleKey::toString).collect(Collectors.toSet());
     if (!disabled.isEmpty()) {
-      Set<String> defaultEnabledRules = getDefaultEnabledRules();
+      var defaultEnabledRules = getDefaultEnabledRules();
       disabled.removeIf(r -> !defaultEnabledRules.contains(r));
     }
     return disabled;

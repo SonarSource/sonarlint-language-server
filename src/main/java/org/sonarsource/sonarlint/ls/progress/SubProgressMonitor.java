@@ -55,7 +55,7 @@ public class SubProgressMonitor extends ProgressMonitor implements ProgressFacad
     parent.checkCanceled();
 
     float subSubFraction = this.subFraction * subFraction;
-    SubProgressMonitor subProgressMonitor = new SubProgressMonitor(parent, title + " - " + subTitle, subSubFraction);
+    var subProgressMonitor = new SubProgressMonitor(parent, title + " - " + subTitle, subSubFraction);
     subRunnable.accept(subProgressMonitor);
 
     if (!subProgressMonitor.ended) {

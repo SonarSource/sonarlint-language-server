@@ -25,7 +25,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
@@ -33,7 +32,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -59,7 +57,6 @@ import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.TextDocumentSyncOptions;
 import org.eclipse.lsp4j.WorkDoneProgressCancelParams;
-import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.eclipse.lsp4j.WorkspaceFoldersOptions;
 import org.eclipse.lsp4j.WorkspaceServerCapabilities;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
@@ -115,7 +112,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<URL> analyzers, Collection<URL> extraAnalyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
-    Launcher<SonarLintExtendedLanguageClient> launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
+    var launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
       .setLocalService(this)
       .setRemoteInterface(SonarLintExtendedLanguageClient.class)
       .setInput(inputStream)
@@ -125,14 +122,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
     this.client = launcher.getRemoteProxy();
     this.httpClient = ApacheHttpClient.create();
-    LanguageClientLogOutput lsLogOutput = new LanguageClientLogOutput(this.client);
+    var lsLogOutput = new LanguageClientLogOutput(this.client);
     Loggers.setTarget(lsLogOutput);
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.progressManager = new ProgressManager(client);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClient);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
-    FileTypeClassifier fileTypeClassifier = new FileTypeClassifier(fileLanguageCache);
-    JavaConfigCache javaConfigCache = new JavaConfigCache(client, fileLanguageCache);
+    var fileTypeClassifier = new FileTypeClassifier(fileLanguageCache);
+    var javaConfigCache = new JavaConfigCache(client, fileLanguageCache);
     this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput, nodeJsRuntime,
       new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, javaConfigCache), extraAnalyzers);
     this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
@@ -158,7 +155,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   static void bySocket(int port, Collection<URL> analyzers, Collection<URL> extraAnalyzers) throws IOException {
-    Socket socket = new Socket("localhost", port);
+    var socket = new Socket("localhost", port);
     new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers, extraAnalyzers);
   }
 
@@ -172,21 +169,21 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
       workspaceFoldersManager.initialize(params.getWorkspaceFolders());
 
-      Map<String, Object> options = Utils.parseToMap(params.getInitializationOptions());
+      var options = Utils.parseToMap(params.getInitializationOptions());
 
-      String productKey = (String) options.get("productKey");
+      var productKey = (String) options.get("productKey");
       // deprecated, will be ignored when productKey present
-      String telemetryStorage = (String) options.get("telemetryStorage");
+      var telemetryStorage = (String) options.get("telemetryStorage");
 
-      String productName = (String) options.get("productName");
-      String productVersion = (String) options.get("productVersion");
-      String appName = params.getClientInfo().getName();
-      String workspaceName = (String) options.get("workspaceName");
-      String clientVersion = params.getClientInfo().getVersion();
-      String ideVersion = appName + " " + clientVersion;
-      boolean firstSecretDetected = Boolean.parseBoolean((String) options.get("firstSecretDetected"));
-      Optional<String> typeScriptPath = ofNullable((String) options.get(TYPESCRIPT_LOCATION));
-      Map<String, Object> additionalAttributes = ofNullable((Map<String, Object>) options.get("additionalAttributes")).orElse(Collections.emptyMap());
+      var productName = (String) options.get("productName");
+      var productVersion = (String) options.get("productVersion");
+      var appName = params.getClientInfo().getName();
+      var workspaceName = (String) options.get("workspaceName");
+      var clientVersion = params.getClientInfo().getVersion();
+      var ideVersion = appName + " " + clientVersion;
+      var firstSecretDetected = Boolean.parseBoolean((String) options.get("firstSecretDetected"));
+      var typeScriptPath = ofNullable((String) options.get(TYPESCRIPT_LOCATION));
+      var additionalAttributes = ofNullable((Map<String, Object>) options.get("additionalAttributes")).orElse(Collections.emptyMap());
 
       enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));
       analysisManager.initialize(firstSecretDetected);
@@ -194,15 +191,15 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       securityHotspotsHandlerServer.initialize(appName, clientVersion, workspaceName);
       telemetry.initialize(productKey, telemetryStorage, productName, productVersion, ideVersion, additionalAttributes);
 
-      ServerCapabilities c = new ServerCapabilities();
+      var c = new ServerCapabilities();
       c.setTextDocumentSync(getTextDocumentSyncOptions());
       c.setCodeActionProvider(true);
-      ExecuteCommandOptions executeCommandOptions = new ExecuteCommandOptions(CommandManager.SONARLINT_SERVERSIDE_COMMANDS);
+      var executeCommandOptions = new ExecuteCommandOptions(CommandManager.SONARLINT_SERVERSIDE_COMMANDS);
       executeCommandOptions.setWorkDoneProgress(true);
       c.setExecuteCommandProvider(executeCommandOptions);
       c.setWorkspace(getWorkspaceServerCapabilities());
 
-      ServerInfo info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
+      var info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
 
       return new InitializeResult(c, info);
     });
@@ -210,10 +207,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @CheckForNull
   static String getServerVersion(String fileName) {
-    ClassLoader classLoader = ClassLoader.getSystemClassLoader();
-    try (InputStream is = classLoader.getResourceAsStream(fileName)) {
-      try (InputStreamReader isr = new InputStreamReader(is, StandardCharsets.UTF_8);
-        BufferedReader reader = new BufferedReader(isr)) {
+    var classLoader = ClassLoader.getSystemClassLoader();
+    try (var is = classLoader.getResourceAsStream(fileName)) {
+      try (var isr = new InputStreamReader(is, StandardCharsets.UTF_8);
+           var reader = new BufferedReader(isr)) {
         return reader.lines().findFirst().orElse(null);
       }
     } catch (IOException e) {
@@ -222,17 +219,17 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   private static WorkspaceServerCapabilities getWorkspaceServerCapabilities() {
-    WorkspaceFoldersOptions options = new WorkspaceFoldersOptions();
+    var options = new WorkspaceFoldersOptions();
     options.setSupported(true);
     options.setChangeNotifications(true);
 
-    WorkspaceServerCapabilities capabilities = new WorkspaceServerCapabilities();
+    var capabilities = new WorkspaceServerCapabilities();
     capabilities.setWorkspaceFolders(options);
     return capabilities;
   }
 
   private static TextDocumentSyncOptions getTextDocumentSyncOptions() {
-    TextDocumentSyncOptions textDocumentSyncOptions = new TextDocumentSyncOptions();
+    var textDocumentSyncOptions = new TextDocumentSyncOptions();
     textDocumentSyncOptions.setOpenClose(true);
     textDocumentSyncOptions.setChange(TextDocumentSyncKind.Full);
     textDocumentSyncOptions.setSave(new SaveOptions(true));
@@ -276,25 +273,25 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didOpen(DidOpenTextDocumentParams params) {
-    URI uri = create(params.getTextDocument().getUri());
+    var uri = create(params.getTextDocument().getUri());
     analysisManager.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
   }
 
   @Override
   public void didChange(DidChangeTextDocumentParams params) {
-    URI uri = create(params.getTextDocument().getUri());
+    var uri = create(params.getTextDocument().getUri());
     analysisManager.didChange(uri, params.getContentChanges().get(0).getText(), params.getTextDocument().getVersion());
   }
 
   @Override
   public void didClose(DidCloseTextDocumentParams params) {
-    URI uri = create(params.getTextDocument().getUri());
+    var uri = create(params.getTextDocument().getUri());
     analysisManager.didClose(uri);
   }
 
   @Override
   public void didSave(DidSaveTextDocumentParams params) {
-    URI uri = create(params.getTextDocument().getUri());
+    var uri = create(params.getTextDocument().getUri());
     analysisManager.didSave(uri, params.getText());
   }
 
@@ -332,7 +329,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParams params) {
-    WorkspaceFoldersChangeEvent event = params.getEvent();
+    var event = params.getEvent();
     workspaceFoldersManager.didChangeWorkspaceFolders(event);
   }
 
