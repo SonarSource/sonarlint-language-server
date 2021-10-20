@@ -659,8 +659,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       .map(AnalysisManager::convert);
 
     p.setDiagnostics(Stream.concat(localDiagnostics, taintDiagnostics)
-      .filter(Optional::isPresent)
-      .map(Optional::get)
+      .flatMap(Optional::stream)
       .sorted(AnalysisManager.byLineNumber())
       .collect(Collectors.toList()));
     p.setUri(newUri.toString());
