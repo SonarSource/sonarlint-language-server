@@ -19,7 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls.connected;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
 import com.google.gson.annotations.Expose;
 import java.io.IOException;
@@ -125,7 +124,6 @@ public class SecurityHotspotsHandlerServer {
     }
   }
 
-  @VisibleForTesting
   int getPort() {
     return port;
   }

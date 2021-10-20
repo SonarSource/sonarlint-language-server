@@ -76,6 +76,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 import static java.lang.Boolean.TRUE;
 import static java.util.Objects.requireNonNull;
+import static java.util.function.Predicate.not;
 
 /**
  * Keep a cache of project bindings. Files that are part of a workspace workspaceFolderPath will share the same binding.
@@ -352,7 +353,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     foldersManager.getAll().forEach(w -> collectUsedServerId(usedServerIds, w.getSettings()));
     var startedEngines = new HashSet<>(connectedEngineCacheByConnectionId.keySet());
     startedEngines.stream()
-      .filter(startedEngineId -> !usedServerIds.contains(startedEngineId))
+      .filter(not(usedServerIds::contains))
       .forEach(startedEngineId -> {
         folderBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().getConnectionId().equals(startedEngineId));
         fileBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().getConnectionId().equals(startedEngineId));

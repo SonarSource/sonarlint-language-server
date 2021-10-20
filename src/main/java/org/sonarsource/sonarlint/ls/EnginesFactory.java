@@ -86,8 +86,8 @@ public class EnginesFactory {
         .setExtraProperties(prepareExtraProps())
         .addEnabledLanguages(STANDALONE_LANGUAGES)
         .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
-        .addPlugins(standaloneAnalyzers.toArray(new URL[0]))
-        .addPlugins(extraAnalyzers.toArray(new URL[0]))
+        .addPlugins(standaloneAnalyzers.toArray(URL[]::new))
+        .addPlugins(extraAnalyzers.toArray(URL[]::new))
         .setModulesProvider(modulesProvider)
         .setLogOutput(lsLogOutput)
         .build();

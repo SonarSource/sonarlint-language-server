@@ -35,6 +35,8 @@ import org.sonarsource.sonarlint.core.tracking.IssueTrackerCache;
 import org.sonarsource.sonarlint.core.tracking.Trackable;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
+import static java.util.function.Predicate.not;
+
 public class ServerIssueTrackerWrapper {
 
   private final ConnectedSonarLintEngine engine;
@@ -69,7 +71,7 @@ public class ServerIssueTrackerWrapper {
     }
 
     issueTrackerCache.getLiveOrFail(filePath).stream()
-      .filter(t -> !t.isResolved())
+      .filter(not(Trackable::isResolved))
       .forEach(trackable -> issueListener.handle(new DelegatingIssue(trackable.getIssue()) {
         @Override
         public String getSeverity() {

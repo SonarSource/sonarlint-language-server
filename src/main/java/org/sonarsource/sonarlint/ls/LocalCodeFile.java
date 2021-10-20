@@ -19,11 +19,11 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Collections;
 import java.util.List;
 import javax.annotation.CheckForNull;
@@ -39,7 +39,7 @@ public class LocalCodeFile {
     if (localFile.exists()) {
       try {
         // TODO Find the right character set to use?
-        this.lines = Files.readLines(localFile, StandardCharsets.UTF_8);
+        this.lines = Files.readAllLines(localFile.toPath(), StandardCharsets.UTF_8);
       } catch(IOException ioe) {
         this.lines = Collections.emptyList();
       }
