@@ -11,9 +11,9 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * Lesser General License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU Lesser General License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -34,26 +35,25 @@ import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintE
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
 import static java.net.URI.create;
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
-public class EnginesFactoryTests {
+class EnginesFactoryTests {
 
   private static final Path FAKE_TYPESCRIPT_PATH = Paths.get("some/path");
   private EnginesFactory underTest;
 
   @BeforeEach
-  public void prepare() throws Exception {
-    underTest = new EnginesFactory(asList(create("file://plugin1.jar").toURL(), create("file://plugin2.jar").toURL()), mock(LanguageClientLogOutput.class), mock(NodeJsRuntime.class), mock(ModulesProvider.class), Collections.emptyList());
+  void prepare() throws Exception {
+    underTest = new EnginesFactory(List.of(create("file://plugin1.jar").toURL(), create("file://plugin2.jar").toURL()), mock(LanguageClientLogOutput.class), mock(NodeJsRuntime.class), mock(ModulesProvider.class), Collections.emptyList());
     underTest = spy(underTest);
   }
 
   @Test
-  public void pass_typescript_path_to_standalone_engine() throws Exception {
+  void pass_typescript_path_to_standalone_engine() throws Exception {
     underTest.initialize(FAKE_TYPESCRIPT_PATH);
 
     ArgumentCaptor<StandaloneGlobalConfiguration> argCaptor = ArgumentCaptor.forClass(StandaloneGlobalConfiguration.class);
@@ -69,7 +69,7 @@ public class EnginesFactoryTests {
   }
 
   @Test
-  public void no_typescript_to_standalone_engine() throws Exception {
+  void no_typescript_to_standalone_engine() throws Exception {
     underTest.initialize(null);
 
     ArgumentCaptor<StandaloneGlobalConfiguration> argCaptor = ArgumentCaptor.forClass(StandaloneGlobalConfiguration.class);
@@ -84,7 +84,7 @@ public class EnginesFactoryTests {
   }
 
   @Test
-  public void pass_typescript_path_to_connected_engine() throws Exception {
+  void pass_typescript_path_to_connected_engine() throws Exception {
     underTest.initialize(FAKE_TYPESCRIPT_PATH);
 
     ArgumentCaptor<ConnectedGlobalConfiguration> argCaptor = ArgumentCaptor.forClass(ConnectedGlobalConfiguration.class);
@@ -100,7 +100,7 @@ public class EnginesFactoryTests {
   }
 
   @Test
-  public void no_typescript_to_connected_engine() throws Exception {
+  void no_typescript_to_connected_engine() throws Exception {
     underTest.initialize(null);
 
     ArgumentCaptor<ConnectedGlobalConfiguration> argCaptor = ArgumentCaptor.forClass(ConnectedGlobalConfiguration.class);
@@ -115,7 +115,7 @@ public class EnginesFactoryTests {
   }
 
   @Test
-  public void get_standalone_languages() {
+  void get_standalone_languages() {
     assertThat(EnginesFactory.getStandaloneLanguages()).containsExactlyInAnyOrder(
       Language.HTML,
       Language.JAVA,
@@ -128,7 +128,7 @@ public class EnginesFactoryTests {
   }
 
   @Test
-  public void resolve_extra_plugin_key() {
+  void resolve_extra_plugin_key() {
     assertThat(EnginesFactory.guessPluginKey("file:///sonarsecrets.jar")).isEqualTo(Language.SECRETS.getPluginKey());
     assertThatThrownBy(() -> EnginesFactory.guessPluginKey("file:///unknown.jar"))
       .isInstanceOf(IllegalStateException.class)

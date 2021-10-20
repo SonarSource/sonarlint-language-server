@@ -165,7 +165,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     if (uri != null) {
       configurationItem.setScopeUri(uri.toString());
     }
-    params.setItems(Collections.singletonList(configurationItem));
+    params.setItems(List.of(configurationItem));
     return client.configuration(params)
       .handle((r, t) -> {
         if (t != null) {

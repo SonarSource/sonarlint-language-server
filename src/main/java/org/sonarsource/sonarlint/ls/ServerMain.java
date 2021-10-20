@@ -24,7 +24,6 @@ import java.io.PrintStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -79,7 +78,7 @@ public class ServerMain {
   }
 
   Collection<URL> extractAnalyzers(String[] args) {
-    var indexOfAnalyzersParam = Arrays.asList(args).indexOf(ANALYZERS_KEY);
+    var indexOfAnalyzersParam = List.of(args).indexOf(ANALYZERS_KEY);
     if (indexOfAnalyzersParam == -1) {
       err.println(USAGE);
       exitWithError();
@@ -90,7 +89,7 @@ public class ServerMain {
   }
 
   Collection<URL> extractExtraAnalyzers(String[] args) {
-    var indexOfExtraAnalyzersParam = Arrays.asList(args).indexOf(EXTRA_ANALYZERS_KEY);
+    var indexOfExtraAnalyzersParam = List.of(args).indexOf(EXTRA_ANALYZERS_KEY);
     if (indexOfExtraAnalyzersParam == -1) {
       return Collections.emptyList();
     }

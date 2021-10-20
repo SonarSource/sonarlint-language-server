@@ -124,7 +124,7 @@ class TelemetryClientAttributesProviderImplTest {
     when(standaloneRule1.getKey()).thenReturn("ruleKey2");
     when(standaloneRule1.isActiveByDefault()).thenReturn(true);
     when(workspaceSettings.getIncludedRules()).thenReturn(rules);
-    when(standaloneSonarLintEngine.getAllRuleDetails()).thenReturn(Collections.singletonList(standaloneRule1));
+    when(standaloneSonarLintEngine.getAllRuleDetails()).thenReturn(List.of(standaloneRule1));
 
     Collection<String> nonDefaultEnabledRules = underTest.getNonDefaultEnabledRules();
 
@@ -161,7 +161,7 @@ class TelemetryClientAttributesProviderImplTest {
     when(standaloneRule1.getKey()).thenReturn("ruleKey1");
     when(standaloneRule1.isActiveByDefault()).thenReturn(true);
     when(workspaceSettings.getExcludedRules()).thenReturn(rules);
-    when(standaloneSonarLintEngine.getAllRuleDetails()).thenReturn(Collections.singletonList(standaloneRule1));
+    when(standaloneSonarLintEngine.getAllRuleDetails()).thenReturn(List.of(standaloneRule1));
 
     Collection<String> nonDefaultEnabledRules = underTest.getDefaultDisabledRules();
 

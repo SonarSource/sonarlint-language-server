@@ -63,8 +63,6 @@ import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
@@ -185,7 +183,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
         tuple(1, 8, 1, 15, "python:S1192", "sonarlint", "Define a constant instead of duplicating this literal '/toto' 3 times. [+2 locations]", DiagnosticSeverity.Warning));
 
     Diagnostic d = diagnostics.get(0);
-    CodeActionParams codeActionParams = new CodeActionParams(new TextDocumentIdentifier(uri), d.getRange(), new CodeActionContext(singletonList(d)));
+    CodeActionParams codeActionParams = new CodeActionParams(new TextDocumentIdentifier(uri), d.getRange(), new CodeActionContext(List.of(d)));
     List<Either<Command, CodeAction>> list = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
     assertThat(list).hasSize(3);
     CodeAction allLocationsAction = list.get(1).getRight();
@@ -281,9 +279,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     // Emulate two quick changes, should only trigger one analysis
     client.diagnosticsLatch = new CountDownLatch(1);
     lsProxy.getTextDocumentService()
-      .didChange(new DidChangeTextDocumentParams(docId, singletonList(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n}"))));
+      .didChange(new DidChangeTextDocumentParams(docId, List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n}"))));
     lsProxy.getTextDocumentService()
-      .didChange(new DidChangeTextDocumentParams(docId, singletonList(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n  var plouf = 0;\n}"))));
+      .didChange(new DidChangeTextDocumentParams(docId, List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n  var plouf = 0;\n}"))));
     if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
       List<Diagnostic> diagnostics = client.getDiagnostics(uri);
       assertThat(diagnostics)
@@ -393,7 +391,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void test_command_open_standalone_rule_desc_with_unknown_diagnostic_rule() throws Exception {
     try {
-      lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", singletonList("unknown:rule"))).get();
+      lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", List.of("unknown:rule"))).get();
       fail("Expected exception");
     } catch (Exception e) {
       assertThat(e).isInstanceOf(ExecutionException.class).hasCauseInstanceOf(ResponseErrorException.class);
@@ -405,7 +403,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void test_command_open_standalone_rule_desc() throws Exception {
     client.showRuleDescriptionLatch = new CountDownLatch(1);
-    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", singletonList("javascript:S930"))).get();
+    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", List.of("javascript:S930"))).get();
     assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
 
     assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S930");
@@ -419,7 +417,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void test_command_open_standalone_rule_desc_with_params() throws Exception {
     client.showRuleDescriptionLatch = new CountDownLatch(1);
-    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", singletonList("javascript:S103"))).get();
+    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", List.of("javascript:S103"))).get();
     assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
 
     assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S103");
@@ -436,7 +434,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void test_command_open_rule_desc_from_code_action() throws Exception {
     client.showRuleDescriptionLatch = new CountDownLatch(1);
-    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenRuleDescCodeAction", asList("javascript:S930", "file://foo.js"))).get();
+    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenRuleDescCodeAction", List.of("javascript:S930", "file://foo.js"))).get();
     assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
 
     assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S930");
@@ -453,7 +451,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     d.setSource("sonarlint");
     d.setCode("javascript:S930");
     d.setData("uuid");
-    CodeActionParams codeActionParams = new CodeActionParams(new TextDocumentIdentifier("file://foo.js"), range, new CodeActionContext(singletonList(d)));
+    CodeActionParams codeActionParams = new CodeActionParams(new TextDocumentIdentifier("file://foo.js"), range, new CodeActionContext(List.of(d)));
     List<Either<Command, CodeAction>> list = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
     assertThat(list).hasSize(2);
     CodeAction codeAction = list.get(0).getRight();
@@ -490,14 +488,14 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       lsProxy.getWorkspaceService()
         .didChangeWorkspaceFolders(
           new DidChangeWorkspaceFoldersParams(
-            new WorkspaceFoldersChangeEvent(Collections.singletonList(new WorkspaceFolder(folderUri, "No config")), Collections.emptyList())));
+            new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folderUri, "No config")), Collections.emptyList())));
 
       assertLogContainsPattern("\\[Error.*\\] Unable to fetch configuration of folder " + folderUri);
       assertLogContainsPattern("(?s).*Internal error.*");
     } finally {
       lsProxy.getWorkspaceService()
         .didChangeWorkspaceFolders(
-          new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), singletonList(new WorkspaceFolder(folderUri, "No config")))));
+          new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), List.of(new WorkspaceFolder(folderUri, "No config")))));
     }
   }
 
@@ -510,7 +508,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     try {
       lsProxy.getWorkspaceService()
         .didChangeWorkspaceFolders(
-          new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.singletonList(new WorkspaceFolder(folderUri, "Added")), Collections.emptyList())));
+          new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folderUri, "Added")), Collections.emptyList())));
       awaitLatch(client.settingsLatch);
 
       assertLogContains(
@@ -518,7 +516,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     } finally {
       lsProxy.getWorkspaceService()
         .didChangeWorkspaceFolders(
-          new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), singletonList(new WorkspaceFolder(folderUri, "Added")))));
+          new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), List.of(new WorkspaceFolder(folderUri, "Added")))));
 
     }
   }

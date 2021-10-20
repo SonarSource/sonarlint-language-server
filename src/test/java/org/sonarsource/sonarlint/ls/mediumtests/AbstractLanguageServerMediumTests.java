@@ -88,8 +88,6 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -159,7 +157,7 @@ public abstract class AbstractLanguageServerMediumTests {
     InitializeParams initializeParams = new InitializeParams();
     initializeParams.setTrace("messages");
     initializeParams.setInitializationOptions(initializeOptions);
-    initializeParams.setWorkspaceFolders(asList(initFolders));
+    initializeParams.setWorkspaceFolders(List.of(initFolders));
     initializeParams.setClientInfo(new ClientInfo("SonarLint LS Medium tests", "1.0"));
     initializeParams.setCapabilities(new ClientCapabilities());
     initializeParams.getCapabilities().setWindow(new WindowClientCapabilities());
@@ -430,7 +428,7 @@ public abstract class AbstractLanguageServerMediumTests {
     VersionedTextDocumentIdentifier docId = new VersionedTextDocumentIdentifier(uri, 1);
     client.diagnosticsLatch = new CountDownLatch(1);
     lsProxy.getTextDocumentService()
-      .didChange(new DidChangeTextDocumentParams(docId, singletonList(new TextDocumentContentChangeEvent(content))));
+      .didChange(new DidChangeTextDocumentParams(docId, List.of(new TextDocumentContentChangeEvent(content))));
     toBeClosed.add(uri);
     return awaitDiagnosticsForOneMinute(uri);
   }

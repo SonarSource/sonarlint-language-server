@@ -23,8 +23,6 @@ import java.net.URI;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Paths;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,14 +58,14 @@ class ShowAllLocationsCommandTest {
     when(loc11.getTextRange()).thenReturn(new TextRange(0, 0, 0, 7));
     IssueLocation loc12 = mock(IssueLocation.class);
     when(loc12.getTextRange()).thenReturn(new TextRange(2, 2, 2, 9));
-    List<IssueLocation> locations1 = Arrays.asList(loc11, loc12);
+    List<IssueLocation> locations1 = List.of(loc11, loc12);
     when(flow1.locations()).thenReturn(locations1);
     Issue.Flow flow2 = mock(Issue.Flow.class);
     IssueLocation loc2 = mock(IssueLocation.class);
     when(loc2.getTextRange()).thenReturn(new TextRange(4, 0, 4, 7));
-    List<IssueLocation> locations2 = Collections.singletonList(loc2);
+    List<IssueLocation> locations2 = List.of(loc2);
     when(flow2.locations()).thenReturn(locations2);
-    List<Issue.Flow> flows = Arrays.asList(flow1, flow2);
+    List<Issue.Flow> flows = List.of(flow1, flow2);
     when(issue.flows()).thenReturn(flows);
 
     ShowAllLocationsCommand.Param params = ShowAllLocationsCommand.params(issue);
@@ -94,7 +92,7 @@ class ShowAllLocationsCommandTest {
     ServerIssue issue = mock(ServerIssue.class);
     when(issue.getFilePath()).thenReturn("filePath");
     ServerIssue.Flow flow = mock(ServerIssue.Flow.class);
-    when(issue.getFlows()).thenReturn(Collections.singletonList(flow));
+    when(issue.getFlows()).thenReturn(List.of(flow));
     when(issue.creationDate()).thenReturn(Instant.EPOCH);
 
     String locationFilePath = "locationFilePath";
@@ -111,7 +109,7 @@ class ShowAllLocationsCommandTest {
     when(location2.getTextRange()).thenReturn(range2);
     when(location2.getCodeSnippet()).thenReturn("other code");
 
-    when(flow.locations()).thenReturn(Arrays.asList(location1, location2));
+    when(flow.locations()).thenReturn(List.of(location1, location2));
 
     LocalCodeFile mockCodeFile = mock(LocalCodeFile.class);
     when(mockCodeFile.codeAt(range1)).thenReturn("some code");

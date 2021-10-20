@@ -21,10 +21,10 @@ package org.sonarsource.sonarlint.ls;
 
 import java.net.URL;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.annotation.CheckForNull;
@@ -146,7 +146,7 @@ public class EnginesFactory {
   }
 
   public static Set<Language> getStandaloneLanguages() {
-    return EnumSet.copyOf(Arrays.asList(STANDALONE_LANGUAGES));
+    return EnumSet.copyOf(List.of(STANDALONE_LANGUAGES));
   }
 
 }

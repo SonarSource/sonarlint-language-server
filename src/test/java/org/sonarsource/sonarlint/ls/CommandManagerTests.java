@@ -25,7 +25,6 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionContext;
 import org.eclipse.lsp4j.CodeActionParams;
@@ -66,9 +65,7 @@ import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 
-import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -146,7 +143,7 @@ class CommandManagerTests {
   @Test
   void noCodeActionsIfNotSonarLintDiagnostic() {
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
-      new CodeActionContext(singletonList(new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, "not_sonarlint", "XYZ")))), NOP_CANCEL_TOKEN);
+      new CodeActionContext(List.of(new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, "not_sonarlint", "XYZ")))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).isEmpty();
   }
@@ -156,7 +153,7 @@ class CommandManagerTests {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
 
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
-      new CodeActionContext(singletonList(new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ")))), NOP_CANCEL_TOKEN);
+      new CodeActionContext(List.of(new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ")))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("SonarLint: Open description of rule 'XYZ'");
   }
@@ -171,7 +168,7 @@ class CommandManagerTests {
     when(mockAnalysisManager.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
-      new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
+      new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsOnly(
@@ -194,17 +191,17 @@ class CommandManagerTests {
     when(textEdit.newText()).thenReturn("");
     when(textEdit.range()).thenReturn(new TextRange(1, 0,1, 1));
     ClientInputFileEdit edit = mock(ClientInputFileEdit.class);
-    when(edit.textEdits()).thenReturn(Collections.singletonList(textEdit));
+    when(edit.textEdits()).thenReturn(List.of(textEdit));
     ClientInputFile target = mock(ClientInputFile.class);
     when(target.uri()).thenReturn(fileUri);
     when(edit.target()).thenReturn(target);
     QuickFix fix = mock(QuickFix.class);
     when(fix.message()).thenReturn("Fix the issue!");
-    when(fix.inputFileEdits()).thenReturn(Collections.singletonList(edit));
-    when(issue.quickFixes()).thenReturn(Collections.singletonList(fix));
+    when(fix.inputFileEdits()).thenReturn(List.of(edit));
+    when(issue.quickFixes()).thenReturn(List.of(fix));
 
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
-      new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
+      new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
@@ -231,14 +228,14 @@ class CommandManagerTests {
     when(issue.ruleKey()).thenReturn("ruleKey");
     when(issue.creationDate()).thenReturn(Instant.EPOCH);
     ServerIssue.Flow flow = mock(ServerIssue.Flow.class);
-    when(issue.getFlows()).thenReturn(Collections.singletonList(flow));
+    when(issue.getFlows()).thenReturn(List.of(flow));
     ServerIssueLocation location = mock(ServerIssueLocation.class);
-    when(flow.locations()).thenReturn(Collections.singletonList(location));
+    when(flow.locations()).thenReturn(List.of(location));
     when(issue.key()).thenReturn("SomeIssueKey");
     when(mockAnalysisManager.getTaintVulnerabilityForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
-      new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
+      new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
       "SonarLint: Open description of rule 'ruleKey'",
@@ -254,13 +251,13 @@ class CommandManagerTests {
     Diagnostic d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
     Issue.Flow flow = mock(Issue.Flow.class);
-    List<Issue.Flow> flows = Collections.singletonList(flow);
+    List<Issue.Flow> flows = List.of(flow);
     Issue issue = mock(Issue.class);
     when(issue.flows()).thenReturn(flows);
     when(mockAnalysisManager.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
     List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
-      new CodeActionContext(singletonList(d))), NOP_CANCEL_TOKEN);
+      new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsOnly(
@@ -282,7 +279,7 @@ class CommandManagerTests {
     when(ruleDetails.getSeverity()).thenReturn("Severity");
     when(mockConnectedEngine.getActiveRuleDetails(FAKE_RULE_KEY, "projectKey")).thenReturn(ruleDetails);
     underTest.executeCommand(
-      new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, asList(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
+      new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, List.of(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
       NOP_CANCEL_TOKEN);
 
     verify(mockClient).showRuleDescription(new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc", "Type", "Severity", Collections.emptyList()));
@@ -295,7 +292,7 @@ class CommandManagerTests {
 
     ExecuteCommandParams params = new ExecuteCommandParams(
       SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
-      asList(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI)));
+      List.of(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI)));
     assertThrows(ResponseErrorException.class, () -> underTest.executeCommand(params, NOP_CANCEL_TOKEN));
   }
 
@@ -313,7 +310,7 @@ class CommandManagerTests {
     when(apiParam.type()).thenReturn(RuleParamType.INTEGER);
     when(apiParam.description()).thenReturn("An integer parameter");
     when(apiParam.defaultValue()).thenReturn("42");
-    List<StandaloneRuleParam> params = singletonList(new DefaultStandaloneRuleParam(apiParam));
+    List<StandaloneRuleParam> params = List.of(new DefaultStandaloneRuleParam(apiParam));
     when(ruleDetails.paramDetails()).thenReturn(params);
     when(mockStandaloneEngine.getRuleDetails(FAKE_RULE_KEY)).thenReturn(Optional.of(ruleDetails));
     StandaloneSonarLintEngine sonarLintEngine = mock(StandaloneSonarLintEngine.class);
@@ -321,7 +318,7 @@ class CommandManagerTests {
     when(sonarLintEngine.getRuleDetails("javascript:S1234")).thenReturn(Optional.of(ruleDetails));
 
     underTest.executeCommand(
-      new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, asList(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
+      new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, List.of(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
       NOP_CANCEL_TOKEN);
 
     verify(mockClient).showRuleDescription(
@@ -331,7 +328,7 @@ class CommandManagerTests {
   @Test
   void browseTaintVulnerability() {
     String issueUrl = "https://some.sq/issue/id";
-    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_BROWSE_TAINT_VULNERABILITY, singletonList(new JsonPrimitive(issueUrl))), NOP_CANCEL_TOKEN);
+    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_BROWSE_TAINT_VULNERABILITY, List.of(new JsonPrimitive(issueUrl))), NOP_CANCEL_TOKEN);
     verify(mockTelemetry).taintVulnerabilitiesInvestigatedRemotely();
     verify(mockClient).browseTo(issueUrl);
   }
@@ -344,12 +341,12 @@ class CommandManagerTests {
     when(issue.ruleKey()).thenReturn("ruleKey");
     when(issue.creationDate()).thenReturn(Instant.EPOCH);
     ServerIssue.Flow flow = mock(ServerIssue.Flow.class);
-    when(issue.getFlows()).thenReturn(Collections.singletonList(flow));
+    when(issue.getFlows()).thenReturn(List.of(flow));
     ServerIssueLocation location = mock(ServerIssueLocation.class);
-    when(flow.locations()).thenReturn(Collections.singletonList(location));
+    when(flow.locations()).thenReturn(List.of(location));
     when(mockAnalysisManager.getTaintVulnerabilityByKey(issueKey)).thenReturn(Optional.of(issue));
 
-    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, asList(new JsonPrimitive(issueKey), new JsonPrimitive(connectionId))),
+    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(new JsonPrimitive(issueKey), new JsonPrimitive(connectionId))),
       NOP_CANCEL_TOKEN);
     verify(mockAnalysisManager).getTaintVulnerabilityByKey(issueKey);
     verify(mockTelemetry).taintVulnerabilitiesInvestigatedLocally();

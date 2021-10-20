@@ -11,9 +11,9 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * Lesser General License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU Lesser General License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
@@ -22,7 +22,6 @@ package org.sonarsource.sonarlint.ls.connected;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -42,7 +41,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class ServerIssueTrackerWrapperTests {
@@ -53,11 +52,11 @@ class ServerIssueTrackerWrapperTests {
   private static int counter = 1;
 
   @Test
-  public void get_original_issues_when_there_are_no_server_issues() throws IOException {
+  void get_original_issues_when_there_are_no_server_issues() throws IOException {
     Issue issue = mockIssue();
     when(issue.getInputFile().getPath()).thenReturn(baseDir.resolve("dummy").toString());
 
-    Collection<Issue> issues = Collections.singletonList(issue);
+    Collection<Issue> issues = List.of(issue);
     ServerIssueTrackerWrapper tracker = newTracker(baseDir);
 
     Collection<Issue> result = matchAndTrack(tracker, "dummy", issues);
@@ -65,7 +64,7 @@ class ServerIssueTrackerWrapperTests {
   }
 
   @Test
-  public void hide_resolved_server_issues() throws IOException {
+  void hide_resolved_server_issues() throws IOException {
     String dummyFilePath = baseDir.resolve("dummy").toString();
 
     Issue unresolved = mockIssue();
@@ -73,9 +72,9 @@ class ServerIssueTrackerWrapperTests {
     Issue resolved = mockIssue();
     when(resolved.getInputFile().getPath()).thenReturn(dummyFilePath);
 
-    Collection<Issue> issues = Arrays.asList(unresolved, resolved);
+    Collection<Issue> issues = List.of(unresolved, resolved);
     ServerIssue resolvedServerIssue = mockServerIssue(resolved);
-    List<ServerIssue> serverIssues = Arrays.asList(mockServerIssue(unresolved), resolvedServerIssue);
+    List<ServerIssue> serverIssues = List.of(mockServerIssue(unresolved), resolvedServerIssue);
 
     ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
     when(engine.getServerIssues(any(), any())).thenReturn(serverIssues);
@@ -86,25 +85,25 @@ class ServerIssueTrackerWrapperTests {
 
     when(resolvedServerIssue.resolution()).thenReturn("CLOSED");
     Collection<Issue> trackedIssues2 = matchAndTrack(tracker, "dummy", issues);
-    assertThat(trackedIssues2).extracting("issue").isEqualTo(Collections.singletonList(unresolved));
+    assertThat(trackedIssues2).extracting("issue").isEqualTo(List.of(unresolved));
   }
 
   @Test
-  public void get_severity_and_issue_type_from_matched_server_issue() throws IOException {
+  void get_severity_and_issue_type_from_matched_server_issue() throws IOException {
     String dummyFilePath = baseDir.resolve("dummy").toString();
 
     Issue unmatched = mockIssue();
     when(unmatched.getInputFile().getPath()).thenReturn(dummyFilePath);
     Issue matched = mockIssue();
     when(matched.getInputFile().getPath()).thenReturn(dummyFilePath);
-    Collection<Issue> issues = Arrays.asList(unmatched, matched);
+    Collection<Issue> issues = List.of(unmatched, matched);
 
     String serverIssueSeverity = "BLOCKER*";
     String serverIssueType = "BUG*";
     ServerIssue matchedServerIssue = mockServerIssue(matched);
     when(matchedServerIssue.severity()).thenReturn(serverIssueSeverity);
     when(matchedServerIssue.type()).thenReturn(serverIssueType);
-    List<ServerIssue> serverIssues = Arrays.asList(mockServerIssue(mockIssue()), matchedServerIssue);
+    List<ServerIssue> serverIssues = List.of(mockServerIssue(mockIssue()), matchedServerIssue);
 
     ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
     when(engine.getServerIssues(any(), any())).thenReturn(serverIssues);
@@ -124,16 +123,16 @@ class ServerIssueTrackerWrapperTests {
   }
 
   @Test
-  public void do_not_get_server_issues_when_there_are_no_local_issues() throws IOException {
+  void do_not_get_server_issues_when_there_are_no_local_issues() throws IOException {
     ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
 
     ServerIssueTrackerWrapper tracker = newTracker(baseDir, engine);
     matchAndTrack(tracker, "dummy", Collections.emptyList());
-    verifyZeroInteractions(engine);
+    verifyNoInteractions(engine);
   }
 
   @Test
-  public void fetch_server_issues_when_needed() throws IOException {
+  void fetch_server_issues_when_needed() throws IOException {
     String dummyFilePath = baseDir.resolve("dummy").toString();
 
     Issue issue = mockIssue();

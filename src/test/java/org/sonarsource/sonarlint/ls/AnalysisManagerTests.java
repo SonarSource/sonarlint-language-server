@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +61,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.AnalysisManager.convert;
 
@@ -119,13 +118,13 @@ class AnalysisManagerTests {
     ServerIssue.Flow flow = mock(ServerIssue.Flow.class);
     ServerIssueLocation loc1 = mock(ServerIssueLocation.class);
     ServerIssueLocation loc2 = mock(ServerIssueLocation.class);
-    when(flow.locations()).thenReturn(Arrays.asList(loc1, loc2));
+    when(flow.locations()).thenReturn(List.of(loc1, loc2));
     when(issue.getStartLine()).thenReturn(1);
     when(issue.severity()).thenReturn("BLOCKER");
     when(issue.ruleKey()).thenReturn("ruleKey");
     when(issue.getMessage()).thenReturn("message");
     when(issue.key()).thenReturn("issueKey");
-    when(issue.getFlows()).thenReturn(Collections.singletonList(flow));
+    when(issue.getFlows()).thenReturn(List.of(flow));
 
     Diagnostic diagnostic = convert(issue).get();
 
@@ -150,7 +149,7 @@ class AnalysisManagerTests {
     Range range = new Range(new Position(227, 14), new Position(321, 14));
     when(diagnostic.getRange()).thenReturn(range);
     when(issue.ruleKey()).thenReturn("ruleKey");
-    taintVulnerabilitiesPerFile.put(uri, Collections.singletonList(issue));
+    taintVulnerabilitiesPerFile.put(uri, List.of(issue));
 
     assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).hasValue(issue);
   }
@@ -163,7 +162,7 @@ class AnalysisManagerTests {
 
     Diagnostic diagnostic = mock(Diagnostic.class);
     when(diagnostic.getData()).thenReturn("issueKey");
-    taintVulnerabilitiesPerFile.put(uri, Collections.singletonList(issue));
+    taintVulnerabilitiesPerFile.put(uri, List.of(issue));
 
     assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).hasValue(issue);
   }
@@ -178,7 +177,7 @@ class AnalysisManagerTests {
     Diagnostic diagnostic = mock(Diagnostic.class);
     when(diagnostic.getData()).thenReturn("anotherKey");
     when(diagnostic.getCode()).thenReturn(Either.forLeft("anotherRuleKey"));
-    taintVulnerabilitiesPerFile.put(uri, Collections.singletonList(issue));
+    taintVulnerabilitiesPerFile.put(uri, List.of(issue));
 
     assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).isEmpty();
   }
@@ -190,7 +189,7 @@ class AnalysisManagerTests {
     String issueKey = "key";
     when(issue.key()).thenReturn(issueKey);
 
-    taintVulnerabilitiesPerFile.put(uri, Collections.singletonList(issue));
+    taintVulnerabilitiesPerFile.put(uri, List.of(issue));
 
     assertThat(underTest.getTaintVulnerabilityByKey(issueKey)).hasValue(issue);
     assertThat(underTest.getTaintVulnerabilityByKey("otherKey")).isEmpty();
@@ -201,9 +200,9 @@ class AnalysisManagerTests {
     StandaloneSonarLintEngine sonarLintEngine = mock(StandaloneSonarLintEngine.class);
     when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
 
-    underTest.didChangeWatchedFiles(Collections.singletonList(new FileEvent("uri", FileChangeType.Created)));
+    underTest.didChangeWatchedFiles(List.of(new FileEvent("uri", FileChangeType.Created)));
 
-    verifyZeroInteractions(sonarLintEngine);
+    verifyNoInteractions(sonarLintEngine);
   }
 
   @Test
@@ -218,7 +217,7 @@ class AnalysisManagerTests {
     doNothing().when(sonarLintEngine).fireModuleFileEvent(any(), any());
     when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(sonarLintEngine);
 
-    underTest.didChangeWatchedFiles(Collections.singletonList(new FileEvent("file:///folder/file.py", FileChangeType.Created)));
+    underTest.didChangeWatchedFiles(List.of(new FileEvent("file:///folder/file.py", FileChangeType.Created)));
 
     verify(sonarLintEngine).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
     ClientModuleFileEvent fileEvent = fileEventArgumentCaptor.getValue();
@@ -237,7 +236,7 @@ class AnalysisManagerTests {
     doNothing().when(sonarLintEngine).fireModuleFileEvent(any(), any());
     when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(sonarLintEngine);
 
-    underTest.didChangeWatchedFiles(Collections.singletonList(new FileEvent("file:///folder/file.py", FileChangeType.Changed)));
+    underTest.didChangeWatchedFiles(List.of(new FileEvent("file:///folder/file.py", FileChangeType.Changed)));
 
     verify(sonarLintEngine).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
     ClientModuleFileEvent fileEvent = fileEventArgumentCaptor.getValue();
@@ -256,7 +255,7 @@ class AnalysisManagerTests {
     doNothing().when(sonarLintEngine).fireModuleFileEvent(any(), any());
     when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(sonarLintEngine);
 
-    underTest.didChangeWatchedFiles(Collections.singletonList(new FileEvent("file:///folder/file.py", FileChangeType.Deleted)));
+    underTest.didChangeWatchedFiles(List.of(new FileEvent("file:///folder/file.py", FileChangeType.Deleted)));
 
     verify(sonarLintEngine).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
     ClientModuleFileEvent fileEvent = fileEventArgumentCaptor.getValue();

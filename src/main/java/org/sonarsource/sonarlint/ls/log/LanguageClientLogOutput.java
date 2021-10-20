@@ -23,7 +23,7 @@ import java.time.Clock;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.util.Collections;
+import java.util.List;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
@@ -91,7 +91,7 @@ public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChan
 
   static ShowMessageRequestParams getShowMessageRequestParams() {
     var actionItem = new MessageActionItem(SHOW_SONARLINT_OUTPUT_ACTION);
-    var params = new ShowMessageRequestParams(Collections.singletonList(actionItem));
+    var params = new ShowMessageRequestParams(List.of(actionItem));
     params.setType(MessageType.Error);
     params.setMessage("JS/TS analysis failed. Please check the SonarLint Output for more details.");
     return params;

@@ -23,6 +23,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import java.io.File;
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
@@ -39,7 +40,6 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.tuple;
@@ -341,7 +341,7 @@ class SettingsManagerTest {
       "  }\n" +
       "}\n");
     WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
-    when(foldersManager.getAll()).thenReturn(asList(folderWrapper));
+    when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
 
@@ -365,7 +365,7 @@ class SettingsManagerTest {
       "  }\n" +
       "}\n");
     WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
-    when(foldersManager.getAll()).thenReturn(asList(folderWrapper));
+    when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
 

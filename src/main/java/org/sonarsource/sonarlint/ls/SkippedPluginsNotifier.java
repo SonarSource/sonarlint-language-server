@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -33,7 +34,6 @@ import org.sonarsource.sonarlint.core.client.api.common.PluginDetails;
 import org.sonarsource.sonarlint.core.client.api.common.SkipReason;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.AnalysisResults;
 
-import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 
 public class SkippedPluginsNotifier {
@@ -76,7 +76,7 @@ public class SkippedPluginsNotifier {
 
   private static void showMessageWithOpenSettingsAction(SonarLintExtendedLanguageClient client, String message, Supplier<CompletableFuture<Void>> callback) {
     if (displayedMessages.add(message)) {
-      var params = new ShowMessageRequestParams(singletonList(ACTION_OPEN_SETTINGS));
+      var params = new ShowMessageRequestParams(List.of(ACTION_OPEN_SETTINGS));
       params.setType(MessageType.Error);
       params.setMessage(message);
       client.showMessageRequest(params).thenAccept(action -> {

@@ -21,8 +21,8 @@ package org.sonarsource.sonarlint.ls.connected.notifications;
 
 
 import java.time.ZonedDateTime;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
@@ -50,7 +50,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class ServerNotificationsTest {
@@ -81,7 +81,7 @@ class ServerNotificationsTest {
   @Test
   void doNothingOnEmptyFolderSettings() {
     underTest.onChange(null, null, mock(WorkspaceFolderSettings.class));
-    verifyZeroInteractions(output);
+    verifyNoInteractions(output);
   }
 
   @Test
@@ -194,14 +194,14 @@ class ServerNotificationsTest {
     WorkspaceFolderSettings newFolderSettings = new WorkspaceFolderSettings(connectionId, projectKey, Collections.emptyMap(), null);
     underTest.onChange(mock(WorkspaceFolderWrapper.class), mock(WorkspaceFolderSettings.class), newFolderSettings);
 
-    verifyZeroInteractions(output);
+    verifyNoInteractions(output);
     verify(workspaceFoldersManager).getAll();
   }
 
   @Test
   void doNothingOnEmptyWorkspaceSettings() {
     underTest.onChange(null, mock(WorkspaceSettings.class));
-    verifyZeroInteractions(output);
+    verifyNoInteractions(output);
     verify(workspaceFoldersManager).getAll();
   }
 
@@ -249,7 +249,7 @@ class ServerNotificationsTest {
     verify(client).showMessageRequest(messageCaptor.capture());
     ShowMessageRequestParams shownMessage = messageCaptor.getValue();
     assertThat(shownMessage).extracting(ShowMessageRequestParams::getMessage, ShowMessageRequestParams::getActions)
-      .containsExactly("SonarQube Notification: message", Arrays.asList(browseAction, settingsAction));
+      .containsExactly("SonarQube Notification: message", List.of(browseAction, settingsAction));
     verify(telemetry).devNotificationsClicked(category);
     verify(client).browseTo(link);
   }
@@ -274,7 +274,7 @@ class ServerNotificationsTest {
     verify(client).showMessageRequest(messageCaptor.capture());
     ShowMessageRequestParams shownMessage = messageCaptor.getValue();
     assertThat(shownMessage).extracting(ShowMessageRequestParams::getMessage, ShowMessageRequestParams::getActions)
-      .containsExactly("SonarQube Notification: message", Arrays.asList(browseAction, settingsAction));
+      .containsExactly("SonarQube Notification: message", List.of(browseAction, settingsAction));
 
     verify(client).openConnectionSettings(false);
   }
@@ -299,7 +299,7 @@ class ServerNotificationsTest {
     verify(client).showMessageRequest(messageCaptor.capture());
     ShowMessageRequestParams shownMessage = messageCaptor.getValue();
     assertThat(shownMessage).extracting(ShowMessageRequestParams::getMessage, ShowMessageRequestParams::getActions)
-      .containsExactly("SonarCloud Notification: message", Arrays.asList(browseAction, settingsAction));
+      .containsExactly("SonarCloud Notification: message", List.of(browseAction, settingsAction));
     verify(telemetry, never()).devNotificationsClicked(category);
   }
 

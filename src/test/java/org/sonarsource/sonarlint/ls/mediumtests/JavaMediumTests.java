@@ -23,7 +23,6 @@ import com.google.common.collect.ImmutableMap;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -93,7 +92,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     await().atMost(5, SECONDS).untilAsserted(() -> {
       assertThat(client.logs)
         .extracting(withoutTimestamp())
-        .containsAll(Arrays.asList(ignoredMsg, cacheMsg));
+        .containsAll(List.of(ignoredMsg, cacheMsg));
     });
 
     client.logs.clear();

@@ -20,8 +20,8 @@
 package org.sonarsource.sonarlint.ls.connected.notifications;
 
 import java.time.ZonedDateTime;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -169,7 +169,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
       params.setType(MessageType.Info);
       params.setMessage(String.format("%s Notification: %s", label, serverNotification.message()));
       var browseAction = new MessageActionItem("Show on " + label);
-      params.setActions(Arrays.asList(browseAction, SETTINGS_ACTION));
+      params.setActions(List.of(browseAction, SETTINGS_ACTION));
       client.showMessageRequest(params).thenAccept(action -> {
         if(browseAction.equals(action)) {
           telemetry.devNotificationsClicked(serverNotification.category());

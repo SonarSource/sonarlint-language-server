@@ -51,7 +51,7 @@ public final class JavaSdkUtil {
 
   static List<Path> getJdkClassesRoots(Path home, boolean isMac) {
     if (isModularRuntime(home)) {
-      return Collections.singletonList(home.resolve(LIB_JRT_FS_JAR));
+      return List.of(home.resolve(LIB_JRT_FS_JAR));
     }
 
     return new ArrayList<>(collectJars(home, isMac));

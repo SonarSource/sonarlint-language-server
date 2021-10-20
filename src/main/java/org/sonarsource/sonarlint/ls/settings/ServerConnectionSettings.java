@@ -19,7 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.settings;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -76,7 +76,7 @@ public class ServerConnectionSettings {
   }
 
   public boolean isSonarCloudAlias() {
-    return Arrays.asList(SONARCLOUD_ALIAS).contains(serverUrl);
+    return List.of(SONARCLOUD_ALIAS).contains(serverUrl);
   }
 
   public boolean isDevNotificationsDisabled() {

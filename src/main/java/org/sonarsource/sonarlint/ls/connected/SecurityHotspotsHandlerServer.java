@@ -27,8 +27,8 @@ import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import javax.annotation.Nullable;
@@ -247,7 +247,7 @@ public class SecurityHotspotsHandlerServer {
       params.setMessage("No SonarQube connection settings found for URL " + url);
       params.setType(MessageType.Error);
       var showSettingsAction = new MessageActionItem("Open Settings");
-      params.setActions(Collections.singletonList(showSettingsAction));
+      params.setActions(List.of(showSettingsAction));
       client.showMessageRequest(params)
         .thenAccept(action -> {
           if (showSettingsAction.equals(action)) {
