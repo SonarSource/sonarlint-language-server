@@ -19,7 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import com.google.common.annotations.VisibleForTesting;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -100,7 +99,6 @@ public class SkippedPluginsNotifier {
     return String.format("%s: %s", title, content);
   }
 
-  @VisibleForTesting
   static void clearMessages() {
     displayedMessages.clear();
   }

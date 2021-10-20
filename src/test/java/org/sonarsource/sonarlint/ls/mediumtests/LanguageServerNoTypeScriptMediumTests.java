@@ -19,11 +19,11 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import com.google.common.collect.ImmutableMap;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.junit.jupiter.api.BeforeAll;
@@ -38,16 +38,16 @@ class LanguageServerNoTypeScriptMediumTests extends AbstractLanguageServerMedium
 
   @BeforeAll
   public static void initialize() throws Exception {
-    initialize(ImmutableMap.<String, Object>builder()
+    initialize(Map.ofEntries(
       // Missing "typeScriptLocation"
-      .put("telemetryStorage", "not/exists")
-      .put("productName", "SLCORE tests")
-      .put("productVersion", "0.1")
-      .build());
+      Map.entry("telemetryStorage", "not/exists"),
+      Map.entry("productName", "SLCORE tests"),
+      Map.entry("productVersion", "0.1")
+    ));
   }
 
   @Test
-  public void analyzeSimpleJsFileOnOpenWithoutTypescriptCompilerPath() throws Exception {
+  void analyzeSimpleJsFileOnOpenWithoutTypescriptCompilerPath() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true);
 
     String uri = getUri("foo.js");
@@ -60,7 +60,7 @@ class LanguageServerNoTypeScriptMediumTests extends AbstractLanguageServerMedium
   }
 
   @Test
-  public void noTypeScriptAnalysisWithoutTypescriptCompilerPath() throws Exception {
+  void noTypeScriptAnalysisWithoutTypescriptCompilerPath() throws Exception {
     // Enable analyzer debug logs for assertions
     emulateConfigurationChangeOnClient("**/*Test.js", null, true, true);
 

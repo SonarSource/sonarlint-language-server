@@ -19,7 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonPrimitive;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -76,14 +75,13 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   public static void initialize() throws Exception {
     Path fakeTypeScriptProjectPath = Paths.get("src/test/resources/fake-ts-project").toAbsolutePath();
 
-    initialize(ImmutableMap.<String, Object>builder()
-      .put("typeScriptLocation", fakeTypeScriptProjectPath.resolve("node_modules").toString())
-      .put("telemetryStorage", "not/exists")
-      .put("productName", "SLCORE tests")
-      .put("productVersion", "0.1")
-      .put("additionalAttributes", ImmutableMap.<String, String>builder()
-        .put("extra", "value").build())
-      .build());
+    initialize(Map.of(
+      "typeScriptLocation", fakeTypeScriptProjectPath.resolve("node_modules").toString(),
+      "telemetryStorage", "not/exists",
+      "productName", "SLCORE tests",
+      "productVersion", "0.1",
+      "additionalAttributes", Map.of("extra", "value")
+    ));
   }
 
   @BeforeEach

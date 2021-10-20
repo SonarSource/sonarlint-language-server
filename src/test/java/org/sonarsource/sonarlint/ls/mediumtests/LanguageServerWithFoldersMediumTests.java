@@ -19,10 +19,10 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import com.google.common.collect.ImmutableMap;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
@@ -47,12 +47,12 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     String folderUri = "file:///init_uri";
     client.folderSettings.put(folderUri, buildSonarLintSettingsSection("some pattern", null, null, true));
 
-    initialize(ImmutableMap.<String, Object>builder()
-      .put("typeScriptLocation", fakeTypeScriptProjectPath.resolve("node_modules").toString())
-      .put("telemetryStorage", "not/exists")
-      .put("productName", "SLCORE tests")
-      .put("productVersion", "0.1")
-      .build(), new WorkspaceFolder(folderUri, "My Folder"));
+    initialize(Map.of(
+      "typeScriptLocation", fakeTypeScriptProjectPath.resolve("node_modules").toString(),
+      "telemetryStorage", "not/exists",
+      "productName", "SLCORE tests",
+      "productVersion", "0.1"
+    ), new WorkspaceFolder(folderUri, "My Folder"));
 
     emulateConfigurationChangeOnClient(null, false, false, false);
 
@@ -71,7 +71,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   }
 
   @Test
-  public void analyzeSimpleJsFileOnOpen() throws Exception {
+  void analyzeSimpleJsFileOnOpen() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true);
 
     String uri = getUri("analyzeSimpleJsFileOnOpen.js");

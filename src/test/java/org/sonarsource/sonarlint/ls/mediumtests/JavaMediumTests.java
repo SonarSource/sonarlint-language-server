@@ -19,11 +19,11 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import com.google.common.collect.ImmutableMap;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.Diagnostic;
@@ -44,11 +44,11 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @BeforeAll
   public static void initialize() throws Exception {
-    initialize(ImmutableMap.<String, Object>builder()
-      .put("telemetryStorage", "not/exists")
-      .put("productName", "SLCORE tests")
-      .put("productVersion", "0.1")
-      .build());
+    initialize(Map.of(
+      "telemetryStorage", "not/exists",
+      "productName", "SLCORE tests",
+      "productVersion", "0.1"
+    ));
   }
 
   @Test

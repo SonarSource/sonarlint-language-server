@@ -19,8 +19,8 @@
  */
 package org.sonarsource.sonarlint.ls.settings;
 
-import com.google.common.collect.ImmutableMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
@@ -34,19 +34,19 @@ class WorkspaceSettingsTests {
   public static final RuleKey RULE_KEY_1 = new RuleKey("repo1", "rule1");
   public static final RuleKey RULE_KEY_2 = new RuleKey("repo2", "rule2");
   private static final WorkspaceSettings SETTINGS = new WorkspaceSettings(false,
-    ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
+    Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
     List.of(RULE_KEY_1),
     List.of(RULE_KEY_2),
-    ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),
+    Map.of(RULE_KEY_2, Map.of("param1", "value1")),
     false, false, "path/to/node");
 
   @Test
   void testHashCode() {
     assertThat(new WorkspaceSettings(false,
-      ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
+      Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
       List.of(RULE_KEY_1),
       List.of(RULE_KEY_2),
-      ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),
+      Map.of(RULE_KEY_2, Map.of("param1", "value1")),
       false, false, "path/to/node")).hasSameHashCodeAs(SETTINGS);
   }
 
@@ -57,65 +57,65 @@ class WorkspaceSettingsTests {
       .isNotEqualTo(null)
       .isNotEqualTo("foo")
       .isEqualTo(new WorkspaceSettings(false,
-        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
+        Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
         List.of(new RuleKey("repo1", "rule1")),
         List.of(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(true,
-        ImmutableMap.of("serverId2", new ServerConnectionSettings("serverId2", "serverUrl", "token", "myOrg", true, httpClient)),
+        Map.of("serverId2", new ServerConnectionSettings("serverId2", "serverUrl", "token", "myOrg", true, httpClient)),
         List.of(new RuleKey("repo1", "rule1")),
         List.of(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
-        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl2", "token", "myOrg", true, httpClient)),
+        Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl2", "token", "myOrg", true, httpClient)),
         List.of(new RuleKey("repo1", "rule1")),
         List.of(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
-        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token2", "myOrg", true, httpClient)),
+        Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token2", "myOrg", true, httpClient)),
         List.of(new RuleKey("repo1", "rule1")),
         List.of(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
-        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2", true, httpClient)),
+        Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2", true, httpClient)),
         List.of(new RuleKey("repo1", "rule1")),
         List.of(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
-        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
+        Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
         List.of(new RuleKey("repo1", "rule12")),
         List.of(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
-        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
+        Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
         List.of(new RuleKey("repo1", "rule1")),
         List.of(new RuleKey("repo2", "rule22")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
-        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
+        Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
         List.of(new RuleKey("repo1", "rule1")),
         List.of(new RuleKey("repo2", "rule22")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, false, "path/to/node"))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
-        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
+        Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
         List.of(RULE_KEY_1),
         List.of(RULE_KEY_2),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value2")), false, false, "path/to/node"))
+        Map.of(RULE_KEY_2, Map.of("param1", "value2")), false, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
-        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
+        Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
         List.of(new RuleKey("repo1", "rule1")),
         List.of(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), true, false, "path/to/node"))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), true, false, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
-        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
+        Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
         List.of(new RuleKey("repo1", "rule1")),
         List.of(new RuleKey("repo2", "rule2")),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")), false, true, "path/to/node"))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, true, "path/to/node"))
       .isNotEqualTo(new WorkspaceSettings(false,
-        ImmutableMap.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
+        Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, httpClient)),
         List.of(RULE_KEY_1),
         List.of(RULE_KEY_2),
-        ImmutableMap.of(RULE_KEY_2, ImmutableMap.of("param1", "value1")),
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")),
         false, false, "other/path/to/node"));
   }
 

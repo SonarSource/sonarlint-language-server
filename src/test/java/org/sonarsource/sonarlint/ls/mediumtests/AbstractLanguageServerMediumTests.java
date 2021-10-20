@@ -19,7 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import com.google.common.collect.ImmutableMap;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -387,7 +386,7 @@ public abstract class AbstractLanguageServerMediumTests {
   private static DidChangeConfigurationParams changedConfiguration(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
     @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
     Map<String, Object> values = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs);
-    return new DidChangeConfigurationParams(ImmutableMap.of("sonarlint", values));
+    return new DidChangeConfigurationParams(Map.of("sonarlint", values));
   }
 
   protected static Map<String, Object> buildSonarLintSettingsSection(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
@@ -417,11 +416,11 @@ public abstract class AbstractLanguageServerMediumTests {
 
   private static Map<String, Object> buildRulesMap(String... ruleConfigs) {
     assertThat(ruleConfigs.length % 2).withFailMessage("ruleConfigs must contain 'rule:key', 'level' pairs").isZero();
-    ImmutableMap.Builder<String, Object> rules = ImmutableMap.builder();
+    var rules = new Map.Entry[ruleConfigs.length / 2];
     for (int i = 0; i < ruleConfigs.length; i += 2) {
-      rules.put(ruleConfigs[i], ImmutableMap.of("level", ruleConfigs[i + 1]));
+      rules[i / 2] =  Map.entry(ruleConfigs[i], Map.of("level", ruleConfigs[i + 1]));
     }
-    return rules.build();
+    return Map.ofEntries(rules);
   }
 
   protected List<Diagnostic> didChangeAndWaitForDiagnostics(String uri, String content) throws InterruptedException {
