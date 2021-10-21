@@ -67,7 +67,7 @@ public class ProgressManager {
           throw new IllegalStateException(e.getCause());
         }
       }
-      LSProgressMonitor progress = new LSProgressMonitor(client, progressToken, cancelToken);
+      var progress = new LSProgressMonitor(client, progressToken, cancelToken);
       liveProgress.put(progressToken, progress);
       progress.start(progressTitle);
       try {
@@ -91,7 +91,7 @@ public class ProgressManager {
   }
 
   public void cancelProgress(WorkDoneProgressCancelParams params) {
-    LSProgressMonitor progressFacade = liveProgress.get(params.getToken());
+    var progressFacade = liveProgress.get(params.getToken());
     if (progressFacade == null) {
       LOG.debug("Unable to cancel progress: " + params.getToken());
     } else {

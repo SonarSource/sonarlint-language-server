@@ -19,7 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.connected;
 
-import java.util.Collections;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.TextRange;
@@ -46,7 +46,7 @@ class DelegatingIssueTests {
     when(issue.getStartLineOffset()).thenReturn(3);
     when(issue.getEndLine()).thenReturn(4);
     when(issue.getEndLineOffset()).thenReturn(5);
-    when(issue.flows()).thenReturn(Collections.singletonList(mock(Issue.Flow.class)));
+    when(issue.flows()).thenReturn(List.of(mock(Issue.Flow.class)));
     when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
     when(issue.getTextRange()).thenReturn(mock(TextRange.class));
   }
@@ -78,22 +78,22 @@ class DelegatingIssueTests {
 
   @Test
   void testGetStartLine() {
-    assertThat(delegatingIssue.getStartLine()).isGreaterThan(0).isEqualTo(issue.getStartLine());
+    assertThat(delegatingIssue.getStartLine()).isPositive().isEqualTo(issue.getStartLine());
   }
 
   @Test
   void testGetStartLineOffset() {
-    assertThat(delegatingIssue.getStartLineOffset()).isGreaterThan(0).isEqualTo(issue.getStartLineOffset());
+    assertThat(delegatingIssue.getStartLineOffset()).isPositive().isEqualTo(issue.getStartLineOffset());
   }
 
   @Test
   void testGetEndLine() {
-    assertThat(delegatingIssue.getEndLine()).isGreaterThan(0).isEqualTo(issue.getEndLine());
+    assertThat(delegatingIssue.getEndLine()).isPositive().isEqualTo(issue.getEndLine());
   }
 
   @Test
   void testGetEndLineOffset() {
-    assertThat(delegatingIssue.getEndLineOffset()).isGreaterThan(0).isEqualTo(issue.getEndLineOffset());
+    assertThat(delegatingIssue.getEndLineOffset()).isPositive().isEqualTo(issue.getEndLineOffset());
   }
 
   @Test

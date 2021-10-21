@@ -19,8 +19,9 @@
  */
 package org.sonarsource.sonarlint.ls.settings;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
@@ -53,7 +54,7 @@ public class ServerConnectionSettings {
   }
 
   private EndpointParamsAndHttpClient createServerConfiguration(ApacheHttpClient httpClient) {
-    EndpointParams endpointParams = new EndpointParams(getServerUrl(), isSonarCloudAlias(), getOrganizationKey());
+    var endpointParams = new EndpointParams(getServerUrl(), isSonarCloudAlias(), getOrganizationKey());
     return new EndpointParamsAndHttpClient(endpointParams, httpClient.withToken(getToken()));
   }
 
@@ -69,12 +70,13 @@ public class ServerConnectionSettings {
     return token;
   }
 
+  @CheckForNull
   public String getOrganizationKey() {
     return organizationKey;
   }
 
   public boolean isSonarCloudAlias() {
-    return Arrays.asList(SONARCLOUD_ALIAS).contains(serverUrl);
+    return List.of(SONARCLOUD_ALIAS).contains(serverUrl);
   }
 
   public boolean isDevNotificationsDisabled() {
@@ -101,7 +103,7 @@ public class ServerConnectionSettings {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    ServerConnectionSettings other = (ServerConnectionSettings) obj;
+    var other = (ServerConnectionSettings) obj;
     return Objects.equals(connectionId, other.connectionId) && Objects.equals(serverUrl, other.serverUrl) && Objects.equals(token, other.token)
       && Objects.equals(organizationKey, other.organizationKey) && this.disableNotifications == other.disableNotifications;
   }

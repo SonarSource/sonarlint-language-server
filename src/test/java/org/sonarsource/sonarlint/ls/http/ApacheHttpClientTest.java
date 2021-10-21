@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import org.apache.hc.core5.http.ClassicHttpRequest;
@@ -47,7 +46,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.serverapi.HttpClient;
 import org.sonarsource.sonarlint.core.serverapi.HttpClient.Response;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -93,8 +91,8 @@ class ApacheHttpClientTest {
 
   @Test
   void get_request_test() {
-    HttpClient.Response response = underTest.get(serverBase);
-    String responseString = response.bodyAsString();
+    var response = underTest.get(serverBase);
+    var responseString = response.bodyAsString();
 
     assertThat(response.isSuccessful()).isTrue();
     assertThat(responseString).isNotEmpty();
@@ -103,8 +101,8 @@ class ApacheHttpClientTest {
 
   @Test
   void get_async_request_test() throws InterruptedException, ExecutionException {
-    HttpClient.Response response = underTest.getAsync(serverBase).get();
-    String responseString = response.bodyAsString();
+    var response = underTest.getAsync(serverBase).get();
+    var responseString = response.bodyAsString();
 
     assertThat(response.isSuccessful()).isTrue();
     assertThat(responseString).isNotEmpty();
@@ -113,8 +111,8 @@ class ApacheHttpClientTest {
 
   @Test
   void post_request_test() {
-    HttpClient.Response response = underTest.post(serverBase, "image/jpeg", "");
-    String responseString = response.bodyAsString();
+    var response = underTest.post(serverBase, "image/jpeg", "");
+    var responseString = response.bodyAsString();
 
     assertThat(response.isSuccessful()).isTrue();
     assertThat(responseString).isNotEmpty();
@@ -123,8 +121,8 @@ class ApacheHttpClientTest {
 
   @Test
   void delete_request_test() {
-    HttpClient.Response response = underTest.delete(serverBase, "image/jpeg", "");
-    String responseString = response.bodyAsString();
+    var response = underTest.delete(serverBase, "image/jpeg", "");
+    var responseString = response.bodyAsString();
 
     assertThat(response.isSuccessful()).isTrue();
     assertThat(responseString).isNotEmpty();
@@ -133,9 +131,9 @@ class ApacheHttpClientTest {
 
   @Test
   void basic_auth_test() {
-    ApacheHttpClient basicAuthClient = underTest.withToken("token");
-    HttpClient.Response response = basicAuthClient.get(serverBase);
-    String responseString = response.bodyAsString();
+    var basicAuthClient = underTest.withToken("token");
+    var response = basicAuthClient.get(serverBase);
+    var responseString = response.bodyAsString();
 
     assertThat(response.isSuccessful()).isTrue();
     assertThat(responseString).isEqualTo("OK");
@@ -144,8 +142,8 @@ class ApacheHttpClientTest {
   }
 
   @Test
-  void test_cancel_request() throws InterruptedException, ExecutionException {
-    CompletableFuture<Response> response = underTest.getAsync(serverBase + WAIT_FOREVER);
+  void test_cancel_request() throws InterruptedException {
+    var response = underTest.getAsync(serverBase + WAIT_FOREVER);
     List<Object> result = new ArrayList<>();
     Thread t = new Thread(() -> {
       try {
@@ -203,8 +201,8 @@ class ApacheHttpClientTest {
       assertThat(requests).extracting(ClassicHttpRequest::getMethod, ClassicHttpRequest::getPath)
         .containsExactly(tuple(method, path));
       if (headers.length > 0) {
-        Tuple[] nameValues = new Tuple[headers.length / 2];
-        for (int hIndex = 0; hIndex < headers.length; hIndex += 2) {
+        var nameValues = new Tuple[headers.length / 2];
+        for (var hIndex = 0; hIndex < headers.length; hIndex += 2) {
           nameValues[hIndex / 2] = tuple(headers[hIndex], headers[hIndex + 1]);
         }
         assertThat(requests.get(0).getHeaders())

@@ -21,10 +21,10 @@ package org.sonarsource.sonarlint.ls;
 
 import java.net.URL;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.annotation.CheckForNull;
@@ -68,7 +68,8 @@ public class EnginesFactory {
   private final ModulesProvider modulesProvider;
   private final Collection<URL> extraAnalyzers;
 
-  public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput, NodeJsRuntime nodeJsRuntime, ModulesProvider modulesProvider, Collection<URL> extraAnalyzers) {
+  public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput, NodeJsRuntime nodeJsRuntime, ModulesProvider modulesProvider,
+    Collection<URL> extraAnalyzers) {
     this.standaloneAnalyzers = standaloneAnalyzers;
     this.lsLogOutput = lsLogOutput;
     this.nodeJsRuntime = nodeJsRuntime;
@@ -81,17 +82,17 @@ public class EnginesFactory {
     LOG.debug("Using {} analyzers", standaloneAnalyzers.size());
 
     try {
-      StandaloneGlobalConfiguration configuration = StandaloneGlobalConfiguration.builder()
+      var configuration = StandaloneGlobalConfiguration.builder()
         .setExtraProperties(prepareExtraProps())
         .addEnabledLanguages(STANDALONE_LANGUAGES)
         .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
-        .addPlugins(standaloneAnalyzers.toArray(new URL[0]))
-        .addPlugins(extraAnalyzers.toArray(new URL[0]))
+        .addPlugins(standaloneAnalyzers.toArray(URL[]::new))
+        .addPlugins(extraAnalyzers.toArray(URL[]::new))
         .setModulesProvider(modulesProvider)
         .setLogOutput(lsLogOutput)
         .build();
 
-      StandaloneSonarLintEngine engine = newStandaloneEngine(configuration);
+      var engine = newStandaloneEngine(configuration);
       LOG.debug("Standalone SonarLint engine started");
       return engine;
     } catch (Exception e) {
@@ -105,7 +106,7 @@ public class EnginesFactory {
   }
 
   public ConnectedSonarLintEngine createConnectedEngine(String connectionId) {
-    ConnectedGlobalConfiguration.Builder builder = ConnectedGlobalConfiguration.builder()
+    var builder = ConnectedGlobalConfiguration.builder()
       .setConnectionId(connectionId)
       .setExtraProperties(prepareExtraProps())
       .addEnabledLanguages(STANDALONE_LANGUAGES)
@@ -115,7 +116,7 @@ public class EnginesFactory {
       .setLogOutput(lsLogOutput);
 
     extraAnalyzers.forEach(analyzer-> builder.addExtraPlugin(guessPluginKey(analyzer.getPath()), analyzer));
-    ConnectedSonarLintEngine engine = newConnectedEngine(builder.build());
+    var engine = newConnectedEngine(builder.build());
 
     LOG.debug("SonarLint engine started for connection '{}'", connectionId);
     return engine;
@@ -129,7 +130,7 @@ public class EnginesFactory {
   }
 
   private Map<String, String> prepareExtraProps() {
-    Map<String, String> extraProperties = new HashMap<>();
+    var extraProperties = new HashMap<String, String>();
     if (typeScriptPath != null) {
       extraProperties.put(AnalysisManager.TYPESCRIPT_PATH_PROP, typeScriptPath.toString());
     }
@@ -145,7 +146,7 @@ public class EnginesFactory {
   }
 
   public static Set<Language> getStandaloneLanguages() {
-    return EnumSet.copyOf(Arrays.asList(STANDALONE_LANGUAGES));
+    return EnumSet.copyOf(List.of(STANDALONE_LANGUAGES));
   }
 
 }

@@ -20,8 +20,8 @@
 package org.sonarsource.sonarlint.ls.connected.notifications;
 
 import java.time.ZonedDateTime;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -80,7 +80,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
     connections.clear();
     connections.putAll(newValue.getServerConnections());
     configurationsByProjectKeyByConnectionId.keySet().forEach(connectionId -> {
-      Map<String, NotificationConfiguration> copyOfConfigurations = new HashMap<>(configurationsByProjectKeyByConnectionId.get(connectionId));
+      var copyOfConfigurations = new HashMap<>(configurationsByProjectKeyByConnectionId.get(connectionId));
       copyOfConfigurations.forEach((projectKey, config) -> {
         unregisterConfigurationIfExists(connectionId, projectKey);
         registerConfigurationIfNeeded(connectionId, projectKey);
@@ -110,10 +110,10 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
   }
 
   private void unregisterConfigurationIfExists(@Nullable String oldConnectionId, @Nullable String oldProjectKey) {
-    Map<String, NotificationConfiguration> configsForOldConnectionId = configurationsByProjectKeyByConnectionId.get(oldConnectionId);
+    var configsForOldConnectionId = configurationsByProjectKeyByConnectionId.get(oldConnectionId);
     if (configsForOldConnectionId != null && configsForOldConnectionId.containsKey(oldProjectKey)) {
       logDebugMessage(String.format("De-registering notifications for project '%s' on connection '%s'", oldProjectKey, oldConnectionId));
-      NotificationConfiguration config = configsForOldConnectionId.remove(oldProjectKey);
+      var config = configsForOldConnectionId.remove(oldProjectKey);
       serverNotificationsRegistry.remove(config.listener());
     }
   }
@@ -125,7 +125,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
         return;
       }
       logDebugMessage(String.format("Enabling notifications for project '%s' on connection '%s'", projectKey, connectionId));
-      NotificationConfiguration newConfiguration = newNotificationConfiguration(connections.get(connectionId), projectKey);
+      var newConfiguration = newNotificationConfiguration(connections.get(connectionId), projectKey);
       serverNotificationsRegistry.register(newConfiguration);
       configurationsByProjectKeyByConnectionId.computeIfAbsent(connectionId, k -> new HashMap<>()).put(projectKey, newConfiguration);
     }
@@ -162,14 +162,14 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
 
     @Override
     public void handle(ServerNotification serverNotification) {
-      final String category = serverNotification.category();
+      final var category = serverNotification.category();
       telemetry.devNotificationsReceived(category);
-      final String label = isSonarCloud ? "SonarCloud" : "SonarQube";
-      ShowMessageRequestParams params = new ShowMessageRequestParams();
+      final var label = isSonarCloud ? "SonarCloud" : "SonarQube";
+      var params = new ShowMessageRequestParams();
       params.setType(MessageType.Info);
       params.setMessage(String.format("%s Notification: %s", label, serverNotification.message()));
-      MessageActionItem browseAction = new MessageActionItem("Show on " + label);
-      params.setActions(Arrays.asList(browseAction, SETTINGS_ACTION));
+      var browseAction = new MessageActionItem("Show on " + label);
+      params.setActions(List.of(browseAction, SETTINGS_ACTION));
       client.showMessageRequest(params).thenAccept(action -> {
         if(browseAction.equals(action)) {
           telemetry.devNotificationsClicked(serverNotification.category());

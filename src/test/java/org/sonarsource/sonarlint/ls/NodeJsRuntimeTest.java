@@ -40,7 +40,6 @@ class NodeJsRuntimeTest {
   Path temp;
 
   private WorkspaceSettings settings;
-  private SettingsManager settingsManager;
   private NodeJsHelper nodeJsHelper;
 
   private NodeJsRuntime underTest;
@@ -49,7 +48,7 @@ class NodeJsRuntimeTest {
   void setUp() {
     nodeJsHelper = mock(NodeJsHelper.class);
     settings = mock(WorkspaceSettings.class);
-    settingsManager = mock(SettingsManager.class);
+    var settingsManager = mock(SettingsManager.class);
     when(settingsManager.getCurrentSettings()).thenReturn(settings);
 
     underTest = new NodeJsRuntime(settingsManager, () -> nodeJsHelper);
@@ -71,8 +70,8 @@ class NodeJsRuntimeTest {
   void shouldLazyInitializeWithNodeSettings() {
     when(settings.pathToNodeExecutable()).thenReturn(temp.getFileName().toString());
     when(nodeJsHelper.getNodeJsPath()).thenReturn(temp.getFileName());
-    String versionString = "12.34.56";
-    Version version = Version.create(versionString);
+    var versionString = "12.34.56";
+    var version = Version.create(versionString);
     when(nodeJsHelper.getNodeJsVersion()).thenReturn(version);
 
     assertThat(underTest.getNodeJsPath()).isEqualTo(temp.getFileName());

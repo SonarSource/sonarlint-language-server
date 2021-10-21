@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +61,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.AnalysisManager.convert;
 
@@ -78,7 +77,7 @@ class AnalysisManagerTests {
   @BeforeEach
   void prepare() {
     taintVulnerabilitiesPerFile = new ConcurrentHashMap<>();
-    FileLanguageCache fileLanguageCache = new FileLanguageCache();
+    var fileLanguageCache = new FileLanguageCache();
     enginesFactory = mock(EnginesFactory.class);
     foldersManager = mock(WorkspaceFoldersManager.class);
     standaloneEngineManager = mock(StandaloneEngineManager.class);
@@ -90,15 +89,15 @@ class AnalysisManagerTests {
 
   @Test
   void testNotConvertGlobalIssues() {
-    Issue issue = mock(Issue.class);
+    var issue = mock(Issue.class);
     when(issue.getStartLine()).thenReturn(null);
     assertThat(convert(entry("id", issue))).isEmpty();
   }
 
   @Test
   void testNotConvertSeverity() {
-    String id = "id";
-    Issue issue = mock(Issue.class);
+    var id = "id";
+    var issue = mock(Issue.class);
     when(issue.getStartLine()).thenReturn(1);
     when(issue.getSeverity()).thenReturn("BLOCKER");
     when(issue.getMessage()).thenReturn("Do this, don't do that");
@@ -115,19 +114,19 @@ class AnalysisManagerTests {
 
   @Test
   void testIssueConversion() {
-    ServerIssue issue = mock(ServerIssue.class);
-    ServerIssue.Flow flow = mock(ServerIssue.Flow.class);
-    ServerIssueLocation loc1 = mock(ServerIssueLocation.class);
-    ServerIssueLocation loc2 = mock(ServerIssueLocation.class);
-    when(flow.locations()).thenReturn(Arrays.asList(loc1, loc2));
+    var issue = mock(ServerIssue.class);
+    var flow = mock(ServerIssue.Flow.class);
+    var loc1 = mock(ServerIssueLocation.class);
+    var loc2 = mock(ServerIssueLocation.class);
+    when(flow.locations()).thenReturn(List.of(loc1, loc2));
     when(issue.getStartLine()).thenReturn(1);
     when(issue.severity()).thenReturn("BLOCKER");
     when(issue.ruleKey()).thenReturn("ruleKey");
     when(issue.getMessage()).thenReturn("message");
     when(issue.key()).thenReturn("issueKey");
-    when(issue.getFlows()).thenReturn(Collections.singletonList(flow));
+    when(issue.getFlows()).thenReturn(List.of(flow));
 
-    Diagnostic diagnostic = convert(issue).get();
+    var diagnostic = convert(issue).get();
 
     assertThat(diagnostic.getMessage()).isEqualTo("message [+2 locations]");
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
@@ -138,59 +137,59 @@ class AnalysisManagerTests {
 
   @Test
   void testGetServerIssueForDiagnosticBasedOnLocation() throws Exception {
-    URI uri = new URI("/");
-    ServerIssue issue = mock(ServerIssue.class);
+    var uri = new URI("/");
+    var issue = mock(ServerIssue.class);
     when(issue.getStartLine()).thenReturn(228);
     when(issue.getStartLineOffset()).thenReturn(14);
     when(issue.getEndLine()).thenReturn(322);
     when(issue.getEndLineOffset()).thenReturn(14);
 
-    Diagnostic diagnostic = mock(Diagnostic.class);
+    var diagnostic = mock(Diagnostic.class);
     when(diagnostic.getCode()).thenReturn(Either.forLeft("ruleKey"));
-    Range range = new Range(new Position(227, 14), new Position(321, 14));
+    var range = new Range(new Position(227, 14), new Position(321, 14));
     when(diagnostic.getRange()).thenReturn(range);
     when(issue.ruleKey()).thenReturn("ruleKey");
-    taintVulnerabilitiesPerFile.put(uri, Collections.singletonList(issue));
+    taintVulnerabilitiesPerFile.put(uri, List.of(issue));
 
     assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).hasValue(issue);
   }
 
   @Test
   void testGetServerIssueForDiagnosticBasedOnKey() throws Exception {
-    URI uri = new URI("/");
-    ServerIssue issue = mock(ServerIssue.class);
+    var uri = new URI("/");
+    var issue = mock(ServerIssue.class);
     when(issue.key()).thenReturn("issueKey");
 
-    Diagnostic diagnostic = mock(Diagnostic.class);
+    var diagnostic = mock(Diagnostic.class);
     when(diagnostic.getData()).thenReturn("issueKey");
-    taintVulnerabilitiesPerFile.put(uri, Collections.singletonList(issue));
+    taintVulnerabilitiesPerFile.put(uri, List.of(issue));
 
     assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).hasValue(issue);
   }
 
   @Test
   void testGetServerIssueForDiagnosticNotFound() throws Exception {
-    URI uri = new URI("/");
-    ServerIssue issue = mock(ServerIssue.class);
+    var uri = new URI("/");
+    var issue = mock(ServerIssue.class);
     when(issue.ruleKey()).thenReturn("someRuleKey");
     when(issue.key()).thenReturn("issueKey");
 
-    Diagnostic diagnostic = mock(Diagnostic.class);
+    var diagnostic = mock(Diagnostic.class);
     when(diagnostic.getData()).thenReturn("anotherKey");
     when(diagnostic.getCode()).thenReturn(Either.forLeft("anotherRuleKey"));
-    taintVulnerabilitiesPerFile.put(uri, Collections.singletonList(issue));
+    taintVulnerabilitiesPerFile.put(uri, List.of(issue));
 
     assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).isEmpty();
   }
 
   @Test
   void testGetServerIssueByKey() throws Exception {
-    URI uri = new URI("/");
-    ServerIssue issue = mock(ServerIssue.class);
-    String issueKey = "key";
+    var uri = new URI("/");
+    var issue = mock(ServerIssue.class);
+    var issueKey = "key";
     when(issue.key()).thenReturn(issueKey);
 
-    taintVulnerabilitiesPerFile.put(uri, Collections.singletonList(issue));
+    taintVulnerabilitiesPerFile.put(uri, List.of(issue));
 
     assertThat(underTest.getTaintVulnerabilityByKey(issueKey)).hasValue(issue);
     assertThat(underTest.getTaintVulnerabilityByKey("otherKey")).isEmpty();
@@ -198,74 +197,74 @@ class AnalysisManagerTests {
 
   @Test
   void dontForwardFileEventToEngineWhenOutsideOfFolder() {
-    StandaloneSonarLintEngine sonarLintEngine = mock(StandaloneSonarLintEngine.class);
+    var sonarLintEngine = mock(StandaloneSonarLintEngine.class);
     when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
 
-    underTest.didChangeWatchedFiles(Collections.singletonList(new FileEvent("uri", FileChangeType.Created)));
+    underTest.didChangeWatchedFiles(List.of(new FileEvent("uri", FileChangeType.Created)));
 
-    verifyZeroInteractions(sonarLintEngine);
+    verifyNoInteractions(sonarLintEngine);
   }
 
   @Test
   void forwardFileCreatedEventToEngineWhenInsideOfFolder() {
-    ArgumentCaptor<ClientModuleFileEvent> fileEventArgumentCaptor = ArgumentCaptor.forClass(ClientModuleFileEvent.class);
-    final URI folderURI = URI.create("file:///folder");
-    StandaloneSonarLintEngine sonarLintEngine = mock(StandaloneSonarLintEngine.class);
+    var fileEventArgumentCaptor = ArgumentCaptor.forClass(ClientModuleFileEvent.class);
+    var folderURI = URI.create("file:///folder");
+    var sonarLintEngine = mock(StandaloneSonarLintEngine.class);
     when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
-    WorkspaceFolderWrapper folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
+    var folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
     folder.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
     when(foldersManager.findFolderForFile(any())).thenReturn(Optional.of(folder));
     doNothing().when(sonarLintEngine).fireModuleFileEvent(any(), any());
     when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(sonarLintEngine);
 
-    underTest.didChangeWatchedFiles(Collections.singletonList(new FileEvent("file:///folder/file.py", FileChangeType.Created)));
+    underTest.didChangeWatchedFiles(List.of(new FileEvent("file:///folder/file.py", FileChangeType.Created)));
 
     verify(sonarLintEngine).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
-    ClientModuleFileEvent fileEvent = fileEventArgumentCaptor.getValue();
+    var fileEvent = fileEventArgumentCaptor.getValue();
     assertThat(fileEvent.type()).isEqualTo(ModuleFileEvent.Type.CREATED);
   }
 
   @Test
   void forwardFileModifiedEventToEngineWhenInsideOfFolder() {
-    ArgumentCaptor<ClientModuleFileEvent> fileEventArgumentCaptor = ArgumentCaptor.forClass(ClientModuleFileEvent.class);
-    final URI folderURI = URI.create("file:///folder");
-    StandaloneSonarLintEngine sonarLintEngine = mock(StandaloneSonarLintEngine.class);
+    var fileEventArgumentCaptor = ArgumentCaptor.forClass(ClientModuleFileEvent.class);
+    var folderURI = URI.create("file:///folder");
+    var sonarLintEngine = mock(StandaloneSonarLintEngine.class);
     when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
-    WorkspaceFolderWrapper folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
+    var folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
     folder.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
     when(foldersManager.findFolderForFile(any())).thenReturn(Optional.of(folder));
     doNothing().when(sonarLintEngine).fireModuleFileEvent(any(), any());
     when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(sonarLintEngine);
 
-    underTest.didChangeWatchedFiles(Collections.singletonList(new FileEvent("file:///folder/file.py", FileChangeType.Changed)));
+    underTest.didChangeWatchedFiles(List.of(new FileEvent("file:///folder/file.py", FileChangeType.Changed)));
 
     verify(sonarLintEngine).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
-    ClientModuleFileEvent fileEvent = fileEventArgumentCaptor.getValue();
+    var fileEvent = fileEventArgumentCaptor.getValue();
     assertThat(fileEvent.type()).isEqualTo(ModuleFileEvent.Type.MODIFIED);
   }
 
   @Test
   void forwardFileDeletedEventToEngineWhenInsideOfFolder() {
-    ArgumentCaptor<ClientModuleFileEvent> fileEventArgumentCaptor = ArgumentCaptor.forClass(ClientModuleFileEvent.class);
-    final URI folderURI = URI.create("file:///folder");
-    StandaloneSonarLintEngine sonarLintEngine = mock(StandaloneSonarLintEngine.class);
+    var fileEventArgumentCaptor = ArgumentCaptor.forClass(ClientModuleFileEvent.class);
+    var folderURI = URI.create("file:///folder");
+    var sonarLintEngine = mock(StandaloneSonarLintEngine.class);
     when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
-    WorkspaceFolderWrapper folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
+    var folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
     folder.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
     when(foldersManager.findFolderForFile(any())).thenReturn(Optional.of(folder));
     doNothing().when(sonarLintEngine).fireModuleFileEvent(any(), any());
     when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(sonarLintEngine);
 
-    underTest.didChangeWatchedFiles(Collections.singletonList(new FileEvent("file:///folder/file.py", FileChangeType.Deleted)));
+    underTest.didChangeWatchedFiles(List.of(new FileEvent("file:///folder/file.py", FileChangeType.Deleted)));
 
     verify(sonarLintEngine).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
-    ClientModuleFileEvent fileEvent = fileEventArgumentCaptor.getValue();
+    var fileEvent = fileEventArgumentCaptor.getValue();
     assertThat(fileEvent.type()).isEqualTo(ModuleFileEvent.Type.DELETED);
   }
 
   @Test
   void showFirstSecretDetectedNotification() {
-    Issue issue = mock(Issue.class);
+    var issue = mock(Issue.class);
     when(issue.getRuleKey()).thenReturn("secrets:123");
 
     underTest.showFirstSecretDetectionNotificationIfNeeded(issue);

@@ -36,8 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.core.client.api.common.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.JRE;
 import static org.sonarsource.sonarlint.core.client.api.common.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.NODEJS;
@@ -58,31 +58,31 @@ class SkippedPluginsNotifierTest {
 
   @Test
   void no_job_if_no_plugins() {
-    AnalysisResults results = mock(AnalysisResults.class);
+    var results = mock(AnalysisResults.class);
     when(results.languagePerFile()).thenReturn(Collections.emptyMap());
     SkippedPluginsNotifier.notifyOnceForSkippedPlugins(results, Collections.emptyList(), languageClient);
 
-    verifyZeroInteractions(languageClient);
+    verifyNoInteractions(languageClient);
   }
 
   @Test
   void send_notification_once_for_jre() {
-    AnalysisResults results = mock(AnalysisResults.class);
+    var results = mock(AnalysisResults.class);
     when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, Language.JAVA));
     preparePopupSelection(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
 
-    DefaultLoadedAnalyzer analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE =
+    var analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE =
       new DefaultLoadedAnalyzer("java", "Java Code Quality and Security", "6.7.8.90123",
         new SkipReason.UnsatisfiedRuntimeRequirement(JRE, "currentJavaVersion", "minJavaVersion"));
     SkippedPluginsNotifier.notifyOnceForSkippedPlugins(results, Collections.singleton(analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE), languageClient);
     SkippedPluginsNotifier.notifyOnceForSkippedPlugins(results, Collections.singleton(analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE), languageClient);
 
-    ArgumentCaptor<ShowMessageRequestParams> messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
+    var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
     verify(languageClient).showMessageRequest(messageCaptor.capture());
     verify(languageClient).openJavaHomeSettings();
     verifyNoMoreInteractions(languageClient);
 
-    ShowMessageRequestParams message = messageCaptor.getValue();
+    var message = messageCaptor.getValue();
     assertThat(message.getMessage()).contains("SonarLint failed to analyze Java code")
       .contains("Java runtime version minJavaVersion or later is required. Current version is currentJavaVersion.");
     assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
@@ -90,20 +90,20 @@ class SkippedPluginsNotifierTest {
 
   @Test
   void send_notification_for_jre_and_close_notification() {
-    AnalysisResults results = mock(AnalysisResults.class);
+    var results = mock(AnalysisResults.class);
     when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, Language.JAVA));
     preparePopupSelection(null);
 
-    DefaultLoadedAnalyzer analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE =
+    var analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE =
       new DefaultLoadedAnalyzer("java", "Java Code Quality and Security", "6.7.8.90123",
         new SkipReason.UnsatisfiedRuntimeRequirement(JRE, "currentJavaVersion", "minJavaVersion"));
     SkippedPluginsNotifier.notifyOnceForSkippedPlugins(results, Collections.singleton(analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE), languageClient);
 
-    ArgumentCaptor<ShowMessageRequestParams> messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
+    var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
     verify(languageClient).showMessageRequest(messageCaptor.capture());
     verifyNoMoreInteractions(languageClient);
 
-    ShowMessageRequestParams message = messageCaptor.getValue();
+    var message = messageCaptor.getValue();
     assertThat(message.getMessage()).contains("SonarLint failed to analyze Java code")
       .contains("Java runtime version minJavaVersion or later is required. Current version is currentJavaVersion.");
     assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
@@ -111,43 +111,42 @@ class SkippedPluginsNotifierTest {
 
   @Test
   void send_notification_for_node_when_found() {
-    AnalysisResults results = mock(AnalysisResults.class);
+    var results = mock(AnalysisResults.class);
     when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, Language.JS));
     preparePopupSelection(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
 
-    DefaultLoadedAnalyzer analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs =
+    var analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs =
       new DefaultLoadedAnalyzer("javascript", "JS and TS Code Quality and Security", "6.5.4.32109",
         new SkipReason.UnsatisfiedRuntimeRequirement(NODEJS, "currentNodeJsVersion", "minNodeJsVersion"));
     SkippedPluginsNotifier.notifyOnceForSkippedPlugins(results, Collections.singleton(analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs), languageClient);
 
-    ArgumentCaptor<ShowMessageRequestParams> messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
+    var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
     verify(languageClient).showMessageRequest(messageCaptor.capture());
     verify(languageClient).openPathToNodeSettings();
     verifyNoMoreInteractions(languageClient);
 
-    ShowMessageRequestParams message = messageCaptor.getValue();
+    var message = messageCaptor.getValue();
     assertThat(message.getMessage()).contains("SonarLint failed to analyze JavaScript code")
       .contains("Node.js runtime version minNodeJsVersion or later is required. Current version is currentNodeJsVersion.");
     assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
   }
 
-
   @Test
   void send_notification_for_node_when_not_found() {
-    AnalysisResults results = mock(AnalysisResults.class);
+    var results = mock(AnalysisResults.class);
     when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, Language.JS));
     preparePopupSelection(null);
 
-    DefaultLoadedAnalyzer analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs =
+    var analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs =
       new DefaultLoadedAnalyzer("javascript", "JS and TS Code Quality and Security", "6.5.4.32109",
         new SkipReason.UnsatisfiedRuntimeRequirement(NODEJS, null, "minNodeJsVersion"));
     SkippedPluginsNotifier.notifyOnceForSkippedPlugins(results, Collections.singleton(analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs), languageClient);
 
-    ArgumentCaptor<ShowMessageRequestParams> messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
+    var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
     verify(languageClient).showMessageRequest(messageCaptor.capture());
     verifyNoMoreInteractions(languageClient);
 
-    ShowMessageRequestParams message = messageCaptor.getValue();
+    var message = messageCaptor.getValue();
     assertThat(message.getMessage()).contains("SonarLint failed to analyze JavaScript code")
       .contains("Node.js runtime version minNodeJsVersion or later is required.")
       .doesNotContain("Current version is");

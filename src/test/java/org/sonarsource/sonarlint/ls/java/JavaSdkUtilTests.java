@@ -33,17 +33,17 @@ class JavaSdkUtilTests {
 
   @Test
   void testOpenJdk8Linux(@TempDir Path tmp) throws IOException {
-    Path javaHome = tmp.resolve("openjdk8");
+    var javaHome = tmp.resolve("openjdk8");
     // lib folder is not included
     fakeFile(javaHome, "lib/dt.jar");
     fakeFile(javaHome, "lib/tools.jar");
     // jre/lib is included
-    Path charsets = fakeFile(javaHome, "jre/lib/charsets.jar");
-    Path resources = fakeFile(javaHome, "jre/lib/resources.jar");
-    Path rt = fakeFile(javaHome, "jre/lib/rt.jar");
+    var charsets = fakeFile(javaHome, "jre/lib/charsets.jar");
+    var resources = fakeFile(javaHome, "jre/lib/resources.jar");
+    var rt = fakeFile(javaHome, "jre/lib/rt.jar");
     // jre/lib/ext is included
-    Path zipfs = fakeFile(javaHome, "jre/lib/ext/zipfs.jar");
-    Path dnsns = fakeFile(javaHome, "jre/lib/ext/dnsns.jar");
+    var zipfs = fakeFile(javaHome, "jre/lib/ext/zipfs.jar");
+    var dnsns = fakeFile(javaHome, "jre/lib/ext/dnsns.jar");
     // Only JARs included
     fakeFile(javaHome, "jre/lib/ext/meta-index");
 
@@ -52,11 +52,11 @@ class JavaSdkUtilTests {
 
   @Test
   void testOracleJdk7Linux(@TempDir Path tmp) throws IOException {
-    Path javaHome = tmp.resolve("jdk7");
+    var javaHome = tmp.resolve("jdk7");
     // jre/lib is included
-    Path charsets = fakeFile(javaHome, "jre/lib/charsets.jar");
-    Path resources = fakeFile(javaHome, "jre/lib/resources.jar");
-    Path rt = fakeFile(javaHome, "jre/lib/rt.jar");
+    var charsets = fakeFile(javaHome, "jre/lib/charsets.jar");
+    var resources = fakeFile(javaHome, "jre/lib/resources.jar");
+    var rt = fakeFile(javaHome, "jre/lib/rt.jar");
     // alt-rt excluded
     fakeFile(javaHome, "jre/lib/alt-rt.jar");
 
@@ -65,11 +65,11 @@ class JavaSdkUtilTests {
 
   @Test
   void testOracleJdk6Linux(@TempDir Path tmp) throws IOException {
-    Path javaHome = tmp.resolve("jdk7");
+    var javaHome = tmp.resolve("jdk7");
     // jre/lib is included
-    Path charsets = fakeFile(javaHome, "jre/lib/charsets.jar");
-    Path resources = fakeFile(javaHome, "jre/lib/resources.jar");
-    Path rt = fakeFile(javaHome, "jre/lib/rt.jar");
+    var charsets = fakeFile(javaHome, "jre/lib/charsets.jar");
+    var resources = fakeFile(javaHome, "jre/lib/resources.jar");
+    var rt = fakeFile(javaHome, "jre/lib/rt.jar");
     // alt-string excluded
     fakeFile(javaHome, "jre/lib/alt-string.jar");
 
@@ -78,14 +78,14 @@ class JavaSdkUtilTests {
 
   @Test
   void testOpenJdk8Mac(@TempDir Path tmp) throws IOException {
-    Path javaHome = tmp.resolve("JavaVirtualMachines/1.8.0.jdk/Contents/Home");
+    var javaHome = tmp.resolve("JavaVirtualMachines/1.8.0.jdk/Contents/Home");
     // lib is included
-    Path charsets = fakeFile(javaHome, "jre/lib/charsets.jar");
-    Path resources = fakeFile(javaHome, "jre/lib/resources.jar");
-    Path rt = fakeFile(javaHome, "jre/lib/rt.jar");
+    var charsets = fakeFile(javaHome, "jre/lib/charsets.jar");
+    var resources = fakeFile(javaHome, "jre/lib/resources.jar");
+    var rt = fakeFile(javaHome, "jre/lib/rt.jar");
     // lib/ext is included
-    Path zipfs = fakeFile(javaHome, "jre/lib/ext/zipfs.jar");
-    Path dnsns = fakeFile(javaHome, "jre/lib/ext/dnsns.jar");
+    var zipfs = fakeFile(javaHome, "jre/lib/ext/zipfs.jar");
+    var dnsns = fakeFile(javaHome, "jre/lib/ext/dnsns.jar");
 
     assertThat(JavaSdkUtil.getJdkClassesRoots(javaHome, true)).containsExactlyInAnyOrder(charsets, resources, rt, zipfs, dnsns);
   }
@@ -93,13 +93,13 @@ class JavaSdkUtilTests {
   @Test
   @DisabledOnOs(OS.WINDOWS)
   void testAppleJdk6Mac(@TempDir Path tmp) throws IOException {
-    Path javaHome = tmp.resolve("JavaVirtualMachines/1.6.0.jdk/Contents/Home");
+    var javaHome = tmp.resolve("JavaVirtualMachines/1.6.0.jdk/Contents/Home");
     // ../Classes folder is included
-    Path classes = fakeFile(javaHome, "../Classes/classes.jar");
-    Path jsse = fakeFile(javaHome, "../Classes/jsse.jar");
+    var classes = fakeFile(javaHome, "../Classes/classes.jar");
+    var jsse = fakeFile(javaHome, "../Classes/jsse.jar");
     // rt.jar often symlink to classes.jar
     Files.createDirectories(javaHome.resolve("lib"));
-    Path rtSymlink = javaHome.resolve("lib/rt.jar");
+    var rtSymlink = javaHome.resolve("lib/rt.jar");
     Files.createSymbolicLink(rtSymlink, classes);
 
     // We should not have both rtSymlink and classes. Here rtSymlink is returned first
@@ -108,13 +108,13 @@ class JavaSdkUtilTests {
 
   @Test
   void testOpenJdk11(@TempDir Path tmp) throws IOException {
-    Path javaHome = tmp.resolve("openjdk11");
-    Path jfsRt = fakeFile(javaHome, "lib/jrt-fs.jar");
+    var javaHome = tmp.resolve("openjdk11");
+    var jfsRt = fakeFile(javaHome, "lib/jrt-fs.jar");
     assertThat(JavaSdkUtil.getJdkClassesRoots(javaHome, false)).containsExactlyInAnyOrder(jfsRt);
   }
 
   private Path fakeFile(Path baseDir, String filePath) throws IOException {
-    Path file = baseDir.resolve(filePath).normalize();
+    var file = baseDir.resolve(filePath).normalize();
     Files.createDirectories(file.getParent());
     Files.createFile(file);
     return file;

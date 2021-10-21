@@ -24,7 +24,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 
 public interface WorkspaceFolderSettingsChangeListener {
   /**
-   * @param workspaceFolderPath if null, it means there is a change for default globalSettings (for files not in a workspace workspaceFolderPath)
+   * @param folder if null, it means there is a change for default globalSettings (for files not in a workspace workspaceFolderPath)
    * @param oldValue
    * @param newValue
    */

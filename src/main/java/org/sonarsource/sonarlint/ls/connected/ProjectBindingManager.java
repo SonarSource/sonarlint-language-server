@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -56,10 +55,6 @@ import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine.State;
-import org.sonarsource.sonarlint.core.client.api.connected.GlobalStorageStatus;
-import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
-import org.sonarsource.sonarlint.core.client.api.connected.ProjectStorageStatus;
-import org.sonarsource.sonarlint.core.client.api.connected.UpdateResult;
 import org.sonarsource.sonarlint.core.client.api.exceptions.CanceledException;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
 import org.sonarsource.sonarlint.core.util.StringUtils;
@@ -81,6 +76,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 import static java.lang.Boolean.TRUE;
 import static java.util.Objects.requireNonNull;
+import static java.util.function.Predicate.not;
 
 /**
  * Keep a cache of project bindings. Files that are part of a workspace workspaceFolderPath will share the same binding.
@@ -140,20 +136,20 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
    * @return empty if the file is unbound
    */
   public Optional<ProjectBindingWrapper> getBinding(URI fileUri) {
-    Optional<WorkspaceFolderWrapper> folder = foldersManager.findFolderForFile(fileUri);
-    URI cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
+    var folder = foldersManager.findFolderForFile(fileUri);
+    var cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
     return getBinding(folder, cacheKey);
   }
 
   private Optional<ProjectBindingWrapper> getBinding(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {
-    Map<URI, Optional<ProjectBindingWrapper>> bindingCache = folder.isPresent() ? folderBindingCache : fileBindingCache;
+    var bindingCache = folder.isPresent() ? folderBindingCache : fileBindingCache;
     return bindingCache.computeIfAbsent(fileUri, k -> {
-      WorkspaceFolderSettings settings = folder.map(WorkspaceFolderWrapper::getSettings)
+      var settings = folder.map(WorkspaceFolderWrapper::getSettings)
         .orElse(settingsManager.getCurrentDefaultFolderSettings());
       if (!settings.hasBinding()) {
         return Optional.empty();
       } else {
-        Path folderRoot = folder.map(WorkspaceFolderWrapper::getRootPath).orElse(Paths.get(fileUri).getParent());
+        var folderRoot = folder.map(WorkspaceFolderWrapper::getRootPath).orElse(Paths.get(fileUri).getParent());
         return Optional.ofNullable(computeProjectBinding(settings, folderRoot));
       }
     });
@@ -166,12 +162,12 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   void checkForBindingUpdates() {
     LOG.debug("Checking binding updates");
     forEachBoundFolder((folder, settings) -> {
-      String connectionId = requireNonNull(settings.getConnectionId());
+      var connectionId = requireNonNull(settings.getConnectionId());
       getStartedConnectedEngine(connectionId)
         .filter(engine -> engine.getState() != State.UPDATING)
         .ifPresent(engine -> {
-          String projectKey = requireNonNull(settings.getProjectKey());
-          EndpointParamsAndHttpClient paramsAndHttpClient = getServerConfigurationFor(connectionId);
+          var projectKey = requireNonNull(settings.getProjectKey());
+          var paramsAndHttpClient = getServerConfigurationFor(connectionId);
           if (paramsAndHttpClient == null) {
             return;
           }
@@ -201,34 +197,34 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   @CheckForNull
   private ProjectBindingWrapper computeProjectBinding(WorkspaceFolderSettings settings, Path folderRoot) {
-    String connectionId = requireNonNull(settings.getConnectionId());
-    EndpointParamsAndHttpClient endpointParamsAndHttpClient = getServerConfigurationFor(connectionId);
+    var connectionId = requireNonNull(settings.getConnectionId());
+    var endpointParamsAndHttpClient = getServerConfigurationFor(connectionId);
     if (endpointParamsAndHttpClient == null) {
       LOG.error("Invalid binding for '{}'", folderRoot);
       return null;
     }
-    Optional<ConnectedSonarLintEngine> engineOpt = getOrCreateConnectedEngine(connectionId, endpointParamsAndHttpClient, true, new NoOpProgressFacade());
-    if (!engineOpt.isPresent()) {
+    var engineOpt = getOrCreateConnectedEngine(connectionId, endpointParamsAndHttpClient, true, new NoOpProgressFacade());
+    if (engineOpt.isEmpty()) {
       return null;
     }
-    ConnectedSonarLintEngine engine = engineOpt.get();
-    String projectKey = requireNonNull(settings.getProjectKey());
-    ProjectStorageStatus projectStorageStatus = engine.getProjectStorageStatus(projectKey);
+    var engine = engineOpt.get();
+    var projectKey = requireNonNull(settings.getProjectKey());
+    var projectStorageStatus = engine.getProjectStorageStatus(projectKey);
     if (projectStorageStatus == null || projectStorageStatus.isStale()) {
       engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, false, null);
     }
-    Collection<String> ideFilePaths = FileUtils.allRelativePathsForFilesInTree(folderRoot);
-    ProjectBinding projectBinding = engine.calculatePathPrefixes(projectKey, ideFilePaths);
+    var ideFilePaths = FileUtils.allRelativePathsForFilesInTree(folderRoot);
+    var projectBinding = engine.calculatePathPrefixes(projectKey, ideFilePaths);
     LOG.debug("Resolved binding {} for folder {}",
       ToStringBuilder.reflectionToString(projectBinding, ToStringStyle.SHORT_PREFIX_STYLE),
       folderRoot);
-    ServerIssueTrackerWrapper issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, endpointParamsAndHttpClient, projectBinding);
+    var issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, endpointParamsAndHttpClient, projectBinding);
     return new ProjectBindingWrapper(connectionId, projectBinding, engine, issueTrackerWrapper);
   }
 
   @CheckForNull
   public EndpointParamsAndHttpClient getServerConfigurationFor(String connectionId) {
-    ServerConnectionSettings serverConnectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
+    var serverConnectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
     if (serverConnectionSettings == null) {
       LOG.error("The specified connection id '{}' doesn't exist.", connectionId);
       return null;
@@ -257,9 +253,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       LOG.error("Error starting connected SonarLint engine for '" + connectionId + "'", e);
       return null;
     }
-    List<String> failedServerIds = new ArrayList<>();
+    var failedServerIds = new ArrayList<String>();
     try {
-      GlobalStorageStatus globalStorageStatus = engine.getGlobalStorageStatus();
+      var globalStorageStatus = engine.getGlobalStorageStatus();
       if (autoUpdate && (globalStorageStatus == null || globalStorageStatus.isStale() || engine.getState() != State.UPDATED)) {
         updateGlobalStorageAndLogResults(endpointParamsAndHttpClient, engine, failedServerIds, connectionId, progress);
       }
@@ -301,8 +297,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       unbind(folder);
     } else if (newValue.hasBinding()
       && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
-        forceRebindDuringNextAnalysis(folder);
-      }
+      forceRebindDuringNextAnalysis(folder);
+    }
   }
 
   private void forceRebindDuringNextAnalysis(@Nullable WorkspaceFolderWrapper folder) {
@@ -351,23 +347,23 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   private void stopUnusedEngines() {
-    Set<String> usedServerIds = new HashSet<>();
-    WorkspaceFolderSettings folderSettings = settingsManager.getCurrentDefaultFolderSettings();
+    var usedServerIds = new HashSet<String>();
+    var folderSettings = settingsManager.getCurrentDefaultFolderSettings();
     collectUsedServerId(usedServerIds, folderSettings);
     foldersManager.getAll().forEach(w -> collectUsedServerId(usedServerIds, w.getSettings()));
-    Set<String> startedEngines = new HashSet<>(connectedEngineCacheByConnectionId.keySet());
-    for (String startedEngineId : startedEngines) {
-      if (!usedServerIds.contains(startedEngineId)) {
+    var startedEngines = new HashSet<>(connectedEngineCacheByConnectionId.keySet());
+    startedEngines.stream()
+      .filter(not(usedServerIds::contains))
+      .forEach(startedEngineId -> {
         folderBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().getConnectionId().equals(startedEngineId));
         fileBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().getConnectionId().equals(startedEngineId));
         tryStopServer(startedEngineId, connectedEngineCacheByConnectionId.remove(startedEngineId));
-      }
-    }
+      });
   }
 
   private void collectUsedServerId(Set<String> usedConnectionIds, WorkspaceFolderSettings folderSettings) {
     if (folderSettings.hasBinding()) {
-      String connectionId = folderSettings.getConnectionId();
+      var connectionId = folderSettings.getConnectionId();
       if (connectionId != null && settingsManager.getCurrentSettings().getServerConnections().containsKey(connectionId)) {
         usedConnectionIds.add(connectionId);
       }
@@ -416,7 +412,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   private void updateBindings(Map<String, Set<String>> projectKeyByConnectionIdsToUpdate, ProgressFacade progress) {
-    Set<String> failedConnectionIds = tryUpdateConnectionsAndBoundProjectStorages(projectKeyByConnectionIdsToUpdate, progress);
+    var failedConnectionIds = tryUpdateConnectionsAndBoundProjectStorages(projectKeyByConnectionIdsToUpdate, progress);
     showOperationResult(failedConnectionIds);
     triggerAnalysisOfAllOpenFilesInBoundFolders(failedConnectionIds);
   }
@@ -433,14 +429,14 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     if (failedConnectionIds.isEmpty()) {
       client.showMessage(new MessageParams(MessageType.Info, "All SonarLint bindings succesfully updated"));
     } else {
-      String connections = String.join(", ", failedConnectionIds);
+      var connections = String.join(", ", failedConnectionIds);
       client.showMessage(
         new MessageParams(MessageType.Error, "Binding update failed for the following connection(s): " + connections + ". Look at the SonarLint output for details."));
     }
   }
 
   private Set<String> tryUpdateConnectionsAndBoundProjectStorages(Map<String, Set<String>> projectKeyByConnectionIdsToUpdate, ProgressFacade progress) {
-    Set<String> failedConnectionIds = new LinkedHashSet<>();
+    var failedConnectionIds = new LinkedHashSet<String>();
     projectKeyByConnectionIdsToUpdate.forEach(
       (connectionId, projectKeys) -> tryUpdateConnectionAndBoundProjectsStorages(projectKeyByConnectionIdsToUpdate, progress, failedConnectionIds, connectionId, projectKeys));
     return failedConnectionIds;
@@ -449,13 +445,13 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private void tryUpdateConnectionAndBoundProjectsStorages(Map<String, Set<String>> projectKeyByConnectionIdsToUpdate, ProgressFacade progress,
     Set<String> failedConnectionIds, String connectionId, Set<String> projectKeys) {
     progress.doInSubProgress(connectionId, 1.0f / projectKeyByConnectionIdsToUpdate.size(), subProgress -> {
-      EndpointParamsAndHttpClient endpointParamsAndHttpClient = getServerConfigurationFor(connectionId);
+      var endpointParamsAndHttpClient = getServerConfigurationFor(connectionId);
       if (endpointParamsAndHttpClient == null) {
         failedConnectionIds.add(connectionId);
         return;
       }
-      Optional<ConnectedSonarLintEngine> engineOpt = getOrCreateConnectedEngine(connectionId, endpointParamsAndHttpClient, false, subProgress);
-      if (!engineOpt.isPresent()) {
+      var engineOpt = getOrCreateConnectedEngine(connectionId, endpointParamsAndHttpClient, false, subProgress);
+      if (engineOpt.isEmpty()) {
         failedConnectionIds.add(connectionId);
         return;
       }
@@ -480,7 +476,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   private Map<String, Set<String>> collectConnectionsAndProjectsToUpdate() {
-    Map<String, Set<String>> projectKeyByConnectionIdsToUpdate = new HashMap<>();
+    var projectKeyByConnectionIdsToUpdate = new HashMap<String, Set<String>>();
     // Update all engines that are already started and cached, even if no folders are bound
     connectedEngineCacheByConnectionId.keySet().forEach(id -> projectKeyByConnectionIdsToUpdate.computeIfAbsent(id, i -> new HashSet<>()));
     // Start and update all engines that used in a folder binding, even if not yet started
@@ -493,12 +489,12 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   private void forEachBoundFolder(BiConsumer<WorkspaceFolderWrapper, WorkspaceFolderSettings> boundFolderConsumer) {
-    WorkspaceFolderSettings defaultFolderSettings = settingsManager.getCurrentDefaultFolderSettings();
+    var defaultFolderSettings = settingsManager.getCurrentDefaultFolderSettings();
     if (defaultFolderSettings.hasBinding()) {
       boundFolderConsumer.accept(null, defaultFolderSettings);
     }
     foldersManager.getAll().forEach(f -> {
-      WorkspaceFolderSettings settings = f.getSettings();
+      var settings = f.getSettings();
       if (settings.hasBinding()) {
         boundFolderConsumer.accept(f, settings);
       }
@@ -510,7 +506,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     ConnectedSonarLintEngine engine, Collection<String> failedConnectionIds,
     String connectionId, ProgressFacade progress) {
     try {
-      UpdateResult updateResult = engine.update(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), progress.asCoreMonitor());
+      var updateResult = engine.update(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), progress.asCoreMonitor());
       LOG.info("Local storage status for connection with id '{}': {}", connectionId, updateResult.status());
     } catch (CanceledException e) {
       throw e;
@@ -533,8 +529,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return folderBindingCache.entrySet().stream()
       .filter(e -> e.getValue().isPresent())
       .map(e -> tryResolveLocalFile(serverPath, e.getKey(), e.getValue().get()))
-      .filter(Optional::isPresent)
-      .map(Optional::get)
+      .flatMap(Optional::stream)
       .map(File::toURI)
       .findFirst();
   }

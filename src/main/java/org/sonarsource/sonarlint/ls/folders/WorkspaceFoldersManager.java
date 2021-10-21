@@ -49,7 +49,7 @@ public class WorkspaceFoldersManager {
   public void initialize(@Nullable List<WorkspaceFolder> workspaceFolders) {
     if (workspaceFolders != null) {
       workspaceFolders.forEach(wf -> {
-        URI uri = create(wf.getUri());
+        var uri = create(wf.getUri());
         addFolder(wf, uri);
       });
     }
@@ -57,19 +57,19 @@ public class WorkspaceFoldersManager {
 
   public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
     LOG.debug("Processing didChangeWorkspaceFolders event");
-    for (WorkspaceFolder removed : event.getRemoved()) {
-      URI uri = create(removed.getUri());
+    for (var removed : event.getRemoved()) {
+      var uri = create(removed.getUri());
       removeFolder(uri);
     }
-    for (WorkspaceFolder added : event.getAdded()) {
-      URI uri = create(added.getUri());
-      WorkspaceFolderWrapper addedWrapper = addFolder(added, uri);
+    for (var added : event.getAdded()) {
+      var uri = create(added.getUri());
+      var addedWrapper = addFolder(added, uri);
       listeners.forEach(l -> l.added(addedWrapper));
     }
   }
 
   private void removeFolder(URI uri) {
-    WorkspaceFolderWrapper removed = folders.remove(uri);
+    var removed = folders.remove(uri);
     if (removed == null) {
       LOG.warn("Unregistered workspace folder was missing: " + uri);
       return;
@@ -79,7 +79,7 @@ public class WorkspaceFoldersManager {
   }
 
   private WorkspaceFolderWrapper addFolder(WorkspaceFolder added, URI uri) {
-    WorkspaceFolderWrapper addedWrapper = new WorkspaceFolderWrapper(uri, added);
+    var addedWrapper = new WorkspaceFolderWrapper(uri, added);
     if (folders.put(uri, addedWrapper) != null) {
       LOG.warn("Registered workspace folder {} was already added", addedWrapper);
     } else {
@@ -89,7 +89,7 @@ public class WorkspaceFoldersManager {
   }
 
   public Optional<WorkspaceFolderWrapper> findFolderForFile(URI uri) {
-    List<URI> folderUriCandidates = folders.keySet().stream()
+    var folderUriCandidates = folders.keySet().stream()
       .filter(wfRoot -> isAncestor(wfRoot, uri))
       // Sort by path descending length to prefer the deepest one in case of multiple nested workspace folders
       .sorted(Comparator.<URI>comparingInt(wfRoot -> wfRoot.getPath().length()).reversed())
@@ -121,8 +121,8 @@ public class WorkspaceFoldersManager {
       return Paths.get(fileUri).startsWith(Paths.get(folderUri));
     }
     // Assume "/" is the separator of "folders"
-    String[] fileSegments = fileUri.getPath().split("/");
-    String[] folderSegments = folderUri.getPath().split("/");
+    var fileSegments = fileUri.getPath().split("/");
+    var folderSegments = folderUri.getPath().split("/");
     return folderSegments.length <= fileSegments.length && Arrays.equals(folderSegments, Arrays.copyOfRange(fileSegments, 0, folderSegments.length));
   }
 

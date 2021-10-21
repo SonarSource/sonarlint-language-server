@@ -108,7 +108,7 @@ public class WorkspaceSettings {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    WorkspaceSettings other = (WorkspaceSettings) obj;
+    var other = (WorkspaceSettings) obj;
     return disableTelemetry == other.disableTelemetry && Objects.equals(connections, other.connections) && Objects.equals(excludedRules, other.excludedRules)
       && Objects.equals(includedRules, other.includedRules) && Objects.equals(ruleParameters, other.ruleParameters)
       && Objects.equals(showAnalyzerLogs, other.showAnalyzerLogs) && Objects.equals(showVerboseLogs, other.showVerboseLogs)

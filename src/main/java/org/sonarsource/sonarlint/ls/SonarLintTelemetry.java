@@ -19,7 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import com.google.common.annotations.VisibleForTesting;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -57,7 +56,6 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
   private TelemetryManager telemetry;
 
-  @VisibleForTesting
   ScheduledFuture<?> scheduledFuture;
   private ScheduledExecutorService scheduler;
   private Map<String, Object> additionalAttributes;
@@ -100,7 +98,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
   public void initialize(@Nullable String productKey, @Nullable String telemetryStorage, String productName, String productVersion, String ideVersion,
     Map<String, Object> additionalAttributes) {
-    Path storagePath = getStoragePath(productKey, telemetryStorage);
+    var storagePath = getStoragePath(productKey, telemetryStorage);
     init(storagePath, productName, productVersion, ideVersion, additionalAttributes);
   }
 
@@ -115,7 +113,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
       LOG.info("Telemetry disabled by system property");
       return;
     }
-    TelemetryHttpClient client = new TelemetryHttpClient(productName, productVersion, ideVersion, httpClient);
+    var client = new TelemetryHttpClient(productName, productVersion, ideVersion, httpClient);
     this.telemetry = newTelemetryManager(storagePath, client);
     try {
       this.scheduler = executorFactory.get();
@@ -128,7 +126,6 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     }
   }
 
-  @VisibleForTesting
   static Path getStoragePath(@Nullable String productKey, @Nullable String telemetryStorage) {
     if (productKey != null) {
       if (telemetryStorage != null) {
@@ -144,7 +141,6 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
       new TelemetryClientAttributesProviderImpl(settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager, additionalAttributes));
   }
 
-  @VisibleForTesting
   void upload() {
     if (enabled()) {
       telemetry.uploadLazily();

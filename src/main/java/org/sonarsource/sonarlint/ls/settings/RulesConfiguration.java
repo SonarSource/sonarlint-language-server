@@ -68,7 +68,7 @@ class RulesConfiguration {
     ConfiguredRule(Map.Entry<String, Object> ruleJson) {
       this.key = safeParseRuleKey(ruleJson.getKey());
       if (ruleJson.getValue() instanceof Map) {
-        Map<String, Object> config = (Map<String, Object>) ruleJson.getValue();
+        var config = (Map<String, Object>) ruleJson.getValue();
         this.level = safeParseLevel(config);
         this.parameters = safeParseParameters(config);
       } else {

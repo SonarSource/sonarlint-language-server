@@ -19,7 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls.commands;
 
-import com.google.common.annotations.VisibleForTesting;
 import java.net.URI;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -66,7 +65,6 @@ public final class ShowAllLocationsCommand {
       this.creationDate = null;
     }
 
-    @VisibleForTesting
     Param(ServerIssue issue, String connectionId, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localFileCache) {
       this.fileUri = pathResolver.apply(issue.getFilePath()).orElse(null);
       this.message = issue.getMessage();

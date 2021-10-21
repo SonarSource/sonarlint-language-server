@@ -19,12 +19,11 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import com.google.common.collect.ImmutableMap;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.Diagnostic;
@@ -45,18 +44,18 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @BeforeAll
   public static void initialize() throws Exception {
-    initialize(ImmutableMap.<String, Object>builder()
-      .put("telemetryStorage", "not/exists")
-      .put("productName", "SLCORE tests")
-      .put("productVersion", "0.1")
-      .build());
+    initialize(Map.of(
+      "telemetryStorage", "not/exists",
+      "productName", "SLCORE tests",
+      "productVersion", "0.1"
+    ));
   }
 
   @Test
   void skipJavaIfNoClasspath() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true, false, true);
 
-    String uri = getUri("skipJavaIfNoClasspath.java");
+    var uri = getUri("skipJavaIfNoClasspath.java");
 
     client.javaConfigs.put(uri, null);
 
@@ -72,15 +71,15 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleJavaFileReuseCachedClasspath() throws Exception {
-    String uri = getUri("analyzeSimpleJavaFileOnOpen.java");
+    var uri = getUri("analyzeSimpleJavaFileOnOpen.java");
 
-    GetJavaConfigResponse javaConfigResponse = new GetJavaConfigResponse();
+    var javaConfigResponse = new GetJavaConfigResponse();
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[] {"/does/not/exist"});
     client.javaConfigs.put(uri, javaConfigResponse);
 
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -88,12 +87,12 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
         tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
         tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
 
-    String ignoredMsg = "[Debug] Classpath '/does/not/exist' from configuration does not exist, skipped";
-    String cacheMsg = "[Debug] Cached Java config for file '" + uri + "'";
+    var ignoredMsg = "[Debug] Classpath '/does/not/exist' from configuration does not exist, skipped";
+    var cacheMsg = "[Debug] Cached Java config for file '" + uri + "'";
     await().atMost(5, SECONDS).untilAsserted(() -> {
       assertThat(client.logs)
         .extracting(withoutTimestamp())
-        .containsAll(Arrays.asList(ignoredMsg, cacheMsg));
+        .containsAll(List.of(ignoredMsg, cacheMsg));
     });
 
     client.logs.clear();
@@ -112,15 +111,15 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleJavaFileWithFlows() throws Exception {
-    String uri = getUri("AnalyzeSimpleJavaFileWithFlows.java");
+    var uri = getUri("AnalyzeSimpleJavaFileWithFlows.java");
 
-    GetJavaConfigResponse javaConfigResponse = new GetJavaConfigResponse();
+    var javaConfigResponse = new GetJavaConfigResponse();
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[0]);
     client.javaConfigs.put(uri, javaConfigResponse);
 
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "java",
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "java",
       "public class AnalyzeSimpleJavaFileWithFlows {\n" +
         "  private AnalyzeSimpleJavaFileWithFlows() {}\n" +
         "  static int computeValue(int input) {\n" +
@@ -144,22 +143,22 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleJavaFilePassVmClasspath() throws Exception {
-    Path javaHome = Paths.get(System.getProperty("java.home"));
-    Path currentJdkHome = javaHome.endsWith("jre") ? javaHome.getParent() : javaHome;
-    boolean isModular = Files.exists(currentJdkHome.resolve("lib/jrt-fs.jar"));
+    var javaHome = Paths.get(System.getProperty("java.home"));
+    var currentJdkHome = javaHome.endsWith("jre") ? javaHome.getParent() : javaHome;
+    var isModular = Files.exists(currentJdkHome.resolve("lib/jrt-fs.jar"));
 
     emulateConfigurationChangeOnClient("", true, true, true);
 
-    String uri = getUri("analyzeSimpleJavaFileOnOpen.java");
+    var uri = getUri("analyzeSimpleJavaFileOnOpen.java");
 
-    GetJavaConfigResponse javaConfigResponse = new GetJavaConfigResponse();
+    var javaConfigResponse = new GetJavaConfigResponse();
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[0]);
     javaConfigResponse.setVmLocation(currentJdkHome.toString());
     client.javaConfigs.put(uri, javaConfigResponse);
 
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -167,7 +166,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
         tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
         tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
 
-    String jrtFsJarPath = currentJdkHome.resolve(isModular ? "lib/jrt-fs.jar" : "jre/lib/rt.jar").toString();
+    var jrtFsJarPath = currentJdkHome.resolve(isModular ? "lib/jrt-fs.jar" : "jre/lib/rt.jar").toString();
     await().atMost(5, SECONDS).untilAsserted(() -> {
       assertThat(client.logs)
         .extracting(withoutTimestamp())
@@ -180,15 +179,15 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleJavaTestFileOnOpen() throws Exception {
-    String uri = getUri("analyzeSimpleJavaTestFileOnOpen.java");
+    var uri = getUri("analyzeSimpleJavaTestFileOnOpen.java");
 
-    GetJavaConfigResponse javaConfigResponse = new GetJavaConfigResponse();
+    var javaConfigResponse = new GetJavaConfigResponse();
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(true);
     javaConfigResponse.setClasspath(new String[] {Paths.get(this.getClass().getResource("/junit-4.12.jar").toURI()).toAbsolutePath().toString()});
     client.javaConfigs.put(uri, javaConfigResponse);
 
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "java",
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "java",
       "import org.junit.Test;\npublic class FooTest {\n  @Test\n  public void test() {\n String s = \"foo\";\n}\n}");
 
     assertThat(diagnostics)
@@ -199,19 +198,19 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void testClassPathUpdateEvictCacheAndTriggersNewAnalysis(@TempDir Path projectRoot) throws Exception {
-    String uri = getUri("testClassPathUpdate.java");
+    var uri = getUri("testClassPathUpdate.java");
 
-    String projectRootUri = projectRoot.toUri().toString();
+    var projectRootUri = projectRoot.toUri().toString();
     // Emulate vscode-java that returns URI with different format in GetJavaConfigResponse and didClasspathUpdate
     // file:///home/julien/Prog/Projects/plugins/sonar-clirr/
     // file:/home/julien/Prog/Projects/plugins/sonar-clirr
-    String projectRootUri1 = projectRootUri.endsWith("/") ? projectRootUri : projectRootUri + "/";
+    var projectRootUri1 = projectRootUri.endsWith("/") ? projectRootUri : projectRootUri + "/";
 
-    String projectRootUri2 = projectRootUri;
+    var projectRootUri2 = projectRootUri;
     projectRootUri2 = projectRootUri2.replace("file:///", "file:/");
     projectRootUri2 = projectRootUri2.endsWith("/") ? projectRootUri2.substring(0, projectRootUri2.length() - 1) : projectRootUri2;
 
-    GetJavaConfigResponse javaConfigResponse = new GetJavaConfigResponse();
+    var javaConfigResponse = new GetJavaConfigResponse();
     javaConfigResponse.setProjectRoot(projectRootUri1);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(true);
@@ -219,7 +218,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     javaConfigResponse.setClasspath(new String[0]);
     client.javaConfigs.put(uri, javaConfigResponse);
 
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "java",
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "java",
       "import org.junit.Test;\npublic class FooTest {\n  @Test\n  public void test() {\n String s = \"foo\";\n}\n}");
 
     assertThat(diagnostics).isEmpty();
@@ -250,7 +249,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
   void testJavaServerModeUpdateToStandardTriggersNewAnalysis() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true, false, true);
 
-    String uri = getUri("testJavaServerModeUpdate.java");
+    var uri = getUri("testJavaServerModeUpdate.java");
 
     // Simulate null Java config response due to serverMode=LightWeight
     client.javaConfigs.put(uri, null);
@@ -265,8 +264,8 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
         "[Debug] Skipping analysis of Java file '" + uri + "' because SonarLint was unable to query project configuration (classpath, source level, ...)"));
 
     // Prepare config response
-    GetJavaConfigResponse javaConfigResponse = new GetJavaConfigResponse();
-    String projectRoot = "project/root";
+    var javaConfigResponse = new GetJavaConfigResponse();
+    var projectRoot = "project/root";
     javaConfigResponse.setProjectRoot(projectRoot);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);

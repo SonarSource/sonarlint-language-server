@@ -23,7 +23,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,7 +65,7 @@ class SonarLintTelemetryTests {
 
   private SonarLintTelemetry createTelemetry() {
     when(telemetryManager.isEnabled()).thenReturn(true);
-    SonarLintTelemetry telemetry = new SonarLintTelemetry(mock(ApacheHttpClient.class), mock(SettingsManager.class),
+    var telemetry = new SonarLintTelemetry(mock(ApacheHttpClient.class), mock(SettingsManager.class),
       mock(ProjectBindingManager.class), mock(NodeJsRuntime.class), mock(StandaloneEngineManager.class)) {
       @Override
       TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client) {
@@ -184,7 +183,7 @@ class SonarLintTelemetryTests {
   @Test
   void devNotificationsReceived_when_enabled() {
     when(telemetryManager.isEnabled()).thenReturn(true);
-    String eventType = "eventType";
+    var eventType = "eventType";
     telemetry.devNotificationsReceived(eventType);
     verify(telemetryManager).isEnabled();
     verify(telemetryManager).devNotificationsReceived(eventType);
@@ -201,7 +200,7 @@ class SonarLintTelemetryTests {
   @Test
   void devNotificationsClicked_when_enabled() {
     when(telemetryManager.isEnabled()).thenReturn(true);
-    String eventType = "eventType";
+    var eventType = "eventType";
     telemetry.devNotificationsClicked(eventType);
     verify(telemetryManager).isEnabled();
     verify(telemetryManager).devNotificationsClicked(eventType);
@@ -282,7 +281,7 @@ class SonarLintTelemetryTests {
   @Test
   void should_start_disabled_when_storagePath_null() {
     when(telemetryManager.isEnabled()).thenReturn(true);
-    SonarLintTelemetry telemetry = new SonarLintTelemetry(mock(ApacheHttpClient.class), mock(SettingsManager.class),
+    var telemetry = new SonarLintTelemetry(mock(ApacheHttpClient.class), mock(SettingsManager.class),
       mock(ProjectBindingManager.class), mock(NodeJsRuntime.class), mock(StandaloneEngineManager.class)) {
       @Override
       TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client) {
@@ -300,24 +299,24 @@ class SonarLintTelemetryTests {
 
   @Test
   void getStoragePath_should_return_old_path_when_product_key_missing() {
-    String oldStorage = "dummy";
+    var oldStorage = "dummy";
     assertThat(getStoragePath(null, oldStorage)).isEqualTo(Paths.get(oldStorage));
   }
 
   @Test
   void getStoragePath_should_return_new_path_when_product_key_present() {
-    String productKey = "vim";
+    var productKey = "vim";
     assertThat(getStoragePath(productKey, "dummy")).isEqualTo(TelemetryPathManager.getPath(productKey));
   }
 
   @Test
   void addReportedRules() {
     when(telemetryManager.isEnabled()).thenReturn(true);
-    String rule = "ruleKey";
-    Set<String> strings = Collections.singleton(rule);
-    telemetry.addReportedRules(strings);
+    var rule = "ruleKey";
+    var reportedRuleKeys = Collections.singleton(rule);
+    telemetry.addReportedRules(reportedRuleKeys);
     verify(telemetryManager).isEnabled();
-    verify(telemetryManager).addReportedRules(strings);
+    verify(telemetryManager).addReportedRules(reportedRuleKeys);
   }
 
 }

@@ -51,32 +51,28 @@ public final class JavaSdkUtil {
 
   static List<Path> getJdkClassesRoots(Path home, boolean isMac) {
     if (isModularRuntime(home)) {
-      return Collections.singletonList(home.resolve(LIB_JRT_FS_JAR));
+      return List.of(home.resolve(LIB_JRT_FS_JAR));
     }
 
-    List<Path> rootFiles = new ArrayList<>();
-
-    rootFiles.addAll(collectJars(home, isMac));
-
-    return rootFiles;
+    return new ArrayList<>(collectJars(home, isMac));
   }
 
   private static List<Path> collectJars(Path home, boolean isMac) {
-    List<Path> rootFiles = new ArrayList<>();
+    var rootFiles = new ArrayList<Path>();
 
-    Path[] jarDirs = collectJarDirs(home, isMac);
+    var jarDirs = collectJarDirs(home, isMac);
 
-    Set<Path> duplicatePathFilter = new HashSet<>();
-    for (Path jarDir : jarDirs) {
+    var duplicatePathFilter = new HashSet<Path>();
+    for (var jarDir : jarDirs) {
       if (Files.isDirectory(jarDir)) {
-        Set<Path> jarFiles = listFiles(jarDir, p -> Files.isRegularFile(p) && p.getFileName().toString().endsWith(".jar"));
-        for (Path jarFile : jarFiles) {
-          String jarFileName = jarFile.getFileName().toString();
+        var jarFiles = listFiles(jarDir, p -> Files.isRegularFile(p) && p.getFileName().toString().endsWith(".jar"));
+        for (var jarFile: jarFiles) {
+          var jarFileName = jarFile.getFileName().toString();
           if (jarFileName.equals("alt-rt.jar") || jarFileName.equals("alt-string.jar")) {
             // filter out alternative implementations
             continue;
           }
-          Path realPath = toRealPathOrNull(jarFile);
+          var realPath = toRealPathOrNull(jarFile);
           if (realPath == null || !duplicatePathFilter.add(realPath)) {
             // filter out duplicate (symbolically linked) .jar files commonly found in OS X JDK distributions
             continue;
@@ -94,22 +90,22 @@ public final class JavaSdkUtil {
     if (isMac) {
       Path openJdkRtJar = home.resolve("jre/lib/rt.jar");
       if (Files.isRegularFile(openJdkRtJar)) {
-        Path libDir = home.resolve("lib");
-        Path classesDir = openJdkRtJar.getParent();
-        Path libExtDir = openJdkRtJar.getParent().resolve("ext");
-        Path libEndorsedDir = libDir.resolve(ENDORSED);
+        var libDir = home.resolve("lib");
+        var classesDir = openJdkRtJar.getParent();
+        var libExtDir = openJdkRtJar.getParent().resolve("ext");
+        var libEndorsedDir = libDir.resolve(ENDORSED);
         jarDirs = new Path[] {libEndorsedDir, libDir, classesDir, libExtDir};
       } else {
-        Path libDir = home.resolve("lib");
-        Path classesDir = home.getParent().resolve("Classes");
-        Path libExtDir = libDir.resolve("ext");
-        Path libEndorsedDir = libDir.resolve(ENDORSED);
+        var libDir = home.resolve("lib");
+        var classesDir = home.getParent().resolve("Classes");
+        var libExtDir = libDir.resolve("ext");
+        var libEndorsedDir = libDir.resolve(ENDORSED);
         jarDirs = new Path[] {libEndorsedDir, libDir, classesDir, libExtDir};
       }
     } else {
-      Path libDir = home.resolve("jre/lib");
-      Path libExtDir = libDir.resolve("ext");
-      Path libEndorsedDir = libDir.resolve(ENDORSED);
+      var libDir = home.resolve("jre/lib");
+      var libExtDir = libDir.resolve("ext");
+      var libEndorsedDir = libDir.resolve(ENDORSED);
       jarDirs = new Path[] {libEndorsedDir, libDir, libExtDir};
     }
     return jarDirs;

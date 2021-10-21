@@ -19,39 +19,37 @@
  */
 package org.sonarsource.sonarlint.ls.settings;
 
-import com.google.common.collect.ImmutableMap;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class WorkspaceFolderSettingsTests {
 
-  private static final WorkspaceFolderSettings SETTINGS = new WorkspaceFolderSettings("serverId", "projectKey", ImmutableMap.of("sonar.foo", "bar"), "filePattern");
+  private static final WorkspaceFolderSettings SETTINGS = new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar"), "filePattern");
 
   @Test
-  public void testHashCode() {
-    assertThat(SETTINGS.hashCode()).isEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", ImmutableMap.of("sonar.foo", "bar"), "filePattern").hashCode());
+  void testHashCode() {
+    assertThat(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar"), "filePattern")).hasSameHashCodeAs(SETTINGS);
   }
 
   @Test
-  public void testEquals() {
-    assertThat(SETTINGS).isEqualTo(SETTINGS);
-    assertThat(SETTINGS).isNotEqualTo(null);
-    assertThat(SETTINGS).isNotEqualTo("foo");
-    assertThat(SETTINGS).isEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", ImmutableMap.of("sonar.foo", "bar"), "filePattern"));
-
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceFolderSettings("serverId2", "projectKey", ImmutableMap.of("sonar.foo", "bar"), "filePattern"));
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey2", ImmutableMap.of("sonar.foo", "bar"), "filePattern"));
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", ImmutableMap.of("sonar.foo2", "bar"), "filePattern"));
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", ImmutableMap.of("sonar.foo", "bar2"), "filePattern"));
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", ImmutableMap.of("sonar.foo", "bar", "sonar.foo2", "bar2"), "filePattern"));
-    assertThat(SETTINGS).isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", ImmutableMap.of("sonar.foo", "bar"), "filePattern2"));
+  void testEquals() {
+    assertThat(SETTINGS).isEqualTo(SETTINGS)
+      .isNotEqualTo(null)
+      .isNotEqualTo("foo")
+      .isEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar"), "filePattern"))
+      .isNotEqualTo(new WorkspaceFolderSettings("serverId2", "projectKey", Map.of("sonar.foo", "bar"), "filePattern"))
+      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey2", Map.of("sonar.foo", "bar"), "filePattern"))
+      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo2", "bar"), "filePattern"))
+      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar2"), "filePattern"))
+      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar", "sonar.foo2", "bar2"), "filePattern"))
+      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar"), "filePattern2"));
   }
 
   @Test
-  public void testToString() {
-    assertThat(SETTINGS.toString())
-      .isEqualTo("WorkspaceFolderSettings[analyzerProperties={sonar.foo=bar},connectionId=serverId,projectKey=projectKey,testFilePattern=filePattern]");
+  void testToString() {
+    assertThat(SETTINGS).hasToString("WorkspaceFolderSettings[analyzerProperties={sonar.foo=bar},connectionId=serverId,projectKey=projectKey,testFilePattern=filePattern]");
   }
 
 }

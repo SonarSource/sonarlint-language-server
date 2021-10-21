@@ -19,7 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import com.google.common.collect.ImmutableMap;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -36,15 +35,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -61,7 +57,6 @@ import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
 import org.eclipse.lsp4j.InitializeParams;
-import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.InitializedParams;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
@@ -88,8 +83,6 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -107,19 +100,17 @@ public abstract class AbstractLanguageServerMediumTests {
   private static ServerSocket serverSocket;
   protected static SonarLintExtendedLanguageServer lsProxy;
   protected static FakeLanguageClient client;
-  private static ByteArrayOutputStream serverStdOut;
-  private static ByteArrayOutputStream serverStdErr;
 
   @BeforeAll
   public static void startServer() throws Exception {
     System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
     serverSocket = new ServerSocket(0);
-    int port = serverSocket.getLocalPort();
+    var port = serverSocket.getLocalPort();
 
     client = new FakeLanguageClient();
 
-    ExecutorService executor = Executors.newSingleThreadExecutor();
-    Callable<SonarLintExtendedLanguageServer> callable = () -> {
+    var executor = Executors.newSingleThreadExecutor();
+    var future = executor.submit(() -> {
       Socket socket = serverSocket.accept();
       Launcher<SonarLintExtendedLanguageServer> clientSideLauncher = new LSPLauncher.Builder<SonarLintExtendedLanguageServer>()
         .setLocalService(client)
@@ -129,18 +120,17 @@ public abstract class AbstractLanguageServerMediumTests {
         .create();
       clientSideLauncher.startListening();
       return clientSideLauncher.getRemoteProxy();
-    };
-    Future<SonarLintExtendedLanguageServer> future = executor.submit(callable);
+    });
     executor.shutdown();
 
-    String java = new File("target/plugins/java.jar").getAbsoluteFile().toURI().toURL().toString();
-    String js = new File("target/plugins/javascript.jar").getAbsoluteFile().toURI().toURL().toString();
-    String php = new File("target/plugins/php.jar").getAbsoluteFile().toURI().toURL().toString();
-    String py = new File("target/plugins/python.jar").getAbsoluteFile().toURI().toURL().toString();
-    String html = new File("target/plugins/html.jar").getAbsoluteFile().toURI().toURL().toString();
+    var java = fullPathToJar("java");
+    var js = fullPathToJar("javascript");
+    var php = fullPathToJar("php");
+    var py = fullPathToJar("python");
+    var html = fullPathToJar("html");
 
-    serverStdOut = new ByteArrayOutputStream();
-    serverStdErr = new ByteArrayOutputStream();
+    var serverStdOut = new ByteArrayOutputStream();
+    var serverStdErr = new ByteArrayOutputStream();
     try {
       new ServerMain(new PrintStream(serverStdOut), new PrintStream(serverStdErr)).startLanguageServer("" + port, "-analyzers", java, js, php, py, html);
     } catch (Exception e) {
@@ -155,15 +145,19 @@ public abstract class AbstractLanguageServerMediumTests {
     lsProxy = future.get();
   }
 
+  private static String fullPathToJar(String jarName) throws Exception {
+    return new File(String.format("target/plugins/%s.jar", jarName)).getAbsoluteFile().toURI().toURL().toString();
+  }
+
   protected static void initialize(Map<String, Object> initializeOptions, WorkspaceFolder... initFolders) throws InterruptedException, ExecutionException {
-    InitializeParams initializeParams = new InitializeParams();
+    var initializeParams = new InitializeParams();
     initializeParams.setTrace("messages");
     initializeParams.setInitializationOptions(initializeOptions);
-    initializeParams.setWorkspaceFolders(asList(initFolders));
+    initializeParams.setWorkspaceFolders(List.of(initFolders));
     initializeParams.setClientInfo(new ClientInfo("SonarLint LS Medium tests", "1.0"));
     initializeParams.setCapabilities(new ClientCapabilities());
     initializeParams.getCapabilities().setWindow(new WindowClientCapabilities());
-    InitializeResult initializeResult = lsProxy.initialize(initializeParams).get();
+    var initializeResult = lsProxy.initialize(initializeParams).get();
     assertThat(initializeResult.getServerInfo().getName()).isEqualTo("SonarLint Language Server");
     assertThat(initializeResult.getServerInfo().getVersion()).isNotBlank();
     lsProxy.initialized(new InitializedParams());
@@ -200,7 +194,7 @@ public abstract class AbstractLanguageServerMediumTests {
   @AfterEach
   public final void closeFiles() throws InterruptedException {
     // Close all opened files
-    for (String uri : toBeClosed) {
+    for (var uri : toBeClosed) {
       client.diagnosticsLatch = new CountDownLatch(1);
       lsProxy.getTextDocumentService().didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
       if (!client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
@@ -219,7 +213,7 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected String getUri(String filename) throws IOException {
-    Path file = temp.resolve(filename);
+    var file = temp.resolve(filename);
     Files.createFile(file);
     return file.toUri().toString();
   }
@@ -296,7 +290,7 @@ public abstract class AbstractLanguageServerMediumTests {
         try {
           assertThat(configurationParams.getItems()).extracting(ConfigurationItem::getSection).containsExactly("sonarlint");
           result = new ArrayList<>(configurationParams.getItems().size());
-          for (ConfigurationItem item : configurationParams.getItems()) {
+          for (var item : configurationParams.getItems()) {
             if (item.getScopeUri() == null) {
               result.add(globalSettings);
             } else {
@@ -388,13 +382,13 @@ public abstract class AbstractLanguageServerMediumTests {
 
   private static DidChangeConfigurationParams changedConfiguration(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
     @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
-    Map<String, Object> values = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs);
-    return new DidChangeConfigurationParams(ImmutableMap.of("sonarlint", values));
+    var values = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs);
+    return new DidChangeConfigurationParams(Map.of("sonarlint", values));
   }
 
   protected static Map<String, Object> buildSonarLintSettingsSection(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
     @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
-    Map<String, Object> values = new HashMap<>();
+    var values = new HashMap<String, Object>();
     if (testFilePattern != null) {
       values.put("testFilePattern", testFilePattern);
     }
@@ -402,7 +396,7 @@ public abstract class AbstractLanguageServerMediumTests {
       values.put("disableTelemetry", disableTelemetry);
     }
     if (showAnalyzerLogs != null || showVerboseLogs != null) {
-      Map<String, Object> output = new HashMap<>();
+      var output = new HashMap<String, Object>();
       if (showAnalyzerLogs != null) {
         output.put("showAnalyzerLogs", showAnalyzerLogs);
       }
@@ -419,18 +413,18 @@ public abstract class AbstractLanguageServerMediumTests {
 
   private static Map<String, Object> buildRulesMap(String... ruleConfigs) {
     assertThat(ruleConfigs.length % 2).withFailMessage("ruleConfigs must contain 'rule:key', 'level' pairs").isZero();
-    ImmutableMap.Builder<String, Object> rules = ImmutableMap.builder();
-    for (int i = 0; i < ruleConfigs.length; i += 2) {
-      rules.put(ruleConfigs[i], ImmutableMap.of("level", ruleConfigs[i + 1]));
+    var rules = new Map.Entry[ruleConfigs.length / 2];
+    for (var i = 0; i < ruleConfigs.length; i += 2) {
+      rules[i / 2] =  Map.entry(ruleConfigs[i], Map.of("level", ruleConfigs[i + 1]));
     }
-    return rules.build();
+    return Map.ofEntries(rules);
   }
 
   protected List<Diagnostic> didChangeAndWaitForDiagnostics(String uri, String content) throws InterruptedException {
-    VersionedTextDocumentIdentifier docId = new VersionedTextDocumentIdentifier(uri, 1);
+    var docId = new VersionedTextDocumentIdentifier(uri, 1);
     client.diagnosticsLatch = new CountDownLatch(1);
     lsProxy.getTextDocumentService()
-      .didChange(new DidChangeTextDocumentParams(docId, singletonList(new TextDocumentContentChangeEvent(content))));
+      .didChange(new DidChangeTextDocumentParams(docId, List.of(new TextDocumentContentChangeEvent(content))));
     toBeClosed.add(uri);
     return awaitDiagnosticsForOneMinute(uri);
   }
@@ -444,7 +438,7 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected List<Diagnostic> didSaveAndWaitForDiagnostics(String uri, String content) throws InterruptedException {
-    VersionedTextDocumentIdentifier docId = new VersionedTextDocumentIdentifier(uri, 1);
+    var docId = new VersionedTextDocumentIdentifier(uri, 1);
     client.diagnosticsLatch = new CountDownLatch(1);
     lsProxy.getTextDocumentService()
       .didSave(new DidSaveTextDocumentParams(docId, content));

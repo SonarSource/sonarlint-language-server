@@ -73,14 +73,14 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
 
   @Override
   public Response post(String url, String contentType, String body) {
-    SimpleRequestBuilder httpPost = SimpleRequestBuilder.post(url);
+    var httpPost = SimpleRequestBuilder.post(url);
     httpPost.setBody(body, ContentType.parse(contentType));
     return executeSync(httpPost);
   }
 
   @Override
   public Response delete(String url, String contentType, String body) {
-    SimpleRequestBuilder httpDelete = SimpleRequestBuilder.delete(url);
+    var httpDelete = SimpleRequestBuilder.delete(url);
     httpDelete.setBody(body, ContentType.parse(contentType));
     return executeSync(httpDelete);
   }
@@ -100,9 +100,8 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
     if (token != null) {
       httpRequest.setHeader(HttpHeaders.AUTHORIZATION, basic(token, ""));
     }
-    CompletableFutureWrapper futureWrapper = new CompletableFutureWrapper(httpRequest);
-    Future<SimpleHttpResponse> httpFuture = client.execute(httpRequest.build(), futureWrapper);
-    futureWrapper.wrapped = httpFuture;
+    var futureWrapper = new CompletableFutureWrapper(httpRequest);
+    futureWrapper.wrapped = client.execute(httpRequest.build(), futureWrapper);
     return futureWrapper;
   }
 
@@ -140,8 +139,8 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
   }
 
   private static String basic(String username, String password) {
-    String usernameAndPassword = username + ":" + password;
-    String encoded = Base64.getEncoder().encodeToString(usernameAndPassword.getBytes(StandardCharsets.ISO_8859_1));
+    var usernameAndPassword = username + ":" + password;
+    var encoded = Base64.getEncoder().encodeToString(usernameAndPassword.getBytes(StandardCharsets.ISO_8859_1));
     return "Basic " + encoded;
   }
 
@@ -154,7 +153,7 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
   }
 
   public static ApacheHttpClient create() {
-    CloseableHttpAsyncClient httpClient = HttpAsyncClients.custom()
+    var httpClient = HttpAsyncClients.custom()
       .useSystemProperties()
       .setUserAgent(USER_AGENT)
       .setDefaultRequestConfig(

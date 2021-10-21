@@ -29,11 +29,11 @@ import static org.mockito.Mockito.mock;
 class ProjectBindingWrapperTests {
 
   @Test
-  public void test_getters() {
-    ProjectBinding binding = new ProjectBinding("projectKey", "prefix", "idePrefix");
-    ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
-    ServerIssueTrackerWrapper issueTrackerWrapper = mock(ServerIssueTrackerWrapper.class);
-    ProjectBindingWrapper underTest = new ProjectBindingWrapper("serverId", binding, engine, issueTrackerWrapper);
+  void test_getters() {
+    var binding = new ProjectBinding("projectKey", "prefix", "idePrefix");
+    var engine = mock(ConnectedSonarLintEngine.class);
+    var issueTrackerWrapper = mock(ServerIssueTrackerWrapper.class);
+    var underTest = new ProjectBindingWrapper("serverId", binding, engine, issueTrackerWrapper);
 
     assertThat(underTest.getConnectionId()).isEqualTo("serverId");
     assertThat(underTest.getBinding()).isEqualTo(binding);
