@@ -27,7 +27,6 @@ import org.eclipse.lsp4j.WorkDoneProgressCancelParams;
 import org.eclipse.lsp4j.WorkDoneProgressCreateParams;
 import org.eclipse.lsp4j.WorkDoneProgressEnd;
 import org.eclipse.lsp4j.WorkDoneProgressKind;
-import org.eclipse.lsp4j.WorkDoneProgressNotification;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
@@ -40,7 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class ProgressManagerTests {
@@ -53,9 +52,9 @@ class ProgressManagerTests {
   void noop_progress_if_no_client_support() {
     underTest.setWorkDoneProgressSupportedByClient(false);
 
-    AtomicBoolean done = new AtomicBoolean();
-    AtomicBoolean subdone = new AtomicBoolean();
-    AtomicBoolean subsubdone = new AtomicBoolean();
+    var done = new AtomicBoolean();
+    var subdone = new AtomicBoolean();
+    var subsubdone = new AtomicBoolean();
 
     underTest.doWithProgress("Title", null, mock(CancelChecker.class), p -> {
       p.doInSubProgress("Sub title", 0.1f, subP -> {
@@ -68,7 +67,7 @@ class ProgressManagerTests {
       done.set(true);
     });
 
-    verifyZeroInteractions(client);
+    verifyNoInteractions(client);
     assertThat(done.get()).isTrue();
     assertThat(subdone.get()).isTrue();
     assertThat(subsubdone.get()).isTrue();
@@ -79,7 +78,7 @@ class ProgressManagerTests {
     underTest.doWithProgress("Title", FAKE_CLIENT_TOKEN, mock(CancelChecker.class), p -> {
     });
 
-    ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
+    var params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(2)).notifyProgress(params.capture());
 
     assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getLeft().getKind())
@@ -87,9 +86,9 @@ class ProgressManagerTests {
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.begin),
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.end));
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
+    var start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
-    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue().getLeft();
+    var end = params.getAllValues().get(1).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isNull();
   }
@@ -100,7 +99,7 @@ class ProgressManagerTests {
       p.end("Completed");
     });
 
-    ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
+    var params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(2)).notifyProgress(params.capture());
 
     assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getLeft().getKind())
@@ -108,9 +107,9 @@ class ProgressManagerTests {
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.begin),
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.end));
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
+    var start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
-    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue().getLeft();
+    var end = params.getAllValues().get(1).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isEqualTo("Completed");
   }
@@ -122,7 +121,7 @@ class ProgressManagerTests {
         throw new RuntimeException("An error");
       }));
 
-    ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
+    var params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(2)).notifyProgress(params.capture());
 
     assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getLeft().getKind())
@@ -130,22 +129,22 @@ class ProgressManagerTests {
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.begin),
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.end));
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
+    var start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
-    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue().getLeft();
+    var end = params.getAllValues().get(1).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isEqualTo("An error");
   }
 
   @Test
   void should_stop_progress_if_canceled_by_cancel_token() {
-    CancelChecker cancelChecker = mock(CancelChecker.class);
+    var cancelChecker = mock(CancelChecker.class);
     underTest.doWithProgress("Title", FAKE_CLIENT_TOKEN, cancelChecker, p -> {
       when(cancelChecker.isCanceled()).thenReturn(true);
       p.checkCanceled();
     });
 
-    ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
+    var params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(2)).notifyProgress(params.capture());
 
     assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getLeft().getKind())
@@ -153,9 +152,9 @@ class ProgressManagerTests {
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.begin),
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.end));
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
+    var start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
-    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue().getLeft();
+    var end = params.getAllValues().get(1).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isEqualTo("Canceled");
   }
@@ -167,7 +166,7 @@ class ProgressManagerTests {
       p.checkCanceled();
     });
 
-    ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
+    var params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(2)).notifyProgress(params.capture());
 
     assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getLeft().getKind())
@@ -175,9 +174,9 @@ class ProgressManagerTests {
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.begin),
         tuple(FAKE_CLIENT_TOKEN, WorkDoneProgressKind.end));
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
+    var start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
-    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue().getLeft();
+    var end = params.getAllValues().get(1).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isEqualTo("Canceled");
   }
@@ -186,15 +185,15 @@ class ProgressManagerTests {
   void should_create_server_side_initiated_progress_if_supported() {
     underTest.setWorkDoneProgressSupportedByClient(true);
 
-    ArgumentCaptor<WorkDoneProgressCreateParams> createParams = ArgumentCaptor.forClass(WorkDoneProgressCreateParams.class);
+    var createParams = ArgumentCaptor.forClass(WorkDoneProgressCreateParams.class);
     when(client.createProgress(createParams.capture())).thenReturn(CompletableFuture.completedFuture(null));
 
     underTest.doWithProgress("Title", null, mock(CancelChecker.class), p -> {
     });
 
-    Either<String, Integer> generatedToken = createParams.getValue().getToken();
+    var generatedToken = createParams.getValue().getToken();
 
-    ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
+    var params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(2)).notifyProgress(params.capture());
 
     assertThat(params.getAllValues()).extracting(ProgressParams::getToken, p -> p.getValue().getLeft().getKind())
@@ -202,9 +201,9 @@ class ProgressManagerTests {
         tuple(generatedToken, WorkDoneProgressKind.begin),
         tuple(generatedToken, WorkDoneProgressKind.end));
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
+    var start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
-    WorkDoneProgressNotification end = params.getAllValues().get(1).getValue().getLeft();
+    var end = params.getAllValues().get(1).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isNull();
   }
@@ -233,10 +232,10 @@ class ProgressManagerTests {
       // Automatically reports 60%
     });
 
-    ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
+    var params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(12)).notifyProgress(params.capture());
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
+    var start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
 
     assertThat(params.getAllValues().subList(1, 11))
@@ -253,7 +252,7 @@ class ProgressManagerTests {
         tuple("Sub - SubSub2 - Completed", 20),
         tuple("Sub - Completed", 60));
 
-    WorkDoneProgressNotification end = params.getAllValues().get(11).getValue().getLeft();
+    var end = params.getAllValues().get(11).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isNull();
   }
@@ -266,10 +265,10 @@ class ProgressManagerTests {
       });
     });
 
-    ArgumentCaptor<ProgressParams> params = ArgumentCaptor.forClass(ProgressParams.class);
+    var params = ArgumentCaptor.forClass(ProgressParams.class);
     verify(client, times(7)).notifyProgress(params.capture());
 
-    WorkDoneProgressNotification start = params.getAllValues().get(0).getValue().getLeft();
+    var start = params.getAllValues().get(0).getValue().getLeft();
     assertThat(start).isInstanceOf(WorkDoneProgressBegin.class);
 
     assertThat(params.getAllValues().subList(1, 6))
@@ -281,7 +280,7 @@ class ProgressManagerTests {
         tuple("Sub - Non cancelable", 0, true),
         tuple("Sub - Completed", 50, null));
 
-    WorkDoneProgressNotification end = params.getAllValues().get(6).getValue().getLeft();
+    var end = params.getAllValues().get(6).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isNull();
   }

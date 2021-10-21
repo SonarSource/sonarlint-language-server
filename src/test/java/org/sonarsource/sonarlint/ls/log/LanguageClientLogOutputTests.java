@@ -35,8 +35,8 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput.NODE_COMMAND_EXCEPTION;
 import static org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput.SHOW_SONARLINT_OUTPUT_ACTION;
@@ -44,7 +44,7 @@ import static org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput.SHOW_SONA
 class LanguageClientLogOutputTests {
 
   private LanguageClientLogOutput underTest;
-  private SonarLintExtendedLanguageClient languageClient = mock(SonarLintExtendedLanguageClient.class);
+  private final SonarLintExtendedLanguageClient languageClient = mock(SonarLintExtendedLanguageClient.class);
 
   @BeforeEach
   public void prepare() {
@@ -52,7 +52,7 @@ class LanguageClientLogOutputTests {
   }
 
   @Test
-  public void no_debug_logs() {
+  void no_debug_logs() {
     underTest.log("error", Level.ERROR);
     underTest.log("warn", Level.WARN);
     underTest.log("info", Level.INFO);
@@ -66,7 +66,7 @@ class LanguageClientLogOutputTests {
   }
 
   @Test
-  public void enable_debug_logs() {
+  void enable_debug_logs() {
     underTest.onChange(null, new WorkspaceSettings(false, null, null, null, null, false, true, null));
 
     underTest.log("error", Level.ERROR);
@@ -84,7 +84,7 @@ class LanguageClientLogOutputTests {
   }
 
   @Test
-  public void no_analyzer_logs_by_default() {
+  void no_analyzer_logs_by_default() {
     underTest.setAnalysis(true);
     underTest.log("error", Level.ERROR);
     underTest.log("warn", Level.WARN);
@@ -92,11 +92,11 @@ class LanguageClientLogOutputTests {
     underTest.log("debug", Level.DEBUG);
     underTest.log("trace", Level.TRACE);
 
-    verifyZeroInteractions(languageClient);
+    verifyNoInteractions(languageClient);
   }
 
   @Test
-  public void enable_analyzer_logs() {
+  void enable_analyzer_logs() {
     underTest.onChange(null, new WorkspaceSettings(false, null, null, null, null, true, false, null));
 
     underTest.setAnalysis(true);
@@ -113,7 +113,7 @@ class LanguageClientLogOutputTests {
   }
 
   @Test
-  public void enable_analyzer_debug_logs() {
+  void enable_analyzer_debug_logs() {
     underTest.onChange(null, new WorkspaceSettings(false, null, null, null, null,true, true, null));
 
     underTest.setAnalysis(true);
@@ -132,9 +132,9 @@ class LanguageClientLogOutputTests {
   }
 
   @Test
-  public void notification_to_client_for_node_command_exception() {
-    MessageActionItem actionItem = new MessageActionItem(SHOW_SONARLINT_OUTPUT_ACTION);
-    CompletableFuture<MessageActionItem> completableFuture = CompletableFuture.completedFuture(actionItem);
+  void notification_to_client_for_node_command_exception() {
+    var actionItem = new MessageActionItem(SHOW_SONARLINT_OUTPUT_ACTION);
+    var completableFuture = CompletableFuture.completedFuture(actionItem);
     when(languageClient.showMessageRequest(LanguageClientLogOutput.getShowMessageRequestParams())).thenReturn(completableFuture);
 
     underTest.log(NODE_COMMAND_EXCEPTION, Level.DEBUG);

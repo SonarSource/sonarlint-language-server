@@ -25,7 +25,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
-import java.util.stream.Stream;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -55,13 +54,13 @@ class FolderFileSystemTest {
 
   @Test
   void should_provide_main_files_of_requested_suffix() {
-    FileTypeClassifier fileTypeClassifier = mock(FileTypeClassifier.class);
+    var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(false);
-    WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
+    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
     folderWrapper.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
-    FolderFileSystem folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
+    var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
-    Stream<ClientInputFile> files = folderFileSystem.files("py", InputFile.Type.MAIN);
+    var files = folderFileSystem.files("py", InputFile.Type.MAIN);
 
     assertThat(files)
       .extracting(ClientInputFile::getPath, FolderFileSystemTest::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
@@ -71,13 +70,13 @@ class FolderFileSystemTest {
 
   @Test
   void should_provide_test_files_of_requested_suffix() {
-    FileTypeClassifier fileTypeClassifier = mock(FileTypeClassifier.class);
+    var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(true);
-    WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
+    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
     folderWrapper.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
-    FolderFileSystem folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
+    var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
-    Stream<ClientInputFile> files = folderFileSystem.files("py", InputFile.Type.TEST);
+    var files = folderFileSystem.files("py", InputFile.Type.TEST);
 
     assertThat(files)
       .extracting(ClientInputFile::getPath, FolderFileSystemTest::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
@@ -87,13 +86,13 @@ class FolderFileSystemTest {
 
   @Test
   void should_provide_all_main_files() {
-    FileTypeClassifier fileTypeClassifier = mock(FileTypeClassifier.class);
+    var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(false);
-    WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
+    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
     folderWrapper.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
-    FolderFileSystem folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
+    var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
-    Stream<ClientInputFile> files = folderFileSystem.files();
+    var files = folderFileSystem.files();
 
     assertThat(files)
       .extracting(ClientInputFile::getPath, FolderFileSystemTest::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
@@ -103,13 +102,13 @@ class FolderFileSystemTest {
 
   @Test
   void should_provide_all_test_files() {
-    FileTypeClassifier fileTypeClassifier = mock(FileTypeClassifier.class);
+    var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(true);
-    WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
+    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
     folderWrapper.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
-    FolderFileSystem folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
+    var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
-    Stream<ClientInputFile> files = folderFileSystem.files();
+    var files = folderFileSystem.files();
 
     assertThat(files)
       .extracting(ClientInputFile::getPath, FolderFileSystemTest::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
@@ -119,14 +118,14 @@ class FolderFileSystemTest {
 
   @Test
   void should_throw_an_exception_when_folder_does_not_exist() {
-    FileTypeClassifier fileTypeClassifier = mock(FileTypeClassifier.class);
+    var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(false);
-    WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(URI.create("file:///wrong_path"), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
+    var folderWrapper = new WorkspaceFolderWrapper(URI.create("file:///wrong_path"), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
     folderWrapper.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
-    FolderFileSystem folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
+    var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
-    Throwable throwable = catchThrowable(folderFileSystem::files);
-    Throwable throwableWithFiltering = catchThrowable(() -> folderFileSystem.files("suffix", InputFile.Type.TEST));
+    var throwable = catchThrowable(folderFileSystem::files);
+    var throwableWithFiltering = catchThrowable(() -> folderFileSystem.files("suffix", InputFile.Type.TEST));
 
     assertThat(throwable)
       .hasMessage("Cannot browse the files");

@@ -33,6 +33,8 @@ import org.eclipse.lsp4j.MessageActionItem;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.GetSecurityHotspotRequestParams;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.HotspotApi;
@@ -72,15 +74,15 @@ class SecurityHotspotsHandlerServerTest {
 
   @Test
   void shouldStartServerAndReplyToStatusRequest() throws Exception {
-    String ideName = "SonarSource Editor";
-    String clientVersion = "1.42";
-    String workspaceName = "polop";
+    var ideName = "SonarSource Editor";
+    var clientVersion = "1.42";
+    var workspaceName = "polop";
     server.initialize(ideName, clientVersion, workspaceName);
 
-    int port = server.getPort();
+    var port = server.getPort();
     assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
 
-    URLConnection statusConnection = new URL(String.format("http://localhost:%d/sonarlint/api/status", port)).openConnection();
+    var statusConnection = new URL(String.format("http://localhost:%d/sonarlint/api/status", port)).openConnection();
     statusConnection.connect();
     Map<String, String> response = new Gson().fromJson(new InputStreamReader(statusConnection.getInputStream()), Map.class);
 
@@ -217,53 +219,22 @@ class SecurityHotspotsHandlerServerTest {
     verify(telemetry).showHotspotRequestReceived();
   }
 
-  @Test
-  void shouldFailOnMissingServer() throws Exception {
-    String ideName = "SonarSource Editor";
-    String clientVersion = "1.42";
-    String workspaceName = "polop";
+  @ParameterizedTest
+  @CsvSource({
+    "hotspot=hotspot&project=project",
+    "server=server&project=project",
+    "server=server&hotspot=hotspot"
+  })
+  void shouldFailOnMissingParam(String queryString) throws Exception {
+    var ideName = "SonarSource Editor";
+    var clientVersion = "1.42";
+    var workspaceName = "polop";
     server.initialize(ideName, clientVersion, workspaceName);
 
     int port = server.getPort();
     assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
 
-    URLConnection statusConnection = new URL(
-            String.format("http://localhost:%d/sonarlint/api/hotspots/show?hotspot=hotspot&project=project", port)
-    ).openConnection();
-    statusConnection.connect();
-    assertThatThrownBy(statusConnection::getContent).isInstanceOf(IOException.class).hasMessageContaining("400 for URL");
-  }
-
-  @Test
-  void shouldFailOnMissingHotspot() throws Exception {
-    String ideName = "SonarSource Editor";
-    String clientVersion = "1.42";
-    String workspaceName = "polop";
-    server.initialize(ideName, clientVersion, workspaceName);
-
-    int port = server.getPort();
-    assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
-
-    URLConnection statusConnection = new URL(
-            String.format("http://localhost:%d/sonarlint/api/hotspots/show?server=server&project=project", port)
-    ).openConnection();
-    statusConnection.connect();
-    assertThatThrownBy(statusConnection::getContent).isInstanceOf(IOException.class).hasMessageContaining("400 for URL");
-  }
-
-  @Test
-  void shouldFailOnMissingProject() throws Exception {
-    String ideName = "SonarSource Editor";
-    String clientVersion = "1.42";
-    String workspaceName = "polop";
-    server.initialize(ideName, clientVersion, workspaceName);
-
-    int port = server.getPort();
-    assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
-
-    URLConnection statusConnection = new URL(
-            String.format("http://localhost:%d/sonarlint/api/hotspots/show?server=server&hotspot=hotspot", port)
-    ).openConnection();
+    var statusConnection = new URL(String.format("http://localhost:%d/sonarlint/api/hotspots/show?%s", port, queryString)).openConnection();
     statusConnection.connect();
     assertThatThrownBy(statusConnection::getContent).isInstanceOf(IOException.class).hasMessageContaining("400 for URL");
   }

@@ -41,10 +41,10 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   @BeforeAll
   public static void initialize() throws Exception {
-    Path fakeTypeScriptProjectPath = Paths.get("src/test/resources/fake-ts-project").toAbsolutePath();
+    var fakeTypeScriptProjectPath = Paths.get("src/test/resources/fake-ts-project").toAbsolutePath();
 
     client.settingsLatch = new CountDownLatch(1);
-    String folderUri = "file:///init_uri";
+    var folderUri = "file:///init_uri";
     client.folderSettings.put(folderUri, buildSonarLintSettingsSection("some pattern", null, null, true));
 
     initialize(Map.of(
@@ -74,8 +74,8 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   void analyzeSimpleJsFileOnOpen() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true);
 
-    String uri = getUri("analyzeSimpleJsFileOnOpen.js");
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
+    var uri = getUri("analyzeSimpleJsFileOnOpen.js");
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)

@@ -20,11 +20,9 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.junit.jupiter.api.Test;
@@ -35,7 +33,7 @@ import org.sonar.api.utils.log.LogTesterJUnit5;
 
 import static java.net.URI.create;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager.isAncestor;
 
 class WorkspaceFoldersManagerTests {
@@ -47,27 +45,27 @@ class WorkspaceFoldersManagerTests {
 
   @Test
   void findFolderForFile_returns_correct_folder_when_exists() {
-    Path basedir = Paths.get("path/to/base").toAbsolutePath();
-    Path file = basedir.resolve("some/sub/file.java");
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    var file = basedir.resolve("some/sub/file.java");
 
-    WorkspaceFolder workspaceFolder = mockWorkspaceFolder(basedir.toUri());
+    var workspaceFolder = mockWorkspaceFolder(basedir.toUri());
     underTest.initialize(List.of(
       mockWorkspaceFolder(Paths.get("other/path").toAbsolutePath().toUri()),
       workspaceFolder,
       mockWorkspaceFolder(Paths.get("other/path2").toAbsolutePath().toUri())));
 
-    Optional<WorkspaceFolderWrapper> findFolderForFile = underTest.findFolderForFile(file.toUri());
-    assertThat(findFolderForFile).isPresent();
-    assertThat(findFolderForFile.get().getRootPath()).isEqualTo(basedir);
+    var findFolderForFile = underTest.findFolderForFile(file.toUri());
+    assertThat(findFolderForFile).isPresent()
+      .get().extracting(WorkspaceFolderWrapper::getRootPath).isEqualTo(basedir);
   }
 
   @Test
   void findFolderForFile_returns_empty_when_no_folder_matched() {
-    Path basedir = Paths.get("path/to/base").toAbsolutePath();
-    Path file = basedir.resolve("some/sub/file.java");
-    Path workspaceRoot = Paths.get("other/path");
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    var file = basedir.resolve("some/sub/file.java");
+    var workspaceRoot = Paths.get("other/path");
 
-    WorkspaceFolder workspaceFolder = mockWorkspaceFolder(workspaceRoot.toUri());
+    var workspaceFolder = mockWorkspaceFolder(workspaceRoot.toUri());
     underTest.initialize(List.of(workspaceFolder,
       mockWorkspaceFolder(Paths.get("other/path2").toAbsolutePath().toUri())));
 
@@ -76,17 +74,17 @@ class WorkspaceFoldersManagerTests {
 
   @Test
   void findBaseDir_finds_deepest_nested_folder() {
-    Path basedir = Paths.get("path/to/base").toAbsolutePath();
-    Path subFolder = basedir.resolve("sub");
-    URI file = subFolder.resolve("file.java").toUri();
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    var subFolder = basedir.resolve("sub");
+    var file = subFolder.resolve("file.java").toUri();
 
     underTest.initialize(List.of(
       mockWorkspaceFolder(subFolder.toUri()),
       mockWorkspaceFolder(basedir.toUri())));
 
-    Optional<WorkspaceFolderWrapper> findFolderForFile = underTest.findFolderForFile(file);
-    assertThat(findFolderForFile).isPresent();
-    assertThat(findFolderForFile.get().getRootPath()).isEqualTo(subFolder);
+    var findFolderForFile = underTest.findFolderForFile(file);
+    assertThat(findFolderForFile).isPresent()
+      .get().extracting(WorkspaceFolderWrapper::getRootPath).isEqualTo(subFolder);
   }
 
   @Test
@@ -121,18 +119,10 @@ class WorkspaceFoldersManagerTests {
     // Not the same port
     assertThat(isAncestor(create("file://laptop:8080/My%20Documents"), create("file://laptop:8081/My%20Documents/FileSchemeURIs.doc"))).isFalse();
     // Opaque
-    try {
-      isAncestor(create("mailto:a@b.com"), create("file:///foo"));
-      fail("Exception expected");
-    } catch (Exception e) {
-      assertThat(e).isInstanceOf(IllegalArgumentException.class);
-    }
-    try {
-      isAncestor(create("file:///foo"), create("mailto:a@b.com"));
-      fail("Exception expected");
-    } catch (Exception e) {
-      assertThat(e).isInstanceOf(IllegalArgumentException.class);
-    }
+    URI emailUri = create("mailto:a@b.com");
+    URI fileUri = create("file:///foo");
+    assertThrows(IllegalArgumentException.class, () -> isAncestor(emailUri, fileUri));
+    assertThrows(IllegalArgumentException.class, () -> isAncestor(fileUri, emailUri));
   }
 
   @Test
@@ -147,8 +137,8 @@ class WorkspaceFoldersManagerTests {
     underTest.initialize(Collections.emptyList());
     assertThat(underTest.getAll()).isEmpty();
 
-    Path basedir = Paths.get("path/to/base").toAbsolutePath();
-    WorkspaceFolder workspaceFolder = mockWorkspaceFolder(basedir.toUri());
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    var workspaceFolder = mockWorkspaceFolder(basedir.toUri());
 
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList()));
 
@@ -168,8 +158,8 @@ class WorkspaceFoldersManagerTests {
 
   @Test
   void unregister_folder() {
-    Path basedir = Paths.get("path/to/base").toAbsolutePath();
-    WorkspaceFolder workspaceFolder = mockWorkspaceFolder(basedir.toUri());
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    var workspaceFolder = mockWorkspaceFolder(basedir.toUri());
 
     underTest.initialize(List.of(workspaceFolder));
     assertThat(underTest.getAll()).extracting(WorkspaceFolderWrapper::getRootPath).containsExactly(basedir);

@@ -56,14 +56,14 @@ class EnginesFactoryTests {
   void pass_typescript_path_to_standalone_engine() throws Exception {
     underTest.initialize(FAKE_TYPESCRIPT_PATH);
 
-    ArgumentCaptor<StandaloneGlobalConfiguration> argCaptor = ArgumentCaptor.forClass(StandaloneGlobalConfiguration.class);
-    StandaloneSonarLintEngine mockEngine = mock(StandaloneSonarLintEngine.class);
+    var argCaptor = ArgumentCaptor.forClass(StandaloneGlobalConfiguration.class);
+    var mockEngine = mock(StandaloneSonarLintEngine.class);
     doReturn(mockEngine).when(underTest).newStandaloneEngine(argCaptor.capture());
 
-    StandaloneSonarLintEngine createdEngine = underTest.createStandaloneEngine();
+    var createdEngine = underTest.createStandaloneEngine();
 
     assertThat(createdEngine).isSameAs(mockEngine);
-    StandaloneGlobalConfiguration capturedConfig = argCaptor.getValue();
+    var capturedConfig = argCaptor.getValue();
     assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", FAKE_TYPESCRIPT_PATH.toString());
     assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PYTHON, Language.SECRETS, Language.TS);
   }
@@ -72,14 +72,14 @@ class EnginesFactoryTests {
   void no_typescript_to_standalone_engine() throws Exception {
     underTest.initialize(null);
 
-    ArgumentCaptor<StandaloneGlobalConfiguration> argCaptor = ArgumentCaptor.forClass(StandaloneGlobalConfiguration.class);
-    StandaloneSonarLintEngine mockEngine = mock(StandaloneSonarLintEngine.class);
+    var argCaptor = ArgumentCaptor.forClass(StandaloneGlobalConfiguration.class);
+    var mockEngine = mock(StandaloneSonarLintEngine.class);
     doReturn(mockEngine).when(underTest).newStandaloneEngine(argCaptor.capture());
 
-    StandaloneSonarLintEngine createdEngine = underTest.createStandaloneEngine();
+    var createdEngine = underTest.createStandaloneEngine();
 
     assertThat(createdEngine).isSameAs(mockEngine);
-    StandaloneGlobalConfiguration capturedConfig = argCaptor.getValue();
+    var capturedConfig = argCaptor.getValue();
     assertThat(capturedConfig.extraProperties()).isEmpty();
   }
 
@@ -87,14 +87,14 @@ class EnginesFactoryTests {
   void pass_typescript_path_to_connected_engine() throws Exception {
     underTest.initialize(FAKE_TYPESCRIPT_PATH);
 
-    ArgumentCaptor<ConnectedGlobalConfiguration> argCaptor = ArgumentCaptor.forClass(ConnectedGlobalConfiguration.class);
-    ConnectedSonarLintEngine mockEngine = mock(ConnectedSonarLintEngine.class);
+    var argCaptor = ArgumentCaptor.forClass(ConnectedGlobalConfiguration.class);
+    var mockEngine = mock(ConnectedSonarLintEngine.class);
     doReturn(mockEngine).when(underTest).newConnectedEngine(argCaptor.capture());
 
-    ConnectedSonarLintEngine createdEngine = underTest.createConnectedEngine("foo");
+    var createdEngine = underTest.createConnectedEngine("foo");
 
     assertThat(createdEngine).isSameAs(mockEngine);
-    ConnectedGlobalConfiguration capturedConfig = argCaptor.getValue();
+    var capturedConfig = argCaptor.getValue();
     assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", FAKE_TYPESCRIPT_PATH.toString());
     assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.APEX, Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON, Language.SECRETS, Language.TS);
   }
@@ -103,14 +103,14 @@ class EnginesFactoryTests {
   void no_typescript_to_connected_engine() throws Exception {
     underTest.initialize(null);
 
-    ArgumentCaptor<ConnectedGlobalConfiguration> argCaptor = ArgumentCaptor.forClass(ConnectedGlobalConfiguration.class);
-    ConnectedSonarLintEngine mockEngine = mock(ConnectedSonarLintEngine.class);
+    var argCaptor = ArgumentCaptor.forClass(ConnectedGlobalConfiguration.class);
+    var mockEngine = mock(ConnectedSonarLintEngine.class);
     doReturn(mockEngine).when(underTest).newConnectedEngine(argCaptor.capture());
 
-    ConnectedSonarLintEngine createdEngine = underTest.createConnectedEngine("foo");
+    var createdEngine = underTest.createConnectedEngine("foo");
 
     assertThat(createdEngine).isSameAs(mockEngine);
-    ConnectedGlobalConfiguration capturedConfig = argCaptor.getValue();
+    var capturedConfig = argCaptor.getValue();
     assertThat(capturedConfig.extraProperties()).isEmpty();
   }
 

@@ -21,8 +21,6 @@ package org.sonarsource.sonarlint.ls.mediumtests;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
 import java.util.Map;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
@@ -50,8 +48,8 @@ class LanguageServerNoTypeScriptMediumTests extends AbstractLanguageServerMedium
   void analyzeSimpleJsFileOnOpenWithoutTypescriptCompilerPath() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true);
 
-    String uri = getUri("foo.js");
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
+    var uri = getUri("foo.js");
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -64,11 +62,11 @@ class LanguageServerNoTypeScriptMediumTests extends AbstractLanguageServerMedium
     // Enable analyzer debug logs for assertions
     emulateConfigurationChangeOnClient("**/*Test.js", null, true, true);
 
-    Path tsconfig = temp.resolve("tsconfig.json");
+    var tsconfig = temp.resolve("tsconfig.json");
     Files.write(tsconfig, "{}".getBytes(StandardCharsets.UTF_8));
-    String uri = getUri("foo.ts");
+    var uri = getUri("foo.ts");
 
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "typescript", "function foo() {\n if(bar() && bar()) { return 42; }\n}");
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "typescript", "function foo() {\n if(bar() && bar()) { return 42; }\n}");
 
     assertThat(diagnostics).isEmpty();
 

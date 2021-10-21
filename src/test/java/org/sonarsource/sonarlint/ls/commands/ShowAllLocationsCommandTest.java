@@ -44,31 +44,31 @@ class ShowAllLocationsCommandTest {
 
   @Test
   void shouldBuildCommandParamsFromIssue() {
-    Issue issue = mock(Issue.class);
-    ClientInputFile file = mock(ClientInputFile.class);
+    var issue = mock(Issue.class);
+    var file = mock(ClientInputFile.class);
     when(issue.getInputFile()).thenReturn(file);
-    URI fileUri = URI.create("file:///tmp/plop");
+    var fileUri = URI.create("file:///tmp/plop");
     when(file.uri()).thenReturn(fileUri);
     when(issue.getMessage()).thenReturn("message");
     when(issue.getSeverity()).thenReturn("severity");
     when(issue.getRuleKey()).thenReturn("ruleKey");
 
-    Issue.Flow flow1 = mock(Issue.Flow.class);
-    IssueLocation loc11 = mock(IssueLocation.class);
+    var flow1 = mock(Issue.Flow.class);
+    var loc11 = mock(IssueLocation.class);
     when(loc11.getTextRange()).thenReturn(new TextRange(0, 0, 0, 7));
-    IssueLocation loc12 = mock(IssueLocation.class);
+    var loc12 = mock(IssueLocation.class);
     when(loc12.getTextRange()).thenReturn(new TextRange(2, 2, 2, 9));
-    List<IssueLocation> locations1 = List.of(loc11, loc12);
+    var locations1 = List.of(loc11, loc12);
     when(flow1.locations()).thenReturn(locations1);
-    Issue.Flow flow2 = mock(Issue.Flow.class);
-    IssueLocation loc2 = mock(IssueLocation.class);
+    var flow2 = mock(Issue.Flow.class);
+    var loc2 = mock(IssueLocation.class);
     when(loc2.getTextRange()).thenReturn(new TextRange(4, 0, 4, 7));
-    List<IssueLocation> locations2 = List.of(loc2);
+    var locations2 = List.of(loc2);
     when(flow2.locations()).thenReturn(locations2);
-    List<Issue.Flow> flows = List.of(flow1, flow2);
+    var flows = List.of(flow1, flow2);
     when(issue.flows()).thenReturn(flows);
 
-    ShowAllLocationsCommand.Param params = ShowAllLocationsCommand.params(issue);
+    var params = ShowAllLocationsCommand.params(issue);
     assertThat(params).extracting(
       "fileUri",
       "message",
@@ -89,49 +89,48 @@ class ShowAllLocationsCommandTest {
 
   @Test
   void pathResolverTest() {
-    ServerIssue issue = mock(ServerIssue.class);
+    var issue = mock(ServerIssue.class);
     when(issue.getFilePath()).thenReturn("filePath");
-    ServerIssue.Flow flow = mock(ServerIssue.Flow.class);
+    var flow = mock(ServerIssue.Flow.class);
     when(issue.getFlows()).thenReturn(List.of(flow));
     when(issue.creationDate()).thenReturn(Instant.EPOCH);
 
-    String locationFilePath = "locationFilePath";
+    var locationFilePath = "locationFilePath";
 
-    ServerIssueLocation location1 = mock(ServerIssueLocation.class);
+    var location1 = mock(ServerIssueLocation.class);
     when(location1.getFilePath()).thenReturn(locationFilePath);
-    TextRange range1 = new TextRange(0, 1, 1, 1);
+    var range1 = new TextRange(0, 1, 1, 1);
     when(location1.getTextRange()).thenReturn(range1);
     when(location1.getCodeSnippet()).thenReturn("some code");
 
-    ServerIssueLocation location2 = mock(ServerIssueLocation.class);
+    var location2 = mock(ServerIssueLocation.class);
     when(location2.getFilePath()).thenReturn(locationFilePath);
-    TextRange range2 = new TextRange(2, 1, 2, 1);
+    var range2 = new TextRange(2, 1, 2, 1);
     when(location2.getTextRange()).thenReturn(range2);
     when(location2.getCodeSnippet()).thenReturn("other code");
 
     when(flow.locations()).thenReturn(List.of(location1, location2));
 
-    LocalCodeFile mockCodeFile = mock(LocalCodeFile.class);
+    var mockCodeFile = mock(LocalCodeFile.class);
     when(mockCodeFile.codeAt(range1)).thenReturn("some code");
     when(mockCodeFile.codeAt(range2)).thenReturn(null);
-    Map<URI, LocalCodeFile> cache = new HashMap<>();
-    cache.put(Paths.get(locationFilePath).toUri(), mockCodeFile);
+    var cache = new HashMap<>(Map.of(Paths.get(locationFilePath).toUri(), mockCodeFile));
 
-    String connectionId = "connectionId";
+    var connectionId = "connectionId";
 
-    ShowAllLocationsCommand.Param param = new ShowAllLocationsCommand.Param(issue, connectionId, ShowAllLocationsCommandTest::resolvePath, cache);
+    var param = new ShowAllLocationsCommand.Param(issue, connectionId, ShowAllLocationsCommandTest::resolvePath, cache);
 
     assertThat(param.getConnectionId()).isEqualTo(connectionId);
     assertThat(param.getCreationDate()).isEqualTo("1970-01-01T00:00:00Z");
     assertThat(param.getFileUri().toString()).endsWith("filePath");
-    List<ShowAllLocationsCommand.Location> allLocations = param.getFlows().get(0).getLocations();
-    ShowAllLocationsCommand.Location firstLocation = allLocations.get(0);
+    var allLocations = param.getFlows().get(0).getLocations();
+    var firstLocation = allLocations.get(0);
     assertThat(firstLocation.getUri().toString()).endsWith(locationFilePath);
     assertThat(firstLocation.getFilePath()).isEqualTo(locationFilePath);
     assertThat(firstLocation.getExists()).isTrue();
     assertThat(firstLocation.getCodeMatches()).isTrue();
 
-    ShowAllLocationsCommand.Location secondLocation = allLocations.get(1);
+    var secondLocation = allLocations.get(1);
     assertThat(secondLocation.getUri().toString()).endsWith(locationFilePath);
     assertThat(firstLocation.getFilePath()).isEqualTo(locationFilePath);
     assertThat(secondLocation.getExists()).isFalse();

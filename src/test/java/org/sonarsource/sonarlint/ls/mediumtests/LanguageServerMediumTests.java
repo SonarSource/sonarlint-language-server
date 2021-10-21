@@ -22,7 +22,6 @@ package org.sonarsource.sonarlint.ls.mediumtests;
 import com.google.gson.JsonPrimitive;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
@@ -31,10 +30,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
-import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionContext;
 import org.eclipse.lsp4j.CodeActionParams;
-import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
@@ -52,8 +49,6 @@ import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
-import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,7 +68,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @BeforeAll
   public static void initialize() throws Exception {
-    Path fakeTypeScriptProjectPath = Paths.get("src/test/resources/fake-ts-project").toAbsolutePath();
+    var fakeTypeScriptProjectPath = Paths.get("src/test/resources/fake-ts-project").toAbsolutePath();
 
     initialize(Map.of(
       "typeScriptLocation", fakeTypeScriptProjectPath.resolve("node_modules").toString(),
@@ -93,8 +88,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void analyzeSimpleJsFileOnOpen() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true);
 
-    String uri = getUri("analyzeSimpleJsFileOnOpen.js");
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
+    var uri = getUri("analyzeSimpleJsFileOnOpen.js");
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -105,8 +100,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleJsFileWithCustomRuleConfig() throws Exception {
-    String uri = getUri("analyzeSimpleJsFileWithCustomRuleConfig.js");
-    String jsSource = "function foo()\n {\n  var toto = 0;\n  var plouf = 0;\n}";
+    var uri = getUri("analyzeSimpleJsFileWithCustomRuleConfig.js");
+    var jsSource = "function foo()\n {\n  var toto = 0;\n  var plouf = 0;\n}";
 
     // Default configuration should result in 2 issues: S1442 and UnusedVariable
     emulateConfigurationChangeOnClient("**/*Test.js", null, false, true);
@@ -114,7 +109,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertLogContains(
       "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,projectKey=<null>,testFilePattern=**/*Test.js]");
 
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", jsSource);
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", jsSource);
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
@@ -145,11 +140,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleTsFileOnOpen() throws Exception {
-    Path tsconfig = temp.resolve("tsconfig.json");
+    var tsconfig = temp.resolve("tsconfig.json");
     Files.write(tsconfig, "{}".getBytes(StandardCharsets.UTF_8));
-    String uri = getUri("analyzeSimpleTsFileOnOpen.ts");
+    var uri = getUri("analyzeSimpleTsFileOnOpen.ts");
 
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "typescript", "function foo() {\n if(bar() && bar()) { return 42; }\n}");
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "typescript", "function foo() {\n if(bar() && bar()) { return 42; }\n}");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -159,9 +154,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimplePythonFileOnOpen() throws Exception {
-    String uri = getUri("analyzeSimplePythonFileOnOpen.py");
+    var uri = getUri("analyzeSimplePythonFileOnOpen.py");
 
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "python", "def foo():\n  print 'toto'\n");
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "python", "def foo():\n  print 'toto'\n");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -171,29 +166,29 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzePythonFileWithDuplicatedStringOnOpen() throws Exception {
-    String uri = getUri("analyzePythonFileWithDuplicatedStringOnOpen.py");
+    var uri = getUri("analyzePythonFileWithDuplicatedStringOnOpen.py");
 
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "python", "def foo():\n  print('/toto')\n  print('/toto')\n  print('/toto')\n");
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "python", "def foo():\n  print('/toto')\n  print('/toto')\n  print('/toto')\n");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
         tuple(1, 8, 1, 15, "python:S1192", "sonarlint", "Define a constant instead of duplicating this literal '/toto' 3 times. [+2 locations]", DiagnosticSeverity.Warning));
 
-    Diagnostic d = diagnostics.get(0);
-    CodeActionParams codeActionParams = new CodeActionParams(new TextDocumentIdentifier(uri), d.getRange(), new CodeActionContext(List.of(d)));
-    List<Either<Command, CodeAction>> list = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
-    assertThat(list).hasSize(3);
-    CodeAction allLocationsAction = list.get(1).getRight();
+    var d = diagnostics.get(0);
+    var codeActionParams = new CodeActionParams(new TextDocumentIdentifier(uri), d.getRange(), new CodeActionContext(List.of(d)));
+    var codeActions = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
+    assertThat(codeActions).hasSize(3);
+    var allLocationsAction = codeActions.get(1).getRight();
     assertThat(allLocationsAction.getCommand().getCommand()).isEqualTo(ShowAllLocationsCommand.ID);
     assertThat(allLocationsAction.getCommand().getArguments()).hasSize(1);
   }
 
   @Test
   void analyzeSimplePhpFileOnOpen() throws Exception {
-    String uri = getUri("foo.php");
+    var uri = getUri("foo.php");
 
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "php", "<?php\nfunction foo() {\n  echo(\"Hello\");\n}\n?>");
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "php", "<?php\nfunction foo() {\n  echo(\"Hello\");\n}\n?>");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -202,9 +197,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleHtmlFileOnOpen() throws Exception {
-    String uri = getUri("foo.html");
+    var uri = getUri("foo.html");
 
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "html", "<html><body></body></html>");
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "html", "<html><body></body></html>");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -218,9 +213,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleJspFileOnOpen() throws Exception {
-    String uri = getUri("foo.html");
+    var uri = getUri("foo.html");
 
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(uri, "jsp", "<html><body></body></html>");
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "jsp", "<html><body></body></html>");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -238,9 +233,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertLogContains(
       "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,projectKey=<null>,testFilePattern={**/*Test*}]");
 
-    String jsContent = "function foo() {\n  var toto = 0;\n}";
-    String fooTestUri = getUri("fooTest.js");
-    List<Diagnostic> diagnostics = didOpenAndWaitForDiagnostics(fooTestUri, "javascript", jsContent);
+    var jsContent = "function foo() {\n  var toto = 0;\n}";
+    var fooTestUri = getUri("fooTest.js");
+    var diagnostics = didOpenAndWaitForDiagnostics(fooTestUri, "javascript", jsContent);
 
     assertThat(diagnostics).isEmpty();
     client.clear();
@@ -252,17 +247,17 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     diagnostics = didChangeAndWaitForDiagnostics(fooTestUri, jsContent);
     assertThat(diagnostics).hasSize(1);
 
-    String fooMyTestUri = getUri("fooMyTest.js");
-    List<Diagnostic> diagnosticsOtherFile = didOpenAndWaitForDiagnostics(fooMyTestUri, "javascript", jsContent);
+    var fooMyTestUri = getUri("fooMyTest.js");
+    var diagnosticsOtherFile = didOpenAndWaitForDiagnostics(fooMyTestUri, "javascript", jsContent);
 
     assertThat(diagnosticsOtherFile).isEmpty();
   }
 
   @Test
   void analyzeSimpleJsFileOnChange() throws Exception {
-    String uri = getUri("analyzeSimpleJsFileOnChange.js");
+    var uri = getUri("analyzeSimpleJsFileOnChange.js");
 
-    List<Diagnostic> diagnostics = didChangeAndWaitForDiagnostics(uri, "function foo() {\n  var toto = 0;\n}");
+    var diagnostics = didChangeAndWaitForDiagnostics(uri, "function foo() {\n  var toto = 0;\n}");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -271,9 +266,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void delayAnalysisOnChange() throws Exception {
-    String uri = getUri("foo.js");
+    var uri = getUri("foo.js");
 
-    VersionedTextDocumentIdentifier docId = new VersionedTextDocumentIdentifier(uri, 1);
+    var docId = new VersionedTextDocumentIdentifier(uri, 1);
     // Emulate two quick changes, should only trigger one analysis
     client.diagnosticsLatch = new CountDownLatch(1);
     lsProxy.getTextDocumentService()
@@ -281,7 +276,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(docId, List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n  var plouf = 0;\n}"))));
     if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
-      List<Diagnostic> diagnostics = client.getDiagnostics(uri);
+      var diagnostics = client.getDiagnostics(uri);
       assertThat(diagnostics)
         .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
         .containsExactly(
@@ -294,9 +289,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleJsFileOnSave() throws Exception {
-    String uri = getUri("foo.js");
+    var uri = getUri("foo.js");
 
-    List<Diagnostic> diagnostics = didSaveAndWaitForDiagnostics(uri, "function foo() {\n  var toto = 0;\n}");
+    var diagnostics = didSaveAndWaitForDiagnostics(uri, "function foo() {\n  var toto = 0;\n}");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -305,7 +300,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void cleanDiagnosticsOnClose() throws Exception {
-    String uri = getUri("foo.js");
+    var uri = getUri("foo.js");
     client.diagnosticsLatch = new CountDownLatch(1);
     lsProxy.getTextDocumentService()
       .didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
@@ -320,9 +315,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     Thread.sleep(1000);
     client.logs.clear();
 
-    String uri = getUri("foo.py");
+    var uri = getUri("foo.py");
     client.diagnosticsLatch = new CountDownLatch(1);
-    VersionedTextDocumentIdentifier docId = new VersionedTextDocumentIdentifier(uri, 1);
+    var docId = new VersionedTextDocumentIdentifier(uri, 1);
 
     // SLVSCODE-157 - Open/Close/Open/Close triggers a race condition that nullifies content
     lsProxy.getTextDocumentService()
@@ -343,7 +338,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     Thread.sleep(1000);
     client.logs.clear();
 
-    String uri = getUri("foo.py");
+    var uri = getUri("foo.py");
     client.diagnosticsLatch = new CountDownLatch(1);
     client.isIgnoredByScm = true;
 
@@ -380,7 +375,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       fail("Expected exception");
     } catch (Exception e) {
       assertThat(e).isInstanceOf(ExecutionException.class).hasCauseInstanceOf(ResponseErrorException.class);
-      ResponseError responseError = ((ResponseErrorException) e.getCause()).getResponseError();
+      var responseError = ((ResponseErrorException) e.getCause()).getResponseError();
       assertThat(responseError.getCode()).isEqualTo(ResponseErrorCode.InvalidParams.getValue());
       assertThat(responseError.getMessage()).isEqualTo("Unsupported command: unknown");
     }
@@ -444,24 +439,24 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void testCodeAction_with_diagnostic_rule() throws Exception {
-    Range range = new Range(new Position(1, 0), new Position(1, 10));
-    Diagnostic d = new Diagnostic(range, "An issue");
+    var range = new Range(new Position(1, 0), new Position(1, 10));
+    var d = new Diagnostic(range, "An issue");
     d.setSource("sonarlint");
     d.setCode("javascript:S930");
     d.setData("uuid");
-    CodeActionParams codeActionParams = new CodeActionParams(new TextDocumentIdentifier("file://foo.js"), range, new CodeActionContext(List.of(d)));
-    List<Either<Command, CodeAction>> list = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
+    var codeActionParams = new CodeActionParams(new TextDocumentIdentifier("file://foo.js"), range, new CodeActionContext(List.of(d)));
+    var list = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
     assertThat(list).hasSize(2);
-    CodeAction codeAction = list.get(0).getRight();
+    var codeAction = list.get(0).getRight();
     assertThat(codeAction.getTitle()).isEqualTo("SonarLint: Open description of rule 'javascript:S930'");
-    Command openRuleDesc = codeAction.getCommand();
+    var openRuleDesc = codeAction.getCommand();
     assertThat(openRuleDesc.getCommand()).isEqualTo("SonarLint.OpenRuleDescCodeAction");
     assertThat(openRuleDesc.getArguments()).hasSize(2);
     assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(0)).getAsString()).isEqualTo("javascript:S930");
     assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(1)).getAsString()).isEqualTo("file://foo.js");
-    CodeAction disableRuleCodeAction = list.get(1).getRight();
+    var disableRuleCodeAction = list.get(1).getRight();
     assertThat(disableRuleCodeAction.getTitle()).isEqualTo("SonarLint: Deactivate rule 'javascript:S930'");
-    Command disableRule = disableRuleCodeAction.getCommand();
+    var disableRule = disableRuleCodeAction.getCommand();
     assertThat(disableRule.getCommand()).isEqualTo("SonarLint.DeactivateRule");
     assertThat(disableRule.getArguments()).hasSize(1);
     assertThat(((JsonPrimitive) disableRule.getArguments().get(0)).getAsString()).isEqualTo("javascript:S930");
@@ -469,7 +464,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void testListAllRules() throws Exception {
-    Map<String, List<Rule>> result = lsProxy.listAllRules().join();
+    var result = lsProxy.listAllRules().join();
     assertThat(result).containsOnlyKeys("HTML", "JavaScript", "TypeScript", "PHP", "Python", "Java");
 
     assertThat(result.get("HTML"))
@@ -481,7 +476,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void logErrorWhenClientFailedToReturnConfiguration() {
     // No workspaceFolderPath settings registered in the client mock, so it should fail when server will request workspaceFolderPath
     // configuration
-    String folderUri = "some://noconfig_uri";
+    var folderUri = "some://noconfig_uri";
     try {
       lsProxy.getWorkspaceService()
         .didChangeWorkspaceFolders(
@@ -500,7 +495,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void fetchWorkspaceFolderConfigurationWhenAdded() throws Exception {
     client.settingsLatch = new CountDownLatch(1);
-    String folderUri = "file:///added_uri";
+    var folderUri = "file:///added_uri";
     client.folderSettings.put(folderUri, buildSonarLintSettingsSection("another pattern", null, null, true));
 
     try {
@@ -525,7 +520,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     Thread.sleep(1000);
     client.logs.clear();
 
-    String uri = getUri("testAnalysisLogsDisabled.js");
+    var uri = getUri("testAnalysisLogsDisabled.js");
     didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
 
     await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
@@ -542,7 +537,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     Thread.sleep(1000);
     client.logs.clear();
 
-    String uri = getUri("testAnalysisLogsDebugEnabled.js");
+    var uri = getUri("testAnalysisLogsDebugEnabled.js");
     didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
 
     await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
@@ -560,7 +555,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     Thread.sleep(1000);
     client.logs.clear();
 
-    String uri = getUri("testAnalysisLogsEnabled.js");
+    var uri = getUri("testAnalysisLogsEnabled.js");
     didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
 
     await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
@@ -580,7 +575,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     Thread.sleep(1000);
     client.logs.clear();
 
-    String uri = getUri("testAnalysisLogsWithDebugEnabled.js");
+    var uri = getUri("testAnalysisLogsWithDebugEnabled.js");
     didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
 
     await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)

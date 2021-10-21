@@ -56,7 +56,7 @@ class ScmIgnoredCacheTests {
 
   @Test
   void ignored_status_should_be_cached_if_error() {
-    CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
+    var completableFuture = new CompletableFuture<Boolean>();
     completableFuture.completeExceptionally(new IllegalStateException("Future failed"));
     when(mockClient.isIgnoredByScm(FAKE_URI.toString())).thenReturn(completableFuture);
     assertThat(underTest.isIgnored(FAKE_URI)).isEmpty();

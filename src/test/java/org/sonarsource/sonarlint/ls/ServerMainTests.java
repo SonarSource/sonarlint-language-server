@@ -22,8 +22,6 @@ package org.sonarsource.sonarlint.ls;
 import java.io.PrintStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.shaded.org.apache.commons.io.output.ByteArrayOutputStream;
@@ -36,8 +34,8 @@ import static org.mockito.Mockito.spy;
 
 class ServerMainTests {
 
-  private ByteArrayOutputStream out = new ByteArrayOutputStream();
-  private ByteArrayOutputStream err = new ByteArrayOutputStream();
+  private final ByteArrayOutputStream out = new ByteArrayOutputStream();
+  private final ByteArrayOutputStream err = new ByteArrayOutputStream();
   private ServerMain underTest = new ServerMain(new PrintStream(out), new PrintStream(err));
 
   @BeforeEach
@@ -47,9 +45,9 @@ class ServerMainTests {
   }
 
   @Test
-  public void testRequiredArguments() {
+  void testRequiredArguments() {
 
-    RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
+    var thrown = assertThrows(RuntimeException.class, () -> {
       underTest.startLanguageServer();
     });
 
@@ -61,9 +59,9 @@ class ServerMainTests {
   }
 
   @Test
-  public void testInvalidPortArgument() {
+  void testInvalidPortArgument() {
 
-    RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
+    var thrown = assertThrows(RuntimeException.class, () -> {
       underTest.startLanguageServer("not_a_number");
     });
 
@@ -73,9 +71,9 @@ class ServerMainTests {
   }
 
   @Test
-  public void testInvalidPluginURL() {
+  void testInvalidPluginURL() {
 
-    RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
+    var thrown = assertThrows(RuntimeException.class, () -> {
       underTest.startLanguageServer("1", "-analyzers", "http/invalid");
     });
 
@@ -85,9 +83,9 @@ class ServerMainTests {
   }
 
   @Test
-  public void testInvalidExtraPluginURL() {
+  void testInvalidExtraPluginURL() {
 
-    RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
+    var thrown = assertThrows(RuntimeException.class, () -> {
       underTest.startLanguageServer("1", "-analyzers", "http://analyzer.jar", "-extraAnalyzers", "http/invalid");
     });
 
@@ -97,46 +95,46 @@ class ServerMainTests {
   }
 
   @Test
-  public void testExtractingAnalyzersPositive() {
-    String[] args = {"-analyzers", "http://url1.jar", "http://url2.jar"};
-    Collection<URL> urls = underTest.extractAnalyzers(args);
+  void testExtractingAnalyzersPositive() {
+    var args = new String[]{"-analyzers", "http://url1.jar", "http://url2.jar"};
+    var urls = underTest.extractAnalyzers(args);
     assertThat(urls).extracting(URL::getProtocol, URL::getHost)
             .containsExactly(tuple("http", "url1.jar"), tuple("http", "url2.jar"));
   }
 
   @Test
-  public void testExtractingAnalyzersExitsIfNoKey() {
-    String[] args = {"http://url1.jar", "http://url2.jar"};
+  void testExtractingAnalyzersExitsIfNoKey() {
+    var args = new String[]{"http://url1.jar", "http://url2.jar"};
 
     assertThrows(RuntimeException.class, ()-> underTest.extractAnalyzers(args));
   }
 
   @Test
-  public void testExtractingAnalyzersExitsOnMalformedUrl() {
-    String[] args = {"-analyzers", "url1"};
+  void testExtractingAnalyzersExitsOnMalformedUrl() {
+    var args = new String[]{"-analyzers", "url1"};
 
     assertThrows(RuntimeException.class, ()-> underTest.extractAnalyzers(args));
   }
 
   @Test
-  public void testExtractingExtraAnalyzersPositive() {
-    String[] args = {"-extraAnalyzers", "http://url1.jar", "http://url2.jar"};
-    Collection<URL> urls = underTest.extractExtraAnalyzers(args);
+  void testExtractingExtraAnalyzersPositive() {
+    var args = new String[]{"-extraAnalyzers", "http://url1.jar", "http://url2.jar"};
+    var urls = underTest.extractExtraAnalyzers(args);
     assertThat(urls).extracting(URL::getProtocol, URL::getHost)
             .containsExactly(tuple("http", "url1.jar"), tuple("http", "url2.jar"));
   }
 
   @Test
-  public void testExtractingExtraAnalyzersReturnsEmptyListIfNoKey() {
-    String[] args = {"http://url1.jar", "http://url2.jar"};
+  void testExtractingExtraAnalyzersReturnsEmptyListIfNoKey() {
+    var args = new String[]{"http://url1.jar", "http://url2.jar"};
 
-    Collection<URL> urls = underTest.extractExtraAnalyzers(args);
+    var urls = underTest.extractExtraAnalyzers(args);
     assertThat(urls).isEmpty();
   }
 
   @Test
-  public void testExtractingExtraAnalyzersExitsOnMalformedUrl() {
-    String[] args = {"-extraAnalyzers", "url1"};
+  void testExtractingExtraAnalyzersExitsOnMalformedUrl() {
+    var args = new String[]{"-extraAnalyzers", "url1"};
 
     assertThrows(RuntimeException.class, ()-> underTest.extractExtraAnalyzers(args));
   }

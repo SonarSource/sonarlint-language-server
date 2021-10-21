@@ -40,8 +40,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 class ServerIssueTrackerWrapperTests {
@@ -53,95 +53,95 @@ class ServerIssueTrackerWrapperTests {
 
   @Test
   void get_original_issues_when_there_are_no_server_issues() throws IOException {
-    Issue issue = mockIssue();
+    var issue = mockIssue();
     when(issue.getInputFile().getPath()).thenReturn(baseDir.resolve("dummy").toString());
 
-    Collection<Issue> issues = List.of(issue);
-    ServerIssueTrackerWrapper tracker = newTracker(baseDir);
+    var issues = List.of(issue);
+    var tracker = newTracker(baseDir);
 
-    Collection<Issue> result = matchAndTrack(tracker, "dummy", issues);
+    var result = matchAndTrack(tracker, "dummy", issues);
     assertThat(result).extracting("issue").isEqualTo(issues);
   }
 
   @Test
   void hide_resolved_server_issues() throws IOException {
-    String dummyFilePath = baseDir.resolve("dummy").toString();
+    var dummyFilePath = baseDir.resolve("dummy").toString();
 
-    Issue unresolved = mockIssue();
+    var unresolved = mockIssue();
     when(unresolved.getInputFile().getPath()).thenReturn(dummyFilePath);
-    Issue resolved = mockIssue();
+    var resolved = mockIssue();
     when(resolved.getInputFile().getPath()).thenReturn(dummyFilePath);
 
-    Collection<Issue> issues = List.of(unresolved, resolved);
-    ServerIssue resolvedServerIssue = mockServerIssue(resolved);
-    List<ServerIssue> serverIssues = List.of(mockServerIssue(unresolved), resolvedServerIssue);
+    var issues = List.of(unresolved, resolved);
+    var resolvedServerIssue = mockServerIssue(resolved);
+    var serverIssues = List.of(mockServerIssue(unresolved), resolvedServerIssue);
 
-    ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
+    var engine = mock(ConnectedSonarLintEngine.class);
     when(engine.getServerIssues(any(), any())).thenReturn(serverIssues);
 
-    ServerIssueTrackerWrapper tracker = newTracker(baseDir, engine);
-    Collection<Issue> trackedIssues = matchAndTrack(tracker, "dummy", issues);
+    var tracker = newTracker(baseDir, engine);
+    var trackedIssues = matchAndTrack(tracker, "dummy", issues);
     assertThat(trackedIssues).extracting("issue").containsOnlyElementsOf(issues);
 
     when(resolvedServerIssue.resolution()).thenReturn("CLOSED");
-    Collection<Issue> trackedIssues2 = matchAndTrack(tracker, "dummy", issues);
+    var trackedIssues2 = matchAndTrack(tracker, "dummy", issues);
     assertThat(trackedIssues2).extracting("issue").isEqualTo(List.of(unresolved));
   }
 
   @Test
   void get_severity_and_issue_type_from_matched_server_issue() throws IOException {
-    String dummyFilePath = baseDir.resolve("dummy").toString();
+    var dummyFilePath = baseDir.resolve("dummy").toString();
 
-    Issue unmatched = mockIssue();
+    var unmatched = mockIssue();
     when(unmatched.getInputFile().getPath()).thenReturn(dummyFilePath);
-    Issue matched = mockIssue();
+    var matched = mockIssue();
     when(matched.getInputFile().getPath()).thenReturn(dummyFilePath);
-    Collection<Issue> issues = List.of(unmatched, matched);
+    var issues = List.of(unmatched, matched);
 
-    String serverIssueSeverity = "BLOCKER*";
-    String serverIssueType = "BUG*";
-    ServerIssue matchedServerIssue = mockServerIssue(matched);
+    var serverIssueSeverity = "BLOCKER*";
+    var serverIssueType = "BUG*";
+    var matchedServerIssue = mockServerIssue(matched);
     when(matchedServerIssue.severity()).thenReturn(serverIssueSeverity);
     when(matchedServerIssue.type()).thenReturn(serverIssueType);
-    List<ServerIssue> serverIssues = List.of(mockServerIssue(mockIssue()), matchedServerIssue);
+    var serverIssues = List.of(mockServerIssue(mockIssue()), matchedServerIssue);
 
-    ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
+    var engine = mock(ConnectedSonarLintEngine.class);
     when(engine.getServerIssues(any(), any())).thenReturn(serverIssues);
 
-    ServerIssueTrackerWrapper tracker = newTracker(baseDir, engine);
-    Collection<Issue> trackedIssues = matchAndTrack(tracker, "dummy", issues);
+    var tracker = newTracker(baseDir, engine);
+    var trackedIssues = matchAndTrack(tracker, "dummy", issues);
 
     assertThat(trackedIssues).extracting("ruleKey")
       .containsOnly(unmatched.getRuleKey(), matched.getRuleKey());
 
-    Issue combined = trackedIssues.stream()
+    var combined = trackedIssues.stream()
       .filter(t -> t.getRuleKey().equals(matched.getRuleKey()))
-      .findAny()
-      .get();
-    assertThat(combined.getSeverity()).isEqualTo(serverIssueSeverity);
-    assertThat(combined.getType()).isEqualTo(serverIssueType);
+      .findAny();
+    assertThat(combined).isPresent()
+      .get().extracting(Issue::getSeverity, Issue::getType)
+      .containsExactly(serverIssueSeverity, serverIssueType);
   }
 
   @Test
   void do_not_get_server_issues_when_there_are_no_local_issues() throws IOException {
-    ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
+    var engine = mock(ConnectedSonarLintEngine.class);
 
-    ServerIssueTrackerWrapper tracker = newTracker(baseDir, engine);
+    var tracker = newTracker(baseDir, engine);
     matchAndTrack(tracker, "dummy", Collections.emptyList());
     verifyNoInteractions(engine);
   }
 
   @Test
   void fetch_server_issues_when_needed() throws IOException {
-    String dummyFilePath = baseDir.resolve("dummy").toString();
+    var dummyFilePath = baseDir.resolve("dummy").toString();
 
-    Issue issue = mockIssue();
+    var issue = mockIssue();
     when(issue.getInputFile().getPath()).thenReturn(dummyFilePath);
 
-    Collection<Issue> issues = Collections.singleton(issue);
+    var issues = Collections.singleton(issue);
 
-    ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
-    ServerIssueTrackerWrapper tracker = newTracker(baseDir, engine);
+    var engine = mock(ConnectedSonarLintEngine.class);
+    var tracker = newTracker(baseDir, engine);
     matchAndTrack(tracker, "dummy", issues, false);
     verify(engine).getServerIssues(any(), any());
     verifyNoMoreInteractions(engine);
@@ -158,25 +158,25 @@ class ServerIssueTrackerWrapperTests {
   }
 
   private Collection<Issue> matchAndTrack(ServerIssueTrackerWrapper tracker, String filePath, Collection<Issue> issues, boolean shouldFetchServerIssues) {
-    List<Issue> recorded = new LinkedList<>();
+    var recorded = new LinkedList<Issue>();
     tracker.matchAndTrack(filePath, issues, recorded::add, shouldFetchServerIssues);
     return recorded;
   }
 
   private ServerIssueTrackerWrapper newTracker(Path baseDir, ConnectedSonarLintEngine engine) {
-    String projectKey = "project1";
-    ProjectBinding projectBinding = new ProjectBinding(projectKey, "", "");
+    var projectKey = "project1";
+    var projectBinding = new ProjectBinding(projectKey, "", "");
     return new ServerIssueTrackerWrapper(engine, new ServerConnectionSettings.EndpointParamsAndHttpClient(null, null), projectBinding);
   }
 
   private ServerIssueTrackerWrapper newTracker(Path baseDir) {
-    ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
+    var engine = mock(ConnectedSonarLintEngine.class);
     return newTracker(baseDir, engine);
   }
 
   // create uniquely identifiable issue
   private Issue mockIssue() {
-    Issue issue = mock(Issue.class);
+    var issue = mock(Issue.class);
 
     // basic setup to prevent NPEs
     when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
@@ -190,7 +190,7 @@ class ServerIssueTrackerWrapperTests {
 
   // copy enough fields so that tracker finds a match
   private ServerIssue mockServerIssue(Issue issue) {
-    ServerIssue serverIssue = mock(ServerIssue.class);
+    var serverIssue = mock(ServerIssue.class);
 
     // basic setup to prevent NPEs
     when(serverIssue.creationDate()).thenReturn(Instant.ofEpochMilli(++counter));
@@ -200,15 +200,15 @@ class ServerIssueTrackerWrapperTests {
     // if issue itself is a mock, need to extract value to variable first
     // as Mockito doesn't handle nested mocking inside mocking
 
-    String message = issue.getMessage();
+    var message = issue.getMessage();
     when(serverIssue.getMessage()).thenReturn(message);
 
     // copy fields to match during tracking
 
-    String ruleKey = issue.getRuleKey();
+    var ruleKey = issue.getRuleKey();
     when(serverIssue.ruleKey()).thenReturn(ruleKey);
 
-    Integer startLine = issue.getStartLine();
+    var startLine = issue.getStartLine();
     when(serverIssue.getStartLine()).thenReturn(startLine);
 
     return serverIssue;

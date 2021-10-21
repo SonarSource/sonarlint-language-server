@@ -29,7 +29,7 @@ class RulesConfigurationTest {
 
   @Test
   void configuredRuleShouldHaveEqualsAndHashCode() {
-    RulesConfiguration.ConfiguredRule rule1 = parseRule("{\n" +
+    var rule1 = parseRule("{\n" +
       "  \"xoo:rule1\": {\n" +
       "    \"level\": \"on\",\n" +
       "    \"parameters\": {\n" +
@@ -37,7 +37,7 @@ class RulesConfigurationTest {
       "    }\n" +
       "  }\n" +
       "}");
-    RulesConfiguration.ConfiguredRule sameAsRule1 = parseRule("{\n" +
+    var sameAsRule1 = parseRule("{\n" +
       "  \"xoo:rule1\": {\n" +
       "    \"level\": \"on\",\n" +
       "    \"parameters\": {\n" +
@@ -45,7 +45,7 @@ class RulesConfigurationTest {
       "    }\n" +
       "  }\n" +
       "}");
-    RulesConfiguration.ConfiguredRule keyDiffers = parseRule("{\n" +
+    var keyDiffers = parseRule("{\n" +
       "  \"xoo:rule2\": {\n" +
       "    \"level\": \"on\",\n" +
       "    \"parameters\": {\n" +
@@ -53,7 +53,7 @@ class RulesConfigurationTest {
       "    }\n" +
       "  }\n" +
       "}");
-    RulesConfiguration.ConfiguredRule levelDiffers = parseRule("{\n" +
+    var levelDiffers = parseRule("{\n" +
       "  \"xoo:rule1\": {\n" +
       "    \"level\": \"off\",\n" +
       "    \"parameters\": {\n" +
@@ -61,12 +61,12 @@ class RulesConfigurationTest {
       "    }\n" +
       "  }\n" +
       "}");
-    RulesConfiguration.ConfiguredRule noParams = parseRule("{\n" +
+    var noParams = parseRule("{\n" +
       "  \"xoo:rule1\": {\n" +
       "    \"level\": \"on\"\n" +
       "  }\n" +
       "}");
-    RulesConfiguration.ConfiguredRule paramsDiffer = parseRule("{\n" +
+    var paramsDiffer = parseRule("{\n" +
       "  \"xoo:rule1\": {\n" +
       "    \"level\": \"on\",\n" +
       "    \"parameters\": {\n" +

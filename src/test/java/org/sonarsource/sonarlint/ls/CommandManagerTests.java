@@ -25,10 +25,8 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionContext;
 import org.eclipse.lsp4j.CodeActionParams;
-import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.ExecuteCommandParams;
@@ -37,7 +35,6 @@ import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonar.api.server.rule.RuleParamType;
@@ -120,10 +117,10 @@ class CommandManagerTests {
 
   @Test
   void getHtmlDescription_appends_extended_description_when_non_empty() {
-    String htmlDescription = "foo";
-    String extendedDescription = "bar";
+    var htmlDescription = "foo";
+    var extendedDescription = "bar";
 
-    ConnectedRuleDetails ruleDetails = mock(ConnectedRuleDetails.class);
+    var ruleDetails = mock(ConnectedRuleDetails.class);
     when(ruleDetails.getHtmlDescription()).thenReturn(htmlDescription);
     when(ruleDetails.getExtendedDescription()).thenReturn("");
 
@@ -142,7 +139,7 @@ class CommandManagerTests {
 
   @Test
   void noCodeActionsIfNotSonarLintDiagnostic() {
-    List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
+    var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, "not_sonarlint", "XYZ")))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).isEmpty();
@@ -152,7 +149,7 @@ class CommandManagerTests {
   void noDisableRuleForBoundProject() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
 
-    List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
+    var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ")))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("SonarLint: Open description of rule 'XYZ'");
@@ -162,12 +159,12 @@ class CommandManagerTests {
   void suggestDisableRuleForUnboundProject() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.empty());
 
-    Diagnostic d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
+    var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
-    Issue issue = mock(Issue.class);
+    var issue = mock(Issue.class);
     when(mockAnalysisManager.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
-    List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
+    var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
@@ -179,28 +176,28 @@ class CommandManagerTests {
 
   @Test
   void showQuickFixFromAnalyzer() {
-    URI fileUri = URI.create(FILE_URI);
+    var fileUri = URI.create(FILE_URI);
     when(bindingManager.getBinding(fileUri)).thenReturn(Optional.empty());
 
-    Diagnostic d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
+    var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
-    Issue issue = mock(Issue.class);
+    var issue = mock(Issue.class);
     when(mockAnalysisManager.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
-    TextEdit textEdit = mock(TextEdit.class);
+    var textEdit = mock(TextEdit.class);
     when(textEdit.newText()).thenReturn("");
     when(textEdit.range()).thenReturn(new TextRange(1, 0,1, 1));
-    ClientInputFileEdit edit = mock(ClientInputFileEdit.class);
+    var edit = mock(ClientInputFileEdit.class);
     when(edit.textEdits()).thenReturn(List.of(textEdit));
-    ClientInputFile target = mock(ClientInputFile.class);
+    var target = mock(ClientInputFile.class);
     when(target.uri()).thenReturn(fileUri);
     when(edit.target()).thenReturn(target);
-    QuickFix fix = mock(QuickFix.class);
+    var fix = mock(QuickFix.class);
     when(fix.message()).thenReturn("Fix the issue!");
     when(fix.inputFileEdits()).thenReturn(List.of(edit));
     when(issue.quickFixes()).thenReturn(List.of(fix));
 
-    List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
+    var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
@@ -213,28 +210,28 @@ class CommandManagerTests {
 
   @Test
   void codeActionsForTaint() {
-    String connId = "connectionId";
+    var connId = "connectionId";
     when(mockBinding.getConnectionId()).thenReturn(connId);
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
-    WorkspaceSettings mockWorkspacesettings = mock(WorkspaceSettings.class);
-    ServerConnectionSettings serverSettings = mock(ServerConnectionSettings.class);
+    var mockWorkspacesettings = mock(WorkspaceSettings.class);
+    var serverSettings = mock(ServerConnectionSettings.class);
     when(serverSettings.getServerUrl()).thenReturn("https://some.server.url");
     when(mockWorkspacesettings.getServerConnections()).thenReturn(Collections.singletonMap(connId, serverSettings));
     when(mockSettingsManager.getCurrentSettings()).thenReturn(mockWorkspacesettings);
 
-    Diagnostic d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARQUBE_TAINT_SOURCE, "ruleKey");
+    var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARQUBE_TAINT_SOURCE, "ruleKey");
 
-    ServerIssue issue = mock(ServerIssue.class);
+    var issue = mock(ServerIssue.class);
     when(issue.ruleKey()).thenReturn("ruleKey");
     when(issue.creationDate()).thenReturn(Instant.EPOCH);
-    ServerIssue.Flow flow = mock(ServerIssue.Flow.class);
+    var flow = mock(ServerIssue.Flow.class);
     when(issue.getFlows()).thenReturn(List.of(flow));
-    ServerIssueLocation location = mock(ServerIssueLocation.class);
+    var location = mock(ServerIssueLocation.class);
     when(flow.locations()).thenReturn(List.of(location));
     when(issue.key()).thenReturn("SomeIssueKey");
     when(mockAnalysisManager.getTaintVulnerabilityForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
-    List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
+    var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
@@ -248,15 +245,15 @@ class CommandManagerTests {
   void suggestShowAllLocationsForIssueWithFlows() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.empty());
 
-    Diagnostic d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
+    var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
-    Issue.Flow flow = mock(Issue.Flow.class);
-    List<Issue.Flow> flows = List.of(flow);
-    Issue issue = mock(Issue.class);
+    var flow = mock(Issue.Flow.class);
+    var flows = List.of(flow);
+    var issue = mock(Issue.class);
     when(issue.flows()).thenReturn(flows);
     when(mockAnalysisManager.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
-    List<Either<Command, CodeAction>> codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
+    var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
@@ -270,7 +267,7 @@ class CommandManagerTests {
   @Test
   void openRuleDescriptionForBoundProject() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
-    ConnectedRuleDetails ruleDetails = mock(ConnectedRuleDetails.class);
+    var ruleDetails = mock(ConnectedRuleDetails.class);
     when(ruleDetails.getKey()).thenReturn(FAKE_RULE_KEY);
     when(ruleDetails.getName()).thenReturn("Name");
     when(ruleDetails.getHtmlDescription()).thenReturn("Desc");
@@ -290,7 +287,7 @@ class CommandManagerTests {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
     when(mockConnectedEngine.getActiveRuleDetails(FAKE_RULE_KEY, "projectKey")).thenThrow(new IllegalArgumentException());
 
-    ExecuteCommandParams params = new ExecuteCommandParams(
+    var params = new ExecuteCommandParams(
       SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
       List.of(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI)));
     assertThrows(ResponseErrorException.class, () -> underTest.executeCommand(params, NOP_CANCEL_TOKEN));
@@ -299,13 +296,13 @@ class CommandManagerTests {
   @Test
   void openRuleDescriptionForUnboundProject() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.empty());
-    StandaloneRuleDetails ruleDetails = mock(StandaloneRuleDetails.class);
+    var ruleDetails = mock(StandaloneRuleDetails.class);
     when(ruleDetails.getKey()).thenReturn(FAKE_RULE_KEY);
     when(ruleDetails.getName()).thenReturn("Name");
     when(ruleDetails.getHtmlDescription()).thenReturn("Desc");
     when(ruleDetails.getType()).thenReturn("Type");
     when(ruleDetails.getSeverity()).thenReturn("Severity");
-    RulesDefinition.Param apiParam = mock(RulesDefinition.Param.class);
+    var apiParam = mock(RulesDefinition.Param.class);
     when(apiParam.name()).thenReturn("intParam");
     when(apiParam.type()).thenReturn(RuleParamType.INTEGER);
     when(apiParam.description()).thenReturn("An integer parameter");
@@ -313,7 +310,7 @@ class CommandManagerTests {
     List<StandaloneRuleParam> params = List.of(new DefaultStandaloneRuleParam(apiParam));
     when(ruleDetails.paramDetails()).thenReturn(params);
     when(mockStandaloneEngine.getRuleDetails(FAKE_RULE_KEY)).thenReturn(Optional.of(ruleDetails));
-    StandaloneSonarLintEngine sonarLintEngine = mock(StandaloneSonarLintEngine.class);
+    var sonarLintEngine = mock(StandaloneSonarLintEngine.class);
     when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(sonarLintEngine);
     when(sonarLintEngine.getRuleDetails("javascript:S1234")).thenReturn(Optional.of(ruleDetails));
 
@@ -327,7 +324,7 @@ class CommandManagerTests {
 
   @Test
   void browseTaintVulnerability() {
-    String issueUrl = "https://some.sq/issue/id";
+    var issueUrl = "https://some.sq/issue/id";
     underTest.executeCommand(new ExecuteCommandParams(SONARLINT_BROWSE_TAINT_VULNERABILITY, List.of(new JsonPrimitive(issueUrl))), NOP_CANCEL_TOKEN);
     verify(mockTelemetry).taintVulnerabilitiesInvestigatedRemotely();
     verify(mockClient).browseTo(issueUrl);
@@ -335,14 +332,14 @@ class CommandManagerTests {
 
   @Test
   void showTaintVulnerabilityFlows() {
-    String issueKey = "someIssueKey";
-    String connectionId = "connectionId";
-    ServerIssue issue = mock(ServerIssue.class);
+    var issueKey = "someIssueKey";
+    var connectionId = "connectionId";
+    var issue = mock(ServerIssue.class);
     when(issue.ruleKey()).thenReturn("ruleKey");
     when(issue.creationDate()).thenReturn(Instant.EPOCH);
-    ServerIssue.Flow flow = mock(ServerIssue.Flow.class);
+    var flow = mock(ServerIssue.Flow.class);
     when(issue.getFlows()).thenReturn(List.of(flow));
-    ServerIssueLocation location = mock(ServerIssueLocation.class);
+    var location = mock(ServerIssueLocation.class);
     when(flow.locations()).thenReturn(List.of(location));
     when(mockAnalysisManager.getTaintVulnerabilityByKey(issueKey)).thenReturn(Optional.of(issue));
 

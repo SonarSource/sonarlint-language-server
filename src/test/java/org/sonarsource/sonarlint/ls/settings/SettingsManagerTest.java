@@ -129,7 +129,7 @@ class SettingsManagerTest {
   void shouldParseFullWellFormedJsonWorkspaceFolderSettings() {
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     underTest.didChangeConfiguration();
-    WorkspaceFolderSettings settings = underTest.getCurrentDefaultFolderSettings();
+    var settings = underTest.getCurrentDefaultFolderSettings();
 
     assertThat(settings.getTestMatcher().matches(new File("./someTest").toPath())).isFalse();
     assertThat(settings.getTestMatcher().matches(new File("./someTest.ext").toPath())).isTrue();
@@ -146,7 +146,7 @@ class SettingsManagerTest {
   void shouldParseFullDeprecatedWellFormedJsonWorkspaceFolderSettings() {
     mockConfigurationRequest(null, DEPRECATED_SAMPLE_CONFIG);
     underTest.didChangeConfiguration();
-    WorkspaceFolderSettings settings = underTest.getCurrentDefaultFolderSettings();
+    var settings = underTest.getCurrentDefaultFolderSettings();
 
     assertThat(settings.getConnectionId()).isEqualTo("server1");
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
@@ -156,7 +156,7 @@ class SettingsManagerTest {
   void shouldParseFullWellFormedJsonWorkspaceSettings() {
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     underTest.didChangeConfiguration();
-    WorkspaceSettings settings = underTest.getCurrentSettings();
+    var settings = underTest.getCurrentSettings();
     assertThat(settings.isDisableTelemetry()).isTrue();
     assertThat(settings.showAnalyzerLogs()).isTrue();
     assertThat(settings.showVerboseLogs()).isTrue();
@@ -198,7 +198,7 @@ class SettingsManagerTest {
       "}\n");
     underTest.didChangeConfiguration();
 
-    WorkspaceSettings settings = underTest.getCurrentSettings();
+    var settings = underTest.getCurrentSettings();
     assertThat(settings.getServerConnections()).isEmpty();
     assertThat(logTester.logs(LoggerLevel.ERROR))
       .containsExactly("Incomplete server connection configuration. Required parameters must not be blank: serverId.",
@@ -226,7 +226,7 @@ class SettingsManagerTest {
       "}\n");
     underTest.didChangeConfiguration();
 
-    WorkspaceSettings settings = underTest.getCurrentSettings();
+    var settings = underTest.getCurrentSettings();
     assertThat(settings.getServerConnections()).containsKeys("dup");
     assertThat(logTester.logs(LoggerLevel.ERROR)).containsExactly("Multiple server connections with the same identifier 'dup'. Fix your settings.");
   }
@@ -247,7 +247,7 @@ class SettingsManagerTest {
       "}\n");
     underTest.didChangeConfiguration();
 
-    WorkspaceSettings settings = underTest.getCurrentSettings();
+    var settings = underTest.getCurrentSettings();
     assertThat(settings.getServerConnections()).containsKeys("<default>");
     assertThat(logTester.logs(LoggerLevel.ERROR)).containsExactly("Please specify a unique 'connectionId' in your settings for each of the SonarQube/SonarCloud connections.");
   }
@@ -257,7 +257,7 @@ class SettingsManagerTest {
     mockConfigurationRequest(null, DEPRECATED_SAMPLE_CONFIG);
     underTest.didChangeConfiguration();
 
-    WorkspaceSettings settings = underTest.getCurrentSettings();
+    var settings = underTest.getCurrentSettings();
     assertThat(settings.getServerConnections()).containsKeys("server1", "sc");
     assertThat(settings.getServerConnections().values())
       .extracting(ServerConnectionSettings::getConnectionId, ServerConnectionSettings::getServerUrl, ServerConnectionSettings::getToken, ServerConnectionSettings::getOrganizationKey)
@@ -278,7 +278,7 @@ class SettingsManagerTest {
       "}\n");
     underTest.didChangeConfiguration();
 
-    WorkspaceFolderSettings settings = underTest.getCurrentDefaultFolderSettings();
+    var settings = underTest.getCurrentDefaultFolderSettings();
     assertThat(settings.getConnectionId()).isNull();
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
     assertThat(logTester.logs(LoggerLevel.ERROR))
@@ -301,7 +301,7 @@ class SettingsManagerTest {
       "}\n");
     underTest.didChangeConfiguration();
 
-    WorkspaceFolderSettings settings = underTest.getCurrentDefaultFolderSettings();
+    var settings = underTest.getCurrentDefaultFolderSettings();
     assertThat(settings.getConnectionId()).isEqualTo("sq");
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
   }
@@ -324,7 +324,7 @@ class SettingsManagerTest {
 
     assertThat(underTest.getCurrentSettings().getServerConnections().keySet()).containsExactly("<default>");
 
-    WorkspaceFolderSettings settings = underTest.getCurrentDefaultFolderSettings();
+    var settings = underTest.getCurrentDefaultFolderSettings();
     assertThat(settings.getConnectionId()).isEqualTo("<default>");
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
   }
@@ -340,12 +340,12 @@ class SettingsManagerTest {
       "    }\n" +
       "  }\n" +
       "}\n");
-    WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
+    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
 
-    WorkspaceFolderSettings settings = folderWrapper.getSettings();
+    var settings = folderWrapper.getSettings();
     assertThat(settings.getConnectionId()).isNull();
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
     assertThat(logTester.logs(LoggerLevel.ERROR))
@@ -364,12 +364,12 @@ class SettingsManagerTest {
       "    }\n" +
       "  }\n" +
       "}\n");
-    WorkspaceFolderWrapper folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
+    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
 
-    WorkspaceFolderSettings settings = folderWrapper.getSettings();
+    var settings = folderWrapper.getSettings();
     assertThat(settings.getConnectionId()).isEqualTo("unknown");
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
     assertThat(logTester.logs(LoggerLevel.ERROR))
@@ -387,7 +387,7 @@ class SettingsManagerTest {
       "}\n");
     underTest.didChangeConfiguration();
 
-    WorkspaceSettings settings = underTest.getCurrentSettings();
+    var settings = underTest.getCurrentSettings();
     assertThat(settings.hasLocalRuleConfiguration()).isTrue();
   }
 
@@ -402,7 +402,7 @@ class SettingsManagerTest {
       "}\n");
     underTest.didChangeConfiguration();
 
-    WorkspaceSettings settings = underTest.getCurrentSettings();
+    var settings = underTest.getCurrentSettings();
     assertThat(settings.hasLocalRuleConfiguration()).isTrue();
   }
 
@@ -424,8 +424,8 @@ class SettingsManagerTest {
       "}\n");
     underTest.didChangeConfiguration();
 
-    WorkspaceSettings settings = underTest.getCurrentSettings();
-    RuleKey key = RuleKey.parse("xoo:rule1");
+    var settings = underTest.getCurrentSettings();
+    var key = RuleKey.parse("xoo:rule1");
     assertThat(settings.getRuleParameters()).containsOnlyKeys(key);
     assertThat(settings.getRuleParameters().get(key)).containsOnly(
       entry("intParam", "42"),
