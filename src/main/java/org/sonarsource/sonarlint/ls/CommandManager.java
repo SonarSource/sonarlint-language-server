@@ -108,45 +108,45 @@ public class CommandManager {
     var codeActions = new ArrayList<Either<Command, CodeAction>>();
     var uri = create(params.getTextDocument().getUri());
     var binding = bindingManager.getBinding(uri);
-    for (var d : params.getContext().getDiagnostics()) {
+    for (var diagnostic: params.getContext().getDiagnostics()) {
       cancelToken.checkCanceled();
-      if (SONARLINT_SOURCE.equals(d.getSource())) {
-        var ruleKey = d.getCode().getLeft();
+      if (SONARLINT_SOURCE.equals(diagnostic.getSource())) {
+        var ruleKey = diagnostic.getCode().getLeft();
         cancelToken.checkCanceled();
-        var issueForDiagnostic = analysisManager.getIssueForDiagnostic(uri, d);
+        var issueForDiagnostic = analysisManager.getIssueForDiagnostic(uri, diagnostic);
         issueForDiagnostic.ifPresent(issue -> issue.quickFixes().forEach(fix -> {
           var newCodeAction = new CodeAction(SONARLINT_ACTION_PREFIX + fix.message());
           newCodeAction.setKind(CodeActionKind.QuickFix);
-          newCodeAction.setDiagnostics(List.of(d));
+          newCodeAction.setDiagnostics(List.of(diagnostic));
           newCodeAction.setEdit(newWorkspaceEdit(fix, analysisManager.getAnalyzedVersion(uri)));
           newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, List.of(ruleKey)));
           codeActions.add(Either.forRight(newCodeAction));
         }));
-        addRuleDescriptionCodeAction(params, codeActions, d, ruleKey);
+        addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey);
         issueForDiagnostic.ifPresent(issue -> {
           if (!issue.flows().isEmpty()) {
             var titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
-            codeActions.add(newQuickFix(d, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(issue))));
+            codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(issue))));
           }
         });
         if (binding.isEmpty()) {
           var titleDeactivate = String.format("Deactivate rule '%s'", ruleKey);
-          codeActions.add(newQuickFix(d, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, List.of(ruleKey)));
+          codeActions.add(newQuickFix(diagnostic, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, List.of(ruleKey)));
         }
-      } else if (SONARQUBE_TAINT_SOURCE.equals(d.getSource())) {
+      } else if (SONARQUBE_TAINT_SOURCE.equals(diagnostic.getSource())) {
         var actualBinding = binding.orElseThrow(() -> new IllegalStateException("Binding not found for taint vulnerability"));
-        var ruleKey = d.getCode().getLeft();
-        addRuleDescriptionCodeAction(params, codeActions, d, ruleKey);
-        analysisManager.getTaintVulnerabilityForDiagnostic(uri, d).ifPresent(issue -> {
+        var ruleKey = diagnostic.getCode().getLeft();
+        addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey);
+        analysisManager.getTaintVulnerabilityForDiagnostic(uri, diagnostic).ifPresent(issue -> {
           if (!issue.getFlows().isEmpty()) {
             var titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", ruleKey);
-            codeActions.add(newQuickFix(d, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(issue.key(), actualBinding.getConnectionId())));
+            codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(issue.key(), actualBinding.getConnectionId())));
           }
           var title = String.format("Open taint vulnerability '%s' on '%s'", ruleKey, actualBinding.getConnectionId());
           var serverUrl = settingsManager.getCurrentSettings().getServerConnections().get(actualBinding.getConnectionId()).getServerUrl();
           var projectKey = StringUtils.urlEncode(actualBinding.getBinding().projectKey());
           var issueUrl = String.format("%s/project/issues?id=%s&issues=%s&open=%s", serverUrl, projectKey, issue.key(), issue.key());
-          codeActions.add(newQuickFix(d, title, SONARLINT_BROWSE_TAINT_VULNERABILITY, List.of(issueUrl)));
+          codeActions.add(newQuickFix(diagnostic, title, SONARLINT_BROWSE_TAINT_VULNERABILITY, List.of(issueUrl)));
         });
       }
     }
