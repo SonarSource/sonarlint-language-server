@@ -22,9 +22,11 @@ package org.sonarsource.sonarlint.ls.folders;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.eclipse.lsp4j.WorkspaceFolder;
@@ -38,6 +40,8 @@ public class WorkspaceFolderWrapper {
 
   private final URI uri;
   private final WorkspaceFolder lspFolder;
+  @Nullable
+  private String branchName;
   private WorkspaceFolderSettings settings;
   private final CountDownLatch initLatch = new CountDownLatch(1);
 
@@ -85,4 +89,11 @@ public class WorkspaceFolderWrapper {
     initLatch.countDown();
   }
 
+  public void setBranchName(@Nullable String branchName) {
+    this.branchName = branchName;
+  }
+
+  public Optional<String> getBranchName() {
+    return Optional.ofNullable(branchName);
+  }
 }

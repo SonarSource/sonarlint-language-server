@@ -590,6 +590,42 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
         "[Info] Found 1 issue"));
   }
 
+  @Test
+  void updateBranchNameForUnknownFolderShouldDoNothing() throws Exception {
+    lsProxy.didLocalBranchNameChange("file:///some_folder", "some/branch/name");
+
+    Thread.sleep(5000);
+
+    assertThat(client.logs)
+      .filteredOn(notFromContextualTSserver())
+      .extracting(withoutTimestamp())
+      .doesNotContain("[Debug] Folder file:///some_folder is now on branch some/branch/name.");
+  }
+
+  @Test
+  void updateBranchNameForKnownFolderShouldLogMessage() throws Exception {
+    client.settingsLatch = new CountDownLatch(1);
+    var folderUri = "file:///added_uri";
+    client.folderSettings.put(folderUri, buildSonarLintSettingsSection("**/test/**", null, null, true));
+
+    try {
+      lsProxy.getWorkspaceService()
+        .didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folderUri, "Added")), List.of())));
+
+      awaitLatch(client.settingsLatch);
+
+      lsProxy.didLocalBranchNameChange(folderUri, "some/branch/name");
+
+      await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+        .filteredOn(notFromContextualTSserver())
+        .extracting(withoutTimestamp())
+        .contains("[Debug] Folder file:///added_uri is now on branch some/branch/name."));
+    } finally {
+      lsProxy.getWorkspaceService()
+        .didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(List.of(), List.of(new WorkspaceFolder(folderUri, "Added")))));
+    }
+  }
+
   private Predicate<? super MessageParams> notFromContextualTSserver() {
     return m -> !m.getMessage().contains("SonarTS") && !m.getMessage().contains("Using typescript at");
   }

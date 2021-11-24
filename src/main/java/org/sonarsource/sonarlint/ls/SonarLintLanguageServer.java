@@ -356,6 +356,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
+  public void didLocalBranchNameChange(String folderUri, @Nullable String branchName) {
+    workspaceFoldersManager.didBranchNameChange(create(folderUri), branchName);
+  }
+
+  @Override
   public void cancelProgress(WorkDoneProgressCancelParams params) {
     progressManager.cancelProgress(params);
   }

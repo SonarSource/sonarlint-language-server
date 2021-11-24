@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
+import javax.annotation.Nullable;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageServer;
@@ -42,7 +43,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonNotification("$/setTraceNotification")
   void setTraceNotification(SetTraceNotificationParams params);
 
-  public static class SetTraceNotificationParams {
+  class SetTraceNotificationParams {
     private String value;
 
     public String getValue() {
@@ -91,4 +92,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/didJavaServerModeChange")
   void didJavaServerModeChange(String serverMode);
+
+  @JsonNotification("sonarlint/didLocalBranchNameChange")
+  void didLocalBranchNameChange(String folderUri, @Nullable String branchName);
 }
