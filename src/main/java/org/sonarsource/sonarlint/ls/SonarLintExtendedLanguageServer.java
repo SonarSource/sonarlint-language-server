@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
@@ -93,6 +94,34 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonNotification("sonarlint/didJavaServerModeChange")
   void didJavaServerModeChange(String serverMode);
 
+  class LocalBranchNameChangeEvent {
+    private String folderUri;
+    @Nullable
+    private String branchName;
+
+    public LocalBranchNameChangeEvent(String folderUri, @Nullable String branchName) {
+      this.folderUri = folderUri;
+      this.branchName = branchName;
+    }
+
+    public String getFolderUri() {
+      return folderUri;
+    }
+
+    @CheckForNull
+    public String getBranchName() {
+      return branchName;
+    }
+
+    public void setBranchName(String branchName) {
+      this.branchName = branchName;
+    }
+
+    public void setFolderUri(String folderUri) {
+      this.folderUri = folderUri;
+    }
+  }
+
   @JsonNotification("sonarlint/didLocalBranchNameChange")
-  void didLocalBranchNameChange(String folderUri, @Nullable String branchName);
+  void didLocalBranchNameChange(LocalBranchNameChangeEvent event);
 }

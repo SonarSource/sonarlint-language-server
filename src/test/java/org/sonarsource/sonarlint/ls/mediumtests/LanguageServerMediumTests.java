@@ -55,6 +55,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.LocalBranchNameChangeEvent;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -592,7 +593,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void updateBranchNameForUnknownFolderShouldDoNothing() throws Exception {
-    lsProxy.didLocalBranchNameChange("file:///some_folder", "some/branch/name");
+    lsProxy.didLocalBranchNameChange(new LocalBranchNameChangeEvent("file:///some_folder", "some/branch/name"));
 
     Thread.sleep(5000);
 
@@ -614,7 +615,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
       awaitLatch(client.settingsLatch);
 
-      lsProxy.didLocalBranchNameChange(folderUri, "some/branch/name");
+      lsProxy.didLocalBranchNameChange(new LocalBranchNameChangeEvent(folderUri, "some/branch/name"));
 
       await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
         .filteredOn(notFromContextualTSserver())

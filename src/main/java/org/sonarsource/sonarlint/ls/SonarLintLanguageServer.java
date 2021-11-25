@@ -356,8 +356,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public void didLocalBranchNameChange(String folderUri, @Nullable String branchName) {
-    workspaceFoldersManager.didBranchNameChange(create(folderUri), branchName);
+  public void didLocalBranchNameChange(LocalBranchNameChangeEvent event) {
+    workspaceFoldersManager.didBranchNameChange(create(event.getFolderUri()), event.getBranchName());
   }
 
   @Override
