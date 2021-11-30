@@ -137,11 +137,4 @@ public class WorkspaceFoldersManager {
   public void removeListener(WorkspaceFolderLifecycleListener listener) {
     listeners.remove(listener);
   }
-
-  public void didBranchNameChange(URI folderUri, @Nullable String branchName) {
-    if (folders.containsKey(folderUri)) {
-      LOG.debug("Folder {} is now on branch {}.", folderUri, branchName);
-      folders.get(folderUri).setBranchName(branchName);
-    }
-  }
 }

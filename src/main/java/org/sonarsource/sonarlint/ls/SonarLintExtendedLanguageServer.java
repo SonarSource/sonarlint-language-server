@@ -100,8 +100,8 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     private String branchName;
 
     public LocalBranchNameChangeEvent(String folderUri, @Nullable String branchName) {
-      this.folderUri = folderUri;
-      this.branchName = branchName;
+      setFolderUri(folderUri);
+      setBranchName(branchName);
     }
 
     public String getFolderUri() {
@@ -113,7 +113,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
       return branchName;
     }
 
-    public void setBranchName(String branchName) {
+    public void setBranchName(@Nullable String branchName) {
       this.branchName = branchName;
     }
 
