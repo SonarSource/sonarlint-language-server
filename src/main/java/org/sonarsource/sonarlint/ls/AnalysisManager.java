@@ -136,6 +136,8 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
 
   private final ExecutorService analysisExecutor;
 
+  private final Object unused = new Object();
+
   public AnalysisManager(LanguageClientLogOutput lsLogOutput, StandaloneEngineManager standaloneEngineManager, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
     WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, ProjectBindingManager bindingManager, FileTypeClassifier fileTypeClassifier,
     FileLanguageCache fileLanguageCache, JavaConfigCache javaConfigCache) {
