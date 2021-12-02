@@ -239,4 +239,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
   @JsonRequest("sonarlint/browseTo")
   CompletableFuture<Void> browseTo(String link);
+
+  @JsonRequest("sonarlint/getBranchNameForFolder")
+  CompletableFuture<String> getBranchNameForFolder(String folderUri);
 }

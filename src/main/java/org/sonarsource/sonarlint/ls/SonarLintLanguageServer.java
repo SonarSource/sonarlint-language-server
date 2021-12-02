@@ -70,6 +70,7 @@ import org.sonarsource.sonarlint.ls.connected.SecurityHotspotsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
 import org.sonarsource.sonarlint.ls.file.FileLanguageCache;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersProvider;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
@@ -103,6 +104,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ExecutorService threadPool;
   private final SecurityHotspotsHandlerServer securityHotspotsHandlerServer;
   private final ApacheHttpClient httpClient;
+  private final WorkspaceFolderBranchManager branchManager;
   private final FileLanguageCache fileLanguageCache = new FileLanguageCache();
 
   /**
@@ -151,6 +153,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener(analysisManager);
     this.commandManager = new CommandManager(client, settingsManager, bindingManager, analysisManager, telemetry, standaloneEngineManager);
     this.securityHotspotsHandlerServer = new SecurityHotspotsHandlerServer(lsLogOutput, bindingManager, client, telemetry);
+    this.branchManager = new WorkspaceFolderBranchManager(client);
+    this.workspaceFoldersManager.addListener(this.branchManager);
     launcher.startListening();
   }
 
@@ -353,6 +357,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didJavaServerModeChange(String serverMode) {
     analysisManager.didServerModeChange(ServerMode.of(serverMode));
+  }
+
+  @Override
+  public void didLocalBranchNameChange(LocalBranchNameChangeEvent event) {
+    branchManager.didBranchNameChange(create(event.getFolderUri()), event.getBranchName());
   }
 
   @Override

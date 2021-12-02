@@ -55,6 +55,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.LocalBranchNameChangeEvent;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -588,6 +589,20 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
         "[Info] 1 file indexed",
         "[Debug] Execute Sensor: JavaScript analysis",
         "[Info] Found 1 issue"));
+  }
+
+  @Test
+  void updateBranchNameShouldLogAMessage() throws Exception {
+    lsProxy.didLocalBranchNameChange(new LocalBranchNameChangeEvent("file:///some_folder", "some/branch/name"));
+
+    assertLogContains("Folder file:///some_folder is now on branch some/branch/name.");
+  }
+
+  @Test
+  void updateBranchNameWithNullBranchShouldLogAnotherMessage() throws Exception {
+    lsProxy.didLocalBranchNameChange(new LocalBranchNameChangeEvent("file:///some_folder", null));
+
+    assertLogContains("Folder file:///some_folder is now on an unknown branch.");
   }
 
   private Predicate<? super MessageParams> notFromContextualTSserver() {

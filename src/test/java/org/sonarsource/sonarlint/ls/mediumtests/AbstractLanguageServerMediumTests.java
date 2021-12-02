@@ -233,6 +233,7 @@ public abstract class AbstractLanguageServerMediumTests {
     Map<String, Object> globalSettings = null;
     Map<String, Map<String, Object>> folderSettings = new HashMap<>();
     Map<String, GetJavaConfigResponse> javaConfigs = new HashMap<>();
+    Map<String, String> branchNameByFolder = new HashMap<>();
     CountDownLatch settingsLatch = new CountDownLatch(0);
     CountDownLatch diagnosticsLatch = new CountDownLatch(0);
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
@@ -365,6 +366,11 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public CompletableFuture<Void> openConnectionSettings(boolean isSonarCloud) {
       return CompletableFutures.computeAsync(null);
+    }
+
+    @Override
+    public CompletableFuture<String> getBranchNameForFolder(String folderUri) {
+      return CompletableFutures.computeAsync(cancelToken -> branchNameByFolder.get(folderUri));
     }
   }
 
