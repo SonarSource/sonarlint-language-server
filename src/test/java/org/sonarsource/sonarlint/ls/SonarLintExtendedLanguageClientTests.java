@@ -33,7 +33,7 @@ import static org.mockito.Mockito.when;
 class SonarLintExtendedLanguageClientTests {
 
   @Test
-  void test_equals_hashCode() {
+  void test_rule_parameter_equals_hashCode() {
     var apiParam = Mockito.mock(RulesDefinition.Param.class);
     when(apiParam.name()).thenReturn("name");
     when(apiParam.description()).thenReturn("description");
@@ -93,4 +93,22 @@ class SonarLintExtendedLanguageClientTests {
     assertThat(exposedParam).isNotEqualTo(paramDiffDefaultValue);
   }
 
+  @Test
+  void test_project_branch_equals_hashCode() {
+    var underTest = SonarLintExtendedLanguageClient.ReferenceBranchForFolder.of("file:///some/uri", "branch/name");
+
+    var otherFolder = SonarLintExtendedLanguageClient.ReferenceBranchForFolder.of("file:///some/other/uri", "branch/name");
+    var otherBranch = SonarLintExtendedLanguageClient.ReferenceBranchForFolder.of("file:///some/uri", "other/branch");
+
+    assertThat(underTest)
+      .isNotEqualTo(null)
+      .isNotEqualTo(new Object())
+      .isEqualTo(underTest)
+      .isEqualTo(SonarLintExtendedLanguageClient.ReferenceBranchForFolder.of("file:///some/uri", "branch/name"))
+      .hasSameHashCodeAs(SonarLintExtendedLanguageClient.ReferenceBranchForFolder.of("file:///some/uri", "branch/name"))
+      .isNotEqualTo(otherFolder)
+      .doesNotHaveSameHashCodeAs(otherFolder)
+      .isNotEqualTo(otherBranch)
+      .doesNotHaveSameHashCodeAs(otherBranch);
+  }
 }

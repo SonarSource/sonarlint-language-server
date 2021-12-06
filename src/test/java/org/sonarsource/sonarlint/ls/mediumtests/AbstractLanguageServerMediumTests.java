@@ -234,6 +234,7 @@ public abstract class AbstractLanguageServerMediumTests {
     Map<String, Map<String, Object>> folderSettings = new HashMap<>();
     Map<String, GetJavaConfigResponse> javaConfigs = new HashMap<>();
     Map<String, String> branchNameByFolder = new HashMap<>();
+    Map<String, String> referenceBranchNameByFolder = new HashMap<>();
     CountDownLatch settingsLatch = new CountDownLatch(0);
     CountDownLatch diagnosticsLatch = new CountDownLatch(0);
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
@@ -371,6 +372,12 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public CompletableFuture<String> getBranchNameForFolder(String folderUri) {
       return CompletableFutures.computeAsync(cancelToken -> branchNameByFolder.get(folderUri));
+    }
+
+    @Override
+    public CompletableFuture<Void> setReferenceBranchNameForFolder(ReferenceBranchForFolder newReferenceBranch) {
+      referenceBranchNameByFolder.put(newReferenceBranch.getFolderUri(), newReferenceBranch.getBranchName());
+      return CompletableFutures.computeAsync(null);
     }
   }
 

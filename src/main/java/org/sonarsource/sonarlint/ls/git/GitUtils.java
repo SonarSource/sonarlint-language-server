@@ -1,0 +1,128 @@
+/*
+ * SonarLint Language Server
+ * Copyright (C) 2009-2021 SonarSource SA
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+package org.sonarsource.sonarlint.ls.git;
+
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.serverapi.branches.ServerBranch;
+
+
+import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+public class GitUtils {
+
+  private GitUtils() {
+    // util class
+  }
+
+  private static final Logger LOG = Loggers.get(GitUtils.class);
+
+  public static List<String> getCommitNamesForRef(String branchName, Git git) {
+    var commitNames = new ArrayList<String>();
+    try {
+      var branchObjectId = git.getRepository().resolve(branchName);
+      if (branchObjectId == null) {
+        return commitNames;
+      }
+      var commits = git.log().add(branchObjectId).call();
+      for (RevCommit commit : commits) {
+        commitNames.add(commit.getName());
+      }
+    } catch (GitAPIException | IOException e) {
+      LOG.error("Couldn't fetch commits for branch " + branchName, e);
+    }
+    return commitNames;
+  }
+
+  @CheckForNull
+  public static Git getGitForDir(URI projectDirUri) {
+    try {
+      var builder = new FileRepositoryBuilder();
+      var gitUri = new URI(projectDirUri + "/.git");
+      var repository = builder.setGitDir(new File(gitUri)).setMustExist(true).build();
+      return new Git(repository);
+    } catch (IOException | URISyntaxException e) {
+      LOG.error("Couldn't access repository for path " + projectDirUri.getPath());
+    }
+    return null;
+  }
+
+
+  public static Optional<String> electSQBranchForLocalBranch(String branchName, @Nullable Git git, Set<ServerBranch> serverCandidates) {
+    if (git == null) {
+      return Optional.empty();
+    }
+    Set<String> serverCandidateNames = serverCandidates.stream().map(ServerBranch::getName).collect(Collectors.toSet());
+    Optional<String> mainBranchName = serverCandidates.stream().filter(ServerBranch::isMain).map(ServerBranch::getName).findFirst();
+    List<String> commitNamesForBranch = getCommitNamesForRef(branchName, git);
+    Map<String, List<String>> commitsCache;
+    try {
+      commitsCache = buildCommitsCache(git);
+    } catch (IOException e) {
+      LOG.error("Unable to build commits cache for branch " + branchName, e);
+      return Optional.empty();
+    }
+    List<String> listOfLocalCandidates;
+    for (String commitName : commitNamesForBranch) {
+      if (commitsCache.containsKey(commitName)) {
+        listOfLocalCandidates = commitsCache.get(commitName);
+        for (String localCandidateName : listOfLocalCandidates) {
+          if (serverCandidateNames.contains(localCandidateName)) {
+            return Optional.of(localCandidateName);
+          }
+        }
+      }
+    }
+    return mainBranchName;
+  }
+
+  public static Map<String, List<String>> buildCommitsCache(Git git) throws IOException {
+    List<Ref> refs = git.getRepository().getRefDatabase().getRefs();
+    Map<String, List<String>> commitToBranches = new HashMap<>();
+    for (Ref ref : refs) {
+      List<String> commitNamesForBranch = GitUtils.getCommitNamesForRef(ref.getName(), git);
+      for (String commitName : commitNamesForBranch) {
+        commitToBranches.putIfAbsent(commitName, new ArrayList<>());
+        if (ref.getName().startsWith("refs/heads/")) {
+          commitToBranches.get(commitName).add(ref.getName().substring("refs/heads/".length()));
+        }
+      }
+    }
+    return commitToBranches;
+  }
+
+}

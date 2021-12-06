@@ -596,6 +596,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.didLocalBranchNameChange(new LocalBranchNameChangeEvent("file:///some_folder", "some/branch/name"));
 
     assertLogContains("Folder file:///some_folder is now on branch some/branch/name.");
+
+    assertThat(client.referenceBranchNameByFolder.get("file:///some_folder")).isNull();
   }
 
   @Test
@@ -603,6 +605,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.didLocalBranchNameChange(new LocalBranchNameChangeEvent("file:///some_folder", null));
 
     assertLogContains("Folder file:///some_folder is now on an unknown branch.");
+
+    assertThat(client.referenceBranchNameByFolder.get("file:///some_folder")).isNull();
   }
 
   private Predicate<? super MessageParams> notFromContextualTSserver() {

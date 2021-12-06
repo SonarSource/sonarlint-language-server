@@ -242,4 +242,48 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
   @JsonRequest("sonarlint/getBranchNameForFolder")
   CompletableFuture<String> getBranchNameForFolder(String folderUri);
+
+  class ReferenceBranchForFolder {
+    private final String folderUri;
+    @Nullable
+    private final String branchName;
+
+    private ReferenceBranchForFolder(String folderUri, @Nullable String branchName) {
+      this.folderUri = folderUri;
+      this.branchName = branchName;
+    }
+
+    public String getFolderUri() {
+      return folderUri;
+    }
+
+    @CheckForNull
+    public String getBranchName() {
+      return branchName;
+    }
+
+    public static ReferenceBranchForFolder of(String folderUri, @Nullable String branchName) {
+      return new ReferenceBranchForFolder(folderUri, branchName);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      var that = (ReferenceBranchForFolder) o;
+      return folderUri.equals(that.folderUri) && Objects.equals(branchName, that.branchName);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(folderUri, branchName);
+    }
+  }
+
+  @JsonRequest("sonarlint/setReferenceBranchNameForFolder")
+  CompletableFuture<Void> setReferenceBranchNameForFolder(ReferenceBranchForFolder newReferenceBranch);
 }
