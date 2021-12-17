@@ -40,8 +40,9 @@ import org.apache.hc.core5.http2.HttpVersionPolicy;
 import org.apache.hc.core5.util.Timeout;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.commons.http.HttpClient;
 
-public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverapi.HttpClient {
+public class ApacheHttpClient implements HttpClient {
 
   private static final Logger LOG = Loggers.get(ApacheHttpClient.class);
 

@@ -28,8 +28,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.client.api.common.Language;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
+import org.sonarsource.sonarlint.core.commons.Language;
 
 public class AnalysisClientInputFile implements ClientInputFile {
 
@@ -116,7 +116,8 @@ public class AnalysisClientInputFile implements ClientInputFile {
         return Language.PLSQL;
       case "apex":
       case "apex-anon":
-        // See https://github.com/forcedotcom/salesforcedx-vscode/blob/5e4b7715d1cb3d1ee2780780ed63f70f58e93b20/packages/salesforcedx-vscode-apex/package.json#L273
+        // See
+        // https://github.com/forcedotcom/salesforcedx-vscode/blob/5e4b7715d1cb3d1ee2780780ed63f70f58e93b20/packages/salesforcedx-vscode-apex/package.json#L273
         return Language.APEX;
       default:
         // Other supported languages map to the same key as the one used in SonarQube/SonarCloud

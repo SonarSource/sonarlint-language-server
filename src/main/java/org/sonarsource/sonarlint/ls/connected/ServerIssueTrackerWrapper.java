@@ -27,12 +27,11 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
-import org.sonarsource.sonarlint.core.tracking.CachingIssueTracker;
-import org.sonarsource.sonarlint.core.tracking.CachingIssueTrackerImpl;
-import org.sonarsource.sonarlint.core.tracking.InMemoryIssueTrackerCache;
+import org.sonarsource.sonarlint.core.issuetracking.CachingIssueTracker;
+import org.sonarsource.sonarlint.core.issuetracking.InMemoryIssueTrackerCache;
+import org.sonarsource.sonarlint.core.issuetracking.IssueTrackerCache;
+import org.sonarsource.sonarlint.core.issuetracking.Trackable;
 import org.sonarsource.sonarlint.core.tracking.IssueTrackable;
-import org.sonarsource.sonarlint.core.tracking.IssueTrackerCache;
-import org.sonarsource.sonarlint.core.tracking.Trackable;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static java.util.function.Predicate.not;
@@ -53,7 +52,7 @@ public class ServerIssueTrackerWrapper {
     this.projectBinding = projectBinding;
 
     this.issueTrackerCache = new InMemoryIssueTrackerCache();
-    this.cachingIssueTracker = new CachingIssueTrackerImpl(issueTrackerCache);
+    this.cachingIssueTracker = new CachingIssueTracker(issueTrackerCache);
     this.tracker = new org.sonarsource.sonarlint.core.tracking.ServerIssueTracker(cachingIssueTracker);
   }
 

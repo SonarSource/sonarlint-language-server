@@ -29,7 +29,7 @@ import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.sonarsource.sonarlint.core.client.api.common.LogOutput;
+import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
@@ -42,7 +42,7 @@ import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
 /**
  * Used by the language server
  */
-public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChangeListener {
+public class LanguageClientLogOutput implements ClientLogOutput, WorkspaceSettingsChangeListener {
 
   static final String SHOW_SONARLINT_OUTPUT_ACTION = "Show SonarLint Output";
   static final String NODE_COMMAND_EXCEPTION = "NodeCommandException";
@@ -60,7 +60,7 @@ public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChan
   private final Clock clock;
   private boolean showAnalyzerLogs;
   private boolean showVerboseLogs;
-  private final InheritableThreadLocal<Boolean> isAnalysis = new InheritableThreadLocal<Boolean>() {
+  private final InheritableThreadLocal<Boolean> isAnalysis = new InheritableThreadLocal<>() {
     @Override
     protected Boolean initialValue() {
       return false;

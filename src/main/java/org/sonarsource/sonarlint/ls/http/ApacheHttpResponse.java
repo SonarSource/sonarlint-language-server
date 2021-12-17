@@ -22,7 +22,7 @@ package org.sonarsource.sonarlint.ls.http;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
-import org.sonarsource.sonarlint.core.serverapi.HttpClient;
+import org.sonarsource.sonarlint.core.commons.http.HttpClient;
 
 public class ApacheHttpResponse implements HttpClient.Response {
 

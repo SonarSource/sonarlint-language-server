@@ -31,8 +31,8 @@ import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
-import org.sonarsource.sonarlint.core.client.api.common.Language;
-import org.sonarsource.sonarlint.core.client.api.util.SonarLintUtils;
+import org.sonarsource.sonarlint.core.commons.Language;
+import org.sonarsource.sonarlint.core.telemetry.InternalDebug;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryHttpClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
@@ -120,7 +120,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
       this.scheduledFuture = scheduler.scheduleWithFixedDelay(this::upload,
         1, TimeUnit.HOURS.toMinutes(6), TimeUnit.MINUTES);
     } catch (Exception e) {
-      if (SonarLintUtils.isInternalDebugEnabled()) {
+      if (InternalDebug.isEnabled()) {
         LOG.error("Failed scheduling period telemetry job", e);
       }
     }

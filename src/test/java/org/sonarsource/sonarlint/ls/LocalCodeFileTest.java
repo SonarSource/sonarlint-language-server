@@ -19,14 +19,13 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.sonarsource.sonarlint.core.client.api.common.TextRange;
+import org.sonarsource.sonarlint.core.analysis.api.TextRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -58,8 +57,7 @@ class LocalCodeFileTest {
       Arguments.of(2, 3, 3, 5, "ond line\nThird"),
       Arguments.of(1, 3, 2, 15, "st line\nSecond line"),
       Arguments.of(1, 0, 3, 10, "First line\nSecond line\nThird line"),
-      Arguments.of(3, 0, 5, 15, "Third line")
-    );
+      Arguments.of(3, 0, 5, 15, "Third line"));
   }
 
   @ParameterizedTest(name = "codeAt(range({0}, {1}, {2}, {3})) should be null")
@@ -71,8 +69,7 @@ class LocalCodeFileTest {
   private static Stream<Arguments> argumentsForInvalidRange() {
     return Stream.of(
       Arguments.of(5, 0, 5, 11),
-      Arguments.of(2, 12, 2, 15)
-    );
+      Arguments.of(2, 12, 2, 15));
   }
 
   private static TextRange range(int startLine, int startLineOffset, int endLine, int endLineOffset) {

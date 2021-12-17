@@ -21,8 +21,9 @@ package org.sonarsource.sonarlint.ls;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -33,8 +34,8 @@ public class ServerMain {
   private static final String ANALYZERS_KEY = "-analyzers";
   private static final String EXTRA_ANALYZERS_KEY = "-extraAnalyzers";
   private static final String USAGE = "Usage: java -jar sonarlint-server.jar <jsonRpcPort> " +
-          "[-analyzers file:///path/to/analyzer1.jar [file:///path/to/analyzer2.jar] ...] " +
-          "[-extraAnalyzers file:///path/to/analyzer3.jar [file:///path/to/analyzer4.jar] ...]";
+    "[-analyzers path/to/analyzer1.jar [path/to/analyzer2.jar] ...] " +
+    "[-extraAnalyzers path/to/analyzer3.jar [path/to/analyzer4.jar] ...]";
 
   private final PrintStream out;
   private final PrintStream err;
@@ -77,7 +78,7 @@ public class ServerMain {
     }
   }
 
-  Collection<URL> extractAnalyzers(String[] args) {
+  Collection<Path> extractAnalyzers(String[] args) {
     var indexOfAnalyzersParam = List.of(args).indexOf(ANALYZERS_KEY);
     if (indexOfAnalyzersParam == -1) {
       err.println(USAGE);
@@ -85,27 +86,27 @@ public class ServerMain {
     }
     var nextParam = getIndexOfNextParam(indexOfAnalyzersParam, args);
 
-    return extractAnalyzersUrlsToList(args, indexOfAnalyzersParam, nextParam);
+    return extractAnalyzersPathsToList(args, indexOfAnalyzersParam, nextParam);
   }
 
-  Collection<URL> extractExtraAnalyzers(String[] args) {
+  Collection<Path> extractExtraAnalyzers(String[] args) {
     var indexOfExtraAnalyzersParam = List.of(args).indexOf(EXTRA_ANALYZERS_KEY);
     if (indexOfExtraAnalyzersParam == -1) {
       return Collections.emptyList();
     }
-    return extractAnalyzersUrlsToList(args, indexOfExtraAnalyzersParam, args.length);
+    return extractAnalyzersPathsToList(args, indexOfExtraAnalyzersParam, args.length);
   }
 
-  List<URL> extractAnalyzersUrlsToList(String[] args, int from, int to) {
+  List<Path> extractAnalyzersPathsToList(String[] args, int from, int to) {
     if (to == -1) {
       to = args.length;
     }
-    var analyzers = new ArrayList<URL>();
+    var analyzers = new ArrayList<Path>();
     for (var i = from + 1; i < to; i++) {
       try {
-        analyzers.add(new URL(args[i]));
-      } catch (MalformedURLException e) {
-        err.println("Invalid argument at position " + (i + 1) + ". Expected an URL.");
+        analyzers.add(Paths.get(args[i]));
+      } catch (InvalidPathException e) {
+        err.println("Invalid argument at position " + (i + 1) + ". Expected a path.");
         e.printStackTrace(err);
         exitWithError();
       }

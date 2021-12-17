@@ -28,10 +28,10 @@ import org.eclipse.lsp4j.WorkDoneProgressReport;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.sonarsource.sonarlint.core.client.api.common.ProgressMonitor;
-import org.sonarsource.sonarlint.core.client.api.exceptions.CanceledException;
+import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
+import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
 
-public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade {
+public class LSProgressMonitor implements ClientProgressMonitor, ProgressFacade {
 
   private final Either<String, Integer> progressToken;
   private final CancelChecker cancelToken;
@@ -68,7 +68,7 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
   }
 
   @Override
-  public ProgressMonitor asCoreMonitor() {
+  public ClientProgressMonitor asCoreMonitor() {
     return this;
   }
 
@@ -158,6 +158,11 @@ public class LSProgressMonitor extends ProgressMonitor implements ProgressFacade
 
   float getLastPercentage() {
     return lastPercentage;
+  }
+
+  @Override
+  public void setIndeterminate(boolean arg0) {
+    // Not supported
   }
 
 }

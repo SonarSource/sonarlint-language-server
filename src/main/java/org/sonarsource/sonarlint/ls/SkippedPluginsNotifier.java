@@ -29,9 +29,9 @@ import java.util.function.Supplier;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
+import org.sonarsource.sonarlint.core.analysis.api.AnalysisResults;
 import org.sonarsource.sonarlint.core.client.api.common.PluginDetails;
-import org.sonarsource.sonarlint.core.client.api.common.SkipReason;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.AnalysisResults;
+import org.sonarsource.sonarlint.core.plugin.commons.SkipReason;
 
 import static java.util.stream.Collectors.toSet;
 
@@ -57,8 +57,7 @@ public class SkippedPluginsNotifier {
           final var title = String.format("SonarLint failed to analyze %s code", l.getLabel());
           if (runtimeRequirement.getRuntime() == SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.JRE) {
             var content = String.format(
-              "Java runtime version %s or later is required. Current version is %s.",runtimeRequirement.getMinVersion(), runtimeRequirement.getCurrentVersion()
-            );
+              "Java runtime version %s or later is required. Current version is %s.", runtimeRequirement.getMinVersion(), runtimeRequirement.getCurrentVersion());
             showMessageWithOpenSettingsAction(client, formatMessage(title, content), client::openJavaHomeSettings);
           } else if (runtimeRequirement.getRuntime() == SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.NODEJS) {
             var content = String.format(
@@ -92,7 +91,8 @@ public class SkippedPluginsNotifier {
    * as specified by the HTML recommendation.
    *
    * See:
-   * - https://github.com/microsoft/vscode/blob/7ce60506a9b5df9ef05ac51f8c94e1085a464d17/src/vs/editor/contrib/message/messageController.ts#L155
+   * - https://github.com/microsoft/vscode/blob/7ce60506a9b5df9ef05ac51f8c94e1085a464d17/src/vs/editor/contrib/message/messageController.ts#
+   * L155
    * - https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent
    */
   private static String formatMessage(String title, String content) {

@@ -46,14 +46,14 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
-import org.sonarsource.sonarlint.core.client.api.common.ClientInputFileEdit;
-import org.sonarsource.sonarlint.core.client.api.common.QuickFix;
+import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
+import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
+import org.sonarsource.sonarlint.core.analysis.api.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
-import org.sonarsource.sonarlint.core.client.api.common.TextRange;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
-import org.sonarsource.sonarlint.core.util.StringUtils;
+import org.sonarsource.sonarlint.core.serverapi.UrlUtils;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -108,7 +108,7 @@ public class CommandManager {
     var codeActions = new ArrayList<Either<Command, CodeAction>>();
     var uri = create(params.getTextDocument().getUri());
     var binding = bindingManager.getBinding(uri);
-    for (var diagnostic: params.getContext().getDiagnostics()) {
+    for (var diagnostic : params.getContext().getDiagnostics()) {
       cancelToken.checkCanceled();
       if (SONARLINT_SOURCE.equals(diagnostic.getSource())) {
         var ruleKey = diagnostic.getCode().getLeft();
@@ -144,7 +144,7 @@ public class CommandManager {
           }
           var title = String.format("Open taint vulnerability '%s' on '%s'", ruleKey, actualBinding.getConnectionId());
           var serverUrl = settingsManager.getCurrentSettings().getServerConnections().get(actualBinding.getConnectionId()).getServerUrl();
-          var projectKey = StringUtils.urlEncode(actualBinding.getBinding().projectKey());
+          var projectKey = UrlUtils.urlEncode(actualBinding.getBinding().projectKey());
           var issueUrl = String.format("%s/project/issues?id=%s&issues=%s&open=%s", serverUrl, projectKey, issue.key(), issue.key());
           codeActions.add(newQuickFix(diagnostic, title, SONARLINT_BROWSE_TAINT_VULNERABILITY, List.of(issueUrl)));
         });
@@ -156,9 +156,9 @@ public class CommandManager {
   private static WorkspaceEdit newWorkspaceEdit(QuickFix fix, @Nullable Integer documentVersion) {
     var edit = new WorkspaceEdit();
     edit.setDocumentChanges(
-    fix.inputFileEdits().stream()
-      .map(fileEdit -> newLspDocumentEdit(fileEdit, documentVersion))
-      .collect(Collectors.toList()));
+      fix.inputFileEdits().stream()
+        .map(fileEdit -> newLspDocumentEdit(fileEdit, documentVersion))
+        .collect(Collectors.toList()));
     return edit;
   }
 
@@ -171,7 +171,7 @@ public class CommandManager {
     return Either.forLeft(documentEdit);
   }
 
-  private static TextEdit newLspTextEdit(org.sonarsource.sonarlint.core.client.api.common.TextEdit textEdit) {
+  private static TextEdit newLspTextEdit(org.sonarsource.sonarlint.core.analysis.api.TextEdit textEdit) {
     var lspEdit = new TextEdit();
     lspEdit.setNewText(textEdit.newText());
     var lspRange = newLspRange(textEdit.range());

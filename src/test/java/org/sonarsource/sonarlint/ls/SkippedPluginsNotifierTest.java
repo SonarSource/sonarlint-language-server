@@ -27,10 +27,10 @@ import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.sonarsource.sonarlint.core.client.api.common.Language;
-import org.sonarsource.sonarlint.core.client.api.common.SkipReason;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.AnalysisResults;
+import org.sonarsource.sonarlint.core.analysis.api.AnalysisResults;
+import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.container.model.DefaultLoadedAnalyzer;
+import org.sonarsource.sonarlint.core.plugin.commons.SkipReason;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,8 +39,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.sonarsource.sonarlint.core.client.api.common.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.JRE;
-import static org.sonarsource.sonarlint.core.client.api.common.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.NODEJS;
+import static org.sonarsource.sonarlint.core.plugin.commons.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.JRE;
+import static org.sonarsource.sonarlint.core.plugin.commons.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.NODEJS;
 
 class SkippedPluginsNotifierTest {
 
@@ -71,9 +71,8 @@ class SkippedPluginsNotifierTest {
     when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, Language.JAVA));
     preparePopupSelection(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
 
-    var analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE =
-      new DefaultLoadedAnalyzer("java", "Java Code Quality and Security", "6.7.8.90123",
-        new SkipReason.UnsatisfiedRuntimeRequirement(JRE, "currentJavaVersion", "minJavaVersion"));
+    var analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE = new DefaultLoadedAnalyzer("java", "Java Code Quality and Security", "6.7.8.90123",
+      new SkipReason.UnsatisfiedRuntimeRequirement(JRE, "currentJavaVersion", "minJavaVersion"));
     SkippedPluginsNotifier.notifyOnceForSkippedPlugins(results, Collections.singleton(analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE), languageClient);
     SkippedPluginsNotifier.notifyOnceForSkippedPlugins(results, Collections.singleton(analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE), languageClient);
 
@@ -94,9 +93,8 @@ class SkippedPluginsNotifierTest {
     when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, Language.JAVA));
     preparePopupSelection(null);
 
-    var analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE =
-      new DefaultLoadedAnalyzer("java", "Java Code Quality and Security", "6.7.8.90123",
-        new SkipReason.UnsatisfiedRuntimeRequirement(JRE, "currentJavaVersion", "minJavaVersion"));
+    var analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE = new DefaultLoadedAnalyzer("java", "Java Code Quality and Security", "6.7.8.90123",
+      new SkipReason.UnsatisfiedRuntimeRequirement(JRE, "currentJavaVersion", "minJavaVersion"));
     SkippedPluginsNotifier.notifyOnceForSkippedPlugins(results, Collections.singleton(analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE), languageClient);
 
     var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
@@ -115,9 +113,8 @@ class SkippedPluginsNotifierTest {
     when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, Language.JS));
     preparePopupSelection(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
 
-    var analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs =
-      new DefaultLoadedAnalyzer("javascript", "JS and TS Code Quality and Security", "6.5.4.32109",
-        new SkipReason.UnsatisfiedRuntimeRequirement(NODEJS, "currentNodeJsVersion", "minNodeJsVersion"));
+    var analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs = new DefaultLoadedAnalyzer("javascript", "JS and TS Code Quality and Security", "6.5.4.32109",
+      new SkipReason.UnsatisfiedRuntimeRequirement(NODEJS, "currentNodeJsVersion", "minNodeJsVersion"));
     SkippedPluginsNotifier.notifyOnceForSkippedPlugins(results, Collections.singleton(analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs), languageClient);
 
     var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
@@ -137,9 +134,8 @@ class SkippedPluginsNotifierTest {
     when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, Language.JS));
     preparePopupSelection(null);
 
-    var analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs =
-      new DefaultLoadedAnalyzer("javascript", "JS and TS Code Quality and Security", "6.5.4.32109",
-        new SkipReason.UnsatisfiedRuntimeRequirement(NODEJS, null, "minNodeJsVersion"));
+    var analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs = new DefaultLoadedAnalyzer("javascript", "JS and TS Code Quality and Security", "6.5.4.32109",
+      new SkipReason.UnsatisfiedRuntimeRequirement(NODEJS, null, "minNodeJsVersion"));
     SkippedPluginsNotifier.notifyOnceForSkippedPlugins(results, Collections.singleton(analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs), languageClient);
 
     var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);

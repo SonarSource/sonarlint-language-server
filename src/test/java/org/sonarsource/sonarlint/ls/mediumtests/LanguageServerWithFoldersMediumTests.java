@@ -19,9 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import org.eclipse.lsp4j.Diagnostic;

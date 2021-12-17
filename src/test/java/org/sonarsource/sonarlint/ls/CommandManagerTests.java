@@ -37,13 +37,12 @@ import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sonar.api.server.rule.RuleParamType;
-import org.sonar.api.server.rule.RulesDefinition;
-import org.sonarsource.sonarlint.core.client.api.common.ClientInputFileEdit;
-import org.sonarsource.sonarlint.core.client.api.common.QuickFix;
-import org.sonarsource.sonarlint.core.client.api.common.TextEdit;
-import org.sonarsource.sonarlint.core.client.api.common.TextRange;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
+import org.sonarsource.sonarlint.core.analysis.api.Flow;
+import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
+import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
+import org.sonarsource.sonarlint.core.analysis.api.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
@@ -54,6 +53,8 @@ import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetail
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.core.container.standalone.rule.DefaultStandaloneRuleParam;
+import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamDefinition;
+import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamType;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
@@ -170,8 +171,7 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsOnly(
         "SonarLint: Open description of rule 'XYZ'",
-        "SonarLint: Deactivate rule 'XYZ'"
-      );
+        "SonarLint: Deactivate rule 'XYZ'");
   }
 
   @Test
@@ -186,7 +186,7 @@ class CommandManagerTests {
 
     var textEdit = mock(TextEdit.class);
     when(textEdit.newText()).thenReturn("");
-    when(textEdit.range()).thenReturn(new TextRange(1, 0,1, 1));
+    when(textEdit.range()).thenReturn(new TextRange(1, 0, 1, 1));
     var edit = mock(ClientInputFileEdit.class);
     when(edit.textEdits()).thenReturn(List.of(textEdit));
     var target = mock(ClientInputFile.class);
@@ -204,8 +204,7 @@ class CommandManagerTests {
       .containsExactly(
         "SonarLint: Fix the issue!",
         "SonarLint: Open description of rule 'XYZ'",
-        "SonarLint: Deactivate rule 'XYZ'"
-      );
+        "SonarLint: Deactivate rule 'XYZ'");
   }
 
   @Test
@@ -237,8 +236,7 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
       "SonarLint: Open description of rule 'ruleKey'",
       "SonarLint: Show all locations for taint vulnerability 'ruleKey'",
-      "SonarLint: Open taint vulnerability 'ruleKey' on 'connectionId'"
-    );
+      "SonarLint: Open taint vulnerability 'ruleKey' on 'connectionId'");
   }
 
   @Test
@@ -247,7 +245,7 @@ class CommandManagerTests {
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
-    var flow = mock(Issue.Flow.class);
+    var flow = mock(Flow.class);
     var flows = List.of(flow);
     var issue = mock(Issue.class);
     when(issue.flows()).thenReturn(flows);
@@ -260,8 +258,7 @@ class CommandManagerTests {
       .containsOnly(
         "SonarLint: Open description of rule 'XYZ'",
         "SonarLint: Deactivate rule 'XYZ'",
-        "SonarLint: Show all locations for issue 'XYZ'"
-      );
+        "SonarLint: Show all locations for issue 'XYZ'");
   }
 
   @Test
@@ -302,9 +299,9 @@ class CommandManagerTests {
     when(ruleDetails.getHtmlDescription()).thenReturn("Desc");
     when(ruleDetails.getType()).thenReturn("Type");
     when(ruleDetails.getSeverity()).thenReturn("Severity");
-    var apiParam = mock(RulesDefinition.Param.class);
+    var apiParam = mock(SonarLintRuleParamDefinition.class);
     when(apiParam.name()).thenReturn("intParam");
-    when(apiParam.type()).thenReturn(RuleParamType.INTEGER);
+    when(apiParam.type()).thenReturn(SonarLintRuleParamType.INTEGER);
     when(apiParam.description()).thenReturn("An integer parameter");
     when(apiParam.defaultValue()).thenReturn("42");
     List<StandaloneRuleParam> params = List.of(new DefaultStandaloneRuleParam(apiParam));

@@ -22,8 +22,9 @@ package org.sonarsource.sonarlint.ls.connected;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.client.api.common.TextRange;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.Flow;
+import org.sonarsource.sonarlint.core.analysis.api.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,7 +47,7 @@ class DelegatingIssueTests {
     when(issue.getStartLineOffset()).thenReturn(3);
     when(issue.getEndLine()).thenReturn(4);
     when(issue.getEndLineOffset()).thenReturn(5);
-    when(issue.flows()).thenReturn(List.of(mock(Issue.Flow.class)));
+    when(issue.flows()).thenReturn(List.of(mock(Flow.class)));
     when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
     when(issue.getTextRange()).thenReturn(mock(TextRange.class));
   }

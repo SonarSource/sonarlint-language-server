@@ -48,9 +48,9 @@ import org.apache.hc.core5.net.URIBuilder;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
-import org.sonarsource.sonarlint.core.client.api.common.LogOutput;
+import org.sonarsource.sonarlint.core.commons.http.HttpClient;
+import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
-import org.sonarsource.sonarlint.core.serverapi.HttpClient;
 import org.sonarsource.sonarlint.core.serverapi.ServerApi;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.GetSecurityHotspotRequestParams;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.HotspotApi;
@@ -76,7 +76,7 @@ public class SecurityHotspotsHandlerServer {
   private int port;
 
   public SecurityHotspotsHandlerServer(LanguageClientLogOutput output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client,
-      SonarLintTelemetry telemetry) {
+    SonarLintTelemetry telemetry) {
     this(output, bindingManager, client, telemetry, (e, c) -> new ServerApi(e, c).hotspot());
   }
 
@@ -98,7 +98,7 @@ public class SecurityHotspotsHandlerServer {
     port = INVALID_PORT;
     var triedPort = STARTING_PORT;
     HttpServer startedServer = null;
-    while(port < 0 && triedPort <= ENDING_PORT) {
+    while (port < 0 && triedPort <= ENDING_PORT) {
       try {
         startedServer = ServerBootstrap.bootstrap()
           .setLocalAddress(InetAddress.getLoopbackAddress())
@@ -111,15 +111,15 @@ public class SecurityHotspotsHandlerServer {
         startedServer.start();
         port = triedPort;
       } catch (Exception t) {
-        output.log("Error while starting port: " + t.getMessage(), LogOutput.Level.DEBUG);
+        output.log("Error while starting port: " + t.getMessage(), ClientLogOutput.Level.DEBUG);
         triedPort++;
       }
     }
     if (port > 0) {
-      output.log("Started security hotspot handler on port " + port, LogOutput.Level.INFO);
+      output.log("Started security hotspot handler on port " + port, ClientLogOutput.Level.INFO);
       server = startedServer;
     } else {
-      output.log("Unable to start security hotspot handler", LogOutput.Level.ERROR);
+      output.log("Unable to start security hotspot handler", ClientLogOutput.Level.ERROR);
       server = null;
     }
   }
@@ -133,7 +133,7 @@ public class SecurityHotspotsHandlerServer {
   }
 
   public void shutdown() {
-    if(isStarted()) {
+    if (isStarted()) {
       server.close(CloseMode.IMMEDIATE);
       port = INVALID_PORT;
     }
@@ -199,7 +199,7 @@ public class SecurityHotspotsHandlerServer {
     private final SonarLintTelemetry telemetry;
 
     public ShowHotspotRequestHandler(LanguageClientLogOutput output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client,
-        SonarLintTelemetry telemetry) {
+      SonarLintTelemetry telemetry) {
       this.output = output;
       this.bindingManager = bindingManager;
       this.client = client;
@@ -223,13 +223,12 @@ public class SecurityHotspotsHandlerServer {
         var project = params.get("project");
         var hotspot = params.get("hotspot");
 
-        output.log(String.format("Opening hotspot %s for project %s of server %s", hotspot, project, serverUrl), LogOutput.Level.INFO);
+        output.log(String.format("Opening hotspot %s for project %s of server %s", hotspot, project, serverUrl), ClientLogOutput.Level.INFO);
         telemetry.showHotspotRequestReceived();
         var serverSettings = bindingManager.getServerConnectionSettingsForUrl(serverUrl);
         serverSettings.ifPresentOrElse(
           settings -> showHotspot(hotspot, project, settings),
-          () -> showUnknownServer(serverUrl)
-        );
+          () -> showUnknownServer(serverUrl));
         response.setCode(HttpURLConnection.HTTP_OK);
         response.setEntity(new StringEntity("OK"));
       }

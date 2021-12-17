@@ -54,13 +54,10 @@ import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine.State;
-import org.sonarsource.sonarlint.core.client.api.exceptions.CanceledException;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
-import org.sonarsource.sonarlint.core.util.StringUtils;
+import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
 import org.sonarsource.sonarlint.ls.AnalysisManager;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
-import org.sonarsource.sonarlint.ls.connected.notifications.BindingUpdateNotification;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.progress.NoOpProgressFacade;
@@ -74,7 +71,6 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListen
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
-import static java.lang.Boolean.TRUE;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 
@@ -90,7 +86,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final WorkspaceFoldersManager foldersManager;
   private final SettingsManager settingsManager;
   private final Map<URI, Optional<ProjectBindingWrapper>> folderBindingCache;
-  private final BindingUpdateNotification bindingUpdateNotification;
   private final ConcurrentMap<URI, Optional<ProjectBindingWrapper>> fileBindingCache = new ConcurrentHashMap<>();
   private final ConcurrentMap<String, Optional<ConnectedSonarLintEngine>> connectedEngineCacheByConnectionId = new ConcurrentHashMap<>();
   private final ProgressManager progressManager;
@@ -101,19 +96,18 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClient client,
     ProgressManager progressManager) {
-    this(enginesFactory, foldersManager, settingsManager, client, progressManager, new ConcurrentHashMap<>(), new BindingUpdateNotification(client));
+    this(enginesFactory, foldersManager, settingsManager, client, progressManager, new ConcurrentHashMap<>());
     bindingUpdatesCheckerTimer.scheduleAtFixedRate(new BindingUpdatesCheckerTask(), 10 * 1000L, ONE_DAY);
   }
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClient client,
-    ProgressManager progressManager, Map<URI, Optional<ProjectBindingWrapper>> folderBindingCache, BindingUpdateNotification bindingUpdateNotification) {
+    ProgressManager progressManager, Map<URI, Optional<ProjectBindingWrapper>> folderBindingCache) {
     this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
     this.client = client;
     this.progressManager = progressManager;
     this.folderBindingCache = folderBindingCache;
-    this.bindingUpdateNotification = bindingUpdateNotification;
   }
 
   // Can't use constructor injection because of cyclic dependency
@@ -159,40 +153,25 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return connectedEngineCacheByConnectionId.getOrDefault(connectionId, Optional.empty());
   }
 
-  void checkForBindingUpdates() {
-    LOG.debug("Checking binding updates");
+  void syncStorage() {
+    LOG.debug("Sync storage");
     forEachBoundFolder((folder, settings) -> {
       var connectionId = requireNonNull(settings.getConnectionId());
+      var paramsAndHttpClient = getServerConfigurationFor(connectionId);
+      if (paramsAndHttpClient == null) {
+        return;
+      }
       getStartedConnectedEngine(connectionId)
-        .filter(engine -> engine.getState() != State.UPDATING)
         .ifPresent(engine -> {
           var projectKey = requireNonNull(settings.getProjectKey());
-          var paramsAndHttpClient = getServerConfigurationFor(connectionId);
-          if (paramsAndHttpClient == null) {
-            return;
-          }
           try {
-            if (hasGlobalUpdates(engine, paramsAndHttpClient) || hasProjectUpdates(engine, paramsAndHttpClient, projectKey)) {
-              bindingUpdateNotification.notifyBindingUpdateAvailable(projectKey)
-                .thenAccept(updateAccepted -> {
-                  if (TRUE.equals(updateAccepted)) {
-                    updateBinding(connectionId, projectKey);
-                  }
-                });
-            }
+            // FIXME we should group by projectKey for the same connection
+            engine.sync(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), Set.of(projectKey), null);
           } catch (Exception e) {
-            LOG.error("Error while checking for binding updates", e);
+            LOG.error("Error while synchronizing the storage", e);
           }
         });
     });
-  }
-
-  private static boolean hasProjectUpdates(ConnectedSonarLintEngine engine, EndpointParamsAndHttpClient requestParams, String projectKey) {
-    return engine.checkIfProjectStorageNeedUpdate(requestParams.getEndpointParams(), requestParams.getHttpClient(), projectKey, null).needUpdate();
-  }
-
-  private static boolean hasGlobalUpdates(ConnectedSonarLintEngine engine, EndpointParamsAndHttpClient requestParams) {
-    return engine.checkIfGlobalStorageNeedUpdate(requestParams.getEndpointParams(), requestParams.getHttpClient(), null).needUpdate();
   }
 
   @CheckForNull
@@ -246,9 +225,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     ConnectedSonarLintEngine engine;
     try {
       engine = enginesFactory.createConnectedEngine(connectionId);
-      if (engine.getState() == State.UPDATING) {
-        return engine;
-      }
     } catch (Exception e) {
       LOG.error("Error starting connected SonarLint engine for '" + connectionId + "'", e);
       return null;
@@ -256,7 +232,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var failedServerIds = new ArrayList<String>();
     try {
       var globalStorageStatus = engine.getGlobalStorageStatus();
-      if (autoUpdate && (globalStorageStatus == null || globalStorageStatus.isStale() || engine.getState() != State.UPDATED)) {
+      if (autoUpdate && (globalStorageStatus == null || globalStorageStatus.isStale())) {
         updateGlobalStorageAndLogResults(endpointParamsAndHttpClient, engine, failedServerIds, connectionId, progress);
       }
     } catch (Exception e) {
@@ -297,8 +273,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       unbind(folder);
     } else if (newValue.hasBinding()
       && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
-      forceRebindDuringNextAnalysis(folder);
-    }
+        forceRebindDuringNextAnalysis(folder);
+      }
   }
 
   private void forceRebindDuringNextAnalysis(@Nullable WorkspaceFolderWrapper folder) {
@@ -520,9 +496,20 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return settingsManager.getCurrentSettings().getServerConnections()
       .values()
       .stream()
-      .filter(it -> StringUtils.equalsIgnoringTrailingSlash(it.getServerUrl(), url))
+      .filter(it -> equalsIgnoringTrailingSlash(it.getServerUrl(), url))
       .findFirst()
       .map(ServerConnectionSettings::getServerConfiguration);
+  }
+
+  private static boolean equalsIgnoringTrailingSlash(String aString, String anotherString) {
+    return withTrailingSlash(aString).equals(withTrailingSlash(anotherString));
+  }
+
+  private static String withTrailingSlash(String str) {
+    if (!str.endsWith("/")) {
+      return str + '/';
+    }
+    return str;
   }
 
   public Optional<URI> serverPathToFileUri(String serverPath) {
@@ -546,7 +533,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private class BindingUpdatesCheckerTask extends TimerTask {
     @Override
     public void run() {
-      checkForBindingUpdates();
+      syncStorage();
     }
   }
 }

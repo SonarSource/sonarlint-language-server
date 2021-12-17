@@ -28,7 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.client.api.common.TextRange;
+import org.sonarsource.sonarlint.core.analysis.api.TextRange;
 
 public class LocalCodeFile {
 
@@ -40,7 +40,7 @@ public class LocalCodeFile {
       try {
         // TODO Find the right character set to use?
         this.lines = Files.readAllLines(localFile.toPath(), StandardCharsets.UTF_8);
-      } catch(IOException ioe) {
+      } catch (IOException ioe) {
         this.lines = Collections.emptyList();
       }
     }
@@ -67,7 +67,7 @@ public class LocalCodeFile {
         var startOffset = range.getStartLineOffset();
         do {
           var currentLine = lines.get(lineIndex);
-          if(lineIndex == maxLine) {
+          if (lineIndex == maxLine) {
             var endOffset = Math.min(currentLine.length(), range.getEndLineOffset());
             snippet.append(currentLine.substring(startOffset, endOffset));
           } else {
@@ -75,7 +75,7 @@ public class LocalCodeFile {
             startOffset = 0;
           }
           lineIndex += 1;
-        } while(lineIndex <= maxLine);
+        } while (lineIndex <= maxLine);
         return snippet.toString();
       }
     }

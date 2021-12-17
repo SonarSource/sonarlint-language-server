@@ -19,7 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import java.net.URL;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -33,12 +32,12 @@ import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.ConnectedSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.StandaloneSonarLintEngineImpl;
-import org.sonarsource.sonarlint.core.client.api.common.Language;
-import org.sonarsource.sonarlint.core.client.api.common.ModulesProvider;
+import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
+import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
 public class EnginesFactory {
@@ -46,7 +45,7 @@ public class EnginesFactory {
   private static final Logger LOG = Loggers.get(EnginesFactory.class);
 
   private final LanguageClientLogOutput lsLogOutput;
-  private final Collection<URL> standaloneAnalyzers;
+  private final Collection<Path> standaloneAnalyzers;
   @CheckForNull
   private Path typeScriptPath;
   private static final Language[] STANDALONE_LANGUAGES = {
@@ -65,11 +64,11 @@ public class EnginesFactory {
   };
 
   private final NodeJsRuntime nodeJsRuntime;
-  private final ModulesProvider modulesProvider;
-  private final Collection<URL> extraAnalyzers;
+  private final ClientModulesProvider modulesProvider;
+  private final Collection<Path> extraAnalyzers;
 
-  public EnginesFactory(Collection<URL> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput, NodeJsRuntime nodeJsRuntime, ModulesProvider modulesProvider,
-    Collection<URL> extraAnalyzers) {
+  public EnginesFactory(Collection<Path> standaloneAnalyzers, LanguageClientLogOutput lsLogOutput, NodeJsRuntime nodeJsRuntime, ClientModulesProvider modulesProvider,
+    Collection<Path> extraAnalyzers) {
     this.standaloneAnalyzers = standaloneAnalyzers;
     this.lsLogOutput = lsLogOutput;
     this.nodeJsRuntime = nodeJsRuntime;
@@ -86,8 +85,8 @@ public class EnginesFactory {
         .setExtraProperties(prepareExtraProps())
         .addEnabledLanguages(STANDALONE_LANGUAGES)
         .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
-        .addPlugins(standaloneAnalyzers.toArray(URL[]::new))
-        .addPlugins(extraAnalyzers.toArray(URL[]::new))
+        .addPlugins(standaloneAnalyzers.toArray(Path[]::new))
+        .addPlugins(extraAnalyzers.toArray(Path[]::new))
         .setModulesProvider(modulesProvider)
         .setLogOutput(lsLogOutput)
         .build();
@@ -115,7 +114,7 @@ public class EnginesFactory {
       .setModulesProvider(modulesProvider)
       .setLogOutput(lsLogOutput);
 
-    extraAnalyzers.forEach(analyzer-> builder.addExtraPlugin(guessPluginKey(analyzer.getPath()), analyzer));
+    extraAnalyzers.forEach(analyzer -> builder.addExtraPlugin(guessPluginKey(analyzer.getFileName().toString()), analyzer));
     var engine = newConnectedEngine(builder.build());
 
     LOG.debug("SonarLint engine started for connection '{}'", connectionId);

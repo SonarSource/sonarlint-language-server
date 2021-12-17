@@ -32,7 +32,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
-import org.sonarsource.sonarlint.core.client.api.exceptions.CanceledException;
+import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
 
 import static org.sonarsource.sonarlint.ls.Utils.interrupted;
 

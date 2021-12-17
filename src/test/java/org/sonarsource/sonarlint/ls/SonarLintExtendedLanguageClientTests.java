@@ -22,9 +22,9 @@ package org.sonarsource.sonarlint.ls;
 import java.util.Collections;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.sonar.api.server.rule.RuleParamType;
-import org.sonar.api.server.rule.RulesDefinition;
 import org.sonarsource.sonarlint.core.container.standalone.rule.DefaultStandaloneRuleParam;
+import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamDefinition;
+import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamType;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,10 +34,10 @@ class SonarLintExtendedLanguageClientTests {
 
   @Test
   void test_equals_hashCode() {
-    var apiParam = Mockito.mock(RulesDefinition.Param.class);
+    var apiParam = Mockito.mock(SonarLintRuleParamDefinition.class);
     when(apiParam.name()).thenReturn("name");
     when(apiParam.description()).thenReturn("description");
-    when(apiParam.type()).thenReturn(RuleParamType.INTEGER);
+    when(apiParam.type()).thenReturn(SonarLintRuleParamType.INTEGER);
     when(apiParam.defaultValue()).thenReturn("42");
     var param1 = new DefaultStandaloneRuleParam(apiParam);
 

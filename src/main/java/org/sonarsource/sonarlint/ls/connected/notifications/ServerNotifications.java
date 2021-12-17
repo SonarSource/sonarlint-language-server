@@ -28,11 +28,11 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
-import org.sonarsource.sonarlint.core.client.api.common.LogOutput;
 import org.sonarsource.sonarlint.core.client.api.common.NotificationConfiguration;
 import org.sonarsource.sonarlint.core.client.api.notifications.LastNotificationTime;
 import org.sonarsource.sonarlint.core.client.api.notifications.ServerNotification;
 import org.sonarsource.sonarlint.core.client.api.notifications.ServerNotificationListener;
+import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.core.notifications.ServerNotificationsRegistry;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
@@ -59,7 +59,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
   private final ServerNotificationsRegistry serverNotificationsRegistry;
 
   public ServerNotifications(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager workspaceFoldersManager,
-      SonarLintTelemetry telemetry, LanguageClientLogOutput output) {
+    SonarLintTelemetry telemetry, LanguageClientLogOutput output) {
     this.client = client;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.telemetry = telemetry;
@@ -94,12 +94,9 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
 
   @Override
   public void onChange(@CheckForNull WorkspaceFolderWrapper folder, @CheckForNull WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
-    if (oldValue != null && (
-        !newValue.hasBinding() ||
-        !connections.containsKey(newValue.getConnectionId()) ||
-        connections.get(newValue.getConnectionId()).isDevNotificationsDisabled()
-      )
-    ) {
+    if (oldValue != null && (!newValue.hasBinding() ||
+      !connections.containsKey(newValue.getConnectionId()) ||
+      connections.get(newValue.getConnectionId()).isDevNotificationsDisabled())) {
       // Project is now unbound, or bound to a server that has dev notifications disabled => unregister matching config if exists
       unregisterConfigurationIfExists(oldValue.getConnectionId(), oldValue.getProjectKey());
     }
@@ -120,7 +117,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
 
   private void registerConfigurationIfNeeded(String connectionId, String projectKey) {
     if (!alreadyHasConfiguration(connectionId, projectKey)) {
-      if(!connections.containsKey(connectionId) || connections.get(connectionId).isDevNotificationsDisabled()) {
+      if (!connections.containsKey(connectionId) || connections.get(connectionId).isDevNotificationsDisabled()) {
         // Connection is unknown, or has notifications disabled - do nothing
         return;
       }
@@ -135,7 +132,6 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
     return configurationsByProjectKeyByConnectionId.containsKey(connectionId) && configurationsByProjectKeyByConnectionId.get(connectionId).containsKey(projectKey);
   }
 
-
   private NotificationConfiguration newNotificationConfiguration(ServerConnectionSettings serverConnectionSettings, String projectKey) {
     return new NotificationConfiguration(
       new EventListener(serverConnectionSettings.isSonarCloudAlias()),
@@ -146,7 +142,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
   }
 
   private void logDebugMessage(String message) {
-    logOutput.log(message, LogOutput.Level.DEBUG);
+    logOutput.log(message, ClientLogOutput.Level.DEBUG);
   }
 
   /**
@@ -171,7 +167,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
       var browseAction = new MessageActionItem("Show on " + label);
       params.setActions(List.of(browseAction, SETTINGS_ACTION));
       client.showMessageRequest(params).thenAccept(action -> {
-        if(browseAction.equals(action)) {
+        if (browseAction.equals(action)) {
           telemetry.devNotificationsClicked(serverNotification.category());
           client.browseTo(serverNotification.link());
         } else if (SETTINGS_ACTION.equals(action)) {
