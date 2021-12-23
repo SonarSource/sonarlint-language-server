@@ -20,13 +20,13 @@
 package org.sonarsource.sonarlint.ls.mediumtests;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -145,8 +145,8 @@ public abstract class AbstractLanguageServerMediumTests {
     lsProxy = future.get();
   }
 
-  private static String fullPathToJar(String jarName) throws Exception {
-    return new File(String.format("target/plugins/%s.jar", jarName)).getAbsoluteFile().toURI().toURL().toString();
+  private static String fullPathToJar(String jarName) {
+    return Paths.get("target/plugins").resolve(jarName + ".jar").toAbsolutePath().toString();
   }
 
   protected static void initialize(Map<String, Object> initializeOptions, WorkspaceFolder... initFolders) throws InterruptedException, ExecutionException {

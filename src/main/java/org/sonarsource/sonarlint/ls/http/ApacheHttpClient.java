@@ -38,13 +38,12 @@ import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpHeaders;
 import org.apache.hc.core5.http2.HttpVersionPolicy;
 import org.apache.hc.core5.util.Timeout;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.commons.http.HttpClient;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 
 public class ApacheHttpClient implements HttpClient {
 
-  private static final Logger LOG = Loggers.get(ApacheHttpClient.class);
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   public static final Timeout CONNECTION_TIMEOUT = Timeout.ofSeconds(30);
   private static final Timeout RESPONSE_TIMEOUT = Timeout.ofMinutes(10);

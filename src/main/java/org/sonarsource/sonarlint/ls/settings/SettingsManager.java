@@ -36,8 +36,7 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.Utils;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -69,7 +68,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static final String SHOW_VERBOSE_LOGS = "showVerboseLogs";
   private static final String PATH_TO_NODE_EXECUTABLE = "pathToNodeExecutable";
 
-  private static final Logger LOG = Loggers.get(SettingsManager.class);
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private final LanguageClient client;
   private final WorkspaceFoldersManager foldersManager;

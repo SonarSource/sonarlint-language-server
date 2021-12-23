@@ -28,13 +28,12 @@ import javax.annotation.CheckForNull;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.eclipse.lsp4j.WorkspaceFolder;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 
 public class WorkspaceFolderWrapper {
 
-  private static final Logger LOG = Loggers.get(WorkspaceFolderWrapper.class);
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private final URI uri;
   private final WorkspaceFolder lspFolder;

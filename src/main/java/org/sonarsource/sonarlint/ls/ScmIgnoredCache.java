@@ -25,13 +25,12 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 
 import static java.util.Optional.ofNullable;
 
 public class ScmIgnoredCache {
-  private static final Logger LOG = Loggers.get(ScmIgnoredCache.class);
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
   private final SonarLintExtendedLanguageClient client;
   public final Map<URI, Optional<Boolean>> filesIgnoredByUri = new ConcurrentHashMap<>();
 

@@ -32,9 +32,9 @@ import org.eclipse.lsp4j.services.LanguageClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonar.api.utils.log.LogTesterJUnit5;
-import org.sonar.api.utils.log.LoggerLevel;
 import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
+import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
+import org.sonarsource.sonarlint.ls.SonarLintLogTester;
 import org.sonarsource.sonarlint.ls.Utils;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
@@ -53,7 +53,7 @@ class SettingsManagerTest {
   private static final URI FOLDER_URI = URI.create("file://foo");
 
   @RegisterExtension
-  public LogTesterJUnit5 logTester = new LogTesterJUnit5();
+  public SonarLintLogTester logTester = new SonarLintLogTester();
 
   private static final String DEPRECATED_SAMPLE_CONFIG = "{\n" +
     "  \"connectedMode\": {\n" +
@@ -200,7 +200,7 @@ class SettingsManagerTest {
 
     var settings = underTest.getCurrentSettings();
     assertThat(settings.getServerConnections()).isEmpty();
-    assertThat(logTester.logs(LoggerLevel.ERROR))
+    assertThat(logTester.logs(ClientLogOutput.Level.ERROR))
       .containsExactly("Incomplete server connection configuration. Required parameters must not be blank: serverId.",
         "Incomplete server connection configuration. Required parameters must not be blank: serverUrl.",
         "Incomplete server connection configuration. Required parameters must not be blank: token.",
@@ -228,7 +228,7 @@ class SettingsManagerTest {
 
     var settings = underTest.getCurrentSettings();
     assertThat(settings.getServerConnections()).containsKeys("dup");
-    assertThat(logTester.logs(LoggerLevel.ERROR)).containsExactly("Multiple server connections with the same identifier 'dup'. Fix your settings.");
+    assertThat(logTester.logs(ClientLogOutput.Level.ERROR)).containsExactly("Multiple server connections with the same identifier 'dup'. Fix your settings.");
   }
 
   @Test
@@ -249,7 +249,7 @@ class SettingsManagerTest {
 
     var settings = underTest.getCurrentSettings();
     assertThat(settings.getServerConnections()).containsKeys("<default>");
-    assertThat(logTester.logs(LoggerLevel.ERROR)).containsExactly("Please specify a unique 'connectionId' in your settings for each of the SonarQube/SonarCloud connections.");
+    assertThat(logTester.logs(ClientLogOutput.Level.ERROR)).containsExactly("Please specify a unique 'connectionId' in your settings for each of the SonarQube/SonarCloud connections.");
   }
 
   @Test
@@ -281,7 +281,7 @@ class SettingsManagerTest {
     var settings = underTest.getCurrentDefaultFolderSettings();
     assertThat(settings.getConnectionId()).isNull();
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
-    assertThat(logTester.logs(LoggerLevel.ERROR))
+    assertThat(logTester.logs(ClientLogOutput.Level.ERROR))
       .contains("No SonarQube/SonarCloud connections defined for your binding. Please update your settings.");
   }
 
@@ -348,7 +348,7 @@ class SettingsManagerTest {
     var settings = folderWrapper.getSettings();
     assertThat(settings.getConnectionId()).isNull();
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
-    assertThat(logTester.logs(LoggerLevel.ERROR))
+    assertThat(logTester.logs(ClientLogOutput.Level.ERROR))
       .containsExactly("Multiple connections defined in your settings. Please specify a 'connectionId' in your binding with one of [sc1,sq1,sc2,sq2] to disambiguate.");
   }
 
@@ -372,7 +372,7 @@ class SettingsManagerTest {
     var settings = folderWrapper.getSettings();
     assertThat(settings.getConnectionId()).isEqualTo("unknown");
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
-    assertThat(logTester.logs(LoggerLevel.ERROR))
+    assertThat(logTester.logs(ClientLogOutput.Level.ERROR))
       .containsExactly("No SonarQube/SonarCloud connections defined for your binding with id 'unknown'. Please update your settings.");
   }
 

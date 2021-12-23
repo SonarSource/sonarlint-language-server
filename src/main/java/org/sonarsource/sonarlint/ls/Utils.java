@@ -28,12 +28,11 @@ import javax.annotation.CheckForNull;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 
 public class Utils {
 
-  private static final Logger LOG = Loggers.get(Utils.class);
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private Utils() {
   }

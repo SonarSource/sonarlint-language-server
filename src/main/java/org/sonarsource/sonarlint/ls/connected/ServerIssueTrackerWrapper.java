@@ -42,7 +42,7 @@ public class ServerIssueTrackerWrapper {
   private final ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient;
   private final ProjectBinding projectBinding;
 
-  private final IssueTrackerCache issueTrackerCache;
+  private final IssueTrackerCache<Issue> issueTrackerCache;
   private final CachingIssueTracker cachingIssueTracker;
   private final org.sonarsource.sonarlint.core.tracking.ServerIssueTracker tracker;
 
@@ -71,7 +71,7 @@ public class ServerIssueTrackerWrapper {
 
     issueTrackerCache.getLiveOrFail(filePath).stream()
       .filter(not(Trackable::isResolved))
-      .forEach(trackable -> issueListener.handle(new DelegatingIssue(trackable.getIssue()) {
+      .forEach(trackable -> issueListener.handle(new DelegatingIssue(trackable.getClientObject()) {
         @Override
         public String getSeverity() {
           return trackable.getSeverity();

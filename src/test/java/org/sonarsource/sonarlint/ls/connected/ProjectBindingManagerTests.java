@@ -40,15 +40,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
-import org.sonar.api.utils.log.LogTesterJUnit5;
-import org.sonar.api.utils.log.LoggerLevel;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.GlobalStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.UpdateResult;
+import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.ls.AnalysisManager;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
+import org.sonarsource.sonarlint.ls.SonarLintLogTester;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
@@ -95,7 +95,7 @@ class ProjectBindingManagerTests {
   private static final WorkspaceFolderSettings BOUND_SETTINGS_DIFFERENT_SERVER_ID = new WorkspaceFolderSettings(SERVER_ID2, PROJECT_KEY, Collections.emptyMap(), null);
 
   @RegisterExtension
-  LogTesterJUnit5 logTester = new LogTesterJUnit5();
+  SonarLintLogTester logTester = new SonarLintLogTester();
 
   @TempDir
   Path basedir;
@@ -196,7 +196,7 @@ class ProjectBindingManagerTests {
 
     assertThat(underTest.getBinding(fileInAWorkspaceFolderPath.toUri())).isEmpty();
 
-    assertThat(logTester.logs(LoggerLevel.ERROR))
+    assertThat(logTester.logs(ClientLogOutput.Level.ERROR))
       .containsOnly("The specified connection id 'myServer' doesn't exist.", "Invalid binding for '" + workspaceFolderPath.toString() + "'");
     assertThat(underTest.usesConnectedMode()).isFalse();
     assertThat(underTest.usesSonarCloud()).isFalse();
@@ -210,7 +210,7 @@ class ProjectBindingManagerTests {
 
     assertThat(underTest.getBinding(fileInAWorkspaceFolderPath.toUri())).isEmpty();
 
-    assertThat(logTester.logs(LoggerLevel.ERROR)).containsOnly("Error starting connected SonarLint engine for '" + CONNECTION_ID + "'");
+    assertThat(logTester.logs(ClientLogOutput.Level.ERROR)).contains("Error starting connected SonarLint engine for '" + CONNECTION_ID + "'");
   }
 
   @Test
@@ -547,7 +547,7 @@ class ProjectBindingManagerTests {
 
     underTest.shutdown();
 
-    assertThat(logTester.logs(LoggerLevel.ERROR))
+    assertThat(logTester.logs(ClientLogOutput.Level.ERROR))
       .contains("Unable to stop engine 'myServer'", "Unable to stop engine 'myServer2'");
 
     verify(fakeEngine).stop(false);
@@ -665,7 +665,7 @@ class ProjectBindingManagerTests {
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verifyNoMoreInteractions(analysisManager);
-    assertThat(logTester.logs(LoggerLevel.ERROR)).contains("The specified connection id '" + CONNECTION_ID + "' doesn't exist.");
+    assertThat(logTester.logs(ClientLogOutput.Level.ERROR)).contains("The specified connection id '" + CONNECTION_ID + "' doesn't exist.");
   }
 
   @Test
@@ -676,7 +676,7 @@ class ProjectBindingManagerTests {
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verifyNoMoreInteractions(analysisManager);
-    assertThat(logTester.logs(LoggerLevel.ERROR)).contains("The specified connection id '" + CONNECTION_ID + "' doesn't exist.");
+    assertThat(logTester.logs(ClientLogOutput.Level.ERROR)).contains("The specified connection id '" + CONNECTION_ID + "' doesn't exist.");
   }
 
   @Test

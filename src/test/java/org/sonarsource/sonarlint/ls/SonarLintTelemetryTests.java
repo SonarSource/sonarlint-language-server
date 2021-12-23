@@ -27,8 +27,6 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonar.api.utils.log.LogTesterJUnit5;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryHttpClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
@@ -49,9 +47,6 @@ import static org.sonarsource.sonarlint.ls.SonarLintTelemetry.getStoragePath;
 class SonarLintTelemetryTests {
   private SonarLintTelemetry telemetry;
   private final TelemetryManager telemetryManager = mock(TelemetryManager.class);
-
-  @RegisterExtension
-  public LogTesterJUnit5 logTester = new LogTesterJUnit5();
 
   @BeforeEach
   public void setUp() {

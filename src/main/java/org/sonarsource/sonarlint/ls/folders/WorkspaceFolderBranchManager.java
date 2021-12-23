@@ -24,13 +24,12 @@ import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 
 public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleListener {
 
-  private static final Logger LOG = Loggers.get(WorkspaceFolderBranchManager.class);
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private final Map<URI, String> branchNameByFolderUri;
   private final SonarLintExtendedLanguageClient client;

@@ -30,15 +30,14 @@ import org.eclipse.lsp4j.WorkDoneProgressCreateParams;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
 
 import static org.sonarsource.sonarlint.ls.Utils.interrupted;
 
 public class ProgressManager {
 
-  private static final Logger LOG = Loggers.get(ProgressManager.class);
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private final LanguageClient client;
   private final Map<Either<String, Integer>, LSProgressMonitor> liveProgress = new ConcurrentHashMap<>();

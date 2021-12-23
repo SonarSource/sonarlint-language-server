@@ -23,13 +23,12 @@ import java.net.URI;
 import java.nio.file.Paths;
 import java.util.Optional;
 import javax.annotation.Nullable;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 
 public class FileTypeClassifier {
-  private static final Logger LOG = Loggers.get(FileTypeClassifier.class);
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
   private final FileLanguageCache fileLanguageCache;
 
   public FileTypeClassifier(FileLanguageCache fileLanguageCache) {

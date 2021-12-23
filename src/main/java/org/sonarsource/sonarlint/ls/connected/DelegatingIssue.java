@@ -56,11 +56,6 @@ public class DelegatingIssue implements Issue {
     return issue.getRuleKey();
   }
 
-  @Override
-  public String getRuleName() {
-    return issue.getRuleName();
-  }
-
   @CheckForNull
   @Override
   public Integer getStartLine() {

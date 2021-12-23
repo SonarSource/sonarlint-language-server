@@ -42,7 +42,6 @@ class DelegatingIssueTests {
     when(issue.getType()).thenReturn("BUG");
     when(issue.getMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
-    when(issue.getRuleName()).thenReturn("don't do that");
     when(issue.getStartLine()).thenReturn(2);
     when(issue.getStartLineOffset()).thenReturn(3);
     when(issue.getEndLine()).thenReturn(4);
@@ -70,11 +69,6 @@ class DelegatingIssueTests {
   @Test
   void testGetRuleKey() {
     assertThat(delegatingIssue.getRuleKey()).isNotEmpty().isEqualTo(issue.getRuleKey());
-  }
-
-  @Test
-  void testGetRuleName() {
-    assertThat(delegatingIssue.getRuleName()).isNotEmpty().isEqualTo(issue.getRuleName());
   }
 
   @Test
