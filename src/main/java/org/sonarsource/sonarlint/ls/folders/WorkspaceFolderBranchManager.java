@@ -19,6 +19,8 @@
  */
 package org.sonarsource.sonarlint.ls.folders;
 
+import java.net.URISyntaxException;
+import org.apache.commons.lang3.StringUtils;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.sonarlint.core.serverapi.branches.ServerBranch;
@@ -72,7 +74,6 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
       return;
     }
     localBranchNameByFolderUri.put(folderUri, branchName);
-    referenceBranchNameByFolderUri.put(folderUri, branchName);
     var executorService = Executors.newSingleThreadExecutor();
     executorService.submit(() -> {
         Optional<ProjectBindingWrapper> bindingOptional = bindingManager.getBinding(folderUri);
@@ -83,10 +84,11 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
           if (configuration != null) {
             var serverBranches = binding.getEngine().getServerBranches(configuration.getEndpointParams(), configuration.getHttpClient(), binding.getBinding());
             var serverBranchNames = serverBranches.stream().map(ServerBranch::getName).collect(Collectors.toSet());
+            var git = GitUtils.getGitForDir(folderUri);
             if (serverBranchNames.contains(branchName)) {
               electedBranchName = branchName;
-            } else {
-              Optional<String> sqBranchNameOptional = GitUtils.electSQBranchForLocalBranch(branchName, GitUtils.getGitForDir(folderUri), serverBranches);
+            } else if (git != null) {
+              Optional<String> sqBranchNameOptional = GitUtils.electSQBranchForLocalBranch(branchName, git, serverBranches);
               electedBranchName = sqBranchNameOptional.orElse(null);
             }
           } else {
@@ -94,6 +96,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
           }
         }
         client.setReferenceBranchNameForFolder(SonarLintExtendedLanguageClient.ReferenceBranchForFolder.of(folderUri.toString(), electedBranchName));
+        referenceBranchNameByFolderUri.put(folderUri, electedBranchName);
       }
     );
   }
@@ -113,6 +116,12 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
    */
   @CheckForNull
   public String getReferenceBranchNameForFolder(URI folderUri) {
-    return referenceBranchNameByFolderUri.get(folderUri);
+    try {
+      var uriWithoutTrailingSlash = StringUtils.removeEnd(folderUri.toString(), "/");
+      return referenceBranchNameByFolderUri.get(new URI(uriWithoutTrailingSlash));
+    } catch (URISyntaxException e) {
+      LOG.error(e.getMessage());
+    }
+    return null;
   }
 }

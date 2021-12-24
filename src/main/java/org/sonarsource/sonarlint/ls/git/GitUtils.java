@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.git;
 
+import java.util.Collections;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Ref;
@@ -30,7 +31,6 @@ import org.sonarsource.sonarlint.core.serverapi.branches.ServerBranch;
 
 
 import javax.annotation.CheckForNull;
-import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -44,6 +44,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class GitUtils {
+
+  private static final String BRANCH_REF_PREFIX = "refs/heads/";
 
   private GitUtils() {
     // util class
@@ -82,24 +84,24 @@ public class GitUtils {
   }
 
 
-  public static Optional<String> electSQBranchForLocalBranch(String branchName, @Nullable Git git, Set<ServerBranch> serverCandidates) {
-    if (git == null) {
+  public static Optional<String> electSQBranchForLocalBranch(String branchName, Git git, Set<ServerBranch> serverCandidates) {
+    Set<String> serverCandidateNames = serverCandidates.stream().map(ServerBranch::getName).collect(Collectors.toSet());
+    Map<String, List<String>> commitsCache = buildCommitsCache(git);
+    if (commitsCache.isEmpty()) {
       return Optional.empty();
     }
-    Set<String> serverCandidateNames = serverCandidates.stream().map(ServerBranch::getName).collect(Collectors.toSet());
-    Optional<String> mainBranchName = serverCandidates.stream().filter(ServerBranch::isMain).map(ServerBranch::getName).findFirst();
     List<String> commitNamesForBranch = getCommitNamesForRef(branchName, git);
-    Map<String, List<String>> commitsCache;
-    try {
-      commitsCache = buildCommitsCache(git);
-    } catch (IOException e) {
-      LOG.error("Unable to build commits cache for branch " + branchName, e);
+    Optional<String> mainBranchName = serverCandidates.stream().filter(ServerBranch::isMain).map(ServerBranch::getName).findFirst();
+    if (mainBranchName.isEmpty()) {
       return Optional.empty();
     }
     List<String> listOfLocalCandidates;
     for (String commitName : commitNamesForBranch) {
       if (commitsCache.containsKey(commitName)) {
         listOfLocalCandidates = commitsCache.get(commitName);
+        if (listOfLocalCandidates.contains(mainBranchName.get())) {
+          return mainBranchName;
+        }
         for (String localCandidateName : listOfLocalCandidates) {
           if (serverCandidateNames.contains(localCandidateName)) {
             return Optional.of(localCandidateName);
@@ -110,15 +112,21 @@ public class GitUtils {
     return mainBranchName;
   }
 
-  public static Map<String, List<String>> buildCommitsCache(Git git) throws IOException {
-    List<Ref> refs = git.getRepository().getRefDatabase().getRefs();
+  public static Map<String, List<String>> buildCommitsCache(Git git) {
+    List<Ref> refs;
+    try {
+      refs = git.getRepository().getRefDatabase().getRefs();
+    } catch (IOException e) {
+      LOG.error("Unable to build commits " + e);
+      return Collections.emptyMap();
+    }
     Map<String, List<String>> commitToBranches = new HashMap<>();
     for (Ref ref : refs) {
       List<String> commitNamesForBranch = GitUtils.getCommitNamesForRef(ref.getName(), git);
       for (String commitName : commitNamesForBranch) {
         commitToBranches.putIfAbsent(commitName, new ArrayList<>());
-        if (ref.getName().startsWith("refs/heads/")) {
-          commitToBranches.get(commitName).add(ref.getName().substring("refs/heads/".length()));
+        if (ref.getName().startsWith(BRANCH_REF_PREFIX)) {
+          commitToBranches.get(commitName).add(ref.getName().substring(BRANCH_REF_PREFIX.length()));
         }
       }
     }

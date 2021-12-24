@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.connected;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
@@ -42,15 +43,18 @@ public class ServerIssueTrackerWrapper {
   private final ConnectedSonarLintEngine engine;
   private final ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient;
   private final ProjectBinding projectBinding;
+  private final Supplier<String> getReferenceBranchNameForFolder;
 
   private final IssueTrackerCache issueTrackerCache;
   private final CachingIssueTracker cachingIssueTracker;
   private final org.sonarsource.sonarlint.core.tracking.ServerIssueTracker tracker;
 
-  ServerIssueTrackerWrapper(ConnectedSonarLintEngine engine, ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient, ProjectBinding projectBinding) {
+  ServerIssueTrackerWrapper(ConnectedSonarLintEngine engine, ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient,
+    ProjectBinding projectBinding, Supplier<String> getReferenceBranchNameForFolder) {
     this.engine = engine;
     this.endpointParamsAndHttpClient = endpointParamsAndHttpClient;
     this.projectBinding = projectBinding;
+    this.getReferenceBranchNameForFolder = getReferenceBranchNameForFolder;
 
     this.issueTrackerCache = new InMemoryIssueTrackerCache();
     this.cachingIssueTracker = new CachingIssueTrackerImpl(issueTrackerCache);
@@ -65,7 +69,8 @@ public class ServerIssueTrackerWrapper {
 
     cachingIssueTracker.matchAndTrackAsNew(filePath, toTrackables(issues));
     if (shouldFetchServerIssues) {
-      tracker.update(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), engine, projectBinding, Collections.singleton(filePath), true);
+      tracker.update(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), engine, projectBinding,
+        Collections.singleton(filePath), true, getReferenceBranchNameForFolder.get());
     } else {
       tracker.update(engine, projectBinding, Collections.singleton(filePath));
     }

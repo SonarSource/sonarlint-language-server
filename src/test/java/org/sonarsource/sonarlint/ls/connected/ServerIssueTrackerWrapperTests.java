@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
@@ -38,6 +39,7 @@ import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -149,7 +151,7 @@ class ServerIssueTrackerWrapperTests {
     engine = mock(ConnectedSonarLintEngine.class);
     tracker = newTracker(baseDir, engine);
     matchAndTrack(tracker, "dummy", issues, true);
-    verify(engine).downloadServerIssues(any(), any(), any(), any(), anyBoolean(), any());
+    verify(engine).downloadServerIssues(any(), any(), any(), any(), anyBoolean(), eq("branchName"), any());
     verifyNoMoreInteractions(engine);
   }
 
@@ -166,7 +168,8 @@ class ServerIssueTrackerWrapperTests {
   private ServerIssueTrackerWrapper newTracker(Path baseDir, ConnectedSonarLintEngine engine) {
     var projectKey = "project1";
     var projectBinding = new ProjectBinding(projectKey, "", "");
-    return new ServerIssueTrackerWrapper(engine, new ServerConnectionSettings.EndpointParamsAndHttpClient(null, null), projectBinding);
+    Supplier<String> branchSupplier = () -> "branchName";
+    return new ServerIssueTrackerWrapper(engine, new ServerConnectionSettings.EndpointParamsAndHttpClient(null, null), projectBinding, branchSupplier);
   }
 
   private ServerIssueTrackerWrapper newTracker(Path baseDir) {

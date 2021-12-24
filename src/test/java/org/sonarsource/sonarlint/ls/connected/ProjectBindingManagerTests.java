@@ -228,7 +228,7 @@ class ProjectBindingManagerTests {
     assertThat(binding).isNotEmpty();
 
     verify(fakeEngine, never()).update(any(), any(), any());
-    verify(fakeEngine, never()).updateProject(any(), any(), any(), anyBoolean(), any());
+    verify(fakeEngine, never()).updateProject(any(), any(), any(), anyBoolean(), anyString(), any());
 
     assertThat(underTest.usesConnectedMode()).isTrue();
   }
@@ -262,7 +262,7 @@ class ProjectBindingManagerTests {
     assertThat(binding).isNotEmpty();
 
     verify(fakeEngine, times(1)).update(any(), any(), any());
-    verify(fakeEngine, never()).updateProject(any(), any(), any(), anyBoolean(), any());
+    verify(fakeEngine, never()).updateProject(any(), any(), any(), anyBoolean(), anyString(), any());
   }
 
   @Test
@@ -275,7 +275,7 @@ class ProjectBindingManagerTests {
     assertThat(binding).isNotEmpty();
 
     verify(fakeEngine, times(1)).update(any(), any(), any());
-    verify(fakeEngine, never()).updateProject(any(), any(), any(), anyBoolean(), any());
+    verify(fakeEngine, never()).updateProject(any(), any(), any(), anyBoolean(), anyString(), any());
   }
 
   @Test
@@ -288,7 +288,7 @@ class ProjectBindingManagerTests {
     assertThat(binding).isNotEmpty();
 
     verify(fakeEngine, times(1)).update(any(), any(), any());
-    verify(fakeEngine, never()).updateProject(any(), any(), any(), anyBoolean(), any());
+    verify(fakeEngine, never()).updateProject(any(), any(), any(), anyBoolean(), anyString(), any());
   }
 
   @Test
@@ -301,7 +301,7 @@ class ProjectBindingManagerTests {
     assertThat(binding).isNotEmpty();
 
     verify(fakeEngine, times(1)).update(any(), any(), any());
-    verify(fakeEngine, never()).updateProject(any(), any(), any(), anyBoolean(), any());
+    verify(fakeEngine, never()).updateProject(any(), any(), any(), anyBoolean(), anyString(), any());
   }
 
   @Test
@@ -314,7 +314,7 @@ class ProjectBindingManagerTests {
     assertThat(binding).isNotEmpty();
 
     verify(fakeEngine, never()).update(any(), any(), any());
-    verify(fakeEngine, never()).updateProject(any(), any(), any(), anyBoolean(), any());
+    verify(fakeEngine, never()).updateProject(any(), any(), any(), anyBoolean(), anyString(), any());
   }
 
   @Test
@@ -327,7 +327,7 @@ class ProjectBindingManagerTests {
     assertThat(binding).isNotEmpty();
 
     verify(fakeEngine, never()).update(any(), any(), any());
-    verify(fakeEngine, times(1)).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any());
+    verify(fakeEngine, times(1)).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), eq(null), any());
   }
 
   @Test
@@ -340,7 +340,7 @@ class ProjectBindingManagerTests {
     assertThat(binding).isNotEmpty();
 
     verify(fakeEngine, never()).update(any(), any(), any());
-    verify(fakeEngine, times(1)).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any());
+    verify(fakeEngine, times(1)).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), eq(null), any());
   }
 
   @Test
@@ -622,9 +622,9 @@ class ProjectBindingManagerTests {
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verify(fakeEngine).update(any(), any(), any());
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any());
+    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), eq(null), any());
     verify(fakeEngine2).update(any(), any(), any());
-    verify(fakeEngine2).updateProject(any(), any(), eq(PROJECT_KEY2), anyBoolean(), any());
+    verify(fakeEngine2).updateProject(any(), any(), eq(PROJECT_KEY2), anyBoolean(), eq(null), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
@@ -647,9 +647,9 @@ class ProjectBindingManagerTests {
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verify(fakeEngine).update(any(), any(), any());
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any());
+    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), eq(null), any());
     verify(fakeEngine2).update(any(), any(), any());
-    verify(fakeEngine2).updateProject(any(), any(), eq(PROJECT_KEY2), anyBoolean(), any());
+    verify(fakeEngine2).updateProject(any(), any(), eq(PROJECT_KEY2), anyBoolean(), eq(null), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
@@ -671,8 +671,8 @@ class ProjectBindingManagerTests {
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verify(fakeEngine).update(any(), any(), any());
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any());
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY2), anyBoolean(), any());
+    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), eq(null), any());
+    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY2), anyBoolean(), eq(null), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
@@ -694,7 +694,7 @@ class ProjectBindingManagerTests {
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verify(fakeEngine).update(any(), any(), any());
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any());
+    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), eq(null), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
@@ -773,7 +773,7 @@ class ProjectBindingManagerTests {
         throw new RuntimeException("Boom at project update");
       }
     })
-      .when(fakeEngine).updateProject(any(), any(), eq(projectKey), anyBoolean(), eq(null));
+      .when(fakeEngine).updateProject(any(), any(), eq(projectKey), anyBoolean(), anyString(), eq(null));
     when(fakeEngine.calculatePathPrefixes(eq(projectKey), anyCollection())).thenReturn(new ProjectBinding(projectKey, "", ""));
 
     underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
@@ -898,7 +898,7 @@ class ProjectBindingManagerTests {
     underTest.updateBinding(CONNECTION_ID, PROJECT_KEY).join();
 
     verify(fakeEngine).update(any(), any(), any());
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any());
+    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), eq(null), any());
   }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {

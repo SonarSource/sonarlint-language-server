@@ -39,7 +39,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -98,6 +100,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final EnginesFactory enginesFactory;
   private AnalysisManager analysisManager;
   private final Timer bindingUpdatesCheckerTimer = new Timer("Binding updates checker");
+  private Function<URI, String> getReferenceBranchNameForFolder;
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClient client,
     ProgressManager progressManager) {
@@ -211,14 +214,15 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var projectKey = requireNonNull(settings.getProjectKey());
     var projectStorageStatus = engine.getProjectStorageStatus(projectKey);
     if (projectStorageStatus == null || projectStorageStatus.isStale()) {
-      engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, false, null);
+      engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, false, null, null);
     }
     var ideFilePaths = FileUtils.allRelativePathsForFilesInTree(folderRoot);
     var projectBinding = engine.calculatePathPrefixes(projectKey, ideFilePaths);
     LOG.debug("Resolved binding {} for folder {}",
       ToStringBuilder.reflectionToString(projectBinding, ToStringStyle.SHORT_PREFIX_STYLE),
       folderRoot);
-    var issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, endpointParamsAndHttpClient, projectBinding);
+    Supplier<String> branchProvider = () -> this.getReferenceBranchNameForFolder.apply(folderRoot.toUri());
+    var issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, endpointParamsAndHttpClient, projectBinding, branchProvider);
     return new ProjectBindingWrapper(connectionId, projectBinding, engine, issueTrackerWrapper);
   }
 
@@ -466,7 +470,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     ProgressFacade progress) {
     projectKeys.forEach(projectKey -> progress.doInSubProgress(projectKey, 1.0f / projectKey.length(), subProgress -> {
       try {
-        engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, true, subProgress.asCoreMonitor());
+        engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, true, null, subProgress.asCoreMonitor());
       } catch (CanceledException e) {
         throw e;
       } catch (Exception updateFailed) {
@@ -541,6 +545,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       .map(Paths.get(folderUri)::resolve)
       .map(Path::toFile)
       .filter(File::exists);
+  }
+
+  public void setBranchResolver(Function<URI, String> getReferenceBranchNameForFolder) {
+    this.getReferenceBranchNameForFolder = getReferenceBranchNameForFolder;
   }
 
   private class BindingUpdatesCheckerTask extends TimerTask {
