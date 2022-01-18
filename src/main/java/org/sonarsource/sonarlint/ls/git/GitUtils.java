@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.git;
 import java.util.Collections;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
@@ -64,6 +65,8 @@ public class GitUtils {
       for (RevCommit commit : commits) {
         commitNames.add(commit.getName());
       }
+    } catch (IncorrectObjectTypeException e) {
+      // do nothing, jgit will throw it if branchName can not be resolved to any commit
     } catch (GitAPIException | IOException e) {
       LOG.error("Couldn't fetch commits for branch " + branchName, e);
     }
