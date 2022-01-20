@@ -26,6 +26,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
@@ -37,7 +38,7 @@ import org.apache.hc.core5.concurrent.FutureCallback;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpHeaders;
 import org.apache.hc.core5.http2.HttpVersionPolicy;
-import org.apache.hc.core5.util.Timeout;
+import org.apache.hc.core5.reactor.IOReactorConfig;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 
@@ -45,8 +46,6 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
 
   private static final Logger LOG = Loggers.get(ApacheHttpClient.class);
 
-  public static final Timeout CONNECTION_TIMEOUT = Timeout.ofSeconds(30);
-  private static final Timeout RESPONSE_TIMEOUT = Timeout.ofMinutes(10);
   private static final String USER_AGENT = "SonarLint VSCode";
 
   private final CloseableHttpAsyncClient client;
@@ -157,10 +156,15 @@ public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverap
     var httpClient = HttpAsyncClients.custom()
       .useSystemProperties()
       .setUserAgent(USER_AGENT)
+      .setIOReactorConfig(
+        IOReactorConfig.custom()
+          .setSoTimeout(1, TimeUnit.MINUTES)
+          .build())
       .setDefaultRequestConfig(
         RequestConfig.copy(RequestConfig.DEFAULT)
-          .setConnectionRequestTimeout(CONNECTION_TIMEOUT)
-          .setResponseTimeout(RESPONSE_TIMEOUT)
+          .setConnectTimeout(30, TimeUnit.SECONDS)
+          .setConnectionRequestTimeout(30, TimeUnit.SECONDS)
+          .setResponseTimeout(10, TimeUnit.MINUTES)
           .build())
       .setVersionPolicy(HttpVersionPolicy.FORCE_HTTP_1)
       .build();
