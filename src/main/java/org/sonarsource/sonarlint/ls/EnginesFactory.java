@@ -56,7 +56,8 @@ public class EnginesFactory {
     Language.PHP,
     Language.PYTHON,
     Language.SECRETS,
-    Language.TS
+    Language.TS,
+    Language.XML
   };
 
   private static final Language[] CONNECTED_ADDITIONAL_LANGUAGES = {

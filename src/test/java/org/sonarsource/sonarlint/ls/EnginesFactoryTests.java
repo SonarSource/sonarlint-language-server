@@ -65,7 +65,7 @@ class EnginesFactoryTests {
     assertThat(createdEngine).isSameAs(mockEngine);
     var capturedConfig = argCaptor.getValue();
     assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", FAKE_TYPESCRIPT_PATH.toString());
-    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PYTHON, Language.SECRETS, Language.TS);
+    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PYTHON, Language.SECRETS, Language.TS, Language.XML);
   }
 
   @Test
@@ -96,7 +96,7 @@ class EnginesFactoryTests {
     assertThat(createdEngine).isSameAs(mockEngine);
     var capturedConfig = argCaptor.getValue();
     assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", FAKE_TYPESCRIPT_PATH.toString());
-    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.APEX, Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON, Language.SECRETS, Language.TS);
+    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.APEX, Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON, Language.SECRETS, Language.TS, Language.XML);
   }
 
   @Test
@@ -123,7 +123,8 @@ class EnginesFactoryTests {
       Language.PHP,
       Language.PYTHON,
       Language.SECRETS,
-      Language.TS
+      Language.TS,
+      Language.XML
     );
   }
 

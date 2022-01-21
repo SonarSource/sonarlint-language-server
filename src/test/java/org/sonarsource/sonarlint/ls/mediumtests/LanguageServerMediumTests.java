@@ -266,6 +266,21 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  void analyzeSimpleXmlFileOnOpen() throws Exception {
+    var uri = getUri("analyzeSimpleXmlFileOnOpen.xml");
+
+    var diagnostics = didOpenAndWaitForDiagnostics(uri, "xml", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<root>\n" +
+            "  <!-- TODO Add content -->\n" +
+            "</root>\n");
+
+    assertThat(diagnostics)
+            .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+            .containsExactly(
+                    tuple(2, 2, 2, 27, "xml:S1135", "sonarlint", "Complete the task associated to this \"TODO\" comment.", DiagnosticSeverity.Hint));
+  }
+
+  @Test
   void delayAnalysisOnChange() throws Exception {
     var uri = getUri("foo.js");
 
@@ -466,7 +481,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void testListAllRules() throws Exception {
     var result = lsProxy.listAllRules().join();
-    assertThat(result).containsOnlyKeys("HTML", "JavaScript", "TypeScript", "PHP", "Python", "Java");
+    assertThat(result).containsOnlyKeys("HTML", "JavaScript", "TypeScript", "PHP", "Python", "Java", "XML");
 
     assertThat(result.get("HTML"))
       .extracting(Rule::getKey, Rule::getName, Rule::isActiveByDefault)
