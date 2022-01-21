@@ -128,11 +128,12 @@ public abstract class AbstractLanguageServerMediumTests {
     var php = fullPathToJar("php");
     var py = fullPathToJar("python");
     var html = fullPathToJar("html");
+    var xml = fullPathToJar("xml");
 
     var serverStdOut = new ByteArrayOutputStream();
     var serverStdErr = new ByteArrayOutputStream();
     try {
-      new ServerMain(new PrintStream(serverStdOut), new PrintStream(serverStdErr)).startLanguageServer("" + port, "-analyzers", java, js, php, py, html);
+      new ServerMain(new PrintStream(serverStdOut), new PrintStream(serverStdErr)).startLanguageServer("" + port, "-analyzers", java, js, php, py, html, xml);
     } catch (Exception e) {
       e.printStackTrace();
       future.get(1, TimeUnit.SECONDS);
