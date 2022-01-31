@@ -68,7 +68,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @BeforeAll
-  public static void initialize() throws Exception {
+  static void initialize() throws Exception {
     var fakeTypeScriptProjectPath = Paths.get("src/test/resources/fake-ts-project").toAbsolutePath();
 
     initialize(Map.of(
@@ -76,12 +76,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
       "productVersion", "0.1",
-      "additionalAttributes", Map.of("extra", "value")
-    ));
+      "additionalAttributes", Map.of("extra", "value")));
   }
 
   @BeforeEach
-  public void prepare() {
+  void prepare() {
     client.isIgnoredByScm = false;
   }
 
@@ -270,14 +269,14 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("analyzeSimpleXmlFileOnOpen.xml");
 
     var diagnostics = didOpenAndWaitForDiagnostics(uri, "xml", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<root>\n" +
-            "  <!-- TODO Add content -->\n" +
-            "</root>\n");
+      "<root>\n" +
+      "  <!-- TODO Add content -->\n" +
+      "</root>\n");
 
     assertThat(diagnostics)
-            .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-            .containsExactly(
-                    tuple(2, 2, 2, 27, "xml:S1135", "sonarlint", "Complete the task associated to this \"TODO\" comment.", DiagnosticSeverity.Hint));
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(2, 2, 2, 27, "xml:S1135", "sonarlint", "Complete the task associated to this \"TODO\" comment.", DiagnosticSeverity.Hint));
   }
 
   @Test

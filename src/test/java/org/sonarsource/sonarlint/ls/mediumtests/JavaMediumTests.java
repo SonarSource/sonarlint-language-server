@@ -43,12 +43,11 @@ import static org.awaitility.Awaitility.await;
 class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @BeforeAll
-  public static void initialize() throws Exception {
+  static void initialize() throws Exception {
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
-      "productVersion", "0.1"
-    ));
+      "productVersion", "0.1"));
   }
 
   @Test

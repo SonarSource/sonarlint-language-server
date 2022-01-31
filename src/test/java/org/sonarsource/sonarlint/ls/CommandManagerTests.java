@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.CodeActionContext;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Diagnostic;
@@ -37,13 +38,12 @@ import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sonar.api.server.rule.RuleParamType;
-import org.sonar.api.server.rule.RulesDefinition;
-import org.sonarsource.sonarlint.core.client.api.common.ClientInputFileEdit;
-import org.sonarsource.sonarlint.core.client.api.common.QuickFix;
-import org.sonarsource.sonarlint.core.client.api.common.TextEdit;
-import org.sonarsource.sonarlint.core.client.api.common.TextRange;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
+import org.sonarsource.sonarlint.core.analysis.api.Flow;
+import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
+import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
+import org.sonarsource.sonarlint.core.analysis.api.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
@@ -54,6 +54,8 @@ import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetail
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.core.container.standalone.rule.DefaultStandaloneRuleParam;
+import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamDefinition;
+import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamType;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
@@ -247,7 +249,7 @@ class CommandManagerTests {
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
-    var flow = mock(Issue.Flow.class);
+    var flow = mock(Flow.class);
     var flows = List.of(flow);
     var issue = mock(Issue.class);
     when(issue.flows()).thenReturn(flows);
@@ -266,6 +268,8 @@ class CommandManagerTests {
 
   @Test
   void openRuleDescriptionForBoundProject() {
+    var connectionId = "connId";
+    when(mockBinding.getConnectionId()).thenReturn(connectionId);
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
     var ruleDetails = mock(ConnectedRuleDetails.class);
     when(ruleDetails.getKey()).thenReturn(FAKE_RULE_KEY);
@@ -274,7 +278,8 @@ class CommandManagerTests {
     when(ruleDetails.getExtendedDescription()).thenReturn("");
     when(ruleDetails.getType()).thenReturn("Type");
     when(ruleDetails.getSeverity()).thenReturn("Severity");
-    when(mockConnectedEngine.getActiveRuleDetails(FAKE_RULE_KEY, "projectKey")).thenReturn(ruleDetails);
+    when(bindingManager.getServerConfigurationFor(connectionId)).thenReturn(mock(ServerConnectionSettings.EndpointParamsAndHttpClient.class));
+    when(mockConnectedEngine.getActiveRuleDetails(null, null, FAKE_RULE_KEY, "projectKey")).thenReturn(CompletableFuture.completedFuture(ruleDetails));
     underTest.executeCommand(
       new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, List.of(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
       NOP_CANCEL_TOKEN);
@@ -284,8 +289,11 @@ class CommandManagerTests {
 
   @Test
   void throwIfUnknownRuleForBoundProject() {
+    var connectionId = "connId";
+    when(mockBinding.getConnectionId()).thenReturn(connectionId);
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
-    when(mockConnectedEngine.getActiveRuleDetails(FAKE_RULE_KEY, "projectKey")).thenThrow(new IllegalArgumentException());
+    when(bindingManager.getServerConfigurationFor(connectionId)).thenReturn(mock(ServerConnectionSettings.EndpointParamsAndHttpClient.class));
+    when(mockConnectedEngine.getActiveRuleDetails(null, null, FAKE_RULE_KEY, "projectKey")).thenThrow(new IllegalArgumentException());
 
     var params = new ExecuteCommandParams(
       SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
@@ -302,9 +310,9 @@ class CommandManagerTests {
     when(ruleDetails.getHtmlDescription()).thenReturn("Desc");
     when(ruleDetails.getType()).thenReturn("Type");
     when(ruleDetails.getSeverity()).thenReturn("Severity");
-    var apiParam = mock(RulesDefinition.Param.class);
+    var apiParam = mock(SonarLintRuleParamDefinition.class);
     when(apiParam.name()).thenReturn("intParam");
-    when(apiParam.type()).thenReturn(RuleParamType.INTEGER);
+    when(apiParam.type()).thenReturn(SonarLintRuleParamType.INTEGER);
     when(apiParam.description()).thenReturn("An integer parameter");
     when(apiParam.defaultValue()).thenReturn("42");
     List<StandaloneRuleParam> params = List.of(new DefaultStandaloneRuleParam(apiParam));

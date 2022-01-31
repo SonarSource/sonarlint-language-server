@@ -21,9 +21,9 @@ package org.sonarsource.sonarlint.ls.progress;
 
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.client.api.common.ProgressMonitor;
+import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
 
-public class SubProgressMonitor extends ProgressMonitor implements ProgressFacade {
+public class SubProgressMonitor implements ClientProgressMonitor, ProgressFacade {
 
   private final LSProgressMonitor parent;
   private final String title;
@@ -46,7 +46,7 @@ public class SubProgressMonitor extends ProgressMonitor implements ProgressFacad
   }
 
   @Override
-  public ProgressMonitor asCoreMonitor() {
+  public ClientProgressMonitor asCoreMonitor() {
     return this;
   }
 
@@ -82,6 +82,11 @@ public class SubProgressMonitor extends ProgressMonitor implements ProgressFacad
   @Override
   public void setFraction(float fraction) {
     sendReport(null, 100.0f * fraction);
+  }
+
+  @Override
+  public void setIndeterminate(boolean b) {
+    // Unsupported
   }
 
   void sendReport(@Nullable String message, @Nullable Float percentage) {

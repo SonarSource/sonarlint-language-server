@@ -19,112 +19,39 @@
  */
 package org.sonarsource.sonarlint.ls.log;
 
-import java.time.Clock;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.util.List;
-import org.eclipse.lsp4j.MessageActionItem;
-import org.eclipse.lsp4j.MessageParams;
-import org.eclipse.lsp4j.MessageType;
-import org.eclipse.lsp4j.ShowMessageRequestParams;
-import org.eclipse.lsp4j.services.LanguageClient;
-import org.sonarsource.sonarlint.core.client.api.common.LogOutput;
-import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
-import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
-import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
+import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 
-import static java.time.temporal.ChronoField.HOUR_OF_DAY;
-import static java.time.temporal.ChronoField.MILLI_OF_SECOND;
-import static java.time.temporal.ChronoField.MINUTE_OF_HOUR;
-import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
+public class LanguageClientLogOutput implements ClientLogOutput {
 
-/**
- * Used by the language server
- */
-public class LanguageClientLogOutput implements LogOutput, WorkspaceSettingsChangeListener {
+  private final LanguageClientLogger lsLogger;
+  private final boolean isFromAnalysis;
 
-  static final String SHOW_SONARLINT_OUTPUT_ACTION = "Show SonarLint Output";
-  static final String NODE_COMMAND_EXCEPTION = "NodeCommandException";
-  private static final DateTimeFormatter LOG_DATE_FORMAT = new DateTimeFormatterBuilder()
-    .appendValue(HOUR_OF_DAY, 2)
-    .appendLiteral(':')
-    .appendValue(MINUTE_OF_HOUR, 2)
-    .appendLiteral(':')
-    .appendValue(SECOND_OF_MINUTE, 2)
-    .appendLiteral('.')
-    .appendValue(MILLI_OF_SECOND, 3)
-    .toFormatter();
-
-  private final LanguageClient client;
-  private final Clock clock;
-  private boolean showAnalyzerLogs;
-  private boolean showVerboseLogs;
-  private final InheritableThreadLocal<Boolean> isAnalysis = new InheritableThreadLocal<Boolean>() {
-    @Override
-    protected Boolean initialValue() {
-      return false;
-    }
-  };
-
-  public LanguageClientLogOutput(LanguageClient client) {
-    this(client, Clock.systemDefaultZone());
-  }
-
-  // Visible for testing
-  LanguageClientLogOutput(LanguageClient client, Clock clock) {
-    this.client = client;
-    this.clock = clock;
+  public LanguageClientLogOutput(LanguageClientLogger lsLogger, boolean isFromAnalysis) {
+    this.lsLogger = lsLogger;
+    this.isFromAnalysis = isFromAnalysis;
   }
 
   @Override
   public void log(String formattedMessage, Level level) {
-    if (formattedMessage.contains(NODE_COMMAND_EXCEPTION)) {
-      var params = getShowMessageRequestParams();
-      client.showMessageRequest(params).thenAccept(action -> ((SonarLintExtendedLanguageClient) client).showSonarLintOutput());
-      client.logMessage(new MessageParams(MessageType.Log, addPrefixIfNeeded(level, formattedMessage)));
-    }
-    if ((!isAnalysis.get() || showAnalyzerLogs) && (showVerboseLogs || (level != Level.DEBUG && level != Level.TRACE))) {
-      client.logMessage(new MessageParams(MessageType.Log, addPrefixIfNeeded(level, formattedMessage)));
-    }
-  }
-
-  static ShowMessageRequestParams getShowMessageRequestParams() {
-    var actionItem = new MessageActionItem(SHOW_SONARLINT_OUTPUT_ACTION);
-    var params = new ShowMessageRequestParams(List.of(actionItem));
-    params.setType(MessageType.Error);
-    params.setMessage("JS/TS analysis failed. Please check the SonarLint Output for more details.");
-    return params;
-  }
-
-  private String addPrefixIfNeeded(Level level, String formattedMessage) {
     switch (level) {
       case ERROR:
-        return prefix("Error", formattedMessage);
+        lsLogger.error(formattedMessage, isFromAnalysis);
+        break;
       case WARN:
-        return prefix("Warn ", formattedMessage);
+        lsLogger.warn(formattedMessage, isFromAnalysis);
+        break;
       case INFO:
-        return prefix("Info ", formattedMessage);
+        lsLogger.info(formattedMessage, isFromAnalysis);
+        break;
       case DEBUG:
-        return prefix("Debug", formattedMessage);
+        lsLogger.debug(formattedMessage, isFromAnalysis);
+        break;
       case TRACE:
-        return prefix("Trace", formattedMessage);
+        lsLogger.trace(formattedMessage, isFromAnalysis);
+        break;
+      default:
+        throw new IllegalStateException("Unexpected level: " + level);
     }
-    throw new IllegalStateException("Unexpected level: " + level);
-  }
-
-  private String prefix(String prefix, String formattedMessage) {
-    return "[" + prefix + " - " + LocalTime.now(clock).format(LOG_DATE_FORMAT) + "] " + formattedMessage;
-  }
-
-  @Override
-  public void onChange(WorkspaceSettings oldValue, WorkspaceSettings newValue) {
-    this.showVerboseLogs = newValue.showVerboseLogs();
-    this.showAnalyzerLogs = newValue.showAnalyzerLogs();
-  }
-
-  public void setAnalysis(boolean isAnalysis) {
-    this.isAnalysis.set(isAnalysis);
   }
 
 }

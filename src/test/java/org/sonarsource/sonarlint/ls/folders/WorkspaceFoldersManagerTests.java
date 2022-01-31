@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonar.api.utils.log.LogTesterJUnit5;
+import org.sonarsource.sonarlint.ls.SonarLintLogTester;
 
 import static java.net.URI.create;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,7 +39,7 @@ import static org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager.isAnc
 class WorkspaceFoldersManagerTests {
 
   @RegisterExtension
-  LogTesterJUnit5 logTester = new LogTesterJUnit5();
+  SonarLintLogTester logTester = new SonarLintLogTester();
 
   private final WorkspaceFoldersManager underTest = new WorkspaceFoldersManager();
 

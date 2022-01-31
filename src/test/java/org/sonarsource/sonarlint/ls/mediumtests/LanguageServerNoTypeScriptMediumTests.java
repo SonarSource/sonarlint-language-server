@@ -35,13 +35,12 @@ import static org.awaitility.Awaitility.await;
 class LanguageServerNoTypeScriptMediumTests extends AbstractLanguageServerMediumTests {
 
   @BeforeAll
-  public static void initialize() throws Exception {
+  static void initialize() throws Exception {
     initialize(Map.ofEntries(
       // Missing "typeScriptLocation"
       Map.entry("telemetryStorage", "not/exists"),
       Map.entry("productName", "SLCORE tests"),
-      Map.entry("productVersion", "0.1")
-    ));
+      Map.entry("productVersion", "0.1")));
   }
 
   @Test

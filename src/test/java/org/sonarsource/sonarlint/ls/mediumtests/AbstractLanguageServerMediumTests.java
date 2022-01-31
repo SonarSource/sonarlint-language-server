@@ -20,13 +20,13 @@
 package org.sonarsource.sonarlint.ls.mediumtests;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -102,7 +102,7 @@ public abstract class AbstractLanguageServerMediumTests {
   protected static FakeLanguageClient client;
 
   @BeforeAll
-  public static void startServer() throws Exception {
+  static void startServer() throws Exception {
     System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
     serverSocket = new ServerSocket(0);
     var port = serverSocket.getLocalPort();
@@ -146,8 +146,8 @@ public abstract class AbstractLanguageServerMediumTests {
     lsProxy = future.get();
   }
 
-  private static String fullPathToJar(String jarName) throws Exception {
-    return new File(String.format("target/plugins/%s.jar", jarName)).getAbsoluteFile().toURI().toURL().toString();
+  private static String fullPathToJar(String jarName) {
+    return Paths.get("target/plugins").resolve(jarName + ".jar").toAbsolutePath().toString();
   }
 
   protected static void initialize(Map<String, Object> initializeOptions, WorkspaceFolder... initFolders) throws InterruptedException, ExecutionException {
@@ -178,7 +178,7 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   @BeforeEach
-  public void cleanup() throws InterruptedException {
+  void cleanup() throws InterruptedException {
     // Reset state on LS side
     client.clear();
 
@@ -193,7 +193,7 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   @AfterEach
-  public final void closeFiles() throws InterruptedException {
+  final void closeFiles() throws InterruptedException {
     // Close all opened files
     for (var uri : toBeClosed) {
       client.diagnosticsLatch = new CountDownLatch(1);
@@ -429,7 +429,7 @@ public abstract class AbstractLanguageServerMediumTests {
     assertThat(ruleConfigs.length % 2).withFailMessage("ruleConfigs must contain 'rule:key', 'level' pairs").isZero();
     var rules = new Map.Entry[ruleConfigs.length / 2];
     for (var i = 0; i < ruleConfigs.length; i += 2) {
-      rules[i / 2] =  Map.entry(ruleConfigs[i], Map.of("level", ruleConfigs[i + 1]));
+      rules[i / 2] = Map.entry(ruleConfigs[i], Map.of("level", ruleConfigs[i + 1]));
     }
     return Map.ofEntries(rules);
   }

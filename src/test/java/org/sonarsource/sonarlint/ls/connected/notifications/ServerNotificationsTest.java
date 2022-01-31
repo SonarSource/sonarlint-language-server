@@ -19,7 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls.connected.notifications;
 
-
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -30,14 +29,13 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.sonarsource.sonarlint.core.client.api.common.LogOutput;
 import org.sonarsource.sonarlint.core.container.model.DefaultServerNotification;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -60,7 +58,7 @@ class ServerNotificationsTest {
 
   private final SonarLintTelemetry telemetry = mock(SonarLintTelemetry.class);
 
-  private final LanguageClientLogOutput output = mock(LanguageClientLogOutput.class);
+  private final LanguageClientLogger output = mock(LanguageClientLogger.class);
 
   private final ApacheHttpClient httpClient = mock(ApacheHttpClient.class);
 
@@ -102,7 +100,7 @@ class ServerNotificationsTest {
     var newFolderSettings2 = new WorkspaceFolderSettings(connectionId, projectKey, Collections.emptyMap(), null);
     underTest.onChange(folder2, null, newFolderSettings2);
 
-    verify(output, times(1)).log("Enabling notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
+    verify(output, times(1)).debug("Enabling notifications for project 'projectKey' on connection 'connectionId'");
     verify(workspaceFoldersManager).getAll();
   }
 
@@ -126,8 +124,8 @@ class ServerNotificationsTest {
     var newFolderSettings2 = new WorkspaceFolderSettings(connectionId, projectKey2, Collections.emptyMap(), null);
     underTest.onChange(folder2, null, newFolderSettings2);
 
-    verify(output, times(1)).log("Enabling notifications for project 'projectKey1' on connection 'connectionId'", LogOutput.Level.DEBUG);
-    verify(output, times(1)).log("Enabling notifications for project 'projectKey2' on connection 'connectionId'", LogOutput.Level.DEBUG);
+    verify(output, times(1)).debug("Enabling notifications for project 'projectKey1' on connection 'connectionId'");
+    verify(output, times(1)).debug("Enabling notifications for project 'projectKey2' on connection 'connectionId'");
     verify(workspaceFoldersManager).getAll();
   }
 
@@ -145,12 +143,12 @@ class ServerNotificationsTest {
     var newFolderSettings1 = new WorkspaceFolderSettings(connectionId, projectKey, Collections.emptyMap(), null);
     underTest.onChange(folder, null, newFolderSettings1);
 
-    verify(output, times(1)).log("Enabling notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
+    verify(output, times(1)).debug("Enabling notifications for project 'projectKey' on connection 'connectionId'");
 
     var newFolderSettings2 = new WorkspaceFolderSettings("otherConnectionId", projectKey, Collections.emptyMap(), null);
     underTest.onChange(folder, newFolderSettings1, newFolderSettings2);
 
-    verify(output, times(1)).log("De-registering notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
+    verify(output, times(1)).debug("De-registering notifications for project 'projectKey' on connection 'connectionId'");
     verify(workspaceFoldersManager).getAll();
   }
 
@@ -176,7 +174,7 @@ class ServerNotificationsTest {
     when(workspaceFoldersManager.getAll()).thenReturn(Collections.singleton(folder));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings2);
 
-    verify(output, times(1)).log("Enabling notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
+    verify(output, times(1)).debug("Enabling notifications for project 'projectKey' on connection 'connectionId'");
     verify(workspaceFoldersManager, times(2)).getAll();
   }
 
@@ -223,8 +221,8 @@ class ServerNotificationsTest {
     when(newWorkspaceSettings2.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings2);
 
-    verify(output, times(1)).log("De-registering notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
-    verify(output, times(2)).log("Enabling notifications for project 'projectKey' on connection 'connectionId'", LogOutput.Level.DEBUG);
+    verify(output, times(1)).debug("De-registering notifications for project 'projectKey' on connection 'connectionId'");
+    verify(output, times(2)).debug("Enabling notifications for project 'projectKey' on connection 'connectionId'");
     verify(workspaceFoldersManager, times(2)).getAll();
   }
 

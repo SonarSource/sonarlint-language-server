@@ -30,10 +30,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.client.api.common.TextRange;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.IssueLocation;
+import org.sonarsource.sonarlint.core.analysis.api.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueLocation;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
 import org.sonarsource.sonarlint.ls.LocalCodeFile;
@@ -109,7 +109,7 @@ public final class ShowAllLocationsCommand {
   static class Flow {
     private final List<Location> locations;
 
-    private Flow(Issue.Flow flow) {
+    private Flow(org.sonarsource.sonarlint.core.analysis.api.Flow flow) {
       this.locations = flow.locations().stream().map(Location::new).collect(Collectors.toList());
     }
 

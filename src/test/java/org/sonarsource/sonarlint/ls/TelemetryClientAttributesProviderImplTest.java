@@ -46,7 +46,7 @@ class TelemetryClientAttributesProviderImplTest {
   private Map<String, Object> additionalAttributes;
 
   @BeforeEach
-  public void init() {
+  void init() {
     var nodeJsRuntime = mock(NodeJsRuntime.class);
     when(nodeJsRuntime.nodeVersion()).thenReturn("nodeVersion");
     var settingsManager = mock(SettingsManager.class);

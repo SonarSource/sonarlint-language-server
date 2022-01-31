@@ -20,20 +20,20 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.io.PrintStream;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.shaded.org.apache.commons.io.output.ByteArrayOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 
 class ServerMainTests {
 
+  private static final String INVALID_PATH = "\0invalid?;path\n";
   private final ByteArrayOutputStream out = new ByteArrayOutputStream();
   private final ByteArrayOutputStream err = new ByteArrayOutputStream();
   private ServerMain underTest = new ServerMain(new PrintStream(out), new PrintStream(err));
@@ -54,8 +54,8 @@ class ServerMainTests {
     assertThat(thrown).hasMessage("exit called");
     assertThat(err.toString(StandardCharsets.UTF_8))
       .isEqualTo("Usage: java -jar sonarlint-server.jar <jsonRpcPort> " +
-              "[-analyzers file:///path/to/analyzer1.jar [file:///path/to/analyzer2.jar] ...] " +
-              "[-extraAnalyzers file:///path/to/analyzer3.jar [file:///path/to/analyzer4.jar] ...]" + System.lineSeparator());
+        "[-analyzers path/to/analyzer1.jar [path/to/analyzer2.jar] ...] " +
+        "[-extraAnalyzers path/to/analyzer3.jar [path/to/analyzer4.jar] ...]" + System.lineSeparator());
   }
 
   @Test
@@ -71,72 +71,70 @@ class ServerMainTests {
   }
 
   @Test
-  void testInvalidPluginURL() {
+  void testInvalidPluginPath() {
 
     var thrown = assertThrows(RuntimeException.class, () -> {
-      underTest.startLanguageServer("1", "-analyzers", "http/invalid");
+      underTest.startLanguageServer("1", "-analyzers", INVALID_PATH);
     });
 
     assertThat(thrown).hasMessage("exit called");
     assertThat(err.toString(StandardCharsets.UTF_8))
-      .contains("Invalid argument at position 3. Expected an URL.");
+      .contains("Invalid argument at position 3. Expected a path.");
   }
 
   @Test
-  void testInvalidExtraPluginURL() {
+  void testInvalidExtraPluginPath() {
 
     var thrown = assertThrows(RuntimeException.class, () -> {
-      underTest.startLanguageServer("1", "-analyzers", "http://analyzer.jar", "-extraAnalyzers", "http/invalid");
+      underTest.startLanguageServer("1", "-analyzers", "folder/analyzer1.jar", "-extraAnalyzers", INVALID_PATH);
     });
 
     assertThat(thrown).hasMessage("exit called");
     assertThat(err.toString(StandardCharsets.UTF_8))
-      .contains("Invalid argument at position 5. Expected an URL.");
+      .contains("Invalid argument at position 5. Expected a path.");
   }
 
   @Test
   void testExtractingAnalyzersPositive() {
-    var args = new String[]{"-analyzers", "http://url1.jar", "http://url2.jar"};
-    var urls = underTest.extractAnalyzers(args);
-    assertThat(urls).extracting(URL::getProtocol, URL::getHost)
-            .containsExactly(tuple("http", "url1.jar"), tuple("http", "url2.jar"));
+    var args = new String[] {"-analyzers", "folder/analyzer1.jar", "folder/analyzer2.jar"};
+    var paths = underTest.extractAnalyzers(args);
+    assertThat(paths).containsExactly(Paths.get("folder/analyzer1.jar"), Paths.get("folder/analyzer2.jar"));
   }
 
   @Test
   void testExtractingAnalyzersExitsIfNoKey() {
-    var args = new String[]{"http://url1.jar", "http://url2.jar"};
+    var args = new String[] {"folder/analyzer1.jar", "folder/analyzer2.jar"};
 
-    assertThrows(RuntimeException.class, ()-> underTest.extractAnalyzers(args));
+    assertThrows(RuntimeException.class, () -> underTest.extractAnalyzers(args));
   }
 
   @Test
-  void testExtractingAnalyzersExitsOnMalformedUrl() {
-    var args = new String[]{"-analyzers", "url1"};
+  void testExtractingAnalyzersExitsOnMalformedPath() {
+    var args = new String[] {"-analyzers", INVALID_PATH};
 
-    assertThrows(RuntimeException.class, ()-> underTest.extractAnalyzers(args));
+    assertThrows(RuntimeException.class, () -> underTest.extractAnalyzers(args));
   }
 
   @Test
   void testExtractingExtraAnalyzersPositive() {
-    var args = new String[]{"-extraAnalyzers", "http://url1.jar", "http://url2.jar"};
-    var urls = underTest.extractExtraAnalyzers(args);
-    assertThat(urls).extracting(URL::getProtocol, URL::getHost)
-            .containsExactly(tuple("http", "url1.jar"), tuple("http", "url2.jar"));
+    var args = new String[] {"-extraAnalyzers", "folder/analyzer1.jar", "folder/analyzer2.jar"};
+    var paths = underTest.extractExtraAnalyzers(args);
+    assertThat(paths).containsExactly(Paths.get("folder/analyzer1.jar"), Paths.get("folder/analyzer2.jar"));
   }
 
   @Test
   void testExtractingExtraAnalyzersReturnsEmptyListIfNoKey() {
-    var args = new String[]{"http://url1.jar", "http://url2.jar"};
+    var args = new String[] {"folder/analyzer1.jar", "folder/analyzer2.jar"};
 
-    var urls = underTest.extractExtraAnalyzers(args);
-    assertThat(urls).isEmpty();
+    var paths = underTest.extractExtraAnalyzers(args);
+    assertThat(paths).isEmpty();
   }
 
   @Test
-  void testExtractingExtraAnalyzersExitsOnMalformedUrl() {
-    var args = new String[]{"-extraAnalyzers", "url1"};
+  void testExtractingExtraAnalyzersExitsOnMalformedPaths() {
+    var args = new String[] {"-extraAnalyzers", INVALID_PATH};
 
-    assertThrows(RuntimeException.class, ()-> underTest.extractExtraAnalyzers(args));
+    assertThrows(RuntimeException.class, () -> underTest.extractExtraAnalyzers(args));
   }
 
 }
