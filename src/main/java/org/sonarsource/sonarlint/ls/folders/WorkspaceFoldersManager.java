@@ -34,14 +34,13 @@ import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 
 import static java.net.URI.create;
 
 public class WorkspaceFoldersManager {
 
-  private static final Logger LOG = Loggers.get(WorkspaceFoldersManager.class);
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private final Map<URI, WorkspaceFolderWrapper> folders = new ConcurrentHashMap<>();
   private final List<WorkspaceFolderLifecycleListener> listeners = new ArrayList<>();

@@ -20,7 +20,7 @@
 package org.sonarsource.sonarlint.ls.progress;
 
 import java.util.function.Consumer;
-import org.sonarsource.sonarlint.core.client.api.common.ProgressMonitor;
+import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
 
 public class NoOpProgressFacade implements ProgressFacade {
 
@@ -30,7 +30,7 @@ public class NoOpProgressFacade implements ProgressFacade {
   }
 
   @Override
-  public ProgressMonitor asCoreMonitor() {
+  public ClientProgressMonitor asCoreMonitor() {
     return null;
   }
 

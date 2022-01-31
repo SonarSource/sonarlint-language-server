@@ -19,28 +19,26 @@
  */
 package org.sonarsource.sonarlint.ls.folders;
 
+import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.branches.ServerBranch;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.git.GitUtils;
 
-import javax.annotation.CheckForNull;
-import javax.annotation.Nullable;
-import java.net.URI;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
-
 public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleListener {
 
-  private static final Logger LOG = Loggers.get(WorkspaceFolderBranchManager.class);
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private final Map<URI, String> localBranchNameByFolderUri;
   private final Map<URI, String> referenceBranchNameByFolderUri;

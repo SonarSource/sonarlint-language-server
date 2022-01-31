@@ -26,8 +26,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.Utils;
 import org.sonarsource.sonarlint.ls.file.FileLanguageCache;
@@ -36,7 +35,7 @@ import static java.util.Optional.empty;
 import static java.util.Optional.ofNullable;
 
 public class JavaConfigCache {
-  private static final Logger LOG = Loggers.get(JavaConfigCache.class);
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
   private final SonarLintExtendedLanguageClient client;
   private final FileLanguageCache fileLanguageCache;
   public final Map<URI, Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse>> javaConfigPerFileURI = new ConcurrentHashMap<>();

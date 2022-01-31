@@ -39,12 +39,12 @@ import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpHeaders;
 import org.apache.hc.core5.http2.HttpVersionPolicy;
 import org.apache.hc.core5.reactor.IOReactorConfig;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.commons.http.HttpClient;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 
-public class ApacheHttpClient implements org.sonarsource.sonarlint.core.serverapi.HttpClient {
+public class ApacheHttpClient implements HttpClient {
 
-  private static final Logger LOG = Loggers.get(ApacheHttpClient.class);
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private static final String USER_AGENT = "SonarLint VSCode";
 

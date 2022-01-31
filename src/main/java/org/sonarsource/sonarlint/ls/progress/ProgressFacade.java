@@ -22,14 +22,14 @@ package org.sonarsource.sonarlint.ls.progress;
 import java.util.function.Consumer;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.client.api.common.ProgressMonitor;
+import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
 
 public interface ProgressFacade {
 
   void end(@Nullable String message);
 
   @CheckForNull
-  ProgressMonitor asCoreMonitor();
+  ClientProgressMonitor asCoreMonitor();
 
   void doInSubProgress(String title, float fraction, Consumer<ProgressFacade> subRunnable);
 

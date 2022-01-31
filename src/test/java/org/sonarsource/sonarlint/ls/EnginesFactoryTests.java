@@ -26,15 +26,14 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.sonarsource.sonarlint.core.client.api.common.Language;
-import org.sonarsource.sonarlint.core.client.api.common.ModulesProvider;
+import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
+import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
-import static java.net.URI.create;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doReturn;
@@ -48,7 +47,8 @@ class EnginesFactoryTests {
 
   @BeforeEach
   void prepare() throws Exception {
-    underTest = new EnginesFactory(List.of(create("file://plugin1.jar").toURL(), create("file://plugin2.jar").toURL()), mock(LanguageClientLogOutput.class), mock(NodeJsRuntime.class), mock(ModulesProvider.class), Collections.emptyList());
+    underTest = new EnginesFactory(List.of(Paths.get("plugin1.jar"), Paths.get("plugin2.jar")), mock(LanguageClientLogOutput.class),
+      mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
     underTest = spy(underTest);
   }
 
@@ -65,7 +65,8 @@ class EnginesFactoryTests {
     assertThat(createdEngine).isSameAs(mockEngine);
     var capturedConfig = argCaptor.getValue();
     assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", FAKE_TYPESCRIPT_PATH.toString());
-    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PYTHON, Language.SECRETS, Language.TS, Language.XML);
+    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PYTHON, Language.SECRETS, Language.TS,
+      Language.XML);
   }
 
   @Test
@@ -96,7 +97,8 @@ class EnginesFactoryTests {
     assertThat(createdEngine).isSameAs(mockEngine);
     var capturedConfig = argCaptor.getValue();
     assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", FAKE_TYPESCRIPT_PATH.toString());
-    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.APEX, Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON, Language.SECRETS, Language.TS, Language.XML);
+    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.APEX, Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON,
+      Language.SECRETS, Language.TS, Language.XML);
   }
 
   @Test
@@ -124,8 +126,7 @@ class EnginesFactoryTests {
       Language.PYTHON,
       Language.SECRETS,
       Language.TS,
-      Language.XML
-    );
+      Language.XML);
   }
 
   @Test

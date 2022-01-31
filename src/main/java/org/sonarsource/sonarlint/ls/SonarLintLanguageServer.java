@@ -25,8 +25,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Collections;
@@ -64,7 +64,7 @@ import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
-import org.sonar.api.utils.log.Loggers;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.SecurityHotspotsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
@@ -76,6 +76,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersProvider;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
@@ -112,7 +113,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
    */
   private TraceValues traceLevel;
 
-  SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<URL> analyzers, Collection<URL> extraAnalyzers) {
+  SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers, Collection<Path> extraAnalyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
     var launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
       .setLocalService(this)
@@ -124,15 +125,16 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
     this.client = launcher.getRemoteProxy();
     this.httpClient = ApacheHttpClient.create();
-    var lsLogOutput = new LanguageClientLogOutput(this.client);
-    Loggers.setTarget(lsLogOutput);
+    var lsLogOutput = new LanguageClientLogger(this.client);
+    var globalLogOutput = new LanguageClientLogOutput(lsLogOutput, false);
+    SonarLintLogger.setTarget(globalLogOutput);
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.progressManager = new ProgressManager(client);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClient);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
     var fileTypeClassifier = new FileTypeClassifier(fileLanguageCache);
     var javaConfigCache = new JavaConfigCache(client, fileLanguageCache);
-    this.enginesFactory = new EnginesFactory(analyzers, lsLogOutput, nodeJsRuntime,
+    this.enginesFactory = new EnginesFactory(analyzers, globalLogOutput, nodeJsRuntime,
       new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, javaConfigCache), extraAnalyzers);
     this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
     this.settingsManager.addListener(lsLogOutput);
@@ -159,7 +161,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     launcher.startListening();
   }
 
-  static void bySocket(int port, Collection<URL> analyzers, Collection<URL> extraAnalyzers) throws IOException {
+  static void bySocket(int port, Collection<Path> analyzers, Collection<Path> extraAnalyzers) throws IOException {
     var socket = new Socket("localhost", port);
     new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers, extraAnalyzers);
   }
@@ -215,7 +217,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var classLoader = ClassLoader.getSystemClassLoader();
     try (var is = classLoader.getResourceAsStream(fileName)) {
       try (var isr = new InputStreamReader(is, StandardCharsets.UTF_8);
-           var reader = new BufferedReader(isr)) {
+        var reader = new BufferedReader(isr)) {
         return reader.lines().findFirst().orElse(null);
       }
     } catch (IOException e) {

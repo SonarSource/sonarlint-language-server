@@ -19,30 +19,27 @@
  */
 package org.sonarsource.sonarlint.ls.git;
 
-import java.util.Collections;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.errors.IncorrectObjectTypeException;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
-import org.sonarsource.sonarlint.core.serverapi.branches.ServerBranch;
-
-
-import javax.annotation.CheckForNull;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.annotation.CheckForNull;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.errors.IncorrectObjectTypeException;
+import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.core.serverapi.branches.ServerBranch;
 
 public class GitUtils {
 
@@ -52,7 +49,7 @@ public class GitUtils {
     // util class
   }
 
-  private static final Logger LOG = Loggers.get(GitUtils.class);
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   public static List<String> getCommitNamesForRef(String branchName, Git git) {
     var commitNames = new ArrayList<String>();

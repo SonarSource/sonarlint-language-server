@@ -25,14 +25,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 import org.sonar.api.batch.fs.InputFile;
-import org.sonarsource.sonarlint.core.client.api.common.ClientFileSystem;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.ClientModuleFileSystem;
 import org.sonarsource.sonarlint.ls.folders.InFolderClientInputFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 
-public class FolderFileSystem implements ClientFileSystem {
+public class FolderFileSystem implements ClientModuleFileSystem {
   private final JavaConfigCache javaConfigCache;
   private final FileTypeClassifier fileTypeClassifier;
   private final WorkspaceFolderWrapper folder;

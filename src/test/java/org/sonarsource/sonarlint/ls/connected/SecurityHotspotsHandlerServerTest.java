@@ -41,7 +41,7 @@ import org.sonarsource.sonarlint.core.serverapi.hotspot.HotspotApi;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspot;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,7 +58,7 @@ class SecurityHotspotsHandlerServerTest {
   private SecurityHotspotsHandlerServer server;
   private final ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
   private final SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
-  private final LanguageClientLogOutput output = mock(LanguageClientLogOutput.class);
+  private final LanguageClientLogger output = mock(LanguageClientLogger.class);
   private final SonarLintTelemetry telemetry = mock(SonarLintTelemetry.class);
   private final HotspotApi hotspotApi = mock(HotspotApi.class);
 

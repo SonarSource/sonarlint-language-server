@@ -26,7 +26,7 @@ import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.sonarsource.sonarlint.core.NodeJsHelper;
-import org.sonarsource.sonarlint.core.client.api.common.Version;
+import org.sonarsource.sonarlint.core.commons.Version;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 public class NodeJsRuntime {

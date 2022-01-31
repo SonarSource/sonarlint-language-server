@@ -46,7 +46,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.serverapi.HttpClient.Response;
+import org.sonarsource.sonarlint.core.commons.http.HttpClient;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -147,7 +147,7 @@ class ApacheHttpClientTest {
     List<Object> result = new ArrayList<>();
     Thread t = new Thread(() -> {
       try {
-        Response httpResponse = response.get();
+        HttpClient.Response httpResponse = response.get();
         result.add(httpResponse);
       } catch (Exception e) {
         result.add(e);

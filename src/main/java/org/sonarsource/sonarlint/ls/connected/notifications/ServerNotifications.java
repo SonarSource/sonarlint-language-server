@@ -28,7 +28,6 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
-import org.sonarsource.sonarlint.core.client.api.common.LogOutput;
 import org.sonarsource.sonarlint.core.client.api.common.NotificationConfiguration;
 import org.sonarsource.sonarlint.core.client.api.notifications.LastNotificationTime;
 import org.sonarsource.sonarlint.core.client.api.notifications.ServerNotification;
@@ -38,7 +37,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
@@ -52,14 +51,14 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
   private final SonarLintExtendedLanguageClient client;
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final SonarLintTelemetry telemetry;
-  private final LanguageClientLogOutput logOutput;
+  private final LanguageClientLogger logOutput;
 
   private final Map<String, ServerConnectionSettings> connections;
   private final Map<String, Map<String, NotificationConfiguration>> configurationsByProjectKeyByConnectionId;
   private final ServerNotificationsRegistry serverNotificationsRegistry;
 
   public ServerNotifications(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager workspaceFoldersManager,
-      SonarLintTelemetry telemetry, LanguageClientLogOutput output) {
+    SonarLintTelemetry telemetry, LanguageClientLogger output) {
     this.client = client;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.telemetry = telemetry;
@@ -94,12 +93,9 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
 
   @Override
   public void onChange(@CheckForNull WorkspaceFolderWrapper folder, @CheckForNull WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
-    if (oldValue != null && (
-        !newValue.hasBinding() ||
-        !connections.containsKey(newValue.getConnectionId()) ||
-        connections.get(newValue.getConnectionId()).isDevNotificationsDisabled()
-      )
-    ) {
+    if (oldValue != null && (!newValue.hasBinding() ||
+      !connections.containsKey(newValue.getConnectionId()) ||
+      connections.get(newValue.getConnectionId()).isDevNotificationsDisabled())) {
       // Project is now unbound, or bound to a server that has dev notifications disabled => unregister matching config if exists
       unregisterConfigurationIfExists(oldValue.getConnectionId(), oldValue.getProjectKey());
     }
@@ -112,7 +108,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
   private void unregisterConfigurationIfExists(@Nullable String oldConnectionId, @Nullable String oldProjectKey) {
     var configsForOldConnectionId = configurationsByProjectKeyByConnectionId.get(oldConnectionId);
     if (configsForOldConnectionId != null && configsForOldConnectionId.containsKey(oldProjectKey)) {
-      logDebugMessage(String.format("De-registering notifications for project '%s' on connection '%s'", oldProjectKey, oldConnectionId));
+      logOutput.debug(String.format("De-registering notifications for project '%s' on connection '%s'", oldProjectKey, oldConnectionId));
       var config = configsForOldConnectionId.remove(oldProjectKey);
       serverNotificationsRegistry.remove(config.listener());
     }
@@ -120,11 +116,11 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
 
   private void registerConfigurationIfNeeded(String connectionId, String projectKey) {
     if (!alreadyHasConfiguration(connectionId, projectKey)) {
-      if(!connections.containsKey(connectionId) || connections.get(connectionId).isDevNotificationsDisabled()) {
+      if (!connections.containsKey(connectionId) || connections.get(connectionId).isDevNotificationsDisabled()) {
         // Connection is unknown, or has notifications disabled - do nothing
         return;
       }
-      logDebugMessage(String.format("Enabling notifications for project '%s' on connection '%s'", projectKey, connectionId));
+      logOutput.debug(String.format("Enabling notifications for project '%s' on connection '%s'", projectKey, connectionId));
       var newConfiguration = newNotificationConfiguration(connections.get(connectionId), projectKey);
       serverNotificationsRegistry.register(newConfiguration);
       configurationsByProjectKeyByConnectionId.computeIfAbsent(connectionId, k -> new HashMap<>()).put(projectKey, newConfiguration);
@@ -135,7 +131,6 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
     return configurationsByProjectKeyByConnectionId.containsKey(connectionId) && configurationsByProjectKeyByConnectionId.get(connectionId).containsKey(projectKey);
   }
 
-
   private NotificationConfiguration newNotificationConfiguration(ServerConnectionSettings serverConnectionSettings, String projectKey) {
     return new NotificationConfiguration(
       new EventListener(serverConnectionSettings.isSonarCloudAlias()),
@@ -143,10 +138,6 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
       projectKey,
       serverConnectionSettings.getServerConfiguration()::getEndpointParams,
       serverConnectionSettings.getServerConfiguration()::getHttpClient);
-  }
-
-  private void logDebugMessage(String message) {
-    logOutput.log(message, LogOutput.Level.DEBUG);
   }
 
   /**
@@ -171,7 +162,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
       var browseAction = new MessageActionItem("Show on " + label);
       params.setActions(List.of(browseAction, SETTINGS_ACTION));
       client.showMessageRequest(params).thenAccept(action -> {
-        if(browseAction.equals(action)) {
+        if (browseAction.equals(action)) {
           telemetry.devNotificationsClicked(serverNotification.category());
           client.browseTo(serverNotification.link());
         } else if (SETTINGS_ACTION.equals(action)) {

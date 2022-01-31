@@ -48,15 +48,14 @@ import org.apache.hc.core5.net.URIBuilder;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
-import org.sonarsource.sonarlint.core.client.api.common.LogOutput;
+import org.sonarsource.sonarlint.core.commons.http.HttpClient;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
-import org.sonarsource.sonarlint.core.serverapi.HttpClient;
 import org.sonarsource.sonarlint.core.serverapi.ServerApi;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.GetSecurityHotspotRequestParams;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.HotspotApi;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintTelemetry;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 public class SecurityHotspotsHandlerServer {
@@ -66,7 +65,7 @@ public class SecurityHotspotsHandlerServer {
 
   private static final int INVALID_PORT = -1;
 
-  private final LanguageClientLogOutput output;
+  private final LanguageClientLogger output;
   private final ProjectBindingManager bindingManager;
   private final SonarLintExtendedLanguageClient client;
   private final BiFunction<EndpointParams, HttpClient, HotspotApi> hotspotApiFactory;
@@ -75,12 +74,12 @@ public class SecurityHotspotsHandlerServer {
   private HttpServer server;
   private int port;
 
-  public SecurityHotspotsHandlerServer(LanguageClientLogOutput output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client,
-      SonarLintTelemetry telemetry) {
+  public SecurityHotspotsHandlerServer(LanguageClientLogger output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client,
+    SonarLintTelemetry telemetry) {
     this(output, bindingManager, client, telemetry, (e, c) -> new ServerApi(e, c).hotspot());
   }
 
-  SecurityHotspotsHandlerServer(LanguageClientLogOutput output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client,
+  SecurityHotspotsHandlerServer(LanguageClientLogger output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client,
     SonarLintTelemetry telemetry,
     BiFunction<EndpointParams, HttpClient, HotspotApi> hotspotApiFactory) {
     this.output = output;
@@ -98,7 +97,7 @@ public class SecurityHotspotsHandlerServer {
     port = INVALID_PORT;
     var triedPort = STARTING_PORT;
     HttpServer startedServer = null;
-    while(port < 0 && triedPort <= ENDING_PORT) {
+    while (port < 0 && triedPort <= ENDING_PORT) {
       try {
         startedServer = ServerBootstrap.bootstrap()
           .setLocalAddress(InetAddress.getLoopbackAddress())
@@ -111,15 +110,15 @@ public class SecurityHotspotsHandlerServer {
         startedServer.start();
         port = triedPort;
       } catch (Exception t) {
-        output.log("Error while starting port: " + t.getMessage(), LogOutput.Level.DEBUG);
+        output.debug("Error while starting port: " + t.getMessage());
         triedPort++;
       }
     }
     if (port > 0) {
-      output.log("Started security hotspot handler on port " + port, LogOutput.Level.INFO);
+      output.info("Started security hotspot handler on port " + port);
       server = startedServer;
     } else {
-      output.log("Unable to start security hotspot handler", LogOutput.Level.ERROR);
+      output.error("Unable to start security hotspot handler");
       server = null;
     }
   }
@@ -133,7 +132,7 @@ public class SecurityHotspotsHandlerServer {
   }
 
   public void shutdown() {
-    if(isStarted()) {
+    if (isStarted()) {
       server.close(CloseMode.IMMEDIATE);
       port = INVALID_PORT;
     }
@@ -193,13 +192,13 @@ public class SecurityHotspotsHandlerServer {
   }
 
   private class ShowHotspotRequestHandler implements HttpRequestHandler {
-    private final LanguageClientLogOutput output;
+    private final LanguageClientLogger output;
     private final ProjectBindingManager bindingManager;
     private final SonarLintExtendedLanguageClient client;
     private final SonarLintTelemetry telemetry;
 
-    public ShowHotspotRequestHandler(LanguageClientLogOutput output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client,
-        SonarLintTelemetry telemetry) {
+    public ShowHotspotRequestHandler(LanguageClientLogger output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client,
+      SonarLintTelemetry telemetry) {
       this.output = output;
       this.bindingManager = bindingManager;
       this.client = client;
@@ -223,13 +222,12 @@ public class SecurityHotspotsHandlerServer {
         var project = params.get("project");
         var hotspot = params.get("hotspot");
 
-        output.log(String.format("Opening hotspot %s for project %s of server %s", hotspot, project, serverUrl), LogOutput.Level.INFO);
+        output.info(String.format("Opening hotspot %s for project %s of server %s", hotspot, project, serverUrl));
         telemetry.showHotspotRequestReceived();
         var serverSettings = bindingManager.getServerConnectionSettingsForUrl(serverUrl);
         serverSettings.ifPresentOrElse(
           settings -> showHotspot(hotspot, project, settings),
-          () -> showUnknownServer(serverUrl)
-        );
+          () -> showUnknownServer(serverUrl));
         response.setCode(HttpURLConnection.HTTP_OK);
         response.setEntity(new StringEntity("OK"));
       }
