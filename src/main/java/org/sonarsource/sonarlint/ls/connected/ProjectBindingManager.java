@@ -157,23 +157,26 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   void syncStorage() {
     LOG.debug("Synchronizing storage");
+    var projectKeysPerConnectionId = new HashMap<String, Set<String>>();
     forEachBoundFolder((folder, settings) -> {
       var connectionId = requireNonNull(settings.getConnectionId());
+      var projectKey = requireNonNull(settings.getProjectKey());
+      projectKeysPerConnectionId.computeIfAbsent(connectionId, k -> new HashSet<>()).add(projectKey);
+    });
+    projectKeysPerConnectionId.forEach((connectionId, projectKeys) -> getStartedConnectedEngine(connectionId)
+      .ifPresent(engine -> syncOneEngine(connectionId, projectKeys, engine)));
+  }
+
+  private void syncOneEngine(String connectionId, Set<String> projectKeys, ConnectedSonarLintEngine engine) {
+    try {
       var paramsAndHttpClient = getServerConfigurationFor(connectionId);
       if (paramsAndHttpClient == null) {
         return;
       }
-      getStartedConnectedEngine(connectionId)
-        .ifPresent(engine -> {
-          var projectKey = requireNonNull(settings.getProjectKey());
-          try {
-            // FIXME we should group by projectKey for the same connection
-            engine.sync(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), Set.of(projectKey), null);
-          } catch (Exception e) {
-            LOG.error("Error while synchronizing storage", e);
-          }
-        });
-    });
+      engine.sync(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKeys, null);
+    } catch (Exception e) {
+      LOG.error("Error while synchronizing storage", e);
+    }
   }
 
   @CheckForNull
@@ -262,7 +265,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private boolean hasAnyBindingThatMatch(Predicate<ServerConnectionSettings> predicate) {
     return Stream.concat(folderBindingCache.values().stream(), fileBindingCache.values().stream())
-      .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
+      .flatMap(Optional::stream)
       .map(binding -> settingsManager.getCurrentSettings().getServerConnections().get(binding.getConnectionId()))
       .anyMatch(predicate);
   }
