@@ -45,6 +45,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.eclipse.lsp4j.MessageParams;
@@ -82,7 +83,6 @@ import static java.util.function.Predicate.not;
 public class ProjectBindingManager implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
 
   private static final SonarLintLogger LOG = SonarLintLogger.get();
-  private static final long ONE_DAY = 24L * 60L * 60L * 1000L;
 
   private final WorkspaceFoldersManager foldersManager;
   private final SettingsManager settingsManager;
@@ -93,13 +93,14 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final LanguageClient client;
   private final EnginesFactory enginesFactory;
   private AnalysisManager analysisManager;
+  private final long syncPeriod;
   private final Timer bindingUpdatesCheckerTimer = new Timer("Binding updates checker");
   private Function<URI, String> getReferenceBranchNameForFolder;
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClient client,
     ProgressManager progressManager) {
     this(enginesFactory, foldersManager, settingsManager, client, progressManager, new ConcurrentHashMap<>());
-    bindingUpdatesCheckerTimer.scheduleAtFixedRate(new BindingUpdatesCheckerTask(), 10 * 1000L, ONE_DAY);
+    bindingUpdatesCheckerTimer.scheduleAtFixedRate(new BindingUpdatesCheckerTask(), 10 * 1000L, syncPeriod);
   }
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClient client,
@@ -110,6 +111,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     this.client = client;
     this.progressManager = progressManager;
     this.folderBindingCache = folderBindingCache;
+    this.syncPeriod = Long.parseLong(StringUtils.defaultIfBlank(System.getenv("SONARLINT_INTERNAL_SYNC_PERIOD"), "3600")) * 1000;
   }
 
   // Can't use constructor injection because of cyclic dependency
