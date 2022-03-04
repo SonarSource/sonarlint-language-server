@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.lsp4j.MessageParams;
@@ -577,8 +578,10 @@ class ProjectBindingManagerTests {
 
     verify(fakeEngine).update(any(), any(), any());
     verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any(), any());
+    verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
     verify(fakeEngine2).update(any(), any(), any());
     verify(fakeEngine2).updateProject(any(), any(), eq(PROJECT_KEY2), anyBoolean(), any(), any());
+    verify(fakeEngine2).sync(any(), any(), eq(Set.of(PROJECT_KEY2)), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
@@ -602,8 +605,10 @@ class ProjectBindingManagerTests {
 
     verify(fakeEngine).update(any(), any(), any());
     verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any(), any());
+    verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
     verify(fakeEngine2).update(any(), any(), any());
     verify(fakeEngine2).updateProject(any(), any(), eq(PROJECT_KEY2), anyBoolean(), any(), any());
+    verify(fakeEngine2).sync(any(), any(), eq(Set.of(PROJECT_KEY2)), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
@@ -627,6 +632,7 @@ class ProjectBindingManagerTests {
     verify(fakeEngine).update(any(), any(), any());
     verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any(), any());
     verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY2), anyBoolean(), any(), any());
+    verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY, PROJECT_KEY2)), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
@@ -649,6 +655,7 @@ class ProjectBindingManagerTests {
 
     verify(fakeEngine).update(any(), any(), any());
     verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any(), any());
+    verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);

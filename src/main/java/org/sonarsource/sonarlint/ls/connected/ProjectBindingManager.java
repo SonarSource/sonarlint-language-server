@@ -166,16 +166,16 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       projectKeysPerConnectionId.computeIfAbsent(connectionId, k -> new HashSet<>()).add(projectKey);
     });
     projectKeysPerConnectionId.forEach((connectionId, projectKeys) -> getStartedConnectedEngine(connectionId)
-      .ifPresent(engine -> syncOneEngine(connectionId, projectKeys, engine)));
+      .ifPresent(engine -> syncOneEngine(connectionId, projectKeys, engine, null)));
   }
 
-  private void syncOneEngine(String connectionId, Set<String> projectKeys, ConnectedSonarLintEngine engine) {
+  private void syncOneEngine(String connectionId, Set<String> projectKeys, ConnectedSonarLintEngine engine, @Nullable ProgressFacade progress) {
     try {
       var paramsAndHttpClient = getServerConfigurationFor(connectionId);
       if (paramsAndHttpClient == null) {
         return;
       }
-      engine.sync(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKeys, null);
+      engine.sync(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKeys, progress != null ? progress.asCoreMonitor() : null);
     } catch (Exception e) {
       LOG.error("Error while synchronizing storage", e);
     }
@@ -281,8 +281,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       unbind(folder);
     } else if (newValue.hasBinding()
       && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
-      forceRebindDuringNextAnalysis(folder);
-    }
+        forceRebindDuringNextAnalysis(folder);
+      }
   }
 
   private void forceRebindDuringNextAnalysis(@Nullable WorkspaceFolderWrapper folder) {
@@ -439,10 +439,12 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         failedConnectionIds.add(connectionId);
         return;
       }
-      subProgress.doInSubProgress("Update global storage", 0.5f, s -> updateGlobalStorageAndLogResults(
+      subProgress.doInSubProgress("Update global storage", 0.33f, s -> updateGlobalStorageAndLogResults(
         endpointParamsAndHttpClient, engineOpt.get(), failedConnectionIds, connectionId, s));
-      subProgress.doInSubProgress("Update projects storages", 0.5f, s -> tryUpdateBoundProjectsStorage(
+      subProgress.doInSubProgress("Update projects storages", 0.33f, s -> tryUpdateBoundProjectsStorage(
         projectKeys, endpointParamsAndHttpClient, engineOpt.get(), s));
+      subProgress.doInSubProgress("Sync projects storages", 0.33f, s -> syncOneEngine(
+        connectionId, projectKeys, engineOpt.get(), s));
     });
   }
 
