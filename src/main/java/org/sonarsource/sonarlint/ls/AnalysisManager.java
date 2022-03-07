@@ -29,10 +29,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -40,6 +41,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -89,14 +91,22 @@ import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.plugin.api.module.file.ModuleFileEvent;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
-import static java.util.Collections.singleton;
+import static java.util.List.copyOf;
+import static java.util.Optional.empty;
+import static java.util.Optional.ofNullable;
+import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.mapping;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.sonarsource.sonarlint.ls.Utils.pluralize;
 
 public class AnalysisManager implements WorkspaceSettingsChangeListener, WorkspaceFolderLifecycleListener {
 
-  private static final int DELAY_MS = 500;
+  private static final int DEFAULT_TIMER_MS = 2000;
   private static final int QUEUE_POLLING_PERIOD_MS = 200;
 
   private static final String SECURITY_REPOSITORY_HINT = "security";
@@ -196,7 +206,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     fileLanguageCache.put(fileUri, languageId);
     fileContentPerFileURI.put(fileUri, fileContent);
     knownVersionPerFileURI.put(fileUri, version);
-    analyzeAsync(fileUri, true);
+    analyzeAsync(List.of(fileUri), true);
   }
 
   public void didChange(URI fileUri, String fileContent, int version) {
@@ -251,16 +261,18 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     }
 
     private void checkTimers() {
-      var t = System.currentTimeMillis();
+      var now = System.currentTimeMillis();
 
       var it = eventMap.entrySet().iterator();
+      var filesToTrigger = new ArrayList<URI>();
       while (it.hasNext()) {
         var e = it.next();
-        if (e.getValue() + DELAY_MS < t) {
-          analyzeAsync(e.getKey(), false);
+        if (e.getValue() + DEFAULT_TIMER_MS < now) {
+          filesToTrigger.add(e.getKey());
           it.remove();
         }
       }
+      analyzeAsync(filesToTrigger, false);
     }
   }
 
@@ -280,72 +292,208 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
 
   public void didSave(URI fileUri, String fileContent) {
     fileContentPerFileURI.put(fileUri, fileContent);
-    analyzeAsync(fileUri, false);
+    analyzeAsync(List.of(fileUri), false);
   }
 
-  void analyzeAsync(URI fileUri, boolean shouldFetchServerIssues) {
-    if (!fileUri.getScheme().equalsIgnoreCase("file")) {
-      lsLogOutput.warn(format("URI '%s' is not a file, analysis not supported", fileUri));
+  void analyzeAsync(List<URI> fileUris, boolean shouldFetchServerIssues) {
+    var trueFileUris = fileUris.stream().filter(fileUri -> {
+      if (!fileUri.getScheme().equalsIgnoreCase("file")) {
+        lsLogOutput.warn(format("URI '%s' is not a file, analysis not supported", fileUri));
+        return false;
+      }
+      return true;
+    }).collect(toList());
+    if (trueFileUris.isEmpty()) {
       return;
     }
-    lsLogOutput.debug(format("Queuing analysis of file '%s'", fileUri));
-    analysisExecutor.execute(() -> analyze(fileUri, shouldFetchServerIssues));
+    if (trueFileUris.size() == 1) {
+      lsLogOutput.debug(format("Queuing analysis of file '%s'", trueFileUris.get(0)));
+    } else {
+      lsLogOutput.debug(format("Queuing analysis of %d files", trueFileUris.size()));
+    }
+    analysisExecutor.execute(() -> analyze(trueFileUris, shouldFetchServerIssues));
   }
 
-  private void analyze(URI fileUri, boolean shouldFetchServerIssues) {
-    final var javaConfigOpt = javaConfigCache.getOrFetch(fileUri);
-    if (fileLanguageCache.isJava(fileUri) && javaConfigOpt.isEmpty()) {
-      lsLogOutput.debug(format("Skipping analysis of Java file '%s' because SonarLint was unable to query project configuration (classpath, source level, ...)", fileUri));
-      return;
-    }
+  private void analyze(List<URI> fileUris, boolean shouldFetchServerIssues) {
+    var filesToAnalyze = new HashSet<>(fileUris);
+
+    var scmIgnored = filesToAnalyze.stream()
+      .filter(this::scmIgnored)
+      .collect(toSet());
+
+    scmIgnored.forEach(f -> {
+      lsLogOutput.debug(format("Skip analysis for SCM ignored file: '%s'", f));
+      clearDiagnostics(f);
+    });
+
+    filesToAnalyze.removeAll(scmIgnored);
+
+    // Preserve the file content in a Map, to avoid race condition if file is closed while the analysis is running
+    var fileContentCache = fileContentPerFileURI.entrySet()
+      .stream()
+      .filter(e -> filesToAnalyze.contains(e.getKey()) && e.getValue() != null)
+      .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+
+    var filesWithNoContent = new HashSet<>(filesToAnalyze);
+    filesWithNoContent.removeAll(fileContentCache.keySet());
+
+    filesWithNoContent.forEach(f -> {
+      lsLogOutput.debug(format("Skipping analysis of file '%s', content has disappeared", f));
+      clearDiagnostics(f);
+    });
+
+    filesToAnalyze.removeAll(filesWithNoContent);
+
+    var filesToAnalyzePerFolder = filesToAnalyze.stream().collect(groupingBy(workspaceFoldersManager::findFolderForFile));
+    filesToAnalyzePerFolder.entrySet()
+      .forEach(e -> analyze(e.getKey(), e.getValue(), fileContentCache, shouldFetchServerIssues));
+  }
+
+  private void clearDiagnostics(URI f) {
+    taintVulnerabilitiesPerFile.remove(f);
+    issuesPerIdPerFileURI.remove(f);
+    client.publishDiagnostics(newPublishDiagnostics(f));
+  }
+
+  private boolean scmIgnored(URI fileUri) {
     var isIgnored = filesIgnoredByScmCache.isIgnored(fileUri).orElse(false);
     if (Boolean.TRUE.equals(isIgnored)) {
       lsLogOutput.debug(format("Skip analysis for SCM ignored file: '%s'", fileUri));
+      return true;
+    }
+    return false;
+  }
+
+  private void analyze(Optional<WorkspaceFolderWrapper> workspaceFolder, List<URI> filesToAnalyze, Map<URI, String> filesContents, boolean shouldFetchServerIssues) {
+    if (workspaceFolder.isPresent()) {
+      // We can only have the same binding for a given folder
+      var binding = bindingManager.getBinding(workspaceFolder.get());
+      analyze(workspaceFolder, binding, filesToAnalyze, filesContents, shouldFetchServerIssues);
+    } else {
+      // Files outside a folder can possibly have a different binding, so fork one analysis per binding
+      // TODO is it really possible to have different settings (=binding) for files outside workspace folder
+      filesToAnalyze.stream().collect(groupingBy(bindingManager::getBinding))
+        .forEach((binding, files) -> analyze(empty(), binding, files, filesContents, shouldFetchServerIssues));
+    }
+  }
+
+  private void analyze(Optional<WorkspaceFolderWrapper> workspaceFolder, Optional<ProjectBindingWrapper> binding, List<URI> filesToAnalyze, Map<URI, String> filesContents,
+    boolean shouldFetchServerIssues) {
+    var javaFiles = filesToAnalyze.stream().filter(fileLanguageCache::isJava).collect(toList());
+    var javaFilesWithConfig = new HashMap<URI, GetJavaConfigResponse>();
+
+    javaFiles.forEach(f -> {
+      var javaConfigOpt = javaConfigCache.getOrFetch(f);
+      if (javaConfigOpt.isEmpty()) {
+        lsLogOutput.debug(format("Skipping analysis of Java file '%s' because SonarLint was unable to query project configuration (classpath, source level, ...)", f));
+        clearDiagnostics(f);
+      } else {
+        javaFilesWithConfig.put(f, javaConfigOpt.get());
+      }
+    });
+    var nonJavaFiles = filesToAnalyze.stream().filter(not(fileLanguageCache::isJava)).collect(toList());
+
+    if (nonJavaFiles.isEmpty() && javaFilesWithConfig.isEmpty()) {
       return;
     }
 
-    if (knownVersionPerFileURI.containsKey(fileUri)) {
-      analyzedVersionPerFileURI.put(fileUri, knownVersionPerFileURI.get(fileUri));
+    // We need to run one separate analysis per Java module. Analyze non Java files with the first Java module, if any
+    var javaFilesByProjectRoot = javaFilesWithConfig.entrySet().stream().collect(groupingBy(e -> e.getValue().getProjectRoot(), mapping(Entry::getKey, toSet())));
+    if (javaFilesByProjectRoot.isEmpty()) {
+      analyzeSingleModule(workspaceFolder, binding, nonJavaFiles, filesContents, javaFilesWithConfig, shouldFetchServerIssues);
+    } else {
+      var isFirst = true;
+      for (var javaFilesForSingleProjectRoot : javaFilesByProjectRoot.values()) {
+        if (isFirst) {
+          analyzeSingleModule(workspaceFolder, binding, join(nonJavaFiles, javaFilesForSingleProjectRoot), filesContents, javaFilesWithConfig, shouldFetchServerIssues);
+        } else {
+          analyzeSingleModule(workspaceFolder, binding, copyOf(javaFilesForSingleProjectRoot), filesContents, javaFilesWithConfig, shouldFetchServerIssues);
+        }
+        isFirst = false;
+      }
     }
+  }
 
-    var content = fileContentPerFileURI.get(fileUri);
-    if (content == null) {
-      lsLogOutput.debug(format("Skipping analysis of file '%s', content has disappeared", fileUri));
-      return;
-    }
-    var newIssuesPerId = new HashMap<String, Issue>();
-    issuesPerIdPerFileURI.put(fileUri, newIssuesPerId);
-    taintVulnerabilitiesPerFile.put(fileUri, new ArrayList<>());
+  private static <G> List<G> join(Collection<G> left, Collection<G> right) {
+    return Stream.concat(left.stream(), right.stream()).collect(toList());
+  }
 
-    var workspaceFolder = workspaceFoldersManager.findFolderForFile(fileUri);
-
+  /**
+   * Here we have only files from the same folder, same binding, same Java module, so we can run the analysis engine.
+   */
+  private void analyzeSingleModule(Optional<WorkspaceFolderWrapper> workspaceFolder, Optional<ProjectBindingWrapper> binding, List<URI> filesToAnalyze,
+    Map<URI, String> filesContents, Map<URI, GetJavaConfigResponse> javaConfigs, boolean shouldFetchServerIssues) {
     var settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
       .orElse(settingsManager.getCurrentDefaultFolderSettings());
 
     var baseDirUri = workspaceFolder.map(WorkspaceFolderWrapper::getUri)
-      // Default to take file parent dir if file is not part of any workspace
-      .orElse(Paths.get(fileUri).getParent().toUri());
+      // if files are not part of any workspace folder, take the common ancestor of all files (assume all files will have the same root)
+      .orElse(findCommonPrefix(filesToAnalyze.stream().map(Paths::get).collect(toList())).toUri());
+
+    var nonExcludedFiles = Set.copyOf(filesToAnalyze);
+    if (binding.isPresent()) {
+      var connectedEngine = binding.get().getEngine();
+      var excludedByServerConfiguration = connectedEngine.getExcludedFiles(binding.get().getBinding(),
+        filesToAnalyze,
+        uri -> getFileRelativePath(Paths.get(baseDirUri), uri),
+        uri -> fileTypeClassifier.isTest(settings, uri, javaConfigCache.getOrFetch(uri)));
+      excludedByServerConfiguration.forEach(f -> {
+        lsLogOutput.debug(format("Skip analysis of file '%s' excluded by server configuration", f));
+        nonExcludedFiles.remove(f);
+        clearDiagnostics(f);
+      });
+    }
+
+    if (!nonExcludedFiles.isEmpty()) {
+      analyzeSingleModuleNonExcluded(settings, binding, nonExcludedFiles, baseDirUri, filesContents, javaConfigs, shouldFetchServerIssues);
+    }
+
+  }
+
+  private static Path findCommonPrefix(List<Path> paths) {
+    Path currentPrefixCandidate = paths.get(0).getParent();
+    while (currentPrefixCandidate.getNameCount() > 0 && !isPrefixForAll(currentPrefixCandidate, paths)) {
+      currentPrefixCandidate = currentPrefixCandidate.getParent();
+    }
+    return currentPrefixCandidate;
+  }
+
+  private static boolean isPrefixForAll(Path prefixCandidate, Collection<Path> paths) {
+    return paths.stream().allMatch(p -> p.startsWith(prefixCandidate));
+  }
+
+  private void analyzeSingleModuleNonExcluded(WorkspaceFolderSettings settings, Optional<ProjectBindingWrapper> binding,
+    Set<URI> filesToAnalyze, URI baseDirUri, Map<URI, String> filesContents, Map<URI, GetJavaConfigResponse> javaConfigs, boolean shouldFetchServerIssues) {
+    if (filesToAnalyze.size() == 1) {
+      lsLogOutput.info(format("Analyzing file '%s'...", filesToAnalyze.iterator().next()));
+    } else {
+      lsLogOutput.info(format("Analyzing %d files...", filesToAnalyze.size()));
+    }
+
+    filesToAnalyze.forEach(fileUri -> {
+      // Remember last document version that have been analyzed, to later ensure quick fixes consistency
+      if (knownVersionPerFileURI.containsKey(fileUri)) {
+        analyzedVersionPerFileURI.put(fileUri, knownVersionPerFileURI.get(fileUri));
+      }
+
+      if (!binding.isPresent()) {
+        // Clear taint vulnerabilities if the folder was previously bound and just now changed to standalone
+        taintVulnerabilitiesPerFile.remove(fileUri);
+      }
+
+      // FIXME SLVSCODE-250 we should not clear issues if the file have parsing errors
+      issuesPerIdPerFileURI.remove(fileUri);
+    });
 
     var issueListener = createIssueListener();
 
-    var binding = bindingManager.getBinding(fileUri);
     AnalysisResultsWrapper analysisResults;
+    var filesSuccessfullyAnalyzed = new HashSet<>(filesToAnalyze);
     try {
       if (binding.isPresent()) {
-        var connectedEngine = binding.get().getEngine();
-        if (!connectedEngine.getExcludedFiles(binding.get().getBinding(),
-          singleton(fileUri),
-          uri -> getFileRelativePath(Paths.get(baseDirUri), uri),
-          uri -> fileTypeClassifier.isTest(settings, uri, javaConfigOpt))
-          .isEmpty()) {
-          lsLogOutput.debug(format("Skip analysis of excluded file: %s", fileUri));
-          return;
-        }
-        lsLogOutput.info(format("Analyzing file '%s'...", fileUri));
-        analysisResults = analyzeConnected(binding.get(), settings, baseDirUri, fileUri, content, issueListener, shouldFetchServerIssues, javaConfigOpt);
+        analysisResults = analyzeConnected(binding.get(), settings, baseDirUri, filesToAnalyze, filesContents, javaConfigs, issueListener, shouldFetchServerIssues);
       } else {
-        lsLogOutput.info(format("Analyzing file '%s'...", fileUri));
-        analysisResults = analyzeStandalone(settings, baseDirUri, fileUri, content, issueListener, javaConfigOpt);
+        analysisResults = analyzeStandalone(settings, baseDirUri, filesToAnalyze, filesContents, javaConfigs, issueListener);
       }
       SkippedPluginsNotifier.notifyOnceForSkippedPlugins(analysisResults.results, analysisResults.allPlugins, client);
 
@@ -358,18 +506,23 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       analysisResults.results.failedAnalysisFiles().stream()
         .map(ClientInputFile::getClientObject)
         .map(URI.class::cast)
-        .forEach(issuesPerIdPerFileURI::remove);
+        .forEach(filesSuccessfullyAnalyzed::remove);
     } catch (Exception e) {
       lsLogOutput.error("Analysis failed.", e);
+      return;
     }
 
-    // Check if file has not being closed during the analysis
-    if (fileContentPerFileURI.containsKey(fileUri)) {
-      var foundIssues = newIssuesPerId.size();
-      lsLogOutput.info(format("Found %s %s", foundIssues, pluralize(foundIssues, "issue")));
-      client.publishDiagnostics(newPublishDiagnostics(fileUri));
-      telemetry.addReportedRules(collectAllRuleKeys());
-    }
+    var totalIssueCount = new AtomicInteger();
+    filesSuccessfullyAnalyzed.forEach(f -> {
+      // Check if file has not being closed during the analysis
+      if (fileContentPerFileURI.containsKey(f)) {
+        var foundIssues = issuesPerIdPerFileURI.getOrDefault(f, emptyMap()).size();
+        totalIssueCount.addAndGet(foundIssues);
+        client.publishDiagnostics(newPublishDiagnostics(f));
+        telemetry.addReportedRules(collectAllRuleKeys());
+      }
+    });
+    lsLogOutput.info(format("Found %s %s", totalIssueCount.get(), pluralize(totalIssueCount.get(), "issue")));
   }
 
   private Set<String> collectAllRuleKeys() {
@@ -460,21 +613,24 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     }
   }
 
-  private AnalysisResultsWrapper analyzeStandalone(WorkspaceFolderSettings settings, URI baseDirUri, URI uri, String content, IssueListener issueListener,
-    Optional<GetJavaConfigResponse> javaConfigOpt) {
+  private AnalysisResultsWrapper analyzeStandalone(WorkspaceFolderSettings settings, URI baseDirUri, Set<URI> filesToAnalyze, Map<URI, String> filesContents,
+    Map<URI, GetJavaConfigResponse> javaConfigs, IssueListener issueListener) {
     var baseDir = Paths.get(baseDirUri);
-    var configuration = StandaloneAnalysisConfiguration.builder()
+    var configurationBuilder = StandaloneAnalysisConfiguration.builder()
       .setBaseDir(baseDir)
       .setModuleKey(baseDirUri)
-      .addInputFiles(new AnalysisClientInputFile(uri, getFileRelativePath(baseDir, uri), content, fileTypeClassifier.isTest(settings, uri, javaConfigOpt),
-        fileLanguageCache.getLanguageFor(uri)))
       .putAllExtraProperties(settings.getAnalyzerProperties())
-      .putAllExtraProperties(configureJavaProperties(uri))
+      .putAllExtraProperties(configureJavaProperties(filesToAnalyze, javaConfigs))
       .addExcludedRules(settingsManager.getCurrentSettings().getExcludedRules())
       .addIncludedRules(settingsManager.getCurrentSettings().getIncludedRules())
-      .addRuleParameters(settingsManager.getCurrentSettings().getRuleParameters())
-      .build();
-    lsLogOutput.debug(format("Analysis triggered on '%s' with configuration:%n%s", uri, configuration.toString()));
+      .addRuleParameters(settingsManager.getCurrentSettings().getRuleParameters());
+    filesToAnalyze.forEach(f -> configurationBuilder
+      .addInputFiles(
+        new AnalysisClientInputFile(f, getFileRelativePath(baseDir, f), filesContents.get(f), fileTypeClassifier.isTest(settings, f, ofNullable(javaConfigs.get(f))),
+          fileLanguageCache.getLanguageFor(f))));
+
+    var configuration = configurationBuilder.build();
+    lsLogOutput.debug(format("Analysis triggered with configuration:%n%s", configuration.toString()));
 
     var engine = standaloneEngineManager.getOrCreateStandaloneEngine();
     return analyzeWithTiming(() -> engine.analyze(configuration, issueListener, new LanguageClientLogOutput(lsLogOutput, true), null),
@@ -483,43 +639,48 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       });
   }
 
-  public AnalysisResultsWrapper analyzeConnected(ProjectBindingWrapper binding, WorkspaceFolderSettings settings, URI baseDirUri, URI uri, String content,
-    IssueListener issueListener, boolean shouldFetchServerIssues, Optional<GetJavaConfigResponse> javaConfig) {
+  public AnalysisResultsWrapper analyzeConnected(ProjectBindingWrapper binding, WorkspaceFolderSettings settings, URI baseDirUri, Set<URI> filesToAnalyze,
+    Map<URI, String> filesContents, Map<URI, GetJavaConfigResponse> javaConfigs, IssueListener issueListener, boolean shouldFetchServerIssues) {
     var baseDir = Paths.get(baseDirUri);
-    var configuration = ConnectedAnalysisConfiguration.builder()
+    var configurationBuilder = ConnectedAnalysisConfiguration.builder()
       .setProjectKey(settings.getProjectKey())
       .setBaseDir(baseDir)
       .setModuleKey(baseDirUri)
-      .addInputFile(
-        new AnalysisClientInputFile(uri, getFileRelativePath(baseDir, uri), content, fileTypeClassifier.isTest(settings, uri, javaConfig), fileLanguageCache.getLanguageFor(uri)))
       .putAllExtraProperties(settings.getAnalyzerProperties())
-      .putAllExtraProperties(configureJavaProperties(uri))
-      .build();
+      .putAllExtraProperties(configureJavaProperties(filesToAnalyze, javaConfigs));
+    filesToAnalyze.forEach(f -> configurationBuilder
+      .addInputFiles(
+        new AnalysisClientInputFile(f, getFileRelativePath(baseDir, f), filesContents.get(f), fileTypeClassifier.isTest(settings, f, ofNullable(javaConfigs.get(f))),
+          fileLanguageCache.getLanguageFor(f))));
+
+    var configuration = configurationBuilder.build();
     if (settingsManager.getCurrentSettings().hasLocalRuleConfiguration()) {
       lsLogOutput.debug("Local rules settings are ignored, using quality profile from server");
     }
-    lsLogOutput.debug(format("Analysis triggered on '%s' with configuration:%n%s", uri, configuration.toString()));
-
-    var issues = new LinkedList<Issue>();
+    lsLogOutput.debug(format("Analysis triggered with configuration:%n%s", configuration.toString()));
 
     var engine = binding.getEngine();
-    return analyzeWithTiming(() -> engine.analyze(configuration, issues::add, new LanguageClientLogOutput(lsLogOutput, true), null),
+    var serverIssueTracker = binding.getServerIssueTracker();
+    var issuesPerFiles = new HashMap<URI, List<Issue>>();
+    IssueListener accumulatorIssueListener = i -> issuesPerFiles.computeIfAbsent(i.getInputFile().getClientObject(), uri -> new ArrayList<>()).add(i);
+    return analyzeWithTiming(() -> engine.analyze(configuration, accumulatorIssueListener, new LanguageClientLogOutput(lsLogOutput, true), null),
       engine.getPluginDetails(),
-      () -> {
-        var filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, uri));
-        var serverIssueTracker = binding.getServerIssueTracker();
+      () -> filesToAnalyze.forEach(f -> {
+        var issues = issuesPerFiles.computeIfAbsent(f, uri -> List.of());
+        var filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, f));
         serverIssueTracker.matchAndTrack(filePath, issues, issueListener, shouldFetchServerIssues);
         var serverIssues = engine.getServerIssues(binding.getBinding(), filePath);
 
-        taintVulnerabilitiesPerFile.put(uri, serverIssues.stream()
+        taintVulnerabilitiesPerFile.put(f, serverIssues.stream()
           .filter(it -> it.ruleKey().contains(SECURITY_REPOSITORY_HINT))
           .filter(it -> it.resolution().isEmpty())
           .collect(Collectors.toList()));
-        int foundVulnerabilities = taintVulnerabilitiesPerFile.getOrDefault(uri, Collections.emptyList()).size();
-        if (foundVulnerabilities > 0) {
-          lsLogOutput.info(format("Fetched %s %s from %s", foundVulnerabilities, pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), binding.getConnectionId()));
+        int foundVulnerabilities = taintVulnerabilitiesPerFile.getOrDefault(f, Collections.emptyList()).size();
+        if (foundVulnerabilities > 0 && shouldFetchServerIssues) {
+          lsLogOutput
+            .info(format("Fetched %s %s from %s", foundVulnerabilities, pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), binding.getConnectionId()));
         }
-      });
+      }));
   }
 
   /**
@@ -534,8 +695,14 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     return new AnalysisResultsWrapper(analysisResults, analysisTime, allPlugins);
   }
 
-  private static String getFileRelativePath(Path baseDir, URI uri) {
-    return baseDir.relativize(Paths.get(uri)).toString();
+  private String getFileRelativePath(Path baseDir, URI uri) {
+    try {
+      return baseDir.relativize(Paths.get(uri)).toString();
+    } catch (IllegalArgumentException e) {
+      // Possibly the file has not the same root as baseDir
+      lsLogOutput.debug("Unable to relativize " + uri + " to " + baseDir);
+      return Paths.get(uri).toString();
+    }
   }
 
   static Optional<Diagnostic> convert(Map.Entry<String, Issue> entry) {
@@ -640,10 +807,10 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   private PublishDiagnosticsParams newPublishDiagnostics(URI newUri) {
     var p = new PublishDiagnosticsParams();
 
-    var localDiagnostics = issuesPerIdPerFileURI.getOrDefault(newUri, Collections.emptyMap()).entrySet()
+    var localDiagnostics = issuesPerIdPerFileURI.getOrDefault(newUri, emptyMap()).entrySet()
       .stream()
       .map(AnalysisManager::convert);
-    var taintDiagnostics = taintVulnerabilitiesPerFile.getOrDefault(newUri, Collections.emptyList())
+    var taintDiagnostics = taintVulnerabilitiesPerFile.getOrDefault(newUri, emptyList())
       .stream()
       .map(AnalysisManager::convert);
 
@@ -673,12 +840,15 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   }
 
   public void analyzeAllOpenFilesInFolder(@Nullable WorkspaceFolderWrapper folder) {
-    for (URI fileUri : fileContentPerFileURI.keySet()) {
-      var actualFolder = workspaceFoldersManager.findFolderForFile(fileUri);
-      if (actualFolder.map(f -> f.equals(folder)).orElse(folder == null)) {
-        analyzeAsync(fileUri, false);
-      }
-    }
+    var openedFileUrisInFolder = fileContentPerFileURI.keySet().stream()
+      .filter(fileUri -> belongToFolder(folder, fileUri))
+      .collect(Collectors.toList());
+    analyzeAsync(openedFileUrisInFolder, false);
+  }
+
+  private boolean belongToFolder(WorkspaceFolderWrapper folder, URI fileUri) {
+    var actualFolder = workspaceFoldersManager.findFolderForFile(fileUri);
+    return (actualFolder.map(f -> f.equals(folder)).orElse(folder == null));
   }
 
   @Override
@@ -694,50 +864,69 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   }
 
   private void analyzeAllUnboundOpenFiles() {
-    for (var fileUri : fileContentPerFileURI.keySet()) {
-      if (bindingManager.getBinding(fileUri).isEmpty()) {
-        analyzeAsync(fileUri, false);
-      }
-    }
+    var openedUnboundFileUris = fileContentPerFileURI.keySet().stream()
+      .filter(fileUri -> bindingManager.getBinding(fileUri).isEmpty())
+      .collect(Collectors.toList());
+    analyzeAsync(openedUnboundFileUris, false);
   }
 
   private void analyzeAllOpenJavaFiles() {
-    for (var fileUri : fileContentPerFileURI.keySet()) {
-      if (fileLanguageCache.isJava(fileUri)) {
-        analyzeAsync(fileUri, false);
-      }
-    }
+    var openedJavaFileUris = fileContentPerFileURI.keySet().stream()
+      .filter(fileLanguageCache::isJava)
+      .collect(toList());
+    analyzeAsync(openedJavaFileUris, false);
   }
 
-  private Map<String, String> configureJavaProperties(URI fileUri) {
-    return javaConfigCache.get(fileUri).map(cachedJavaConfig -> {
-      Map<String, String> props = new HashMap<>();
-      var vmLocationStr = cachedJavaConfig.getVmLocation();
-      List<Path> jdkClassesRoots = new ArrayList<>();
-      if (vmLocationStr != null) {
-        var vmLocation = Paths.get(vmLocationStr);
-        jdkClassesRoots = getVmClasspathFromCacheOrCompute(vmLocation);
-        props.put("sonar.java.jdkHome", vmLocationStr);
-      }
-      var classpath = Stream.concat(
-        jdkClassesRoots.stream().map(Path::toAbsolutePath).map(Path::toString),
-        Stream.of(cachedJavaConfig.getClasspath()))
-        .filter(path -> {
-          boolean exists = new File(path).exists();
-          if (!exists) {
-            lsLogOutput.debug(format("Classpath '%s' from configuration does not exist, skipped", path));
-          }
-          return exists;
-        })
-        .collect(joining(","));
-      props.put("sonar.java.source", cachedJavaConfig.getSourceLevel());
-      if (!cachedJavaConfig.isTest()) {
-        props.put("sonar.java.libraries", classpath);
-      } else {
-        props.put("sonar.java.test.libraries", classpath);
-      }
-      return props;
-    }).orElse(emptyMap());
+  private Map<String, String> configureJavaProperties(Set<URI> fileInTheSameModule, Map<URI, GetJavaConfigResponse> javaConfigs) {
+    var partitionMainTest = fileInTheSameModule.stream().filter(javaConfigs::containsKey).collect(groupingBy(f -> javaConfigs.get(f).isTest()));
+    var mainFiles = ofNullable(partitionMainTest.get(false)).orElse(List.of());
+    var testFiles = ofNullable(partitionMainTest.get(true)).orElse(List.of());
+
+    if (mainFiles.isEmpty() && testFiles.isEmpty()) {
+      return Map.of();
+    }
+
+    Map<String, String> props = new HashMap<>();
+
+    // Assume all files in the same module have the same vmLocation
+    var commonConfig = javaConfigs.get(javaConfigs.keySet().iterator().next());
+    var vmLocationStr = commonConfig.getVmLocation();
+    List<Path> jdkClassesRoots = new ArrayList<>();
+    if (vmLocationStr != null) {
+      var vmLocation = Paths.get(vmLocationStr);
+      jdkClassesRoots = getVmClasspathFromCacheOrCompute(vmLocation);
+      props.put("sonar.java.jdkHome", vmLocationStr);
+    }
+
+    // Assume all main files have the same classpath
+    if (!mainFiles.isEmpty()) {
+      var mainConfig = javaConfigs.get(mainFiles.get(0));
+      var classpath = computeClasspathSkipNonExisting(jdkClassesRoots, mainConfig);
+      props.put("sonar.java.libraries", classpath);
+    }
+
+    // Assume all test files have the same classpath
+    if (!testFiles.isEmpty()) {
+      var testConfig = javaConfigs.get(testFiles.get(0));
+      var classpath = computeClasspathSkipNonExisting(jdkClassesRoots, testConfig);
+      props.put("sonar.java.test.libraries", classpath);
+    }
+
+    return props;
+  }
+
+  private String computeClasspathSkipNonExisting(List<Path> jdkClassesRoots, GetJavaConfigResponse testConfig) {
+    return Stream.concat(
+      jdkClassesRoots.stream().map(Path::toAbsolutePath).map(Path::toString),
+      Stream.of(testConfig.getClasspath()))
+      .filter(path -> {
+        boolean exists = new File(path).exists();
+        if (!exists) {
+          lsLogOutput.debug(format("Classpath '%s' from configuration does not exist, skipped", path));
+        }
+        return exists;
+      })
+      .collect(joining(","));
   }
 
   private List<Path> getVmClasspathFromCacheOrCompute(Path vmLocation) {

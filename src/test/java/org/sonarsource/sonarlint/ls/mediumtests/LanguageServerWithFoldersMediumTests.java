@@ -23,65 +23,138 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
+import org.eclipse.lsp4j.DidChangeTextDocumentParams;
+import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
+import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
+import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceFolder;
+import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.awaitility.Awaitility.await;
-import static org.hamcrest.Matchers.equalTo;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumTests {
+
+  @TempDir
+  public static Path folder1BaseDir;
+
+  @TempDir
+  public static Path folder2BaseDir;
 
   @BeforeAll
   public static void initialize() throws Exception {
     var fakeTypeScriptProjectPath = Paths.get("src/test/resources/fake-ts-project").toAbsolutePath();
 
-    client.settingsLatch = new CountDownLatch(1);
-    var folderUri = "file:///init_uri";
-    client.folderSettings.put(folderUri, buildSonarLintSettingsSection("some pattern", null, null, true));
-
     initialize(Map.of(
       "typeScriptLocation", fakeTypeScriptProjectPath.resolve("node_modules").toString(),
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
-      "productVersion", "0.1"
-    ), new WorkspaceFolder(folderUri, "My Folder"));
+      "productVersion", "0.1"), new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
 
-    emulateConfigurationChangeOnClient(null, false, false, false);
-
-    assertTrue(client.settingsLatch.await(5, SECONDS));
   }
 
-  // Override parent to not clear folderSettings
   @Override
-  public void cleanup() throws InterruptedException {
-    // Wait for logs to stop being produced
-    await().during(1, SECONDS).atMost(5, SECONDS).until(() -> {
-      int count = client.logs.size();
-      client.logs.clear();
-      return count;
-    }, equalTo(0));
+  protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
+    folderSettings.put(folder1BaseDir.toUri().toString(), buildSonarLintSettingsSection("**/*Test.js", null, null, true));
+    folderSettings.put(folder2BaseDir.toUri().toString(), buildSonarLintSettingsSection("**/*Test.js", null, null, true));
   }
 
   @Test
-  void analyzeSimpleJsFileOnOpen() throws Exception {
-    emulateConfigurationChangeOnClient("**/*Test.js", true);
+  void analysisShouldUseFolderSettings() throws Exception {
+    // In folder settings, the test pattern is **/*Test.js while in global config we put **/*.js
+    emulateConfigurationChangeOnClient("**/*.js", true);
 
-    var uri = getUri("analyzeSimpleJsFileOnOpen.js");
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
+    var uriInFolder = folder1BaseDir.resolve("inFolder.js").toUri().toString();
+    var diagnosticsInFolder = didOpenAndWaitForDiagnostics(uriInFolder, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
 
-    assertThat(diagnostics)
+    assertThat(diagnosticsInFolder)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
         tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information),
         tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information));
+
+    var uriOutsideFolder = getUri("outsideFolder.js");
+    var diagnosticsOutsideFolder = didOpenAndWaitForDiagnostics(uriOutsideFolder, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
+
+    // File is considered as test file
+    assertThat(diagnosticsOutsideFolder).isEmpty();
+  }
+
+  @Test
+  void shouldBatchAnalysisFromTheSameFolder() throws Exception {
+
+    var file1InFolder = folder1BaseDir.resolve("file1.js").toUri().toString();
+    var file2InFolder = folder1BaseDir.resolve("file2.js").toUri().toString();
+
+    didOpenAndWaitForDiagnostics(file1InFolder, "javascript", "function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}");
+    didOpenAndWaitForDiagnostics(file2InFolder, "javascript", "function foo() {\n  var toto2 = 0;\n  var plouf2 = 0;\n}");
+
+    client.logs.clear();
+
+    client.doAndWaitForDiagnostics(file1InFolder, () -> {
+      client.doAndWaitForDiagnostics(file2InFolder, () -> {
+        // two consecute changes should be batched
+        lsProxy.getTextDocumentService()
+          .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1InFolder, 2),
+            List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}"))));
+        lsProxy.getTextDocumentService()
+          .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder, 2),
+            List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto2 = 0;\n  var plouf2 = 0;\n}"))));
+      });
+    });
+
+    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .containsSubsequence(
+        "[Debug] Queuing analysis of 2 files",
+        "[Info] Analyzing 2 files...",
+        "[Info] Found 4 issues"));
+  }
+
+  @Test
+  void shouldNotBatchAnalysisFromDifferentFolders() throws Exception {
+
+    // Simulate opening of a second workspace folder
+    lsProxy.getWorkspaceService().didChangeWorkspaceFolders(
+      new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folder2BaseDir.toUri().toString(), "My Folder 2")), List.of())));
+
+    var file1InFolder1 = folder1BaseDir.resolve("file1.js").toUri().toString();
+    var file2InFolder2 = folder2BaseDir.resolve("file2.js").toUri().toString();
+
+    didOpenAndWaitForDiagnostics(file1InFolder1, "javascript", "function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}");
+    didOpenAndWaitForDiagnostics(file2InFolder2, "javascript", "function foo() {\n  var toto2 = 0;\n  var plouf2 = 0;\n}");
+
+    client.logs.clear();
+
+    client.doAndWaitForDiagnostics(file1InFolder1, () -> {
+      client.doAndWaitForDiagnostics(file2InFolder2, () -> {
+        // two consecute changes on different folders should not be batched
+        lsProxy.getTextDocumentService()
+          .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1InFolder1, 2),
+            List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}"))));
+        lsProxy.getTextDocumentService()
+          .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder2, 2),
+            List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto2 = 0;\n  var plouf2 = 0;\n}"))));
+      });
+    });
+
+    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .containsSubsequence(
+        "[Debug] Queuing analysis of 2 files",
+        "[Info] Found 2 issues",
+        "[Info] Found 2 issues")
+      // We don't know the order of analysis for the 2 files, so we can't have a single assertion
+      .contains(
+        "[Info] Analyzing file '" + file1InFolder1 + "'...",
+        "[Info] Analyzing file '" + file2InFolder2 + "'..."));
   }
 
 }

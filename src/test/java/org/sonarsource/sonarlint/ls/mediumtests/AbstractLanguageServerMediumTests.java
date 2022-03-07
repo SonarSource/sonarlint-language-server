@@ -183,6 +183,8 @@ public abstract class AbstractLanguageServerMediumTests {
     client.clear();
     toBeClosed.clear();
 
+    setUpFolderSettings(client.folderSettings);
+
     emulateConfigurationChangeOnClient(null, false, false, true);
 
     // Wait for logs to stop being produced
@@ -191,6 +193,10 @@ public abstract class AbstractLanguageServerMediumTests {
       client.logs.clear();
       return count;
     }, equalTo(0));
+  }
+
+  protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
+    // do nothing by default
   }
 
   @AfterEach
@@ -397,7 +403,7 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public CompletableFuture<Void> setReferenceBranchNameForFolder(ReferenceBranchForFolder newReferenceBranch) {
       referenceBranchNameByFolder.put(newReferenceBranch.getFolderUri(), newReferenceBranch.getBranchName());
-      return CompletableFutures.computeAsync(null);
+      return CompletableFuture.completedFuture(null);
     }
   }
 

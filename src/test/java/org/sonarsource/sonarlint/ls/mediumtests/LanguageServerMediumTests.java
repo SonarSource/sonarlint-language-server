@@ -346,13 +346,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("foo.py");
     client.isIgnoredByScm = true;
 
-    lsProxy.getTextDocumentService()
-      .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
+    didOpenAndWaitForDiagnostics(uri, "python", "# Nothing to see here\n");
 
-    await().atMost(1, TimeUnit.MINUTES).untilAsserted(
-      () -> assertThat(client.logs).extracting(withoutTimestamp())
-        .contains("[Debug] Skip analysis for SCM ignored file: '" + uri + "'"));
-    assertThat(client.getDiagnostics(uri)).isNull();
+    assertThat(client.logs).extracting(withoutTimestamp())
+      .contains("[Debug] Skip analysis for SCM ignored file: '" + uri + "'");
+    assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
   @Test
