@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.folders;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
@@ -52,6 +53,23 @@ public class WorkspaceFolderWrapper {
 
   public URI getUri() {
     return uri;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(uri);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (!(obj instanceof WorkspaceFolderWrapper)) {
+      return false;
+    }
+    WorkspaceFolderWrapper other = (WorkspaceFolderWrapper) obj;
+    return Objects.equals(uri, other.uri);
   }
 
   @Override

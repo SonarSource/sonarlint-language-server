@@ -397,7 +397,7 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public CompletableFuture<Void> setReferenceBranchNameForFolder(ReferenceBranchForFolder newReferenceBranch) {
       referenceBranchNameByFolder.put(newReferenceBranch.getFolderUri(), newReferenceBranch.getBranchName());
-      return CompletableFutures.computeAsync(null);
+      return CompletableFuture.completedFuture(null);
     }
   }
 

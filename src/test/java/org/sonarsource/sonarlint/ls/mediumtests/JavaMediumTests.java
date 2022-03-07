@@ -26,8 +26,6 @@ import java.util.List;
 import java.util.Map;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
-import org.eclipse.lsp4j.DidOpenTextDocumentParams;
-import org.eclipse.lsp4j.TextDocumentItem;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -41,6 +39,8 @@ import static org.assertj.core.groups.Tuple.tuple;
 import static org.awaitility.Awaitility.await;
 
 class JavaMediumTests extends AbstractLanguageServerMediumTests {
+
+  private static final String MODULE_ROOT_URI = Paths.get("moduleA").toUri().toString();
 
   @BeforeAll
   static void initialize() throws Exception {
@@ -58,14 +58,12 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     client.javaConfigs.put(uri, null);
 
-    lsProxy.getTextDocumentService()
-      .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "java", 1, "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}")));
-    toBeClosed.add(uri);
+    didOpenAndWaitForDiagnostics(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
 
-    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+    assertThat(client.logs)
       .extracting(withoutTimestamp())
       .contains(
-        "[Debug] Skipping analysis of Java file '" + uri + "' because SonarLint was unable to query project configuration (classpath, source level, ...)"));
+        "[Debug] Skipping analysis of Java file '" + uri + "' because SonarLint was unable to query project configuration (classpath, source level, ...)");
   }
 
   @Test
@@ -73,6 +71,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("analyzeSimpleJavaFileOnOpen.java");
 
     var javaConfigResponse = new GetJavaConfigResponse();
+    javaConfigResponse.setProjectRoot(MODULE_ROOT_URI);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[] {"/does/not/exist"});
@@ -113,6 +112,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("AnalyzeSimpleJavaFileWithFlows.java");
 
     var javaConfigResponse = new GetJavaConfigResponse();
+    javaConfigResponse.setProjectRoot(MODULE_ROOT_URI);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[0]);
@@ -151,6 +151,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("analyzeSimpleJavaFileOnOpen.java");
 
     var javaConfigResponse = new GetJavaConfigResponse();
+    javaConfigResponse.setProjectRoot(MODULE_ROOT_URI);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[0]);
@@ -181,6 +182,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("analyzeSimpleJavaTestFileOnOpen.java");
 
     var javaConfigResponse = new GetJavaConfigResponse();
+    javaConfigResponse.setProjectRoot(MODULE_ROOT_URI);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(true);
     javaConfigResponse.setClasspath(new String[] {Paths.get(this.getClass().getResource("/junit-4.12.jar").toURI()).toAbsolutePath().toString()});
@@ -247,19 +249,16 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     // Simulate null Java config response due to serverMode=LightWeight
     client.javaConfigs.put(uri, null);
 
-    lsProxy.getTextDocumentService()
-      .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "java", 1, "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}")));
-    toBeClosed.add(uri);
+    didOpenAndWaitForDiagnostics(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
 
-    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+    assertThat(client.logs)
       .extracting(withoutTimestamp())
       .contains(
-        "[Debug] Skipping analysis of Java file '" + uri + "' because SonarLint was unable to query project configuration (classpath, source level, ...)"));
+        "[Debug] Skipping analysis of Java file '" + uri + "' because SonarLint was unable to query project configuration (classpath, source level, ...)");
 
     // Prepare config response
     var javaConfigResponse = new GetJavaConfigResponse();
-    var projectRoot = "project/root";
-    javaConfigResponse.setProjectRoot(projectRoot);
+    javaConfigResponse.setProjectRoot(MODULE_ROOT_URI);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[0]);
