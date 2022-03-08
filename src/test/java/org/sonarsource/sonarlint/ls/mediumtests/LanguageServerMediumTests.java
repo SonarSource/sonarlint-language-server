@@ -119,16 +119,14 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     client.clear();
 
     // Update rules configuration: disable UnusedVariable, enable Semicolon
-    client.diagnosticsLatch = new CountDownLatch(1);
-
-    emulateConfigurationChangeOnClient("**/*Test.js", null,
-      "javascript:S1481", "off",
-      "javascript:S1105", "on");
+    client.doAndWaitForDiagnostics(uri, () -> {
+      emulateConfigurationChangeOnClient("**/*Test.js", null,
+        "javascript:S1481", "off",
+        "javascript:S1105", "on");
+    });
 
     assertLogContains(
       "Global settings updated: WorkspaceSettings[connections={},disableTelemetry=false,excludedRules=[javascript:S1481],includedRules=[javascript:S1105],pathToNodeExecutable=<null>,ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=false]");
-
-    assertTrue(client.diagnosticsLatch.await(1, TimeUnit.MINUTES));
 
     assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -283,23 +281,21 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void delayAnalysisOnChange() throws Exception {
     var uri = getUri("foo.js");
 
-    var docId = new VersionedTextDocumentIdentifier(uri, 1);
     // Emulate two quick changes, should only trigger one analysis
-    client.diagnosticsLatch = new CountDownLatch(1);
-    lsProxy.getTextDocumentService()
-      .didChange(new DidChangeTextDocumentParams(docId, List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n}"))));
-    lsProxy.getTextDocumentService()
-      .didChange(new DidChangeTextDocumentParams(docId, List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n  var plouf = 0;\n}"))));
-    if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
-      var diagnostics = client.getDiagnostics(uri);
-      assertThat(diagnostics)
-        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-        .containsExactly(
-          tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information),
-          tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information));
-    } else {
-      throw new AssertionError("No diagnostics received after 1 minute");
-    }
+    client.doAndWaitForDiagnostics(uri, () -> {
+      lsProxy.getTextDocumentService()
+        .didChange(
+          new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 1), List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n}"))));
+      lsProxy.getTextDocumentService()
+        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 2),
+          List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n  var plouf = 0;\n}"))));
+    });
+    var diagnostics = client.getDiagnostics(uri);
+    assertThat(diagnostics)
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information),
+        tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information));
   }
 
   @Test
@@ -316,45 +312,38 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void cleanDiagnosticsOnClose() throws Exception {
     var uri = getUri("foo.js");
-    client.diagnosticsLatch = new CountDownLatch(1);
-    lsProxy.getTextDocumentService()
-      .didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
-    assertTrue(client.diagnosticsLatch.await(1, TimeUnit.MINUTES));
-
+    client.doAndWaitForDiagnostics(uri, () -> {
+      lsProxy.getTextDocumentService().didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
+    });
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
   @Test
   void noAnalysisOnNullContent() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true, true, true);
-    Thread.sleep(1000);
-    client.logs.clear();
 
     var uri = getUri("foo.py");
-    client.diagnosticsLatch = new CountDownLatch(1);
-    var docId = new VersionedTextDocumentIdentifier(uri, 1);
+    client.doAndWaitForDiagnostics(uri, () -> {
+      // SLVSCODE-157 - Open/Close/Open/Close triggers a race condition that nullifies content
+      lsProxy.getTextDocumentService()
+        .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
+      lsProxy.getTextDocumentService()
+        .didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
+      lsProxy.getTextDocumentService()
+        .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
+      lsProxy.getTextDocumentService()
+        .didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
+    });
 
-    // SLVSCODE-157 - Open/Close/Open/Close triggers a race condition that nullifies content
-    lsProxy.getTextDocumentService()
-      .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
-    lsProxy.getTextDocumentService()
-      .didClose(new DidCloseTextDocumentParams(docId));
-    lsProxy.getTextDocumentService()
-      .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
-    lsProxy.getTextDocumentService()
-      .didClose(new DidCloseTextDocumentParams(docId));
-
-    assertThat(client.getDiagnostics(uri)).isNull();
+    assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
   @Test
   void vcsIgnoredShouldNotAnalyzed() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true, true, true);
-    Thread.sleep(1000);
     client.logs.clear();
 
     var uri = getUri("foo.py");
-    client.diagnosticsLatch = new CountDownLatch(1);
     client.isIgnoredByScm = true;
 
     lsProxy.getTextDocumentService()

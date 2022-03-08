@@ -24,8 +24,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
@@ -36,6 +34,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.apache.commons.lang3.StringUtils.appendIfMissing;
+import static org.apache.commons.lang3.StringUtils.removeEnd;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.awaitility.Awaitility.await;
@@ -203,11 +203,8 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     // Emulate vscode-java that returns URI with different format in GetJavaConfigResponse and didClasspathUpdate
     // file:///home/julien/Prog/Projects/plugins/sonar-clirr/
     // file:/home/julien/Prog/Projects/plugins/sonar-clirr
-    var projectRootUri1 = projectRootUri.endsWith("/") ? projectRootUri : projectRootUri + "/";
-
-    var projectRootUri2 = projectRootUri;
-    projectRootUri2 = projectRootUri2.replace("file:///", "file:/");
-    projectRootUri2 = projectRootUri2.endsWith("/") ? projectRootUri2.substring(0, projectRootUri2.length() - 1) : projectRootUri2;
+    var projectRootUri1 = appendIfMissing(projectRootUri, "/");
+    var projectRootUri2 = removeEnd(projectRootUri.replace("file:///", "file:/"), "/");
 
     var javaConfigResponse = new GetJavaConfigResponse();
     javaConfigResponse.setProjectRoot(projectRootUri1);
@@ -225,13 +222,10 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     // Update classpath
     javaConfigResponse.setClasspath(new String[] {Paths.get(this.getClass().getResource("/junit-4.12.jar").toURI()).toAbsolutePath().toString()});
-    client.diagnosticsLatch = new CountDownLatch(1);
-    lsProxy.didClasspathUpdate(projectRootUri2);
-    if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
-      diagnostics = client.getDiagnostics(uri);
-    } else {
-      throw new AssertionError("No diagnostics received after 1 minute");
-    }
+    client.doAndWaitForDiagnostics(uri, () -> {
+      lsProxy.didClasspathUpdate(projectRootUri2);
+    });
+    diagnostics = client.getDiagnostics(uri);
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -271,18 +265,12 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     javaConfigResponse.setClasspath(new String[0]);
     client.javaConfigs.put(uri, javaConfigResponse);
 
-    client.diagnosticsLatch = new CountDownLatch(1);
-
-    // Notify of changes in server mode due to temporary activation of standard mode
-    lsProxy.didJavaServerModeChange("Hybrid");
-    lsProxy.didJavaServerModeChange("Standard");
-
-    List<Diagnostic> diagnostics;
-    if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
-      diagnostics = client.getDiagnostics(uri);
-    } else {
-      throw new AssertionError("No diagnostics received after 1 minute");
-    }
+    client.doAndWaitForDiagnostics(uri, () -> {
+      // Notify of changes in server mode due to temporary activation of standard mode
+      lsProxy.didJavaServerModeChange("Hybrid");
+      lsProxy.didJavaServerModeChange("Standard");
+    });
+    List<Diagnostic> diagnostics = client.getDiagnostics(uri);
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)

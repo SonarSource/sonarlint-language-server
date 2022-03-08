@@ -181,6 +181,7 @@ public abstract class AbstractLanguageServerMediumTests {
   void cleanup() throws InterruptedException {
     // Reset state on LS side
     client.clear();
+    toBeClosed.clear();
 
     emulateConfigurationChangeOnClient(null, false, false, true);
 
@@ -196,13 +197,10 @@ public abstract class AbstractLanguageServerMediumTests {
   final void closeFiles() throws InterruptedException {
     // Close all opened files
     for (var uri : toBeClosed) {
-      client.diagnosticsLatch = new CountDownLatch(1);
-      lsProxy.getTextDocumentService().didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
-      if (!client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
-        throw new AssertionError("No empty diagnostics received after 1 minute");
-      }
+      client.doAndWaitForDiagnostics(uri, () -> {
+        lsProxy.getTextDocumentService().didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
+      });
     }
-    toBeClosed.clear();
   }
 
   protected static void assertLogContains(String msg) {
@@ -237,7 +235,7 @@ public abstract class AbstractLanguageServerMediumTests {
     Map<String, String> branchNameByFolder = new HashMap<>();
     Map<String, String> referenceBranchNameByFolder = new HashMap<>();
     CountDownLatch settingsLatch = new CountDownLatch(0);
-    CountDownLatch diagnosticsLatch = new CountDownLatch(0);
+    private final Map<String, CountDownLatch> diagnosticsLatches = new HashMap<>();
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
     ShowRuleDescriptionParams ruleDesc;
     boolean isIgnoredByScm = false;
@@ -248,8 +246,24 @@ public abstract class AbstractLanguageServerMediumTests {
       globalSettings = null;
       folderSettings.clear();
       settingsLatch = new CountDownLatch(0);
-      diagnosticsLatch = new CountDownLatch(0);
+      diagnosticsLatches.clear();
       showRuleDescriptionLatch = new CountDownLatch(0);
+    }
+
+    public void doAndWaitForDiagnostics(String uri, Runnable action) {
+      if (diagnosticsLatches.containsKey(uri)) {
+        fail("There is already something waiting for diagnostics of uri: " + uri);
+      }
+      var latch = new CountDownLatch(1);
+      diagnosticsLatches.put(uri, latch);
+      action.run();
+      try {
+        if (!latch.await(1, TimeUnit.MINUTES)) {
+          fail("No diagnostics received after 1 minute");
+        }
+      } catch (InterruptedException e) {
+        throw new IllegalStateException("interrupted", e);
+      }
     }
 
     @Override
@@ -263,7 +277,12 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public void publishDiagnostics(PublishDiagnosticsParams diagnostics) {
       this.diagnostics.put(diagnostics.getUri(), diagnostics.getDiagnostics());
-      diagnosticsLatch.countDown();
+      var latch = diagnosticsLatches.remove(diagnostics.getUri());
+      if (latch != null) {
+        latch.countDown();
+      } else {
+        fail("Unexpected diagnostics: " + diagnostics);
+      }
     }
 
     @Override
@@ -436,35 +455,31 @@ public abstract class AbstractLanguageServerMediumTests {
 
   protected List<Diagnostic> didChangeAndWaitForDiagnostics(String uri, String content) throws InterruptedException {
     var docId = new VersionedTextDocumentIdentifier(uri, 1);
-    client.diagnosticsLatch = new CountDownLatch(1);
-    lsProxy.getTextDocumentService()
-      .didChange(new DidChangeTextDocumentParams(docId, List.of(new TextDocumentContentChangeEvent(content))));
-    toBeClosed.add(uri);
-    return awaitDiagnosticsForOneMinute(uri);
+    client.doAndWaitForDiagnostics(uri, () -> {
+      lsProxy.getTextDocumentService()
+        .didChange(new DidChangeTextDocumentParams(docId, List.of(new TextDocumentContentChangeEvent(content))));
+      toBeClosed.add(uri);
+    });
+    return client.getDiagnostics(uri);
   }
 
   protected List<Diagnostic> didOpenAndWaitForDiagnostics(String uri, String languageId, String content) throws InterruptedException {
-    client.diagnosticsLatch = new CountDownLatch(1);
-    lsProxy.getTextDocumentService()
-      .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, languageId, 1, content)));
-    toBeClosed.add(uri);
-    return awaitDiagnosticsForOneMinute(uri);
+    client.doAndWaitForDiagnostics(uri, () -> {
+      lsProxy.getTextDocumentService()
+        .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, languageId, 1, content)));
+      toBeClosed.add(uri);
+    });
+    return client.getDiagnostics(uri);
   }
 
   protected List<Diagnostic> didSaveAndWaitForDiagnostics(String uri, String content) throws InterruptedException {
     var docId = new VersionedTextDocumentIdentifier(uri, 1);
-    client.diagnosticsLatch = new CountDownLatch(1);
-    lsProxy.getTextDocumentService()
-      .didSave(new DidSaveTextDocumentParams(docId, content));
-    return awaitDiagnosticsForOneMinute(uri);
-  }
-
-  private List<Diagnostic> awaitDiagnosticsForOneMinute(String uri) throws InterruptedException {
-    if (client.diagnosticsLatch.await(1, TimeUnit.MINUTES)) {
-      return client.getDiagnostics(uri);
-    } else {
-      throw new AssertionError("No diagnostics received after 1 minute");
-    }
+    client.doAndWaitForDiagnostics(uri, () -> {
+      lsProxy.getTextDocumentService()
+        .didSave(new DidSaveTextDocumentParams(docId, content));
+      toBeClosed.add(uri);
+    });
+    return client.getDiagnostics(uri);
   }
 
   protected ThrowingExtractor<? super MessageParams, String, RuntimeException> withoutTimestamp() {
