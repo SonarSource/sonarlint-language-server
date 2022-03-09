@@ -60,6 +60,8 @@ class AnalysisClientInputFileTest {
 
       Arguments.of("php", Language.PHP),
       Arguments.of("java", Language.JAVA),
+      Arguments.of("с", Language.C),
+      Arguments.of("сpp", Language.CPP),
 
       Arguments.of("unknown", null)
     );
