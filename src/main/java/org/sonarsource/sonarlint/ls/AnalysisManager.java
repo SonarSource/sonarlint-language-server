@@ -41,6 +41,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -511,15 +512,17 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       return;
     }
 
+    AtomicInteger totalIssueCount = new AtomicInteger();
     filesSuccessfullyAnalyzed.forEach(f -> {
       // Check if file has not being closed during the analysis
       if (fileContentPerFileURI.containsKey(f)) {
         var foundIssues = issuesPerIdPerFileURI.getOrDefault(f, emptyMap()).size();
-        lsLogOutput.info(format("Found %s %s", foundIssues, pluralize(foundIssues, "issue")));
+        totalIssueCount.addAndGet(foundIssues);
         client.publishDiagnostics(newPublishDiagnostics(f));
         telemetry.addReportedRules(collectAllRuleKeys());
       }
     });
+    lsLogOutput.info(format("Found %s %s", totalIssueCount.get(), pluralize(totalIssueCount.get(), "issue")));
   }
 
   private Set<String> collectAllRuleKeys() {
