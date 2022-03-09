@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.Map;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
+import org.eclipse.lsp4j.DidChangeTextDocumentParams;
+import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
+import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -40,10 +43,20 @@ import static org.awaitility.Awaitility.await;
 
 class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
-  private static final String MODULE_ROOT_URI = Paths.get("moduleA").toUri().toString();
+  @TempDir
+  public static Path module1Path;
+
+  @TempDir
+  public static Path module2Path;
+
+  private static String MODULE_1_ROOT_URI;
+  private static String MODULE_2_ROOT_URI;
 
   @BeforeAll
   static void initialize() throws Exception {
+    MODULE_1_ROOT_URI = module1Path.toUri().toString();
+    MODULE_2_ROOT_URI = module2Path.toUri().toString();
+
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
@@ -71,7 +84,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("analyzeSimpleJavaFileOnOpen.java");
 
     var javaConfigResponse = new GetJavaConfigResponse();
-    javaConfigResponse.setProjectRoot(MODULE_ROOT_URI);
+    javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[] {"/does/not/exist"});
@@ -112,7 +125,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("AnalyzeSimpleJavaFileWithFlows.java");
 
     var javaConfigResponse = new GetJavaConfigResponse();
-    javaConfigResponse.setProjectRoot(MODULE_ROOT_URI);
+    javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[0]);
@@ -151,7 +164,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("analyzeSimpleJavaFileOnOpen.java");
 
     var javaConfigResponse = new GetJavaConfigResponse();
-    javaConfigResponse.setProjectRoot(MODULE_ROOT_URI);
+    javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[0]);
@@ -182,7 +195,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("analyzeSimpleJavaTestFileOnOpen.java");
 
     var javaConfigResponse = new GetJavaConfigResponse();
-    javaConfigResponse.setProjectRoot(MODULE_ROOT_URI);
+    javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(true);
     javaConfigResponse.setClasspath(new String[] {Paths.get(this.getClass().getResource("/junit-4.12.jar").toURI()).toAbsolutePath().toString()});
@@ -258,7 +271,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     // Prepare config response
     var javaConfigResponse = new GetJavaConfigResponse();
-    javaConfigResponse.setProjectRoot(MODULE_ROOT_URI);
+    javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[0]);
@@ -276,5 +289,102 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       .containsExactlyInAnyOrder(
         tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
         tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+  }
+
+  @Test
+  void shouldBatchAnalysisFromTheSameModule() throws Exception {
+
+    var file1module1 = getUri("Foo1.java");
+    var file2module1 = getUri("Foo2.java");
+    var nonJavaFilemodule1 = getUri("Another.js");
+
+    // Prepare config response
+    var javaConfigResponse = new GetJavaConfigResponse();
+    javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
+    javaConfigResponse.setSourceLevel("1.8");
+    javaConfigResponse.setTest(false);
+    javaConfigResponse.setClasspath(new String[0]);
+    client.javaConfigs.put(file1module1, javaConfigResponse);
+    client.javaConfigs.put(file2module1, javaConfigResponse);
+
+    didOpenAndWaitForDiagnostics(file1module1, "java", "public class Foo1 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
+    didOpenAndWaitForDiagnostics(file2module1, "java", "public class Foo2 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
+    didOpenAndWaitForDiagnostics(nonJavaFilemodule1, "javascript", "function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}");
+
+    client.logs.clear();
+
+    client.doAndWaitForDiagnostics(file1module1, () -> {
+      client.doAndWaitForDiagnostics(file2module1, () -> {
+        client.doAndWaitForDiagnostics(nonJavaFilemodule1, () -> {
+          // consecute changes should be batched
+          lsProxy.getTextDocumentService()
+            .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1module1, 2),
+              List.of(new TextDocumentContentChangeEvent("public class Foo1 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
+          lsProxy.getTextDocumentService()
+            .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2module1, 2),
+              List.of(new TextDocumentContentChangeEvent("public class Foo2 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
+          lsProxy.getTextDocumentService()
+            .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(nonJavaFilemodule1, 2),
+              List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}"))));
+        });
+      });
+    });
+
+    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .containsSubsequence(
+        "[Debug] Queuing analysis of 3 files",
+        "[Info] Analyzing 3 files...",
+        "[Info] Found 8 issues"));
+  }
+
+  @Test
+  void shouldNotBatchAnalysisFromDifferentModules() throws Exception {
+
+    var file1module1 = getUri("file1.java");
+    var file2module2 = getUri("file2.java");
+
+    // Prepare config response
+    var javaConfigResponse1 = new GetJavaConfigResponse();
+    javaConfigResponse1.setProjectRoot(MODULE_1_ROOT_URI);
+    javaConfigResponse1.setSourceLevel("1.8");
+    javaConfigResponse1.setTest(false);
+    javaConfigResponse1.setClasspath(new String[0]);
+    client.javaConfigs.put(file1module1, javaConfigResponse1);
+
+    var javaConfigResponse2 = new GetJavaConfigResponse();
+    javaConfigResponse2.setProjectRoot(MODULE_2_ROOT_URI);
+    javaConfigResponse2.setSourceLevel("1.8");
+    javaConfigResponse2.setTest(false);
+    javaConfigResponse2.setClasspath(new String[0]);
+    client.javaConfigs.put(file2module2, javaConfigResponse2);
+
+    didOpenAndWaitForDiagnostics(file1module1, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
+    didOpenAndWaitForDiagnostics(file2module2, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
+
+    client.logs.clear();
+
+    client.doAndWaitForDiagnostics(file1module1, () -> {
+      client.doAndWaitForDiagnostics(file2module2, () -> {
+        // two consecute changes on different modules should not be batched
+        lsProxy.getTextDocumentService()
+          .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1module1, 2),
+            List.of(new TextDocumentContentChangeEvent("public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
+        lsProxy.getTextDocumentService()
+          .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2module2, 2),
+            List.of(new TextDocumentContentChangeEvent("public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
+      });
+    });
+
+    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .containsSubsequence(
+        "[Debug] Queuing analysis of 2 files",
+        "[Info] Found 3 issues",
+        "[Info] Found 3 issues")
+      // We don't know the order of analysis for the 2 files, so we can't have a single assertion
+      .contains(
+        "[Info] Analyzing file '" + file1module1 + "'...",
+        "[Info] Analyzing file '" + file2module2 + "'..."));
   }
 }
