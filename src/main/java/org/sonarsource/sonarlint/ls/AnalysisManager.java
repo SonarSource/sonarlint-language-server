@@ -512,7 +512,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       return;
     }
 
-    AtomicInteger totalIssueCount = new AtomicInteger();
+    var totalIssueCount = new AtomicInteger();
     filesSuccessfullyAnalyzed.forEach(f -> {
       // Check if file has not being closed during the analysis
       if (fileContentPerFileURI.containsKey(f)) {
