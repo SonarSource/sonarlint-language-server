@@ -445,7 +445,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     }
 
     if (!nonExcludedFiles.isEmpty()) {
-      analyzeSingleModuleNonExcluded(workspaceFolder, settings, binding, nonExcludedFiles, baseDirUri, filesContents, javaConfigs, shouldFetchServerIssues);
+      analyzeSingleModuleNonExcluded(settings, binding, nonExcludedFiles, baseDirUri, filesContents, javaConfigs, shouldFetchServerIssues);
     }
 
   }
@@ -462,7 +462,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     return paths.stream().allMatch(p -> p.startsWith(prefixCandidate));
   }
 
-  private void analyzeSingleModuleNonExcluded(Optional<WorkspaceFolderWrapper> workspaceFolder, WorkspaceFolderSettings settings, Optional<ProjectBindingWrapper> binding,
+  private void analyzeSingleModuleNonExcluded(WorkspaceFolderSettings settings, Optional<ProjectBindingWrapper> binding,
     Set<URI> filesToAnalyze, URI baseDirUri, Map<URI, String> filesContents, Map<URI, GetJavaConfigResponse> javaConfigs, boolean shouldFetchServerIssues) {
     if (filesToAnalyze.size() == 1) {
       lsLogOutput.info(format("Analyzing file '%s'...", filesToAnalyze.iterator().next()));
