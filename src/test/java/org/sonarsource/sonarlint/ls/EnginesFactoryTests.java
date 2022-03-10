@@ -65,7 +65,7 @@ class EnginesFactoryTests {
     assertThat(createdEngine).isSameAs(mockEngine);
     var capturedConfig = argCaptor.getValue();
     assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", FAKE_TYPESCRIPT_PATH.toString());
-    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PYTHON, Language.SECRETS, Language.TS,
+    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.C, Language.CPP, Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PYTHON, Language.SECRETS, Language.TS,
       Language.XML);
   }
 
@@ -97,7 +97,7 @@ class EnginesFactoryTests {
     assertThat(createdEngine).isSameAs(mockEngine);
     var capturedConfig = argCaptor.getValue();
     assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", FAKE_TYPESCRIPT_PATH.toString());
-    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.APEX, Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON,
+    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.APEX, Language.C, Language.CPP, Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON,
       Language.SECRETS, Language.TS, Language.XML);
   }
 
@@ -119,6 +119,8 @@ class EnginesFactoryTests {
   @Test
   void get_standalone_languages() {
     assertThat(EnginesFactory.getStandaloneLanguages()).containsExactlyInAnyOrder(
+      Language.C,
+      Language.CPP,
       Language.HTML,
       Language.JAVA,
       Language.JS,

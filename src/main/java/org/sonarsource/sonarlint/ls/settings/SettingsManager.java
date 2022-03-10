@@ -324,7 +324,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     @SuppressWarnings("unchecked")
     var map = (Map<String, String>) params.get(ANALYZER_PROPERTIES);
     if (map == null) {
-      return Collections.emptyMap();
+      map = Collections.emptyMap();
     }
     return map;
   }

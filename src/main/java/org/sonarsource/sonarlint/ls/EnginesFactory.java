@@ -25,6 +25,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -48,6 +49,8 @@ public class EnginesFactory {
   @CheckForNull
   private Path typeScriptPath;
   private static final Language[] STANDALONE_LANGUAGES = {
+    Language.CPP,
+    Language.C,
     Language.HTML,
     Language.JAVA,
     Language.JS,
@@ -113,12 +116,17 @@ public class EnginesFactory {
       .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
       .setModulesProvider(modulesProvider)
       .setLogOutput(logOutput);
+    getCFamilyAnalyzer().ifPresent(cFamilyAnalyzer -> builder.useEmbeddedPlugin(Language.C.getPluginKey(), cFamilyAnalyzer));
 
     extraAnalyzers.forEach(analyzer -> builder.addExtraPlugin(guessPluginKey(analyzer.toString()), analyzer));
     var engine = newConnectedEngine(builder.build());
 
     LOG.debug("SonarLint engine started for connection '{}'", connectionId);
     return engine;
+  }
+
+  Optional<Path> getCFamilyAnalyzer() {
+    return standaloneAnalyzers.stream().filter(it -> it.toString().contains("cfamily")).findFirst();
   }
 
   static String guessPluginKey(String pluginUrl) {
