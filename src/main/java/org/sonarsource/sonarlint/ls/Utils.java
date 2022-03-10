@@ -22,17 +22,28 @@ package org.sonarsource.sonarlint.ls;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonSyntaxException;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
+import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.DiagnosticSeverity;
+import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
+import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
+import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
+import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 
 public class Utils {
 
   private static final SonarLintLogger LOG = SonarLintLogger.get();
+
+  private static final String MESSAGE_WITH_PLURALIZED_SUFFIX = "%s [+%d %s]";
 
   private Utils() {
   }
@@ -68,5 +79,51 @@ public class Utils {
 
   public static String pluralize(long nbItems, String singular, String plural) {
     return nbItems == 1 ? singular : plural;
+  }
+
+  public static Range convert(Issue issue) {
+    return new Range(
+      new Position(
+        issue.getStartLine() - 1,
+        issue.getStartLineOffset()),
+      new Position(
+        issue.getEndLine() - 1,
+        issue.getEndLineOffset()));
+  }
+
+  public static Range convert(ServerIssueLocation issue) {
+    return new Range(
+      new Position(
+        issue.getStartLine() - 1,
+        issue.getStartLineOffset()),
+      new Position(
+        issue.getEndLine() - 1,
+        issue.getEndLineOffset()));
+  }
+
+  public static boolean locationMatches(Issue i, Diagnostic d) {
+    return convert(i).equals(d.getRange());
+  }
+
+  public static boolean locationMatches(ServerIssue i, Diagnostic d) {
+    return convert(i).equals(d.getRange());
+  }
+
+  public static DiagnosticSeverity severity(String severity) {
+    switch (severity.toUpperCase(Locale.ENGLISH)) {
+      case "BLOCKER":
+      case "CRITICAL":
+      case "MAJOR":
+        return DiagnosticSeverity.Warning;
+      case "MINOR":
+        return DiagnosticSeverity.Information;
+      case "INFO":
+      default:
+        return DiagnosticSeverity.Hint;
+    }
+  }
+
+  public static String buildMessageWithPluralizedSuffix(@Nullable String issueMessage, long nbItems, String itemName) {
+    return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issueMessage, nbItems, pluralize(nbItems, itemName));
   }
 }

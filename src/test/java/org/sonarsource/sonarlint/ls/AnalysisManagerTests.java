@@ -22,27 +22,20 @@ package org.sonarsource.sonarlint.ls;
 import java.net.URI;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.FileChangeType;
 import org.eclipse.lsp4j.FileEvent;
-import org.eclipse.lsp4j.Position;
-import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.WorkspaceFolder;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModuleFileEvent;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.file.FileLanguageCache;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -58,7 +51,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -69,7 +61,6 @@ import static org.sonarsource.sonarlint.ls.AnalysisManager.convert;
 class AnalysisManagerTests {
 
   AnalysisManager underTest;
-  Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile;
   private EnginesFactory enginesFactory;
   private WorkspaceFoldersManager foldersManager;
   private StandaloneEngineManager standaloneEngineManager;
@@ -77,14 +68,14 @@ class AnalysisManagerTests {
 
   @BeforeEach
   void prepare() {
-    taintVulnerabilitiesPerFile = new ConcurrentHashMap<>();
     var fileLanguageCache = new FileLanguageCache();
     enginesFactory = mock(EnginesFactory.class);
     foldersManager = mock(WorkspaceFoldersManager.class);
     standaloneEngineManager = mock(StandaloneEngineManager.class);
     languageClient = mock(SonarLintExtendedLanguageClient.class);
     underTest = new AnalysisManager(mock(LanguageClientLogger.class), standaloneEngineManager, languageClient, mock(SonarLintTelemetry.class),
-      foldersManager, mock(SettingsManager.class), mock(ProjectBindingManager.class), new FileTypeClassifier(fileLanguageCache), fileLanguageCache, mock(JavaConfigCache.class), taintVulnerabilitiesPerFile);
+      foldersManager, mock(SettingsManager.class), mock(ProjectBindingManager.class), new FileTypeClassifier(fileLanguageCache), fileLanguageCache, mock(JavaConfigCache.class),
+      mock(TaintVulnerabilitiesCache.class));
 
   }
 
@@ -111,89 +102,6 @@ class AnalysisManagerTests {
     assertThat(convert(entry(id, issue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Information);
     when(issue.getSeverity()).thenReturn("INFO");
     assertThat(convert(entry(id, issue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
-  }
-
-  @Test
-  void testIssueConversion() {
-    var issue = mock(ServerIssue.class);
-    var flow = mock(ServerIssue.Flow.class);
-    var loc1 = mock(ServerIssueLocation.class);
-    var loc2 = mock(ServerIssueLocation.class);
-    when(flow.locations()).thenReturn(List.of(loc1, loc2));
-    when(issue.getStartLine()).thenReturn(1);
-    when(issue.severity()).thenReturn("BLOCKER");
-    when(issue.ruleKey()).thenReturn("ruleKey");
-    when(issue.getMessage()).thenReturn("message");
-    when(issue.key()).thenReturn("issueKey");
-    when(issue.getFlows()).thenReturn(List.of(flow));
-
-    var diagnostic = convert(issue).get();
-
-    assertThat(diagnostic.getMessage()).isEqualTo("message [+2 locations]");
-    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
-    assertThat(diagnostic.getSource()).isEqualTo("SonarQube Taint Analyzer");
-    assertThat(diagnostic.getCode().getLeft()).isEqualTo("ruleKey");
-    assertThat(diagnostic.getData()).isEqualTo("issueKey");
-  }
-
-  @Test
-  void testGetServerIssueForDiagnosticBasedOnLocation() throws Exception {
-    var uri = new URI("/");
-    var issue = mock(ServerIssue.class);
-    when(issue.getStartLine()).thenReturn(228);
-    when(issue.getStartLineOffset()).thenReturn(14);
-    when(issue.getEndLine()).thenReturn(322);
-    when(issue.getEndLineOffset()).thenReturn(14);
-
-    var diagnostic = mock(Diagnostic.class);
-    when(diagnostic.getCode()).thenReturn(Either.forLeft("ruleKey"));
-    var range = new Range(new Position(227, 14), new Position(321, 14));
-    when(diagnostic.getRange()).thenReturn(range);
-    when(issue.ruleKey()).thenReturn("ruleKey");
-    taintVulnerabilitiesPerFile.put(uri, List.of(issue));
-
-    assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).hasValue(issue);
-  }
-
-  @Test
-  void testGetServerIssueForDiagnosticBasedOnKey() throws Exception {
-    var uri = new URI("/");
-    var issue = mock(ServerIssue.class);
-    when(issue.key()).thenReturn("issueKey");
-
-    var diagnostic = mock(Diagnostic.class);
-    when(diagnostic.getData()).thenReturn("issueKey");
-    taintVulnerabilitiesPerFile.put(uri, List.of(issue));
-
-    assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).hasValue(issue);
-  }
-
-  @Test
-  void testGetServerIssueForDiagnosticNotFound() throws Exception {
-    var uri = new URI("/");
-    var issue = mock(ServerIssue.class);
-    when(issue.ruleKey()).thenReturn("someRuleKey");
-    when(issue.key()).thenReturn("issueKey");
-
-    var diagnostic = mock(Diagnostic.class);
-    when(diagnostic.getData()).thenReturn("anotherKey");
-    when(diagnostic.getCode()).thenReturn(Either.forLeft("anotherRuleKey"));
-    taintVulnerabilitiesPerFile.put(uri, List.of(issue));
-
-    assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).isEmpty();
-  }
-
-  @Test
-  void testGetServerIssueByKey() throws Exception {
-    var uri = new URI("/");
-    var issue = mock(ServerIssue.class);
-    var issueKey = "key";
-    when(issue.key()).thenReturn(issueKey);
-
-    taintVulnerabilitiesPerFile.put(uri, List.of(issue));
-
-    assertThat(underTest.getTaintVulnerabilityByKey(issueKey)).hasValue(issue);
-    assertThat(underTest.getTaintVulnerabilityByKey("otherKey")).isEmpty();
   }
 
   @Test

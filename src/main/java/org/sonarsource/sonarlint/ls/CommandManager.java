@@ -58,6 +58,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDesc
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 
@@ -93,15 +94,17 @@ public class CommandManager {
   private final AnalysisManager analysisManager;
   private final SonarLintTelemetry telemetry;
   private final StandaloneEngineManager standaloneEngineManager;
+  private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
 
   CommandManager(SonarLintExtendedLanguageClient client, SettingsManager settingsManager, ProjectBindingManager bindingManager, AnalysisManager analysisManager,
-    SonarLintTelemetry telemetry, StandaloneEngineManager standaloneEngineManager) {
+    SonarLintTelemetry telemetry, StandaloneEngineManager standaloneEngineManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache) {
     this.client = client;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
     this.analysisManager = analysisManager;
     this.telemetry = telemetry;
     this.standaloneEngineManager = standaloneEngineManager;
+    this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
   }
 
   public List<Either<Command, CodeAction>> computeCodeActions(CodeActionParams params, CancelChecker cancelToken) {
@@ -137,7 +140,7 @@ public class CommandManager {
         var actualBinding = binding.orElseThrow(() -> new IllegalStateException("Binding not found for taint vulnerability"));
         var ruleKey = diagnostic.getCode().getLeft();
         addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey);
-        analysisManager.getTaintVulnerabilityForDiagnostic(uri, diagnostic).ifPresent(issue -> {
+        taintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(uri, diagnostic).ifPresent(issue -> {
           if (!issue.getFlows().isEmpty()) {
             var titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", ruleKey);
             codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(issue.key(), actualBinding.getConnectionId())));
@@ -290,7 +293,7 @@ public class CommandManager {
   private void handleShowTaintVulnerabilityFlows(ExecuteCommandParams params) {
     var issueKey = getAsString(params.getArguments().get(0));
     var connectionId = getAsString(params.getArguments().get(1));
-    analysisManager.getTaintVulnerabilityByKey(issueKey)
+    taintVulnerabilitiesCache.getTaintVulnerabilityByKey(issueKey)
       .ifPresent(issue -> {
         telemetry.taintVulnerabilitiesInvestigatedLocally();
         client.showTaintVulnerability(ShowAllLocationsCommand.params(issue, connectionId, bindingManager::serverPathToFileUri));
