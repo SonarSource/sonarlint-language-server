@@ -59,6 +59,7 @@ import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamType;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -94,6 +95,7 @@ class CommandManagerTests {
   private ConnectedSonarLintEngine mockConnectedEngine;
   private SonarLintExtendedLanguageClient mockClient;
   private AnalysisManager mockAnalysisManager;
+  private TaintVulnerabilitiesCache mockTaintVulnerabilitiesCache;
   private StandaloneSonarLintEngine mockStandaloneEngine;
   private SettingsManager mockSettingsManager;
   private SonarLintTelemetry mockTelemetry;
@@ -110,11 +112,12 @@ class CommandManagerTests {
 
     mockClient = mock(SonarLintExtendedLanguageClient.class);
     mockAnalysisManager = mock(AnalysisManager.class);
+    mockTaintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
     mockStandaloneEngine = mock(StandaloneSonarLintEngine.class);
     standaloneEngineManager = mock(StandaloneEngineManager.class);
     when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(mockStandaloneEngine);
     mockTelemetry = mock(SonarLintTelemetry.class);
-    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, mockAnalysisManager, mockTelemetry, standaloneEngineManager);
+    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, mockAnalysisManager, mockTelemetry, standaloneEngineManager, mockTaintVulnerabilitiesCache);
   }
 
   @Test
@@ -172,8 +175,7 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsOnly(
         "SonarLint: Open description of rule 'XYZ'",
-        "SonarLint: Deactivate rule 'XYZ'"
-      );
+        "SonarLint: Deactivate rule 'XYZ'");
   }
 
   @Test
@@ -188,7 +190,7 @@ class CommandManagerTests {
 
     var textEdit = mock(TextEdit.class);
     when(textEdit.newText()).thenReturn("");
-    when(textEdit.range()).thenReturn(new TextRange(1, 0,1, 1));
+    when(textEdit.range()).thenReturn(new TextRange(1, 0, 1, 1));
     var edit = mock(ClientInputFileEdit.class);
     when(edit.textEdits()).thenReturn(List.of(textEdit));
     var target = mock(ClientInputFile.class);
@@ -206,8 +208,7 @@ class CommandManagerTests {
       .containsExactly(
         "SonarLint: Fix the issue!",
         "SonarLint: Open description of rule 'XYZ'",
-        "SonarLint: Deactivate rule 'XYZ'"
-      );
+        "SonarLint: Deactivate rule 'XYZ'");
   }
 
   @Test
@@ -231,7 +232,7 @@ class CommandManagerTests {
     var location = mock(ServerIssueLocation.class);
     when(flow.locations()).thenReturn(List.of(location));
     when(issue.key()).thenReturn("SomeIssueKey");
-    when(mockAnalysisManager.getTaintVulnerabilityForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
+    when(mockTaintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
@@ -239,8 +240,7 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
       "SonarLint: Open description of rule 'ruleKey'",
       "SonarLint: Show all locations for taint vulnerability 'ruleKey'",
-      "SonarLint: Open taint vulnerability 'ruleKey' on 'connectionId'"
-    );
+      "SonarLint: Open taint vulnerability 'ruleKey' on 'connectionId'");
   }
 
   @Test
@@ -262,8 +262,7 @@ class CommandManagerTests {
       .containsOnly(
         "SonarLint: Open description of rule 'XYZ'",
         "SonarLint: Deactivate rule 'XYZ'",
-        "SonarLint: Show all locations for issue 'XYZ'"
-      );
+        "SonarLint: Show all locations for issue 'XYZ'");
   }
 
   @Test
@@ -349,11 +348,11 @@ class CommandManagerTests {
     when(issue.getFlows()).thenReturn(List.of(flow));
     var location = mock(ServerIssueLocation.class);
     when(flow.locations()).thenReturn(List.of(location));
-    when(mockAnalysisManager.getTaintVulnerabilityByKey(issueKey)).thenReturn(Optional.of(issue));
+    when(mockTaintVulnerabilitiesCache.getTaintVulnerabilityByKey(issueKey)).thenReturn(Optional.of(issue));
 
     underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(new JsonPrimitive(issueKey), new JsonPrimitive(connectionId))),
       NOP_CANCEL_TOKEN);
-    verify(mockAnalysisManager).getTaintVulnerabilityByKey(issueKey);
+    verify(mockTaintVulnerabilitiesCache).getTaintVulnerabilityByKey(issueKey);
     verify(mockTelemetry).taintVulnerabilitiesInvestigatedLocally();
   }
 }

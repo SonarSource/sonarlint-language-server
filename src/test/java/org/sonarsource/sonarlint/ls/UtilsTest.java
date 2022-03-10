@@ -45,4 +45,5 @@ class UtilsTest {
   void shouldPluralizeIssue(long nbItems, String expected) {
     assertThat(Utils.pluralize(nbItems, "issue")).isEqualTo(expected);
   }
+
 }

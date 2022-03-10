@@ -26,12 +26,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -48,12 +46,9 @@ import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.Diagnostic;
-import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.FileChangeType;
 import org.eclipse.lsp4j.FileEvent;
-import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
-import org.eclipse.lsp4j.Range;
 import org.sonarsource.sonarlint.core.analysis.api.AnalysisResults;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModuleFileEvent;
@@ -63,14 +58,13 @@ import org.sonarsource.sonarlint.core.client.api.common.SonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedAnalysisConfiguration;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneAnalysisConfiguration;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.file.FileLanguageCache;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.FolderFileSystem;
@@ -91,7 +85,6 @@ import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.plugin.api.module.file.ModuleFileEvent;
 
 import static java.lang.String.format;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.List.copyOf;
 import static java.util.Optional.empty;
@@ -102,7 +95,10 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
+import static org.sonarsource.sonarlint.ls.Utils.buildMessageWithPluralizedSuffix;
+import static org.sonarsource.sonarlint.ls.Utils.locationMatches;
 import static org.sonarsource.sonarlint.ls.Utils.pluralize;
+import static org.sonarsource.sonarlint.ls.Utils.severity;
 
 public class AnalysisManager implements WorkspaceSettingsChangeListener, WorkspaceFolderLifecycleListener {
 
@@ -112,11 +108,10 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   private static final String SECURITY_REPOSITORY_HINT = "security";
   public static final String TYPESCRIPT_PATH_PROP = "sonar.typescript.internal.typescriptLocation";
   static final String SONARLINT_SOURCE = "sonarlint";
-  static final String SONARQUBE_TAINT_SOURCE = "SonarQube Taint Analyzer";
+  public static final String SONARQUBE_TAINT_SOURCE = "SonarQube Taint Analyzer";
 
-  private static final String MESSAGE_WITH_PLURALIZED_SUFFIX = "%s [+%d %s]";
-  private static final String ITEM_LOCATION = "location";
-  private static final String ITEM_FLOW = "flow";
+  public static final String ITEM_LOCATION = "location";
+  public static final String ITEM_FLOW = "flow";
 
   private final SonarLintExtendedLanguageClient client;
   private final FileTypeClassifier fileTypeClassifier;
@@ -127,7 +122,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   private final Map<URI, Integer> knownVersionPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, Integer> analyzedVersionPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, Map<String, Issue>> issuesPerIdPerFileURI = new ConcurrentHashMap<>();
-  private final Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile;
   private final Map<Path, List<Path>> jvmClasspathPerJavaHome = new ConcurrentHashMap<>();
   // entries in this map mean that the file is "dirty"
   private final Map<URI, Long> eventMap = new ConcurrentHashMap<>();
@@ -140,20 +134,13 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   private final LanguageClientLogger lsLogOutput;
   private final ScmIgnoredCache filesIgnoredByScmCache;
   private final StandaloneEngineManager standaloneEngineManager;
+  private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
 
   private final ExecutorService analysisExecutor;
 
   public AnalysisManager(LanguageClientLogger lsLogOutput, StandaloneEngineManager standaloneEngineManager, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
     WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, ProjectBindingManager bindingManager, FileTypeClassifier fileTypeClassifier,
-    FileLanguageCache fileLanguageCache, JavaConfigCache javaConfigCache) {
-    this(lsLogOutput, standaloneEngineManager, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager, fileTypeClassifier, fileLanguageCache, javaConfigCache,
-      new ConcurrentHashMap<>());
-  }
-
-  public AnalysisManager(LanguageClientLogger lsLogOutput, StandaloneEngineManager standaloneEngineManager, SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry,
-    WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, ProjectBindingManager bindingManager, FileTypeClassifier fileTypeClassifier,
-    FileLanguageCache fileLanguageCache, JavaConfigCache javaConfigCache,
-    Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile) {
+    FileLanguageCache fileLanguageCache, JavaConfigCache javaConfigCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache) {
     this.lsLogOutput = lsLogOutput;
     this.standaloneEngineManager = standaloneEngineManager;
     this.client = client;
@@ -164,9 +151,9 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     this.fileTypeClassifier = fileTypeClassifier;
     this.fileLanguageCache = fileLanguageCache;
     this.javaConfigCache = javaConfigCache;
+    this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.analysisExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint analysis", false));
     this.watcher = new EventWatcher();
-    this.taintVulnerabilitiesPerFile = taintVulnerabilitiesPerFile;
     this.filesIgnoredByScmCache = new ScmIgnoredCache(client);
   }
 
@@ -284,7 +271,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     issuesPerIdPerFileURI.remove(fileUri);
     knownVersionPerFileURI.remove(fileUri);
     analyzedVersionPerFileURI.remove(fileUri);
-    taintVulnerabilitiesPerFile.remove(fileUri);
     eventMap.remove(fileUri);
     client.publishDiagnostics(newPublishDiagnostics(fileUri));
     filesIgnoredByScmCache.remove(fileUri);
@@ -350,7 +336,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   }
 
   private void clearDiagnostics(URI f) {
-    taintVulnerabilitiesPerFile.remove(f);
     issuesPerIdPerFileURI.remove(f);
     client.publishDiagnostics(newPublishDiagnostics(f));
   }
@@ -478,7 +463,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
 
       if (!binding.isPresent()) {
         // Clear taint vulnerabilities if the folder was previously bound and just now changed to standalone
-        taintVulnerabilitiesPerFile.remove(fileUri);
+        taintVulnerabilitiesCache.clear(fileUri);
       }
 
       // FIXME SLVSCODE-250 we should not clear issues if the file have parsing errors
@@ -571,36 +556,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     }
   }
 
-  Optional<ServerIssue> getTaintVulnerabilityForDiagnostic(URI fileUri, Diagnostic d) {
-    return taintVulnerabilitiesPerFile.getOrDefault(fileUri, Collections.emptyList())
-      .stream()
-      .filter(i -> hasSameKey(d, i) || hasSameRuleKeyAndLocation(d, i))
-      .findFirst();
-  }
-
-  private static boolean hasSameKey(Diagnostic d, ServerIssue i) {
-    return d.getData() != null && d.getData().equals(i.key());
-  }
-
-  private static boolean hasSameRuleKeyAndLocation(Diagnostic d, ServerIssue i) {
-    return i.ruleKey().equals(d.getCode().getLeft()) && locationMatches(i, d);
-  }
-
-  Optional<ServerIssue> getTaintVulnerabilityByKey(String issueId) {
-    return taintVulnerabilitiesPerFile.values().stream()
-      .flatMap(List::stream)
-      .filter(i -> issueId.equals(i.key()))
-      .findFirst();
-  }
-
-  static boolean locationMatches(Issue i, Diagnostic d) {
-    return position(i).equals(d.getRange());
-  }
-
-  static boolean locationMatches(ServerIssue i, Diagnostic d) {
-    return position(i).equals(d.getRange());
-  }
-
   static class AnalysisResultsWrapper {
     private final AnalysisResults results;
     private final int analysisTime;
@@ -671,11 +626,11 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
         serverIssueTracker.matchAndTrack(filePath, issues, issueListener, shouldFetchServerIssues);
         var serverIssues = engine.getServerIssues(binding.getBinding(), filePath);
 
-        taintVulnerabilitiesPerFile.put(f, serverIssues.stream()
+        taintVulnerabilitiesCache.put(f, serverIssues.stream()
           .filter(it -> it.ruleKey().contains(SECURITY_REPOSITORY_HINT))
           .filter(it -> it.resolution().isEmpty())
           .collect(Collectors.toList()));
-        int foundVulnerabilities = taintVulnerabilitiesPerFile.getOrDefault(f, Collections.emptyList()).size();
+        long foundVulnerabilities = taintVulnerabilitiesCache.getAsDiagnostic(f).count();
         if (foundVulnerabilities > 0 && shouldFetchServerIssues) {
           lsLogOutput
             .info(format("Fetched %s %s from %s", foundVulnerabilities, pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), binding.getConnectionId()));
@@ -708,7 +663,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   static Optional<Diagnostic> convert(Map.Entry<String, Issue> entry) {
     var issue = entry.getValue();
     if (issue.getStartLine() != null) {
-      var range = position(issue);
+      var range = Utils.convert(issue);
       var diagnostic = new Diagnostic();
       var severity = severity(issue.getSeverity());
 
@@ -722,58 +677,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       return Optional.of(diagnostic);
     }
     return Optional.empty();
-  }
-
-  static Optional<Diagnostic> convert(ServerIssue issue) {
-    if (issue.getStartLine() != null) {
-      var range = position(issue);
-      var diagnostic = new Diagnostic();
-      var severity = severity(issue.severity());
-
-      diagnostic.setSeverity(severity);
-      diagnostic.setRange(range);
-      diagnostic.setCode(issue.ruleKey());
-      diagnostic.setMessage(message(issue));
-      diagnostic.setSource(SONARQUBE_TAINT_SOURCE);
-      diagnostic.setData(issue.key());
-
-      return Optional.of(diagnostic);
-    }
-    return Optional.empty();
-  }
-
-  private static DiagnosticSeverity severity(String severity) {
-    switch (severity.toUpperCase(Locale.ENGLISH)) {
-      case "BLOCKER":
-      case "CRITICAL":
-      case "MAJOR":
-        return DiagnosticSeverity.Warning;
-      case "MINOR":
-        return DiagnosticSeverity.Information;
-      case "INFO":
-      default:
-        return DiagnosticSeverity.Hint;
-    }
-  }
-
-  private static Range position(Issue issue) {
-    return new Range(
-      new Position(
-        issue.getStartLine() - 1,
-        issue.getStartLineOffset()),
-      new Position(
-        issue.getEndLine() - 1,
-        issue.getEndLineOffset()));
-  }
-
-  private static Range position(ServerIssueLocation issue) {
-    return new Range(
-      new Position(
-        issue.getStartLine() - 1,
-        issue.getStartLineOffset()),
-      new Position(
-        issue.getEndLine() - 1,
-        issue.getEndLineOffset()));
   }
 
   static String message(Issue issue) {
@@ -790,32 +693,15 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     }
   }
 
-  static String message(ServerIssue issue) {
-    if (issue.getFlows().isEmpty()) {
-      return issue.getMessage();
-    } else if (issue.getFlows().size() == 1) {
-      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.getFlows().get(0).locations().size(), ITEM_LOCATION);
-    } else {
-      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.getFlows().size(), ITEM_FLOW);
-    }
-  }
-
-  private static String buildMessageWithPluralizedSuffix(@Nullable String issueMessage, long nbItems, String itemName) {
-    return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issueMessage, nbItems, pluralize(nbItems, itemName));
-  }
-
   private PublishDiagnosticsParams newPublishDiagnostics(URI newUri) {
     var p = new PublishDiagnosticsParams();
 
     var localDiagnostics = issuesPerIdPerFileURI.getOrDefault(newUri, emptyMap()).entrySet()
       .stream()
-      .map(AnalysisManager::convert);
-    var taintDiagnostics = taintVulnerabilitiesPerFile.getOrDefault(newUri, emptyList())
-      .stream()
-      .map(AnalysisManager::convert);
+      .flatMap(i -> AnalysisManager.convert(i).stream());
+    var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostic(newUri);
 
     p.setDiagnostics(Stream.concat(localDiagnostics, taintDiagnostics)
-      .flatMap(Optional::stream)
       .sorted(AnalysisManager.byLineNumber())
       .collect(Collectors.toList()));
     p.setUri(newUri.toString());

@@ -67,6 +67,7 @@ import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.SecurityHotspotsHandlerServer;
+import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
 import org.sonarsource.sonarlint.ls.file.FileLanguageCache;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
@@ -97,6 +98,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ProjectBindingManager bindingManager;
   private final ServerNotifications serverNotifications;
   private final AnalysisManager analysisManager;
+  private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final NodeJsRuntime nodeJsRuntime;
   private final EnginesFactory enginesFactory;
   private final StandaloneEngineManager standaloneEngineManager;
@@ -147,13 +149,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.serverNotifications = new ServerNotifications(client, workspaceFoldersManager, telemetry, lsLogOutput);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) serverNotifications);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) serverNotifications);
+    this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
     this.analysisManager = new AnalysisManager(lsLogOutput, standaloneEngineManager, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager,
       fileTypeClassifier,
-      fileLanguageCache, javaConfigCache);
+      fileLanguageCache, javaConfigCache, taintVulnerabilitiesCache);
     this.workspaceFoldersManager.addListener(analysisManager);
     bindingManager.setAnalysisManager(analysisManager);
     this.settingsManager.addListener(analysisManager);
-    this.commandManager = new CommandManager(client, settingsManager, bindingManager, analysisManager, telemetry, standaloneEngineManager);
+    this.commandManager = new CommandManager(client, settingsManager, bindingManager, analysisManager, telemetry, standaloneEngineManager, taintVulnerabilitiesCache);
     this.securityHotspotsHandlerServer = new SecurityHotspotsHandlerServer(lsLogOutput, bindingManager, client, telemetry);
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
@@ -294,6 +297,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public void didClose(DidCloseTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
     analysisManager.didClose(uri);
+    taintVulnerabilitiesCache.didClose(uri);
   }
 
   @Override
