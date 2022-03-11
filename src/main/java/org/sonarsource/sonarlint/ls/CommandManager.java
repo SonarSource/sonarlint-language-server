@@ -61,6 +61,7 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
+import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
 import static java.net.URI.create;
 import static java.util.Objects.requireNonNull;

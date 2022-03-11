@@ -81,6 +81,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
+import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.plugin.api.module.file.ModuleFileEvent;
 
 import static java.lang.String.format;
@@ -692,7 +693,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   public void shutdown() {
     watcher.stopWatcher();
     eventMap.clear();
-    analysisExecutor.shutdown();
+    analysisExecutor.shutdownNow();
   }
 
   public void analyzeAllOpenFilesInFolder(@Nullable WorkspaceFolderWrapper folder) {

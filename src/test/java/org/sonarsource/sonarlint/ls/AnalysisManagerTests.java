@@ -45,6 +45,7 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
+import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.plugin.api.module.file.ModuleFileEvent;
 
 import static org.assertj.core.api.Assertions.assertThat;

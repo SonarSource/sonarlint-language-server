@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls;
+package org.sonarsource.sonarlint.ls.telemetry;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,6 +32,8 @@ import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryHttpClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
+import org.sonarsource.sonarlint.ls.NodeJsRuntime;
+import org.sonarsource.sonarlint.ls.SonarLintLogTester;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -43,7 +45,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.sonarsource.sonarlint.ls.SonarLintTelemetry.getStoragePath;
+import static org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry.getStoragePath;
 
 class SonarLintTelemetryTests {
   private SonarLintTelemetry telemetry;
