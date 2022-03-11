@@ -19,43 +19,49 @@
  */
 package org.sonarsource.sonarlint.ls.java;
 
+import java.io.File;
 import java.net.URI;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import java.util.stream.Stream;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.ServerMode;
 import org.sonarsource.sonarlint.ls.Utils;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
+import static java.lang.String.format;
 import static java.util.Optional.empty;
 import static java.util.Optional.ofNullable;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.joining;
 
 public class JavaConfigCache {
-  private static final SonarLintLogger LOG = SonarLintLogger.get();
   private final SonarLintExtendedLanguageClient client;
   private final OpenFilesCache openFilesCache;
-  public final Map<URI, Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse>> javaConfigPerFileURI = new ConcurrentHashMap<>();
+  private final LanguageClientLogger lsLogOutput;
+  private final Map<URI, Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse>> javaConfigPerFileURI = new ConcurrentHashMap<>();
+  private final Map<Path, List<Path>> jvmClasspathPerJavaHome = new ConcurrentHashMap<>();
 
-  public JavaConfigCache(SonarLintExtendedLanguageClient client, OpenFilesCache openFilesCache) {
+  public JavaConfigCache(SonarLintExtendedLanguageClient client, OpenFilesCache openFilesCache, LanguageClientLogger lsLogOutput) {
     this.client = client;
     this.openFilesCache = openFilesCache;
+    this.lsLogOutput = lsLogOutput;
   }
 
   public Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> get(URI fileUri) {
     return Optional.ofNullable(javaConfigPerFileURI.get(fileUri)).orElse(Optional.empty());
-  }
-
-  public void remove(URI fileUri) {
-    javaConfigPerFileURI.remove(fileUri);
-  }
-
-  public void clear() {
-    javaConfigPerFileURI.clear();
   }
 
   public Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> getOrFetch(URI fileUri) {
@@ -66,7 +72,7 @@ public class JavaConfigCache {
       Utils.interrupted(e);
       javaConfigOpt = empty();
     } catch (Exception e) {
-      LOG.warn("Unable to get Java config", e);
+      lsLogOutput.error("Unable to get Java config", e);
       javaConfigOpt = empty();
     }
     return javaConfigOpt;
@@ -86,26 +92,83 @@ public class JavaConfigCache {
     return client.getJavaConfig(fileUri.toString())
       .handle((r, t) -> {
         if (t != null) {
-          LOG.error("Unable to fetch Java configuration of file " + fileUri, t);
+          lsLogOutput.error("Unable to fetch Java configuration of file " + fileUri, t);
         }
         return r;
       })
       .thenApply(javaConfig -> {
         var configOpt = ofNullable(javaConfig);
         javaConfigPerFileURI.put(fileUri, configOpt);
-        LOG.debug("Cached Java config for file '{}'", fileUri);
+        lsLogOutput.debug("Cached Java config for file '" + fileUri + "'");
         return configOpt;
       });
   }
 
-  public void clear(URI projectUri) {
+  public Map<String, String> configureJavaProperties(Set<URI> fileInTheSameModule, Map<URI, GetJavaConfigResponse> javaConfigs) {
+    var partitionMainTest = fileInTheSameModule.stream().filter(javaConfigs::containsKey).collect(groupingBy(f -> javaConfigs.get(f).isTest()));
+    var mainFiles = ofNullable(partitionMainTest.get(false)).orElse(List.of());
+    var testFiles = ofNullable(partitionMainTest.get(true)).orElse(List.of());
+
+    if (mainFiles.isEmpty() && testFiles.isEmpty()) {
+      return Map.of();
+    }
+
+    Map<String, String> props = new HashMap<>();
+
+    // Assume all files in the same module have the same vmLocation
+    var commonConfig = javaConfigs.get(javaConfigs.keySet().iterator().next());
+    var vmLocationStr = commonConfig.getVmLocation();
+    List<Path> jdkClassesRoots = new ArrayList<>();
+    if (vmLocationStr != null) {
+      var vmLocation = Paths.get(vmLocationStr);
+      jdkClassesRoots = getVmClasspathFromCacheOrCompute(vmLocation);
+      props.put("sonar.java.jdkHome", vmLocationStr);
+    }
+
+    // Assume all main files have the same classpath
+    if (!mainFiles.isEmpty()) {
+      var mainConfig = javaConfigs.get(mainFiles.get(0));
+      var classpath = computeClasspathSkipNonExisting(jdkClassesRoots, mainConfig);
+      props.put("sonar.java.libraries", classpath);
+    }
+
+    // Assume all test files have the same classpath
+    if (!testFiles.isEmpty()) {
+      var testConfig = javaConfigs.get(testFiles.get(0));
+      var classpath = computeClasspathSkipNonExisting(jdkClassesRoots, testConfig);
+      props.put("sonar.java.test.libraries", classpath);
+    }
+
+    return props;
+  }
+
+  private String computeClasspathSkipNonExisting(List<Path> jdkClassesRoots, GetJavaConfigResponse testConfig) {
+    return Stream.concat(
+      jdkClassesRoots.stream().map(Path::toAbsolutePath).map(Path::toString),
+      Stream.of(testConfig.getClasspath()))
+      .filter(path -> {
+        boolean exists = new File(path).exists();
+        if (!exists) {
+          lsLogOutput.debug(format("Classpath '%s' from configuration does not exist, skipped", path));
+        }
+        return exists;
+      })
+      .collect(joining(","));
+  }
+
+  private List<Path> getVmClasspathFromCacheOrCompute(Path vmLocation) {
+    return jvmClasspathPerJavaHome.computeIfAbsent(vmLocation, JavaSdkUtil::getJdkClassesRoots);
+  }
+
+  public void didClasspathUpdate(URI projectUri) {
+    // Clear cached value to force refetch during next analysis
     for (var it = javaConfigPerFileURI.entrySet().iterator(); it.hasNext();) {
       var entry = it.next();
       var cachedResponseOpt = entry.getValue();
       // If we have cached an empty result, still clear the value on classpath update to force next analysis to re-attempt fetch
       if (cachedResponseOpt.isEmpty() || sameProject(projectUri, cachedResponseOpt.get())) {
         it.remove();
-        LOG.debug("Evicted Java config cache for file '{}'", entry.getKey());
+        lsLogOutput.debug("Evicted Java config cache for file '" + entry.getKey() + "'");
       }
     }
   }
@@ -114,5 +177,14 @@ public class JavaConfigCache {
     // Compare file and not directly URI because
     // file:/foo/bar and file:///foo/bar/ are not considered equals by java.net.URI
     return Paths.get(URI.create(cachedResponse.getProjectRoot())).equals(Paths.get(projectUri));
+  }
+
+  public void didServerModeChange(ServerMode serverModeEnum) {
+    lsLogOutput.debug("Clearing Java config cache on server mode change");
+    javaConfigPerFileURI.clear();
+  }
+
+  public void didClose(URI fileUri) {
+    javaConfigPerFileURI.remove(fileUri);
   }
 }

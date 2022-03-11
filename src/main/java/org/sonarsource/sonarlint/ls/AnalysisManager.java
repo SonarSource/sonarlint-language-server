@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls;
 
 import com.google.gson.JsonPrimitive;
-import java.io.File;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -75,7 +74,6 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersProvider;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
-import org.sonarsource.sonarlint.ls.java.JavaSdkUtil;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -89,7 +87,6 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.partitioningBy;
 import static java.util.stream.Collectors.toList;
@@ -120,7 +117,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   private boolean firstSecretIssueDetected;
   private final Map<URI, Integer> analyzedVersionPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, Map<String, Issue>> issuesPerIdPerFileURI = new ConcurrentHashMap<>();
-  private final Map<Path, List<Path>> jvmClasspathPerJavaHome = new ConcurrentHashMap<>();
   // entries in this map mean that the file is "dirty"
   private final Map<URI, Long> eventMap = new ConcurrentHashMap<>();
 
@@ -258,7 +254,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
 
   public void didClose(URI fileUri) {
     lsLogOutput.debug("File '" + fileUri + "' closed. Cleaning diagnostics.");
-    javaConfigCache.remove(fileUri);
     issuesPerIdPerFileURI.remove(fileUri);
     analyzedVersionPerFileURI.remove(fileUri);
     eventMap.remove(fileUri);
@@ -550,7 +545,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       .setBaseDir(baseDir)
       .setModuleKey(baseDirUri)
       .putAllExtraProperties(settings.getAnalyzerProperties())
-      .putAllExtraProperties(configureJavaProperties(filesToAnalyze.keySet(), javaConfigs))
+      .putAllExtraProperties(javaConfigCache.configureJavaProperties(filesToAnalyze.keySet(), javaConfigs))
       .addExcludedRules(settingsManager.getCurrentSettings().getExcludedRules())
       .addIncludedRules(settingsManager.getCurrentSettings().getIncludedRules())
       .addRuleParameters(settingsManager.getCurrentSettings().getRuleParameters());
@@ -577,7 +572,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       .setBaseDir(baseDir)
       .setModuleKey(baseDirUri)
       .putAllExtraProperties(settings.getAnalyzerProperties())
-      .putAllExtraProperties(configureJavaProperties(filesToAnalyze.keySet(), javaConfigs));
+      .putAllExtraProperties(javaConfigCache.configureJavaProperties(filesToAnalyze.keySet(), javaConfigs));
     filesToAnalyze.forEach((uri, openFile) -> configurationBuilder
       .addInputFiles(
         new AnalysisClientInputFile(uri, getFileRelativePath(baseDir, uri), openFile.getContent(), fileTypeClassifier.isTest(settings, uri, ofNullable(javaConfigs.get(uri))),
@@ -738,70 +733,11 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     analyzeAsync(openedJavaFileUris, false);
   }
 
-  private Map<String, String> configureJavaProperties(Set<URI> fileInTheSameModule, Map<URI, GetJavaConfigResponse> javaConfigs) {
-    var partitionMainTest = fileInTheSameModule.stream().filter(javaConfigs::containsKey).collect(groupingBy(f -> javaConfigs.get(f).isTest()));
-    var mainFiles = ofNullable(partitionMainTest.get(false)).orElse(List.of());
-    var testFiles = ofNullable(partitionMainTest.get(true)).orElse(List.of());
-
-    if (mainFiles.isEmpty() && testFiles.isEmpty()) {
-      return Map.of();
-    }
-
-    Map<String, String> props = new HashMap<>();
-
-    // Assume all files in the same module have the same vmLocation
-    var commonConfig = javaConfigs.get(javaConfigs.keySet().iterator().next());
-    var vmLocationStr = commonConfig.getVmLocation();
-    List<Path> jdkClassesRoots = new ArrayList<>();
-    if (vmLocationStr != null) {
-      var vmLocation = Paths.get(vmLocationStr);
-      jdkClassesRoots = getVmClasspathFromCacheOrCompute(vmLocation);
-      props.put("sonar.java.jdkHome", vmLocationStr);
-    }
-
-    // Assume all main files have the same classpath
-    if (!mainFiles.isEmpty()) {
-      var mainConfig = javaConfigs.get(mainFiles.get(0));
-      var classpath = computeClasspathSkipNonExisting(jdkClassesRoots, mainConfig);
-      props.put("sonar.java.libraries", classpath);
-    }
-
-    // Assume all test files have the same classpath
-    if (!testFiles.isEmpty()) {
-      var testConfig = javaConfigs.get(testFiles.get(0));
-      var classpath = computeClasspathSkipNonExisting(jdkClassesRoots, testConfig);
-      props.put("sonar.java.test.libraries", classpath);
-    }
-
-    return props;
-  }
-
-  private String computeClasspathSkipNonExisting(List<Path> jdkClassesRoots, GetJavaConfigResponse testConfig) {
-    return Stream.concat(
-      jdkClassesRoots.stream().map(Path::toAbsolutePath).map(Path::toString),
-      Stream.of(testConfig.getClasspath()))
-      .filter(path -> {
-        boolean exists = new File(path).exists();
-        if (!exists) {
-          lsLogOutput.debug(format("Classpath '%s' from configuration does not exist, skipped", path));
-        }
-        return exists;
-      })
-      .collect(joining(","));
-  }
-
-  private List<Path> getVmClasspathFromCacheOrCompute(Path vmLocation) {
-    return jvmClasspathPerJavaHome.computeIfAbsent(vmLocation, JavaSdkUtil::getJdkClassesRoots);
-  }
-
-  public void didClasspathUpdate(URI projectUri) {
-    javaConfigCache.clear(projectUri);
+  public void didClasspathUpdate() {
     analyzeAllOpenJavaFiles();
   }
 
   public void didServerModeChange(SonarLintExtendedLanguageServer.ServerMode serverMode) {
-    lsLogOutput.debug("Clearing Java config cache on server mode change");
-    javaConfigCache.clear();
     if (serverMode == SonarLintExtendedLanguageServer.ServerMode.STANDARD) {
       analyzeAllOpenJavaFiles();
     }

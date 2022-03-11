@@ -109,6 +109,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final SecurityHotspotsHandlerServer securityHotspotsHandlerServer;
   private final ApacheHttpClient httpClient;
   private final WorkspaceFolderBranchManager branchManager;
+  private final JavaConfigCache javaConfigCache;
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
@@ -136,7 +137,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClient);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
     var fileTypeClassifier = new FileTypeClassifier();
-    var javaConfigCache = new JavaConfigCache(client, openFilesCache);
+    javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
     this.enginesFactory = new EnginesFactory(analyzers, globalLogOutput, nodeJsRuntime,
       new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, javaConfigCache), extraAnalyzers);
     this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
@@ -302,6 +303,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     analysisManager.didClose(uri);
     openFilesCache.didClose(uri);
     taintVulnerabilitiesCache.didClose(uri);
+    javaConfigCache.didClose(uri);
   }
 
   @Override
@@ -362,13 +364,17 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public void didClasspathUpdate(String projectUri) {
-    analysisManager.didClasspathUpdate(create(projectUri));
+  public void didClasspathUpdate(String projectUriStr) {
+    var projectUri = create(projectUriStr);
+    javaConfigCache.didClasspathUpdate(projectUri);
+    analysisManager.didClasspathUpdate();
   }
 
   @Override
   public void didJavaServerModeChange(String serverMode) {
-    analysisManager.didServerModeChange(ServerMode.of(serverMode));
+    var serverModeEnum = ServerMode.of(serverMode);
+    javaConfigCache.didServerModeChange(serverModeEnum);
+    analysisManager.didServerModeChange(serverModeEnum);
   }
 
   @Override
