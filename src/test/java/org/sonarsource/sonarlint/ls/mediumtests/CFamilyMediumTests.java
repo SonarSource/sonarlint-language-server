@@ -19,8 +19,10 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import java.io.FileWriter;
+import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,21 +39,25 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   @EnabledIfSystemProperty(named = "commercial", matches = ".*", disabledReason = "Commercial plugin not available")
-  void analyzeSimpleCppTestFileOnOpen(@TempDir Path cppProjectBaseDir) throws IOException, InterruptedException {
+  void analyzeSimpleCppTestFileOnOpen(@TempDir Path cppProjectBaseDir) throws IOException, InterruptedException, URISyntaxException {
+    var mockClang = CFamilyMediumTests.class.getResource("/clang");
+    assertThat(mockClang).isNotNull();
+
+
     var cppFile = cppProjectBaseDir.resolve("analyzeSimpleCppTestFileOnOpen.cpp");
     Files.createFile(cppFile);
     var cppFileUri = cppFile.toUri().toString();
 
-    var compilationDatabaseFile = cppProjectBaseDir.resolve("compile_commands.json");
 
     var compilationDatabaseContent = "[\n" +
       "{\n" +
       "  \"directory\": \""+ cppProjectBaseDir + "\",\n" +
-      "  \"command\": \"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ -g -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.0.sdk -std=gnu++14 -o CMakeFiles/T.dir/main.cpp.o -c"  + cppFile + "\",\n" +
+      "  \"command\": \"" + mockClang.toURI().getPath() + " -x c++ " + cppFile + "\",\n" +
       "  \"file\": \"" + cppFile + "\"\n" +
       "}\n" +
       "]";
 
+    var compilationDatabaseFile = cppProjectBaseDir.resolve("compile_commands.json");
     FileUtils.write(compilationDatabaseFile.toFile(), compilationDatabaseContent, StandardCharsets.UTF_8);
 
     Map<String, String> analyserProperties = Map.of("sonar.cfamily.compile-commands", compilationDatabaseFile.toString());
