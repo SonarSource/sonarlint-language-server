@@ -20,25 +20,43 @@
 package org.sonarsource.sonarlint.ls.file;
 
 import java.net.URI;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import javax.annotation.concurrent.Immutable;
 
-public class FileLanguageCache {
-  private final Map<URI, String> languageIdPerFileURI = new ConcurrentHashMap<>();
+/**
+ * Represent a versionned open file and its immutable metadata in the editor.
+ */
+@Immutable
+public class VersionnedOpenFile {
+  private final URI uri;
+  private final String languageId;
+  private final int version;
+  private final String content;
 
-  public void put(URI fileUri, String languageId) {
-    languageIdPerFileURI.put(fileUri, languageId);
+  public VersionnedOpenFile(URI uri, String languageId, int version, String content) {
+    this.uri = uri;
+    this.languageId = languageId;
+    this.version = version;
+    this.content = content;
   }
 
-  public void remove(URI fileUri) {
-    languageIdPerFileURI.remove(fileUri);
+  public URI getUri() {
+    return uri;
   }
 
-  public String getLanguageFor(URI uri) {
-    return languageIdPerFileURI.get(uri);
+  public String getLanguageId() {
+    return languageId;
   }
 
-  public boolean isJava(URI fileUri) {
-    return "java".equals(languageIdPerFileURI.get(fileUri));
+  public int getVersion() {
+    return version;
   }
+
+  public String getContent() {
+    return content;
+  }
+
+  public boolean isJava() {
+    return "java".equals(languageId);
+  }
+
 }

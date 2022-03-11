@@ -69,8 +69,8 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.SecurityHotspotsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
-import org.sonarsource.sonarlint.ls.file.FileLanguageCache;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
+import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersProvider;
@@ -99,6 +99,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ServerNotifications serverNotifications;
   private final AnalysisManager analysisManager;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
+  private final OpenFilesCache openFilesCache;
   private final NodeJsRuntime nodeJsRuntime;
   private final EnginesFactory enginesFactory;
   private final StandaloneEngineManager standaloneEngineManager;
@@ -108,7 +109,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final SecurityHotspotsHandlerServer securityHotspotsHandlerServer;
   private final ApacheHttpClient httpClient;
   private final WorkspaceFolderBranchManager branchManager;
-  private final FileLanguageCache fileLanguageCache = new FileLanguageCache();
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
@@ -130,12 +130,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var lsLogOutput = new LanguageClientLogger(this.client);
     var globalLogOutput = new LanguageClientLogOutput(lsLogOutput, false);
     SonarLintLogger.setTarget(globalLogOutput);
+    this.openFilesCache = new OpenFilesCache(lsLogOutput);
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.progressManager = new ProgressManager(client);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClient);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
-    var fileTypeClassifier = new FileTypeClassifier(fileLanguageCache);
-    var javaConfigCache = new JavaConfigCache(client, fileLanguageCache);
+    var fileTypeClassifier = new FileTypeClassifier();
+    var javaConfigCache = new JavaConfigCache(client, openFilesCache);
     this.enginesFactory = new EnginesFactory(analyzers, globalLogOutput, nodeJsRuntime,
       new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, javaConfigCache), extraAnalyzers);
     this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
@@ -152,7 +153,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
     this.analysisManager = new AnalysisManager(lsLogOutput, standaloneEngineManager, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager,
       fileTypeClassifier,
-      fileLanguageCache, javaConfigCache, taintVulnerabilitiesCache);
+      openFilesCache, javaConfigCache, taintVulnerabilitiesCache);
     this.workspaceFoldersManager.addListener(analysisManager);
     bindingManager.setAnalysisManager(analysisManager);
     this.settingsManager.addListener(analysisManager);
@@ -284,26 +285,30 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didOpen(DidOpenTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
-    analysisManager.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
+    var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
+    analysisManager.didOpen(file);
   }
 
   @Override
   public void didChange(DidChangeTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
-    analysisManager.didChange(uri, params.getContentChanges().get(0).getText(), params.getTextDocument().getVersion());
+    openFilesCache.didChange(uri, params.getContentChanges().get(0).getText(), params.getTextDocument().getVersion());
+    analysisManager.didChange(uri);
   }
 
   @Override
   public void didClose(DidCloseTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
     analysisManager.didClose(uri);
+    openFilesCache.didClose(uri);
     taintVulnerabilitiesCache.didClose(uri);
   }
 
   @Override
   public void didSave(DidSaveTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
-    analysisManager.didSave(uri, params.getText());
+    var file = openFilesCache.didSave(uri, params.getText());
+    file.ifPresent(analysisManager::didSave);
   }
 
   @Override
