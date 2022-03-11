@@ -34,6 +34,8 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.tuple;
+import static org.eclipse.lsp4j.DiagnosticSeverity.Information;
 
 class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -64,16 +66,15 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
     emulateConfigurationChangeOnClient(null, true, true, true,
       analyserProperties);
 
-    var diagnostics = didOpenAndWaitForDiagnostics(cppFileUri, "cpp", "#include <iostream>\n" +
-      "\n" +
+    var diagnostics = didOpenAndWaitForDiagnostics(cppFileUri, "cpp",
       "int main() {\n" +
-      "    std::cout << \"Hello, World!\" << std::endl;\n" +
+      "    int i = 0;\n" +
       "    return 0;\n" +
       "}\n");
 
     assertThat(diagnostics)
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactlyInAnyOrder();
+      .containsExactlyInAnyOrder(tuple(1, 8, 1, 9, "cpp:S1481", "sonarlint", "unused variable 'i'", Information));
   }
 
 }
