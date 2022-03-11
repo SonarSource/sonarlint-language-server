@@ -59,7 +59,7 @@ public class NodeJsRuntime {
   }
 
   @Nullable
-  String nodeVersion() {
+  public String nodeVersion() {
     return Optional.ofNullable(getNodeJsVersion())
       .map(Version::toString)
       .orElse(null);
