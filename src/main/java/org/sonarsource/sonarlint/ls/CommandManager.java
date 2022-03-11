@@ -92,20 +92,20 @@ public class CommandManager {
   private final SonarLintExtendedLanguageClient client;
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
-  private final AnalysisManager analysisManager;
   private final SonarLintTelemetry telemetry;
   private final StandaloneEngineManager standaloneEngineManager;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
+  private final IssuesCache issuesCache;
 
-  CommandManager(SonarLintExtendedLanguageClient client, SettingsManager settingsManager, ProjectBindingManager bindingManager, AnalysisManager analysisManager,
-    SonarLintTelemetry telemetry, StandaloneEngineManager standaloneEngineManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache) {
+  CommandManager(SonarLintExtendedLanguageClient client, SettingsManager settingsManager, ProjectBindingManager bindingManager,
+    SonarLintTelemetry telemetry, StandaloneEngineManager standaloneEngineManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache) {
     this.client = client;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
-    this.analysisManager = analysisManager;
     this.telemetry = telemetry;
     this.standaloneEngineManager = standaloneEngineManager;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
+    this.issuesCache = issuesCache;
   }
 
   public List<Either<Command, CodeAction>> computeCodeActions(CodeActionParams params, CancelChecker cancelToken) {
@@ -117,20 +117,20 @@ public class CommandManager {
       if (SONARLINT_SOURCE.equals(diagnostic.getSource())) {
         var ruleKey = diagnostic.getCode().getLeft();
         cancelToken.checkCanceled();
-        var issueForDiagnostic = analysisManager.getIssueForDiagnostic(uri, diagnostic);
-        issueForDiagnostic.ifPresent(issue -> issue.quickFixes().forEach(fix -> {
+        var issueForDiagnostic = issuesCache.getIssueForDiagnostic(uri, diagnostic);
+        issueForDiagnostic.ifPresent(versionnedIssue -> versionnedIssue.getIssue().quickFixes().forEach(fix -> {
           var newCodeAction = new CodeAction(SONARLINT_ACTION_PREFIX + fix.message());
           newCodeAction.setKind(CodeActionKind.QuickFix);
           newCodeAction.setDiagnostics(List.of(diagnostic));
-          newCodeAction.setEdit(newWorkspaceEdit(fix, analysisManager.getAnalyzedVersion(uri)));
+          newCodeAction.setEdit(newWorkspaceEdit(fix, versionnedIssue.getDocumentVersion()));
           newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, List.of(ruleKey)));
           codeActions.add(Either.forRight(newCodeAction));
         }));
         addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey);
-        issueForDiagnostic.ifPresent(issue -> {
-          if (!issue.flows().isEmpty()) {
+        issueForDiagnostic.ifPresent(versionnedIssue -> {
+          if (!versionnedIssue.getIssue().flows().isEmpty()) {
             var titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
-            codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(issue))));
+            codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(versionnedIssue.getIssue()))));
           }
         });
         if (binding.isEmpty()) {

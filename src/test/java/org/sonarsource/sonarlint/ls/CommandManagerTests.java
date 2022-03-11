@@ -56,6 +56,7 @@ import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintE
 import org.sonarsource.sonarlint.core.container.standalone.rule.DefaultStandaloneRuleParam;
 import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamDefinition;
 import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamType;
+import org.sonarsource.sonarlint.ls.IssuesCache.VersionnedIssue;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
@@ -95,8 +96,8 @@ class CommandManagerTests {
   private ProjectBindingWrapper mockBinding;
   private ConnectedSonarLintEngine mockConnectedEngine;
   private SonarLintExtendedLanguageClient mockClient;
-  private AnalysisManager mockAnalysisManager;
   private TaintVulnerabilitiesCache mockTaintVulnerabilitiesCache;
+  private IssuesCache issuesCache;
   private StandaloneSonarLintEngine mockStandaloneEngine;
   private SettingsManager mockSettingsManager;
   private SonarLintTelemetry mockTelemetry;
@@ -112,13 +113,13 @@ class CommandManagerTests {
     when(mockBinding.getBinding()).thenReturn(new ProjectBinding("projectKey", "sqPathPrefix", "idePathPrefix"));
 
     mockClient = mock(SonarLintExtendedLanguageClient.class);
-    mockAnalysisManager = mock(AnalysisManager.class);
     mockTaintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
+    issuesCache = mock(IssuesCache.class);
     mockStandaloneEngine = mock(StandaloneSonarLintEngine.class);
     standaloneEngineManager = mock(StandaloneEngineManager.class);
     when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(mockStandaloneEngine);
     mockTelemetry = mock(SonarLintTelemetry.class);
-    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, mockAnalysisManager, mockTelemetry, standaloneEngineManager, mockTaintVulnerabilitiesCache);
+    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, mockTelemetry, standaloneEngineManager, mockTaintVulnerabilitiesCache, issuesCache);
   }
 
   @Test
@@ -168,7 +169,8 @@ class CommandManagerTests {
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
     var issue = mock(Issue.class);
-    when(mockAnalysisManager.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
+    var versionnedIssue = new VersionnedIssue(issue, 1);
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionnedIssue));
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
@@ -187,7 +189,8 @@ class CommandManagerTests {
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
     var issue = mock(Issue.class);
-    when(mockAnalysisManager.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
+    var versionnedIssue = new VersionnedIssue(issue, 1);
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionnedIssue));
 
     var textEdit = mock(TextEdit.class);
     when(textEdit.newText()).thenReturn("");
@@ -253,8 +256,9 @@ class CommandManagerTests {
     var flow = mock(Flow.class);
     var flows = List.of(flow);
     var issue = mock(Issue.class);
+    var versionnedIssue = new VersionnedIssue(issue, 1);
     when(issue.flows()).thenReturn(flows);
-    when(mockAnalysisManager.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionnedIssue));
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);

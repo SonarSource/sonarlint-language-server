@@ -34,6 +34,7 @@ import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModuleFileEvent;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
+import org.sonarsource.sonarlint.ls.IssuesCache.VersionnedIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
@@ -76,7 +77,7 @@ class AnalysisManagerTests {
     languageClient = mock(SonarLintExtendedLanguageClient.class);
     underTest = new AnalysisManager(mock(LanguageClientLogger.class), standaloneEngineManager, languageClient, mock(SonarLintTelemetry.class),
       foldersManager, mock(SettingsManager.class), mock(ProjectBindingManager.class), new FileTypeClassifier(), fileLanguageCache, mock(JavaConfigCache.class),
-      mock(TaintVulnerabilitiesCache.class));
+      mock(TaintVulnerabilitiesCache.class), mock(IssuesCache.class));
 
   }
 
@@ -84,7 +85,8 @@ class AnalysisManagerTests {
   void testNotConvertGlobalIssues() {
     var issue = mock(Issue.class);
     when(issue.getStartLine()).thenReturn(null);
-    assertThat(convert(entry("id", issue))).isEmpty();
+    var versionnedIssue = new VersionnedIssue(issue, 1);
+    assertThat(convert(entry("id", versionnedIssue))).isEmpty();
   }
 
   @Test
@@ -94,15 +96,16 @@ class AnalysisManagerTests {
     when(issue.getStartLine()).thenReturn(1);
     when(issue.getSeverity()).thenReturn("BLOCKER");
     when(issue.getMessage()).thenReturn("Do this, don't do that");
-    assertThat(convert(entry(id, issue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    var versionnedIssue = new VersionnedIssue(issue, 1);
+    assertThat(convert(entry(id, versionnedIssue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn("CRITICAL");
-    assertThat(convert(entry(id, issue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(convert(entry(id, versionnedIssue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn("MAJOR");
-    assertThat(convert(entry(id, issue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(convert(entry(id, versionnedIssue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn("MINOR");
-    assertThat(convert(entry(id, issue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Information);
+    assertThat(convert(entry(id, versionnedIssue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Information);
     when(issue.getSeverity()).thenReturn("INFO");
-    assertThat(convert(entry(id, issue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
+    assertThat(convert(entry(id, versionnedIssue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
   }
 
   @Test
