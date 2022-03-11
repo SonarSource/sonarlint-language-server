@@ -111,6 +111,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ApacheHttpClient httpClient;
   private final WorkspaceFolderBranchManager branchManager;
   private final JavaConfigCache javaConfigCache;
+  private final IssuesCache issuesCache;
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
@@ -133,6 +134,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var globalLogOutput = new LanguageClientLogOutput(lsLogOutput, false);
     SonarLintLogger.setTarget(globalLogOutput);
     this.openFilesCache = new OpenFilesCache(lsLogOutput);
+    this.issuesCache = new IssuesCache();
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.progressManager = new ProgressManager(client);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClient);
@@ -155,11 +157,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
     this.analysisManager = new AnalysisManager(lsLogOutput, standaloneEngineManager, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager,
       fileTypeClassifier,
-      openFilesCache, javaConfigCache, taintVulnerabilitiesCache);
+      openFilesCache, javaConfigCache, taintVulnerabilitiesCache, issuesCache);
     this.workspaceFoldersManager.addListener(analysisManager);
     bindingManager.setAnalysisManager(analysisManager);
     this.settingsManager.addListener(analysisManager);
-    this.commandManager = new CommandManager(client, settingsManager, bindingManager, analysisManager, telemetry, standaloneEngineManager, taintVulnerabilitiesCache);
+    this.commandManager = new CommandManager(client, settingsManager, bindingManager, telemetry, standaloneEngineManager, taintVulnerabilitiesCache, issuesCache);
     this.securityHotspotsHandlerServer = new SecurityHotspotsHandlerServer(lsLogOutput, bindingManager, client, telemetry);
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
@@ -305,6 +307,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     openFilesCache.didClose(uri);
     taintVulnerabilitiesCache.didClose(uri);
     javaConfigCache.didClose(uri);
+    issuesCache.didClose(uri);
   }
 
   @Override
