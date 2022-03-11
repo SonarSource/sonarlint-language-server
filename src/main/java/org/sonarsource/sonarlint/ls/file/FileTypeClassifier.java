@@ -29,14 +29,9 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 
 public class FileTypeClassifier {
   private static final SonarLintLogger LOG = SonarLintLogger.get();
-  private final FileLanguageCache fileLanguageCache;
-
-  public FileTypeClassifier(FileLanguageCache fileLanguageCache) {
-    this.fileLanguageCache = fileLanguageCache;
-  }
 
   public boolean isTest(@Nullable WorkspaceFolderSettings settings, URI fileUri, Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> javaConfig) {
-    if (fileLanguageCache.isJava(fileUri) && javaConfig.map(SonarLintExtendedLanguageClient.GetJavaConfigResponse::isTest).orElse(false)) {
+    if (javaConfig.map(SonarLintExtendedLanguageClient.GetJavaConfigResponse::isTest).orElse(false)) {
       LOG.debug("Classified as test by vscode-java");
       return true;
     }

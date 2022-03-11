@@ -36,8 +36,8 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
-import org.sonarsource.sonarlint.ls.file.FileLanguageCache;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
+import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
@@ -68,13 +68,13 @@ class AnalysisManagerTests {
 
   @BeforeEach
   void prepare() {
-    var fileLanguageCache = new FileLanguageCache();
+    var fileLanguageCache = mock(OpenFilesCache.class);
     enginesFactory = mock(EnginesFactory.class);
     foldersManager = mock(WorkspaceFoldersManager.class);
     standaloneEngineManager = mock(StandaloneEngineManager.class);
     languageClient = mock(SonarLintExtendedLanguageClient.class);
     underTest = new AnalysisManager(mock(LanguageClientLogger.class), standaloneEngineManager, languageClient, mock(SonarLintTelemetry.class),
-      foldersManager, mock(SettingsManager.class), mock(ProjectBindingManager.class), new FileTypeClassifier(fileLanguageCache), fileLanguageCache, mock(JavaConfigCache.class),
+      foldersManager, mock(SettingsManager.class), mock(ProjectBindingManager.class), new FileTypeClassifier(), fileLanguageCache, mock(JavaConfigCache.class),
       mock(TaintVulnerabilitiesCache.class));
 
   }

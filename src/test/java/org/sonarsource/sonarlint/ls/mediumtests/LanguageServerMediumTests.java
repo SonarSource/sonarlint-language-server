@@ -255,6 +255,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void analyzeSimpleJsFileOnChange() throws Exception {
     var uri = getUri("analyzeSimpleJsFileOnChange.js");
 
+    didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {}");
+
     var diagnostics = didChangeAndWaitForDiagnostics(uri, "function foo() {\n  var toto = 0;\n}");
 
     assertThat(diagnostics)
@@ -281,13 +283,15 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void delayAnalysisOnChange() throws Exception {
     var uri = getUri("foo.js");
 
+    didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {}");
+
     // Emulate two quick changes, should only trigger one analysis
     client.doAndWaitForDiagnostics(uri, () -> {
       lsProxy.getTextDocumentService()
         .didChange(
-          new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 1), List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n}"))));
+          new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 2), List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n}"))));
       lsProxy.getTextDocumentService()
-        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 2),
+        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 3),
           List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n  var plouf = 0;\n}"))));
     });
     var diagnostics = client.getDiagnostics(uri);
@@ -301,6 +305,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void analyzeSimpleJsFileOnSave() throws Exception {
     var uri = getUri("foo.js");
+
+    didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {}");
 
     var diagnostics = didSaveAndWaitForDiagnostics(uri, "function foo() {\n  var toto = 0;\n}");
 

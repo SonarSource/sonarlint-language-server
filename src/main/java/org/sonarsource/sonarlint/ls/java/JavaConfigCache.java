@@ -29,7 +29,8 @@ import java.util.concurrent.TimeUnit;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.Utils;
-import org.sonarsource.sonarlint.ls.file.FileLanguageCache;
+import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
+import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
 
 import static java.util.Optional.empty;
 import static java.util.Optional.ofNullable;
@@ -37,12 +38,12 @@ import static java.util.Optional.ofNullable;
 public class JavaConfigCache {
   private static final SonarLintLogger LOG = SonarLintLogger.get();
   private final SonarLintExtendedLanguageClient client;
-  private final FileLanguageCache fileLanguageCache;
+  private final OpenFilesCache openFilesCache;
   public final Map<URI, Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse>> javaConfigPerFileURI = new ConcurrentHashMap<>();
 
-  public JavaConfigCache(SonarLintExtendedLanguageClient client, FileLanguageCache fileLanguageCache) {
+  public JavaConfigCache(SonarLintExtendedLanguageClient client, OpenFilesCache openFilesCache) {
     this.client = client;
-    this.fileLanguageCache = fileLanguageCache;
+    this.openFilesCache = openFilesCache;
   }
 
   public Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> get(URI fileUri) {
@@ -75,7 +76,8 @@ public class JavaConfigCache {
    * Try to fetch Java config. In case of any error, cache an empty result to avoid repeated calls.
    */
   private CompletableFuture<Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse>> getOrFetchAsync(URI fileUri) {
-    if (!fileLanguageCache.isJava(fileUri)) {
+    Optional<VersionnedOpenFile> openFile = openFilesCache.getFile(fileUri);
+    if (openFile.isPresent() && !openFile.get().isJava()) {
       return CompletableFuture.completedFuture(Optional.empty());
     }
     if (javaConfigPerFileURI.containsKey(fileUri)) {
