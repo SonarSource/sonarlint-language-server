@@ -19,15 +19,15 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.eclipse.lsp4j.Diagnostic;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -42,8 +42,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   @EnabledIfSystemProperty(named = "commercial", matches = ".*", disabledReason = "Commercial plugin not available")
   void analyzeSimpleCppTestFileOnOpen(@TempDir Path cppProjectBaseDir) throws IOException, InterruptedException, URISyntaxException {
-    var mockClang = CFamilyMediumTests.class.getResource("/clang");
-    assertThat(mockClang).isNotNull();
+    var mockClang = Paths.get("src/test/assets/cfamily/clang-test.bat").toAbsolutePath();
 
 
     var cppFile = cppProjectBaseDir.resolve("analyzeSimpleCppTestFileOnOpen.cpp");
@@ -53,9 +52,9 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
 
     var compilationDatabaseContent = "[\n" +
       "{\n" +
-      "  \"directory\": \""+ cppProjectBaseDir + "\",\n" +
-      "  \"command\": \"" + mockClang.toURI().getPath() + " -x c++ " + cppFile + "\",\n" +
-      "  \"file\": \"" + cppFile + "\"\n" +
+      "  \"directory\": \""+ StringEscapeUtils.escapeJson(cppProjectBaseDir.toString()) + "\",\n" +
+      "  \"command\": \"" + StringEscapeUtils.escapeJson(mockClang.toString()) + " -x c++ " + StringEscapeUtils.escapeJson(cppFile.toString()) + "\",\n" +
+      "  \"file\": \"" + StringEscapeUtils.escapeJson(cppFile.toString()) + "\"\n" +
       "}\n" +
       "]";
 
