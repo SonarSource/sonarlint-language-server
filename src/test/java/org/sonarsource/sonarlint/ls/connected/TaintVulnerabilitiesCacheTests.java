@@ -37,6 +37,7 @@ import static org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache.c
 
 class TaintVulnerabilitiesCacheTests {
 
+  private static final String SAMPLE_SECURITY_RULE_KEY = "javasecurity:S12345";
   private final TaintVulnerabilitiesCache underTest = new TaintVulnerabilitiesCache();
 
   @Test
@@ -63,6 +64,29 @@ class TaintVulnerabilitiesCacheTests {
   }
 
   @Test
+  void testCacheOnlyUnresolvedTaintVulnerabilities() throws Exception {
+    var uri = new URI("/");
+    var taint = mock(ServerIssue.class);
+    when(taint.key()).thenReturn("key1");
+    when(taint.ruleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
+    when(taint.resolution()).thenReturn("");
+    when(taint.severity()).thenReturn("BLOCKER");
+    when(taint.getMessage()).thenReturn("Boo");
+
+    var resolvedTaint = mock(ServerIssue.class);
+    when(resolvedTaint.ruleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
+    when(resolvedTaint.resolution()).thenReturn("FIXED");
+
+    var notTaint = mock(ServerIssue.class);
+    when(notTaint.ruleKey()).thenReturn("java:S123");
+    when(notTaint.resolution()).thenReturn("");
+
+    underTest.reload(uri, List.of(taint, resolvedTaint, notTaint));
+
+    assertThat(underTest.getAsDiagnostics(uri)).hasSize(1);
+  }
+
+  @Test
   void testGetServerIssueForDiagnosticBasedOnLocation() throws Exception {
     var uri = new URI("/");
     var issue = mock(ServerIssue.class);
@@ -70,13 +94,15 @@ class TaintVulnerabilitiesCacheTests {
     when(issue.getStartLineOffset()).thenReturn(14);
     when(issue.getEndLine()).thenReturn(322);
     when(issue.getEndLineOffset()).thenReturn(14);
+    when(issue.ruleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
+    when(issue.resolution()).thenReturn("");
 
     var diagnostic = mock(Diagnostic.class);
-    when(diagnostic.getCode()).thenReturn(Either.forLeft("ruleKey"));
+    when(diagnostic.getCode()).thenReturn(Either.forLeft(SAMPLE_SECURITY_RULE_KEY));
     var range = new Range(new Position(227, 14), new Position(321, 14));
     when(diagnostic.getRange()).thenReturn(range);
-    when(issue.ruleKey()).thenReturn("ruleKey");
-    underTest.put(uri, List.of(issue));
+
+    underTest.reload(uri, List.of(issue));
 
     assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).hasValue(issue);
   }
@@ -86,10 +112,12 @@ class TaintVulnerabilitiesCacheTests {
     var uri = new URI("/");
     var issue = mock(ServerIssue.class);
     when(issue.key()).thenReturn("issueKey");
+    when(issue.ruleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
+    when(issue.resolution()).thenReturn("");
 
     var diagnostic = mock(Diagnostic.class);
     when(diagnostic.getData()).thenReturn("issueKey");
-    underTest.put(uri, List.of(issue));
+    underTest.reload(uri, List.of(issue));
 
     assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).hasValue(issue);
   }
@@ -104,7 +132,7 @@ class TaintVulnerabilitiesCacheTests {
     var diagnostic = mock(Diagnostic.class);
     when(diagnostic.getData()).thenReturn("anotherKey");
     when(diagnostic.getCode()).thenReturn(Either.forLeft("anotherRuleKey"));
-    underTest.put(uri, List.of(issue));
+    underTest.reload(uri, List.of(issue));
 
     assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).isEmpty();
   }
@@ -115,8 +143,10 @@ class TaintVulnerabilitiesCacheTests {
     var issue = mock(ServerIssue.class);
     var issueKey = "key";
     when(issue.key()).thenReturn(issueKey);
+    when(issue.ruleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
+    when(issue.resolution()).thenReturn("");
 
-    underTest.put(uri, List.of(issue));
+    underTest.reload(uri, List.of(issue));
 
     assertThat(underTest.getTaintVulnerabilityByKey(issueKey)).hasValue(issue);
     assertThat(underTest.getTaintVulnerabilityByKey("otherKey")).isEmpty();

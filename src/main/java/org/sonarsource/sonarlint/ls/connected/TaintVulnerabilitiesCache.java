@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
@@ -35,6 +36,8 @@ import static java.util.Collections.emptyList;
 import static org.sonarsource.sonarlint.ls.Utils.buildMessageWithPluralizedSuffix;
 
 public class TaintVulnerabilitiesCache {
+
+  private static final String SECURITY_REPOSITORY_HINT = "security";
 
   private final Map<URI, List<ServerIssue>> taintVulnerabilitiesPerFile = new ConcurrentHashMap<>();
 
@@ -68,7 +71,7 @@ public class TaintVulnerabilitiesCache {
       .findFirst();
   }
 
-  public Stream<Diagnostic> getAsDiagnostic(URI fileUri) {
+  public Stream<Diagnostic> getAsDiagnostics(URI fileUri) {
     return taintVulnerabilitiesPerFile.getOrDefault(fileUri, emptyList())
       .stream()
       .flatMap(i -> TaintVulnerabilitiesCache.convert(i).stream());
@@ -102,8 +105,11 @@ public class TaintVulnerabilitiesCache {
     }
   }
 
-  public void put(URI fileUri, List<ServerIssue> taintIssues) {
-    taintVulnerabilitiesPerFile.put(fileUri, taintIssues);
+  public void reload(URI fileUri, List<ServerIssue> serverIssues) {
+    taintVulnerabilitiesPerFile.put(fileUri, serverIssues.stream()
+      .filter(it -> it.ruleKey().contains(SECURITY_REPOSITORY_HINT))
+      .filter(it -> it.resolution().isEmpty())
+      .collect(Collectors.toList()));
   }
 
 }

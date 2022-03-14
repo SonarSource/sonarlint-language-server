@@ -112,6 +112,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final WorkspaceFolderBranchManager branchManager;
   private final JavaConfigCache javaConfigCache;
   private final IssuesCache issuesCache;
+  private final DiagnosticPublisher diagnosticPublisher;
+  private final ScmIgnoredCache scmIgnoredCache;
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
@@ -135,6 +137,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     SonarLintLogger.setTarget(globalLogOutput);
     this.openFilesCache = new OpenFilesCache(lsLogOutput);
     this.issuesCache = new IssuesCache();
+    this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
+    this.diagnosticPublisher = new DiagnosticPublisher(lsLogOutput, client, taintVulnerabilitiesCache, issuesCache);
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.progressManager = new ProgressManager(client);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClient);
@@ -154,10 +158,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.serverNotifications = new ServerNotifications(client, workspaceFoldersManager, telemetry, lsLogOutput);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) serverNotifications);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) serverNotifications);
-    this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
-    this.analysisManager = new AnalysisManager(lsLogOutput, standaloneEngineManager, client, telemetry, workspaceFoldersManager, settingsManager, bindingManager,
-      fileTypeClassifier,
-      openFilesCache, javaConfigCache, taintVulnerabilitiesCache, issuesCache);
+    var skippedPluginsNotifier = new SkippedPluginsNotifier(client);
+    this.scmIgnoredCache = new ScmIgnoredCache(client);
+    var analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
+      fileTypeClassifier, issuesCache, taintVulnerabilitiesCache, telemetry, skippedPluginsNotifier, standaloneEngineManager, diagnosticPublisher);
+    this.analysisManager = new AnalysisManager(lsLogOutput, standaloneEngineManager, workspaceFoldersManager, bindingManager,
+      fileTypeClassifier, openFilesCache, javaConfigCache, analysisTaskExecutor);
     this.workspaceFoldersManager.addListener(analysisManager);
     bindingManager.setAnalysisManager(analysisManager);
     this.settingsManager.addListener(analysisManager);
@@ -201,7 +207,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var additionalAttributes = ofNullable((Map<String, Object>) options.get("additionalAttributes")).orElse(Collections.emptyMap());
 
       enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));
-      analysisManager.initialize(firstSecretDetected);
+      analysisManager.initialize();
+      diagnosticPublisher.initialize(firstSecretDetected);
 
       securityHotspotsHandlerServer.initialize(appName, clientVersion, workspaceName);
       telemetry.initialize(productKey, telemetryStorage, productName, productVersion, ideVersion, additionalAttributes);
@@ -307,7 +314,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     openFilesCache.didClose(uri);
     taintVulnerabilitiesCache.didClose(uri);
     javaConfigCache.didClose(uri);
-    issuesCache.didClose(uri);
+    diagnosticPublisher.didClose(uri);
+    scmIgnoredCache.didClose(uri);
   }
 
   @Override

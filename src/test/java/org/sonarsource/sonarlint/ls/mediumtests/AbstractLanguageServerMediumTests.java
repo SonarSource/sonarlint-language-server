@@ -267,11 +267,17 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     public void doAndWaitForDiagnostics(String uri, Runnable action) {
-      if (diagnosticsLatches.containsKey(uri)) {
-        fail("There is already something waiting for diagnostics of uri: " + uri);
+      doAndWaitForDiagnostics(Set.of(uri), action);
+    }
+
+    public void doAndWaitForDiagnostics(Set<String> uris, Runnable action) {
+      for (String uri : uris) {
+        if (diagnosticsLatches.containsKey(uri)) {
+          fail("There is already something waiting for diagnostics of uri: " + uri);
+        }
       }
-      var latch = new CountDownLatch(1);
-      diagnosticsLatches.put(uri, latch);
+      var latch = new CountDownLatch(uris.size());
+      uris.forEach(uri -> diagnosticsLatches.put(uri, latch));
       action.run();
       try {
         if (!latch.await(1, TimeUnit.MINUTES)) {
