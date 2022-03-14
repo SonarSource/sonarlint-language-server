@@ -41,7 +41,7 @@ public class OpenFilesCache {
   }
 
   public VersionnedOpenFile didOpen(URI fileUri, String languageId, String fileContent, int version) {
-    VersionnedOpenFile file = new VersionnedOpenFile(fileUri, languageId, version, fileContent);
+    var file = new VersionnedOpenFile(fileUri, languageId, version, fileContent);
     openFilesPerFileURI.put(fileUri, file);
     return file;
   }

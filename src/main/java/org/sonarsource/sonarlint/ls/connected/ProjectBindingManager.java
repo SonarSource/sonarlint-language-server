@@ -58,7 +58,7 @@ import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEng
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
-import org.sonarsource.sonarlint.ls.AnalysisManager;
+import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
@@ -92,7 +92,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final ProgressManager progressManager;
   private final LanguageClient client;
   private final EnginesFactory enginesFactory;
-  private AnalysisManager analysisManager;
+  private AnalysisScheduler analysisManager;
   private final long syncPeriod;
   private final Timer bindingUpdatesCheckerTimer = new Timer("Binding updates checker");
   private Function<URI, String> getReferenceBranchNameForFolder;
@@ -115,7 +115,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   // Can't use constructor injection because of cyclic dependency
-  public void setAnalysisManager(AnalysisManager analysisManager) {
+  public void setAnalysisManager(AnalysisScheduler analysisManager) {
     this.analysisManager = analysisManager;
   }
 

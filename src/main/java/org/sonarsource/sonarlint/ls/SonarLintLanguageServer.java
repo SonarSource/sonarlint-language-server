@@ -71,6 +71,7 @@ import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
+import org.sonarsource.sonarlint.ls.folders.ModuleEventsProcessor;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersProvider;
@@ -98,7 +99,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
   private final ServerNotifications serverNotifications;
-  private final AnalysisManager analysisManager;
+  private final AnalysisScheduler analysisScheduler;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final OpenFilesCache openFilesCache;
   private final NodeJsRuntime nodeJsRuntime;
@@ -120,6 +121,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
    */
   private TraceValues traceLevel;
 
+  private final ModuleEventsProcessor moduleEventsProcessor;
+
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers, Collection<Path> extraAnalyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
     var launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
@@ -136,6 +139,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var globalLogOutput = new LanguageClientLogOutput(lsLogOutput, false);
     SonarLintLogger.setTarget(globalLogOutput);
     this.openFilesCache = new OpenFilesCache(lsLogOutput);
+
     this.issuesCache = new IssuesCache();
     this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
     this.diagnosticPublisher = new DiagnosticPublisher(lsLogOutput, client, taintVulnerabilitiesCache, issuesCache);
@@ -160,13 +164,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) serverNotifications);
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client);
     this.scmIgnoredCache = new ScmIgnoredCache(client);
+    this.moduleEventsProcessor = new ModuleEventsProcessor(standaloneEngineManager, workspaceFoldersManager, bindingManager, fileTypeClassifier, javaConfigCache);
     var analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
       fileTypeClassifier, issuesCache, taintVulnerabilitiesCache, telemetry, skippedPluginsNotifier, standaloneEngineManager, diagnosticPublisher);
-    this.analysisManager = new AnalysisManager(lsLogOutput, standaloneEngineManager, workspaceFoldersManager, bindingManager,
-      fileTypeClassifier, openFilesCache, javaConfigCache, analysisTaskExecutor);
-    this.workspaceFoldersManager.addListener(analysisManager);
-    bindingManager.setAnalysisManager(analysisManager);
-    this.settingsManager.addListener(analysisManager);
+    this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, analysisTaskExecutor);
+    this.workspaceFoldersManager.addListener(moduleEventsProcessor);
+    bindingManager.setAnalysisManager(analysisScheduler);
+    this.settingsManager.addListener(analysisScheduler);
     this.commandManager = new CommandManager(client, settingsManager, bindingManager, telemetry, standaloneEngineManager, taintVulnerabilitiesCache, issuesCache);
     this.securityHotspotsHandlerServer = new SecurityHotspotsHandlerServer(lsLogOutput, bindingManager, client, telemetry);
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager);
@@ -207,7 +211,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var additionalAttributes = ofNullable((Map<String, Object>) options.get("additionalAttributes")).orElse(Collections.emptyMap());
 
       enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));
-      analysisManager.initialize();
+      analysisScheduler.initialize();
       diagnosticPublisher.initialize(firstSecretDetected);
 
       securityHotspotsHandlerServer.initialize(appName, clientVersion, workspaceName);
@@ -263,7 +267,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
       securityHotspotsHandlerServer.shutdown();
-      analysisManager.shutdown();
+      analysisScheduler.shutdown();
       bindingManager.shutdown();
       telemetry.stop();
       settingsManager.shutdown();
@@ -271,6 +275,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       httpClient.close();
       serverNotifications.shutdown();
       standaloneEngineManager.shutdown();
+      moduleEventsProcessor.shutdown();
       return new Object();
     });
   }
@@ -297,20 +302,20 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public void didOpen(DidOpenTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
     var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
-    analysisManager.didOpen(file);
+    analysisScheduler.didOpen(file);
   }
 
   @Override
   public void didChange(DidChangeTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
     openFilesCache.didChange(uri, params.getContentChanges().get(0).getText(), params.getTextDocument().getVersion());
-    analysisManager.didChange(uri);
+    analysisScheduler.didChange(uri);
   }
 
   @Override
   public void didClose(DidCloseTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
-    analysisManager.didClose(uri);
+    analysisScheduler.didClose(uri);
     openFilesCache.didClose(uri);
     taintVulnerabilitiesCache.didClose(uri);
     javaConfigCache.didClose(uri);
@@ -322,7 +327,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public void didSave(DidSaveTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
     var file = openFilesCache.didSave(uri, params.getText());
-    file.ifPresent(analysisManager::didSave);
+    file.ifPresent(analysisScheduler::didSave);
   }
 
   @Override
@@ -354,7 +359,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didChangeWatchedFiles(DidChangeWatchedFilesParams params) {
-    analysisManager.didChangeWatchedFiles(params.getChanges());
+    moduleEventsProcessor.didChangeWatchedFiles(params.getChanges());
   }
 
   @Override
@@ -379,14 +384,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public void didClasspathUpdate(String projectUriStr) {
     var projectUri = create(projectUriStr);
     javaConfigCache.didClasspathUpdate(projectUri);
-    analysisManager.didClasspathUpdate();
+    analysisScheduler.didClasspathUpdate();
   }
 
   @Override
   public void didJavaServerModeChange(String serverMode) {
     var serverModeEnum = ServerMode.of(serverMode);
     javaConfigCache.didServerModeChange(serverModeEnum);
-    analysisManager.didServerModeChange(serverModeEnum);
+    analysisScheduler.didServerModeChange(serverModeEnum);
   }
 
   @Override

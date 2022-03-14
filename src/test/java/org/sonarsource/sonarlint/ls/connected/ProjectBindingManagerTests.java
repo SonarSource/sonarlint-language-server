@@ -47,7 +47,7 @@ import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.UpdateResult;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
-import org.sonarsource.sonarlint.ls.AnalysisManager;
+import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintLogTester;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -120,7 +120,7 @@ class ProjectBindingManagerTests {
   private final GlobalStorageStatus globalStorageStatus2 = mock(GlobalStorageStatus.class);
   private final ProjectStorageStatus projectStorageStatus2 = mock(ProjectStorageStatus.class);
   private final UpdateResult updateResult2 = mock(UpdateResult.class);
-  private final AnalysisManager analysisManager = mock(AnalysisManager.class);
+  private final AnalysisScheduler analysisManager = mock(AnalysisScheduler.class);
   LanguageClient client = mock(LanguageClient.class);
 
   @BeforeEach
