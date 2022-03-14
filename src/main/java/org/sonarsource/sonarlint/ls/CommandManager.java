@@ -65,8 +65,8 @@ import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
 import static java.net.URI.create;
 import static java.util.Objects.requireNonNull;
-import static org.sonarsource.sonarlint.ls.AnalysisManager.SONARLINT_SOURCE;
-import static org.sonarsource.sonarlint.ls.AnalysisManager.SONARQUBE_TAINT_SOURCE;
+import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARLINT_SOURCE;
+import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARQUBE_TAINT_SOURCE;
 
 public class CommandManager {
 

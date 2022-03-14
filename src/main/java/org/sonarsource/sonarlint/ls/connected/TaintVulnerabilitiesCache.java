@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
-import org.sonarsource.sonarlint.ls.AnalysisManager;
+import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.Utils;
 
 import static java.util.Collections.emptyList;
@@ -87,7 +87,7 @@ public class TaintVulnerabilitiesCache {
       diagnostic.setRange(range);
       diagnostic.setCode(issue.ruleKey());
       diagnostic.setMessage(message(issue));
-      diagnostic.setSource(AnalysisManager.SONARQUBE_TAINT_SOURCE);
+      diagnostic.setSource(AnalysisScheduler.SONARQUBE_TAINT_SOURCE);
       diagnostic.setData(issue.key());
 
       return Optional.of(diagnostic);
@@ -99,9 +99,9 @@ public class TaintVulnerabilitiesCache {
     if (issue.getFlows().isEmpty()) {
       return issue.getMessage();
     } else if (issue.getFlows().size() == 1) {
-      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.getFlows().get(0).locations().size(), AnalysisManager.ITEM_LOCATION);
+      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.getFlows().get(0).locations().size(), AnalysisScheduler.ITEM_LOCATION);
     } else {
-      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.getFlows().size(), AnalysisManager.ITEM_FLOW);
+      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.getFlows().size(), AnalysisScheduler.ITEM_FLOW);
     }
   }
 

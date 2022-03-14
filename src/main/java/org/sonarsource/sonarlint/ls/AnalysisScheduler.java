@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,49 +31,36 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.eclipse.lsp4j.FileChangeType;
-import org.eclipse.lsp4j.FileEvent;
-import org.sonarsource.sonarlint.core.analysis.api.ClientModuleFileEvent;
-import org.sonarsource.sonarlint.core.analysis.api.ClientModuleInfo;
-import org.sonarsource.sonarlint.core.client.api.common.SonarLintEngine;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
-import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
-import org.sonarsource.sonarlint.ls.file.FolderFileSystem;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
-import org.sonarsource.sonarlint.ls.folders.InFolderClientInputFile;
-import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersProvider;
-import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
-import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
-import org.sonarsource.sonarlint.plugin.api.module.file.ModuleFileEvent;
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
-public class AnalysisManager implements WorkspaceSettingsChangeListener, WorkspaceFolderLifecycleListener {
+/**
+ * Responsible to manage all analyses scheduling
+ *
+ */
+public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
 
   private static final AnalysisTask EMPTY_FINISHED_ANALYSIS_TASK = new AnalysisTask(Set.of(), false).setFinished(true);
   private static final int DEFAULT_TIMER_MS = 2000;
   private static final int QUEUE_POLLING_PERIOD_MS = 200;
 
-  public static final String TYPESCRIPT_PATH_PROP = "sonar.typescript.internal.typescriptLocation";
   static final String SONARLINT_SOURCE = "sonarlint";
   public static final String SONARQUBE_TAINT_SOURCE = "SonarQube Taint Analyzer";
 
   public static final String ITEM_LOCATION = "location";
   public static final String ITEM_FLOW = "flow";
 
-  private final FileTypeClassifier fileTypeClassifier;
   private final OpenFilesCache openFilesCache;
-  private final JavaConfigCache javaConfigCache;
   // entries in this map mean that the file is "dirty"
   private final Map<URI, Long> eventMap = new ConcurrentHashMap<>();
 
@@ -82,57 +68,19 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   private final ProjectBindingManager bindingManager;
   private final EventWatcher watcher;
   private final LanguageClientLogger lsLogOutput;
-  private final StandaloneEngineManager standaloneEngineManager;
   private final AnalysisTaskExecutor analysisTaskExecutor;
 
-  private final ExecutorService analysisExecutor;
+  private final ExecutorService asyncExecutor;
 
-  public AnalysisManager(LanguageClientLogger lsLogOutput, StandaloneEngineManager standaloneEngineManager,
-    WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, FileTypeClassifier fileTypeClassifier,
-    OpenFilesCache openFilesCache, JavaConfigCache javaConfigCache,
+  public AnalysisScheduler(LanguageClientLogger lsLogOutput, WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
     AnalysisTaskExecutor analysisTaskExecutor) {
     this.lsLogOutput = lsLogOutput;
-    this.standaloneEngineManager = standaloneEngineManager;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.bindingManager = bindingManager;
-    this.fileTypeClassifier = fileTypeClassifier;
     this.openFilesCache = openFilesCache;
-    this.javaConfigCache = javaConfigCache;
     this.analysisTaskExecutor = analysisTaskExecutor;
-    this.analysisExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint analysis", false));
+    this.asyncExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Analysis Scheduler", false));
     this.watcher = new EventWatcher();
-  }
-
-  public void didChangeWatchedFiles(List<FileEvent> changes) {
-    changes.forEach(f -> {
-      var fileUri = URI.create(f.getUri());
-      workspaceFoldersManager.findFolderForFile(fileUri)
-        .ifPresent(folder -> {
-          var settings = folder.getSettings();
-          var baseDir = folder.getRootPath();
-
-          var binding = bindingManager.getBinding(fileUri);
-
-          var engineForFile = binding.isPresent() ? binding.get().getEngine() : standaloneEngineManager.getOrCreateStandaloneEngine();
-
-          var javaConfig = javaConfigCache.getOrFetch(fileUri);
-          var inputFile = new InFolderClientInputFile(fileUri, baseDir.relativize(Paths.get(fileUri)).toString(), fileTypeClassifier.isTest(settings, fileUri, javaConfig));
-
-          engineForFile.fireModuleFileEvent(WorkspaceFoldersProvider.key(folder), ClientModuleFileEvent.of(inputFile, translate(f.getType())));
-        });
-    });
-  }
-
-  private static ModuleFileEvent.Type translate(FileChangeType type) {
-    switch (type) {
-      case Created:
-        return ModuleFileEvent.Type.CREATED;
-      case Changed:
-        return ModuleFileEvent.Type.MODIFIED;
-      case Deleted:
-        return ModuleFileEvent.Type.DELETED;
-    }
-    throw new IllegalArgumentException("Unknown event type: " + type);
   }
 
   public void didOpen(VersionnedOpenFile file) {
@@ -141,26 +89,6 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
 
   public void didChange(URI fileUri) {
     eventMap.put(fileUri, System.currentTimeMillis());
-  }
-
-  private SonarLintEngine findEngineFor(WorkspaceFolderWrapper folder) {
-    return bindingManager.getBinding(folder)
-      .map(ProjectBindingWrapper::getEngine)
-      .map(SonarLintEngine.class::cast)
-      .orElseGet(standaloneEngineManager::getOrCreateStandaloneEngine);
-  }
-
-  @Override
-  public void added(WorkspaceFolderWrapper addedFolder) {
-    analysisExecutor.execute(() -> {
-      var folderFileSystem = new FolderFileSystem(addedFolder, javaConfigCache, fileTypeClassifier);
-      findEngineFor(addedFolder).declareModule(new ClientModuleInfo(WorkspaceFoldersProvider.key(addedFolder), folderFileSystem));
-    });
-  }
-
-  @Override
-  public void removed(WorkspaceFolderWrapper removedFolder) {
-    analysisExecutor.execute(() -> findEngineFor(removedFolder).stopModule(WorkspaceFoldersProvider.key(removedFolder)));
   }
 
   private class EventWatcher extends Thread {
@@ -225,6 +153,9 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
     analyzeAsync(List.of(file), false);
   }
 
+  /**
+   * Handle analysis asynchronously to not block client events for too long
+   */
   AnalysisTask analyzeAsync(List<VersionnedOpenFile> files, boolean shouldFetchServerIssues) {
     var trueFileUris = files.stream().filter(f -> {
       if (!f.getUri().getScheme().equalsIgnoreCase("file")) {
@@ -242,7 +173,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
       lsLogOutput.debug(format("Queuing analysis of %d files", trueFileUris.size()));
     }
     var task = new AnalysisTask(trueFileUris, shouldFetchServerIssues);
-    analysisExecutor.execute(() -> analysisTaskExecutor.run(task));
+    asyncExecutor.execute(() -> analysisTaskExecutor.run(task));
     return task;
   }
 
@@ -253,7 +184,7 @@ public class AnalysisManager implements WorkspaceSettingsChangeListener, Workspa
   public void shutdown() {
     watcher.stopWatcher();
     eventMap.clear();
-    analysisExecutor.shutdownNow();
+    asyncExecutor.shutdownNow();
   }
 
   public void analyzeAllOpenFilesInFolder(@Nullable WorkspaceFolderWrapper folder) {

@@ -42,6 +42,8 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
 public class EnginesFactory {
 
+  public static final String TYPESCRIPT_PATH_PROP = "sonar.typescript.internal.typescriptLocation";
+
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private final LanguageClientLogOutput logOutput;
@@ -139,7 +141,7 @@ public class EnginesFactory {
   private Map<String, String> prepareExtraProps() {
     var extraProperties = new HashMap<String, String>();
     if (typeScriptPath != null) {
-      extraProperties.put(AnalysisManager.TYPESCRIPT_PATH_PROP, typeScriptPath.toString());
+      extraProperties.put(TYPESCRIPT_PATH_PROP, typeScriptPath.toString());
     }
     return extraProperties;
   }

@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls;
+package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
 import java.util.Collections;
@@ -30,15 +30,13 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModuleFileEvent;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
+import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
-import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
-import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
-import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.plugin.api.module.file.ModuleFileEvent;
@@ -51,31 +49,29 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-class AnalysisManagerTests {
+class ModuleEventsProcessorTests {
 
-  AnalysisManager underTest;
+  private ModuleEventsProcessor underTest;
   private EnginesFactory enginesFactory;
   private WorkspaceFoldersManager foldersManager;
   private StandaloneEngineManager standaloneEngineManager;
 
   @BeforeEach
   void prepare() {
-    var fileLanguageCache = mock(OpenFilesCache.class);
     enginesFactory = mock(EnginesFactory.class);
     foldersManager = mock(WorkspaceFoldersManager.class);
     standaloneEngineManager = mock(StandaloneEngineManager.class);
-    underTest = new AnalysisManager(mock(LanguageClientLogger.class), standaloneEngineManager,
-      foldersManager, mock(ProjectBindingManager.class), new FileTypeClassifier(), fileLanguageCache, mock(JavaConfigCache.class),
-      mock(AnalysisTaskExecutor.class));
-
+    underTest = new ModuleEventsProcessor(standaloneEngineManager, foldersManager, mock(ProjectBindingManager.class), new FileTypeClassifier(), mock(JavaConfigCache.class));
   }
 
   @Test
-  void dontForwardFileEventToEngineWhenOutsideOfFolder() {
+  void dontForwardFileEventToEngineWhenOutsideOfFolder() throws Exception {
     var sonarLintEngine = mock(StandaloneSonarLintEngine.class);
     when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
 
     underTest.didChangeWatchedFiles(List.of(new FileEvent("uri", FileChangeType.Created)));
+
+    Thread.sleep(1000);
 
     verifyNoInteractions(sonarLintEngine);
   }
@@ -94,7 +90,7 @@ class AnalysisManagerTests {
 
     underTest.didChangeWatchedFiles(List.of(new FileEvent("file:///folder/file.py", FileChangeType.Created)));
 
-    verify(sonarLintEngine).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
+    verify(sonarLintEngine, Mockito.timeout(1000).times(1)).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
     var fileEvent = fileEventArgumentCaptor.getValue();
     assertThat(fileEvent.type()).isEqualTo(ModuleFileEvent.Type.CREATED);
   }
@@ -113,7 +109,7 @@ class AnalysisManagerTests {
 
     underTest.didChangeWatchedFiles(List.of(new FileEvent("file:///folder/file.py", FileChangeType.Changed)));
 
-    verify(sonarLintEngine).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
+    verify(sonarLintEngine, Mockito.timeout(1000).times(1)).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
     var fileEvent = fileEventArgumentCaptor.getValue();
     assertThat(fileEvent.type()).isEqualTo(ModuleFileEvent.Type.MODIFIED);
   }
@@ -132,7 +128,7 @@ class AnalysisManagerTests {
 
     underTest.didChangeWatchedFiles(List.of(new FileEvent("file:///folder/file.py", FileChangeType.Deleted)));
 
-    verify(sonarLintEngine).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
+    verify(sonarLintEngine, Mockito.timeout(1000).times(1)).fireModuleFileEvent(eq(folderURI), fileEventArgumentCaptor.capture());
     var fileEvent = fileEventArgumentCaptor.getValue();
     assertThat(fileEvent.type()).isEqualTo(ModuleFileEvent.Type.DELETED);
   }
