@@ -45,7 +45,7 @@ import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
 class AnalysisTask {
 
   private boolean finished;
-  private boolean cancelled;
+  private boolean canceled;
   private final Set<VersionnedOpenFile> filesToAnalyze;
   private final boolean shouldFetchServerIssues;
 
@@ -63,11 +63,11 @@ class AnalysisTask {
   }
 
   public void cancel() {
-    this.cancelled = true;
+    this.canceled = true;
   }
 
-  public boolean isCancelled() {
-    return cancelled;
+  public boolean isCanceled() {
+    return canceled;
   }
 
   public boolean isFinished() {
@@ -79,8 +79,8 @@ class AnalysisTask {
     return this;
   }
 
-  public void checkCancelled() {
-    if (cancelled || Thread.currentThread().isInterrupted()) {
+  public void checkCanceled() {
+    if (canceled || Thread.currentThread().isInterrupted()) {
       throw new CanceledException();
     }
   }

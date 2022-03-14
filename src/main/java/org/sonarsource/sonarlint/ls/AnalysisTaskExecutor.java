@@ -42,6 +42,8 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedAnalysisConfiguration;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneAnalysisConfiguration;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
+import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
+import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
@@ -105,7 +107,10 @@ public class AnalysisTaskExecutor {
 
   public void run(AnalysisTask task) {
     try {
+      task.checkCanceled();
       analyze(task);
+    } catch (CanceledException e) {
+      lsLogOutput.debug("Analysis canceled");
     } finally {
       task.setFinished(true);
     }
@@ -257,6 +262,7 @@ public class AnalysisTaskExecutor {
 
   private void analyzeSingleModuleNonExcluded(AnalysisTask task, WorkspaceFolderSettings settings, Optional<ProjectBindingWrapper> binding,
     Map<URI, VersionnedOpenFile> filesToAnalyze, URI baseDirUri, Map<URI, GetJavaConfigResponse> javaConfigs) {
+    task.checkCanceled();
     if (filesToAnalyze.size() == 1) {
       lsLogOutput.info(format("Analyzing file '%s'...", filesToAnalyze.keySet().iterator().next()));
     } else {
@@ -282,6 +288,7 @@ public class AnalysisTaskExecutor {
       } else {
         analysisResults = analyzeStandalone(task, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener);
       }
+      task.checkCanceled();
       skippedPluginsNotifier.notifyOnceForSkippedPlugins(analysisResults.results, analysisResults.allPlugins);
 
       var analyzedLanguages = analysisResults.results.languagePerFile().values();
@@ -326,6 +333,34 @@ public class AnalysisTaskExecutor {
     };
   }
 
+  private static final class TaskProgressMonitor implements ClientProgressMonitor {
+    private final AnalysisTask task;
+
+    private TaskProgressMonitor(AnalysisTask task) {
+      this.task = task;
+    }
+
+    @Override
+    public boolean isCanceled() {
+      return task.isCanceled();
+    }
+
+    @Override
+    public void setMessage(String msg) {
+      // No-op
+    }
+
+    @Override
+    public void setIndeterminate(boolean indeterminate) {
+      // No-op
+    }
+
+    @Override
+    public void setFraction(float fraction) {
+      // No-op
+    }
+  }
+
   static class AnalysisResultsWrapper {
     private final AnalysisResults results;
     private final int analysisTime;
@@ -359,7 +394,7 @@ public class AnalysisTaskExecutor {
     lsLogOutput.debug(format("Analysis triggered with configuration:%n%s", configuration.toString()));
 
     var engine = standaloneEngineManager.getOrCreateStandaloneEngine();
-    return analyzeWithTiming(() -> engine.analyze(configuration, issueListener, new LanguageClientLogOutput(lsLogOutput, true), null),
+    return analyzeWithTiming(() -> engine.analyze(configuration, issueListener, new LanguageClientLogOutput(lsLogOutput, true), new TaskProgressMonitor(task)),
       engine.getPluginDetails(),
       () -> {
       });
@@ -391,7 +426,7 @@ public class AnalysisTaskExecutor {
     var serverIssueTracker = binding.getServerIssueTracker();
     var issuesPerFiles = new HashMap<URI, List<Issue>>();
     IssueListener accumulatorIssueListener = i -> issuesPerFiles.computeIfAbsent(i.getInputFile().getClientObject(), uri -> new ArrayList<>()).add(i);
-    return analyzeWithTiming(() -> engine.analyze(configuration, accumulatorIssueListener, new LanguageClientLogOutput(lsLogOutput, true), null),
+    return analyzeWithTiming(() -> engine.analyze(configuration, accumulatorIssueListener, new LanguageClientLogOutput(lsLogOutput, true), new TaskProgressMonitor(task)),
       engine.getPluginDetails(),
       () -> filesToAnalyze.forEach((fileUri, openFile) -> {
         var issues = issuesPerFiles.computeIfAbsent(fileUri, uri -> List.of());

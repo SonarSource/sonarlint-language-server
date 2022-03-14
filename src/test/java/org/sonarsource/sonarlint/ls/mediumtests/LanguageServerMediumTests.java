@@ -552,7 +552,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestamp())
       .containsSubsequence(
-        "[Debug] Queuing analysis of file '" + uri + "'",
+        "[Debug] Queuing analysis of file '" + uri + "' (version 1)",
         "[Info] Analyzing file '" + uri + "'...",
         "[Info] Found 1 issue"));
   }
