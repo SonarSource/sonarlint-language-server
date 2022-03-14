@@ -135,6 +135,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
     private void triggerFiles(List<VersionnedOpenFile> filesToTrigger) {
       if (!filesToTrigger.isEmpty()) {
         if (!onChangeCurrentTask.isFinished()) {
+          lsLogOutput.debug("Attempt to cancel previous analysis...");
           onChangeCurrentTask.cancel();
           // Wait for the next loop of EventWatcher to recheck if task has been successfully cancelled and then trigger the analysis
           return;
@@ -168,7 +169,8 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
       return EMPTY_FINISHED_ANALYSIS_TASK;
     }
     if (trueFileUris.size() == 1) {
-      lsLogOutput.debug(format("Queuing analysis of file '%s'", trueFileUris.iterator().next().getUri()));
+      VersionnedOpenFile openFile = trueFileUris.iterator().next();
+      lsLogOutput.debug(format("Queuing analysis of file '%s' (version %d)", openFile.getUri(), openFile.getVersion()));
     } else {
       lsLogOutput.debug(format("Queuing analysis of %d files", trueFileUris.size()));
     }
