@@ -20,14 +20,14 @@
 package org.sonarsource.sonarlint.ls.mediumtests;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.SystemUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.eclipse.lsp4j.Diagnostic;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -41,14 +41,18 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   @EnabledIfSystemProperty(named = "commercial", matches = ".*", disabledReason = "Commercial plugin not available")
-  void analyzeSimpleCppTestFileOnOpen(@TempDir Path cppProjectBaseDir) throws IOException, InterruptedException, URISyntaxException {
-    var mockClang = Paths.get("src/test/assets/cfamily/clang-test.bat").toAbsolutePath();
-
+  void analyzeSimpleCppTestFileOnOpen(@TempDir Path cppProjectBaseDir) throws IOException, InterruptedException {
+    String fileExt;
+    if (SystemUtils.IS_OS_WINDOWS) {
+      fileExt = "bat";
+    } else {
+      fileExt = "sh";
+    }
+    var mockClang = Paths.get("src/test/assets/cfamily/clang-test." + fileExt).toAbsolutePath();
 
     var cppFile = cppProjectBaseDir.resolve("analyzeSimpleCppTestFileOnOpen.cpp");
     Files.createFile(cppFile);
     var cppFileUri = cppFile.toUri().toString();
-
 
     var compilationDatabaseContent = "[\n" +
       "{\n" +
