@@ -39,7 +39,7 @@ public class ScmIgnoredCache {
     this.client = client;
   }
 
-  public void remove(URI fileUri) {
+  public void didClose(URI fileUri) {
     filesIgnoredByUri.remove(fileUri);
   }
 

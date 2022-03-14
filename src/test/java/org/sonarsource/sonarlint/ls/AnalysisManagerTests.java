@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.FileChangeType;
 import org.eclipse.lsp4j.FileEvent;
 import org.eclipse.lsp4j.WorkspaceFolder;
@@ -32,33 +31,25 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModuleFileEvent;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
-import org.sonarsource.sonarlint.ls.IssuesCache.VersionnedIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
-import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
-import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.plugin.api.module.file.ModuleFileEvent;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.sonarsource.sonarlint.ls.AnalysisManager.convert;
 
 class AnalysisManagerTests {
 
@@ -66,7 +57,6 @@ class AnalysisManagerTests {
   private EnginesFactory enginesFactory;
   private WorkspaceFoldersManager foldersManager;
   private StandaloneEngineManager standaloneEngineManager;
-  private SonarLintExtendedLanguageClient languageClient;
 
   @BeforeEach
   void prepare() {
@@ -74,38 +64,10 @@ class AnalysisManagerTests {
     enginesFactory = mock(EnginesFactory.class);
     foldersManager = mock(WorkspaceFoldersManager.class);
     standaloneEngineManager = mock(StandaloneEngineManager.class);
-    languageClient = mock(SonarLintExtendedLanguageClient.class);
-    underTest = new AnalysisManager(mock(LanguageClientLogger.class), standaloneEngineManager, languageClient, mock(SonarLintTelemetry.class),
-      foldersManager, mock(SettingsManager.class), mock(ProjectBindingManager.class), new FileTypeClassifier(), fileLanguageCache, mock(JavaConfigCache.class),
-      mock(TaintVulnerabilitiesCache.class), mock(IssuesCache.class));
+    underTest = new AnalysisManager(mock(LanguageClientLogger.class), standaloneEngineManager,
+      foldersManager, mock(ProjectBindingManager.class), new FileTypeClassifier(), fileLanguageCache, mock(JavaConfigCache.class),
+      mock(AnalysisTaskExecutor.class));
 
-  }
-
-  @Test
-  void testNotConvertGlobalIssues() {
-    var issue = mock(Issue.class);
-    when(issue.getStartLine()).thenReturn(null);
-    var versionnedIssue = new VersionnedIssue(issue, 1);
-    assertThat(convert(entry("id", versionnedIssue))).isEmpty();
-  }
-
-  @Test
-  void testNotConvertSeverity() {
-    var id = "id";
-    var issue = mock(Issue.class);
-    when(issue.getStartLine()).thenReturn(1);
-    when(issue.getSeverity()).thenReturn("BLOCKER");
-    when(issue.getMessage()).thenReturn("Do this, don't do that");
-    var versionnedIssue = new VersionnedIssue(issue, 1);
-    assertThat(convert(entry(id, versionnedIssue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
-    when(issue.getSeverity()).thenReturn("CRITICAL");
-    assertThat(convert(entry(id, versionnedIssue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
-    when(issue.getSeverity()).thenReturn("MAJOR");
-    assertThat(convert(entry(id, versionnedIssue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
-    when(issue.getSeverity()).thenReturn("MINOR");
-    assertThat(convert(entry(id, versionnedIssue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Information);
-    when(issue.getSeverity()).thenReturn("INFO");
-    assertThat(convert(entry(id, versionnedIssue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
   }
 
   @Test
@@ -175,14 +137,4 @@ class AnalysisManagerTests {
     assertThat(fileEvent.type()).isEqualTo(ModuleFileEvent.Type.DELETED);
   }
 
-  @Test
-  void showFirstSecretDetectedNotification() {
-    var issue = mock(Issue.class);
-    when(issue.getRuleKey()).thenReturn("secrets:123");
-
-    underTest.showFirstSecretDetectionNotificationIfNeeded(issue);
-
-    verify(languageClient).showFirstSecretDetectionNotification();
-    verifyNoMoreInteractions(languageClient);
-  }
 }

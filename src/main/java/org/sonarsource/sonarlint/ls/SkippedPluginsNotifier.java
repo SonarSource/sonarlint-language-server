@@ -37,14 +37,17 @@ import static java.util.stream.Collectors.toSet;
 
 public class SkippedPluginsNotifier {
 
-  private static final Set<String> displayedMessages = new HashSet<>();
+  private final Set<String> displayedMessages = new HashSet<>();
 
   public static final MessageActionItem ACTION_OPEN_SETTINGS = new MessageActionItem("Open Settings");
 
-  private SkippedPluginsNotifier() {
+  private final SonarLintExtendedLanguageClient client;
+
+  public SkippedPluginsNotifier(SonarLintExtendedLanguageClient client) {
+    this.client = client;
   }
 
-  public static void notifyOnceForSkippedPlugins(AnalysisResults analysisResults, Collection<PluginDetails> allPlugins, SonarLintExtendedLanguageClient client) {
+  public void notifyOnceForSkippedPlugins(AnalysisResults analysisResults, Collection<PluginDetails> allPlugins) {
     var attemptedLanguages = analysisResults.languagePerFile().values()
       .stream()
       .filter(Objects::nonNull)
@@ -57,8 +60,7 @@ public class SkippedPluginsNotifier {
           final var title = String.format("SonarLint failed to analyze %s code", l.getLabel());
           if (runtimeRequirement.getRuntime() == SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.JRE) {
             var content = String.format(
-              "Java runtime version %s or later is required. Current version is %s.",runtimeRequirement.getMinVersion(), runtimeRequirement.getCurrentVersion()
-            );
+              "Java runtime version %s or later is required. Current version is %s.", runtimeRequirement.getMinVersion(), runtimeRequirement.getCurrentVersion());
             showMessageWithOpenSettingsAction(client, formatMessage(title, content), client::openJavaHomeSettings);
           } else if (runtimeRequirement.getRuntime() == SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.NODEJS) {
             var content = String.format(
@@ -73,7 +75,7 @@ public class SkippedPluginsNotifier {
     });
   }
 
-  private static void showMessageWithOpenSettingsAction(SonarLintExtendedLanguageClient client, String message, Supplier<CompletableFuture<Void>> callback) {
+  private void showMessageWithOpenSettingsAction(SonarLintExtendedLanguageClient client, String message, Supplier<CompletableFuture<Void>> callback) {
     if (displayedMessages.add(message)) {
       var params = new ShowMessageRequestParams(List.of(ACTION_OPEN_SETTINGS));
       params.setType(MessageType.Error);
@@ -92,14 +94,12 @@ public class SkippedPluginsNotifier {
    * as specified by the HTML recommendation.
    *
    * See:
-   * - https://github.com/microsoft/vscode/blob/7ce60506a9b5df9ef05ac51f8c94e1085a464d17/src/vs/editor/contrib/message/messageController.ts#L155
+   * - https://github.com/microsoft/vscode/blob/7ce60506a9b5df9ef05ac51f8c94e1085a464d17/src/vs/editor/contrib/message/messageController.ts#
+   * L155
    * - https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent
    */
   private static String formatMessage(String title, String content) {
     return String.format("%s: %s", title, content);
   }
 
-  static void clearMessages() {
-    displayedMessages.clear();
-  }
 }

@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
@@ -313,21 +314,17 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     client.logs.clear();
 
-    client.doAndWaitForDiagnostics(file1module1, () -> {
-      client.doAndWaitForDiagnostics(file2module1, () -> {
-        client.doAndWaitForDiagnostics(nonJavaFilemodule1, () -> {
-          // consecute changes should be batched
-          lsProxy.getTextDocumentService()
-            .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1module1, 2),
-              List.of(new TextDocumentContentChangeEvent("public class Foo1 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
-          lsProxy.getTextDocumentService()
-            .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2module1, 2),
-              List.of(new TextDocumentContentChangeEvent("public class Foo2 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
-          lsProxy.getTextDocumentService()
-            .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(nonJavaFilemodule1, 2),
-              List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}"))));
-        });
-      });
+    client.doAndWaitForDiagnostics(Set.of(file1module1, file2module1, nonJavaFilemodule1), () -> {
+      // consecute changes should be batched
+      lsProxy.getTextDocumentService()
+        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1module1, 2),
+          List.of(new TextDocumentContentChangeEvent("public class Foo1 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
+      lsProxy.getTextDocumentService()
+        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2module1, 2),
+          List.of(new TextDocumentContentChangeEvent("public class Foo2 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
+      lsProxy.getTextDocumentService()
+        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(nonJavaFilemodule1, 2),
+          List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}"))));
     });
 
     await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
@@ -364,16 +361,14 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     client.logs.clear();
 
-    client.doAndWaitForDiagnostics(file1module1, () -> {
-      client.doAndWaitForDiagnostics(file2module2, () -> {
-        // two consecute changes on different modules should not be batched
-        lsProxy.getTextDocumentService()
-          .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1module1, 2),
-            List.of(new TextDocumentContentChangeEvent("public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
-        lsProxy.getTextDocumentService()
-          .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2module2, 2),
-            List.of(new TextDocumentContentChangeEvent("public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
-      });
+    client.doAndWaitForDiagnostics(Set.of(file1module1, file2module2), () -> {
+      // two consecute changes on different modules should not be batched
+      lsProxy.getTextDocumentService()
+        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1module1, 2),
+          List.of(new TextDocumentContentChangeEvent("public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
+      lsProxy.getTextDocumentService()
+        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2module2, 2),
+          List.of(new TextDocumentContentChangeEvent("public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
     });
 
     await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)

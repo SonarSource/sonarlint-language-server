@@ -38,10 +38,6 @@ public class IssuesCache {
   private final Map<URI, Map<String, VersionnedIssue>> issuesPerIdPerFileURI = new ConcurrentHashMap<>();
   private final Map<URI, Map<String, VersionnedIssue>> inProgressAnalysisIssuesPerIdPerFileURI = new ConcurrentHashMap<>();
 
-  public void didClose(URI fileUri) {
-    clear(fileUri);
-  }
-
   public void clear(URI fileUri) {
     issuesPerIdPerFileURI.remove(fileUri);
     inProgressAnalysisIssuesPerIdPerFileURI.remove(fileUri);
