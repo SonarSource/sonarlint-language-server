@@ -26,8 +26,8 @@ stages:
       displayName: Build and stage to repox
       variables:
         MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
-        MAVEN_OPTS: '-Xmx3072m -Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
-        commonMavenArguments: -B -Pdeploy-sonarsource -Dmaven.test.skip=true
+        MAVEN_OPTS: '-Xmx3072m -Dcommercial -Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
+        commonMavenArguments: -B -Pdeploy-sonarsource -Dmaven.test.skip=true -Dcommercial
         fixedBranch: $[replace(variables['Build.SourceBranch'], 'refs/heads/', '')]
       steps:
       - checkout: self
