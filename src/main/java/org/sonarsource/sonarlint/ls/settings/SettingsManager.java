@@ -123,7 +123,6 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   public void didChangeConfiguration() {
     executor.execute(() -> {
       try {
-        LOG.debug("didChangeConfiguration!!!");
         var workspaceSettingsMap = requestSonarLintConfigurationAsync(null).get(1, TimeUnit.MINUTES);
         var newWorkspaceSettings = parseSettings(workspaceSettingsMap, httpClient);
         var oldWorkspaceSettings = currentSettings;
