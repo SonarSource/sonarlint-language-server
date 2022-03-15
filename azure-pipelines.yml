@@ -121,7 +121,7 @@ stages:
           ARTIFACTORY_PRIVATE_READER_PASSWORD: $(ARTIFACTORY_PRIVATE_READER_PASSWORD)
         inputs:
           goals: 'verify'
-          options: '-B --settings $(mavenSettings.secureFilePath) -Dcommercial'
+          options: '-B --settings $(mavenSettings.secureFilePath) -Dcommercial -Denable-repo=private'
           publishJUnitResults: true
           testResultsFiles: '**/surefire-reports/TEST-*.xml'
           testRunTitle: 'UTs on Windows'
@@ -158,7 +158,7 @@ stages:
           ARTIFACTORY_PRIVATE_READER_PASSWORD: $(ARTIFACTORY_PRIVATE_READER_PASSWORD)
         inputs:
           goals: 'verify'
-          options: '-B --settings $(mavenSettings.secureFilePath) -Dcommercial'
+          options: '-B --settings $(mavenSettings.secureFilePath) -Dcommercial -Denable-repo=private'
           publishJUnitResults: true
           testResultsFiles: '**/surefire-reports/TEST-*.xml'
           testRunTitle: 'UTs on Linux'
@@ -191,7 +191,7 @@ stages:
           ARTIFACTORY_PRIVATE_READER_PASSWORD: $(ARTIFACTORY_PRIVATE_READER_PASSWORD)
         inputs:
           goals: 'verify'
-          options: -B --settings $(mavenSettings.secureFilePath) -Pcoverage -Dcommercial
+          options: -B --settings $(mavenSettings.secureFilePath) -Pcoverage -Dcommercial -Denable-repo=private
           publishJUnitResults: false
           javaHomeOption: 'JDKVersion'
           jdkVersionOption: '1.11'
