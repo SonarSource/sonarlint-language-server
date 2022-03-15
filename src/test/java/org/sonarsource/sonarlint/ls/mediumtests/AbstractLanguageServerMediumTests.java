@@ -22,12 +22,14 @@ package org.sonarsource.sonarlint.ls.mediumtests;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.reflect.Array;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -45,6 +47,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
+import org.apache.commons.lang3.SystemUtils;
 import org.assertj.core.api.iterable.ThrowingExtractor;
 import org.eclipse.lsp4j.ClientCapabilities;
 import org.eclipse.lsp4j.ClientInfo;
@@ -129,11 +132,18 @@ public abstract class AbstractLanguageServerMediumTests {
     var py = fullPathToJar("python");
     var html = fullPathToJar("html");
     var xml = fullPathToJar("xml");
-
+    boolean COMMERCIAL_ENABLED = System.getProperty("commercial") != null;
+    String[] languageServerArgs;
+    if (COMMERCIAL_ENABLED) {
+      var cfamily = fullPathToJar("cfamily");
+      languageServerArgs = new String[]{"" + port, "-analyzers", java, js, php, py, html, xml, cfamily};
+    } else {
+      languageServerArgs = new String[]{"" + port, "-analyzers", java, js, php, py, html, xml};
+    }
     var serverStdOut = new ByteArrayOutputStream();
     var serverStdErr = new ByteArrayOutputStream();
     try {
-      new ServerMain(new PrintStream(serverStdOut), new PrintStream(serverStdErr)).startLanguageServer("" + port, "-analyzers", java, js, php, py, html, xml);
+      new ServerMain(new PrintStream(serverStdOut), new PrintStream(serverStdErr)).startLanguageServer(languageServerArgs);
     } catch (Exception e) {
       e.printStackTrace();
       future.get(1, TimeUnit.SECONDS);
@@ -412,11 +422,16 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected static void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
-    @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
-    client.globalSettings = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs);
+    @Nullable Boolean showVerboseLogs, Map<String,String> analyserProperties, String... ruleConfigs) {
+    client.globalSettings = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, analyserProperties, ruleConfigs);
     client.settingsLatch = new CountDownLatch(1);
     lsProxy.getWorkspaceService().didChangeConfiguration(changedConfiguration(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs));
     awaitLatch(client.settingsLatch);
+  }
+
+  protected static void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
+    @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
+    emulateConfigurationChangeOnClient(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, Collections.emptyMap(), ruleConfigs);
   }
 
   private static DidChangeConfigurationParams changedConfiguration(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
@@ -427,9 +442,17 @@ public abstract class AbstractLanguageServerMediumTests {
 
   protected static Map<String, Object> buildSonarLintSettingsSection(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
     @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
+    return buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, Collections.emptyMap(), ruleConfigs);
+  }
+
+  protected static Map<String, Object> buildSonarLintSettingsSection(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
+    @Nullable Boolean showVerboseLogs, Map<String, String> analyzerProperties, String... ruleConfigs) {
     var values = new HashMap<String, Object>();
     if (testFilePattern != null) {
       values.put("testFilePattern", testFilePattern);
+    }
+    if (!analyzerProperties.isEmpty()) {
+      values.put("analyzerProperties", analyzerProperties);
     }
     if (disableTelemetry != null) {
       values.put("disableTelemetry", disableTelemetry);
