@@ -116,6 +116,9 @@ stages:
           versionSpec: 'v11.12.0'
       - task: Maven@3
         displayName: 'Run Maven verify'
+        env:
+          ARTIFACTORY_PRIVATE_READER_USERNAME: $(ARTIFACTORY_PRIVATE_READER_USERNAME)
+          ARTIFACTORY_PRIVATE_READER_PASSWORD: $(ARTIFACTORY_PRIVATE_READER_PASSWORD)
         inputs:
           goals: 'verify'
           options: '-B --settings $(mavenSettings.secureFilePath) -Dcommercial'
@@ -150,6 +153,9 @@ stages:
           secureFile: 'maven-settings.xml'
       - task: Maven@3
         displayName: 'Run Maven verify'
+        env:
+          ARTIFACTORY_PRIVATE_READER_USERNAME: $(ARTIFACTORY_PRIVATE_READER_USERNAME)
+          ARTIFACTORY_PRIVATE_READER_PASSWORD: $(ARTIFACTORY_PRIVATE_READER_PASSWORD)
         inputs:
           goals: 'verify'
           options: '-B --settings $(mavenSettings.secureFilePath) -Dcommercial'
@@ -180,6 +186,9 @@ stages:
           secureFile: 'maven-settings.xml'
       - template: prepare-sq-analysis-steps.yml
       - task: Maven@3
+        env:
+          ARTIFACTORY_PRIVATE_READER_USERNAME: $(ARTIFACTORY_PRIVATE_READER_USERNAME)
+          ARTIFACTORY_PRIVATE_READER_PASSWORD: $(ARTIFACTORY_PRIVATE_READER_PASSWORD)
         inputs:
           goals: 'verify'
           options: -B --settings $(mavenSettings.secureFilePath) -Pcoverage -Dcommercial
