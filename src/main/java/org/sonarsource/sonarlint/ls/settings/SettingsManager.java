@@ -329,16 +329,9 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       map = new HashMap<>();
     }
     String cd = (String) params.get(PATH_TO_COMPILE_COMMANDS);
-//    LOG.debug("Compile commands:");
-//    LOG.debug(PATH_TO_COMPILE_COMMANDS + ": " + cd);
     if (cd != null) {
       map.put("sonar.cfamily.compile-commands", cd);
     }
-//    LOG.debug("Analyser properties: ");
-//    map.forEach((key, value) -> {
-//      LOG.debug("Key: " + key);
-//      LOG.debug("Value: " + value);
-//    });
     return map;
   }
 
