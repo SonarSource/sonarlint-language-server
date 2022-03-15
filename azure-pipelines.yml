@@ -93,7 +93,7 @@ stages:
         vmImage: 'windows-latest'
       variables:
         MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
-        MAVEN_OPTS: '-Xmx3072m -Dcommercial -Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
+        MAVEN_OPTS: '-Xmx3072m -Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
       steps:
       - checkout: self
         fetchDepth: 1
@@ -118,7 +118,7 @@ stages:
         displayName: 'Run Maven verify'
         inputs:
           goals: 'verify'
-          options: '-B --settings $(mavenSettings.secureFilePath)'
+          options: '-B --settings $(mavenSettings.secureFilePath) -Dcommercial'
           publishJUnitResults: true
           testResultsFiles: '**/surefire-reports/TEST-*.xml'
           testRunTitle: 'UTs on Windows'
@@ -131,7 +131,7 @@ stages:
         vmImage: 'ubuntu-latest'
       variables:
         MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
-        MAVEN_OPTS: '-Xmx3072m -Dcommercial -Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
+        MAVEN_OPTS: '-Xmx3072m -Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
       steps:
       - checkout: self
         fetchDepth: 1
@@ -152,7 +152,7 @@ stages:
         displayName: 'Run Maven verify'
         inputs:
           goals: 'verify'
-          options: '-B --settings $(mavenSettings.secureFilePath)'
+          options: '-B --settings $(mavenSettings.secureFilePath) -Dcommercial'
           publishJUnitResults: true
           testResultsFiles: '**/surefire-reports/TEST-*.xml'
           testRunTitle: 'UTs on Linux'
@@ -163,7 +163,7 @@ stages:
       displayName: SonarQube analysis on Next
       variables:
         MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
-        MAVEN_OPTS: '-Xmx3072m -Dcommercial -Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
+        MAVEN_OPTS: '-Xmx3072m -Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
       steps:
       - task: Cache@2
         inputs:
@@ -182,7 +182,7 @@ stages:
       - task: Maven@3
         inputs:
           goals: 'verify'
-          options: -B --settings $(mavenSettings.secureFilePath) -Pcoverage
+          options: -B --settings $(mavenSettings.secureFilePath) -Pcoverage -Dcommercial
           publishJUnitResults: false
           javaHomeOption: 'JDKVersion'
           jdkVersionOption: '1.11'
