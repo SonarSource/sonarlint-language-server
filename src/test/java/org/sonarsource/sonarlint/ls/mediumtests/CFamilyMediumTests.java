@@ -24,7 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Map;
+import java.util.HashMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.text.StringEscapeUtils;
@@ -65,9 +65,8 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
     var compilationDatabaseFile = cppProjectBaseDir.resolve("compile_commands.json");
     FileUtils.write(compilationDatabaseFile.toFile(), compilationDatabaseContent, StandardCharsets.UTF_8);
 
-    Map<String, String> analyserProperties = Map.of("sonar.cfamily.compile-commands", compilationDatabaseFile.toString());
     emulateConfigurationChangeOnClient(null, true, true, true,
-      analyserProperties);
+      new HashMap<>(), compilationDatabaseFile.toString());
 
     var diagnostics = didOpenAndWaitForDiagnostics(cppFileUri, "cpp",
       "int main() {\n" +
