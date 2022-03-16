@@ -27,6 +27,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
@@ -40,6 +41,7 @@ import org.apache.hc.core5.http.HttpHeaders;
 import org.apache.hc.core5.http2.HttpVersionPolicy;
 import org.apache.hc.core5.reactor.IOReactorConfig;
 import org.sonarsource.sonarlint.core.commons.http.HttpClient;
+import org.sonarsource.sonarlint.core.commons.http.HttpConnectionListener;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 
 public class ApacheHttpClient implements HttpClient {
@@ -170,6 +172,11 @@ public class ApacheHttpClient implements HttpClient {
       .build();
     httpClient.start();
     return new ApacheHttpClient(httpClient, null);
+  }
+
+  @Override
+  public AsyncRequest getEventStream(String url, HttpConnectionListener connectionListener, Consumer<String> messageConsumer) {
+    throw new UnsupportedOperationException("Event streaming not supported in SonarLint LS");
   }
 
 }
