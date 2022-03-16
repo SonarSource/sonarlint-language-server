@@ -22,7 +22,6 @@ package org.sonarsource.sonarlint.ls.mediumtests;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.reflect.Array;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
@@ -47,7 +46,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
-import org.apache.commons.lang3.SystemUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.assertj.core.api.iterable.ThrowingExtractor;
 import org.eclipse.lsp4j.ClientCapabilities;
 import org.eclipse.lsp4j.ClientInfo;
@@ -95,6 +94,8 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 public abstract class AbstractLanguageServerMediumTests {
 
+  protected final static boolean COMMERCIAL_ENABLED = System.getProperty("commercial") != null;
+
   @TempDir
   Path temp;
 
@@ -132,13 +133,10 @@ public abstract class AbstractLanguageServerMediumTests {
     var py = fullPathToJar("python");
     var html = fullPathToJar("html");
     var xml = fullPathToJar("xml");
-    boolean COMMERCIAL_ENABLED = System.getProperty("commercial") != null;
-    String[] languageServerArgs;
+    String[] languageServerArgs = new String[] {"" + port, "-analyzers", java, js, php, py, html, xml};
     if (COMMERCIAL_ENABLED) {
       var cfamily = fullPathToJar("cfamily");
-      languageServerArgs = new String[]{"" + port, "-analyzers", java, js, php, py, html, xml, cfamily};
-    } else {
-      languageServerArgs = new String[]{"" + port, "-analyzers", java, js, php, py, html, xml};
+      languageServerArgs = ArrayUtils.add(languageServerArgs, cfamily);
     }
     var serverStdOut = new ByteArrayOutputStream();
     var serverStdErr = new ByteArrayOutputStream();
@@ -428,7 +426,7 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected static void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
-    @Nullable Boolean showVerboseLogs, Map<String,String> analyserProperties, String... ruleConfigs) {
+    @Nullable Boolean showVerboseLogs, Map<String, String> analyserProperties, String... ruleConfigs) {
     client.globalSettings = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, analyserProperties, ruleConfigs);
     client.settingsLatch = new CountDownLatch(1);
     lsProxy.getWorkspaceService().didChangeConfiguration(changedConfiguration(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs));
