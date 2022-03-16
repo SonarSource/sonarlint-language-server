@@ -30,6 +30,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
+import org.apache.commons.lang3.ArrayUtils;
 import org.eclipse.lsp4j.CodeActionContext;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Diagnostic;
@@ -473,7 +474,13 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void testListAllRules() throws Exception {
     var result = lsProxy.listAllRules().join();
-    assertThat(result).containsOnlyKeys("C", "C++", "HTML", "JavaScript", "TypeScript", "PHP", "Python", "Java", "XML");
+    String[] commercialLanguages = new String[] {"C", "C++"};
+    String[] freeLanguages = new String[] {"HTML", "JavaScript", "TypeScript", "PHP", "Python", "Java", "XML"};
+    if (COMMERCIAL_ENABLED) {
+      assertThat(result).containsOnlyKeys(ArrayUtils.addAll(commercialLanguages, freeLanguages));
+    } else {
+      assertThat(result).containsOnlyKeys(freeLanguages);
+    }
 
     assertThat(result.get("HTML"))
       .extracting(Rule::getKey, Rule::getName, Rule::isActiveByDefault)
