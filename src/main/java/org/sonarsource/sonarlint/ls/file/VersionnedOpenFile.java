@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.file;
 
 import java.net.URI;
 import javax.annotation.concurrent.Immutable;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 
 /**
  * Represent a versionned open file and its immutable metadata in the editor.
@@ -57,6 +58,11 @@ public class VersionnedOpenFile {
 
   public boolean isJava() {
     return "java".equals(languageId);
+  }
+  
+  @Override
+  public String toString() {
+    return ToStringBuilder.reflectionToString(this);
   }
 
 }
