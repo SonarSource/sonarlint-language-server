@@ -74,13 +74,18 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
 
   public AnalysisScheduler(LanguageClientLogger lsLogOutput, WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
     AnalysisTaskExecutor analysisTaskExecutor) {
+    this(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, analysisTaskExecutor, DEFAULT_TIMER_MS);
+  }
+
+  AnalysisScheduler(LanguageClientLogger lsLogOutput, WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
+    AnalysisTaskExecutor analysisTaskExecutor, int defaultTimerMs) {
     this.lsLogOutput = lsLogOutput;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.bindingManager = bindingManager;
     this.openFilesCache = openFilesCache;
     this.analysisTaskExecutor = analysisTaskExecutor;
     this.asyncExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Analysis Scheduler", false));
-    this.watcher = new EventWatcher();
+    this.watcher = new EventWatcher(defaultTimerMs);
   }
 
   public void didOpen(VersionnedOpenFile file) {
@@ -94,8 +99,10 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
   private class EventWatcher extends Thread {
     private AnalysisTask onChangeCurrentTask = EMPTY_FINISHED_ANALYSIS_TASK;
     private boolean stop = false;
+    private final int defaultTimerMs;
 
-    EventWatcher() {
+    EventWatcher(int defaultTimerMs) {
+      this.defaultTimerMs = defaultTimerMs;
       this.setDaemon(true);
       this.setName("sonarlint-auto-trigger");
     }
@@ -125,7 +132,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
       var filesToTrigger = new ArrayList<VersionnedOpenFile>();
       while (it.hasNext()) {
         var e = it.next();
-        if (e.getValue() + DEFAULT_TIMER_MS < now) {
+        if (e.getValue() + defaultTimerMs < now) {
           openFilesCache.getFile(e.getKey()).ifPresent(filesToTrigger::add);
         }
       }

@@ -111,6 +111,8 @@ public class AnalysisTaskExecutor {
       analyze(task);
     } catch (CanceledException e) {
       lsLogOutput.debug("Analysis canceled");
+    } catch (Exception e) {
+      lsLogOutput.error("Analysis failed", e);
     } finally {
       task.setFinished(true);
     }
@@ -282,32 +284,27 @@ public class AnalysisTaskExecutor {
 
     AnalysisResultsWrapper analysisResults;
     var filesSuccessfullyAnalyzed = new HashSet<>(filesToAnalyze.keySet());
-    try {
-      if (binding.isPresent()) {
-        analysisResults = analyzeConnected(task, binding.get(), settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener);
-      } else {
-        analysisResults = analyzeStandalone(task, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener);
-      }
-      task.checkCanceled();
-      skippedPluginsNotifier.notifyOnceForSkippedPlugins(analysisResults.results, analysisResults.allPlugins);
-
-      var analyzedLanguages = analysisResults.results.languagePerFile().values();
-      if (!analyzedLanguages.isEmpty()) {
-        telemetry.analysisDoneOnSingleLanguage(analyzedLanguages.iterator().next(), analysisResults.analysisTime);
-      }
-
-      // Ignore files with parsing error
-      analysisResults.results.failedAnalysisFiles().stream()
-        .map(ClientInputFile::getClientObject)
-        .map(URI.class::cast)
-        .forEach(fileUri -> {
-          filesSuccessfullyAnalyzed.remove(fileUri);
-          issuesCache.analysisFailed(filesToAnalyze.get(fileUri));
-        });
-    } catch (Exception e) {
-      lsLogOutput.error("Analysis failed.", e);
-      return;
+    if (binding.isPresent()) {
+      analysisResults = analyzeConnected(task, binding.get(), settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener);
+    } else {
+      analysisResults = analyzeStandalone(task, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener);
     }
+    task.checkCanceled();
+    skippedPluginsNotifier.notifyOnceForSkippedPlugins(analysisResults.results, analysisResults.allPlugins);
+
+    var analyzedLanguages = analysisResults.results.languagePerFile().values();
+    if (!analyzedLanguages.isEmpty()) {
+      telemetry.analysisDoneOnSingleLanguage(analyzedLanguages.iterator().next(), analysisResults.analysisTime);
+    }
+
+    // Ignore files with parsing error
+    analysisResults.results.failedAnalysisFiles().stream()
+      .map(ClientInputFile::getClientObject)
+      .map(URI.class::cast)
+      .forEach(fileUri -> {
+        filesSuccessfullyAnalyzed.remove(fileUri);
+        issuesCache.analysisFailed(filesToAnalyze.get(fileUri));
+      });
 
     var totalIssueCount = new AtomicInteger();
     filesSuccessfullyAnalyzed.forEach(f -> {
@@ -400,7 +397,7 @@ public class AnalysisTaskExecutor {
       });
   }
 
-  public AnalysisResultsWrapper analyzeConnected(AnalysisTask task, ProjectBindingWrapper binding, WorkspaceFolderSettings settings, URI baseDirUri,
+  private AnalysisResultsWrapper analyzeConnected(AnalysisTask task, ProjectBindingWrapper binding, WorkspaceFolderSettings settings, URI baseDirUri,
     Map<URI, VersionnedOpenFile> filesToAnalyze,
     Map<URI, GetJavaConfigResponse> javaConfigs, IssueListener issueListener) {
     var baseDir = Paths.get(baseDirUri);
