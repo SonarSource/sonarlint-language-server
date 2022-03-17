@@ -73,6 +73,7 @@ class SettingsManagerTest {
     "  \"analyzerProperties\": {\n" +
     "    \"sonar.polop\": \"palap\"\n" +
     "  },\n" +
+    "  \"pathToCompileCommands\": \"/path\",\n" +
     "  \"disableTelemetry\": true,\n"
     + "\"output\": {\n" +
     "  \"showAnalyzerLogs\": true,\n" +
@@ -133,7 +134,7 @@ class SettingsManagerTest {
 
     assertThat(settings.getTestMatcher().matches(new File("./someTest").toPath())).isFalse();
     assertThat(settings.getTestMatcher().matches(new File("./someTest.ext").toPath())).isTrue();
-    assertThat(settings.getAnalyzerProperties()).containsExactly(entry("sonar.polop", "palap"));
+    assertThat(settings.getAnalyzerProperties()).containsExactly(entry("sonar.polop", "palap"), entry("sonar.cfamily.compile-commands", "/path"));
     assertThat(settings.getConnectionId()).isEqualTo("sq1");
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
   }

@@ -46,6 +46,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.assertj.core.api.iterable.ThrowingExtractor;
 import org.eclipse.lsp4j.ClientCapabilities;
@@ -426,8 +427,8 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected static void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
-    @Nullable Boolean showVerboseLogs, Map<String, String> analyserProperties, String... ruleConfigs) {
-    client.globalSettings = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, analyserProperties, ruleConfigs);
+    @Nullable Boolean showVerboseLogs, Map<String, String> analyserProperties, String pathToCompilationDatabase, String... ruleConfigs) {
+    client.globalSettings = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, analyserProperties, pathToCompilationDatabase, ruleConfigs);
     client.settingsLatch = new CountDownLatch(1);
     lsProxy.getWorkspaceService().didChangeConfiguration(changedConfiguration(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs));
     awaitLatch(client.settingsLatch);
@@ -435,7 +436,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
   protected static void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
     @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
-    emulateConfigurationChangeOnClient(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, Collections.emptyMap(), ruleConfigs);
+    emulateConfigurationChangeOnClient(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, Collections.emptyMap(), null, ruleConfigs);
   }
 
   private static DidChangeConfigurationParams changedConfiguration(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
@@ -446,17 +447,20 @@ public abstract class AbstractLanguageServerMediumTests {
 
   protected static Map<String, Object> buildSonarLintSettingsSection(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
     @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
-    return buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, Collections.emptyMap(), ruleConfigs);
+    return buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, Collections.emptyMap(), null, ruleConfigs);
   }
 
   protected static Map<String, Object> buildSonarLintSettingsSection(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
-    @Nullable Boolean showVerboseLogs, Map<String, String> analyzerProperties, String... ruleConfigs) {
+    @Nullable Boolean showVerboseLogs, Map<String, String> analyzerProperties, String pathToCompilationDatabase, String... ruleConfigs) {
     var values = new HashMap<String, Object>();
     if (testFilePattern != null) {
       values.put("testFilePattern", testFilePattern);
     }
     if (!analyzerProperties.isEmpty()) {
       values.put("analyzerProperties", analyzerProperties);
+    }
+    if (StringUtils.isNotEmpty(pathToCompilationDatabase)) {
+      values.put("pathToCompileCommands", pathToCompilationDatabase);
     }
     if (disableTelemetry != null) {
       values.put("disableTelemetry", disableTelemetry);

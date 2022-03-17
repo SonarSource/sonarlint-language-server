@@ -67,6 +67,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static final String SHOW_ANALYZER_LOGS = "showAnalyzerLogs";
   private static final String SHOW_VERBOSE_LOGS = "showVerboseLogs";
   private static final String PATH_TO_NODE_EXECUTABLE = "pathToNodeExecutable";
+  private static final String PATH_TO_COMPILE_COMMANDS = "pathToCompileCommands";
 
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
@@ -324,7 +325,11 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     @SuppressWarnings("unchecked")
     var map = (Map<String, String>) params.get(ANALYZER_PROPERTIES);
     if (map == null) {
-      map = Collections.emptyMap();
+      map = new HashMap<>();
+    }
+    String cd = (String) params.get(PATH_TO_COMPILE_COMMANDS);
+    if (cd != null) {
+      map.put("sonar.cfamily.compile-commands", cd);
     }
     return map;
   }
