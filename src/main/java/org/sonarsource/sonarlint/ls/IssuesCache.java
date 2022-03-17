@@ -31,8 +31,6 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
 
-import static java.util.Collections.emptyMap;
-
 public class IssuesCache {
 
   private final Map<URI, Map<String, VersionnedIssue>> issuesPerIdPerFileURI = new ConcurrentHashMap<>();
@@ -53,7 +51,7 @@ public class IssuesCache {
   }
 
   public int count(URI f) {
-    return Optional.ofNullable(issuesPerIdPerFileURI.get(f)).map(Map::size).orElse(0);
+    return get(f).size();
   }
 
   public void analysisFailed(VersionnedOpenFile versionnedOpenFile) {
@@ -72,7 +70,7 @@ public class IssuesCache {
   }
 
   public Optional<VersionnedIssue> getIssueForDiagnostic(URI fileUri, Diagnostic d) {
-    var issuesForFile = issuesPerIdPerFileURI.getOrDefault(fileUri, emptyMap());
+    var issuesForFile = get(fileUri);
     return Optional.ofNullable(d.getData())
       .map(JsonPrimitive.class::cast)
       .map(JsonPrimitive::getAsString)
@@ -99,6 +97,6 @@ public class IssuesCache {
   }
 
   public Map<String, VersionnedIssue> get(URI fileUri) {
-    return Optional.ofNullable(issuesPerIdPerFileURI.get(fileUri)).orElse(Map.of());
+    return inProgressAnalysisIssuesPerIdPerFileURI.getOrDefault(fileUri, issuesPerIdPerFileURI.getOrDefault(fileUri, Map.of()));
   }
 }

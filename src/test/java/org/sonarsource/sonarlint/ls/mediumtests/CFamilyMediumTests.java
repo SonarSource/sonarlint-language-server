@@ -56,7 +56,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
 
     var compilationDatabaseContent = "[\n" +
       "{\n" +
-      "  \"directory\": \""+ StringEscapeUtils.escapeJson(cppProjectBaseDir.toString()) + "\",\n" +
+      "  \"directory\": \"" + StringEscapeUtils.escapeJson(cppProjectBaseDir.toString()) + "\",\n" +
       "  \"command\": \"" + StringEscapeUtils.escapeJson(mockClang.toString()) + " -x c++ " + StringEscapeUtils.escapeJson(cppFile.toString()) + "\",\n" +
       "  \"file\": \"" + StringEscapeUtils.escapeJson(cppFile.toString()) + "\"\n" +
       "}\n" +
@@ -68,15 +68,15 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
     emulateConfigurationChangeOnClient(null, true, true, true,
       new HashMap<>(), compilationDatabaseFile.toString());
 
-    var diagnostics = didOpenAndWaitForDiagnostics(cppFileUri, "cpp",
+    didOpen(cppFileUri, "cpp",
       "int main() {\n" +
-      "    int i = 0;\n" +
-      "    return 0;\n" +
-      "}\n");
+        "    int i = 0;\n" +
+        "    return 0;\n" +
+        "}\n");
 
-    assertThat(diagnostics)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(cppFileUri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactlyInAnyOrder(tuple(1, 8, 1, 9, "cpp:S1481", "sonarlint", "unused variable 'i'", Information));
+      .containsExactlyInAnyOrder(tuple(1, 8, 1, 9, "cpp:S1481", "sonarlint", "unused variable 'i'", Information)));
   }
 
 }

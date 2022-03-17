@@ -35,10 +35,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
-import static org.awaitility.Awaitility.await;
 
 class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -72,19 +70,25 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     emulateConfigurationChangeOnClient("**/*.js", true);
 
     var uriInFolder = folder1BaseDir.resolve("inFolder.js").toUri().toString();
-    var diagnosticsInFolder = didOpenAndWaitForDiagnostics(uriInFolder, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
+    didOpen(uriInFolder, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
 
-    assertThat(diagnosticsInFolder)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
         tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information),
-        tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information));
+        tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information)));
+
+    client.logs.clear();
 
     var uriOutsideFolder = getUri("outsideFolder.js");
-    var diagnosticsOutsideFolder = didOpenAndWaitForDiagnostics(uriOutsideFolder, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
+    didOpen(uriOutsideFolder, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
+
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Info] Found 0 issues"));
 
     // File is considered as test file
-    assertThat(diagnosticsOutsideFolder).isEmpty();
+    assertThat(client.getDiagnostics(uriOutsideFolder)).isEmpty();
   }
 
   @Test
@@ -93,24 +97,25 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     var file1InFolder = folder1BaseDir.resolve("file1.js").toUri().toString();
     var file2InFolder = folder1BaseDir.resolve("file2.js").toUri().toString();
 
-    didOpenAndWaitForDiagnostics(file1InFolder, "javascript", "function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}");
-    didOpenAndWaitForDiagnostics(file2InFolder, "javascript", "function foo() {\n  var toto2 = 0;\n  var plouf2 = 0;\n}");
+    didOpen(file1InFolder, "javascript", "function foo() {}");
+    didOpen(file2InFolder, "javascript", "function foo() {}");
+
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Info] Found 0 issues",
+        "[Info] Found 0 issues"));
 
     client.logs.clear();
 
-    client.doAndWaitForDiagnostics(file1InFolder, () -> {
-      client.doAndWaitForDiagnostics(file2InFolder, () -> {
-        // two consecute changes should be batched
-        lsProxy.getTextDocumentService()
-          .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1InFolder, 2),
-            List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}"))));
-        lsProxy.getTextDocumentService()
-          .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder, 2),
-            List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto2 = 0;\n  var plouf2 = 0;\n}"))));
-      });
-    });
+    // two consecute changes should be batched
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1InFolder, 2),
+        List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}"))));
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder, 2),
+        List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto2 = 0;\n  var plouf2 = 0;\n}"))));
 
-    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+    awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
       .containsSubsequence(
         "[Debug] Queuing analysis of 2 files",
@@ -128,24 +133,20 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     var file1InFolder1 = folder1BaseDir.resolve("file1.js").toUri().toString();
     var file2InFolder2 = folder2BaseDir.resolve("file2.js").toUri().toString();
 
-    didOpenAndWaitForDiagnostics(file1InFolder1, "javascript", "function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}");
-    didOpenAndWaitForDiagnostics(file2InFolder2, "javascript", "function foo() {\n  var toto2 = 0;\n  var plouf2 = 0;\n}");
+    didOpen(file1InFolder1, "javascript", "function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}");
+    didOpen(file2InFolder2, "javascript", "function foo() {\n  var toto2 = 0;\n  var plouf2 = 0;\n}");
 
     client.logs.clear();
 
-    client.doAndWaitForDiagnostics(file1InFolder1, () -> {
-      client.doAndWaitForDiagnostics(file2InFolder2, () -> {
-        // two consecute changes on different folders should not be batched
-        lsProxy.getTextDocumentService()
-          .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1InFolder1, 2),
-            List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}"))));
-        lsProxy.getTextDocumentService()
-          .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder2, 2),
-            List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto2 = 0;\n  var plouf2 = 0;\n}"))));
-      });
-    });
+    // two consecute changes on different folders should not be batched
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1InFolder1, 2),
+        List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}"))));
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder2, 2),
+        List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto2 = 0;\n  var plouf2 = 0;\n}"))));
 
-    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+    awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
       .containsSubsequence(
         "[Debug] Queuing analysis of 2 files",

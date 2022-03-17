@@ -59,10 +59,8 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.LocalBranchNameChangeEvent;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
-import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -90,13 +88,13 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     emulateConfigurationChangeOnClient("**/*Test.js", true);
 
     var uri = getUri("analyzeSimpleJsFileOnOpen.js");
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
+    didOpen(uri, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
 
-    assertThat(diagnostics)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information),
-        tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information));
+        tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information)));
   }
 
   @Test
@@ -110,31 +108,29 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertLogContains(
       "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,projectKey=<null>,testFilePattern=**/*Test.js]");
 
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", jsSource);
-    assertThat(diagnostics)
+    didOpen(uri, "javascript", jsSource);
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(2, 6, 2, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information),
-        tuple(3, 6, 3, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information));
+        tuple(3, 6, 3, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information)));
 
     client.clear();
 
     // Update rules configuration: disable UnusedVariable, enable Semicolon
-    client.doAndWaitForDiagnostics(uri, () -> {
-      emulateConfigurationChangeOnClient("**/*Test.js", null,
-        "javascript:S1481", "off",
-        "javascript:S1105", "on");
-    });
+    emulateConfigurationChangeOnClient("**/*Test.js", null,
+      "javascript:S1481", "off",
+      "javascript:S1105", "on");
 
     assertLogContains(
       "Global settings updated: WorkspaceSettings[connections={},disableTelemetry=false,excludedRules=[javascript:S1481],includedRules=[javascript:S1105],pathToNodeExecutable=<null>,ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=false]");
 
-    assertThat(client.getDiagnostics(uri))
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 1, 1, 2, "javascript:S1105", "sonarlint", "Opening curly brace does not appear on the same line as controlling statement.", DiagnosticSeverity.Information)
       // Expected issues on javascript:S1481 are suppressed by rule configuration
-      );
+      ));
   }
 
   @Test
@@ -143,38 +139,38 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     Files.write(tsconfig, "{}".getBytes(StandardCharsets.UTF_8));
     var uri = getUri("analyzeSimpleTsFileOnOpen.ts");
 
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "typescript", "function foo() {\n if(bar() && bar()) { return 42; }\n}");
+    didOpen(uri, "typescript", "function foo() {\n if(bar() && bar()) { return 42; }\n}");
 
-    assertThat(diagnostics)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(tuple(1, 13, 1, 18, "typescript:S1764", "sonarlint", "Correct one of the identical sub-expressions on both sides of operator \"&&\" [+1 location]",
-        DiagnosticSeverity.Warning));
+        DiagnosticSeverity.Warning)));
   }
 
   @Test
   void analyzeSimplePythonFileOnOpen() throws Exception {
     var uri = getUri("analyzeSimplePythonFileOnOpen.py");
 
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "python", "def foo():\n  print 'toto'\n");
+    didOpen(uri, "python", "def foo():\n  print 'toto'\n");
 
-    assertThat(diagnostics)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(1, 2, 1, 7, "python:PrintStatementUsage", "sonarlint", "Replace print statement by built-in function.", DiagnosticSeverity.Warning));
+        tuple(1, 2, 1, 7, "python:PrintStatementUsage", "sonarlint", "Replace print statement by built-in function.", DiagnosticSeverity.Warning)));
   }
 
   @Test
   void analyzePythonFileWithDuplicatedStringOnOpen() throws Exception {
     var uri = getUri("analyzePythonFileWithDuplicatedStringOnOpen.py");
 
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "python", "def foo():\n  print('/toto')\n  print('/toto')\n  print('/toto')\n");
+    didOpen(uri, "python", "def foo():\n  print('/toto')\n  print('/toto')\n  print('/toto')\n");
 
-    assertThat(diagnostics)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(1, 8, 1, 15, "python:S1192", "sonarlint", "Define a constant instead of duplicating this literal '/toto' 3 times. [+2 locations]", DiagnosticSeverity.Warning));
+        tuple(1, 8, 1, 15, "python:S1192", "sonarlint", "Define a constant instead of duplicating this literal '/toto' 3 times. [+2 locations]", DiagnosticSeverity.Warning)));
 
-    var d = diagnostics.get(0);
+    var d = client.getDiagnostics(uri).get(0);
     var codeActionParams = new CodeActionParams(new TextDocumentIdentifier(uri), d.getRange(), new CodeActionContext(List.of(d)));
     var codeActions = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
     assertThat(codeActions).hasSize(3);
@@ -187,43 +183,43 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void analyzeSimplePhpFileOnOpen() throws Exception {
     var uri = getUri("foo.php");
 
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "php", "<?php\nfunction foo() {\n  echo(\"Hello\");\n}\n?>");
+    didOpen(uri, "php", "<?php\nfunction foo() {\n  echo(\"Hello\");\n}\n?>");
 
-    assertThat(diagnostics)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(tuple(2, 2, 2, 6, "php:S2041", "sonarlint", "Remove the parentheses from this \"echo\" call.", DiagnosticSeverity.Warning));
+      .containsExactly(tuple(2, 2, 2, 6, "php:S2041", "sonarlint", "Remove the parentheses from this \"echo\" call.", DiagnosticSeverity.Warning)));
   }
 
   @Test
   void analyzeSimpleHtmlFileOnOpen() throws Exception {
     var uri = getUri("foo.html");
 
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "html", "<html><body></body></html>");
+    didOpen(uri, "html", "<html><body></body></html>");
 
-    assertThat(diagnostics)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(0, 0, 0, 6, "Web:DoctypePresenceCheck", "sonarlint", "Insert a <!DOCTYPE> declaration to before this <html> tag.",
           DiagnosticSeverity.Warning),
         tuple(0, 0, 0, 6, "Web:S5254", "sonarlint", "Add \"lang\" and/or \"xml:lang\" attributes to this \"<html>\" element",
           DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 26, "Web:PageWithoutTitleCheck", "sonarlint", "Add a <title> tag to this page.", DiagnosticSeverity.Warning));
+        tuple(0, 0, 0, 26, "Web:PageWithoutTitleCheck", "sonarlint", "Add a <title> tag to this page.", DiagnosticSeverity.Warning)));
   }
 
   @Test
   void analyzeSimpleJspFileOnOpen() throws Exception {
     var uri = getUri("foo.html");
 
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "jsp", "<html><body></body></html>");
+    didOpen(uri, "jsp", "<html><body></body></html>");
 
-    assertThat(diagnostics)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(0, 0, 0, 6, "Web:DoctypePresenceCheck", "sonarlint", "Insert a <!DOCTYPE> declaration to before this <html> tag.",
           DiagnosticSeverity.Warning),
         tuple(0, 0, 0, 6, "Web:S5254", "sonarlint", "Add \"lang\" and/or \"xml:lang\" attributes to this \"<html>\" element",
           DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 26, "Web:PageWithoutTitleCheck", "sonarlint", "Add a <title> tag to this page.", DiagnosticSeverity.Warning));
+        tuple(0, 0, 0, 26, "Web:PageWithoutTitleCheck", "sonarlint", "Add a <title> tag to this page.", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -234,95 +230,128 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     var jsContent = "function foo() {\n  var toto = 0;\n}";
     var fooTestUri = getUri("fooTest.js");
-    var diagnostics = didOpenAndWaitForDiagnostics(fooTestUri, "javascript", jsContent);
+    didOpen(fooTestUri, "javascript", jsContent);
 
-    assertThat(diagnostics).isEmpty();
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Info] Found 0 issues"));
+    assertThat(client.getDiagnostics(fooTestUri)).isEmpty();
     client.clear();
 
     emulateConfigurationChangeOnClient("{**/*MyTest*}", null, null, true);
     assertLogContains(
       "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,projectKey=<null>,testFilePattern={**/*MyTest*}]");
 
-    diagnostics = didChangeAndWaitForDiagnostics(fooTestUri, jsContent);
-    assertThat(diagnostics).hasSize(1);
+    didChange(fooTestUri, jsContent);
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fooTestUri)).hasSize(1));
+
+    client.logs.clear();
 
     var fooMyTestUri = getUri("fooMyTest.js");
-    var diagnosticsOtherFile = didOpenAndWaitForDiagnostics(fooMyTestUri, "javascript", jsContent);
+    didOpen(fooMyTestUri, "javascript", jsContent);
 
-    assertThat(diagnosticsOtherFile).isEmpty();
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Info] Found 0 issues"));
+
+    assertThat(client.getDiagnostics(fooMyTestUri)).isEmpty();
   }
 
   @Test
   void analyzeSimpleJsFileOnChange() throws Exception {
     var uri = getUri("analyzeSimpleJsFileOnChange.js");
 
-    didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {}");
+    didOpen(uri, "javascript", "function foo() {}");
 
-    var diagnostics = didChangeAndWaitForDiagnostics(uri, "function foo() {\n  var toto = 0;\n}");
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Info] Found 0 issues"));
 
-    assertThat(diagnostics)
+    didChange(uri, "function foo() {\n  var toto = 0;\n}");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information));
+      .containsExactly(tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information)));
   }
 
   @Test
   void analyzeSimpleXmlFileOnOpen() throws Exception {
     var uri = getUri("analyzeSimpleXmlFileOnOpen.xml");
 
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "xml", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+    didOpen(uri, "xml", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
       "<root>\n" +
       "  <!-- TODO Add content -->\n" +
       "</root>\n");
 
-    assertThat(diagnostics)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(2, 2, 2, 27, "xml:S1135", "sonarlint", "Complete the task associated to this \"TODO\" comment.", DiagnosticSeverity.Hint));
+        tuple(2, 2, 2, 27, "xml:S1135", "sonarlint", "Complete the task associated to this \"TODO\" comment.", DiagnosticSeverity.Hint)));
   }
 
   @Test
   void delayAnalysisOnChange() throws Exception {
     var uri = getUri("foo.js");
 
-    didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {}");
+    didOpen(uri, "javascript", "function foo() {}");
+
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Info] Found 0 issues"));
+
+    client.logs.clear();
 
     // Emulate two quick changes, should only trigger one analysis
-    client.doAndWaitForDiagnostics(uri, () -> {
-      lsProxy.getTextDocumentService()
-        .didChange(
-          new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 2), List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n}"))));
-      lsProxy.getTextDocumentService()
-        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 3),
-          List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n  var plouf = 0;\n}"))));
-    });
-    var diagnostics = client.getDiagnostics(uri);
-    assertThat(diagnostics)
+    lsProxy.getTextDocumentService()
+      .didChange(
+        new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 2), List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n}"))));
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 3),
+        List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n  var plouf = 0;\n}"))));
+
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Debug] Queuing analysis of file '" + uri + "' (version 3)"));
+
+    assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .doesNotContain("[Debug] Queuing analysis of file '" + uri + "' (version 2)");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
         tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information),
-        tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information));
+        tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information)));
   }
 
   @Test
   void analyzeSimpleJsFileOnSave() throws Exception {
     var uri = getUri("foo.js");
 
-    didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {}");
+    didOpen(uri, "javascript", "function foo() {}");
 
-    var diagnostics = didSaveAndWaitForDiagnostics(uri, "function foo() {\n  var toto = 0;\n}");
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Info] Found 0 issues"));
 
-    assertThat(diagnostics)
+    didSave(uri, "function foo() {\n  var toto = 0;\n}");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information));
+      .containsExactly(tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information)));
   }
 
   @Test
   void cleanDiagnosticsOnClose() throws Exception {
     var uri = getUri("foo.js");
-    client.doAndWaitForDiagnostics(uri, () -> {
-      lsProxy.getTextDocumentService().didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
-    });
-    assertThat(client.getDiagnostics(uri)).isEmpty();
+    didOpen(uri, "javascript", "function foo() {\n  var toto = 0;\n}");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information)));
+
+    lsProxy.getTextDocumentService().didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri)).isEmpty());
   }
 
   @Test
@@ -330,18 +359,20 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     emulateConfigurationChangeOnClient("**/*Test.js", true, true, true);
 
     var uri = getUri("foo.py");
-    client.doAndWaitForDiagnostics(uri, () -> {
-      // SLVSCODE-157 - Open/Close/Open/Close triggers a race condition that nullifies content
-      lsProxy.getTextDocumentService()
-        .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
-      lsProxy.getTextDocumentService()
-        .didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
-      lsProxy.getTextDocumentService()
-        .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
-      lsProxy.getTextDocumentService()
-        .didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
-    });
+    // SLVSCODE-157 - Open/Close/Open/Close triggers a race condition that nullifies content
+    lsProxy.getTextDocumentService()
+      .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
+    lsProxy.getTextDocumentService()
+      .didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
+    lsProxy.getTextDocumentService()
+      .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
+    lsProxy.getTextDocumentService()
+      .didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
 
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Info] Found 0 issues",
+        "[Info] Found 0 issues"));
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
@@ -353,10 +384,10 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("foo.py");
     client.isIgnoredByScm = true;
 
-    didOpenAndWaitForDiagnostics(uri, "python", "# Nothing to see here\n");
+    didOpen(uri, "python", "# Nothing to see here\n");
 
-    assertThat(client.logs).extracting(withoutTimestamp())
-      .contains("[Debug] Skip analysis for SCM ignored file: '" + uri + "'");
+    awaitUntilAsserted(() -> assertThat(client.logs).extracting(withoutTimestamp())
+      .contains("[Debug] Skip analysis for SCM ignored file: '" + uri + "'"));
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
@@ -536,9 +567,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     client.logs.clear();
 
     var uri = getUri("testAnalysisLogsDisabled.js");
-    didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
+    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
 
-    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+    awaitUntilAsserted(() -> assertThat(client.logs)
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestamp())
       .containsExactly(
@@ -553,9 +584,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     client.logs.clear();
 
     var uri = getUri("testAnalysisLogsDebugEnabled.js");
-    didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
+    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
 
-    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+    awaitUntilAsserted(() -> assertThat(client.logs)
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestamp())
       .containsSubsequence(
@@ -571,9 +602,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     client.logs.clear();
 
     var uri = getUri("testAnalysisLogsEnabled.js");
-    didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
+    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
 
-    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+    awaitUntilAsserted(() -> assertThat(client.logs)
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestamp())
       .contains(
@@ -591,9 +622,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     client.logs.clear();
 
     var uri = getUri("testAnalysisLogsWithDebugEnabled.js");
-    didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
+    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
 
-    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+    awaitUntilAsserted(() -> assertThat(client.logs)
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestamp())
       .contains(
