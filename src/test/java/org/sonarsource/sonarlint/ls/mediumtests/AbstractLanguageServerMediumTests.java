@@ -460,8 +460,7 @@ public abstract class AbstractLanguageServerMediumTests {
       values.put("analyzerProperties", analyzerProperties);
     }
     if (StringUtils.isNotEmpty(pathToCompilationDatabase)) {
-      values.put("analyzerProperties", analyzerProperties);
-      analyzerProperties.put("sonar.cfamily.compile-commands", pathToCompilationDatabase);
+      values.put("pathToCompileCommands", pathToCompilationDatabase);
     }
     if (disableTelemetry != null) {
       values.put("disableTelemetry", disableTelemetry);
