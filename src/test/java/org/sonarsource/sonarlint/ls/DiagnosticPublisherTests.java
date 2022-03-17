@@ -20,7 +20,10 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
+import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
+import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.Range;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
@@ -52,11 +55,14 @@ class DiagnosticPublisherTests {
   }
 
   @Test
-  void testNotConvertGlobalIssues() {
+  void testConvertGlobalIssues() {
     var issue = mock(Issue.class);
+    when(issue.getSeverity()).thenReturn("BLOCKER");
+    when(issue.getMessage()).thenReturn("Do this, don't do that");
     when(issue.getStartLine()).thenReturn(null);
     var versionnedIssue = new VersionnedIssue(issue, 1);
-    assertThat(convert(entry("id", versionnedIssue))).isEmpty();
+    Diagnostic diagnostic = convert(entry("id", versionnedIssue));
+    assertThat(diagnostic.getRange()).isEqualTo(new Range(new Position(0, 0), new Position(0, 0)));
   }
 
   @Test
@@ -67,15 +73,15 @@ class DiagnosticPublisherTests {
     when(issue.getSeverity()).thenReturn("BLOCKER");
     when(issue.getMessage()).thenReturn("Do this, don't do that");
     var versionnedIssue = new VersionnedIssue(issue, 1);
-    assertThat(convert(entry(id, versionnedIssue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(convert(entry(id, versionnedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn("CRITICAL");
-    assertThat(convert(entry(id, versionnedIssue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(convert(entry(id, versionnedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn("MAJOR");
-    assertThat(convert(entry(id, versionnedIssue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(convert(entry(id, versionnedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn("MINOR");
-    assertThat(convert(entry(id, versionnedIssue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Information);
+    assertThat(convert(entry(id, versionnedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Information);
     when(issue.getSeverity()).thenReturn("INFO");
-    assertThat(convert(entry(id, versionnedIssue)).get().getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
+    assertThat(convert(entry(id, versionnedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
   }
 
   @Test

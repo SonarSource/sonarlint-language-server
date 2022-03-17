@@ -82,6 +82,9 @@ public class Utils {
   }
 
   public static Range convert(Issue issue) {
+    if (issue.getStartLine() == null) {
+      return new Range(new Position(0, 0), new Position(0, 0));
+    }
     return new Range(
       new Position(
         issue.getStartLine() - 1,

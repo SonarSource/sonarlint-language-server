@@ -22,7 +22,6 @@ package org.sonarsource.sonarlint.ls;
 import java.net.URI;
 import java.util.Comparator;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
@@ -74,23 +73,20 @@ public class DiagnosticPublisher {
     client.publishDiagnostics(createPublishDiagnosticsParams(f));
   }
 
-  static Optional<Diagnostic> convert(Map.Entry<String, VersionnedIssue> entry) {
+  static Diagnostic convert(Map.Entry<String, VersionnedIssue> entry) {
     var issue = entry.getValue().getIssue();
-    if (issue.getStartLine() != null) {
-      var range = Utils.convert(issue);
-      var diagnostic = new Diagnostic();
-      var severity = severity(issue.getSeverity());
+    var diagnostic = new Diagnostic();
+    var severity = severity(issue.getSeverity());
 
-      diagnostic.setSeverity(severity);
-      diagnostic.setRange(range);
-      diagnostic.setCode(issue.getRuleKey());
-      diagnostic.setMessage(message(issue));
-      diagnostic.setSource(SONARLINT_SOURCE);
-      diagnostic.setData(entry.getKey());
+    diagnostic.setSeverity(severity);
+    var range = Utils.convert(issue);
+    diagnostic.setRange(range);
+    diagnostic.setCode(issue.getRuleKey());
+    diagnostic.setMessage(message(issue));
+    diagnostic.setSource(SONARLINT_SOURCE);
+    diagnostic.setData(entry.getKey());
 
-      return Optional.of(diagnostic);
-    }
-    return Optional.empty();
+    return diagnostic;
   }
 
   static String message(Issue issue) {
@@ -119,7 +115,7 @@ public class DiagnosticPublisher {
 
     var localDiagnostics = localIssues.entrySet()
       .stream()
-      .flatMap(i -> DiagnosticPublisher.convert(i).stream());
+      .map(DiagnosticPublisher::convert);
     var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostics(newUri);
 
     p.setDiagnostics(Stream.concat(localDiagnostics, taintDiagnostics)
