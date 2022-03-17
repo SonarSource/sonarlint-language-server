@@ -24,7 +24,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
@@ -35,12 +34,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.commons.lang3.StringUtils.appendIfMissing;
 import static org.apache.commons.lang3.StringUtils.removeEnd;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
-import static org.awaitility.Awaitility.await;
 
 class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -72,12 +69,12 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     client.javaConfigs.put(uri, null);
 
-    didOpenAndWaitForDiagnostics(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
+    didOpen(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
 
-    assertThat(client.logs)
+    awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
       .contains(
-        "[Debug] Skipping analysis of Java file '" + uri + "' because SonarLint was unable to query project configuration (classpath, source level, ...)");
+        "[Debug] Skipping analysis of Java file '" + uri + "' because SonarLint was unable to query project configuration (classpath, source level, ...)"));
   }
 
   @Test
@@ -91,34 +88,31 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     javaConfigResponse.setClasspath(new String[] {"/does/not/exist"});
     client.javaConfigs.put(uri, javaConfigResponse);
 
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
+    didOpen(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
 
-    assertThat(diagnostics)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
         tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Information),
-        tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+        tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
 
     var ignoredMsg = "[Debug] Classpath '/does/not/exist' from configuration does not exist, skipped";
     var cacheMsg = "[Debug] Cached Java config for file '" + uri + "'";
-    await().atMost(5, SECONDS).untilAsserted(() -> {
-      assertThat(client.logs)
-        .extracting(withoutTimestamp())
-        .containsAll(List.of(ignoredMsg, cacheMsg));
-    });
+    assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .containsAll(List.of(ignoredMsg, cacheMsg));
 
     client.logs.clear();
     client.javaConfigs.put(uri, null);
 
-    diagnostics = didChangeAndWaitForDiagnostics(uri, "public class Foo {\n  public static void main() {\n  System.out.println(\"foo\");\n}\n}");
-
-    assertThat(diagnostics)
+    didChange(uri, "public class Foo {\n\n  public static void main() {\n  System.out.println(\"foo\");\n}\n}");
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
         tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Information),
-        tuple(2, 2, 2, 12, "java:S106", "sonarlint", "Replace this use of System.out or System.err by a logger.", DiagnosticSeverity.Warning));
+        tuple(3, 2, 3, 12, "java:S106", "sonarlint", "Replace this use of System.out or System.err by a logger.", DiagnosticSeverity.Warning)));
 
     assertThat(client.logs).extracting(withoutTimestamp()).doesNotContain(cacheMsg);
   }
@@ -134,7 +128,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     javaConfigResponse.setClasspath(new String[0]);
     client.javaConfigs.put(uri, javaConfigResponse);
 
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "java",
+    didOpen(uri, "java",
       "public class AnalyzeSimpleJavaFileWithFlows {\n" +
         "  private AnalyzeSimpleJavaFileWithFlows() {}\n" +
         "  static int computeValue(int input) {\n" +
@@ -149,12 +143,12 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
         "  }\n" +
         "}");
 
-    assertThat(diagnostics)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(7, 11, 7, 26, "java:S2259", "sonarlint", "\"NullPointerException\" will be thrown when invoking method \"doSomeThingWith()\". [+5 locations]",
           DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Information));
+        tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Information)));
   }
 
   @Test
@@ -175,24 +169,22 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     javaConfigResponse.setVmLocation(currentJdkHome.toString());
     client.javaConfigs.put(uri, javaConfigResponse);
 
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
+    didOpen(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
 
-    assertThat(diagnostics)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
         tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Information),
-        tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+        tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
 
     var jrtFsJarPath = currentJdkHome.resolve(isModular ? "lib/jrt-fs.jar" : "jre/lib/rt.jar").toString();
-    await().atMost(5, SECONDS).untilAsserted(() -> {
-      assertThat(client.logs)
-        .extracting(withoutTimestamp())
-        .containsSubsequence(
-          "[Debug] Property 'sonar.java.jdkHome' set with: " + currentJdkHome,
-          "[Debug] Property 'sonar.java.jdkHome' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]",
-          "[Debug] Property 'sonar.java.libraries' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]");
-    });
+    assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .containsSubsequence(
+        "[Debug] Property 'sonar.java.jdkHome' set with: " + currentJdkHome,
+        "[Debug] Property 'sonar.java.jdkHome' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]",
+        "[Debug] Property 'sonar.java.libraries' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]");
   }
 
   @Test
@@ -206,13 +198,13 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     javaConfigResponse.setClasspath(new String[] {Paths.get(this.getClass().getResource("/junit-4.12.jar").toURI()).toAbsolutePath().toString()});
     client.javaConfigs.put(uri, javaConfigResponse);
 
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "java",
+    didOpen(uri, "java",
       "import org.junit.Test;\npublic class FooTest {\n  @Test\n  public void test() {\n String s = \"foo\";\n}\n}");
 
-    assertThat(diagnostics)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(3, 14, 3, 18, "java:S2699", "sonarlint", "Add at least one assertion to this test case.", DiagnosticSeverity.Warning));
+        tuple(3, 14, 3, 18, "java:S2699", "sonarlint", "Add at least one assertion to this test case.", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -234,28 +226,27 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     javaConfigResponse.setClasspath(new String[0]);
     client.javaConfigs.put(uri, javaConfigResponse);
 
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "java",
+    didOpen(uri, "java",
       "import org.junit.Test;\npublic class FooTest {\n  @Test\n  public void test() {\n String s = \"foo\";\n}\n}");
 
-    assertThat(diagnostics).isEmpty();
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Info] Found 0 issues"));
     client.logs.clear();
 
     // Update classpath
     javaConfigResponse.setClasspath(new String[] {Paths.get(this.getClass().getResource("/junit-4.12.jar").toURI()).toAbsolutePath().toString()});
-    client.doAndWaitForDiagnostics(uri, () -> {
-      lsProxy.didClasspathUpdate(projectRootUri2);
-    });
-    diagnostics = client.getDiagnostics(uri);
+    lsProxy.didClasspathUpdate(projectRootUri2);
 
-    assertThat(diagnostics)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(3, 14, 3, 18, "java:S2699", "sonarlint", "Add at least one assertion to this test case.", DiagnosticSeverity.Warning));
+        tuple(3, 14, 3, 18, "java:S2699", "sonarlint", "Add at least one assertion to this test case.", DiagnosticSeverity.Warning)));
 
-    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+    assertThat(client.logs)
       .extracting(withoutTimestamp())
       .contains(
-        "[Debug] Evicted Java config cache for file '" + uri + "'"));
+        "[Debug] Evicted Java config cache for file '" + uri + "'");
   }
 
   @Test
@@ -267,12 +258,12 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     // Simulate null Java config response due to serverMode=LightWeight
     client.javaConfigs.put(uri, null);
 
-    didOpenAndWaitForDiagnostics(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
+    didOpen(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
 
-    assertThat(client.logs)
+    awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
       .contains(
-        "[Debug] Skipping analysis of Java file '" + uri + "' because SonarLint was unable to query project configuration (classpath, source level, ...)");
+        "[Debug] Skipping analysis of Java file '" + uri + "' because SonarLint was unable to query project configuration (classpath, source level, ...)"));
 
     // Prepare config response
     var javaConfigResponse = new GetJavaConfigResponse();
@@ -282,19 +273,16 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     javaConfigResponse.setClasspath(new String[0]);
     client.javaConfigs.put(uri, javaConfigResponse);
 
-    client.doAndWaitForDiagnostics(uri, () -> {
-      // Notify of changes in server mode due to temporary activation of standard mode
-      lsProxy.didJavaServerModeChange("Hybrid");
-      lsProxy.didJavaServerModeChange("Standard");
-    });
-    List<Diagnostic> diagnostics = client.getDiagnostics(uri);
+    lsProxy.didJavaServerModeChange("Hybrid");
 
-    assertThat(diagnostics)
+    lsProxy.didJavaServerModeChange("Standard");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
         tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Information),
-        tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+        tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -313,26 +301,30 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     client.javaConfigs.put(file1module1, javaConfigResponse);
     client.javaConfigs.put(file2module1, javaConfigResponse);
 
-    didOpenAndWaitForDiagnostics(file1module1, "java", "public class Foo1 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
-    didOpenAndWaitForDiagnostics(file2module1, "java", "public class Foo2 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
-    didOpenAndWaitForDiagnostics(nonJavaFilemodule1, "javascript", "function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}");
+    didOpen(file1module1, "java", "public class Foo1 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
+    didOpen(file2module1, "java", "public class Foo2 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
+    didOpen(nonJavaFilemodule1, "javascript", "function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}");
+
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Info] Found 3 issues",
+        "[Info] Found 3 issues",
+        "[Info] Found 2 issues"));
 
     client.logs.clear();
 
-    client.doAndWaitForDiagnostics(Set.of(file1module1, file2module1, nonJavaFilemodule1), () -> {
-      // consecute changes should be batched
-      lsProxy.getTextDocumentService()
-        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1module1, 2),
-          List.of(new TextDocumentContentChangeEvent("public class Foo1 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
-      lsProxy.getTextDocumentService()
-        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2module1, 2),
-          List.of(new TextDocumentContentChangeEvent("public class Foo2 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
-      lsProxy.getTextDocumentService()
-        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(nonJavaFilemodule1, 2),
-          List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}"))));
-    });
+    // consecute changes should be batched
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1module1, 2),
+        List.of(new TextDocumentContentChangeEvent("public class Foo1 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2module1, 2),
+        List.of(new TextDocumentContentChangeEvent("public class Foo2 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(nonJavaFilemodule1, 2),
+        List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}"))));
 
-    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+    awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
       .containsSubsequence(
         "[Debug] Queuing analysis of 3 files",
@@ -361,22 +353,25 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     javaConfigResponse2.setClasspath(new String[0]);
     client.javaConfigs.put(file2module2, javaConfigResponse2);
 
-    didOpenAndWaitForDiagnostics(file1module1, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
-    didOpenAndWaitForDiagnostics(file2module2, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
+    didOpen(file1module1, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
+    didOpen(file2module2, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
+
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Info] Found 3 issues",
+        "[Info] Found 3 issues"));
 
     client.logs.clear();
 
-    client.doAndWaitForDiagnostics(Set.of(file1module1, file2module2), () -> {
-      // two consecute changes on different modules should not be batched
-      lsProxy.getTextDocumentService()
-        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1module1, 2),
-          List.of(new TextDocumentContentChangeEvent("public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
-      lsProxy.getTextDocumentService()
-        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2module2, 2),
-          List.of(new TextDocumentContentChangeEvent("public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
-    });
+    // two consecute changes on different modules should not be batched
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1module1, 2),
+        List.of(new TextDocumentContentChangeEvent("public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2module2, 2),
+        List.of(new TextDocumentContentChangeEvent("public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
 
-    await().atMost(5, SECONDS).untilAsserted(() -> assertThat(client.logs)
+    awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
       .containsSubsequence(
         "[Debug] Queuing analysis of 2 files",

@@ -49,6 +49,7 @@ import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.assertj.core.api.iterable.ThrowingExtractor;
+import org.awaitility.core.ThrowingRunnable;
 import org.eclipse.lsp4j.ClientCapabilities;
 import org.eclipse.lsp4j.ClientInfo;
 import org.eclipse.lsp4j.ConfigurationItem;
@@ -86,6 +87,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
+import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -212,9 +214,7 @@ public abstract class AbstractLanguageServerMediumTests {
   final void closeFiles() throws InterruptedException {
     // Close all opened files
     for (var uri : toBeClosed) {
-      client.doAndWaitForDiagnostics(uri, () -> {
-        lsProxy.getTextDocumentService().didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
-      });
+      lsProxy.getTextDocumentService().didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
     }
   }
 
@@ -250,7 +250,6 @@ public abstract class AbstractLanguageServerMediumTests {
     Map<String, String> branchNameByFolder = new HashMap<>();
     Map<String, String> referenceBranchNameByFolder = new HashMap<>();
     CountDownLatch settingsLatch = new CountDownLatch(0);
-    private final Map<String, CountDownLatch> diagnosticsLatches = new HashMap<>();
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
     ShowRuleDescriptionParams ruleDesc;
     boolean isIgnoredByScm = false;
@@ -261,30 +260,7 @@ public abstract class AbstractLanguageServerMediumTests {
       globalSettings = null;
       folderSettings.clear();
       settingsLatch = new CountDownLatch(0);
-      diagnosticsLatches.clear();
       showRuleDescriptionLatch = new CountDownLatch(0);
-    }
-
-    public void doAndWaitForDiagnostics(String uri, Runnable action) {
-      doAndWaitForDiagnostics(Set.of(uri), action);
-    }
-
-    public void doAndWaitForDiagnostics(Set<String> uris, Runnable action) {
-      for (String uri : uris) {
-        if (diagnosticsLatches.containsKey(uri)) {
-          fail("There is already something waiting for diagnostics of uri: " + uri);
-        }
-      }
-      var latch = new CountDownLatch(uris.size());
-      uris.forEach(uri -> diagnosticsLatches.put(uri, latch));
-      action.run();
-      try {
-        if (!latch.await(1, TimeUnit.MINUTES)) {
-          fail("No diagnostics received after 1 minute");
-        }
-      } catch (InterruptedException e) {
-        throw new IllegalStateException("interrupted", e);
-      }
     }
 
     @Override
@@ -292,18 +268,12 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     List<Diagnostic> getDiagnostics(String uri) {
-      return diagnostics.get(uri);
+      return diagnostics.getOrDefault(uri, List.of());
     }
 
     @Override
     public void publishDiagnostics(PublishDiagnosticsParams diagnostics) {
       this.diagnostics.put(diagnostics.getUri(), diagnostics.getDiagnostics());
-      var latch = diagnosticsLatches.remove(diagnostics.getUri());
-      if (latch != null) {
-        latch.countDown();
-      } else {
-        fail("Unexpected diagnostics: " + diagnostics);
-      }
     }
 
     @Override
@@ -490,33 +460,22 @@ public abstract class AbstractLanguageServerMediumTests {
     return Map.ofEntries(rules);
   }
 
-  protected List<Diagnostic> didChangeAndWaitForDiagnostics(String uri, String content) throws InterruptedException {
+  protected void didChange(String uri, String content) throws InterruptedException {
     var docId = new VersionedTextDocumentIdentifier(uri, 1);
-    client.doAndWaitForDiagnostics(uri, () -> {
-      lsProxy.getTextDocumentService()
-        .didChange(new DidChangeTextDocumentParams(docId, List.of(new TextDocumentContentChangeEvent(content))));
-      toBeClosed.add(uri);
-    });
-    return client.getDiagnostics(uri);
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(docId, List.of(new TextDocumentContentChangeEvent(content))));
   }
 
-  protected List<Diagnostic> didOpenAndWaitForDiagnostics(String uri, String languageId, String content) throws InterruptedException {
-    client.doAndWaitForDiagnostics(uri, () -> {
-      lsProxy.getTextDocumentService()
-        .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, languageId, 1, content)));
-      toBeClosed.add(uri);
-    });
-    return client.getDiagnostics(uri);
+  protected void didOpen(String uri, String languageId, String content) throws InterruptedException {
+    lsProxy.getTextDocumentService()
+      .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, languageId, 1, content)));
+    toBeClosed.add(uri);
   }
 
-  protected List<Diagnostic> didSaveAndWaitForDiagnostics(String uri, String content) throws InterruptedException {
+  protected void didSave(String uri, String content) throws InterruptedException {
     var docId = new VersionedTextDocumentIdentifier(uri, 1);
-    client.doAndWaitForDiagnostics(uri, () -> {
-      lsProxy.getTextDocumentService()
-        .didSave(new DidSaveTextDocumentParams(docId, content));
-      toBeClosed.add(uri);
-    });
-    return client.getDiagnostics(uri);
+    lsProxy.getTextDocumentService()
+      .didSave(new DidSaveTextDocumentParams(docId, content));
   }
 
   protected ThrowingExtractor<? super MessageParams, String, RuntimeException> withoutTimestamp() {
@@ -541,5 +500,9 @@ public abstract class AbstractLanguageServerMediumTests {
 
   protected Function<? super Diagnostic, ?> startLine() {
     return d -> d.getRange().getStart().getLine();
+  }
+
+  protected void awaitUntilAsserted(ThrowingRunnable assertion) {
+    await().atMost(1, MINUTES).untilAsserted(assertion);
   }
 }

@@ -325,6 +325,7 @@ public class AnalysisTaskExecutor {
         URI uri = inputFile.getClientObject();
         var versionnedOpenFile = filesToAnalyze.get(uri);
         issuesCache.reportIssue(versionnedOpenFile, issue);
+        diagnosticPublisher.publishDiagnostics(uri);
         ruleKeys.add(issue.getRuleKey());
       }
     };

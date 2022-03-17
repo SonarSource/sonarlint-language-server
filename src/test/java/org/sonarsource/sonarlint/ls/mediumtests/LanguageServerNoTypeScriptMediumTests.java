@@ -27,10 +27,8 @@ import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
-import static org.awaitility.Awaitility.await;
 
 class LanguageServerNoTypeScriptMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -48,12 +46,12 @@ class LanguageServerNoTypeScriptMediumTests extends AbstractLanguageServerMedium
     emulateConfigurationChangeOnClient("**/*Test.js", true);
 
     var uri = getUri("foo.js");
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
+    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
 
-    assertThat(diagnostics)
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information));
+        tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information)));
   }
 
   @Test
@@ -65,14 +63,13 @@ class LanguageServerNoTypeScriptMediumTests extends AbstractLanguageServerMedium
     Files.write(tsconfig, "{}".getBytes(StandardCharsets.UTF_8));
     var uri = getUri("foo.ts");
 
-    var diagnostics = didOpenAndWaitForDiagnostics(uri, "typescript", "function foo() {\n if(bar() && bar()) { return 42; }\n}");
+    didOpen(uri, "typescript", "function foo() {\n if(bar() && bar()) { return 42; }\n}");
 
-    assertThat(diagnostics).isEmpty();
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Error] Missing TypeScript dependency"));
 
-    await().atMost(5, SECONDS)
-      .untilAsserted(() -> assertThat(client.logs)
-        .extracting(withoutTimestamp())
-        .contains("[Error] Missing TypeScript dependency"));
+    assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
 }
