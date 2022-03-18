@@ -46,8 +46,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.assertj.core.api.iterable.ThrowingExtractor;
 import org.awaitility.core.ThrowingRunnable;
 import org.eclipse.lsp4j.ClientCapabilities;
@@ -398,7 +398,8 @@ public abstract class AbstractLanguageServerMediumTests {
 
   protected static void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
     @Nullable Boolean showVerboseLogs, Map<String, String> analyserProperties, String pathToCompilationDatabase, String... ruleConfigs) {
-    client.globalSettings = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, analyserProperties, pathToCompilationDatabase, ruleConfigs);
+    client.globalSettings = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, analyserProperties, pathToCompilationDatabase,
+      ruleConfigs);
     client.settingsLatch = new CountDownLatch(1);
     lsProxy.getWorkspaceService().didChangeConfiguration(changedConfiguration(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs));
     awaitLatch(client.settingsLatch);
@@ -479,7 +480,7 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected ThrowingExtractor<? super MessageParams, String, RuntimeException> withoutTimestamp() {
-    return p -> p.getMessage().replaceAll("\\[(\\w*)\\s*-(.*)\\]", "[$1]");
+    return p -> p.getMessage().replaceAll("\\[(\\w*)\\s+-\\s[\\d:.]*\\]", "[$1]");
   }
 
   protected Function<? super Diagnostic, ?> code() {
