@@ -20,15 +20,18 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 import com.google.gson.Gson;
-import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ClassicHttpRequest;
+import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,31 +43,36 @@ import org.sonarsource.sonarlint.core.serverapi.hotspot.GetSecurityHotspotReques
 import org.sonarsource.sonarlint.core.serverapi.hotspot.HotspotApi;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspot;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SecurityHotspotsHandlerServerTest {
 
+  private static final String TRUSTED_SERVER_URL = "http://myServer";
   private SecurityHotspotsHandlerServer server;
   private final ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
   private final SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   private final LanguageClientLogger output = mock(LanguageClientLogger.class);
   private final SonarLintTelemetry telemetry = mock(SonarLintTelemetry.class);
   private final HotspotApi hotspotApi = mock(HotspotApi.class);
+  private final SettingsManager settingsManager = mock(SettingsManager.class);
 
   @BeforeEach
   void setUp() {
-    server = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry, (e, c) -> hotspotApi);
+    mockTrustedServer();
+    server = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry, (e, c) -> hotspotApi, settingsManager);
   }
 
   @AfterEach
@@ -82,14 +90,46 @@ class SecurityHotspotsHandlerServerTest {
     var port = server.getPort();
     assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
 
-    var statusConnection = new URL(String.format("http://localhost:%d/sonarlint/api/status", port)).openConnection();
-    statusConnection.connect();
-    Map<String, String> response = new Gson().fromJson(new InputStreamReader(statusConnection.getInputStream()), Map.class);
+    Map<String, String> response;
+    try (CloseableHttpClient client = HttpClients.custom().build()) {
+      ClassicHttpRequest request = ClassicRequestBuilder.get()
+        .setUri(String.format("http://localhost:%d/sonarlint/api/status", port))
+        .setHeader("Origin", TRUSTED_SERVER_URL)
+        .build();
+      try (var responseHttp = client.execute(request)) {
+        response = new Gson().fromJson(new InputStreamReader(responseHttp.getEntity().getContent()), Map.class);
+      }
+    }
 
     assertThat(response).containsOnly(
       entry("ideName", ideName),
-      entry("description", clientVersion + " - " + workspaceName)
-    );
+      entry("description", clientVersion + " - " + workspaceName));
+  }
+
+  @Test
+  void shouldNotDiscloseWorkspaceDetailsToUntrustedServers() throws Exception {
+    var ideName = "SonarSource Editor";
+    var clientVersion = "1.42";
+    var workspaceName = "polop";
+    server.initialize(ideName, clientVersion, workspaceName);
+
+    var port = server.getPort();
+    assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
+
+    Map<String, String> response;
+    try (CloseableHttpClient client = HttpClients.custom().build()) {
+      ClassicHttpRequest request = ClassicRequestBuilder.get()
+        .setUri(String.format("http://localhost:%d/sonarlint/api/status", port))
+        .setHeader("Origin", "http://untrusted")
+        .build();
+      try (var responseHttp = client.execute(request)) {
+        response = new Gson().fromJson(new InputStreamReader(responseHttp.getEntity().getContent()), Map.class);
+      }
+    }
+
+    assertThat(response).containsOnly(
+      entry("ideName", ideName),
+      entry("description", ""));
   }
 
   @Test
@@ -101,14 +141,28 @@ class SecurityHotspotsHandlerServerTest {
     int port = server.getPort();
     assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
 
-    URLConnection statusConnection = new URL(String.format("http://localhost:%d/sonarlint/api/status", port)).openConnection();
-    statusConnection.connect();
-    Map<String, String> response = new Gson().fromJson(new InputStreamReader(statusConnection.getInputStream()), Map.class);
+    Map<String, String> response;
+    try (CloseableHttpClient client = HttpClients.custom().build()) {
+      ClassicHttpRequest request = ClassicRequestBuilder.get()
+        .setUri(String.format("http://localhost:%d/sonarlint/api/status", port))
+        .setHeader("Origin", TRUSTED_SERVER_URL)
+        .build();
+      try (var responseHttp = client.execute(request)) {
+        response = new Gson().fromJson(new InputStreamReader(responseHttp.getEntity().getContent()), Map.class);
+      }
+    }
 
     assertThat(response).containsOnly(
       entry("ideName", ideName),
-      entry("description", clientVersion + " - (no open folder)")
-    );
+      entry("description", clientVersion + " - (no open folder)"));
+  }
+
+  private void mockTrustedServer() {
+    ApacheHttpClient httpClient = mock(ApacheHttpClient.class);
+    ServerConnectionSettings localhostTrustedConnection = new ServerConnectionSettings("myServer", TRUSTED_SERVER_URL, null, null, false, httpClient);
+    when(settingsManager.getCurrentSettings()).thenReturn(new WorkspaceSettings(true,
+      Map.of("localhost", localhostTrustedConnection), null, null, null, false, false,
+      null));
   }
 
   @Test
@@ -119,7 +173,7 @@ class SecurityHotspotsHandlerServerTest {
     String workspaceName2 = "palap";
     server.initialize(ideName, clientVersion, workspaceName1);
 
-    SecurityHotspotsHandlerServer otherServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry);
+    SecurityHotspotsHandlerServer otherServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry, mock(SettingsManager.class));
     try {
       otherServer.initialize(ideName, clientVersion, workspaceName2);
       assertThat(otherServer.getPort()).isNotEqualTo(server.getPort());
@@ -139,18 +193,18 @@ class SecurityHotspotsHandlerServerTest {
     int lastPortTried = SecurityHotspotsHandlerServer.STARTING_PORT;
     try {
       while (lastPortTried < SecurityHotspotsHandlerServer.ENDING_PORT) {
-        SecurityHotspotsHandlerServer triedServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry);
+        SecurityHotspotsHandlerServer triedServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry, mock(SettingsManager.class));
         triedServer.initialize(ideName, clientVersion, "sample-" + serverId);
         assertThat(triedServer.isStarted()).isTrue();
         startedServers.add(triedServer);
         lastPortTried = triedServer.getPort();
       }
 
-      SecurityHotspotsHandlerServer failedServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry);
+      SecurityHotspotsHandlerServer failedServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry, mock(SettingsManager.class));
       failedServer.initialize(ideName, clientVersion, "sample-" + serverId);
       assertThat(failedServer.isStarted()).isFalse();
     } finally {
-      for(SecurityHotspotsHandlerServer serverToShutdown: startedServers) {
+      for (SecurityHotspotsHandlerServer serverToShutdown : startedServers) {
         serverToShutdown.shutdown();
       }
     }
@@ -166,18 +220,20 @@ class SecurityHotspotsHandlerServerTest {
     when(bindingManager.getServerConnectionSettingsForUrl(anyString())).thenReturn(Optional.of(new ServerConnectionSettings.EndpointParamsAndHttpClient(null, null)));
     when(hotspotApi.fetch(any(GetSecurityHotspotRequestParams.class))).thenReturn(Optional.of(remoteHotspot));
 
-
     int port = server.getPort();
     assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
 
     String server = "http://some.sonar.server";
     String hotspot = "someHotspotKey";
     String project = "someProjectKey";
-    URLConnection showHotspotConnection = new URL(
-            String.format("http://localhost:%d/sonarlint/api/hotspots/show?server=%s&hotspot=%s&project=%s", port, server, hotspot, project)
-    ).openConnection();
-    showHotspotConnection.connect();
-    assertThat(showHotspotConnection.getContent()).isNotNull();
+    HttpURLConnection showHotspotConnection = (HttpURLConnection) new URL(
+      String.format("http://localhost:%d/sonarlint/api/hotspots/show?server=%s&hotspot=%s&project=%s", port, server, hotspot, project)).openConnection();
+    try {
+      showHotspotConnection.connect();
+      assertThat(showHotspotConnection.getContent()).isNotNull();
+    } finally {
+      showHotspotConnection.disconnect();
+    }
 
     verify(bindingManager).getServerConnectionSettingsForUrl(server);
 
@@ -206,11 +262,14 @@ class SecurityHotspotsHandlerServerTest {
     String server = "http://some.sonar.server";
     String hotspot = "someHotspotKey";
     String project = "someProjectKey";
-    URLConnection showHotspotConnection = new URL(
-      String.format("http://localhost:%d/sonarlint/api/hotspots/show?server=%s&hotspot=%s&project=%s", port, server, hotspot, project)
-    ).openConnection();
-    showHotspotConnection.connect();
-    assertThat(showHotspotConnection.getContent()).isNotNull();
+    HttpURLConnection showHotspotConnection = (HttpURLConnection) new URL(
+      String.format("http://localhost:%d/sonarlint/api/hotspots/show?server=%s&hotspot=%s&project=%s", port, server, hotspot, project)).openConnection();
+    try {
+      showHotspotConnection.connect();
+      assertThat(showHotspotConnection.getContent()).isNotNull();
+    } finally {
+      showHotspotConnection.disconnect();
+    }
 
     verify(bindingManager).getServerConnectionSettingsForUrl(server);
 
@@ -234,8 +293,13 @@ class SecurityHotspotsHandlerServerTest {
     int port = server.getPort();
     assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
 
-    var statusConnection = new URL(String.format("http://localhost:%d/sonarlint/api/hotspots/show?%s", port, queryString)).openConnection();
-    statusConnection.connect();
-    assertThatThrownBy(statusConnection::getContent).isInstanceOf(IOException.class).hasMessageContaining("400 for URL");
+    try (CloseableHttpClient client = HttpClients.custom().build()) {
+      ClassicHttpRequest request = ClassicRequestBuilder.get()
+        .setUri(String.format("http://localhost:%d/sonarlint/api/hotspots/show?%s", port, queryString))
+        .build();
+      try (var responseHttp = client.execute(request)) {
+        assertThat(responseHttp.getCode()).isEqualTo(400);
+      }
+    }
   }
 }

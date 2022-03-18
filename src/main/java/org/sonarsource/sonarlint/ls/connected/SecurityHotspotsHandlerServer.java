@@ -22,19 +22,21 @@ package org.sonarsource.sonarlint.ls.connected;
 import com.google.gson.Gson;
 import com.google.gson.annotations.Expose;
 import java.io.IOException;
-import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import javax.annotation.Nullable;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.HttpException;
+import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.impl.bootstrap.HttpServer;
 import org.apache.hc.core5.http.impl.bootstrap.ServerBootstrap;
 import org.apache.hc.core5.http.io.HttpFilterChain;
@@ -56,6 +58,7 @@ import org.sonarsource.sonarlint.core.serverapi.hotspot.HotspotApi;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
 public class SecurityHotspotsHandlerServer {
@@ -70,23 +73,25 @@ public class SecurityHotspotsHandlerServer {
   private final SonarLintExtendedLanguageClient client;
   private final BiFunction<EndpointParams, HttpClient, HotspotApi> hotspotApiFactory;
   private final SonarLintTelemetry telemetry;
+  private final SettingsManager settingsManager;
 
   private HttpServer server;
   private int port;
 
   public SecurityHotspotsHandlerServer(LanguageClientLogger output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client,
-    SonarLintTelemetry telemetry) {
-    this(output, bindingManager, client, telemetry, (e, c) -> new ServerApi(e, c).hotspot());
+    SonarLintTelemetry telemetry, SettingsManager settingsManager) {
+    this(output, bindingManager, client, telemetry, (e, c) -> new ServerApi(e, c).hotspot(), settingsManager);
   }
 
   SecurityHotspotsHandlerServer(LanguageClientLogger output, ProjectBindingManager bindingManager, SonarLintExtendedLanguageClient client,
     SonarLintTelemetry telemetry,
-    BiFunction<EndpointParams, HttpClient, HotspotApi> hotspotApiFactory) {
+    BiFunction<EndpointParams, HttpClient, HotspotApi> hotspotApiFactory, SettingsManager settingsManager) {
     this.output = output;
     this.bindingManager = bindingManager;
     this.client = client;
     this.telemetry = telemetry;
     this.hotspotApiFactory = hotspotApiFactory;
+    this.settingsManager = settingsManager;
   }
 
   public void initialize(String ideName, String clientVersion, @Nullable String workspaceName) {
@@ -133,12 +138,12 @@ public class SecurityHotspotsHandlerServer {
 
   public void shutdown() {
     if (isStarted()) {
-      server.close(CloseMode.IMMEDIATE);
+      server.close(CloseMode.GRACEFUL);
       port = INVALID_PORT;
     }
   }
 
-  private static class StatusRequestHandler implements HttpRequestHandler {
+  private class StatusRequestHandler implements HttpRequestHandler {
     private final String ideName;
     private final String clientVersion;
     private final String workspaceName;
@@ -151,9 +156,22 @@ public class SecurityHotspotsHandlerServer {
 
     @Override
     public void handle(ClassicHttpRequest request, ClassicHttpResponse response, HttpContext context) throws HttpException, IOException {
-      var description = clientVersion + " - " + workspaceName;
-      response.setEntity(new StringEntity(new Gson().toJson(new StatusResponse(ideName, description)), ContentType.APPLICATION_JSON));
+      boolean trustedServer = Optional.ofNullable(request.getHeader("Origin"))
+        .map(Header::getValue)
+        .map(SecurityHotspotsHandlerServer.this::isTrustedServer)
+        .orElse(false);
+      var maybeWorkspaceInfo = trustedServer ? (clientVersion + " - " + workspaceName) : "";
+      response.setEntity(new StringEntity(new Gson().toJson(new StatusResponse(ideName, maybeWorkspaceInfo)), ContentType.APPLICATION_JSON));
     }
+  }
+
+  private boolean isTrustedServer(String serverOrigin) {
+    // A server is trusted if the Origin HTTP header matches one of the already configured servers
+    // The Origin header has the following format: <scheme>://<host>(:<port>)
+    // Since servers can have an optional "context path" after this, we consider a valid match when the server's configured URL begins with
+    // the passed Origin
+    // See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin
+    return settingsManager.getCurrentSettings().getServerConnections().values().stream().anyMatch(s -> s.getServerUrl().startsWith(serverOrigin));
   }
 
   private static class StatusResponse {
@@ -216,7 +234,7 @@ public class SecurityHotspotsHandlerServer {
         // Ignored
       }
       if (!params.containsKey("server") || !params.containsKey("project") || !params.containsKey("hotspot")) {
-        response.setCode(HttpURLConnection.HTTP_BAD_REQUEST);
+        response.setCode(HttpStatus.SC_BAD_REQUEST);
       } else {
         var serverUrl = params.get("server");
         var project = params.get("project");
@@ -228,7 +246,7 @@ public class SecurityHotspotsHandlerServer {
         serverSettings.ifPresentOrElse(
           settings -> showHotspot(hotspot, project, settings),
           () -> showUnknownServer(serverUrl));
-        response.setCode(HttpURLConnection.HTTP_OK);
+        response.setCode(HttpStatus.SC_OK);
         response.setEntity(new StringEntity("OK"));
       }
     }

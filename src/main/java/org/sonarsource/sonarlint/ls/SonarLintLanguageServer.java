@@ -172,7 +172,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     bindingManager.setAnalysisManager(analysisScheduler);
     this.settingsManager.addListener(analysisScheduler);
     this.commandManager = new CommandManager(client, settingsManager, bindingManager, telemetry, standaloneEngineManager, taintVulnerabilitiesCache, issuesCache);
-    this.securityHotspotsHandlerServer = new SecurityHotspotsHandlerServer(lsLogOutput, bindingManager, client, telemetry);
+    this.securityHotspotsHandlerServer = new SecurityHotspotsHandlerServer(lsLogOutput, bindingManager, client, telemetry, settingsManager);
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
     this.workspaceFoldersManager.addListener(this.branchManager);
