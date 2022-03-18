@@ -358,7 +358,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
-      .contains("[Info] Found 3 issues",
+      .containsSubsequence("[Info] Found 3 issues",
         "[Info] Found 3 issues"));
 
     client.logs.clear();
