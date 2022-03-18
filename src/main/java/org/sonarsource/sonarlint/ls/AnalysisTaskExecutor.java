@@ -306,15 +306,17 @@ public class AnalysisTaskExecutor {
         issuesCache.analysisFailed(filesToAnalyze.get(fileUri));
       });
 
-    var totalIssueCount = new AtomicInteger();
-    filesSuccessfullyAnalyzed.forEach(f -> {
-      issuesCache.analysisSucceeded(filesToAnalyze.get(f));
-      var foundIssues = issuesCache.count(f);
-      totalIssueCount.addAndGet(foundIssues);
-      diagnosticPublisher.publishDiagnostics(f);
-    });
-    telemetry.addReportedRules(ruleKeys);
-    lsLogOutput.info(format("Found %s %s", totalIssueCount.get(), pluralize(totalIssueCount.get(), "issue")));
+    if (!filesSuccessfullyAnalyzed.isEmpty()) {
+      var totalIssueCount = new AtomicInteger();
+      filesSuccessfullyAnalyzed.forEach(f -> {
+        issuesCache.analysisSucceeded(filesToAnalyze.get(f));
+        var foundIssues = issuesCache.count(f);
+        totalIssueCount.addAndGet(foundIssues);
+        diagnosticPublisher.publishDiagnostics(f);
+      });
+      telemetry.addReportedRules(ruleKeys);
+      lsLogOutput.info(format("Found %s %s", totalIssueCount.get(), pluralize(totalIssueCount.get(), "issue")));
+    }
   }
 
   private IssueListener createIssueListener(Map<URI, VersionnedOpenFile> filesToAnalyze, Set<String> ruleKeys) {
