@@ -157,10 +157,6 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
     eventMap.remove(fileUri);
   }
 
-  public void didSave(VersionnedOpenFile file) {
-    analyzeAsync(List.of(file), false);
-  }
-
   /**
    * Handle analysis asynchronously to not block client events for too long
    */
