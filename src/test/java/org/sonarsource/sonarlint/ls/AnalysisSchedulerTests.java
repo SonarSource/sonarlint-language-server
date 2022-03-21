@@ -87,18 +87,6 @@ class AnalysisSchedulerTests {
   }
 
   @Test
-  void shouldScheduleAnalysisWithoutIssueRefreshOnSave() {
-    underTest.didSave(JS_FILE);
-
-    ArgumentCaptor<AnalysisTask> taskCaptor = ArgumentCaptor.forClass(AnalysisTask.class);
-    verify(taskExecutor, timeout(1000)).run(taskCaptor.capture());
-
-    AnalysisTask submittedTask = taskCaptor.getValue();
-    assertThat(submittedTask.getFilesToAnalyze()).containsExactly(JS_FILE);
-    assertThat(submittedTask.shouldFetchServerIssues()).isFalse();
-  }
-
-  @Test
   void shouldScheduleAnalysisWithoutIssueRefreshOnChange() {
     var file = openFilesCache.didOpen(JS_FILE_URI, "javascript", "alert();", 1);
     underTest.didChange(file.getUri());

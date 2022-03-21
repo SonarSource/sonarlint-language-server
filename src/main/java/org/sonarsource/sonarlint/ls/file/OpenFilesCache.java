@@ -57,15 +57,6 @@ public class OpenFilesCache {
     openFilesPerFileURI.remove(fileUri);
   }
 
-  public Optional<VersionnedOpenFile> didSave(URI fileUri, String fileContent) {
-    if (!openFilesPerFileURI.containsKey(fileUri)) {
-      lsLogOutput.warn(format("Illegal state. File '%s' is reported saved but we missed the open notification", fileUri));
-      return Optional.empty();
-    }
-    return Optional
-      .ofNullable(openFilesPerFileURI.computeIfPresent(fileUri, (uri, previous) -> new VersionnedOpenFile(uri, previous.getLanguageId(), previous.getVersion(), fileContent)));
-  }
-
   public Optional<VersionnedOpenFile> getFile(URI fileUri) {
     return Optional.ofNullable(openFilesPerFileURI.get(fileUri));
   }

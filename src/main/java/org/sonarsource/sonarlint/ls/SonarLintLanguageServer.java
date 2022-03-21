@@ -51,7 +51,6 @@ import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
-import org.eclipse.lsp4j.SaveOptions;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
@@ -258,7 +257,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var textDocumentSyncOptions = new TextDocumentSyncOptions();
     textDocumentSyncOptions.setOpenClose(true);
     textDocumentSyncOptions.setChange(TextDocumentSyncKind.Full);
-    textDocumentSyncOptions.setSave(new SaveOptions(true));
     return textDocumentSyncOptions;
   }
 
@@ -325,9 +323,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didSave(DidSaveTextDocumentParams params) {
-    var uri = create(params.getTextDocument().getUri());
-    var file = openFilesCache.didSave(uri, params.getText());
-    file.ifPresent(analysisScheduler::didSave);
+    // Nothin to do
   }
 
   @Override

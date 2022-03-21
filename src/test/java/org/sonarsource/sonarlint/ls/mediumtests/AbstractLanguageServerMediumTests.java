@@ -59,7 +59,6 @@ import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
-import org.eclipse.lsp4j.DidSaveTextDocumentParams;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializedParams;
 import org.eclipse.lsp4j.MessageActionItem;
@@ -471,12 +470,6 @@ public abstract class AbstractLanguageServerMediumTests {
     lsProxy.getTextDocumentService()
       .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, languageId, 1, content)));
     toBeClosed.add(uri);
-  }
-
-  protected void didSave(String uri, String content) throws InterruptedException {
-    var docId = new VersionedTextDocumentIdentifier(uri, 1);
-    lsProxy.getTextDocumentService()
-      .didSave(new DidSaveTextDocumentParams(docId, content));
   }
 
   protected ThrowingExtractor<? super MessageParams, String, RuntimeException> withoutTimestamp() {
