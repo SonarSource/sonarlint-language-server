@@ -113,8 +113,6 @@ public class AnalysisTaskExecutor {
       lsLogOutput.debug("Analysis canceled");
     } catch (Exception e) {
       lsLogOutput.error("Analysis failed", e);
-    } finally {
-      task.setFinished(true);
     }
   }
 

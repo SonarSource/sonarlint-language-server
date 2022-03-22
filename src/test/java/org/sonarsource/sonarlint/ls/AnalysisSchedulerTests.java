@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,10 +36,12 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.waitAtMost;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 class AnalysisSchedulerTests {
 
@@ -158,7 +161,17 @@ class AnalysisSchedulerTests {
   }
 
   @Test
-  void shouldCancelPreviousAnalysisOnChange() {
+  void shouldCancelPreviousAnalysisTaskOnChange() {
+    // Mock an long analysis
+    doAnswer(invocation -> {
+      AnalysisTask task = invocation.getArgument(0);
+      while (!task.isCanceled()) {
+        Thread.sleep(10);
+      }
+      return null;
+
+    }).when(taskExecutor).run(any());
+
     ArgumentCaptor<AnalysisTask> taskCaptor1 = ArgumentCaptor.forClass(AnalysisTask.class);
 
     var file = openFilesCache.didOpen(JS_FILE_URI, "javascript", "alert();", 1);
@@ -175,12 +188,59 @@ class AnalysisSchedulerTests {
 
     waitAtMost(1, TimeUnit.SECONDS).untilAsserted(() -> assertThat(task1.isCanceled()).isTrue());
 
-    task1.setFinished(true);
-
     ArgumentCaptor<AnalysisTask> taskCaptor2 = ArgumentCaptor.forClass(AnalysisTask.class);
     verify(taskExecutor, timeout(1000)).run(taskCaptor2.capture());
     var task2 = taskCaptor2.getValue();
     assertThat(task2.getFilesToAnalyze()).extracting(VersionnedOpenFile::getVersion).containsOnly(2);
+    task2.getFuture().cancel(false);
+
+    waitAtMost(1, TimeUnit.SECONDS).untilAsserted(() -> assertThat(task2.getFuture().isDone()).isTrue());
+  }
+
+  @Test
+  void shouldCancelPreviousAnalysisFutureIfNotYetStarted() {
+    // Mock an long analysis that we can stop from outside
+    AtomicBoolean analysisTaskShouldStop = new AtomicBoolean();
+    doAnswer(invocation -> {
+      AnalysisTask task = invocation.getArgument(0);
+      while (!analysisTaskShouldStop.get() && !task.isCanceled()) {
+        Thread.sleep(10);
+      }
+      analysisTaskShouldStop.set(false);
+      return null;
+
+    }).when(taskExecutor).run(any());
+
+    var file = openFilesCache.didOpen(JS_FILE_URI, "javascript", "alert(1);", 1);
+    underTest.didOpen(file);
+    verify(lsLogOutput, timeout(1000)).debug("Queuing analysis of file '" + JS_FILE_URI + "' (version 1)");
+    verify(taskExecutor, timeout(1000)).run(any());
+
+    reset(taskExecutor);
+
+    openFilesCache.didChange(JS_FILE_URI, "alert(2);", 2);
+    underTest.didChange(file.getUri());
+
+    verify(lsLogOutput, timeout(1000)).debug("Queuing analysis of file '" + JS_FILE_URI + "' (version 2)");
+
+    // Analysis of version 2 is stuck in the executor service queue because analysis of version 1 is still running
+    verify(taskExecutor, timeout(1000).times(0)).run(any());
+
+    reset(taskExecutor);
+
+    openFilesCache.didChange(JS_FILE_URI, "alert(3);", 3);
+    underTest.didChange(file.getUri());
+
+    verify(lsLogOutput, timeout(1000).times(1)).debug("Attempt to cancel previous analysis...");
+    verify(lsLogOutput, timeout(1000)).debug("Queuing analysis of file '" + JS_FILE_URI + "' (version 3)");
+    verifyNoMoreInteractions(lsLogOutput);
+
+    analysisTaskShouldStop.set(true);
+
+    ArgumentCaptor<AnalysisTask> onChangeTaskCaptor2 = ArgumentCaptor.forClass(AnalysisTask.class);
+    verify(taskExecutor, timeout(10000)).run(onChangeTaskCaptor2.capture());
+    var task2 = onChangeTaskCaptor2.getValue();
+    assertThat(task2.getFilesToAnalyze()).extracting(VersionnedOpenFile::getVersion).containsOnly(3);
   }
 
 }
