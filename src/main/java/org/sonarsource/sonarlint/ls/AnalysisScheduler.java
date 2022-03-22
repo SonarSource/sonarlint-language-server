@@ -24,10 +24,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -50,7 +51,7 @@ import static java.util.stream.Collectors.toSet;
  */
 public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
 
-  private static final AnalysisTask EMPTY_FINISHED_ANALYSIS_TASK = new AnalysisTask(Set.of(), false).setFinished(true);
+  private static final CompletableFuture<Void> COMPLETED_FUTURE = CompletableFuture.completedFuture(null);
   private static final int DEFAULT_TIMER_MS = 2000;
   private static final int QUEUE_POLLING_PERIOD_MS = 200;
 
@@ -97,7 +98,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
   }
 
   private class EventWatcher extends Thread {
-    private AnalysisTask onChangeCurrentTask = EMPTY_FINISHED_ANALYSIS_TASK;
+    private Future<?> onChangeCurrentTask = COMPLETED_FUTURE;
     private boolean stop = false;
     private final int defaultTimerMs;
 
@@ -109,7 +110,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
 
     public void stopWatcher() {
       stop = true;
-      onChangeCurrentTask.cancel();
+      onChangeCurrentTask.cancel(false);
       this.interrupt();
     }
 
@@ -141,9 +142,9 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
 
     private void triggerFiles(List<VersionnedOpenFile> filesToTrigger) {
       if (!filesToTrigger.isEmpty()) {
-        if (!onChangeCurrentTask.isFinished()) {
+        if (!onChangeCurrentTask.isDone()) {
           lsLogOutput.debug("Attempt to cancel previous analysis...");
-          onChangeCurrentTask.cancel();
+          onChangeCurrentTask.cancel(false);
           // Wait for the next loop of EventWatcher to recheck if task has been successfully cancelled and then trigger the analysis
           return;
         }
@@ -160,7 +161,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
   /**
    * Handle analysis asynchronously to not block client events for too long
    */
-  AnalysisTask analyzeAsync(List<VersionnedOpenFile> files, boolean shouldFetchServerIssues) {
+  Future<?> analyzeAsync(List<VersionnedOpenFile> files, boolean shouldFetchServerIssues) {
     var trueFileUris = files.stream().filter(f -> {
       if (!f.getUri().getScheme().equalsIgnoreCase("file")) {
         lsLogOutput.warn(format("URI '%s' is not in local filesystem, analysis not supported", f.getUri()));
@@ -169,7 +170,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
       return true;
     }).collect(toSet());
     if (trueFileUris.isEmpty()) {
-      return EMPTY_FINISHED_ANALYSIS_TASK;
+      return COMPLETED_FUTURE;
     }
     if (trueFileUris.size() == 1) {
       VersionnedOpenFile openFile = trueFileUris.iterator().next();
@@ -178,8 +179,9 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
       lsLogOutput.debug(format("Queuing analysis of %d files", trueFileUris.size()));
     }
     var task = new AnalysisTask(trueFileUris, shouldFetchServerIssues);
-    asyncExecutor.execute(() -> analysisTaskExecutor.run(task));
-    return task;
+    var future = asyncExecutor.submit(() -> analysisTaskExecutor.run(task));
+    task.setFuture(future);
+    return future;
   }
 
   public void initialize() {

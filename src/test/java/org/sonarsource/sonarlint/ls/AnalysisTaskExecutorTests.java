@@ -20,6 +20,10 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -29,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,21 +41,29 @@ class AnalysisTaskExecutorTests {
 
   private AnalysisTaskExecutor underTest;
   private LanguageClientLogger lsLogOutput;
+  private ExecutorService executor;
 
   @BeforeEach
   public void init() {
     lsLogOutput = mock(LanguageClientLogger.class);
     underTest = new AnalysisTaskExecutor(null, lsLogOutput, null, null, null, null, null, null, null, null, null, null, null);
+    executor = Executors.newSingleThreadExecutor();
+  }
+
+  @AfterEach
+  public void cleanup() {
+    executor.shutdown();
   }
 
   @Test
   void testCancellation() {
-    AnalysisTask cancelledTask = new AnalysisTask(Set.of(), false);
-    cancelledTask.cancel();
+    Future<Void> future = mock(Future.class);
+    when(future.isCancelled()).thenReturn(true);
+    AnalysisTask cancelledTask = new AnalysisTask(Set.of(), false).setFuture(future);
+
     underTest.run(cancelledTask);
 
     verify(lsLogOutput).debug("Analysis canceled");
-    assertThat(cancelledTask.isFinished()).isTrue();
   }
 
   @Test
@@ -58,10 +71,12 @@ class AnalysisTaskExecutorTests {
     AnalysisTask errorTask = spy(new AnalysisTask(Set.of(), false));
     when(errorTask.getFilesToAnalyze()).thenThrow(new IllegalStateException());
 
-    underTest.run(errorTask);
+    var future = executor.submit(() -> underTest.run(errorTask));
 
-    verify(lsLogOutput).error(eq("Analysis failed"), any());
-    assertThat(errorTask.isFinished()).isTrue();
+    errorTask.setFuture(future);
+
+    verify(lsLogOutput, timeout(1000)).error(eq("Analysis failed"), any());
+    assertThat(errorTask.getFuture().isDone()).isTrue();
   }
 
 }

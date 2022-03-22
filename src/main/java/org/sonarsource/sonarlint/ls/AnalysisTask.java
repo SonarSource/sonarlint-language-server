@@ -39,15 +39,15 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.util.Set;
+import java.util.concurrent.Future;
 import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
 import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
 
 class AnalysisTask {
 
-  private boolean finished;
-  private boolean canceled;
   private final Set<VersionnedOpenFile> filesToAnalyze;
   private final boolean shouldFetchServerIssues;
+  private Future<?> future;
 
   public AnalysisTask(Set<VersionnedOpenFile> filesToAnalyze, boolean shouldFetchServerIssues) {
     this.filesToAnalyze = filesToAnalyze;
@@ -62,26 +62,22 @@ class AnalysisTask {
     return shouldFetchServerIssues;
   }
 
-  public void cancel() {
-    this.canceled = true;
-  }
-
   public boolean isCanceled() {
-    return canceled;
-  }
-
-  public boolean isFinished() {
-    return finished;
-  }
-
-  public AnalysisTask setFinished(boolean finished) {
-    this.finished = finished;
-    return this;
+    return (future != null && future.isCancelled()) || Thread.currentThread().isInterrupted();
   }
 
   public void checkCanceled() {
-    if (canceled || Thread.currentThread().isInterrupted()) {
+    if (isCanceled()) {
       throw new CanceledException();
     }
+  }
+
+  public AnalysisTask setFuture(Future<?> future) {
+    this.future = future;
+    return this;
+  }
+
+  public Future<?> getFuture() {
+    return future;
   }
 }
