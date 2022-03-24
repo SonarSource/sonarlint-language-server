@@ -86,11 +86,13 @@ public class AnalysisTaskExecutor {
   private final SkippedPluginsNotifier skippedPluginsNotifier;
   private final StandaloneEngineManager standaloneEngineManager;
   private final DiagnosticPublisher diagnosticPublisher;
+  private final SonarLintExtendedLanguageClient lsClient;
 
   public AnalysisTaskExecutor(ScmIgnoredCache filesIgnoredByScmCache, LanguageClientLogger lsLogOutput,
     WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, JavaConfigCache javaConfigCache, SettingsManager settingsManager,
     FileTypeClassifier fileTypeClassifier, IssuesCache issuesCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache, SonarLintTelemetry telemetry,
-    SkippedPluginsNotifier skippedPluginsNotifier, StandaloneEngineManager standaloneEngineManager, DiagnosticPublisher diagnosticPublisher) {
+    SkippedPluginsNotifier skippedPluginsNotifier, StandaloneEngineManager standaloneEngineManager, DiagnosticPublisher diagnosticPublisher,
+    SonarLintExtendedLanguageClient lsClient) {
     this.filesIgnoredByScmCache = filesIgnoredByScmCache;
     this.lsLogOutput = lsLogOutput;
     this.workspaceFoldersManager = workspaceFoldersManager;
@@ -104,6 +106,7 @@ public class AnalysisTaskExecutor {
     this.skippedPluginsNotifier = skippedPluginsNotifier;
     this.standaloneEngineManager = standaloneEngineManager;
     this.diagnosticPublisher = diagnosticPublisher;
+    this.lsClient = lsClient;
   }
 
   public void run(AnalysisTask task) {
@@ -211,6 +214,7 @@ public class AnalysisTaskExecutor {
     if (!cOrCppFiles.isEmpty() && settings.getPathToCompileCommands() == null) {
       lsLogOutput.debug("Skipping analysis of C/C++ file(s) because no compilation database was configured");
       cOrCppFiles.keySet().forEach(this::clearIssueCacheAndPublishEmptyDiagnostics);
+      lsClient.needCompilationDatabase();
       return nonCNOrCppFiles;
     }
     return nonJavaFiles;

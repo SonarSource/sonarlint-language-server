@@ -77,6 +77,8 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(cppFileUri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(tuple(1, 8, 1, 9, "cpp:S1481", "sonarlint", "unused variable 'i'", Information)));
+
+    assertThat(client.needCompilationDatabaseCalls.get()).isZero();
   }
 
   @Test
@@ -95,6 +97,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
         "}\n");
 
     awaitUntilAsserted(() -> assertLogContains("Skipping analysis of C/C++ file(s) because no compilation database was configured"));
+    awaitUntilAsserted(() -> assertThat(client.needCompilationDatabaseCalls.get()).isEqualTo(1));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
   }
 }
