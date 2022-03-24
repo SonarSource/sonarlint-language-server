@@ -59,10 +59,14 @@ public class VersionnedOpenFile {
   public boolean isJava() {
     return "java".equals(languageId);
   }
-  
+
   @Override
   public String toString() {
     return ToStringBuilder.reflectionToString(this);
+  }
+
+  public boolean isCOrCpp() {
+    return "c".equals(languageId) || "cpp".equals(languageId);
   }
 
 }

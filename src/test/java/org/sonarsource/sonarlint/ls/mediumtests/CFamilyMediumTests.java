@@ -37,10 +37,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.tuple;
 import static org.eclipse.lsp4j.DiagnosticSeverity.Information;
 
+@EnabledIfSystemProperty(named = "commercial", matches = ".*", disabledReason = "Commercial plugin not available")
 class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
-  @EnabledIfSystemProperty(named = "commercial", matches = ".*", disabledReason = "Commercial plugin not available")
   void analyzeSimpleCppTestFileOnOpen(@TempDir Path cppProjectBaseDir) throws IOException, InterruptedException {
     String fileExt;
     if (SystemUtils.IS_OS_WINDOWS) {
@@ -79,4 +79,22 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
       .containsExactlyInAnyOrder(tuple(1, 8, 1, 9, "cpp:S1481", "sonarlint", "unused variable 'i'", Information)));
   }
 
+  @Test
+  void skipCppAnalysisIfMissingCompilationCommand(@TempDir Path cppProjectBaseDir) throws IOException, InterruptedException {
+    var cppFile = cppProjectBaseDir.resolve("skipCppFileWithoutCompilationDatabase.cpp");
+    Files.createFile(cppFile);
+    var cppFileUri = cppFile.toUri().toString();
+
+    emulateConfigurationChangeOnClient(null, true, true, true,
+      new HashMap<>(), null);
+
+    didOpen(cppFileUri, "cpp",
+      "int main() {\n" +
+        "    int i = 0;\n" +
+        "    return 0;\n" +
+        "}\n");
+
+    awaitUntilAsserted(() -> assertLogContains("Skipping analysis of C/C++ file(s) because no compilation database was configured"));
+    assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
+  }
 }

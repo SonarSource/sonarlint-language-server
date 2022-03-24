@@ -170,6 +170,53 @@ public class AnalysisTaskExecutor {
     Map<URI, VersionnedOpenFile> javaFiles = ofNullable(splitJavaAndNonJavaFiles.get(true)).orElse(Map.of());
     Map<URI, VersionnedOpenFile> nonJavaFiles = ofNullable(splitJavaAndNonJavaFiles.get(false)).orElse(Map.of());
 
+    Map<URI, GetJavaConfigResponse> javaFilesWithConfig = collectJavaFilesWithConfig(javaFiles);
+
+    var settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
+      .orElse(settingsManager.getCurrentDefaultFolderSettings());
+
+    nonJavaFiles = excludeCAndCppFilesIfMissingCompilationDatabase(nonJavaFiles, settings);
+
+    if (nonJavaFiles.isEmpty() && javaFilesWithConfig.isEmpty()) {
+      return;
+    }
+
+    // We need to run one separate analysis per Java module. Analyze non Java files with the first Java module, if any
+    Map<String, Set<URI>> javaFilesByProjectRoot = javaFilesWithConfig.entrySet().stream()
+      .collect(groupingBy(e -> e.getValue().getProjectRoot(), mapping(Entry::getKey, toSet())));
+    if (javaFilesByProjectRoot.isEmpty()) {
+      analyzeSingleModule(task, workspaceFolder, settings, binding, nonJavaFiles, javaFilesWithConfig);
+    } else {
+      var isFirst = true;
+      for (var javaFilesForSingleProjectRoot : javaFilesByProjectRoot.values()) {
+        Map<URI, VersionnedOpenFile> toAnalyze = new HashMap<>();
+        javaFilesForSingleProjectRoot.forEach(uri -> toAnalyze.put(uri, javaFiles.get(uri)));
+        if (isFirst) {
+          toAnalyze.putAll(nonJavaFiles);
+          analyzeSingleModule(task, workspaceFolder, settings, binding, toAnalyze, javaFilesWithConfig);
+        } else {
+          analyzeSingleModule(task, workspaceFolder, settings, binding, toAnalyze, javaFilesWithConfig);
+        }
+        isFirst = false;
+      }
+    }
+  }
+
+  private Map<URI, VersionnedOpenFile> excludeCAndCppFilesIfMissingCompilationDatabase(Map<URI, VersionnedOpenFile> nonJavaFiles, WorkspaceFolderSettings settings) {
+    Map<Boolean, Map<URI, VersionnedOpenFile>> splitCppAndNonCppFiles = nonJavaFiles.entrySet().stream().collect(partitioningBy(
+      entry -> entry.getValue().isCOrCpp(),
+      toMap(Entry::getKey, Entry::getValue)));
+    Map<URI, VersionnedOpenFile> cOrCppFiles = ofNullable(splitCppAndNonCppFiles.get(true)).orElse(Map.of());
+    Map<URI, VersionnedOpenFile> nonCNOrCppFiles = ofNullable(splitCppAndNonCppFiles.get(false)).orElse(Map.of());
+    if (!cOrCppFiles.isEmpty() && settings.getPathToCompileCommands() == null) {
+      lsLogOutput.debug("Skipping analysis of C/C++ file(s) because no compilation database was configured");
+      cOrCppFiles.keySet().forEach(this::clearIssueCacheAndPublishEmptyDiagnostics);
+      return nonCNOrCppFiles;
+    }
+    return nonJavaFiles;
+  }
+
+  private Map<URI, GetJavaConfigResponse> collectJavaFilesWithConfig(Map<URI, VersionnedOpenFile> javaFiles) {
     Map<URI, GetJavaConfigResponse> javaFilesWithConfig = new HashMap<>();
     javaFiles.forEach((uri, openFile) -> {
       var javaConfigOpt = javaConfigCache.getOrFetch(uri);
@@ -180,40 +227,15 @@ public class AnalysisTaskExecutor {
         javaFilesWithConfig.put(uri, javaConfigOpt.get());
       }
     });
-
-    if (nonJavaFiles.isEmpty() && javaFilesWithConfig.isEmpty()) {
-      return;
-    }
-
-    // We need to run one separate analysis per Java module. Analyze non Java files with the first Java module, if any
-    Map<String, Set<URI>> javaFilesByProjectRoot = javaFilesWithConfig.entrySet().stream()
-      .collect(groupingBy(e -> e.getValue().getProjectRoot(), mapping(Entry::getKey, toSet())));
-    if (javaFilesByProjectRoot.isEmpty()) {
-      analyzeSingleModule(task, workspaceFolder, binding, nonJavaFiles, javaFilesWithConfig);
-    } else {
-      var isFirst = true;
-      for (var javaFilesForSingleProjectRoot : javaFilesByProjectRoot.values()) {
-        Map<URI, VersionnedOpenFile> toAnalyze = new HashMap<>();
-        javaFilesForSingleProjectRoot.forEach(uri -> toAnalyze.put(uri, javaFiles.get(uri)));
-        if (isFirst) {
-          toAnalyze.putAll(nonJavaFiles);
-          analyzeSingleModule(task, workspaceFolder, binding, toAnalyze, javaFilesWithConfig);
-        } else {
-          analyzeSingleModule(task, workspaceFolder, binding, toAnalyze, javaFilesWithConfig);
-        }
-        isFirst = false;
-      }
-    }
+    return javaFilesWithConfig;
   }
 
   /**
    * Here we have only files from the same folder, same binding, same Java module, so we can run the analysis engine.
    */
-  private void analyzeSingleModule(AnalysisTask task, Optional<WorkspaceFolderWrapper> workspaceFolder, Optional<ProjectBindingWrapper> binding,
+  private void analyzeSingleModule(AnalysisTask task, Optional<WorkspaceFolderWrapper> workspaceFolder, WorkspaceFolderSettings settings, Optional<ProjectBindingWrapper> binding,
     Map<URI, VersionnedOpenFile> filesToAnalyze,
     Map<URI, GetJavaConfigResponse> javaConfigs) {
-    var settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
-      .orElse(settingsManager.getCurrentDefaultFolderSettings());
 
     var baseDirUri = workspaceFolder.map(WorkspaceFolderWrapper::getUri)
       // if files are not part of any workspace folder, take the common ancestor of all files (assume all files will have the same root)
