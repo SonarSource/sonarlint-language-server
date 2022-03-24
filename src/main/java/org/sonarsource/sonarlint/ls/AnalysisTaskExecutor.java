@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -211,8 +212,12 @@ public class AnalysisTaskExecutor {
       toMap(Entry::getKey, Entry::getValue)));
     Map<URI, VersionnedOpenFile> cOrCppFiles = ofNullable(splitCppAndNonCppFiles.get(true)).orElse(Map.of());
     Map<URI, VersionnedOpenFile> nonCNOrCppFiles = ofNullable(splitCppAndNonCppFiles.get(false)).orElse(Map.of());
-    if (!cOrCppFiles.isEmpty() && settings.getPathToCompileCommands() == null) {
-      lsLogOutput.debug("Skipping analysis of C/C++ file(s) because no compilation database was configured");
+    if (!cOrCppFiles.isEmpty() && (settings.getPathToCompileCommands() == null || !Files.isRegularFile(Paths.get(settings.getPathToCompileCommands())))) {
+      if (settings.getPathToCompileCommands() == null) {
+        lsLogOutput.debug("Skipping analysis of C/C++ file(s) because no compilation database was configured");
+      } else {
+        lsLogOutput.debug("Skipping analysis of C/C++ file(s) because configured compilation database does not exist: " + settings.getPathToCompileCommands());
+      }
       cOrCppFiles.keySet().forEach(this::clearIssueCacheAndPublishEmptyDiagnostics);
       lsClient.needCompilationDatabase();
       return nonCNOrCppFiles;
