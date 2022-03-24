@@ -36,6 +36,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.sonarsource.sonarlint.core.analysis.api.AnalysisResults;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
+import org.sonarsource.sonarlint.core.client.api.common.AbstractAnalysisConfiguration.AbstractBuilder;
 import org.sonarsource.sonarlint.core.client.api.common.PluginDetails;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
@@ -374,21 +375,13 @@ public class AnalysisTaskExecutor {
   private AnalysisResultsWrapper analyzeStandalone(AnalysisTask task, WorkspaceFolderSettings settings, URI baseDirUri, Map<URI, VersionnedOpenFile> filesToAnalyze,
     Map<URI, GetJavaConfigResponse> javaConfigs, IssueListener issueListener) {
     var baseDir = Paths.get(baseDirUri);
-    var configurationBuilder = StandaloneAnalysisConfiguration.builder()
-      .setBaseDir(baseDir)
-      .setModuleKey(baseDirUri)
-      .putAllExtraProperties(settings.getAnalyzerProperties())
-      .putAllExtraProperties(javaConfigCache.configureJavaProperties(filesToAnalyze.keySet(), javaConfigs))
+
+    var configuration = buildCommonAnalysisConfiguration(settings, baseDirUri, filesToAnalyze, javaConfigs, baseDir, StandaloneAnalysisConfiguration.builder())
       .addExcludedRules(settingsManager.getCurrentSettings().getExcludedRules())
       .addIncludedRules(settingsManager.getCurrentSettings().getIncludedRules())
-      .addRuleParameters(settingsManager.getCurrentSettings().getRuleParameters());
-    filesToAnalyze.forEach((uri, openFile) -> configurationBuilder
-      .addInputFiles(
-        new AnalysisClientInputFile(uri, getFileRelativePath(baseDir, uri), openFile.getContent(),
-          fileTypeClassifier.isTest(settings, uri, ofNullable(javaConfigs.get(uri))),
-          openFile.getLanguageId())));
+      .addRuleParameters(settingsManager.getCurrentSettings().getRuleParameters())
+      .build();
 
-    var configuration = configurationBuilder.build();
     lsLogOutput.debug(format("Analysis triggered with configuration:%n%s", configuration.toString()));
 
     var engine = standaloneEngineManager.getOrCreateStandaloneEngine();
@@ -402,19 +395,11 @@ public class AnalysisTaskExecutor {
     Map<URI, VersionnedOpenFile> filesToAnalyze,
     Map<URI, GetJavaConfigResponse> javaConfigs, IssueListener issueListener) {
     var baseDir = Paths.get(baseDirUri);
-    var configurationBuilder = ConnectedAnalysisConfiguration.builder()
-      .setProjectKey(settings.getProjectKey())
-      .setBaseDir(baseDir)
-      .setModuleKey(baseDirUri)
-      .putAllExtraProperties(settings.getAnalyzerProperties())
-      .putAllExtraProperties(javaConfigCache.configureJavaProperties(filesToAnalyze.keySet(), javaConfigs));
-    filesToAnalyze.forEach((uri, openFile) -> configurationBuilder
-      .addInputFiles(
-        new AnalysisClientInputFile(uri, getFileRelativePath(baseDir, uri), openFile.getContent(),
-          fileTypeClassifier.isTest(settings, uri, ofNullable(javaConfigs.get(uri))),
-          openFile.getLanguageId())));
 
-    var configuration = configurationBuilder.build();
+    var configuration = buildCommonAnalysisConfiguration(settings, baseDirUri, filesToAnalyze, javaConfigs, baseDir, ConnectedAnalysisConfiguration.builder())
+      .setProjectKey(settings.getProjectKey())
+      .build();
+
     if (settingsManager.getCurrentSettings().hasLocalRuleConfiguration()) {
       lsLogOutput.debug("Local rules settings are ignored, using quality profile from server");
     }
@@ -440,6 +425,25 @@ public class AnalysisTaskExecutor {
           }
         }
       }));
+  }
+
+  private <G extends AbstractBuilder<G>> G buildCommonAnalysisConfiguration(WorkspaceFolderSettings settings, URI baseDirUri, Map<URI, VersionnedOpenFile> filesToAnalyze,
+    Map<URI, GetJavaConfigResponse> javaConfigs, Path baseDir,
+    G configurationBuilder) {
+    configurationBuilder.setBaseDir(baseDir)
+      .setModuleKey(baseDirUri)
+      .putAllExtraProperties(settings.getAnalyzerProperties())
+      .putAllExtraProperties(javaConfigCache.configureJavaProperties(filesToAnalyze.keySet(), javaConfigs));
+    var pathToCompileCommands = settings.getPathToCompileCommands();
+    if (pathToCompileCommands != null) {
+      configurationBuilder.putExtraProperty("sonar.cfamily.compile-commands", pathToCompileCommands);
+    }
+    filesToAnalyze.forEach((uri, openFile) -> configurationBuilder
+      .addInputFiles(
+        new AnalysisClientInputFile(uri, getFileRelativePath(baseDir, uri), openFile.getContent(),
+          fileTypeClassifier.isTest(settings, uri, ofNullable(javaConfigs.get(uri))),
+          openFile.getLanguageId())));
+    return configurationBuilder;
   }
 
   /**

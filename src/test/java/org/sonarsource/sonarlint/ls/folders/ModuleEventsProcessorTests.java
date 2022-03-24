@@ -51,6 +51,7 @@ import static org.mockito.Mockito.when;
 
 class ModuleEventsProcessorTests {
 
+  private static final WorkspaceFolderSettings EMPTY_SETTINGS = new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null, null);
   private ModuleEventsProcessor underTest;
   private EnginesFactory enginesFactory;
   private WorkspaceFoldersManager foldersManager;
@@ -83,7 +84,7 @@ class ModuleEventsProcessorTests {
     var sonarLintEngine = mock(StandaloneSonarLintEngine.class);
     when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
     var folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
-    folder.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
+    folder.setSettings(EMPTY_SETTINGS);
     when(foldersManager.findFolderForFile(any())).thenReturn(Optional.of(folder));
     when(sonarLintEngine.fireModuleFileEvent(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
     when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(sonarLintEngine);
@@ -102,7 +103,7 @@ class ModuleEventsProcessorTests {
     var sonarLintEngine = mock(StandaloneSonarLintEngine.class);
     when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
     var folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
-    folder.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
+    folder.setSettings(EMPTY_SETTINGS);
     when(foldersManager.findFolderForFile(any())).thenReturn(Optional.of(folder));
     when(sonarLintEngine.fireModuleFileEvent(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
     when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(sonarLintEngine);
@@ -121,7 +122,7 @@ class ModuleEventsProcessorTests {
     var sonarLintEngine = mock(StandaloneSonarLintEngine.class);
     when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
     var folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
-    folder.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
+    folder.setSettings(EMPTY_SETTINGS);
     when(foldersManager.findFolderForFile(any())).thenReturn(Optional.of(folder));
     when(sonarLintEngine.fireModuleFileEvent(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
     when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(sonarLintEngine);

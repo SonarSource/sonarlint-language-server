@@ -26,11 +26,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class WorkspaceFolderSettingsTests {
 
-  private static final WorkspaceFolderSettings SETTINGS = new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar"), "filePattern");
+  private static final WorkspaceFolderSettings SETTINGS = new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar"), "filePattern", "compilationDatabase");
 
   @Test
   void testHashCode() {
-    assertThat(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar"), "filePattern")).hasSameHashCodeAs(SETTINGS);
+    assertThat(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar"), "filePattern", "compilationDatabase")).hasSameHashCodeAs(SETTINGS);
   }
 
   @Test
@@ -38,18 +38,20 @@ class WorkspaceFolderSettingsTests {
     assertThat(SETTINGS).isEqualTo(SETTINGS)
       .isNotEqualTo(null)
       .isNotEqualTo("foo")
-      .isEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar"), "filePattern"))
-      .isNotEqualTo(new WorkspaceFolderSettings("serverId2", "projectKey", Map.of("sonar.foo", "bar"), "filePattern"))
-      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey2", Map.of("sonar.foo", "bar"), "filePattern"))
-      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo2", "bar"), "filePattern"))
-      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar2"), "filePattern"))
-      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar", "sonar.foo2", "bar2"), "filePattern"))
-      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar"), "filePattern2"));
+      .isEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar"), "filePattern", "compilationDatabase"))
+      .isNotEqualTo(new WorkspaceFolderSettings("serverId2", "projectKey", Map.of("sonar.foo", "bar"), "filePattern", "compilationDatabase"))
+      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey2", Map.of("sonar.foo", "bar"), "filePattern", "compilationDatabase"))
+      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo2", "bar"), "filePattern", "compilationDatabase"))
+      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar2"), "filePattern", "compilationDatabase"))
+      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar", "sonar.foo2", "bar2"), "filePattern", "compilationDatabase"))
+      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar"), "filePattern2", "compilationDatabase"))
+      .isNotEqualTo(new WorkspaceFolderSettings("serverId", "projectKey", Map.of("sonar.foo", "bar"), "filePattern", "compilationDatabase2"));
   }
 
   @Test
   void testToString() {
-    assertThat(SETTINGS).hasToString("WorkspaceFolderSettings[analyzerProperties={sonar.foo=bar},connectionId=serverId,projectKey=projectKey,testFilePattern=filePattern]");
+    assertThat(SETTINGS).hasToString(
+      "WorkspaceFolderSettings[analyzerProperties={sonar.foo=bar},connectionId=serverId,pathToCompileCommands=compilationDatabase,projectKey=projectKey,testFilePattern=filePattern]");
   }
 
 }

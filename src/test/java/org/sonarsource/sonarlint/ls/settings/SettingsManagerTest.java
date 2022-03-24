@@ -73,7 +73,7 @@ class SettingsManagerTest {
     "  \"analyzerProperties\": {\n" +
     "    \"sonar.polop\": \"palap\"\n" +
     "  },\n" +
-    "  \"pathToCompileCommands\": \"/path\",\n" +
+    "  \"pathToCompileCommands\": \"/pathToCompileCommand\",\n" +
     "  \"disableTelemetry\": true,\n"
     + "\"output\": {\n" +
     "  \"showAnalyzerLogs\": true,\n" +
@@ -134,7 +134,8 @@ class SettingsManagerTest {
 
     assertThat(settings.getTestMatcher().matches(new File("./someTest").toPath())).isFalse();
     assertThat(settings.getTestMatcher().matches(new File("./someTest.ext").toPath())).isTrue();
-    assertThat(settings.getAnalyzerProperties()).containsExactly(entry("sonar.polop", "palap"), entry("sonar.cfamily.compile-commands", "/path"));
+    assertThat(settings.getAnalyzerProperties()).containsExactly(entry("sonar.polop", "palap"));
+    assertThat(settings.getPathToCompileCommands()).isEqualTo("/pathToCompileCommand");
     assertThat(settings.getConnectionId()).isEqualTo("sq1");
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
   }
@@ -168,7 +169,8 @@ class SettingsManagerTest {
     assertThat(settings.hasLocalRuleConfiguration()).isTrue();
     assertThat(settings.getServerConnections()).containsKeys("sq1", "sq2", "sc1", "sc2");
     assertThat(settings.getServerConnections().values())
-      .extracting(ServerConnectionSettings::getConnectionId, ServerConnectionSettings::getServerUrl, ServerConnectionSettings::getToken, ServerConnectionSettings::getOrganizationKey)
+      .extracting(ServerConnectionSettings::getConnectionId, ServerConnectionSettings::getServerUrl, ServerConnectionSettings::getToken,
+        ServerConnectionSettings::getOrganizationKey)
       .containsExactlyInAnyOrder(
         tuple("sq1", "https://mysonarqube1.mycompany.org", "ab12", null),
         tuple("sq2", "https://mysonarqube2.mycompany.org", "cd34", null),
@@ -261,7 +263,8 @@ class SettingsManagerTest {
     var settings = underTest.getCurrentSettings();
     assertThat(settings.getServerConnections()).containsKeys("server1", "sc");
     assertThat(settings.getServerConnections().values())
-      .extracting(ServerConnectionSettings::getConnectionId, ServerConnectionSettings::getServerUrl, ServerConnectionSettings::getToken, ServerConnectionSettings::getOrganizationKey)
+      .extracting(ServerConnectionSettings::getConnectionId, ServerConnectionSettings::getServerUrl, ServerConnectionSettings::getToken,
+        ServerConnectionSettings::getOrganizationKey)
       .containsExactlyInAnyOrder(tuple("server1", "https://mysonarqube.mycompany.org", "ab12", null),
         tuple("sc", "https://sonarcloud.io", "cd34", "myOrga"));
   }

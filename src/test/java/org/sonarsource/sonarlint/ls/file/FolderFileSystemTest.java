@@ -43,6 +43,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class FolderFileSystemTest {
+  private static final WorkspaceFolderSettings EMPTY_SETTINGS = new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null, null);
   @TempDir
   static Path tempFolder;
   private static Path pythonFile;
@@ -57,7 +58,7 @@ class FolderFileSystemTest {
     var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(false);
     var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
-    folderWrapper.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
+    folderWrapper.setSettings(EMPTY_SETTINGS);
     var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
     var files = folderFileSystem.files("py", InputFile.Type.MAIN);
@@ -73,7 +74,7 @@ class FolderFileSystemTest {
     var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(true);
     var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
-    folderWrapper.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
+    folderWrapper.setSettings(EMPTY_SETTINGS);
     var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
     var files = folderFileSystem.files("py", InputFile.Type.TEST);
@@ -89,7 +90,7 @@ class FolderFileSystemTest {
     var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(false);
     var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
-    folderWrapper.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
+    folderWrapper.setSettings(EMPTY_SETTINGS);
     var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
     var files = folderFileSystem.files();
@@ -105,7 +106,7 @@ class FolderFileSystemTest {
     var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(true);
     var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
-    folderWrapper.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
+    folderWrapper.setSettings(EMPTY_SETTINGS);
     var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
     var files = folderFileSystem.files();
@@ -121,7 +122,7 @@ class FolderFileSystemTest {
     var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), any())).thenReturn(false);
     var folderWrapper = new WorkspaceFolderWrapper(URI.create("file:///wrong_path"), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
-    folderWrapper.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null));
+    folderWrapper.setSettings(EMPTY_SETTINGS);
     var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
     var throwable = catchThrowable(folderFileSystem::files);
