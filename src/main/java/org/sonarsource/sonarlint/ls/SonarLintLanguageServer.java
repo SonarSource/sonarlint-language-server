@@ -205,7 +205,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var workspaceName = (String) options.get("workspaceName");
       var clientVersion = params.getClientInfo().getVersion();
       var ideVersion = appName + " " + clientVersion;
-      var firstSecretDetected = Boolean.parseBoolean((String) options.get("firstSecretDetected"));
+      var firstSecretDetected = (boolean) options.getOrDefault("firstSecretDetected", false);
       var typeScriptPath = ofNullable((String) options.get(TYPESCRIPT_LOCATION));
       var additionalAttributes = (Map<String, Object>) options.getOrDefault("additionalAttributes", Map.of());
       var showVerboseLogs = (boolean) options.getOrDefault("showVerboseLogs", true);
