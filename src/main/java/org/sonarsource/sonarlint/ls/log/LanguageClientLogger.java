@@ -59,13 +59,16 @@ public class LanguageClientLogger implements WorkspaceSettingsChangeListener {
 
   public LanguageClientLogger(LanguageClient client) {
     this(client, Clock.systemDefaultZone());
-
   }
 
   // Visible for testing
   LanguageClientLogger(LanguageClient client, Clock clock) {
     this.client = client;
     this.clock = clock;
+  }
+
+  public void initialize(boolean showVerboseLogs) {
+    this.showVerboseLogs = showVerboseLogs;
   }
 
   private void log(String prefix, String formattedMessage, boolean isDebugOrTrace, boolean isFromAnalysis) {

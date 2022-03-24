@@ -29,7 +29,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -114,6 +113,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final IssuesCache issuesCache;
   private final DiagnosticPublisher diagnosticPublisher;
   private final ScmIgnoredCache scmIgnoredCache;
+  private final LanguageClientLogger lsLogOutput;
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
@@ -134,7 +134,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
     this.client = launcher.getRemoteProxy();
     this.httpClient = ApacheHttpClient.create();
-    var lsLogOutput = new LanguageClientLogger(this.client);
+    this.lsLogOutput = new LanguageClientLogger(this.client);
     var globalLogOutput = new LanguageClientLogOutput(lsLogOutput, false);
     SonarLintLogger.setTarget(globalLogOutput);
     this.openFilesCache = new OpenFilesCache(lsLogOutput);
@@ -207,8 +207,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var ideVersion = appName + " " + clientVersion;
       var firstSecretDetected = Boolean.parseBoolean((String) options.get("firstSecretDetected"));
       var typeScriptPath = ofNullable((String) options.get(TYPESCRIPT_LOCATION));
-      var additionalAttributes = ofNullable((Map<String, Object>) options.get("additionalAttributes")).orElse(Collections.emptyMap());
+      var additionalAttributes = (Map<String, Object>) options.getOrDefault("additionalAttributes", Map.of());
+      var showVerboseLogs = (boolean) options.getOrDefault("showVerboseLogs", true);
 
+      lsLogOutput.initialize(showVerboseLogs);
       enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));
       analysisScheduler.initialize();
       diagnosticPublisher.initialize(firstSecretDetected);

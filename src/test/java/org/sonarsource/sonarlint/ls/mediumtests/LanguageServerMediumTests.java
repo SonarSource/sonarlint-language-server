@@ -75,6 +75,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
       "productVersion", "0.1",
+      "showVerboseLogs", false,
       "additionalAttributes", Map.of("extra", "value")));
   }
 
