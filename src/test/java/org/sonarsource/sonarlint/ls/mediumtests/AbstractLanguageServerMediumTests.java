@@ -43,6 +43,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
@@ -252,6 +253,7 @@ public abstract class AbstractLanguageServerMediumTests {
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
     ShowRuleDescriptionParams ruleDesc;
     boolean isIgnoredByScm = false;
+    final AtomicInteger needCompilationDatabaseCalls = new AtomicInteger();
 
     void clear() {
       diagnostics.clear();
@@ -260,6 +262,7 @@ public abstract class AbstractLanguageServerMediumTests {
       folderSettings.clear();
       settingsLatch = new CountDownLatch(0);
       showRuleDescriptionLatch = new CountDownLatch(0);
+      needCompilationDatabaseCalls.set(0);
     }
 
     @Override
@@ -388,6 +391,11 @@ public abstract class AbstractLanguageServerMediumTests {
     public CompletableFuture<Void> setReferenceBranchNameForFolder(ReferenceBranchForFolder newReferenceBranch) {
       referenceBranchNameByFolder.put(newReferenceBranch.getFolderUri(), newReferenceBranch.getBranchName());
       return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public void needCompilationDatabase() {
+      this.needCompilationDatabaseCalls.incrementAndGet();
     }
   }
 

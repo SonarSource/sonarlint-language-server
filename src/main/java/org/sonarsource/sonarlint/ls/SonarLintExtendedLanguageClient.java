@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
@@ -286,4 +287,8 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
   @JsonRequest("sonarlint/setReferenceBranchNameForFolder")
   CompletableFuture<Void> setReferenceBranchNameForFolder(ReferenceBranchForFolder newReferenceBranch);
+
+  @JsonNotification("sonarlint/needCompilationDatabase")
+  void needCompilationDatabase();
+
 }

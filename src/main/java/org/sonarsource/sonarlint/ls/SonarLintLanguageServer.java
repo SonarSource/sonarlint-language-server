@@ -165,7 +165,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.scmIgnoredCache = new ScmIgnoredCache(client);
     this.moduleEventsProcessor = new ModuleEventsProcessor(standaloneEngineManager, workspaceFoldersManager, bindingManager, fileTypeClassifier, javaConfigCache);
     var analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
-      fileTypeClassifier, issuesCache, taintVulnerabilitiesCache, telemetry, skippedPluginsNotifier, standaloneEngineManager, diagnosticPublisher);
+      fileTypeClassifier, issuesCache, taintVulnerabilitiesCache, telemetry, skippedPluginsNotifier, standaloneEngineManager, diagnosticPublisher, client);
     this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, analysisTaskExecutor);
     this.workspaceFoldersManager.addListener(moduleEventsProcessor);
     bindingManager.setAnalysisManager(analysisScheduler);
