@@ -100,4 +100,24 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.needCompilationDatabaseCalls.get()).isEqualTo(1));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
   }
+
+  @Test
+  void skipCppAnalysisIfInvalidCompilationCommand(@TempDir Path cppProjectBaseDir) throws IOException, InterruptedException {
+    var cppFile = cppProjectBaseDir.resolve("skipCppFileWithInvalidCompilationDatabase.cpp");
+    Files.createFile(cppFile);
+    var cppFileUri = cppFile.toUri().toString();
+
+    emulateConfigurationChangeOnClient(null, true, true, true,
+      new HashMap<>(), "non/existing/file");
+
+    didOpen(cppFileUri, "cpp",
+      "int main() {\n" +
+        "    int i = 0;\n" +
+        "    return 0;\n" +
+        "}\n");
+
+    awaitUntilAsserted(() -> assertLogContains("Skipping analysis of C/C++ file(s) because configured compilation database does not exist: non/existing/file"));
+    awaitUntilAsserted(() -> assertThat(client.needCompilationDatabaseCalls.get()).isEqualTo(1));
+    assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
+  }
 }
