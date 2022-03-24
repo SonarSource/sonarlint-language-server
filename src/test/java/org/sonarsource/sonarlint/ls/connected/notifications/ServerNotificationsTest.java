@@ -92,12 +92,12 @@ class ServerNotificationsTest {
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
 
     var folder1 = mock(WorkspaceFolderWrapper.class);
-    var newFolderSettings1 = new WorkspaceFolderSettings(connectionId, projectKey, Collections.emptyMap(), null);
+    var newFolderSettings1 = createSettings(connectionId, projectKey);
     underTest.onChange(folder1, null, newFolderSettings1);
 
     // Same settings, only one registration sent
     var folder2 = mock(WorkspaceFolderWrapper.class);
-    var newFolderSettings2 = new WorkspaceFolderSettings(connectionId, projectKey, Collections.emptyMap(), null);
+    var newFolderSettings2 = createSettings(connectionId, projectKey);
     underTest.onChange(folder2, null, newFolderSettings2);
 
     verify(output, times(1)).debug("Enabling notifications for project 'projectKey' on connection 'connectionId'");
@@ -116,12 +116,12 @@ class ServerNotificationsTest {
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
 
     var folder1 = mock(WorkspaceFolderWrapper.class);
-    var newFolderSettings1 = new WorkspaceFolderSettings(connectionId, projectKey1, Collections.emptyMap(), null);
+    var newFolderSettings1 = createSettings(connectionId, projectKey1);
     underTest.onChange(folder1, null, newFolderSettings1);
 
     // Same settings, only one registration sent
     var folder2 = mock(WorkspaceFolderWrapper.class);
-    var newFolderSettings2 = new WorkspaceFolderSettings(connectionId, projectKey2, Collections.emptyMap(), null);
+    var newFolderSettings2 = createSettings(connectionId, projectKey2);
     underTest.onChange(folder2, null, newFolderSettings2);
 
     verify(output, times(1)).debug("Enabling notifications for project 'projectKey1' on connection 'connectionId'");
@@ -140,12 +140,12 @@ class ServerNotificationsTest {
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
 
     var folder = mock(WorkspaceFolderWrapper.class);
-    var newFolderSettings1 = new WorkspaceFolderSettings(connectionId, projectKey, Collections.emptyMap(), null);
+    var newFolderSettings1 = createSettings(connectionId, projectKey);
     underTest.onChange(folder, null, newFolderSettings1);
 
     verify(output, times(1)).debug("Enabling notifications for project 'projectKey' on connection 'connectionId'");
 
-    var newFolderSettings2 = new WorkspaceFolderSettings("otherConnectionId", projectKey, Collections.emptyMap(), null);
+    var newFolderSettings2 = createSettings("otherConnectionId", projectKey);
     underTest.onChange(folder, newFolderSettings1, newFolderSettings2);
 
     verify(output, times(1)).debug("De-registering notifications for project 'projectKey' on connection 'connectionId'");
@@ -163,7 +163,7 @@ class ServerNotificationsTest {
 
     // Try to bind to unknown connection
     var folder = mock(WorkspaceFolderWrapper.class);
-    var newFolderSettings = new WorkspaceFolderSettings(connectionId, projectKey, Collections.emptyMap(), null);
+    var newFolderSettings = createSettings(connectionId, projectKey);
     underTest.onChange(folder, null, newFolderSettings);
 
     // Then fix connection settings with known connection
@@ -188,7 +188,7 @@ class ServerNotificationsTest {
     when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, serverConnectionSettings));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
 
-    var newFolderSettings = new WorkspaceFolderSettings(connectionId, projectKey, Collections.emptyMap(), null);
+    var newFolderSettings = createSettings(connectionId, projectKey);
     underTest.onChange(mock(WorkspaceFolderWrapper.class), mock(WorkspaceFolderSettings.class), newFolderSettings);
 
     verifyNoInteractions(output);
@@ -213,7 +213,7 @@ class ServerNotificationsTest {
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings1);
 
     var folder = mock(WorkspaceFolderWrapper.class);
-    var newFolderSettings = new WorkspaceFolderSettings(connectionId, projectKey, Collections.emptyMap(), null);
+    var newFolderSettings = createSettings(connectionId, projectKey);
     underTest.onChange(folder, null, newFolderSettings);
 
     var newWorkspaceSettings2 = mock(WorkspaceSettings.class);
@@ -298,6 +298,10 @@ class ServerNotificationsTest {
     assertThat(shownMessage).extracting(ShowMessageRequestParams::getMessage, ShowMessageRequestParams::getActions)
       .containsExactly("SonarCloud Notification: message", List.of(browseAction, settingsAction));
     verify(telemetry, never()).devNotificationsClicked(category);
+  }
+
+  private WorkspaceFolderSettings createSettings(String connectionId, String projectKey) {
+    return new WorkspaceFolderSettings(connectionId, projectKey, Collections.emptyMap(), null, null);
   }
 
 }

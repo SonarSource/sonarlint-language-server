@@ -291,7 +291,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   // Visible for testing
   WorkspaceFolderSettings parseFolderSettings(Map<String, Object> params) {
     var testFilePattern = (String) params.get(TEST_FILE_PATTERN);
-    var analyzerProperties = getAnalyzerProperties(params);
+    var pathToCompileCommands = (String) params.get(PATH_TO_COMPILE_COMMANDS);
+    var analyzerProperties = (Map<String, String>) params.getOrDefault(ANALYZER_PROPERTIES, Map.of());
     String connectionId = null;
     String projectKey = null;
     @SuppressWarnings("unchecked")
@@ -318,20 +319,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         }
       }
     }
-    return new WorkspaceFolderSettings(connectionId, projectKey, analyzerProperties, testFilePattern);
-  }
-
-  private static Map<String, String> getAnalyzerProperties(Map<String, Object> params) {
-    @SuppressWarnings("unchecked")
-    var map = (Map<String, String>) params.get(ANALYZER_PROPERTIES);
-    if (map == null) {
-      map = new HashMap<>();
-    }
-    String cd = (String) params.get(PATH_TO_COMPILE_COMMANDS);
-    if (cd != null) {
-      map.put("sonar.cfamily.compile-commands", cd);
-    }
-    return map;
+    return new WorkspaceFolderSettings(connectionId, projectKey, analyzerProperties, testFilePattern, pathToCompileCommands);
   }
 
   public void addListener(WorkspaceSettingsChangeListener listener) {

@@ -107,7 +107,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     emulateConfigurationChangeOnClient("**/*Test.js", null, false, true);
 
     assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,projectKey=<null>,testFilePattern=**/*Test.js]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern=**/*Test.js]");
 
     didOpen(uri, "javascript", jsSource);
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
@@ -227,7 +227,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void noIssueOnTestJSFiles() throws Exception {
     emulateConfigurationChangeOnClient("{**/*Test*}", null, null, true);
     assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,projectKey=<null>,testFilePattern={**/*Test*}]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern={**/*Test*}]");
 
     var jsContent = "function foo() {\n  var toto = 0;\n}";
     var fooTestUri = getUri("fooTest.js");
@@ -241,7 +241,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     emulateConfigurationChangeOnClient("{**/*MyTest*}", null, null, true);
     assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,projectKey=<null>,testFilePattern={**/*MyTest*}]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern={**/*MyTest*}]");
 
     didChange(fooTestUri, jsContent);
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fooTestUri)).hasSize(1));
@@ -535,7 +535,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       awaitLatch(client.settingsLatch);
 
       assertLogContains(
-        "Workspace folder 'WorkspaceFolder[name=Added,uri=file:///added_uri]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,projectKey=<null>,testFilePattern=another pattern]");
+        "Workspace folder 'WorkspaceFolder[name=Added,uri=file:///added_uri]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern=another pattern]");
     } finally {
       lsProxy.getWorkspaceService()
         .didChangeWorkspaceFolders(
