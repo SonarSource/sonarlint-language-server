@@ -107,11 +107,11 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   void init(@Nullable Path storagePath, String productName, String productVersion, String ideVersion, Map<String, Object> additionalAttributes) {
     this.additionalAttributes = additionalAttributes;
     if (storagePath == null) {
-      LOG.info("Telemetry disabled because storage path is null");
+      LOG.debug("Telemetry disabled because storage path is null");
       return;
     }
     if ("true".equals(System.getProperty(DISABLE_PROPERTY_KEY))) {
-      LOG.info("Telemetry disabled by system property");
+      LOG.debug("Telemetry disabled by system property");
       return;
     }
     var client = new TelemetryHttpClient(productName, productVersion, ideVersion, httpClient);
