@@ -28,7 +28,10 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.SetTraceParams;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
+import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
 import org.eclipse.lsp4j.services.LanguageServer;
+import org.eclipse.lsp4j.util.Preconditions;
+import org.eclipse.xtext.xbase.lib.Pure;
 
 public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
@@ -42,8 +45,32 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonNotification("$/setTrace")
   void setTrace(SetTraceParams params);
 
+  class DidClasspathUpdateParams {
+
+    @NonNull
+    private String projectUri;
+
+    public DidClasspathUpdateParams() {
+    }
+
+    public DidClasspathUpdateParams(@NonNull final String projectUri) {
+      this.projectUri = Preconditions.<String>checkNotNull(projectUri, "projectUri");
+    }
+
+    @Pure
+    @NonNull
+    public String getProjectUri() {
+      return projectUri;
+    }
+
+    public void setProjectUri(@NonNull String projectUri) {
+      this.projectUri = Preconditions.checkNotNull(projectUri, "projectUri");
+    }
+
+  }
+
   @JsonNotification("sonarlint/didClasspathUpdate")
-  void didClasspathUpdate(String projectUri);
+  void didClasspathUpdate(DidClasspathUpdateParams params);
 
   /**
    * Possible server modes for the <code>redhat.vscode-java</code> Language Server
@@ -68,15 +95,39 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
   }
 
-  @JsonNotification("sonarlint/didJavaServerModeChange")
-  void didJavaServerModeChange(String serverMode);
+  class DidJavaServerModeChangeParams {
 
-  class LocalBranchNameChangeEvent {
+    @NonNull
+    private String serverMode;
+
+    public DidJavaServerModeChangeParams() {
+    }
+
+    public DidJavaServerModeChangeParams(@NonNull final String serverMode) {
+      this.serverMode = Preconditions.<String>checkNotNull(serverMode, "serverMode");
+    }
+
+    @Pure
+    @NonNull
+    public String getServerMode() {
+      return serverMode;
+    }
+
+    public void setServerMode(@NonNull String serverMode) {
+      this.serverMode = Preconditions.checkNotNull(serverMode, "serverMode");
+    }
+
+  }
+
+  @JsonNotification("sonarlint/didJavaServerModeChange")
+  void didJavaServerModeChange(DidJavaServerModeChangeParams params);
+
+  class DidLocalBranchNameChangeParams {
     private String folderUri;
     @Nullable
     private String branchName;
 
-    public LocalBranchNameChangeEvent(String folderUri, @Nullable String branchName) {
+    public DidLocalBranchNameChangeParams(String folderUri, @Nullable String branchName) {
       setFolderUri(folderUri);
       setBranchName(branchName);
     }
@@ -100,5 +151,5 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   }
 
   @JsonNotification("sonarlint/didLocalBranchNameChange")
-  void didLocalBranchNameChange(LocalBranchNameChangeEvent event);
+  void didLocalBranchNameChange(DidLocalBranchNameChangeParams params);
 }

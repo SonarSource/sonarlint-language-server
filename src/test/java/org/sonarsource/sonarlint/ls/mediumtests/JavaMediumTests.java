@@ -33,6 +33,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidClasspathUpdateParams;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidJavaServerModeChangeParams;
 
 import static org.apache.commons.lang3.StringUtils.appendIfMissing;
 import static org.apache.commons.lang3.StringUtils.removeEnd;
@@ -236,7 +238,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     // Update classpath
     javaConfigResponse.setClasspath(new String[] {Paths.get(this.getClass().getResource("/junit-4.12.jar").toURI()).toAbsolutePath().toString()});
-    lsProxy.didClasspathUpdate(projectRootUri2);
+    lsProxy.didClasspathUpdate(new DidClasspathUpdateParams(projectRootUri2));
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -273,9 +275,9 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     javaConfigResponse.setClasspath(new String[0]);
     client.javaConfigs.put(uri, javaConfigResponse);
 
-    lsProxy.didJavaServerModeChange("Hybrid");
+    lsProxy.didJavaServerModeChange(new DidJavaServerModeChangeParams("Hybrid"));
 
-    lsProxy.didJavaServerModeChange("Standard");
+    lsProxy.didJavaServerModeChange(new DidJavaServerModeChangeParams("Standard"));
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
