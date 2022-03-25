@@ -322,37 +322,29 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public CompletableFuture<Void> showSonarLintOutput() {
-      return CompletableFutures.computeAsync(null);
+    public void showSonarLintOutput() {
     }
 
     @Override
-    public CompletableFuture<Void> openJavaHomeSettings() {
-      return CompletableFutures.computeAsync(null);
+    public void openJavaHomeSettings() {
     }
 
     @Override
-    public CompletableFuture<Void> openPathToNodeSettings() {
-      return CompletableFutures.computeAsync(null);
+    public void openPathToNodeSettings() {
     }
 
     @Override
-    public CompletableFuture<Void> showRuleDescription(ShowRuleDescriptionParams params) {
-      return CompletableFutures.computeAsync(cancelToken -> {
-        this.ruleDesc = params;
-        showRuleDescriptionLatch.countDown();
-        return null;
-      });
+    public void showRuleDescription(ShowRuleDescriptionParams params) {
+      this.ruleDesc = params;
+      showRuleDescriptionLatch.countDown();
     }
 
     @Override
-    public CompletableFuture<Void> showHotspot(ServerHotspot h) {
-      return CompletableFutures.computeAsync(null);
+    public void showHotspot(ServerHotspot h) {
     }
 
     @Override
-    public CompletableFuture<Void> showTaintVulnerability(ShowAllLocationsCommand.Param params) {
-      return CompletableFutures.computeAsync(null);
+    public void showTaintVulnerability(ShowAllLocationsCommand.Param params) {
     }
 
     @Override
@@ -361,8 +353,7 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public CompletableFuture<Void> showFirstSecretDetectionNotification() {
-      return CompletableFutures.computeAsync(null);
+    public void showFirstSecretDetectionNotification() {
     }
 
     @Override
@@ -373,13 +364,11 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public CompletableFuture<Void> browseTo(String link) {
-      return CompletableFutures.computeAsync(null);
+    public void browseTo(String link) {
     }
 
     @Override
-    public CompletableFuture<Void> openConnectionSettings(boolean isSonarCloud) {
-      return CompletableFutures.computeAsync(null);
+    public void openConnectionSettings(boolean isSonarCloud) {
     }
 
     @Override
@@ -388,9 +377,8 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public CompletableFuture<Void> setReferenceBranchNameForFolder(ReferenceBranchForFolder newReferenceBranch) {
+    public void setReferenceBranchNameForFolder(ReferenceBranchForFolder newReferenceBranch) {
       referenceBranchNameByFolder.put(newReferenceBranch.getFolderUri(), newReferenceBranch.getBranchName());
-      return CompletableFuture.completedFuture(null);
     }
 
     @Override

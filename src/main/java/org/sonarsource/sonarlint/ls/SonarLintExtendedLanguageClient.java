@@ -35,32 +35,32 @@ import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
 public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
-  @JsonRequest("sonarlint/showSonarLintOutput")
-  CompletableFuture<Void> showSonarLintOutput();
+  @JsonNotification("sonarlint/showSonarLintOutput")
+  void showSonarLintOutput();
 
-  @JsonRequest("sonarlint/openJavaHomeSettings")
-  CompletableFuture<Void> openJavaHomeSettings();
+  @JsonNotification("sonarlint/openJavaHomeSettings")
+  void openJavaHomeSettings();
 
-  @JsonRequest("sonarlint/openPathToNodeSettings")
-  CompletableFuture<Void> openPathToNodeSettings();
+  @JsonNotification("sonarlint/openPathToNodeSettings")
+  void openPathToNodeSettings();
 
-  @JsonRequest("sonarlint/openConnectionSettings")
-  CompletableFuture<Void> openConnectionSettings(boolean isSonarCloud);
+  @JsonNotification("sonarlint/openConnectionSettings")
+  void openConnectionSettings(boolean isSonarCloud);
 
-  @JsonRequest("sonarlint/showRuleDescription")
-  CompletableFuture<Void> showRuleDescription(ShowRuleDescriptionParams params);
+  @JsonNotification("sonarlint/showRuleDescription")
+  void showRuleDescription(ShowRuleDescriptionParams params);
 
-  @JsonRequest("sonarlint/showHotspot")
-  CompletableFuture<Void> showHotspot(ServerHotspot hotspot);
+  @JsonNotification("sonarlint/showHotspot")
+  void showHotspot(ServerHotspot hotspot);
 
-  @JsonRequest("sonarlint/showTaintVulnerability")
-  CompletableFuture<Void> showTaintVulnerability(ShowAllLocationsCommand.Param params);
+  @JsonNotification("sonarlint/showTaintVulnerability")
+  void showTaintVulnerability(ShowAllLocationsCommand.Param params);
 
   @JsonRequest("sonarlint/isIgnoredByScm")
   CompletableFuture<Boolean> isIgnoredByScm(String fileUri);
 
-  @JsonRequest("sonarlint/showNotificationForFirstSecretsIssue")
-  CompletableFuture<Void> showFirstSecretDetectionNotification();
+  @JsonNotification("sonarlint/showNotificationForFirstSecretsIssue")
+  void showFirstSecretDetectionNotification();
 
   class ShowRuleDescriptionParams {
     @Expose
@@ -238,8 +238,8 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
   }
 
-  @JsonRequest("sonarlint/browseTo")
-  CompletableFuture<Void> browseTo(String link);
+  @JsonNotification("sonarlint/browseTo")
+  void browseTo(String link);
 
   @JsonRequest("sonarlint/getBranchNameForFolder")
   CompletableFuture<String> getBranchNameForFolder(String folderUri);
@@ -285,8 +285,8 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
   }
 
-  @JsonRequest("sonarlint/setReferenceBranchNameForFolder")
-  CompletableFuture<Void> setReferenceBranchNameForFolder(ReferenceBranchForFolder newReferenceBranch);
+  @JsonNotification("sonarlint/setReferenceBranchNameForFolder")
+  void setReferenceBranchNameForFolder(ReferenceBranchForFolder newReferenceBranch);
 
   @JsonNotification("sonarlint/needCompilationDatabase")
   void needCompilationDatabase();
