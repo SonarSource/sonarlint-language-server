@@ -52,6 +52,7 @@ import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.ServerInfo;
+import org.eclipse.lsp4j.SetTraceParams;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.TextDocumentSyncOptions;
 import org.eclipse.lsp4j.WorkDoneProgressCancelParams;
@@ -118,7 +119,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
    */
-  private TraceValues traceLevel;
+  private TraceValue traceLevel;
 
   private final ModuleEventsProcessor moduleEventsProcessor;
 
@@ -368,15 +369,21 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public void setTraceNotification(SetTraceNotificationParams params) {
+  public void setTrace(SetTraceParams params) {
     this.traceLevel = parseTraceLevel(params.getValue());
   }
 
-  private static TraceValues parseTraceLevel(@Nullable String trace) {
+  private static TraceValue parseTraceLevel(@Nullable String trace) {
     return ofNullable(trace)
       .map(String::toUpperCase)
-      .map(TraceValues::valueOf)
-      .orElse(TraceValues.OFF);
+      .map(TraceValue::valueOf)
+      .orElse(TraceValue.OFF);
+  }
+
+  private enum TraceValue {
+    OFF,
+    MESSAGES,
+    VERBOSE
   }
 
   @Override

@@ -19,13 +19,13 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import com.google.gson.annotations.SerializedName;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.eclipse.lsp4j.SetTraceParams;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageServer;
@@ -36,34 +36,11 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   CompletableFuture<Map<String, List<Rule>>> listAllRules();
 
   /**
-   * Undocumented VSCode message
-   * https://github.com/Microsoft/vscode-languageserver-node/issues/170
-   * https://github.com/eclipse/lsp4j/issues/22
-   * https://github.com/microsoft/vscode-languageserver-node/blob/5c446d0620fc5fa6c57b1addcdfaff89a47624ae/jsonrpc/src/main.ts#L204
+   * Not yet in lsp4j, but already sent by the client
+   * See https://github.com/eclipse/lsp4j/issues/544
    */
-  @JsonNotification("$/setTraceNotification")
-  void setTraceNotification(SetTraceNotificationParams params);
-
-  class SetTraceNotificationParams {
-    private String value;
-
-    public String getValue() {
-      return value;
-    }
-
-    public void setValue(String value) {
-      this.value = value;
-    }
-  }
-
-  public enum TraceValues {
-    @SerializedName("off")
-    OFF,
-    @SerializedName("messages")
-    MESSAGES,
-    @SerializedName("verbose")
-    VERBOSE
-  }
+  @JsonNotification("$/setTrace")
+  void setTrace(SetTraceParams params);
 
   @JsonNotification("sonarlint/didClasspathUpdate")
   void didClasspathUpdate(String projectUri);
