@@ -24,7 +24,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.jgit.api.Git;
@@ -40,6 +39,7 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -51,10 +51,10 @@ class WorkspaceFolderBranchManagerTest {
 
     var notificationLatch = new CountDownLatch(1);
     var client = mock(SonarLintExtendedLanguageClient.class);
-    when(client.setReferenceBranchNameForFolder(any())).then(invocation -> {
+    doAnswer(invocation -> {
       notificationLatch.countDown();
-      return CompletableFuture.completedFuture(null);
-    });
+      return null;
+    }).when(client).setReferenceBranchNameForFolder(any());
     var bindingManager = mock(ProjectBindingManager.class);
     var underTest = new WorkspaceFolderBranchManager(client, bindingManager);
 
@@ -87,10 +87,10 @@ class WorkspaceFolderBranchManagerTest {
 
     var notificationLatch = new CountDownLatch(1);
     var client = mock(SonarLintExtendedLanguageClient.class);
-    when(client.setReferenceBranchNameForFolder(any())).then(invocation -> {
+    doAnswer(invocation -> {
       notificationLatch.countDown();
-      return CompletableFuture.completedFuture(null);
-    });
+      return null;
+    }).when(client).setReferenceBranchNameForFolder(any());
     var bindingManager = mock(ProjectBindingManager.class);
     var underTest = new WorkspaceFolderBranchManager(client, bindingManager);
 

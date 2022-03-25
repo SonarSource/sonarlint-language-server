@@ -24,8 +24,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
@@ -75,14 +73,14 @@ public class SkippedPluginsNotifier {
     });
   }
 
-  private void showMessageWithOpenSettingsAction(SonarLintExtendedLanguageClient client, String message, Supplier<CompletableFuture<Void>> callback) {
+  private void showMessageWithOpenSettingsAction(SonarLintExtendedLanguageClient client, String message, Runnable callback) {
     if (displayedMessages.add(message)) {
       var params = new ShowMessageRequestParams(List.of(ACTION_OPEN_SETTINGS));
       params.setType(MessageType.Error);
       params.setMessage(message);
       client.showMessageRequest(params).thenAccept(action -> {
         if (ACTION_OPEN_SETTINGS.equals(action)) {
-          callback.get();
+          callback.run();
         }
       });
     }
