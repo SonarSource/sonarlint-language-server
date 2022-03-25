@@ -56,7 +56,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
-import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.LocalBranchNameChangeEvent;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -650,7 +650,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void updateBranchNameShouldLogAMessage() throws Exception {
-    lsProxy.didLocalBranchNameChange(new LocalBranchNameChangeEvent("file:///some_folder", "some/branch/name"));
+    lsProxy.didLocalBranchNameChange(new DidLocalBranchNameChangeParams("file:///some_folder", "some/branch/name"));
 
     assertLogContains("Folder file:///some_folder is now on branch some/branch/name.");
 
@@ -659,7 +659,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void updateBranchNameWithNullBranchShouldLogAnotherMessage() throws Exception {
-    lsProxy.didLocalBranchNameChange(new LocalBranchNameChangeEvent("file:///some_folder", null));
+    lsProxy.didLocalBranchNameChange(new DidLocalBranchNameChangeParams("file:///some_folder", null));
 
     assertLogContains("Folder file:///some_folder is now on an unknown branch.");
 

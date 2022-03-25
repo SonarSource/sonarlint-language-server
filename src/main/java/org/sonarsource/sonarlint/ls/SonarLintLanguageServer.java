@@ -387,21 +387,21 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public void didClasspathUpdate(String projectUriStr) {
-    var projectUri = create(projectUriStr);
+  public void didClasspathUpdate(DidClasspathUpdateParams params) {
+    var projectUri = create(params.getProjectUri());
     javaConfigCache.didClasspathUpdate(projectUri);
     analysisScheduler.didClasspathUpdate();
   }
 
   @Override
-  public void didJavaServerModeChange(String serverMode) {
-    var serverModeEnum = ServerMode.of(serverMode);
+  public void didJavaServerModeChange(DidJavaServerModeChangeParams params) {
+    var serverModeEnum = ServerMode.of(params.getServerMode());
     javaConfigCache.didServerModeChange(serverModeEnum);
     analysisScheduler.didServerModeChange(serverModeEnum);
   }
 
   @Override
-  public void didLocalBranchNameChange(LocalBranchNameChangeEvent event) {
+  public void didLocalBranchNameChange(DidLocalBranchNameChangeParams event) {
     branchManager.didBranchNameChange(create(event.getFolderUri()), event.getBranchName());
   }
 
