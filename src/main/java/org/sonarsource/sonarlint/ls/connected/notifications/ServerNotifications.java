@@ -92,7 +92,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
   }
 
   @Override
-  public void onChange(@CheckForNull WorkspaceFolderWrapper folder, @CheckForNull WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
+  public void onChange(@Nullable WorkspaceFolderWrapper folder, @Nullable WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
     if (oldValue != null && (!newValue.hasBinding() ||
       !connections.containsKey(newValue.getConnectionId()) ||
       connections.get(newValue.getConnectionId()).isDevNotificationsDisabled())) {

@@ -410,6 +410,12 @@ public abstract class AbstractLanguageServerMediumTests {
     client.settingsLatch = new CountDownLatch(1);
     lsProxy.getWorkspaceService().didChangeConfiguration(changedConfiguration(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs));
     awaitLatch(client.settingsLatch);
+    // workspace/configuration has been called by server, but give some time for the response to be processed (settings change listeners)
+    try {
+      Thread.sleep(200);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
 
   protected static void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,

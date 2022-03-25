@@ -38,6 +38,8 @@ import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
@@ -49,7 +51,7 @@ import static java.util.stream.Collectors.toSet;
  * Responsible to manage all analyses scheduling
  *
  */
-public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
+public class AnalysisScheduler implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
 
   private static final CompletableFuture<Void> COMPLETED_FUTURE = CompletableFuture.completedFuture(null);
   private static final int DEFAULT_TIMER_MS = 2000;
@@ -209,6 +211,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
   @Override
   public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
     if (oldValue == null) {
+      // This is when settings are loaded, not really a user change
       return;
     }
     if (!Objects.equals(oldValue.getExcludedRules(), newValue.getExcludedRules()) ||
@@ -216,6 +219,25 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener {
       !Objects.equals(oldValue.getRuleParameters(), newValue.getRuleParameters())) {
       analyzeAllUnboundOpenFiles();
     }
+  }
+
+  @Override
+  public void onChange(@Nullable WorkspaceFolderWrapper folder, @Nullable WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
+    if (oldValue == null) {
+      // This is when settings are loaded, not really a user change
+      return;
+    }
+    if (!Objects.equals(oldValue.getPathToCompileCommands(), newValue.getPathToCompileCommands())) {
+      analyzeAllOpenCOrCppFilesInFolder(folder);
+    }
+  }
+
+  public void analyzeAllOpenCOrCppFilesInFolder(@Nullable WorkspaceFolderWrapper folder) {
+    var openedCorCppFileUrisInFolder = openFilesCache.getAll().stream()
+      .filter(VersionnedOpenFile::isCOrCpp)
+      .filter(f -> belongToFolder(folder, f.getUri()))
+      .collect(Collectors.toList());
+    analyzeAsync(openedCorCppFileUrisInFolder, false);
   }
 
   private void analyzeAllUnboundOpenFiles() {

@@ -19,7 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.settings;
 
-import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 
 public interface WorkspaceFolderSettingsChangeListener {
@@ -28,5 +28,5 @@ public interface WorkspaceFolderSettingsChangeListener {
    * @param oldValue
    * @param newValue
    */
-  void onChange(@CheckForNull WorkspaceFolderWrapper folder, @CheckForNull WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue);
+  void onChange(@Nullable WorkspaceFolderWrapper folder, @Nullable WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue);
 }
