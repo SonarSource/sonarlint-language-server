@@ -41,29 +41,14 @@ import static org.eclipse.lsp4j.DiagnosticSeverity.Information;
 class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
-  void analyzeSimpleCppTestFileOnOpen(@TempDir Path cppProjectBaseDir) throws IOException, InterruptedException {
-    String fileExt;
-    if (SystemUtils.IS_OS_WINDOWS) {
-      fileExt = "bat";
-    } else {
-      fileExt = "sh";
-    }
-    var mockClang = Paths.get("src/test/assets/cfamily/clang-test." + fileExt).toAbsolutePath();
+  void analyzeSimpleCppFileOnOpen(@TempDir Path cppProjectBaseDir) throws IOException, InterruptedException {
+    var mockClang = mockClangCompiler();
 
-    var cppFile = cppProjectBaseDir.resolve("analyzeSimpleCppTestFileOnOpen.cpp");
+    var cppFile = cppProjectBaseDir.resolve("analyzeSimpleCppFileOnOpen.cpp");
     Files.createFile(cppFile);
     var cppFileUri = cppFile.toUri().toString();
 
-    var compilationDatabaseContent = "[\n" +
-      "{\n" +
-      "  \"directory\": \"" + StringEscapeUtils.escapeJson(cppProjectBaseDir.toString()) + "\",\n" +
-      "  \"command\": \"" + StringEscapeUtils.escapeJson(mockClang.toString()) + " -x c++ " + StringEscapeUtils.escapeJson(cppFile.toString()) + "\",\n" +
-      "  \"file\": \"" + StringEscapeUtils.escapeJson(cppFile.toString()) + "\"\n" +
-      "}\n" +
-      "]";
-
-    var compilationDatabaseFile = cppProjectBaseDir.resolve("compile_commands.json");
-    FileUtils.write(compilationDatabaseFile.toFile(), compilationDatabaseContent, StandardCharsets.UTF_8);
+    var compilationDatabaseFile = prepareCompilationDatabase(cppProjectBaseDir, mockClang, cppFile);
 
     emulateConfigurationChangeOnClient(null, true, true, true,
       new HashMap<>(), compilationDatabaseFile.toString());
@@ -83,7 +68,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void skipCppAnalysisIfMissingCompilationCommand(@TempDir Path cppProjectBaseDir) throws IOException, InterruptedException {
-    var cppFile = cppProjectBaseDir.resolve("skipCppFileWithoutCompilationDatabase.cpp");
+    var cppFile = cppProjectBaseDir.resolve("skipCppAnalysisIfMissingCompilationCommand.cpp");
     Files.createFile(cppFile);
     var cppFileUri = cppFile.toUri().toString();
 
@@ -103,7 +88,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void skipCppAnalysisIfInvalidCompilationCommand(@TempDir Path cppProjectBaseDir) throws IOException, InterruptedException {
-    var cppFile = cppProjectBaseDir.resolve("skipCppFileWithInvalidCompilationDatabase.cpp");
+    var cppFile = cppProjectBaseDir.resolve("skipCppAnalysisIfInvalidCompilationCommand.cpp");
     Files.createFile(cppFile);
     var cppFileUri = cppFile.toUri().toString();
 
@@ -119,5 +104,61 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertLogContains("Skipping analysis of C/C++ file(s) because configured compilation database does not exist: non/existing/file"));
     awaitUntilAsserted(() -> assertThat(client.needCompilationDatabaseCalls.get()).isEqualTo(1));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
+  }
+
+  @Test
+  void analyzeCppFileOnCompileCommandsSettingChanged(@TempDir Path cppProjectBaseDir) throws IOException, InterruptedException {
+    var mockClang = mockClangCompiler();
+
+    var cppFile = cppProjectBaseDir.resolve("analyzeCppFileOnCompileCommandsSettingChanged.cpp");
+    Files.createFile(cppFile);
+    var cppFileUri = cppFile.toUri().toString();
+
+    var compilationDatabaseFile = prepareCompilationDatabase(cppProjectBaseDir, mockClang, cppFile);
+
+    didOpen(cppFileUri, "cpp",
+      "int main() {\n" +
+        "    int i = 0;\n" +
+        "    return 0;\n" +
+        "}\n");
+
+    awaitUntilAsserted(() -> assertLogContains("Skipping analysis of C/C++ file(s) because no compilation database was configured"));
+    awaitUntilAsserted(() -> assertThat(client.needCompilationDatabaseCalls.getAndSet(0)).isEqualTo(1));
+    assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
+
+    emulateConfigurationChangeOnClient(null, true, true, true,
+      new HashMap<>(), compilationDatabaseFile.toString());
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(cppFileUri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactlyInAnyOrder(tuple(1, 8, 1, 9, "cpp:S1481", "sonarlint", "unused variable 'i'", Information)));
+
+    assertThat(client.needCompilationDatabaseCalls.get()).isZero();
+
+  }
+
+  private Path prepareCompilationDatabase(Path cppProjectBaseDir, Path mockClang, Path cppFile) throws IOException {
+    var compilationDatabaseContent = "[\n" +
+      "{\n" +
+      "  \"directory\": \"" + StringEscapeUtils.escapeJson(cppProjectBaseDir.toString()) + "\",\n" +
+      "  \"command\": \"" + StringEscapeUtils.escapeJson(mockClang.toString()) + " -x c++ " + StringEscapeUtils.escapeJson(cppFile.toString()) + "\",\n" +
+      "  \"file\": \"" + StringEscapeUtils.escapeJson(cppFile.toString()) + "\"\n" +
+      "}\n" +
+      "]";
+
+    var compilationDatabaseFile = cppProjectBaseDir.resolve("compile_commands.json");
+    FileUtils.write(compilationDatabaseFile.toFile(), compilationDatabaseContent, StandardCharsets.UTF_8);
+    return compilationDatabaseFile;
+  }
+
+  private Path mockClangCompiler() {
+    String fileExt;
+    if (SystemUtils.IS_OS_WINDOWS) {
+      fileExt = "bat";
+    } else {
+      fileExt = "sh";
+    }
+    var mockClang = Paths.get("src/test/assets/cfamily/clang-test." + fileExt).toAbsolutePath();
+    return mockClang;
   }
 }

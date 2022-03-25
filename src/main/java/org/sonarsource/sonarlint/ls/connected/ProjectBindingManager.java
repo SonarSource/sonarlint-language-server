@@ -273,7 +273,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   @Override
-  public void onChange(@CheckForNull WorkspaceFolderWrapper folder, @CheckForNull WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
+  public void onChange(@Nullable WorkspaceFolderWrapper folder, @Nullable WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
     if (oldValue == null) {
       return;
     }
