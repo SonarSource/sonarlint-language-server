@@ -258,7 +258,7 @@ public class SecurityHotspotsHandlerServer {
 
     void showUnknownServer(String url) {
       var params = new ShowMessageRequestParams();
-      params.setMessage("No SonarQube connection settings found for URL " + url);
+      params.setMessage("To display Security Hotspots, you need to configure a connection to SonarQube (" + url + ") in the settings");
       params.setType(MessageType.Error);
       var showSettingsAction = new MessageActionItem("Open Settings");
       params.setActions(List.of(showSettingsAction));
