@@ -343,11 +343,6 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     executor.execute(() -> updateWorkspaceFolderSettings(added, false));
   }
 
-  @Override
-  public void removed(WorkspaceFolderWrapper removed) {
-    // Nothing to do
-  }
-
   public void shutdown() {
     executor.shutdown();
   }

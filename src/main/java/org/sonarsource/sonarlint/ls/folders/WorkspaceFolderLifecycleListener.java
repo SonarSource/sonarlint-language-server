@@ -22,5 +22,7 @@ package org.sonarsource.sonarlint.ls.folders;
 public interface WorkspaceFolderLifecycleListener {
   void added(WorkspaceFolderWrapper added);
 
-  void removed(WorkspaceFolderWrapper removed);
+  default void removed(WorkspaceFolderWrapper removed) {
+
+  }
 }
