@@ -326,19 +326,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void cleanDiagnosticsOnClose() throws Exception {
-    var uri = getUri("foo.js");
-    didOpen(uri, "javascript", "function foo() {\n  var toto = 0;\n}");
-
-    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information)));
-
-    lsProxy.getTextDocumentService().didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
-    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri)).isEmpty());
-  }
-
-  @Test
   void noAnalysisOnNullContent() throws Exception {
     emulateConfigurationChangeOnClient("**/*Test.js", true, true, true);
 
