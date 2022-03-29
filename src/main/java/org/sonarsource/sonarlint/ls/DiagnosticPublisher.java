@@ -29,7 +29,6 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionnedIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 import static java.util.stream.Collectors.toList;
 import static org.sonarsource.sonarlint.ls.Utils.buildMessageWithPluralizedSuffix;
@@ -49,11 +48,8 @@ public class DiagnosticPublisher {
 
   private final IssuesCache issuesCache;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
-  private final LanguageClientLogger lsLogOutput;
 
-  public DiagnosticPublisher(LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
-    IssuesCache issuesCache) {
-    this.lsLogOutput = lsLogOutput;
+  public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache) {
     this.client = client;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.issuesCache = issuesCache;
@@ -61,12 +57,6 @@ public class DiagnosticPublisher {
 
   public void initialize(boolean firstSecretDetected) {
     this.firstSecretIssueDetected = firstSecretDetected;
-  }
-
-  public void didClose(URI fileUri) {
-    lsLogOutput.debug("File '" + fileUri + "' closed. Cleaning diagnostics.");
-    issuesCache.clear(fileUri);
-    publishDiagnostics(fileUri);
   }
 
   public void publishDiagnostics(URI f) {

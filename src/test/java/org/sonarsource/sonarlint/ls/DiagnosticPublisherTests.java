@@ -51,7 +51,7 @@ class DiagnosticPublisherTests {
   public void init() {
     issuesCache = new IssuesCache();
     languageClient = mock(SonarLintExtendedLanguageClient.class);
-    underTest = new DiagnosticPublisher(null, languageClient, new TaintVulnerabilitiesCache(), issuesCache);
+    underTest = new DiagnosticPublisher(languageClient, new TaintVulnerabilitiesCache(), issuesCache);
   }
 
   @Test

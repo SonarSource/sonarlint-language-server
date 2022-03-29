@@ -142,7 +142,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
     this.issuesCache = new IssuesCache();
     this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
-    this.diagnosticPublisher = new DiagnosticPublisher(lsLogOutput, client, taintVulnerabilitiesCache, issuesCache);
+    this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache);
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.progressManager = new ProgressManager(client);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClient);
@@ -320,9 +320,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var uri = create(params.getTextDocument().getUri());
     analysisScheduler.didClose(uri);
     openFilesCache.didClose(uri);
-    taintVulnerabilitiesCache.didClose(uri);
     javaConfigCache.didClose(uri);
-    diagnosticPublisher.didClose(uri);
     scmIgnoredCache.didClose(uri);
   }
 
