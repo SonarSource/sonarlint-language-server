@@ -39,7 +39,6 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
 
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
-  private final Map<URI, String> localBranchNameByFolderUri = new ConcurrentHashMap<>();
   private final Map<URI, String> referenceBranchNameByFolderUri = new ConcurrentHashMap<>();
   private final SonarLintExtendedLanguageClient client;
   private final ProjectBindingManager bindingManager;
@@ -56,11 +55,6 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
       .thenAccept(branchName -> didBranchNameChange(folderUri, branchName));
   }
 
-  @Override
-  public void removed(WorkspaceFolderWrapper removed) {
-    localBranchNameByFolderUri.remove(removed.getUri());
-  }
-
   public void didBranchNameChange(URI folderUri, @Nullable String branchName) {
     if (branchName != null) {
       LOG.debug("Folder {} is now on branch {}.", folderUri, branchName);
@@ -68,7 +62,6 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
       LOG.debug("Folder {} is now on an unknown branch.", folderUri);
       return;
     }
-    localBranchNameByFolderUri.put(folderUri, branchName);
     var executorService = Executors.newSingleThreadExecutor();
     executorService.submit(() -> {
       Optional<ProjectBindingWrapper> bindingOptional = bindingManager.getBinding(folderUri);
@@ -79,7 +72,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
         var serverBranchNames = serverBranches.getBranchNames();
         var repo = GitUtils.getRepositoryForDir(Paths.get(folderUri));
         if (repo != null) {
-          try (var repoToClose = repo) {
+          try (repo) {
             electedBranchName = GitUtils.electBestMatchingServerBranchForCurrentHead(repo, serverBranchNames, serverBranches.getMainBranchName().orElse(null));
           }
         }
@@ -87,15 +80,6 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
       client.setReferenceBranchNameForFolder(SonarLintExtendedLanguageClient.ReferenceBranchForFolder.of(folderUri.toString(), electedBranchName));
       referenceBranchNameByFolderUri.put(folderUri, electedBranchName);
     });
-  }
-
-  /**
-   * @param folderUri a workspace folder's URI
-   * @return the current known local branch name for the folder, <code>null</code> if unknown
-   */
-  @CheckForNull
-  public String getLocalBranchNameForFolder(URI folderUri) {
-    return localBranchNameByFolderUri.get(folderUri);
   }
 
   /**
