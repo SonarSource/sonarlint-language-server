@@ -278,6 +278,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       serverNotifications.shutdown();
       standaloneEngineManager.shutdown();
       moduleEventsProcessor.shutdown();
+      branchManager.shutdown();
       return new Object();
     });
   }
