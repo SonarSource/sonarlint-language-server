@@ -24,8 +24,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -36,10 +34,9 @@ import org.sonarsource.sonarlint.core.client.api.connected.ProjectBranches;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.util.ImmediateExecutorService;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -48,22 +45,14 @@ class WorkspaceFolderBranchManagerTest {
 
   @Test
   void didBranchNameChangeNoBinding() throws Exception {
-
-    var notificationLatch = new CountDownLatch(1);
     var client = mock(SonarLintExtendedLanguageClient.class);
-    doAnswer(invocation -> {
-      notificationLatch.countDown();
-      return null;
-    }).when(client).setReferenceBranchNameForFolder(any());
     var bindingManager = mock(ProjectBindingManager.class);
-    var underTest = new WorkspaceFolderBranchManager(client, bindingManager);
+    var underTest = new WorkspaceFolderBranchManager(client, bindingManager, new ImmediateExecutorService());
 
     var folderUri = new URI("file:///some_dir");
     var branchName = "some/branch/name";
 
     underTest.didBranchNameChange(folderUri, branchName);
-
-    notificationLatch.await(1, TimeUnit.SECONDS);
 
     var branchCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.ReferenceBranchForFolder.class);
     verify(client).setReferenceBranchNameForFolder(branchCaptor.capture());
@@ -74,7 +63,6 @@ class WorkspaceFolderBranchManagerTest {
 
   @Test
   void didBranchNameChangeBindingPresent(@TempDir Path gitProjectBasedir) throws Exception {
-
     String currentBranchName = "some/branch/name";
 
     try (Git git = Git.init().setInitialBranch("main").setDirectory(gitProjectBasedir.toFile()).call()) {
@@ -85,14 +73,9 @@ class WorkspaceFolderBranchManagerTest {
       git.checkout().setName(currentBranchName).setCreateBranch(true).call();
     }
 
-    var notificationLatch = new CountDownLatch(1);
     var client = mock(SonarLintExtendedLanguageClient.class);
-    doAnswer(invocation -> {
-      notificationLatch.countDown();
-      return null;
-    }).when(client).setReferenceBranchNameForFolder(any());
     var bindingManager = mock(ProjectBindingManager.class);
-    var underTest = new WorkspaceFolderBranchManager(client, bindingManager);
+    var underTest = new WorkspaceFolderBranchManager(client, bindingManager, new ImmediateExecutorService());
 
     var folderUri = gitProjectBasedir.toUri();
 
@@ -106,14 +89,11 @@ class WorkspaceFolderBranchManagerTest {
 
     underTest.didBranchNameChange(folderUri, currentBranchName);
 
-    notificationLatch.await(1, TimeUnit.MINUTES);
-
     var branchCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.ReferenceBranchForFolder.class);
     verify(client).setReferenceBranchNameForFolder(branchCaptor.capture());
     var capturedValue = branchCaptor.getValue();
     assertThat(capturedValue.getFolderUri()).isEqualTo(folderUri.toString());
     assertThat(capturedValue.getBranchName()).isEqualTo(currentBranchName);
-
   }
 
 }

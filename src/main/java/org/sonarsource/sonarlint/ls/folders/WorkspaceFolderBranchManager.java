@@ -25,6 +25,7 @@ import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -42,10 +43,16 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
   private final Map<URI, Optional<String>> referenceBranchNameByFolderUri = new ConcurrentHashMap<>();
   private final SonarLintExtendedLanguageClient client;
   private final ProjectBindingManager bindingManager;
+  private final ExecutorService executorService;
 
   public WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager) {
+    this(client, bindingManager, Executors.newSingleThreadExecutor());
+  }
+
+  WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager, ExecutorService executorService) {
     this.client = client;
     this.bindingManager = bindingManager;
+    this.executorService = executorService;
   }
 
   @Override
@@ -62,7 +69,6 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
       LOG.debug("Folder {} is now on an unknown branch.", folderUri);
       return;
     }
-    var executorService = Executors.newSingleThreadExecutor();
     executorService.submit(() -> {
       Optional<ProjectBindingWrapper> bindingOptional = bindingManager.getBinding(folderUri);
       String electedBranchName = null;
@@ -95,5 +101,9 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
       LOG.error(e.getMessage());
     }
     return null;
+  }
+
+  public void shutdown() {
+    executorService.shutdownNow();
   }
 }
