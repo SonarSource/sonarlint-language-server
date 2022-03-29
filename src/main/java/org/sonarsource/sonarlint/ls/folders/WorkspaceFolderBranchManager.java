@@ -39,7 +39,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
 
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
-  private final Map<URI, String> referenceBranchNameByFolderUri = new ConcurrentHashMap<>();
+  private final Map<URI, Optional<String>> referenceBranchNameByFolderUri = new ConcurrentHashMap<>();
   private final SonarLintExtendedLanguageClient client;
   private final ProjectBindingManager bindingManager;
 
@@ -78,7 +78,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
         }
       }
       client.setReferenceBranchNameForFolder(SonarLintExtendedLanguageClient.ReferenceBranchForFolder.of(folderUri.toString(), electedBranchName));
-      referenceBranchNameByFolderUri.put(folderUri, electedBranchName);
+      referenceBranchNameByFolderUri.put(folderUri, Optional.ofNullable(electedBranchName));
     });
   }
 
@@ -90,7 +90,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
   public String getReferenceBranchNameForFolder(URI folderUri) {
     try {
       var uriWithoutTrailingSlash = StringUtils.removeEnd(folderUri.toString(), "/");
-      return referenceBranchNameByFolderUri.get(new URI(uriWithoutTrailingSlash));
+      return referenceBranchNameByFolderUri.get(new URI(uriWithoutTrailingSlash)).orElse(null);
     } catch (URISyntaxException e) {
       LOG.error(e.getMessage());
     }
