@@ -214,9 +214,9 @@ public class AnalysisTaskExecutor {
     Map<URI, VersionnedOpenFile> nonCNOrCppFiles = ofNullable(splitCppAndNonCppFiles.get(false)).orElse(Map.of());
     if (!cOrCppFiles.isEmpty() && (settings.getPathToCompileCommands() == null || !Files.isRegularFile(Paths.get(settings.getPathToCompileCommands())))) {
       if (settings.getPathToCompileCommands() == null) {
-        lsLogOutput.debug("Skipping analysis of C/C++ file(s) because no compilation database was configured");
+        lsLogOutput.debug("Skipping analysis of C and C++ file(s) because no compilation database was configured");
       } else {
-        lsLogOutput.debug("Skipping analysis of C/C++ file(s) because configured compilation database does not exist: " + settings.getPathToCompileCommands());
+        lsLogOutput.debug("Skipping analysis of C and C++ file(s) because configured compilation database does not exist: " + settings.getPathToCompileCommands());
       }
       cOrCppFiles.keySet().forEach(this::clearIssueCacheAndPublishEmptyDiagnostics);
       lsClient.needCompilationDatabase();

@@ -81,7 +81,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
         "    return 0;\n" +
         "}\n");
 
-    awaitUntilAsserted(() -> assertLogContains("Skipping analysis of C/C++ file(s) because no compilation database was configured"));
+    awaitUntilAsserted(() -> assertLogContains("Skipping analysis of C and C++ file(s) because no compilation database was configured"));
     awaitUntilAsserted(() -> assertThat(client.needCompilationDatabaseCalls.get()).isEqualTo(1));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
   }
@@ -101,7 +101,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
         "    return 0;\n" +
         "}\n");
 
-    awaitUntilAsserted(() -> assertLogContains("Skipping analysis of C/C++ file(s) because configured compilation database does not exist: non/existing/file"));
+    awaitUntilAsserted(() -> assertLogContains("Skipping analysis of C and C++ file(s) because configured compilation database does not exist: non/existing/file"));
     awaitUntilAsserted(() -> assertThat(client.needCompilationDatabaseCalls.get()).isEqualTo(1));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
   }
@@ -122,7 +122,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
         "    return 0;\n" +
         "}\n");
 
-    awaitUntilAsserted(() -> assertLogContains("Skipping analysis of C/C++ file(s) because no compilation database was configured"));
+    awaitUntilAsserted(() -> assertLogContains("Skipping analysis of C and C++ file(s) because no compilation database was configured"));
     awaitUntilAsserted(() -> assertThat(client.needCompilationDatabaseCalls.getAndSet(0)).isEqualTo(1));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
 
