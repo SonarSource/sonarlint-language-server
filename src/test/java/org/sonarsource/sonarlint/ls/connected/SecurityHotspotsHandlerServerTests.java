@@ -58,7 +58,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class SecurityHotspotsHandlerServerTest {
+class SecurityHotspotsHandlerServerTests {
 
   private static final String TRUSTED_SERVER_URL = "http://myServer";
   private SecurityHotspotsHandlerServer server;

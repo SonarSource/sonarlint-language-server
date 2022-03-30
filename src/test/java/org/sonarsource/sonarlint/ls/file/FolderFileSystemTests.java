@@ -42,7 +42,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class FolderFileSystemTest {
+class FolderFileSystemTests {
   private static final WorkspaceFolderSettings EMPTY_SETTINGS = new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null, null);
   @TempDir
   static Path tempFolder;
@@ -64,7 +64,7 @@ class FolderFileSystemTest {
     var files = folderFileSystem.files("py", InputFile.Type.MAIN);
 
     assertThat(files)
-      .extracting(ClientInputFile::getPath, FolderFileSystemTest::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
+      .extracting(ClientInputFile::getPath, FolderFileSystemTests::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
         ClientInputFile::relativePath, ClientInputFile::uri)
       .containsExactly(tuple(pythonFile.toAbsolutePath().toString(), "", false, StandardCharsets.UTF_8, pythonFile.toUri(), "file.py", pythonFile.toUri()));
   }
@@ -80,7 +80,7 @@ class FolderFileSystemTest {
     var files = folderFileSystem.files("py", InputFile.Type.TEST);
 
     assertThat(files)
-      .extracting(ClientInputFile::getPath, FolderFileSystemTest::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
+      .extracting(ClientInputFile::getPath, FolderFileSystemTests::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
         ClientInputFile::relativePath, ClientInputFile::uri)
       .containsExactly(tuple(pythonFile.toAbsolutePath().toString(), "", true, StandardCharsets.UTF_8, pythonFile.toUri(), "file.py", pythonFile.toUri()));
   }
@@ -96,7 +96,7 @@ class FolderFileSystemTest {
     var files = folderFileSystem.files();
 
     assertThat(files)
-      .extracting(ClientInputFile::getPath, FolderFileSystemTest::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
+      .extracting(ClientInputFile::getPath, FolderFileSystemTests::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
         ClientInputFile::relativePath, ClientInputFile::uri)
       .containsExactly(tuple(pythonFile.toAbsolutePath().toString(), "", false, StandardCharsets.UTF_8, pythonFile.toUri(), "file.py", pythonFile.toUri()));
   }
@@ -112,7 +112,7 @@ class FolderFileSystemTest {
     var files = folderFileSystem.files();
 
     assertThat(files)
-      .extracting(ClientInputFile::getPath, FolderFileSystemTest::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
+      .extracting(ClientInputFile::getPath, FolderFileSystemTests::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
         ClientInputFile::relativePath, ClientInputFile::uri)
       .containsExactly(tuple(pythonFile.toAbsolutePath().toString(), "", true, StandardCharsets.UTF_8, pythonFile.toUri(), "file.py", pythonFile.toUri()));
   }

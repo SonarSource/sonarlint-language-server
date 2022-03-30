@@ -50,7 +50,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-class ServerNotificationsTest {
+class ServerNotificationsTests {
 
   private final SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
 

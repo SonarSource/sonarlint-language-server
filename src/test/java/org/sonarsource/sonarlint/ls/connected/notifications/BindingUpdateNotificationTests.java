@@ -29,7 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class BindingUpdateNotificationTest {
+class BindingUpdateNotificationTests {
 
   private final LanguageClient languageClient = mock(LanguageClient.class);
   private final BindingUpdateNotification bindingUpdateNotification = new BindingUpdateNotification(languageClient);

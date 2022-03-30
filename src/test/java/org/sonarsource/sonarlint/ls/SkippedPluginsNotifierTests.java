@@ -42,7 +42,7 @@ import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.core.plugin.commons.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.JRE;
 import static org.sonarsource.sonarlint.core.plugin.commons.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.NODEJS;
 
-class SkippedPluginsNotifierTest {
+class SkippedPluginsNotifierTests {
 
   private SonarLintExtendedLanguageClient languageClient;
   private SkippedPluginsNotifier underTest;

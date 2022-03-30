@@ -54,7 +54,7 @@ import static org.assertj.core.api.Assertions.fail;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
 
-class ApacheHttpClientTest {
+class ApacheHttpClientTests {
 
   private static final String WAIT_FOREVER = "/waitForever";
   private static HttpServer server;

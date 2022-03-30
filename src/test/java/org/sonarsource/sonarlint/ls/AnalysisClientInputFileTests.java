@@ -28,7 +28,7 @@ import org.sonarsource.sonarlint.core.commons.Language;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class AnalysisClientInputFileTest {
+class AnalysisClientInputFileTests {
 
   @ParameterizedTest(name = "Should detect {0} as {1}")
   @MethodSource("provideParametersForLanguageDetection")
