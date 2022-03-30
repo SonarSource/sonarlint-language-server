@@ -29,13 +29,13 @@ import org.eclipse.lsp4j.FileEvent;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModuleFileEvent;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModuleInfo;
 import org.sonarsource.sonarlint.core.client.api.common.SonarLintEngine;
-import org.sonarsource.sonarlint.ls.Utils;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.FolderFileSystem;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
+import org.sonarsource.sonarlint.ls.util.Utils;
 import org.sonarsource.sonarlint.plugin.api.module.file.ModuleFileEvent;
 import org.sonarsource.sonarlint.plugin.api.module.file.ModuleFileEvent.Type;
 
@@ -117,7 +117,7 @@ public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
   }
 
   public void shutdown() {
-    asyncExecutor.shutdown();
+    Utils.shutdownAndAwait(asyncExecutor, true);
   }
 
 }

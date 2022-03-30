@@ -17,33 +17,21 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls;
+package org.sonarsource.sonarlint.ls.util;
 
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import java.io.IOException;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-class UtilsTests {
-
-  @ParameterizedTest
-  @CsvSource({
-    "0,vulnerabilities",
-    "1,vulnerability",
-    "42,vulnerabilities"
-  })
-  void shouldPluralizeVulnerability(long nbItems, String expected) {
-    assertThat(Utils.pluralize(nbItems, "vulnerability", "vulnerabilities")).isEqualTo(expected);
-  }
-
-  @ParameterizedTest
-  @CsvSource({
-    "0,issues",
-    "1,issue",
-    "42,issues"
-  })
-  void shouldPluralizeIssue(long nbItems, String expected) {
-    assertThat(Utils.pluralize(nbItems, "issue")).isEqualTo(expected);
-  }
-
+/**
+   * Supplier that propagates IOException.
+   *
+   * @param <T>
+   *            the return type which is expected from {@link #get()}
+   */
+@FunctionalInterface
+public interface SupplierWithIOException<T> {
+  /**
+   * @return result
+   * @throws IOException
+   */
+  T get() throws IOException;
 }

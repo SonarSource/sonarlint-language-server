@@ -33,7 +33,7 @@ import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
 
-import static org.sonarsource.sonarlint.ls.Utils.interrupted;
+import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 
 public class ProgressManager {
 

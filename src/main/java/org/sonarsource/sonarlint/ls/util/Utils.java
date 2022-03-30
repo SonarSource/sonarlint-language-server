@@ -17,14 +17,16 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls;
+package org.sonarsource.sonarlint.ls.util;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonSyntaxException;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.Diagnostic;
@@ -71,6 +73,20 @@ public class Utils {
   public static void interrupted(InterruptedException e) {
     LOG.debug("Interrupted!", e);
     Thread.currentThread().interrupt();
+  }
+
+  public static void shutdownAndAwait(ExecutorService executor, boolean stopActiveTasks) {
+    if (stopActiveTasks) {
+      executor.shutdownNow();
+    } else {
+      executor.shutdown();
+    }
+    try {
+      executor.awaitTermination(1, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+
   }
 
   public static String pluralize(long nbItems, String itemName) {

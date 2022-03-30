@@ -29,10 +29,11 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionnedIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.stream.Collectors.toList;
-import static org.sonarsource.sonarlint.ls.Utils.buildMessageWithPluralizedSuffix;
-import static org.sonarsource.sonarlint.ls.Utils.severity;
+import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralizedSuffix;
+import static org.sonarsource.sonarlint.ls.util.Utils.severity;
 
 public class DiagnosticPublisher {
 

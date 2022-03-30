@@ -42,6 +42,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
@@ -193,7 +194,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   public void shutdown() {
     watcher.stopWatcher();
     eventMap.clear();
-    asyncExecutor.shutdownNow();
+    Utils.shutdownAndAwait(asyncExecutor, true);
   }
 
   public void analyzeAllOpenFilesInFolder(@Nullable WorkspaceFolderWrapper folder) {

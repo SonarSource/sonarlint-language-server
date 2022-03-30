@@ -70,7 +70,7 @@ import static java.util.stream.Collectors.partitioningBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
-import static org.sonarsource.sonarlint.ls.Utils.pluralize;
+import static org.sonarsource.sonarlint.ls.util.Utils.pluralize;
 
 public class AnalysisTaskExecutor {
 

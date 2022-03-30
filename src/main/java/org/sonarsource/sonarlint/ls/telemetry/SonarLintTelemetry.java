@@ -36,13 +36,13 @@ import org.sonarsource.sonarlint.core.telemetry.TelemetryHttpClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
 import org.sonarsource.sonarlint.ls.NodeJsRuntime;
-import org.sonarsource.sonarlint.ls.Utils;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   public static final String DISABLE_PROPERTY_KEY = "sonarlint.telemetry.disabled";
@@ -212,7 +212,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
       scheduledFuture = null;
     }
     if (scheduler != null) {
-      scheduler.shutdown();
+      Utils.shutdownAndAwait(scheduler, true);
     }
   }
 

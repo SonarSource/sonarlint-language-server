@@ -37,16 +37,16 @@ import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
-import org.sonarsource.sonarlint.ls.Utils;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.Arrays.stream;
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.sonarsource.sonarlint.ls.Utils.interrupted;
+import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 
 public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
@@ -344,7 +344,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   }
 
   public void shutdown() {
-    executor.shutdown();
+    Utils.shutdownAndAwait(executor, true);
   }
 
 }
