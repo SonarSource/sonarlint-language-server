@@ -26,8 +26,8 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
@@ -40,6 +40,7 @@ import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpHeaders;
 import org.apache.hc.core5.http2.HttpVersionPolicy;
 import org.apache.hc.core5.reactor.IOReactorConfig;
+import org.apache.hc.core5.util.Timeout;
 import org.sonarsource.sonarlint.core.commons.http.HttpClient;
 import org.sonarsource.sonarlint.core.commons.http.HttpConnectionListener;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
@@ -48,19 +49,37 @@ public class ApacheHttpClient implements HttpClient {
 
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
-  private static final String USER_AGENT = "SonarLint VSCode";
+  public static final Timeout CONNECTION_TIMEOUT = Timeout.ofSeconds(30);
+  private static final Timeout RESPONSE_TIMEOUT = Timeout.ofMinutes(10);
+  private static final Timeout SOCKET_OPTIONS_TIMEOUT = Timeout.ofMinutes(1);
 
-  private final CloseableHttpAsyncClient client;
+  private CloseableHttpAsyncClient client;
   @CheckForNull
   private final String token;
+  private String userAgent;
+  private final Function<String, CloseableHttpAsyncClient> httpClientFactory;
 
-  ApacheHttpClient(CloseableHttpAsyncClient client, @Nullable String token) {
-    this.client = client;
+  ApacheHttpClient(@Nullable String token) {
     this.token = token;
+    this.httpClientFactory = ua -> HttpAsyncClients.custom()
+      .useSystemProperties()
+      .setUserAgent(ua)
+      .setIOReactorConfig(
+        IOReactorConfig.custom()
+          .setSoTimeout(SOCKET_OPTIONS_TIMEOUT)
+          .build())
+      .setDefaultRequestConfig(
+        RequestConfig.copy(RequestConfig.DEFAULT)
+          .setConnectTimeout(CONNECTION_TIMEOUT)
+          .setConnectionRequestTimeout(CONNECTION_TIMEOUT)
+          .setResponseTimeout(RESPONSE_TIMEOUT)
+          .build())
+      .setVersionPolicy(HttpVersionPolicy.FORCE_HTTP_1)
+      .build();
   }
 
   public ApacheHttpClient withToken(String token) {
-    return new ApacheHttpClient(client, token);
+    return new ApacheHttpClient(token);
   }
 
   @Override
@@ -101,6 +120,9 @@ public class ApacheHttpClient implements HttpClient {
   private CompletableFuture<Response> executeAsync(SimpleRequestBuilder httpRequest) {
     if (token != null) {
       httpRequest.setHeader(HttpHeaders.AUTHORIZATION, basic(token, ""));
+    }
+    if (client == null) {
+      client = httpClientFactory.apply(userAgent);
     }
     var futureWrapper = new CompletableFutureWrapper(httpRequest);
     futureWrapper.wrapped = client.execute(httpRequest.build(), futureWrapper);
@@ -148,30 +170,20 @@ public class ApacheHttpClient implements HttpClient {
 
   public void close() {
     try {
-      client.close();
+      if (client != null) {
+        client.close();
+      }
     } catch (IOException e) {
       LOG.error("Unable to close http client: ", e.getMessage());
     }
   }
 
   public static ApacheHttpClient create() {
-    var httpClient = HttpAsyncClients.custom()
-      .useSystemProperties()
-      .setUserAgent(USER_AGENT)
-      .setIOReactorConfig(
-        IOReactorConfig.custom()
-          .setSoTimeout(1, TimeUnit.MINUTES)
-          .build())
-      .setDefaultRequestConfig(
-        RequestConfig.copy(RequestConfig.DEFAULT)
-          .setConnectTimeout(30, TimeUnit.SECONDS)
-          .setConnectionRequestTimeout(30, TimeUnit.SECONDS)
-          .setResponseTimeout(10, TimeUnit.MINUTES)
-          .build())
-      .setVersionPolicy(HttpVersionPolicy.FORCE_HTTP_1)
-      .build();
-    httpClient.start();
-    return new ApacheHttpClient(httpClient, null);
+    return new ApacheHttpClient(null);
+  }
+
+  public void initialize(String userAgent) {
+    this.userAgent = userAgent;
   }
 
   @Override
