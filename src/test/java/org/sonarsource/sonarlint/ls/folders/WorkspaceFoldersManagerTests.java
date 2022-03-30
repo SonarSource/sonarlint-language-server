@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonarsource.sonarlint.ls.SonarLintLogTester;
+import testutils.SonarLintLogTester;
 
 import static java.net.URI.create;
 import static org.assertj.core.api.Assertions.assertThat;

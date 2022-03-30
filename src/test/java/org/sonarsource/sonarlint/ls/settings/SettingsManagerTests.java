@@ -34,11 +34,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput.Level;
-import org.sonarsource.sonarlint.ls.SonarLintLogTester;
 import org.sonarsource.sonarlint.ls.Utils;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
+import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -48,7 +48,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
-class SettingsManagerTest {
+class SettingsManagerTests {
 
   private static final URI FOLDER_URI = URI.create("file://foo");
 

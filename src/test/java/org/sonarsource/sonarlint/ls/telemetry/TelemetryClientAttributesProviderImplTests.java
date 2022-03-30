@@ -39,7 +39,7 @@ import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class TelemetryClientAttributesProviderImplTest {
+class TelemetryClientAttributesProviderImplTests {
 
   private TelemetryClientAttributesProviderImpl underTest;
   private WorkspaceSettings workspaceSettings;

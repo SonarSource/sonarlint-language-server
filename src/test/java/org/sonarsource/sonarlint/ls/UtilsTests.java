@@ -24,7 +24,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class UtilsTest {
+class UtilsTests {
 
   @ParameterizedTest
   @CsvSource({

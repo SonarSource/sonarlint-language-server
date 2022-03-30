@@ -41,7 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class ShowAllLocationsCommandTest {
+class ShowAllLocationsCommandTests {
 
   @Test
   void shouldBuildCommandParamsFromIssue() {
@@ -119,7 +119,7 @@ class ShowAllLocationsCommandTest {
 
     var connectionId = "connectionId";
 
-    var param = new ShowAllLocationsCommand.Param(issue, connectionId, ShowAllLocationsCommandTest::resolvePath, cache);
+    var param = new ShowAllLocationsCommand.Param(issue, connectionId, ShowAllLocationsCommandTests::resolvePath, cache);
 
     assertThat(param.getConnectionId()).isEqualTo(connectionId);
     assertThat(param.getCreationDate()).isEqualTo("1970-01-01T00:00:00Z");

@@ -30,13 +30,13 @@ import org.sonarsource.sonarlint.core.analysis.api.TextRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class LocalCodeFileTest {
+class LocalCodeFileTests {
 
   private static LocalCodeFile underTest;
 
   @BeforeAll
   static void setUp() throws Exception {
-    underTest = LocalCodeFile.from(LocalCodeFileTest.class.getResource("/sample.txt").toURI());
+    underTest = LocalCodeFile.from(LocalCodeFileTests.class.getResource("/sample.txt").toURI());
   }
 
   @Test

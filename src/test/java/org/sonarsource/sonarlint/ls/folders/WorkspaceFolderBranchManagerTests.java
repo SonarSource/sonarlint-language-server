@@ -34,14 +34,14 @@ import org.sonarsource.sonarlint.core.client.api.connected.ProjectBranches;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
-import org.sonarsource.sonarlint.ls.util.ImmediateExecutorService;
+import testutils.ImmediateExecutorService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class WorkspaceFolderBranchManagerTest {
+class WorkspaceFolderBranchManagerTests {
 
   @Test
   void didBranchNameChangeNoBinding() throws Exception {
