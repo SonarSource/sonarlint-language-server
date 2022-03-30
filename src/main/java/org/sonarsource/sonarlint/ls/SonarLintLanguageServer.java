@@ -84,6 +84,8 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListen
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
+import org.sonarsource.sonarlint.ls.util.ExitingInputStream;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.net.URI.create;
 import static java.util.Optional.ofNullable;
@@ -125,10 +127,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers, Collection<Path> extraAnalyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
+    var input = new ExitingInputStream(inputStream, this);
     var launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
       .setLocalService(this)
       .setRemoteInterface(SonarLintExtendedLanguageClient.class)
-      .setInput(inputStream)
+      .setInput(input)
       .setOutput(outputStream)
       .setExecutorService(threadPool)
       .create();
@@ -266,21 +269,29 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public CompletableFuture<Object> shutdown() {
-    return CompletableFutures.computeAsync(cancelToken -> {
-      cancelToken.checkCanceled();
-      securityHotspotsHandlerServer.shutdown();
-      analysisScheduler.shutdown();
-      bindingManager.shutdown();
-      telemetry.stop();
-      settingsManager.shutdown();
-      threadPool.shutdown();
-      httpClient.close();
-      serverNotifications.shutdown();
-      standaloneEngineManager.shutdown();
-      moduleEventsProcessor.shutdown();
-      branchManager.shutdown();
-      return new Object();
-    });
+    List.<Runnable>of(
+      securityHotspotsHandlerServer::shutdown,
+      analysisScheduler::shutdown,
+      bindingManager::shutdown,
+      telemetry::stop,
+      settingsManager::shutdown,
+      httpClient::close,
+      serverNotifications::shutdown,
+      standaloneEngineManager::shutdown,
+      moduleEventsProcessor::shutdown,
+      branchManager::shutdown,
+      // Do last
+      () -> Utils.shutdownAndAwait(threadPool, false))
+      .forEach(this::invokeQuietly);
+    return CompletableFuture.completedFuture(null);
+  }
+
+  private void invokeQuietly(Runnable call) {
+    try {
+      call.run();
+    } catch (Exception e) {
+      lsLogOutput.error("Unable to properly shutdown", e);
+    }
   }
 
   @Override

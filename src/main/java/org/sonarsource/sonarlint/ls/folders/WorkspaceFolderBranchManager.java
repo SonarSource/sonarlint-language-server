@@ -35,6 +35,7 @@ import org.sonarsource.sonarlint.core.vcs.GitUtils;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleListener {
 
@@ -104,6 +105,6 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
   }
 
   public void shutdown() {
-    executorService.shutdownNow();
+    Utils.shutdownAndAwait(executorService, true);
   }
 }

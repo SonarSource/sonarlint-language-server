@@ -30,10 +30,10 @@ import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
 import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
-import org.sonarsource.sonarlint.ls.Utils;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.Collections.emptyList;
-import static org.sonarsource.sonarlint.ls.Utils.buildMessageWithPluralizedSuffix;
+import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralizedSuffix;
 
 public class TaintVulnerabilitiesCache {
 
