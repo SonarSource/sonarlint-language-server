@@ -37,9 +37,7 @@ import static org.sonarsource.sonarlint.ls.util.Utils.severity;
 
 public class DiagnosticPublisher {
 
-  public static final String TYPESCRIPT_PATH_PROP = "sonar.typescript.internal.typescriptLocation";
   static final String SONARLINT_SOURCE = "sonarlint";
-  public static final String SONARQUBE_TAINT_SOURCE = "SonarQube Taint Analyzer";
 
   public static final String ITEM_LOCATION = "location";
   public static final String ITEM_FLOW = "flow";
