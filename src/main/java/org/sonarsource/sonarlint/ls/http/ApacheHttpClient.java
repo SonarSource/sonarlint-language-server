@@ -56,26 +56,9 @@ public class ApacheHttpClient implements HttpClient {
   private CloseableHttpAsyncClient client;
   @CheckForNull
   private final String token;
-  private String userAgent;
-  private final Function<String, CloseableHttpAsyncClient> httpClientFactory;
-
   ApacheHttpClient(@Nullable String token) {
     this.token = token;
-    this.httpClientFactory = ua -> HttpAsyncClients.custom()
-      .useSystemProperties()
-      .setUserAgent(ua)
-      .setIOReactorConfig(
-        IOReactorConfig.custom()
-          .setSoTimeout(SOCKET_OPTIONS_TIMEOUT)
-          .build())
-      .setDefaultRequestConfig(
-        RequestConfig.copy(RequestConfig.DEFAULT)
-          .setConnectTimeout(CONNECTION_TIMEOUT)
-          .setConnectionRequestTimeout(CONNECTION_TIMEOUT)
-          .setResponseTimeout(RESPONSE_TIMEOUT)
-          .build())
-      .setVersionPolicy(HttpVersionPolicy.FORCE_HTTP_1)
-      .build();
+
   }
 
   public ApacheHttpClient withToken(String token) {
@@ -121,9 +104,6 @@ public class ApacheHttpClient implements HttpClient {
     if (token != null) {
       httpRequest.setHeader(HttpHeaders.AUTHORIZATION, basic(token, ""));
     }
-    if (client == null) {
-      client = httpClientFactory.apply(userAgent);
-    }
     var futureWrapper = new CompletableFutureWrapper(httpRequest);
     futureWrapper.wrapped = client.execute(httpRequest.build(), futureWrapper);
     return futureWrapper;
@@ -162,6 +142,7 @@ public class ApacheHttpClient implements HttpClient {
     }
   }
 
+  // why support login+pass here if changed to token?
   private static String basic(String username, String password) {
     var usernameAndPassword = username + ":" + password;
     var encoded = Base64.getEncoder().encodeToString(usernameAndPassword.getBytes(StandardCharsets.ISO_8859_1));
@@ -183,7 +164,21 @@ public class ApacheHttpClient implements HttpClient {
   }
 
   public void initialize(String userAgent) {
-    this.userAgent = userAgent;
+    this.client = HttpAsyncClients.custom()
+      .useSystemProperties()
+      .setUserAgent(userAgent)
+      .setIOReactorConfig(
+        IOReactorConfig.custom()
+          .setSoTimeout(SOCKET_OPTIONS_TIMEOUT)
+          .build())
+      .setDefaultRequestConfig(
+        RequestConfig.copy(RequestConfig.DEFAULT)
+          .setConnectTimeout(CONNECTION_TIMEOUT)
+          .setConnectionRequestTimeout(CONNECTION_TIMEOUT)
+          .setResponseTimeout(RESPONSE_TIMEOUT)
+          .build())
+      .setVersionPolicy(HttpVersionPolicy.FORCE_HTTP_1)
+      .build();
   }
 
   @Override

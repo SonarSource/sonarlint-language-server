@@ -63,6 +63,7 @@ class ApacheHttpClientTests {
 
   ApacheHttpClient underTest = ApacheHttpClient.create();
 
+
   @BeforeAll
   static void startServer() throws Exception {
     handler = new RecordingHandler();
@@ -80,7 +81,8 @@ class ApacheHttpClientTests {
   }
 
   @BeforeEach
-  void resetHandler() {
+  void prepare() {
+    underTest.initialize("unitTest");
     handler.reset();
   }
 
