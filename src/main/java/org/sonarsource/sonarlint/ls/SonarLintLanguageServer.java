@@ -272,6 +272,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     List.<Runnable>of(
       // start by not processing any more messages from the client
       () -> Utils.shutdownAndAwait(threadPool, true),
+      // prevent creation of new engines
+      enginesFactory::shutdown,
       analysisScheduler::shutdown,
       branchManager::shutdown,
       securityHotspotsHandlerServer::shutdown,

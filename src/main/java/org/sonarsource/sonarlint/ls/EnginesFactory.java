@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.ConnectedSonarLintEngineImpl;
@@ -71,6 +72,7 @@ public class EnginesFactory {
   private final NodeJsRuntime nodeJsRuntime;
   private final ClientModulesProvider modulesProvider;
   private final Collection<Path> extraAnalyzers;
+  private final AtomicReference<Boolean> shutdown = new AtomicReference<>(false);
 
   public EnginesFactory(Collection<Path> standaloneAnalyzers, LanguageClientLogOutput globalLogOutput, NodeJsRuntime nodeJsRuntime, ClientModulesProvider modulesProvider,
     Collection<Path> extraAnalyzers) {
@@ -82,6 +84,9 @@ public class EnginesFactory {
   }
 
   public StandaloneSonarLintEngine createStandaloneEngine() {
+    if (shutdown.get().equals(true)) {
+      throw new IllegalStateException("Language server is shutting down, won't create engine");
+    }
     LOG.debug("Starting standalone SonarLint engine...");
     LOG.debug("Using {} analyzers", standaloneAnalyzers.size());
 
@@ -110,6 +115,9 @@ public class EnginesFactory {
   }
 
   public ConnectedSonarLintEngine createConnectedEngine(String connectionId) {
+    if (shutdown.get().equals(true)) {
+      throw new IllegalStateException("Language server is shutting down, won't create engine");
+    }
     var builder = ConnectedGlobalConfiguration.builder()
       .setConnectionId(connectionId)
       .setExtraProperties(prepareExtraProps())
@@ -156,6 +164,10 @@ public class EnginesFactory {
 
   public static Set<Language> getStandaloneLanguages() {
     return EnumSet.copyOf(List.of(STANDALONE_LANGUAGES));
+  }
+
+  public void shutdown() {
+    shutdown.set(true);
   }
 
 }
