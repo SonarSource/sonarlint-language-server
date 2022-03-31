@@ -40,7 +40,7 @@ import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.Arrays.stream;
@@ -73,7 +73,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private final LanguageClient client;
   private final WorkspaceFoldersManager foldersManager;
-  private final ApacheHttpClient httpClient;
+  private final ApacheHttpClientProvider httpClientProvider;
 
   private WorkspaceSettings currentSettings = null;
   private final CountDownLatch initLatch = new CountDownLatch(1);
@@ -85,10 +85,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private final List<WorkspaceSettingsChangeListener> globalListeners = new ArrayList<>();
   private final List<WorkspaceFolderSettingsChangeListener> folderListeners = new ArrayList<>();
 
-  public SettingsManager(LanguageClient client, WorkspaceFoldersManager foldersManager, ApacheHttpClient httpClient) {
+  public SettingsManager(LanguageClient client, WorkspaceFoldersManager foldersManager, ApacheHttpClientProvider httpClientProvider) {
     this.client = client;
     this.foldersManager = foldersManager;
-    this.httpClient = httpClient;
+    this.httpClientProvider = httpClientProvider;
     this.executor = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint settings manager", false));
   }
 
@@ -124,7 +124,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     executor.execute(() -> {
       try {
         var workspaceSettingsMap = requestSonarLintConfigurationAsync(null).get(1, TimeUnit.MINUTES);
-        var newWorkspaceSettings = parseSettings(workspaceSettingsMap, httpClient);
+        var newWorkspaceSettings = parseSettings(workspaceSettingsMap, httpClientProvider);
         var oldWorkspaceSettings = currentSettings;
         this.currentSettings = newWorkspaceSettings;
         var newDefaultFolderSettings = parseFolderSettings(workspaceSettingsMap);
@@ -195,10 +195,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     }
   }
 
-  private static WorkspaceSettings parseSettings(Map<String, Object> params, ApacheHttpClient httpClient) {
+  private static WorkspaceSettings parseSettings(Map<String, Object> params, ApacheHttpClientProvider httpClientProvider) {
     var disableTelemetry = (Boolean) params.getOrDefault(DISABLE_TELEMETRY, false);
     var pathToNodeExecutable = (String) params.get(PATH_TO_NODE_EXECUTABLE);
-    var serverConnections = parseServerConnections(params, httpClient);
+    var serverConnections = parseServerConnections(params, httpClientProvider);
     @SuppressWarnings("unchecked")
     var rulesConfiguration = RulesConfiguration.parse(((Map<String, Object>) params.getOrDefault(RULES, Collections.emptyMap())));
     @SuppressWarnings("unchecked")
@@ -209,19 +209,20 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable);
   }
 
-  private static Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params, ApacheHttpClient httpClient) {
+  private static Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params, ApacheHttpClientProvider httpClientProvider) {
     @SuppressWarnings("unchecked")
     var connectedModeMap = (Map<String, Object>) params.getOrDefault("connectedMode", Collections.emptyMap());
     var serverConnections = new HashMap<String, ServerConnectionSettings>();
-    parseDeprecatedServerEntries(connectedModeMap, serverConnections, httpClient);
+    parseDeprecatedServerEntries(connectedModeMap, serverConnections, httpClientProvider);
     @SuppressWarnings("unchecked")
     var connectionsMap = (Map<String, Object>) connectedModeMap.getOrDefault("connections", Collections.emptyMap());
-    parseSonarQubeConnections(connectionsMap, serverConnections, httpClient);
-    parseSonarCloudConnections(connectionsMap, serverConnections, httpClient);
+    parseSonarQubeConnections(connectionsMap, serverConnections, httpClientProvider);
+    parseSonarCloudConnections(connectionsMap, serverConnections, httpClientProvider);
     return serverConnections;
   }
 
-  private static void parseDeprecatedServerEntries(Map<String, Object> connectedModeMap, Map<String, ServerConnectionSettings> serverConnections, ApacheHttpClient httpClient) {
+  private static void parseDeprecatedServerEntries(Map<String, Object> connectedModeMap, Map<String, ServerConnectionSettings> serverConnections,
+    ApacheHttpClientProvider httpClientProvider) {
     @SuppressWarnings("unchecked")
     var deprecatedServersEntries = (List<Map<String, Object>>) connectedModeMap.getOrDefault("servers", Collections.emptyList());
     deprecatedServersEntries.forEach(m -> {
@@ -230,13 +231,14 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         var url = (String) m.get(SERVER_URL);
         var token = (String) m.get(TOKEN);
         var organization = (String) m.get(ORGANIZATION_KEY);
-        var connectionSettings = new ServerConnectionSettings(connectionId, url, token, organization, false, httpClient);
+        var connectionSettings = new ServerConnectionSettings(connectionId, url, token, organization, false, httpClientProvider);
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
       }
     });
   }
 
-  private static void parseSonarQubeConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections, ApacheHttpClient httpClient) {
+  private static void parseSonarQubeConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections,
+    ApacheHttpClientProvider httpClientProvider) {
     @SuppressWarnings("unchecked")
     var sonarqubeEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarqube", Collections.emptyList());
     sonarqubeEntries.forEach(m -> {
@@ -245,13 +247,14 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         var url = (String) m.get(SERVER_URL);
         var token = (String) m.get(TOKEN);
         var disableNotifications = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
-        var connectionSettings = new ServerConnectionSettings(connectionId, url, token, null, disableNotifications, httpClient);
+        var connectionSettings = new ServerConnectionSettings(connectionId, url, token, null, disableNotifications, httpClientProvider);
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
       }
     });
   }
 
-  private static void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections, ApacheHttpClient httpClient) {
+  private static void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections,
+    ApacheHttpClientProvider httpClientProvider) {
     @SuppressWarnings("unchecked")
     var sonarcloudEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
     sonarcloudEntries.forEach(m -> {
@@ -262,7 +265,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         var token = (String) m.get(TOKEN);
         var disableNotifs = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
         addIfUniqueConnectionId(serverConnections, connectionId,
-          new ServerConnectionSettings(connectionId, ServerConnectionSettings.SONARCLOUD_URL, token, organizationKey, disableNotifs, httpClient));
+          new ServerConnectionSettings(connectionId, ServerConnectionSettings.SONARCLOUD_URL, token, organizationKey, disableNotifs, httpClientProvider));
       }
     });
   }

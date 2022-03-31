@@ -74,7 +74,7 @@ import org.sonarsource.sonarlint.ls.folders.ModuleEventsProcessor;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersProvider;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -110,7 +110,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ProgressManager progressManager;
   private final ExecutorService threadPool;
   private final SecurityHotspotsHandlerServer securityHotspotsHandlerServer;
-  private final ApacheHttpClient httpClient;
+  private final ApacheHttpClientProvider httpClientProvider;
   private final WorkspaceFolderBranchManager branchManager;
   private final JavaConfigCache javaConfigCache;
   private final IssuesCache issuesCache;
@@ -137,7 +137,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .create();
 
     this.client = launcher.getRemoteProxy();
-    this.httpClient = ApacheHttpClient.create();
+    this.httpClientProvider = new ApacheHttpClientProvider();
     this.lsLogOutput = new LanguageClientLogger(this.client);
     var globalLogOutput = new LanguageClientLogOutput(lsLogOutput, false);
     SonarLintLogger.setTarget(globalLogOutput);
@@ -148,7 +148,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache);
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.progressManager = new ProgressManager(client);
-    this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClient);
+    this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClientProvider);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
     var fileTypeClassifier = new FileTypeClassifier();
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
@@ -157,7 +157,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, progressManager);
-    this.telemetry = new SonarLintTelemetry(httpClient, settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager);
+    this.telemetry = new SonarLintTelemetry(httpClientProvider, settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
@@ -211,7 +211,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var clientVersion = params.getClientInfo().getVersion();
       var ideVersion = appName + " " + clientVersion;
       var firstSecretDetected = (boolean) options.getOrDefault("firstSecretDetected", false);
-      httpClient.initialize(productName);
+      httpClientProvider.initialize(productName, productVersion);
       var typeScriptPath = ofNullable((String) options.get(TYPESCRIPT_LOCATION));
       var additionalAttributes = (Map<String, Object>) options.getOrDefault("additionalAttributes", Map.of());
       var showVerboseLogs = (boolean) options.getOrDefault("showVerboseLogs", true);
@@ -276,7 +276,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       bindingManager::shutdown,
       telemetry::stop,
       settingsManager::shutdown,
-      httpClient::close,
+      httpClientProvider::close,
       serverNotifications::shutdown,
       standaloneEngineManager::shutdown,
       moduleEventsProcessor::shutdown,

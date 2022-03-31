@@ -33,7 +33,7 @@ import org.sonarsource.sonarlint.core.container.model.DefaultServerNotification;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
@@ -60,7 +60,7 @@ class ServerNotificationsTests {
 
   private final LanguageClientLogger output = mock(LanguageClientLogger.class);
 
-  private final ApacheHttpClient httpClient = mock(ApacheHttpClient.class);
+  private final ApacheHttpClientProvider httpClientProvider = mock(ApacheHttpClientProvider.class);
 
   private ServerNotifications underTest;
 
@@ -87,7 +87,7 @@ class ServerNotificationsTests {
     var projectKey = "projectKey";
 
     var newWorkspaceSettings = mock(WorkspaceSettings.class);
-    var settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClient);
+    var settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClientProvider);
     when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
 
@@ -111,7 +111,7 @@ class ServerNotificationsTests {
     var projectKey2 = "projectKey2";
 
     var newWorkspaceSettings = mock(WorkspaceSettings.class);
-    var settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClient);
+    var settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClientProvider);
     when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
 
@@ -135,7 +135,7 @@ class ServerNotificationsTests {
     var projectKey = "projectKey";
 
     var newWorkspaceSettings = mock(WorkspaceSettings.class);
-    var settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClient);
+    var settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClientProvider);
     when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
 
@@ -168,7 +168,7 @@ class ServerNotificationsTests {
 
     // Then fix connection settings with known connection
     var newWorkspaceSettings2 = mock(WorkspaceSettings.class);
-    var settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClient);
+    var settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClientProvider);
     when(newWorkspaceSettings2.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
     when(folder.getSettings()).thenReturn(newFolderSettings);
     when(workspaceFoldersManager.getAll()).thenReturn(Collections.singleton(folder));
@@ -184,7 +184,7 @@ class ServerNotificationsTests {
     var projectKey = "projectKey";
 
     var newWorkspaceSettings = mock(WorkspaceSettings.class);
-    var serverConnectionSettings = new ServerConnectionSettings(connectionId, "", "", null, true, httpClient);
+    var serverConnectionSettings = new ServerConnectionSettings(connectionId, "", "", null, true, httpClientProvider);
     when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, serverConnectionSettings));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
 
@@ -208,7 +208,7 @@ class ServerNotificationsTests {
     var projectKey = "projectKey";
 
     var newWorkspaceSettings1 = mock(WorkspaceSettings.class);
-    var serverConnectionSettings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClient);
+    var serverConnectionSettings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClientProvider);
     when(newWorkspaceSettings1.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, serverConnectionSettings));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings1);
 
@@ -217,7 +217,7 @@ class ServerNotificationsTests {
     underTest.onChange(folder, null, newFolderSettings);
 
     var newWorkspaceSettings2 = mock(WorkspaceSettings.class);
-    var settings = new ServerConnectionSettings(connectionId, "http://other.sq", "token", null, false, httpClient);
+    var settings = new ServerConnectionSettings(connectionId, "http://other.sq", "token", null, false, httpClientProvider);
     when(newWorkspaceSettings2.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
     underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings2);
 

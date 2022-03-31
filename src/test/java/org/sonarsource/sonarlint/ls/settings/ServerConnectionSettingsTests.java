@@ -20,37 +20,37 @@
 package org.sonarsource.sonarlint.ls.settings;
 
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 class ServerConnectionSettingsTests {
 
-  private static final ApacheHttpClient httpClient = mock(ApacheHttpClient.class);
-  private static final ServerConnectionSettings WITHOUT_ORG = new ServerConnectionSettings("serverId", "serverUrl", "token", null, false, httpClient);
-  private static final ServerConnectionSettings WITH_ORG = new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false, httpClient);
+  private static final ApacheHttpClientProvider httpClientProvider = mock(ApacheHttpClientProvider.class);
+  private static final ServerConnectionSettings WITHOUT_ORG = new ServerConnectionSettings("serverId", "serverUrl", "token", null, false, httpClientProvider);
+  private static final ServerConnectionSettings WITH_ORG = new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false, httpClientProvider);
 
   @Test
   void testHashCode() {
-    assertThat(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false, httpClient)).hasSameHashCodeAs(WITH_ORG);
-    assertThat(new ServerConnectionSettings("serverId", "serverUrl", "token", null, false, httpClient)).hasSameHashCodeAs(WITHOUT_ORG);
+    assertThat(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false, httpClientProvider)).hasSameHashCodeAs(WITH_ORG);
+    assertThat(new ServerConnectionSettings("serverId", "serverUrl", "token", null, false, httpClientProvider)).hasSameHashCodeAs(WITHOUT_ORG);
   }
 
   @Test
   void testEquals() {
     assertThat(WITH_ORG)
       .isEqualTo(WITH_ORG)
-      .isEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false, httpClient))
+      .isEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false, httpClientProvider))
       .isNotEqualTo(null)
       .isNotEqualTo("foo")
-      .isNotEqualTo(new ServerConnectionSettings("serverId2", "serverUrl", "token", "myOrg", false, httpClient))
-      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl2", "token", "myOrg", false, httpClient))
-      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token2", "myOrg", false, httpClient))
-      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2", false, httpClient))
-      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2", true, httpClient));
+      .isNotEqualTo(new ServerConnectionSettings("serverId2", "serverUrl", "token", "myOrg", false, httpClientProvider))
+      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl2", "token", "myOrg", false, httpClientProvider))
+      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token2", "myOrg", false, httpClientProvider))
+      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2", false, httpClientProvider))
+      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2", true, httpClientProvider));
     assertThat(WITHOUT_ORG)
-      .isEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", null, false, httpClient))
+      .isEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", null, false, httpClientProvider))
       .isNotEqualTo(WITH_ORG);
   }
 

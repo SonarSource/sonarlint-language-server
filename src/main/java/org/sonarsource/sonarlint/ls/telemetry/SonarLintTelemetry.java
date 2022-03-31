@@ -37,7 +37,7 @@ import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
 import org.sonarsource.sonarlint.ls.NodeJsRuntime;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
@@ -49,7 +49,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private final Supplier<ScheduledExecutorService> executorFactory;
-  private final ApacheHttpClient httpClient;
+  private final ApacheHttpClientProvider httpClientProvider;
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
   private final NodeJsRuntime nodeJsRuntime;
@@ -61,16 +61,17 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   private ScheduledExecutorService scheduler;
   private Map<String, Object> additionalAttributes;
 
-  public SonarLintTelemetry(ApacheHttpClient httpClient, SettingsManager settingsManager, ProjectBindingManager bindingManager, NodeJsRuntime nodeJsRuntime,
+  public SonarLintTelemetry(ApacheHttpClientProvider httpClientProvider, SettingsManager settingsManager, ProjectBindingManager bindingManager, NodeJsRuntime nodeJsRuntime,
     StandaloneEngineManager standaloneEngineManager) {
-    this(() -> Executors.newScheduledThreadPool(1, Utils.threadFactory("SonarLint Telemetry", false)), httpClient, settingsManager, bindingManager, nodeJsRuntime,
+    this(() -> Executors.newScheduledThreadPool(1, Utils.threadFactory("SonarLint Telemetry", false)), httpClientProvider, settingsManager, bindingManager, nodeJsRuntime,
       standaloneEngineManager);
   }
 
-  public SonarLintTelemetry(Supplier<ScheduledExecutorService> executorFactory, ApacheHttpClient httpClient, SettingsManager settingsManager, ProjectBindingManager bindingManager,
+  public SonarLintTelemetry(Supplier<ScheduledExecutorService> executorFactory, ApacheHttpClientProvider httpClientProvider, SettingsManager settingsManager,
+    ProjectBindingManager bindingManager,
     NodeJsRuntime nodeJsRuntime, StandaloneEngineManager standaloneEngineManager) {
     this.executorFactory = executorFactory;
-    this.httpClient = httpClient;
+    this.httpClientProvider = httpClientProvider;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
     this.nodeJsRuntime = nodeJsRuntime;
@@ -114,7 +115,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
       LOG.debug("Telemetry disabled by system property");
       return;
     }
-    var client = new TelemetryHttpClient(productName, productVersion, ideVersion, httpClient);
+    var client = new TelemetryHttpClient(productName, productVersion, ideVersion, httpClientProvider.anonymous());
     this.telemetry = newTelemetryManager(storagePath, client);
     try {
       this.scheduler = executorFactory.get();

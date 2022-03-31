@@ -43,7 +43,7 @@ import org.sonarsource.sonarlint.core.serverapi.hotspot.GetSecurityHotspotReques
 import org.sonarsource.sonarlint.core.serverapi.hotspot.HotspotApi;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspot;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -158,8 +158,8 @@ class SecurityHotspotsHandlerServerTests {
   }
 
   private void mockTrustedServer() {
-    ApacheHttpClient httpClient = mock(ApacheHttpClient.class);
-    ServerConnectionSettings localhostTrustedConnection = new ServerConnectionSettings("myServer", TRUSTED_SERVER_URL, null, null, false, httpClient);
+    ApacheHttpClientProvider httpClientProvider = mock(ApacheHttpClientProvider.class);
+    ServerConnectionSettings localhostTrustedConnection = new ServerConnectionSettings("myServer", TRUSTED_SERVER_URL, null, null, false, httpClientProvider);
     when(settingsManager.getCurrentSettings()).thenReturn(new WorkspaceSettings(true,
       Map.of("localhost", localhostTrustedConnection), null, null, null, false, false,
       null));

@@ -33,6 +33,7 @@ import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.HttpException;
+import org.apache.hc.core5.http.HttpHeaders;
 import org.apache.hc.core5.http.Method;
 import org.apache.hc.core5.http.impl.bootstrap.HttpServer;
 import org.apache.hc.core5.http.impl.bootstrap.ServerBootstrap;
@@ -56,13 +57,16 @@ import static org.awaitility.Awaitility.await;
 
 class ApacheHttpClientTests {
 
+  private static final String FAKE_PRODUCT_NAME = "SonarLint LS unitTests";
+  private static final String FAKE_PRODUCT_VERSION = "1.0";
+  private static final String EXPECTED_USER_AGENT = "SonarLint LS unitTests 1.0";
+
   private static final String WAIT_FOREVER = "/waitForever";
   private static HttpServer server;
   private static String serverBase;
   private static RecordingHandler handler;
 
-  ApacheHttpClient underTest = ApacheHttpClient.create();
-
+  private final ApacheHttpClientProvider underTest = new ApacheHttpClientProvider();
 
   @BeforeAll
   static void startServer() throws Exception {
@@ -82,7 +86,7 @@ class ApacheHttpClientTests {
 
   @BeforeEach
   void prepare() {
-    underTest.initialize("unitTest");
+    underTest.initialize(FAKE_PRODUCT_NAME, FAKE_PRODUCT_VERSION);
     handler.reset();
   }
 
@@ -93,42 +97,42 @@ class ApacheHttpClientTests {
 
   @Test
   void get_request_test() {
-    var response = underTest.get(serverBase);
+    var response = underTest.anonymous().get(serverBase);
     var responseString = response.bodyAsString();
 
     assertThat(response.isSuccessful()).isTrue();
     assertThat(responseString).isNotEmpty();
-    handler.assertRequest(Method.GET.name(), "/");
+    handler.assertRequest(Method.GET.name(), "/", HttpHeaders.USER_AGENT, EXPECTED_USER_AGENT);
   }
 
   @Test
   void get_async_request_test() throws InterruptedException, ExecutionException {
-    var response = underTest.getAsync(serverBase).get();
+    var response = underTest.anonymous().getAsync(serverBase).get();
     var responseString = response.bodyAsString();
 
     assertThat(response.isSuccessful()).isTrue();
     assertThat(responseString).isNotEmpty();
-    handler.assertRequest(Method.GET.name(), "/");
+    handler.assertRequest(Method.GET.name(), "/", HttpHeaders.USER_AGENT, EXPECTED_USER_AGENT);
   }
 
   @Test
   void post_request_test() {
-    var response = underTest.post(serverBase, "image/jpeg", "");
+    var response = underTest.anonymous().post(serverBase, "image/jpeg", "");
     var responseString = response.bodyAsString();
 
     assertThat(response.isSuccessful()).isTrue();
     assertThat(responseString).isNotEmpty();
-    handler.assertRequest(Method.POST.name(), "/");
+    handler.assertRequest(Method.POST.name(), "/", HttpHeaders.USER_AGENT, EXPECTED_USER_AGENT);
   }
 
   @Test
   void delete_request_test() {
-    var response = underTest.delete(serverBase, "image/jpeg", "");
+    var response = underTest.anonymous().delete(serverBase, "image/jpeg", "");
     var responseString = response.bodyAsString();
 
     assertThat(response.isSuccessful()).isTrue();
     assertThat(responseString).isNotEmpty();
-    handler.assertRequest(Method.DELETE.name(), "/");
+    handler.assertRequest(Method.DELETE.name(), "/", HttpHeaders.USER_AGENT, EXPECTED_USER_AGENT);
   }
 
   @Test
@@ -145,7 +149,7 @@ class ApacheHttpClientTests {
 
   @Test
   void test_cancel_request() throws InterruptedException {
-    var response = underTest.getAsync(serverBase + WAIT_FOREVER);
+    var response = underTest.anonymous().getAsync(serverBase + WAIT_FOREVER);
     List<Object> result = new ArrayList<>();
     Thread t = new Thread(() -> {
       try {

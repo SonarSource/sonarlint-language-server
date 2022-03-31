@@ -27,20 +27,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
-import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
-import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
 import org.apache.hc.core5.concurrent.FutureCallback;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpHeaders;
-import org.apache.hc.core5.http2.HttpVersionPolicy;
-import org.apache.hc.core5.reactor.IOReactorConfig;
-import org.apache.hc.core5.util.Timeout;
 import org.sonarsource.sonarlint.core.commons.http.HttpClient;
 import org.sonarsource.sonarlint.core.commons.http.HttpConnectionListener;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
@@ -49,20 +43,13 @@ public class ApacheHttpClient implements HttpClient {
 
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
-  public static final Timeout CONNECTION_TIMEOUT = Timeout.ofSeconds(30);
-  private static final Timeout RESPONSE_TIMEOUT = Timeout.ofMinutes(10);
-  private static final Timeout SOCKET_OPTIONS_TIMEOUT = Timeout.ofMinutes(1);
-
-  private CloseableHttpAsyncClient client;
+  private final CloseableHttpAsyncClient client;
   @CheckForNull
   private final String token;
-  ApacheHttpClient(@Nullable String token) {
+
+  ApacheHttpClient(@Nullable String token, CloseableHttpAsyncClient client) {
     this.token = token;
-
-  }
-
-  public ApacheHttpClient withToken(String token) {
-    return new ApacheHttpClient(token);
+    this.client = client;
   }
 
   @Override
@@ -142,7 +129,6 @@ public class ApacheHttpClient implements HttpClient {
     }
   }
 
-  // why support login+pass here if changed to token?
   private static String basic(String username, String password) {
     var usernameAndPassword = username + ":" + password;
     var encoded = Base64.getEncoder().encodeToString(usernameAndPassword.getBytes(StandardCharsets.ISO_8859_1));
@@ -157,28 +143,6 @@ public class ApacheHttpClient implements HttpClient {
     } catch (IOException e) {
       LOG.error("Unable to close http client: ", e.getMessage());
     }
-  }
-
-  public static ApacheHttpClient create() {
-    return new ApacheHttpClient(null);
-  }
-
-  public void initialize(String userAgent) {
-    this.client = HttpAsyncClients.custom()
-      .useSystemProperties()
-      .setUserAgent(userAgent)
-      .setIOReactorConfig(
-        IOReactorConfig.custom()
-          .setSoTimeout(SOCKET_OPTIONS_TIMEOUT)
-          .build())
-      .setDefaultRequestConfig(
-        RequestConfig.copy(RequestConfig.DEFAULT)
-          .setConnectTimeout(CONNECTION_TIMEOUT)
-          .setConnectionRequestTimeout(CONNECTION_TIMEOUT)
-          .setResponseTimeout(RESPONSE_TIMEOUT)
-          .build())
-      .setVersionPolicy(HttpVersionPolicy.FORCE_HTTP_1)
-      .build();
   }
 
   @Override

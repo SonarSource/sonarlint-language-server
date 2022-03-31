@@ -36,7 +36,7 @@ import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput.Level;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.util.Utils;
 import testutils.SonarLintLogTester;
 
@@ -122,7 +122,7 @@ class SettingsManagerTests {
   @BeforeEach
   void prepare() {
     foldersManager = mock(WorkspaceFoldersManager.class);
-    underTest = new SettingsManager(mock(LanguageClient.class), foldersManager, mock(ApacheHttpClient.class));
+    underTest = new SettingsManager(mock(LanguageClient.class), foldersManager, mock(ApacheHttpClientProvider.class));
     underTest = spy(underTest);
   }
 
