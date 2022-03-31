@@ -270,18 +270,20 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<Object> shutdown() {
     List.<Runnable>of(
-      securityHotspotsHandlerServer::shutdown,
+      // start by not processing any more messages from the client
+      () -> Utils.shutdownAndAwait(threadPool, true),
       analysisScheduler::shutdown,
-      bindingManager::shutdown,
+      branchManager::shutdown,
+      securityHotspotsHandlerServer::shutdown,
       telemetry::stop,
       settingsManager::shutdown,
       httpClient::close,
       serverNotifications::shutdown,
-      standaloneEngineManager::shutdown,
       moduleEventsProcessor::shutdown,
-      branchManager::shutdown,
+      // shutdown engines after the rest so that no operations remain on them, and they won't be recreated accidentally
+      bindingManager::shutdown,
+      standaloneEngineManager::shutdown)
       // Do last
-      () -> Utils.shutdownAndAwait(threadPool, false))
       .forEach(this::invokeQuietly);
     return CompletableFuture.completedFuture(null);
   }
