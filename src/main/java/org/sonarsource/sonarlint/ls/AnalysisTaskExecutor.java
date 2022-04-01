@@ -439,7 +439,13 @@ public class AnalysisTaskExecutor {
     var engine = binding.getEngine();
     var serverIssueTracker = binding.getServerIssueTracker();
     var issuesPerFiles = new HashMap<URI, List<Issue>>();
-    IssueListener accumulatorIssueListener = i -> issuesPerFiles.computeIfAbsent(i.getInputFile().getClientObject(), uri -> new ArrayList<>()).add(i);
+    IssueListener accumulatorIssueListener = i -> {
+      var inputFile = i.getInputFile();
+      // FIXME SLVSCODE-255 support project level issues
+      if (inputFile != null) {
+        issuesPerFiles.computeIfAbsent(inputFile.getClientObject(), uri -> new ArrayList<>()).add(i);
+      }
+    };
     return analyzeWithTiming(() -> engine.analyze(configuration, accumulatorIssueListener, new LanguageClientLogOutput(lsLogOutput, true), new TaskProgressMonitor(task)),
       engine.getPluginDetails(),
       () -> filesToAnalyze.forEach((fileUri, openFile) -> {
