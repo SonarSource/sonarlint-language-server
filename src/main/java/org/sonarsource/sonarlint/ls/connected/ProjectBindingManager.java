@@ -198,6 +198,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var projectStorageStatus = engine.getProjectStorageStatus(projectKey);
     if (projectStorageStatus == null || projectStorageStatus.isStale()) {
       engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, false, null, null);
+      engine.sync(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), Set.of(projectKey), null);
     }
     var ideFilePaths = FileUtils.allRelativePathsForFilesInTree(folderRoot);
     var projectBinding = engine.calculatePathPrefixes(projectKey, ideFilePaths);
