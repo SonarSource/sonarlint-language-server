@@ -28,6 +28,7 @@ import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 
 @Immutable
 public class ServerConnectionSettings {
@@ -44,18 +45,18 @@ public class ServerConnectionSettings {
   private final EndpointParamsAndHttpClient serverConfiguration;
 
   public ServerConnectionSettings(String connectionId, String serverUrl, String token, @Nullable String organizationKey,
-    boolean disableNotifications, ApacheHttpClient httpClient) {
+    boolean disableNotifications, ApacheHttpClientProvider httpClientProvider) {
     this.connectionId = connectionId;
     this.serverUrl = serverUrl;
     this.token = token;
     this.organizationKey = organizationKey;
     this.disableNotifications = disableNotifications;
-    this.serverConfiguration = createServerConfiguration(httpClient);
+    this.serverConfiguration = createServerConfiguration(httpClientProvider);
   }
 
-  private EndpointParamsAndHttpClient createServerConfiguration(ApacheHttpClient httpClient) {
+  private EndpointParamsAndHttpClient createServerConfiguration(ApacheHttpClientProvider httpClientProvider) {
     var endpointParams = new EndpointParams(getServerUrl(), isSonarCloudAlias(), getOrganizationKey());
-    return new EndpointParamsAndHttpClient(endpointParams, httpClient.withToken(getToken()));
+    return new EndpointParamsAndHttpClient(endpointParams, httpClientProvider.withToken(getToken()));
   }
 
   String getConnectionId() {
