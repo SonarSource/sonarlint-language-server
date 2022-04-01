@@ -270,8 +270,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<Object> shutdown() {
     List.<Runnable>of(
-      // start by not processing any more messages from the client
-      () -> Utils.shutdownAndAwait(threadPool, true),
       // prevent creation of new engines
       enginesFactory::shutdown,
       analysisScheduler::shutdown,
@@ -300,6 +298,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void exit() {
+    invokeQuietly(() -> Utils.shutdownAndAwait(threadPool, true));
     // The Socket will be closed by the client, and so remaining threads will die and the JVM will terminate
   }
 
