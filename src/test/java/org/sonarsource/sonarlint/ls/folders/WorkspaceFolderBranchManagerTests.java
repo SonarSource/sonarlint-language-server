@@ -44,6 +44,17 @@ import static org.mockito.Mockito.when;
 class WorkspaceFolderBranchManagerTests {
 
   @Test
+  void projectNotUnderScm() throws Exception {
+    var client = mock(SonarLintExtendedLanguageClient.class);
+    var bindingManager = mock(ProjectBindingManager.class);
+    var underTest = new WorkspaceFolderBranchManager(client, bindingManager, new ImmediateExecutorService());
+
+    var folderUri = new URI("file:///some_dir");
+
+    assertThat(underTest.getReferenceBranchNameForFolder(folderUri)).isNull();
+  }
+
+  @Test
   void didBranchNameChangeNoBinding() throws Exception {
     var client = mock(SonarLintExtendedLanguageClient.class);
     var bindingManager = mock(ProjectBindingManager.class);
