@@ -47,7 +47,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
   private final ExecutorService executorService;
 
   public WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager) {
-    this(client, bindingManager, Executors.newSingleThreadExecutor());
+    this(client, bindingManager, Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Branch Manager", false)));
   }
 
   WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager, ExecutorService executorService) {
@@ -97,7 +97,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
   public String getReferenceBranchNameForFolder(URI folderUri) {
     try {
       var uriWithoutTrailingSlash = StringUtils.removeEnd(folderUri.toString(), "/");
-      return referenceBranchNameByFolderUri.get(new URI(uriWithoutTrailingSlash)).orElse(null);
+      return referenceBranchNameByFolderUri.getOrDefault(new URI(uriWithoutTrailingSlash), Optional.empty()).orElse(null);
     } catch (URISyntaxException e) {
       LOG.error(e.getMessage());
     }
