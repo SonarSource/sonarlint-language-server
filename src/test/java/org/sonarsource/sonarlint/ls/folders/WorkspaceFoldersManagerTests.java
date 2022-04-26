@@ -25,23 +25,36 @@ import java.util.Collections;
 import java.util.List;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import testutils.ImmediateExecutorService;
 import testutils.SonarLintLogTester;
 
 import static java.net.URI.create;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager.isAncestor;
 
 class WorkspaceFoldersManagerTests {
 
   @RegisterExtension
   SonarLintLogTester logTester = new SonarLintLogTester();
+  ProjectBindingManager bindingManager;
 
-  private final WorkspaceFoldersManager underTest = new WorkspaceFoldersManager();
+  private final WorkspaceFoldersManager underTest = new WorkspaceFoldersManager(new ImmediateExecutorService());
+
+  @BeforeEach
+  void prepare() {
+    bindingManager = mock(ProjectBindingManager.class);
+    underTest.setBindingManager(bindingManager);
+  }
 
   @Test
   void findFolderForFile_returns_correct_folder_when_exists() {
@@ -127,7 +140,7 @@ class WorkspaceFoldersManagerTests {
 
   @Test
   @EnabledOnOs(OS.WINDOWS)
-  // Fail on Linux with IllegalArgumentException: URI has an authority component
+    // Fail on Linux with IllegalArgumentException: URI has an authority component
   void testURIAncestor_UNC_path() {
     assertThat(isAncestor(create("file://laptop/My%20Documents"), create("file://laptop/My%20Documents/FileSchemeURIs.doc"))).isTrue();
   }
@@ -180,6 +193,21 @@ class WorkspaceFoldersManagerTests {
     assertThat(underTest.getAll()).isEmpty();
     assertThat(logTester.logs()).containsExactly("Processing didChangeWorkspaceFolders event",
       "Unregistered workspace folder was missing: " + basedir.toUri());
+  }
+
+  @Test
+  void should_subscribe_for_server_events_when_adding_a_bound_folder() {
+    var addedUri = Paths.get("path/to/base/added").toAbsolutePath().toUri();
+    var addedWorkspaceFolder = mockWorkspaceFolder(addedUri);
+    var removedUri = Paths.get("path/to/base/removed").toAbsolutePath().toUri();
+    var removedWorkspaceFolder = mockWorkspaceFolder(removedUri);
+    underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(List.of(removedWorkspaceFolder), List.of()));
+
+    underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(List.of(addedWorkspaceFolder), List.of(removedWorkspaceFolder)));
+
+    verify(bindingManager).subscribeForServerEvents(
+      argThat(added -> added.size() == 1 && added.get(0).getUri().equals(addedUri)),
+      argThat(removed -> removed.size() == 1 && removed.get(0).getUri().equals(removedUri)));
   }
 
   private static WorkspaceFolder mockWorkspaceFolder(URI uri) {

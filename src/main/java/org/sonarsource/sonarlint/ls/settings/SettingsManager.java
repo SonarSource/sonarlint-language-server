@@ -24,9 +24,11 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -40,6 +42,7 @@ import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
@@ -89,12 +92,21 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private final ExecutorService executor;
   private final List<WorkspaceSettingsChangeListener> globalListeners = new ArrayList<>();
   private final List<WorkspaceFolderSettingsChangeListener> folderListeners = new ArrayList<>();
+  private ProjectBindingManager bindingManager;
 
   public SettingsManager(LanguageClient client, WorkspaceFoldersManager foldersManager, ApacheHttpClientProvider httpClientProvider) {
+    this(client, foldersManager, httpClientProvider, Executors.newCachedThreadPool(Utils.threadFactory("SonarLint settings manager", false)));
+  }
+
+  SettingsManager(LanguageClient client, WorkspaceFoldersManager foldersManager, ApacheHttpClientProvider httpClientProvider, ExecutorService executor) {
     this.client = client;
     this.foldersManager = foldersManager;
     this.httpClientProvider = httpClientProvider;
-    this.executor = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint settings manager", false));
+    this.executor = executor;
+  }
+
+  public void setBindingManager(ProjectBindingManager bindingManager) {
+    this.bindingManager = bindingManager;
   }
 
   /**
@@ -137,16 +149,47 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         this.currentDefaultSettings = newDefaultFolderSettings;
         initLatch.countDown();
 
+        var previousProjectKeysByConnectionId = getProjectKeysByConnectionId();
         foldersManager.getAll().forEach(f -> updateWorkspaceFolderSettings(f, true));
-
+        var currentProjectKeysByConnectionId = getProjectKeysByConnectionId();
         notifyListeners(newWorkspaceSettings, oldWorkspaceSettings, newDefaultFolderSettings, oldDefaultFolderSettings);
 
+        resubscribeForServerEvents(oldWorkspaceSettings, newWorkspaceSettings, previousProjectKeysByConnectionId, currentProjectKeysByConnectionId);
       } catch (InterruptedException e) {
         interrupted(e);
       } catch (Exception e) {
         LOG.error("Unable to update configuration", e);
       }
     });
+  }
+
+  private Map<String, Set<String>> getProjectKeysByConnectionId() {
+    return foldersManager.getAll()
+      .stream().map(WorkspaceFolderWrapper::getRawSettings)
+      .filter(Objects::nonNull)
+      .filter(s -> Objects.nonNull(s.getConnectionId()))
+      .filter(s -> Objects.nonNull(s.getProjectKey()))
+      .collect(Collectors.groupingBy(WorkspaceFolderSettings::getConnectionId,
+        Collectors.mapping(WorkspaceFolderSettings::getProjectKey, Collectors.toSet())));
+  }
+
+  private void resubscribeForServerEvents(@Nullable WorkspaceSettings previousWorkspaceSettings, WorkspaceSettings currentWorkspaceSettings,
+    Map<String, Set<String>> previousProjectKeysByConnectionId, Map<String, Set<String>> currentProjectKeysByConnectionId) {
+    var impactedConnectionsIds = new HashSet<String>();
+    currentProjectKeysByConnectionId.forEach((connectionId, projectKeys) -> {
+      if (!previousProjectKeysByConnectionId.containsKey(connectionId) || !previousProjectKeysByConnectionId.get(connectionId).equals(projectKeys)) {
+        impactedConnectionsIds.add(connectionId);
+      }
+    });
+    currentWorkspaceSettings.getServerConnections().forEach((connectionId, settings) -> {
+      if (previousWorkspaceSettings == null
+        || !previousWorkspaceSettings.getServerConnections().containsKey(connectionId)
+        || !previousWorkspaceSettings.getServerConnections().get(connectionId).getServerUrl().equals(settings.getServerUrl())
+        || !previousWorkspaceSettings.getServerConnections().get(connectionId).getToken().equals(settings.getToken())) {
+        impactedConnectionsIds.add(connectionId);
+      }
+    });
+    impactedConnectionsIds.forEach(bindingManager::subscribeForServerEvents);
   }
 
   private void notifyListeners(WorkspaceSettings newWorkspaceSettings, WorkspaceSettings oldWorkspaceSettings, WorkspaceFolderSettings newDefaultFolderSettings,
@@ -394,5 +437,4 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   public void shutdown() {
     Utils.shutdownAndAwait(executor, true);
   }
-
 }

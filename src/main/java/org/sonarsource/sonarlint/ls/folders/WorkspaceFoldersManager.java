@@ -30,11 +30,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.net.URI.create;
@@ -45,6 +49,20 @@ public class WorkspaceFoldersManager {
 
   private final Map<URI, WorkspaceFolderWrapper> folders = new ConcurrentHashMap<>();
   private final List<WorkspaceFolderLifecycleListener> listeners = new ArrayList<>();
+  private ProjectBindingManager bindingManager;
+  private final ExecutorService executor;
+
+  public WorkspaceFoldersManager() {
+    this(Executors.newCachedThreadPool(Utils.threadFactory("SonarLint folders manager", false)));
+  }
+
+  WorkspaceFoldersManager(ExecutorService executor) {
+    this.executor = executor;
+  }
+
+  public void setBindingManager(ProjectBindingManager bindingManager) {
+    this.bindingManager = bindingManager;
+  }
 
   public void initialize(@Nullable List<WorkspaceFolder> workspaceFolders) {
     if (workspaceFolders != null) {
@@ -57,25 +75,34 @@ public class WorkspaceFoldersManager {
 
   public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
     LOG.debug("Processing didChangeWorkspaceFolders event");
+    var removedFolderWrappers = new ArrayList<WorkspaceFolderWrapper>();
+    var addedFolderWrappers = new ArrayList<WorkspaceFolderWrapper>();
     for (var removed : event.getRemoved()) {
       var uri = create(removed.getUri());
-      removeFolder(uri);
+      var removedFolder = removeFolder(uri);
+      if (removedFolder != null) {
+        removedFolderWrappers.add(removedFolder);
+      }
     }
     for (var added : event.getAdded()) {
       var uri = create(added.getUri());
       var addedWrapper = addFolder(added, uri);
+      addedFolderWrappers.add(addedWrapper);
       listeners.forEach(l -> l.added(addedWrapper));
     }
+    executor.submit(() -> bindingManager.subscribeForServerEvents(addedFolderWrappers, removedFolderWrappers));
   }
 
-  private void removeFolder(URI uri) {
+  @CheckForNull
+  private WorkspaceFolderWrapper removeFolder(URI uri) {
     var removed = folders.remove(uri);
     if (removed == null) {
       LOG.warn("Unregistered workspace folder was missing: " + uri);
-      return;
+      return null;
     }
     LOG.debug("Folder {} removed", removed);
     listeners.forEach(l -> l.removed(removed));
+    return removed;
   }
 
   private WorkspaceFolderWrapper addFolder(WorkspaceFolder added, URI uri) {
@@ -136,5 +163,9 @@ public class WorkspaceFoldersManager {
 
   public void removeListener(WorkspaceFolderLifecycleListener listener) {
     listeners.remove(listener);
+  }
+
+  public void shutdown() {
+    Utils.shutdownAndAwait(executor, true);
   }
 }

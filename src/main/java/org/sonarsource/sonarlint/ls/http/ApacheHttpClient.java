@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.http;
 
 import java.io.IOException;
+import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.concurrent.CancellationException;
@@ -29,12 +30,17 @@ import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.apache.hc.client5.http.async.methods.AbstractCharResponseConsumer;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
+import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.core5.concurrent.FutureCallback;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http.HttpResponse;
+import org.apache.hc.core5.http.nio.support.BasicRequestProducer;
+import org.apache.hc.core5.util.Timeout;
 import org.sonarsource.sonarlint.core.commons.http.HttpClient;
 import org.sonarsource.sonarlint.core.commons.http.HttpConnectionListener;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
@@ -60,6 +66,113 @@ public class ApacheHttpClient implements HttpClient {
   @Override
   public CompletableFuture<Response> getAsync(String url) {
     return executeAsync(SimpleRequestBuilder.get(url));
+  }
+
+  private static final Timeout STREAM_CONNECTION_REQUEST_TIMEOUT = Timeout.ofSeconds(10);
+  private static final Timeout STREAM_CONNECTION_TIMEOUT = Timeout.ofMinutes(1);
+
+  @Override
+  public AsyncRequest getEventStream(String url, HttpConnectionListener connectionListener, Consumer<String> messageConsumer) {
+    var request = SimpleRequestBuilder.get(url)
+      .setRequestConfig(RequestConfig.custom()
+        .setConnectionRequestTimeout(STREAM_CONNECTION_REQUEST_TIMEOUT)
+        .setConnectTimeout(STREAM_CONNECTION_TIMEOUT)
+        // infinite timeout, rely on heart beat check
+        .setResponseTimeout(Timeout.ZERO_MILLISECONDS)
+        .build())
+      .build();
+    if (token != null) {
+      request.setHeader("Authorization", basic(token));
+    }
+    request.setHeader("Accept", "text/event-stream");
+    var status = new EventStreamStatus();
+    var httpFuture = client.execute(
+      new BasicRequestProducer(request, null),
+      new AbstractCharResponseConsumer<Void>() {
+        @Override
+        public void releaseResources() {
+          // nothing to do
+        }
+
+        @Override
+        protected int capacityIncrement() {
+          return Integer.MAX_VALUE;
+        }
+
+        @Override
+        protected void data(CharBuffer charBuffer, boolean b) {
+          if (status.connected) {
+            messageConsumer.accept(charBuffer.toString());
+          }
+        }
+
+        @Override
+        protected void start(HttpResponse httpResponse, ContentType contentType) {
+          var responseCode = httpResponse.getCode();
+          if (responseCode < 200 || responseCode >= 300) {
+            connectionListener.onError(responseCode);
+          } else {
+            status.markConnected();
+            connectionListener.onConnected();
+          }
+        }
+
+        @Override
+        public void failed(Exception cause) {
+          // log: might be internal error (e.g. in event handling) or disconnection from server
+          // notification of listener will happen in the FutureCallback
+        }
+
+        @Override
+        protected Void buildResult() {
+          return null;
+        }
+      }, new FutureCallback<>() {
+        @Override
+        public void completed(Void unused) {
+          if (status.connected) {
+            connectionListener.onClosed();
+          }
+        }
+
+        @Override
+        public void failed(Exception e) {
+          if (status.connected) {
+            // called when disconnected from server
+            connectionListener.onClosed();
+          } else {
+            connectionListener.onError(null);
+          }
+        }
+
+        @Override
+        public void cancelled() {
+          // nothing to do, the completable future is already canceled
+        }
+      }
+    );
+    return new ApacheAsyncRequest(httpFuture);
+  }
+
+  private static class EventStreamStatus {
+    private boolean connected;
+
+    private void markConnected() {
+      connected = true;
+    }
+  }
+
+  static class ApacheAsyncRequest implements HttpClient.AsyncRequest {
+    final Future<?> httpFuture;
+
+    private ApacheAsyncRequest(Future<?> httpFuture) {
+      this.httpFuture = httpFuture;
+    }
+
+    @Override
+    public void cancel() {
+      httpFuture.cancel(true);
+    }
   }
 
   @Override
@@ -89,7 +202,7 @@ public class ApacheHttpClient implements HttpClient {
 
   private CompletableFuture<Response> executeAsync(SimpleRequestBuilder httpRequest) {
     if (token != null) {
-      httpRequest.setHeader(HttpHeaders.AUTHORIZATION, basic(token, ""));
+      httpRequest.setHeader(HttpHeaders.AUTHORIZATION, basic(token));
     }
     var futureWrapper = new CompletableFutureWrapper(httpRequest);
     futureWrapper.wrapped = client.execute(httpRequest.build(), futureWrapper);
@@ -129,9 +242,9 @@ public class ApacheHttpClient implements HttpClient {
     }
   }
 
-  private static String basic(String username, String password) {
-    var usernameAndPassword = username + ":" + password;
-    var encoded = Base64.getEncoder().encodeToString(usernameAndPassword.getBytes(StandardCharsets.ISO_8859_1));
+  private static String basic(String token) {
+    var credentials = token + ":";
+    var encoded = Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.ISO_8859_1));
     return "Basic " + encoded;
   }
 
@@ -143,11 +256,6 @@ public class ApacheHttpClient implements HttpClient {
     } catch (IOException e) {
       LOG.error("Unable to close http client: ", e.getMessage());
     }
-  }
-
-  @Override
-  public AsyncRequest getEventStream(String url, HttpConnectionListener connectionListener, Consumer<String> messageConsumer) {
-    throw new UnsupportedOperationException("Event streaming not supported in SonarLint LS");
   }
 
 }

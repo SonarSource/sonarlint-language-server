@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.Header;
@@ -48,12 +49,16 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.commons.http.HttpClient;
+import org.sonarsource.sonarlint.core.commons.http.HttpConnectionListener;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class ApacheHttpClientTests {
 
@@ -171,10 +176,51 @@ class ApacheHttpClientTests {
     assertThat(result.get(0)).asInstanceOf(InstanceOfAssertFactories.THROWABLE).isInstanceOf(CancellationException.class);
   }
 
+  @Test
+  void get_event_stream() throws Exception {
+    var connectionListener = mock(HttpConnectionListener.class);
+    var messageConsumer = mock(Consumer.class);
+
+    var eventStream = (ApacheHttpClient.ApacheAsyncRequest) underTest.anonymous().getEventStream(serverBase, connectionListener, messageConsumer);
+
+    eventStream.httpFuture.get();
+    handler.assertRequest(Method.GET.name(), "/", HttpHeaders.ACCEPT, "text/event-stream");
+    verify(connectionListener).onConnected();
+    verify(messageConsumer).accept("OK");
+  }
+
+  @Test
+  void get_event_stream_authenticated() throws Exception {
+    var connectionListener = mock(HttpConnectionListener.class);
+    var messageConsumer = mock(Consumer.class);
+
+    var eventStream = (ApacheHttpClient.ApacheAsyncRequest) underTest.withToken("tok").getEventStream(serverBase, connectionListener, messageConsumer);
+
+    eventStream.httpFuture.get();
+    handler.assertRequest(Method.GET.name(), "/", HttpHeaders.ACCEPT, "text/event-stream", HttpHeaders.AUTHORIZATION, "Basic dG9rOg==");
+    verify(connectionListener).onConnected();
+    verify(messageConsumer).accept("OK");
+  }
+
+  @Test
+  void get_event_stream_error() throws Exception {
+    var connectionListener = mock(HttpConnectionListener.class);
+    var messageConsumer = mock(Consumer.class);
+    handler.setResponseCode(404);
+
+    var eventStream = (ApacheHttpClient.ApacheAsyncRequest) underTest.withToken("tok").getEventStream(serverBase, connectionListener, messageConsumer);
+
+    eventStream.httpFuture.get();
+    handler.assertRequest(Method.GET.name(), "/", HttpHeaders.ACCEPT, "text/event-stream", HttpHeaders.AUTHORIZATION, "Basic dG9rOg==");
+    verify(connectionListener).onError(404);
+    verifyNoInteractions(messageConsumer);
+  }
+
   private static class RecordingHandler implements HttpRequestHandler {
 
     public static final String DEFAULT_RESPONSE_BODY = "OK";
     private final List<ClassicHttpRequest> requests;
+    private int configuredResponseCode = HttpURLConnection.HTTP_OK;
 
     private RecordingHandler() {
       requests = new CopyOnWriteArrayList<>();
@@ -182,6 +228,11 @@ class ApacheHttpClientTests {
 
     private void reset() {
       requests.clear();
+      configuredResponseCode = HttpURLConnection.HTTP_OK;
+    }
+
+    public void setResponseCode(int responseCode) {
+      configuredResponseCode = responseCode;
     }
 
     @Override
@@ -194,7 +245,7 @@ class ApacheHttpClientTests {
           Thread.currentThread().interrupt();
         }
       } else {
-        response.setCode(HttpURLConnection.HTTP_OK);
+        response.setCode(configuredResponseCode);
         response.setHeader("Content-Type", "text/plain");
         response.setEntity(new StringEntity(DEFAULT_RESPONSE_BODY));
       }

@@ -66,6 +66,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -157,7 +158,7 @@ class ProjectBindingManagerTests {
     when(fakeEngine2.update(any(), any(), any())).thenReturn(updateResult2);
 
     folderBindingCache = new ConcurrentHashMap<>();
-    underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, new ProgressManager(client), folderBindingCache);
+    underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, new ProgressManager(client), folderBindingCache, null);
     underTest.setAnalysisManager(analysisManager);
   }
 
@@ -790,6 +791,28 @@ class ProjectBindingManagerTests {
 
     verify(fakeEngine).update(any(), any(), any());
     verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any(), any());
+  }
+
+  @Test
+  void should_subscribe_for_server_events_when_starting_engine() {
+    var folder = mockFileInABoundWorkspaceFolder();
+    when(foldersManager.getAll()).thenReturn(List.of(folder));
+
+    underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
+
+    verify(fakeEngine).subscribeForEvents(any(), isNull(), eq(Set.of(PROJECT_KEY)), isNull());
+  }
+
+  @Test
+  void should_subscribe_for_server_events_when_folders_change() {
+    var folder = mockFileInABoundWorkspaceFolder();
+    // create engine
+    underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
+    when(foldersManager.getAll()).thenReturn(List.of(folder));
+
+    underTest.subscribeForServerEvents(List.of(folder), List.of());
+
+    verify(fakeEngine).subscribeForEvents(any(), isNull(), eq(Set.of(PROJECT_KEY)), isNull());
   }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {
