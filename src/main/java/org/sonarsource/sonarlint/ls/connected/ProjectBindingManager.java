@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -42,6 +43,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -62,6 +64,7 @@ import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.progress.NoOpProgressFacade;
 import org.sonarsource.sonarlint.ls.progress.ProgressFacade;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
@@ -87,6 +90,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final WorkspaceFoldersManager foldersManager;
   private final SettingsManager settingsManager;
   private final Map<URI, Optional<ProjectBindingWrapper>> folderBindingCache;
+  private final LanguageClientLogOutput globalLogOutput;
   private final ConcurrentMap<URI, Optional<ProjectBindingWrapper>> fileBindingCache = new ConcurrentHashMap<>();
   private final ConcurrentMap<String, Optional<ConnectedSonarLintEngine>> connectedEngineCacheByConnectionId = new ConcurrentHashMap<>();
   private final ProgressManager progressManager;
@@ -98,19 +102,20 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private Function<URI, String> getReferenceBranchNameForFolder;
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClient client,
-    ProgressManager progressManager) {
-    this(enginesFactory, foldersManager, settingsManager, client, progressManager, new ConcurrentHashMap<>());
+    ProgressManager progressManager, LanguageClientLogOutput globalLogOutput) {
+    this(enginesFactory, foldersManager, settingsManager, client, progressManager, new ConcurrentHashMap<>(), globalLogOutput);
     bindingUpdatesCheckerTimer.scheduleAtFixedRate(new BindingUpdatesCheckerTask(), 10 * 1000L, syncPeriod);
   }
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClient client,
-    ProgressManager progressManager, Map<URI, Optional<ProjectBindingWrapper>> folderBindingCache) {
+    ProgressManager progressManager, Map<URI, Optional<ProjectBindingWrapper>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput) {
     this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
     this.client = client;
     this.progressManager = progressManager;
     this.folderBindingCache = folderBindingCache;
+    this.globalLogOutput = globalLogOutput;
     this.syncPeriod = Long.parseLong(StringUtils.defaultIfBlank(System.getenv("SONARLINT_INTERNAL_SYNC_PERIOD"), "3600")) * 1000;
   }
 
@@ -247,6 +252,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     } catch (Exception e) {
       LOG.error("Error updating storage of the connected SonarLint engine '" + connectionId + "'", e);
     }
+    subscribeForServerEvents(connectionId, engine);
     if (!failedServerIds.isEmpty()) {
       client.showMessage(new MessageParams(MessageType.Error, "Binding update failed for the server: " + connectionId + ". Look to the SonarLint output for details."));
       return null;
@@ -282,8 +288,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       unbind(folder);
     } else if (newValue.hasBinding()
       && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
-        forceRebindDuringNextAnalysis(folder);
-      }
+      forceRebindDuringNextAnalysis(folder);
+    }
   }
 
   private void forceRebindDuringNextAnalysis(@Nullable WorkspaceFolderWrapper folder) {
@@ -329,6 +335,36 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     LOG.debug("Workspace '{}' unbound", folder);
     stopUnusedEngines();
     analysisManager.analyzeAllOpenFilesInFolder(folder);
+  }
+
+  public void subscribeForServerEvents(String connectionId) {
+    var engine = getStartedConnectedEngine(connectionId);
+    engine.ifPresent(e -> subscribeForServerEvents(connectionId, e));
+  }
+
+  private void subscribeForServerEvents(String connectionId, ConnectedSonarLintEngine engine) {
+    var configuration = getServerConfigurationFor(connectionId);
+    if (configuration != null) {
+      engine.subscribeForEvents(configuration.getEndpointParams(), configuration.getHttpClient(), getProjectKeysBoundTo(connectionId), globalLogOutput);
+    }
+  }
+
+  public void subscribeForServerEvents(List<WorkspaceFolderWrapper> added, List<WorkspaceFolderWrapper> removed) {
+    var impactedConnectionsIds = added.stream().map(this::getBinding)
+      .filter(Optional::isPresent).map(Optional::get).map(ProjectBindingWrapper::getConnectionId).collect(Collectors.toCollection(HashSet::new));
+    impactedConnectionsIds.addAll(removed.stream().map(this::getBinding)
+      .filter(Optional::isPresent).map(Optional::get).map(ProjectBindingWrapper::getConnectionId).collect(Collectors.toSet()));
+    impactedConnectionsIds.forEach(this::subscribeForServerEvents);
+  }
+
+  private Set<String> getProjectKeysBoundTo(String connectionId) {
+    Set<String> projectKeys = new HashSet<>();
+    forEachBoundFolder((folder, settings) -> {
+      if (folder != null && connectionId.equals(folder.getSettings().getConnectionId())) {
+        projectKeys.add(folder.getSettings().getProjectKey());
+      }
+    });
+    return projectKeys;
   }
 
   private void stopUnusedEngines() {

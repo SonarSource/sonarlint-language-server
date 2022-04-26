@@ -510,7 +510,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void fetchWorkspaceFolderConfigurationWhenAdded() throws Exception {
+  void fetchWorkspaceFolderConfigurationWhenAdded() {
     client.settingsLatch = new CountDownLatch(1);
     var folderUri = "file:///added_uri";
     client.folderSettings.put(folderUri, buildSonarLintSettingsSection("another pattern", null, null, true));
@@ -636,7 +636,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void updateBranchNameShouldLogAMessage() throws Exception {
+  void updateBranchNameShouldLogAMessage() {
     lsProxy.didLocalBranchNameChange(new DidLocalBranchNameChangeParams("file:///some_folder", "some/branch/name"));
 
     assertLogContains("Folder file:///some_folder is now on branch some/branch/name.");
@@ -645,7 +645,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void updateBranchNameWithNullBranchShouldLogAnotherMessage() throws Exception {
+  void updateBranchNameWithNullBranchShouldLogAnotherMessage() {
     lsProxy.didLocalBranchNameChange(new DidLocalBranchNameChangeParams("file:///some_folder", null));
 
     assertLogContains("Folder file:///some_folder is now on an unknown branch.");

@@ -156,7 +156,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, javaConfigCache), extraAnalyzers);
     this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
     this.settingsManager.addListener(lsLogOutput);
-    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, progressManager);
+    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, progressManager, globalLogOutput);
+    this.settingsManager.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(httpClientProvider, settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
@@ -278,6 +279,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       securityHotspotsHandlerServer::shutdown,
       telemetry::stop,
       settingsManager::shutdown,
+      workspaceFoldersManager::shutdown,
       httpClientProvider::close,
       serverNotifications::shutdown,
       moduleEventsProcessor::shutdown,
