@@ -47,7 +47,12 @@ class EnginesFactoryTests {
 
   @BeforeEach
   void prepare() throws Exception {
-    underTest = new EnginesFactory(List.of(Paths.get("plugin1.jar"), Paths.get("plugin2.jar")), mock(LanguageClientLogOutput.class),
+    var standaloneAnalysers = List.of(
+      Paths.get("plugin1.jar"),
+      Paths.get("plugin2.jar"),
+      Paths.get("sonarjs.jar"),
+      Paths.get("sonarhtml.jar"));
+    underTest = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
       mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
     underTest = spy(underTest);
   }
@@ -137,5 +142,27 @@ class EnginesFactoryTests {
     assertThatThrownBy(() -> EnginesFactory.guessPluginKey("file:///unknown.jar"))
       .isInstanceOf(IllegalStateException.class)
       .hasMessageContaining("Unknown analyzer.");
+  }
+
+  @Test
+  void failIfJsTsAnalyserNotFound() {
+    var standaloneAnalysers = List.of(Paths.get("sonarhtml.jar"));
+    var factory = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
+      mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
+
+    assertThatThrownBy(() -> factory.createConnectedEngine("foo"))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessageContaining("Embedded plugin not found: " + Language.JS.getLabel());
+  }
+
+  @Test
+  void failIfHtmlAnalyserNotFound() {
+    var standaloneAnalysers = List.of(Paths.get("sonarjs.jar"));
+    var factory = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
+      mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
+
+    assertThatThrownBy(() -> factory.createConnectedEngine("foo"))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessageContaining("Embedded plugin not found: " + Language.HTML.getLabel());
   }
 }

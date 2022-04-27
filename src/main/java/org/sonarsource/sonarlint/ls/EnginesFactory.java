@@ -128,6 +128,8 @@ public class EnginesFactory {
       .setLogOutput(logOutput);
     getCFamilyAnalyzer().ifPresent(cFamilyAnalyzer -> builder.useEmbeddedPlugin(Language.C.getPluginKey(), cFamilyAnalyzer));
 
+    useEmbeddedPluginOrFailIfNotFound(builder, "html", Language.HTML);
+    useEmbeddedPluginOrFailIfNotFound(builder, "js", Language.JS);
     extraAnalyzers.forEach(analyzer -> builder.addExtraPlugin(guessPluginKey(analyzer.toString()), analyzer));
     var engine = newConnectedEngine(builder.build());
 
@@ -137,6 +139,12 @@ public class EnginesFactory {
 
   Optional<Path> getCFamilyAnalyzer() {
     return standaloneAnalyzers.stream().filter(it -> it.toString().contains("cfamily")).findFirst();
+  }
+
+  void useEmbeddedPluginOrFailIfNotFound(ConnectedGlobalConfiguration.Builder builder, String pluginName, Language language) {
+    var pluginUrl = standaloneAnalyzers.stream().filter(it -> it.toString().contains(pluginName)).findFirst()
+      .orElseThrow(() -> new IllegalStateException("Embedded plugin not found: " + language.getLabel()));
+    builder.useEmbeddedPlugin(language.getPluginKey(), pluginUrl);
   }
 
   static String guessPluginKey(String pluginUrl) {
