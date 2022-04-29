@@ -412,7 +412,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private void showOperationResult(Set<String> failedConnectionIds) {
     if (failedConnectionIds.isEmpty()) {
-      client.showMessage(new MessageParams(MessageType.Info, "All SonarLint bindings succesfully updated"));
+      client.showMessage(new MessageParams(MessageType.Info, "All SonarLint bindings successfully updated"));
     } else {
       var connections = String.join(", ", failedConnectionIds);
       client.showMessage(
