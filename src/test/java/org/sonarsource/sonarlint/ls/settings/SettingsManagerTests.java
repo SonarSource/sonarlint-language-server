@@ -443,8 +443,8 @@ class SettingsManagerTests {
     var config = "{\n" +
       "  \"testFilePattern\": \"**/*Test.*\",\n" +
       "  \"pathToCompileCommands\": \"${workspaceFolder}/pathToCompileCommand\",\n" +
-      "  \"disableTelemetry\": true,\n"
-      + "\"output\": {\n" +
+      "  \"disableTelemetry\": true,\n" +
+      "  \"output\": {\n" +
       "  \"showAnalyzerLogs\": true,\n" +
       "  \"showVerboseLogs\": true\n"
       + "}\n" +
@@ -459,6 +459,26 @@ class SettingsManagerTests {
 
     var settings = folderWrapper.getSettings();
     assertThat(settings.getPathToCompileCommands()).isEqualTo("file://workspaceFolder/pathToCompileCommand");
+  }
+
+  @Test
+  void workspaceFolderVariableShouldNotWorkForGlobalConfiguration() {
+    var config = "{\n" +
+      "  \"testFilePattern\": \"**/*Test.*\",\n" +
+      "  \"pathToCompileCommands\": \"${workspaceFolder}/pathToCompileCommand\",\n" +
+      "  \"disableTelemetry\": true,\n" +
+      "  \"output\": {\n" +
+      "  \"showAnalyzerLogs\": true,\n" +
+      "  \"showVerboseLogs\": true\n"
+      + "}\n" +
+      "}\n";
+    mockConfigurationRequest(null, config);
+
+    underTest.didChangeConfiguration();
+    underTest.getCurrentSettings();
+
+    assertThat(logTester.logs(Level.WARN))
+      .containsExactly("Using ${workspaceFolder} variable in sonarlint.pathToCompileCommands is only supported for files in the workspace");
   }
 
   private static Map<String, Object> fromJsonString(String json) {

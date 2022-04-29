@@ -160,8 +160,11 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   // Visible for testing
   CompletableFuture<Map<String, Object>> requestSonarLintConfigurationAsync(@Nullable URI uri) {
-    // FIXME implicitly logs nothing if null is passed
-    LOG.debug("Fetching configuration for folder '{}'", uri == null ? "null" : uri);
+    if (uri != null) {
+      LOG.debug("Fetching configuration for folder '{}'", uri);
+    } else {
+      LOG.debug("Fetching global configuration");
+    }
     var params = new ConfigurationParams();
     var configurationItem = new ConfigurationItem();
     configurationItem.setSection(SONARLINT_CONFIGURATION_NAMESPACE);
@@ -325,8 +328,12 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         }
       }
     }
-    if (pathToCompileCommands != null && workspaceFolder != null) {
-      pathToCompileCommands = pathToCompileCommands.replace(WORKSPACE_FOLDER_VARIABLE, workspaceFolder);
+    if (pathToCompileCommands != null) {
+      if (workspaceFolder != null) {
+        pathToCompileCommands = pathToCompileCommands.replace(WORKSPACE_FOLDER_VARIABLE, workspaceFolder);
+      } else {
+        LOG.warn("Using ${workspaceFolder} variable in sonarlint.pathToCompileCommands is only supported for files in the workspace");
+      }
     }
     return new WorkspaceFolderSettings(connectionId, projectKey, analyzerProperties, testFilePattern, pathToCompileCommands);
   }
