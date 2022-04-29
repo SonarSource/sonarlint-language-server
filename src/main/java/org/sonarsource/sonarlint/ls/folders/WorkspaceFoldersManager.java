@@ -35,6 +35,7 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.net.URI.create;
 
@@ -116,7 +117,7 @@ public class WorkspaceFoldersManager {
     if (folderUri.getPort() != fileUri.getPort()) {
       return false;
     }
-    if (folderUri.getScheme().equalsIgnoreCase("file")) {
+    if (Utils.uriHasFileSchema(folderUri)) {
       return Paths.get(fileUri).startsWith(Paths.get(folderUri));
     }
     // Assume "/" is the separator of "folders"

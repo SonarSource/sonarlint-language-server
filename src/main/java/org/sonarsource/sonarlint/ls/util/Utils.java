@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.util;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonSyntaxException;
+import java.net.URI;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -144,5 +145,9 @@ public class Utils {
 
   public static String buildMessageWithPluralizedSuffix(@Nullable String issueMessage, long nbItems, String itemName) {
     return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issueMessage, nbItems, pluralize(nbItems, itemName));
+  }
+
+  public static boolean uriHasFileSchema(URI uri) {
+    return uri.getScheme().equalsIgnoreCase("file");
   }
 }

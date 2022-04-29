@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.settings;
 
 import java.net.URI;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -33,6 +34,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.services.LanguageClient;
@@ -185,7 +187,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private void updateWorkspaceFolderSettings(WorkspaceFolderWrapper f, boolean notifyOnChange) {
     try {
       var folderSettingsMap = requestSonarLintConfigurationAsync(f.getUri()).get();
-      var newSettings = parseFolderSettings(folderSettingsMap, f.getUri().toString());
+      var newSettings = parseFolderSettings(folderSettingsMap, f.getUri());
       var old = f.getRawSettings();
       if (!Objects.equals(old, newSettings)) {
         f.setSettings(newSettings);
@@ -298,7 +300,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   }
 
   // Visible for testing
-  WorkspaceFolderSettings parseFolderSettings(Map<String, Object> params, @Nullable String workspaceFolder) {
+  WorkspaceFolderSettings parseFolderSettings(Map<String, Object> params, @Nullable URI workspaceFolderUri) {
     var testFilePattern = (String) params.get(TEST_FILE_PATTERN);
     var pathToCompileCommands = (String) params.get(PATH_TO_COMPILE_COMMANDS);
     var analyzerProperties = (Map<String, String>) params.getOrDefault(ANALYZER_PROPERTIES, Map.of());
@@ -328,19 +330,42 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         }
       }
     }
-    pathToCompileCommands = substituteWorkspaceFolderVariable(workspaceFolder, pathToCompileCommands);
+    pathToCompileCommands = substituteWorkspaceFolderVariable(workspaceFolderUri, pathToCompileCommands);
     return new WorkspaceFolderSettings(connectionId, projectKey, analyzerProperties, testFilePattern, pathToCompileCommands);
   }
 
-  private static String substituteWorkspaceFolderVariable(@Nullable String workspaceFolder, @Nullable String pathToCompileCommands) {
-    if (pathToCompileCommands != null) {
-      if (workspaceFolder != null) {
-        pathToCompileCommands = pathToCompileCommands.replace(WORKSPACE_FOLDER_VARIABLE, workspaceFolder);
-      } else {
-        LOG.warn("Using ${workspaceFolder} variable in sonarlint.pathToCompileCommands is only supported for files in the workspace");
+  private static String substituteWorkspaceFolderVariable(@Nullable URI workspaceFolderUri, @Nullable String pathToCompileCommands) {
+    if (pathToCompileCommands == null) {
+      return null;
+    }
+    if (!pathToCompileCommands.contains(WORKSPACE_FOLDER_VARIABLE)) {
+      return pathToCompileCommands;
+    }
+    if (!pathToCompileCommands.startsWith(WORKSPACE_FOLDER_VARIABLE)) {
+      LOG.error("Variable ${workspaceFolder} for sonarlint.pathToCompileCommands should be the prefix.");
+      return pathToCompileCommands;
+    }
+    if (workspaceFolderUri != null) {
+      if (!Utils.uriHasFileSchema(workspaceFolderUri)) {
+        // TODO if throw here settings never being set
+        LOG.error("Workspace folder is not in local filesystem, analysis not supported.");
+        return null;
       }
+      var workspacePath = Paths.get(workspaceFolderUri);
+      var pathWithoutWorkspaceFolderPrefix = StringUtils.removeStart(pathToCompileCommands, WORKSPACE_FOLDER_VARIABLE);
+      String pathWithoutLeadingSlash = removePossibleLeadingSlash(pathWithoutWorkspaceFolderPrefix);
+      pathToCompileCommands = workspacePath.resolve(pathWithoutLeadingSlash).toUri().toString();
+    } else {
+      LOG.warn("Using ${workspaceFolder} variable in sonarlint.pathToCompileCommands is only supported for files in the workspace");
     }
     return pathToCompileCommands;
+  }
+
+  private static String removePossibleLeadingSlash(String path) {
+    // FIXME find better way to remove leading slash for all OS
+    var pathWithoutLeadingSlash = StringUtils.removeStart(path, "/");
+    pathWithoutLeadingSlash = StringUtils.removeStart(pathWithoutLeadingSlash, "\\");
+    return pathWithoutLeadingSlash;
   }
 
   public void addListener(WorkspaceSettingsChangeListener listener) {

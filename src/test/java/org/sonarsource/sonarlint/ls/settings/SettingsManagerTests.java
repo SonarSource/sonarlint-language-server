@@ -449,7 +449,7 @@ class SettingsManagerTests {
       "  \"showVerboseLogs\": true\n"
       + "}\n" +
       "}\n";
-    var workspaceFolderUri = URI.create("file://workspaceFolder");
+    var workspaceFolderUri = URI.create("file:///workspace/folder");
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
     var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
@@ -458,7 +458,7 @@ class SettingsManagerTests {
     underTest.didChangeConfiguration();
 
     var settings = folderWrapper.getSettings();
-    assertThat(settings.getPathToCompileCommands()).isEqualTo("file://workspaceFolder/pathToCompileCommand");
+    assertThat(settings.getPathToCompileCommands()).isEqualTo("file:///workspace/folder/pathToCompileCommand");
   }
 
   @Test
@@ -479,6 +479,69 @@ class SettingsManagerTests {
 
     assertThat(logTester.logs(Level.WARN))
       .containsExactly("Using ${workspaceFolder} variable in sonarlint.pathToCompileCommands is only supported for files in the workspace");
+  }
+
+  @Test
+  void pathToCompileCommandsWithoutWorkspaceFolderVariableForGlobalConfigShouldBeAccepted() {
+    var config = "{\n" +
+      "  \"testFilePattern\": \"**/*Test.*\",\n" +
+      "  \"pathToCompileCommands\": \"/pathToCompileCommand\",\n" +
+      "  \"disableTelemetry\": true,\n" +
+      "  \"output\": {\n" +
+      "  \"showAnalyzerLogs\": true,\n" +
+      "  \"showVerboseLogs\": true\n"
+      + "}\n" +
+      "}\n";
+    mockConfigurationRequest(null, config);
+
+    underTest.didChangeConfiguration();
+    var settings = underTest.getCurrentDefaultFolderSettings();
+
+    assertThat(settings.getPathToCompileCommands()).isEqualTo("/pathToCompileCommand");
+  }
+
+  @Test
+  void workspaceFolderVariableShouldBePrefixOfPropertyValue() {
+    var config = "{\n" +
+      "  \"testFilePattern\": \"**/*Test.*\",\n" +
+      "  \"pathToCompileCommands\": \"something${workspaceFolder}/pathToCompileCommand\",\n" +
+      "  \"disableTelemetry\": true,\n" +
+      "  \"output\": {\n" +
+      "  \"showAnalyzerLogs\": true,\n" +
+      "  \"showVerboseLogs\": true\n"
+      + "}\n" +
+      "}\n";
+    mockConfigurationRequest(null, config);
+
+    underTest.didChangeConfiguration();
+    underTest.getCurrentSettings();
+
+    assertThat(logTester.logs(Level.ERROR))
+      .containsExactly("Variable ${workspaceFolder} for sonarlint.pathToCompileCommands should be the prefix.");
+  }
+
+  @Test
+  void failForNotValidWorkspaceFolderPath() {
+    var config = "{\n" +
+      "  \"testFilePattern\": \"**/*Test.*\",\n" +
+      "  \"pathToCompileCommands\": \"${workspaceFolder}/pathToCompileCommand\",\n" +
+      "  \"disableTelemetry\": true,\n" +
+      "  \"output\": {\n" +
+      "  \"showAnalyzerLogs\": true,\n" +
+      "  \"showVerboseLogs\": true\n"
+      + "}\n" +
+      "}\n";
+    var workspaceFolderUri = URI.create("notfile:///workspace/folder");
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    mockConfigurationRequest(workspaceFolderUri, config);
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
+    when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
+
+    underTest.didChangeConfiguration();
+
+    folderWrapper.getSettings();
+    assertThat(logTester.logs(Level.ERROR))
+      .contains("Workspace folder is not in local filesystem, analysis not supported.");
   }
 
   private static Map<String, Object> fromJsonString(String json) {
