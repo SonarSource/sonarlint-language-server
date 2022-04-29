@@ -69,6 +69,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static final String PATH_TO_NODE_EXECUTABLE = "pathToNodeExecutable";
   private static final String PATH_TO_COMPILE_COMMANDS = "pathToCompileCommands";
 
+  private static final String WORKSPACE_FOLDER_VARIABLE = "${workspaceFolder}";
+
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private final LanguageClient client;
@@ -127,7 +129,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         var newWorkspaceSettings = parseSettings(workspaceSettingsMap, httpClientProvider);
         var oldWorkspaceSettings = currentSettings;
         this.currentSettings = newWorkspaceSettings;
-        var newDefaultFolderSettings = parseFolderSettings(workspaceSettingsMap);
+        var newDefaultFolderSettings = parseFolderSettings(workspaceSettingsMap, null);
         var oldDefaultFolderSettings = currentDefaultSettings;
         this.currentDefaultSettings = newDefaultFolderSettings;
         initLatch.countDown();
@@ -158,7 +160,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   // Visible for testing
   CompletableFuture<Map<String, Object>> requestSonarLintConfigurationAsync(@Nullable URI uri) {
-    LOG.debug("Fetching configuration for folder '{}'", uri);
+    // FIXME implicitly logs nothing if null is passed
+    LOG.debug("Fetching configuration for folder '{}'", uri == null ? "null" : uri);
     var params = new ConfigurationParams();
     var configurationItem = new ConfigurationItem();
     configurationItem.setSection(SONARLINT_CONFIGURATION_NAMESPACE);
@@ -179,7 +182,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private void updateWorkspaceFolderSettings(WorkspaceFolderWrapper f, boolean notifyOnChange) {
     try {
       var folderSettingsMap = requestSonarLintConfigurationAsync(f.getUri()).get();
-      var newSettings = parseFolderSettings(folderSettingsMap);
+      var newSettings = parseFolderSettings(folderSettingsMap, f.getUri().toString());
       var old = f.getRawSettings();
       if (!Objects.equals(old, newSettings)) {
         f.setSettings(newSettings);
@@ -292,7 +295,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   }
 
   // Visible for testing
-  WorkspaceFolderSettings parseFolderSettings(Map<String, Object> params) {
+  WorkspaceFolderSettings parseFolderSettings(Map<String, Object> params, @Nullable String workspaceFolder) {
     var testFilePattern = (String) params.get(TEST_FILE_PATTERN);
     var pathToCompileCommands = (String) params.get(PATH_TO_COMPILE_COMMANDS);
     var analyzerProperties = (Map<String, String>) params.getOrDefault(ANALYZER_PROPERTIES, Map.of());
@@ -321,6 +324,9 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
           LOG.error("No SonarQube/SonarCloud connections defined for your binding with id '{}'. Please update your settings.", connectionId);
         }
       }
+    }
+    if (pathToCompileCommands != null && workspaceFolder != null) {
+      pathToCompileCommands = pathToCompileCommands.replace(WORKSPACE_FOLDER_VARIABLE, workspaceFolder);
     }
     return new WorkspaceFolderSettings(connectionId, projectKey, analyzerProperties, testFilePattern, pathToCompileCommands);
   }

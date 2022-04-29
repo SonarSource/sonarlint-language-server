@@ -438,6 +438,29 @@ class SettingsManagerTests {
       entry("stringParam", "you get the picture"));
   }
 
+  @Test
+  void workspaceFolderVariableForPathToCompileCommands() {
+    var config = "{\n" +
+      "  \"testFilePattern\": \"**/*Test.*\",\n" +
+      "  \"pathToCompileCommands\": \"${workspaceFolder}/pathToCompileCommand\",\n" +
+      "  \"disableTelemetry\": true,\n"
+      + "\"output\": {\n" +
+      "  \"showAnalyzerLogs\": true,\n" +
+      "  \"showVerboseLogs\": true\n"
+      + "}\n" +
+      "}\n";
+    var workspaceFolderUri = URI.create("file://workspaceFolder");
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    mockConfigurationRequest(workspaceFolderUri, config);
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
+    when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
+
+    underTest.didChangeConfiguration();
+
+    var settings = folderWrapper.getSettings();
+    assertThat(settings.getPathToCompileCommands()).isEqualTo("file://workspaceFolder/pathToCompileCommand");
+  }
+
   private static Map<String, Object> fromJsonString(String json) {
     return Utils.parseToMap(new Gson().fromJson(json, JsonElement.class));
   }
