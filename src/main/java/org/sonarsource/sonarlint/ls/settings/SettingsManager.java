@@ -328,6 +328,11 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         }
       }
     }
+    pathToCompileCommands = substituteWorkspaceFolderVariable(workspaceFolder, pathToCompileCommands);
+    return new WorkspaceFolderSettings(connectionId, projectKey, analyzerProperties, testFilePattern, pathToCompileCommands);
+  }
+
+  private static String substituteWorkspaceFolderVariable(@Nullable String workspaceFolder, @Nullable String pathToCompileCommands) {
     if (pathToCompileCommands != null) {
       if (workspaceFolder != null) {
         pathToCompileCommands = pathToCompileCommands.replace(WORKSPACE_FOLDER_VARIABLE, workspaceFolder);
@@ -335,7 +340,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         LOG.warn("Using ${workspaceFolder} variable in sonarlint.pathToCompileCommands is only supported for files in the workspace");
       }
     }
-    return new WorkspaceFolderSettings(connectionId, projectKey, analyzerProperties, testFilePattern, pathToCompileCommands);
+    return pathToCompileCommands;
   }
 
   public void addListener(WorkspaceSettingsChangeListener listener) {
