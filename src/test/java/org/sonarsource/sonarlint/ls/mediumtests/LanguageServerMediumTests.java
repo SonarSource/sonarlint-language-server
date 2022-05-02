@@ -161,6 +161,19 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  void doNotAnalyzePythonFileOnPreview() throws Exception {
+    var uri = getUri("analyzeSimplePythonFileOnOpen.py");
+
+    client.isOpenInEditor = false;
+    didOpen(uri, "python", "def foo():\n  print 'toto'\n");
+
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Debug] Skipping analysis for preview of file " + uri));
+    assertThat(client.getDiagnostics(uri)).isEmpty();
+  }
+
+  @Test
   void analyzePythonFileWithDuplicatedStringOnOpen() throws Exception {
     var uri = getUri("analyzePythonFileWithDuplicatedStringOnOpen.py");
 

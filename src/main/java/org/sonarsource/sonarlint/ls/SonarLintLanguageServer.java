@@ -325,6 +325,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       if (Boolean.TRUE.equals(isOpen)) {
         var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
         analysisScheduler.didOpen(file);
+      } else {
+        SonarLintLogger.get().debug("Skipping analysis for preview of file {}", uri);
       }
     });
   }

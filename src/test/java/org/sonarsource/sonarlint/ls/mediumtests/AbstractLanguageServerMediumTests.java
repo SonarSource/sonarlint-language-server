@@ -264,6 +264,7 @@ public abstract class AbstractLanguageServerMediumTests {
       settingsLatch = new CountDownLatch(0);
       showRuleDescriptionLatch = new CountDownLatch(0);
       needCompilationDatabaseCalls.set(0);
+      isOpenInEditor = true;
     }
 
     @Override
