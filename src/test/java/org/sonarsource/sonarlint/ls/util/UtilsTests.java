@@ -19,6 +19,8 @@
  */
 package org.sonarsource.sonarlint.ls.util;
 
+import java.net.URI;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.sonarsource.sonarlint.ls.util.Utils;
@@ -45,6 +47,14 @@ class UtilsTests {
   })
   void shouldPluralizeIssue(long nbItems, String expected) {
     assertThat(Utils.pluralize(nbItems, "issue")).isEqualTo(expected);
+  }
+
+
+
+  @Test
+  void uriHasFileSchemaTest() {
+    assertThat(Utils.uriHasFileSchema(URI.create("file:///path"))).isTrue();
+    assertThat(Utils.uriHasFileSchema(URI.create("notfile:///path"))).isFalse();
   }
 
 }
