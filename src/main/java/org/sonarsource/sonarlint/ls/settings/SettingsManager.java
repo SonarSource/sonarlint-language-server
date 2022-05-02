@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.settings;
 
 import java.net.URI;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,7 +33,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.services.LanguageClient;
@@ -68,6 +71,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static final String SHOW_VERBOSE_LOGS = "showVerboseLogs";
   private static final String PATH_TO_NODE_EXECUTABLE = "pathToNodeExecutable";
   private static final String PATH_TO_COMPILE_COMMANDS = "pathToCompileCommands";
+
+  private static final String WORKSPACE_FOLDER_VARIABLE = "${workspaceFolder}";
 
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
@@ -127,7 +132,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         var newWorkspaceSettings = parseSettings(workspaceSettingsMap, httpClientProvider);
         var oldWorkspaceSettings = currentSettings;
         this.currentSettings = newWorkspaceSettings;
-        var newDefaultFolderSettings = parseFolderSettings(workspaceSettingsMap);
+        var newDefaultFolderSettings = parseFolderSettings(workspaceSettingsMap, null);
         var oldDefaultFolderSettings = currentDefaultSettings;
         this.currentDefaultSettings = newDefaultFolderSettings;
         initLatch.countDown();
@@ -158,7 +163,11 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   // Visible for testing
   CompletableFuture<Map<String, Object>> requestSonarLintConfigurationAsync(@Nullable URI uri) {
-    LOG.debug("Fetching configuration for folder '{}'", uri);
+    if (uri != null) {
+      LOG.debug("Fetching configuration for folder '{}'", uri);
+    } else {
+      LOG.debug("Fetching global configuration");
+    }
     var params = new ConfigurationParams();
     var configurationItem = new ConfigurationItem();
     configurationItem.setSection(SONARLINT_CONFIGURATION_NAMESPACE);
@@ -179,7 +188,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private void updateWorkspaceFolderSettings(WorkspaceFolderWrapper f, boolean notifyOnChange) {
     try {
       var folderSettingsMap = requestSonarLintConfigurationAsync(f.getUri()).get();
-      var newSettings = parseFolderSettings(folderSettingsMap);
+      var newSettings = parseFolderSettings(folderSettingsMap, f.getUri());
       var old = f.getRawSettings();
       if (!Objects.equals(old, newSettings)) {
         f.setSettings(newSettings);
@@ -292,7 +301,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   }
 
   // Visible for testing
-  WorkspaceFolderSettings parseFolderSettings(Map<String, Object> params) {
+  WorkspaceFolderSettings parseFolderSettings(Map<String, Object> params, @Nullable URI workspaceFolderUri) {
     var testFilePattern = (String) params.get(TEST_FILE_PATTERN);
     var pathToCompileCommands = (String) params.get(PATH_TO_COMPILE_COMMANDS);
     var analyzerProperties = (Map<String, String>) params.getOrDefault(ANALYZER_PROPERTIES, Map.of());
@@ -322,7 +331,43 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         }
       }
     }
+    pathToCompileCommands = substituteWorkspaceFolderVariable(workspaceFolderUri, pathToCompileCommands);
     return new WorkspaceFolderSettings(connectionId, projectKey, analyzerProperties, testFilePattern, pathToCompileCommands);
+  }
+
+  @CheckForNull
+  private static String substituteWorkspaceFolderVariable(@Nullable URI workspaceFolderUri, @Nullable String pathToCompileCommands) {
+    if (pathToCompileCommands == null) {
+      return null;
+    }
+    if (!pathToCompileCommands.contains(WORKSPACE_FOLDER_VARIABLE)) {
+      return pathToCompileCommands;
+    }
+    if (!pathToCompileCommands.startsWith(WORKSPACE_FOLDER_VARIABLE)) {
+      LOG.error("Variable ${workspaceFolder} for sonarlint.pathToCompileCommands should be the prefix.");
+      return pathToCompileCommands;
+    }
+    if (workspaceFolderUri == null) {
+      LOG.warn("Using ${workspaceFolder} variable in sonarlint.pathToCompileCommands is only supported for files in the workspace");
+      return pathToCompileCommands;
+    }
+    if (!Utils.uriHasFileSchema(workspaceFolderUri)) {
+      LOG.error("Workspace folder is not in local filesystem, analysis not supported.");
+      return null;
+    }
+    var workspacePath = Paths.get(workspaceFolderUri);
+    var pathWithoutWorkspaceFolderPrefix = StringUtils.removeStart(pathToCompileCommands, WORKSPACE_FOLDER_VARIABLE);
+    String pathWithoutLeadingSlash = removePossibleLeadingSlash(pathWithoutWorkspaceFolderPrefix);
+    return workspacePath.resolve(pathWithoutLeadingSlash).toString();
+  }
+
+  private static String removePossibleLeadingSlash(String path) {
+    if (path.startsWith("/")) {
+      return StringUtils.removeStart(path, "/");
+    } else if (path.startsWith("\\")) {
+      return StringUtils.removeStart(path, "\\");
+    }
+    return path;
   }
 
   public void addListener(WorkspaceSettingsChangeListener listener) {

@@ -166,7 +166,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
    */
   Future<?> analyzeAsync(List<VersionnedOpenFile> files, boolean shouldFetchServerIssues) {
     var trueFileUris = files.stream().filter(f -> {
-      if (!f.getUri().getScheme().equalsIgnoreCase("file")) {
+      if (!Utils.uriHasFileSchema(f.getUri())) {
         lsLogOutput.warn(format("URI '%s' is not in local filesystem, analysis not supported", f.getUri()));
         return false;
       }

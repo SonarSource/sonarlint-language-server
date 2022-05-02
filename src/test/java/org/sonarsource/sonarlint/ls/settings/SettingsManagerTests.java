@@ -23,6 +23,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import java.io.File;
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -32,6 +33,7 @@ import org.eclipse.lsp4j.services.LanguageClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput.Level;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -436,6 +438,158 @@ class SettingsManagerTests {
       entry("floatParam", "123.456"),
       entry("boolParam", "true"),
       entry("stringParam", "you get the picture"));
+  }
+
+  @Test
+  void workspaceFolderVariableForPathToCompileCommands(@TempDir Path workspaceFolder) {
+    var config = "{\n" +
+      "  \"testFilePattern\": \"**/*Test.*\",\n" +
+      "  \"pathToCompileCommands\": \"${workspaceFolder}/pathToCompileCommand\",\n" +
+      "  \"disableTelemetry\": true,\n" +
+      "  \"output\": {\n" +
+      "  \"showAnalyzerLogs\": true,\n" +
+      "  \"showVerboseLogs\": true\n"
+      + "}\n" +
+      "}\n";
+    var workspaceFolderUri = workspaceFolder.toUri();
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    mockConfigurationRequest(workspaceFolderUri, config);
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
+    when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
+
+    underTest.didChangeConfiguration();
+
+    var settings = folderWrapper.getSettings();
+    assertThat(settings.getPathToCompileCommands()).isEqualTo(workspaceFolder.resolve("pathToCompileCommand").toString());
+  }
+
+  @Test
+  void workspaceFolderVariableForPathToCompileCommandsShouldWorkWithoutFileSeparator(@TempDir Path workspaceFolder) {
+    var config = "{\n" +
+      "  \"testFilePattern\": \"**/*Test.*\",\n" +
+      "  \"pathToCompileCommands\": \"${workspaceFolder}pathToCompileCommand\",\n" +
+      "  \"disableTelemetry\": true,\n" +
+      "  \"output\": {\n" +
+      "  \"showAnalyzerLogs\": true,\n" +
+      "  \"showVerboseLogs\": true\n"
+      + "}\n" +
+      "}\n";
+    var workspaceFolderUri = workspaceFolder.toUri();
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    mockConfigurationRequest(workspaceFolderUri, config);
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
+    when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
+
+    underTest.didChangeConfiguration();
+
+    var settings = folderWrapper.getSettings();
+    assertThat(settings.getPathToCompileCommands()).isEqualTo(workspaceFolder.resolve("pathToCompileCommand").toString());
+  }
+
+  @Test
+  void workspaceFolderVariableForPathToCompileCommandsShouldWorkWithWindowsFileSeparator(@TempDir Path workspaceFolder) {
+    var config = "{\n" +
+      "  \"testFilePattern\": \"**/*Test.*\",\n" +
+      "  \"pathToCompileCommands\": \"${workspaceFolder}\\\\pathToCompileCommand\",\n" +
+      "  \"disableTelemetry\": true,\n" +
+      "  \"output\": {\n" +
+      "  \"showAnalyzerLogs\": true,\n" +
+      "  \"showVerboseLogs\": true\n"
+      + "}\n" +
+      "}\n";
+    var workspaceFolderUri = workspaceFolder.toUri();
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    mockConfigurationRequest(workspaceFolderUri, config);
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
+    when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
+
+    underTest.didChangeConfiguration();
+
+    var settings = folderWrapper.getSettings();
+    assertThat(settings.getPathToCompileCommands()).isEqualTo(workspaceFolder.resolve("pathToCompileCommand").toString());
+  }
+
+  @Test
+  void workspaceFolderVariableShouldNotWorkForGlobalConfiguration() {
+    var config = "{\n" +
+      "  \"testFilePattern\": \"**/*Test.*\",\n" +
+      "  \"pathToCompileCommands\": \"${workspaceFolder}/pathToCompileCommand\",\n" +
+      "  \"disableTelemetry\": true,\n" +
+      "  \"output\": {\n" +
+      "  \"showAnalyzerLogs\": true,\n" +
+      "  \"showVerboseLogs\": true\n"
+      + "}\n" +
+      "}\n";
+    mockConfigurationRequest(null, config);
+
+    underTest.didChangeConfiguration();
+    underTest.getCurrentSettings();
+
+    assertThat(logTester.logs(Level.WARN))
+      .containsExactly("Using ${workspaceFolder} variable in sonarlint.pathToCompileCommands is only supported for files in the workspace");
+  }
+
+  @Test
+  void pathToCompileCommandsWithoutWorkspaceFolderVariableForGlobalConfigShouldBeAccepted() {
+    var config = "{\n" +
+      "  \"testFilePattern\": \"**/*Test.*\",\n" +
+      "  \"pathToCompileCommands\": \"/pathToCompileCommand\",\n" +
+      "  \"disableTelemetry\": true,\n" +
+      "  \"output\": {\n" +
+      "  \"showAnalyzerLogs\": true,\n" +
+      "  \"showVerboseLogs\": true\n"
+      + "}\n" +
+      "}\n";
+    mockConfigurationRequest(null, config);
+
+    underTest.didChangeConfiguration();
+    var settings = underTest.getCurrentDefaultFolderSettings();
+
+    assertThat(settings.getPathToCompileCommands()).isEqualTo("/pathToCompileCommand");
+  }
+
+  @Test
+  void workspaceFolderVariableShouldBePrefixOfPropertyValue() {
+    var config = "{\n" +
+      "  \"testFilePattern\": \"**/*Test.*\",\n" +
+      "  \"pathToCompileCommands\": \"something${workspaceFolder}/pathToCompileCommand\",\n" +
+      "  \"disableTelemetry\": true,\n" +
+      "  \"output\": {\n" +
+      "  \"showAnalyzerLogs\": true,\n" +
+      "  \"showVerboseLogs\": true\n"
+      + "}\n" +
+      "}\n";
+    mockConfigurationRequest(null, config);
+
+    underTest.didChangeConfiguration();
+    underTest.getCurrentSettings();
+
+    assertThat(logTester.logs(Level.ERROR))
+      .containsExactly("Variable ${workspaceFolder} for sonarlint.pathToCompileCommands should be the prefix.");
+  }
+
+  @Test
+  void failForNotValidWorkspaceFolderPath() {
+    var config = "{\n" +
+      "  \"testFilePattern\": \"**/*Test.*\",\n" +
+      "  \"pathToCompileCommands\": \"${workspaceFolder}/pathToCompileCommand\",\n" +
+      "  \"disableTelemetry\": true,\n" +
+      "  \"output\": {\n" +
+      "  \"showAnalyzerLogs\": true,\n" +
+      "  \"showVerboseLogs\": true\n"
+      + "}\n" +
+      "}\n";
+    var workspaceFolderUri = URI.create("notfile:///workspace/folder");
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    mockConfigurationRequest(workspaceFolderUri, config);
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
+    when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
+
+    underTest.didChangeConfiguration();
+
+    folderWrapper.getSettings();
+    assertThat(logTester.logs(Level.ERROR))
+      .contains("Workspace folder is not in local filesystem, analysis not supported.");
   }
 
   private static Map<String, Object> fromJsonString(String json) {
