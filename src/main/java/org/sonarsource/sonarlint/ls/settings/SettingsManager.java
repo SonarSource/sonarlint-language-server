@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.ConfigurationItem;
@@ -334,6 +335,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     return new WorkspaceFolderSettings(connectionId, projectKey, analyzerProperties, testFilePattern, pathToCompileCommands);
   }
 
+  @CheckForNull
   private static String substituteWorkspaceFolderVariable(@Nullable URI workspaceFolderUri, @Nullable String pathToCompileCommands) {
     if (pathToCompileCommands == null) {
       return null;
@@ -345,27 +347,25 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       LOG.error("Variable ${workspaceFolder} for sonarlint.pathToCompileCommands should be the prefix.");
       return pathToCompileCommands;
     }
-    if (workspaceFolderUri != null) {
-      if (!Utils.uriHasFileSchema(workspaceFolderUri)) {
-        // TODO if throw here settings never being set
-        LOG.error("Workspace folder is not in local filesystem, analysis not supported.");
-        return null;
-      }
-      var workspacePath = Paths.get(workspaceFolderUri);
-      var pathWithoutWorkspaceFolderPrefix = StringUtils.removeStart(pathToCompileCommands, WORKSPACE_FOLDER_VARIABLE);
-      String pathWithoutLeadingSlash = removePossibleLeadingSlash(pathWithoutWorkspaceFolderPrefix);
-      pathToCompileCommands = workspacePath.resolve(pathWithoutLeadingSlash).toUri().toString();
-    } else {
+    if (workspaceFolderUri == null) {
       LOG.warn("Using ${workspaceFolder} variable in sonarlint.pathToCompileCommands is only supported for files in the workspace");
+      return pathToCompileCommands;
     }
-    return pathToCompileCommands;
+    if (!Utils.uriHasFileSchema(workspaceFolderUri)) {
+      LOG.error("Workspace folder is not in local filesystem, analysis not supported.");
+      return null;
+    }
+    var workspacePath = Paths.get(workspaceFolderUri);
+    var pathWithoutWorkspaceFolderPrefix = StringUtils.removeStart(pathToCompileCommands, WORKSPACE_FOLDER_VARIABLE);
+    String pathWithoutLeadingSlash = removePossibleLeadingSlash(pathWithoutWorkspaceFolderPrefix);
+    return workspacePath.resolve(pathWithoutLeadingSlash).toString();
   }
 
   private static String removePossibleLeadingSlash(String path) {
-    // FIXME find better way to remove leading slash for all OS
-    var pathWithoutLeadingSlash = StringUtils.removeStart(path, "/");
-    pathWithoutLeadingSlash = StringUtils.removeStart(pathWithoutLeadingSlash, "\\");
-    return pathWithoutLeadingSlash;
+    if(path.startsWith("/")) {
+      return StringUtils.removeStart(path, "/");
+    }
+    return path;
   }
 
   public void addListener(WorkspaceSettingsChangeListener listener) {
