@@ -59,6 +59,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonRequest("sonarlint/isIgnoredByScm")
   CompletableFuture<Boolean> isIgnoredByScm(String fileUri);
 
+  @JsonRequest("sonarlint/isOpenInEditor")
+  CompletableFuture<Boolean> isOpenInEditor(String fileUri);
+
   @JsonNotification("sonarlint/showNotificationForFirstSecretsIssue")
   void showFirstSecretDetectionNotification();
 

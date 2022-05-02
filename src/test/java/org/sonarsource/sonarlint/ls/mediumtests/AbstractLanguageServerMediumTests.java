@@ -253,6 +253,7 @@ public abstract class AbstractLanguageServerMediumTests {
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
     ShowRuleDescriptionParams ruleDesc;
     boolean isIgnoredByScm = false;
+    boolean isOpenInEditor = true;
     final AtomicInteger needCompilationDatabaseCalls = new AtomicInteger();
 
     void clear() {
@@ -350,6 +351,11 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public CompletableFuture<Boolean> isIgnoredByScm(String fileUri) {
       return CompletableFutures.computeAsync(cancelToken -> isIgnoredByScm);
+    }
+
+    @Override
+    public CompletableFuture<Boolean> isOpenInEditor(String fileUri) {
+      return CompletableFutures.computeAsync(cancelToken -> isOpenInEditor);
     }
 
     @Override
