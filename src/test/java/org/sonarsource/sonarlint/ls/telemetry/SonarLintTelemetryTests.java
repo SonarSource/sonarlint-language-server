@@ -73,7 +73,7 @@ class SonarLintTelemetryTests {
         return telemetryManager;
       }
     };
-    telemetry.init(Paths.get("dummy"), "product", "version", "ideVersion", new HashMap<>());
+    telemetry.init(Paths.get("dummy"), "product", "version", "ideVersion", "platform", "architecture", new HashMap<>());
     return telemetry;
   }
 
@@ -289,7 +289,7 @@ class SonarLintTelemetryTests {
         return telemetryManager;
       }
     };
-    telemetry.init(null, "product", "version", "ideVersion", new HashMap<>());
+    telemetry.init(null, "product", "version", "ideVersion", "platform", "architecture", new HashMap<>());
     assertThat(telemetry.enabled()).isFalse();
   }
 

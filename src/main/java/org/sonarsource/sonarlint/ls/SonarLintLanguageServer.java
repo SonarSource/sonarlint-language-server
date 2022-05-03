@@ -210,6 +210,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var ideVersion = appName + " " + clientVersion;
       var firstSecretDetected = (boolean) options.getOrDefault("firstSecretDetected", false);
       httpClientProvider.initialize(productName, productVersion);
+      var platform = (String) options.get("platform");
+      var architecture = (String) options.get("architecture");
       var additionalAttributes = (Map<String, Object>) options.getOrDefault("additionalAttributes", Map.of());
       var showVerboseLogs = (boolean) options.getOrDefault("showVerboseLogs", true);
 
@@ -218,7 +220,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       diagnosticPublisher.initialize(firstSecretDetected);
 
       securityHotspotsHandlerServer.initialize(appName, clientVersion, workspaceName);
-      telemetry.initialize(productKey, telemetryStorage, productName, productVersion, ideVersion, additionalAttributes);
+      telemetry.initialize(productKey, telemetryStorage, productName, productVersion, ideVersion, platform, architecture, additionalAttributes);
 
       var c = new ServerCapabilities();
       c.setTextDocumentSync(getTextDocumentSyncOptions());
