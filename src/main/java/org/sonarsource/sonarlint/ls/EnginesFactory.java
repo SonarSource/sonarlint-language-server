@@ -22,14 +22,10 @@ package org.sonarsource.sonarlint.ls;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import javax.annotation.CheckForNull;
-import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.ConnectedSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.StandaloneSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
@@ -43,14 +39,10 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
 public class EnginesFactory {
 
-  public static final String TYPESCRIPT_PATH_PROP = "sonar.typescript.internal.typescriptLocation";
-
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private final LanguageClientLogOutput logOutput;
   private final Collection<Path> standaloneAnalyzers;
-  @CheckForNull
-  private Path typeScriptPath;
   private static final Language[] STANDALONE_LANGUAGES = {
     Language.CPP,
     Language.C,
@@ -92,7 +84,6 @@ public class EnginesFactory {
 
     try {
       var configuration = StandaloneGlobalConfiguration.builder()
-        .setExtraProperties(prepareExtraProps())
         .addEnabledLanguages(STANDALONE_LANGUAGES)
         .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
         .addPlugins(standaloneAnalyzers.toArray(Path[]::new))
@@ -120,7 +111,6 @@ public class EnginesFactory {
     }
     var builder = ConnectedGlobalConfiguration.builder()
       .setConnectionId(connectionId)
-      .setExtraProperties(prepareExtraProps())
       .addEnabledLanguages(STANDALONE_LANGUAGES)
       .addEnabledLanguages(CONNECTED_ADDITIONAL_LANGUAGES)
       .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
@@ -154,20 +144,8 @@ public class EnginesFactory {
     throw new IllegalStateException("Unknown analyzer.");
   }
 
-  private Map<String, String> prepareExtraProps() {
-    var extraProperties = new HashMap<String, String>();
-    if (typeScriptPath != null) {
-      extraProperties.put(TYPESCRIPT_PATH_PROP, typeScriptPath.toString());
-    }
-    return extraProperties;
-  }
-
   ConnectedSonarLintEngine newConnectedEngine(ConnectedGlobalConfiguration configuration) {
     return new ConnectedSonarLintEngineImpl(configuration);
-  }
-
-  public void initialize(@Nullable Path typeScriptPath) {
-    this.typeScriptPath = typeScriptPath;
   }
 
   public static Set<Language> getStandaloneLanguages() {
