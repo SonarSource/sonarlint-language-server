@@ -25,18 +25,12 @@ import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedGlobalConfiguration;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneGlobalConfiguration;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
@@ -55,70 +49,6 @@ class EnginesFactoryTests {
     underTest = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
       mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
     underTest = spy(underTest);
-  }
-
-  @Test
-  void pass_typescript_path_to_standalone_engine() throws Exception {
-    underTest.initialize(FAKE_TYPESCRIPT_PATH);
-
-    var argCaptor = ArgumentCaptor.forClass(StandaloneGlobalConfiguration.class);
-    var mockEngine = mock(StandaloneSonarLintEngine.class);
-    doReturn(mockEngine).when(underTest).newStandaloneEngine(argCaptor.capture());
-
-    var createdEngine = underTest.createStandaloneEngine();
-
-    assertThat(createdEngine).isSameAs(mockEngine);
-    var capturedConfig = argCaptor.getValue();
-    assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", FAKE_TYPESCRIPT_PATH.toString());
-    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.C, Language.CPP, Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PYTHON, Language.SECRETS, Language.TS,
-      Language.XML);
-  }
-
-  @Test
-  void no_typescript_to_standalone_engine() throws Exception {
-    underTest.initialize(null);
-
-    var argCaptor = ArgumentCaptor.forClass(StandaloneGlobalConfiguration.class);
-    var mockEngine = mock(StandaloneSonarLintEngine.class);
-    doReturn(mockEngine).when(underTest).newStandaloneEngine(argCaptor.capture());
-
-    var createdEngine = underTest.createStandaloneEngine();
-
-    assertThat(createdEngine).isSameAs(mockEngine);
-    var capturedConfig = argCaptor.getValue();
-    assertThat(capturedConfig.extraProperties()).isEmpty();
-  }
-
-  @Test
-  void pass_typescript_path_to_connected_engine() throws Exception {
-    underTest.initialize(FAKE_TYPESCRIPT_PATH);
-
-    var argCaptor = ArgumentCaptor.forClass(ConnectedGlobalConfiguration.class);
-    var mockEngine = mock(ConnectedSonarLintEngine.class);
-    doReturn(mockEngine).when(underTest).newConnectedEngine(argCaptor.capture());
-
-    var createdEngine = underTest.createConnectedEngine("foo");
-
-    assertThat(createdEngine).isSameAs(mockEngine);
-    var capturedConfig = argCaptor.getValue();
-    assertThat(capturedConfig.extraProperties()).containsEntry("sonar.typescript.internal.typescriptLocation", FAKE_TYPESCRIPT_PATH.toString());
-    assertThat(capturedConfig.getEnabledLanguages()).containsOnly(Language.APEX, Language.C, Language.CPP, Language.HTML, Language.JAVA, Language.JS, Language.PHP, Language.PLSQL, Language.PYTHON,
-      Language.SECRETS, Language.TS, Language.XML);
-  }
-
-  @Test
-  void no_typescript_to_connected_engine() throws Exception {
-    underTest.initialize(null);
-
-    var argCaptor = ArgumentCaptor.forClass(ConnectedGlobalConfiguration.class);
-    var mockEngine = mock(ConnectedSonarLintEngine.class);
-    doReturn(mockEngine).when(underTest).newConnectedEngine(argCaptor.capture());
-
-    var createdEngine = underTest.createConnectedEngine("foo");
-
-    assertThat(createdEngine).isSameAs(mockEngine);
-    var capturedConfig = argCaptor.getValue();
-    assertThat(capturedConfig.extraProperties()).isEmpty();
   }
 
   @Test

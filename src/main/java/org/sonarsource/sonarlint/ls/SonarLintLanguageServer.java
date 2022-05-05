@@ -27,7 +27,6 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -91,8 +90,6 @@ import static java.net.URI.create;
 import static java.util.Optional.ofNullable;
 
 public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer, WorkspaceService, TextDocumentService {
-
-  private static final String TYPESCRIPT_LOCATION = "typeScriptLocation";
 
   private final SonarLintExtendedLanguageClient client;
   private final SonarLintTelemetry telemetry;
@@ -213,12 +210,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var ideVersion = appName + " " + clientVersion;
       var firstSecretDetected = (boolean) options.getOrDefault("firstSecretDetected", false);
       httpClientProvider.initialize(productName, productVersion);
-      var typeScriptPath = ofNullable((String) options.get(TYPESCRIPT_LOCATION));
       var additionalAttributes = (Map<String, Object>) options.getOrDefault("additionalAttributes", Map.of());
       var showVerboseLogs = (boolean) options.getOrDefault("showVerboseLogs", true);
 
       lsLogOutput.initialize(showVerboseLogs);
-      enginesFactory.initialize(typeScriptPath.map(Paths::get).orElse(null));
       analysisScheduler.initialize();
       diagnosticPublisher.initialize(firstSecretDetected);
 

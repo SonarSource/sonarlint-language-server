@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls.mediumtests;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import org.eclipse.lsp4j.Diagnostic;
@@ -48,14 +47,10 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   @BeforeAll
   public static void initialize() throws Exception {
-    var fakeTypeScriptProjectPath = Paths.get("src/test/resources/fake-ts-project").toAbsolutePath();
-
     initialize(Map.of(
-      "typeScriptLocation", fakeTypeScriptProjectPath.resolve("node_modules").toString(),
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
       "productVersion", "0.1"), new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
-
   }
 
   @Override
@@ -97,8 +92,8 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     var file1InFolder = folder1BaseDir.resolve("file1.js").toUri().toString();
     var file2InFolder = folder1BaseDir.resolve("file2.js").toUri().toString();
 
-    didOpen(file1InFolder, "javascript", "function foo() {}");
-    didOpen(file2InFolder, "javascript", "function foo() {}");
+    didOpen(file1InFolder, "javascript", "function foo() { /* Empty */ }");
+    didOpen(file2InFolder, "javascript", "function foo() { /* Empty */ }");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())

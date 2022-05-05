@@ -68,10 +68,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @BeforeAll
   static void initialize() throws Exception {
-    var fakeTypeScriptProjectPath = Paths.get("src/test/resources/fake-ts-project").toAbsolutePath();
-
     initialize(Map.of(
-      "typeScriptLocation", fakeTypeScriptProjectPath.resolve("node_modules").toString(),
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
       "productVersion", "0.1",
@@ -275,7 +272,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void analyzeSimpleJsFileOnChange() throws Exception {
     var uri = getUri("analyzeSimpleJsFileOnChange.js");
 
-    didOpen(uri, "javascript", "function foo() {}");
+    didOpen(uri, "javascript", "function foo() { /* Empty */ }");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
@@ -311,7 +308,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
-      .contains("[Info] Found 0 issues"));
+      .contains("[Info] Found 1 issue"));
 
     client.logs.clear();
 
@@ -595,7 +592,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
         "[Info] Analyzing file '" + uri + "'...",
         "[Info] Index files",
         "[Info] 1 file indexed",
-        "[Info] 1 source files to be analyzed",
+        "[Info] 1 source file to be analyzed",
         "[Info] Found 1 issue"));
   }
 
