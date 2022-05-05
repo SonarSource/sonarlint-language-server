@@ -72,7 +72,7 @@ public class ScmIgnoredCache {
       .thenApply(ignored -> {
         var ignoredOpt = ofNullable(ignored);
         filesIgnoredByUri.put(fileUri, ignoredOpt);
-        LOG.debug("Cached SCM ignore status for file '{}'", fileUri);
+        LOG.debug("Cached SCM ignore status for file '{}': {}", fileUri, ignoredOpt.map(b -> Boolean.TRUE.equals(b) ? "Ignored" : "Not ignored").orElse("Unknown"));
         return ignoredOpt;
       });
   }
