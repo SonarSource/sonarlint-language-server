@@ -57,6 +57,7 @@ import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
+import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
@@ -211,8 +212,18 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       ToStringBuilder.reflectionToString(projectBinding, ToStringStyle.SHORT_PREFIX_STYLE),
       folderRoot);
     Supplier<String> branchProvider = () -> this.getReferenceBranchNameForFolder.apply(folderRoot.toUri());
-    var issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, endpointParamsAndHttpClient, projectBinding, branchProvider);
-    return new ProjectBindingWrapper(connectionId, projectBinding, engine, issueTrackerWrapper);
+    return new ProjectBindingWrapper(connectionId, projectBinding, engine, endpointParamsAndHttpClient, branchProvider);
+  }
+
+  public CompletableFuture<List<ServerIssue>> updateServerIssues(ProjectBindingWrapper bindingWrapper, String ideFilePath) {
+    return CompletableFuture.supplyAsync(() -> {
+      LOG.debug("Fetching issues for file: " + ideFilePath);
+      return bindingWrapper.getEngine().downloadServerIssues(bindingWrapper.getEndpointParamsAndHttpClient().getEndpointParams(),
+        bindingWrapper.getEndpointParamsAndHttpClient().getHttpClient(), bindingWrapper.getBinding(),
+        ideFilePath,
+        true,
+        bindingWrapper.getBranchProvider().get(), null);
+    });
   }
 
   @CheckForNull

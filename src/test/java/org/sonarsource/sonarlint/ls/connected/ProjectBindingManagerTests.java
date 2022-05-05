@@ -242,7 +242,6 @@ class ProjectBindingManagerTests {
 
     assertThat(binding.get().getEngine()).isEqualTo(fakeEngine);
     assertThat(binding.get().getConnectionId()).isEqualTo(CONNECTION_ID);
-    assertThat(binding.get().getServerIssueTracker()).isNotNull();
     assertThat(binding.get().getBinding()).isEqualTo(FAKE_BINDING);
 
     verify(fakeEngine).calculatePathPrefixes(eq(PROJECT_KEY), argThat(set -> set.contains(FILE_PHP)));

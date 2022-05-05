@@ -19,23 +19,28 @@
  */
 package org.sonarsource.sonarlint.ls.connected;
 
+import java.util.function.Supplier;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings.EndpointParamsAndHttpClient;
 
 public class ProjectBindingWrapper {
 
   private final String connectionId;
   private final ProjectBinding binding;
   private final ConnectedSonarLintEngine engine;
-  private final ServerIssueTrackerWrapper issueTrackerWrapper;
+  private final EndpointParamsAndHttpClient endpointParamsAndHttpClient;
+  private final Supplier<String> branchProvider;
 
-  public ProjectBindingWrapper(String connectionId, ProjectBinding binding, ConnectedSonarLintEngine engine, ServerIssueTrackerWrapper issueTrackerWrapper) {
+  public ProjectBindingWrapper(String connectionId, ProjectBinding binding, ConnectedSonarLintEngine engine, EndpointParamsAndHttpClient endpointParamsAndHttpClient,
+    Supplier<String> branchProvider) {
     this.connectionId = connectionId;
     this.binding = binding;
     this.engine = engine;
-    this.issueTrackerWrapper = issueTrackerWrapper;
+    this.endpointParamsAndHttpClient = endpointParamsAndHttpClient;
+    this.branchProvider = branchProvider;
   }
 
   public String getConnectionId() {
@@ -50,8 +55,12 @@ public class ProjectBindingWrapper {
     return engine;
   }
 
-  public ServerIssueTrackerWrapper getServerIssueTracker() {
-    return issueTrackerWrapper;
+  public EndpointParamsAndHttpClient getEndpointParamsAndHttpClient() {
+    return endpointParamsAndHttpClient;
+  }
+
+  public Supplier<String> getBranchProvider() {
+    return branchProvider;
   }
 
   @Override

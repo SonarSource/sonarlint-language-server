@@ -23,7 +23,6 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,9 +31,14 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import javax.annotation.CheckForNull;
 import org.sonarsource.sonarlint.core.analysis.api.AnalysisResults;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.AbstractAnalysisConfiguration.AbstractBuilder;
@@ -42,11 +46,18 @@ import org.sonarsource.sonarlint.core.client.api.common.PluginDetails;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedAnalysisConfiguration;
+import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
+import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneAnalysisConfiguration;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
 import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
 import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
+import org.sonarsource.sonarlint.core.issuetracking.IssueTracker;
+import org.sonarsource.sonarlint.core.issuetracking.Trackable;
+import org.sonarsource.sonarlint.core.tracking.IssueTrackable;
+import org.sonarsource.sonarlint.core.tracking.ServerIssueTrackable;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
+import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -61,9 +72,11 @@ import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
 import static java.util.Optional.ofNullable;
+import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.partitioningBy;
@@ -417,14 +430,12 @@ public class AnalysisTaskExecutor {
 
     var engine = standaloneEngineManager.getOrCreateStandaloneEngine();
     return analyzeWithTiming(() -> engine.analyze(configuration, issueListener, new LanguageClientLogOutput(lsLogOutput, true), new TaskProgressMonitor(task)),
-      engine.getPluginDetails(),
-      () -> {
-      });
+      engine.getPluginDetails());
   }
 
   private AnalysisResultsWrapper analyzeConnected(AnalysisTask task, ProjectBindingWrapper binding, WorkspaceFolderSettings settings, URI baseDirUri,
     Map<URI, VersionnedOpenFile> filesToAnalyze,
-    Map<URI, GetJavaConfigResponse> javaConfigs, IssueListener issueListener) {
+    Map<URI, GetJavaConfigResponse> javaConfigs, IssueListener clientIssueListener) {
     var baseDir = Paths.get(baseDirUri);
 
     var configuration = buildCommonAnalysisConfiguration(settings, baseDirUri, filesToAnalyze, javaConfigs, baseDir, ConnectedAnalysisConfiguration.builder())
@@ -437,31 +448,69 @@ public class AnalysisTaskExecutor {
     lsLogOutput.debug(format("Analysis triggered with configuration:%n%s", configuration.toString()));
 
     var engine = binding.getEngine();
-    var serverIssueTracker = binding.getServerIssueTracker();
-    var issuesPerFiles = new HashMap<URI, List<Issue>>();
-    IssueListener accumulatorIssueListener = i -> {
-      var inputFile = i.getInputFile();
-      // FIXME SLVSCODE-255 support project level issues
-      if (inputFile != null) {
-        issuesPerFiles.computeIfAbsent(inputFile.getClientObject(), uri -> new ArrayList<>()).add(i);
-      }
-    };
-    return analyzeWithTiming(() -> engine.analyze(configuration, accumulatorIssueListener, new LanguageClientLogOutput(lsLogOutput, true), new TaskProgressMonitor(task)),
-      engine.getPluginDetails(),
-      () -> filesToAnalyze.forEach((fileUri, openFile) -> {
-        var issues = issuesPerFiles.computeIfAbsent(fileUri, uri -> List.of());
-        var filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, fileUri));
-        serverIssueTracker.matchAndTrack(filePath, issues, issueListener, task.shouldFetchServerIssues());
-        if (task.shouldFetchServerIssues()) {
-          var serverIssues = engine.getServerIssues(binding.getBinding(), filePath);
+    Map<URI, CompletableFuture<Void>> updateIssuesTasks = new HashMap<>();
+    if (task.shouldFetchServerIssues()) {
+      filesToAnalyze.forEach((fileUri, openFile) -> {
+        var relativeFilePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, fileUri));
+        updateIssuesTasks.put(fileUri, bindingManager.updateServerIssues(binding, relativeFilePath).thenAccept(serverIssues -> {
           taintVulnerabilitiesCache.reload(fileUri, serverIssues);
           long foundVulnerabilities = taintVulnerabilitiesCache.getAsDiagnostics(fileUri).count();
           if (foundVulnerabilities > 0) {
             lsLogOutput
-              .info(format("Fetched %s %s from %s", foundVulnerabilities, pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), binding.getConnectionId()));
+              .info(format("Fetched %s taint %s for %s", foundVulnerabilities, pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), fileUri));
           }
-        }
-      }));
+        }));
+      });
+    }
+    return analyzeWithTiming(() -> engine.analyze(configuration,
+      issue -> handleIssue(binding, clientIssueListener, baseDir, engine, updateIssuesTasks, issue),
+      new LanguageClientLogOutput(lsLogOutput, true), new TaskProgressMonitor(task)),
+      engine.getPluginDetails());
+  }
+
+  private void handleIssue(ProjectBindingWrapper binding, IssueListener clientIssueListener, Path baseDir, ConnectedSonarLintEngine engine,
+    Map<URI, CompletableFuture<Void>> updateIssuesTasks, Issue i) {
+    var inputFile = i.getInputFile();
+    // FIXME SLVSCODE-255 support project level issues
+    if (inputFile != null) {
+      URI fileUri = inputFile.getClientObject();
+      waitForIssueUpdateTaskIfNeeded(updateIssuesTasks, fileUri);
+      var filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, fileUri));
+      List<ServerIssue> serverIssues = engine.getServerIssues(binding.getBinding(), filePath);
+      Collection<Trackable> serverIssuesTrackable = serverIssues.stream().map(ServerIssueTrackable::new).collect(Collectors.toList());
+      var tracker = new IssueTracker();
+      var tracked = tracker.apply(serverIssuesTrackable, List.of(new IssueTrackable(i)), true);
+      tracked.stream()
+        .filter(not(Trackable::isResolved))
+        .forEach(trackable -> clientIssueListener.handle(new DelegatingIssue((Issue) trackable.getClientObject()) {
+          @Override
+          public String getSeverity() {
+            return trackable.getSeverity();
+          }
+
+          @CheckForNull
+          @Override
+          public String getType() {
+            return trackable.getType();
+          }
+        }));
+
+    }
+  }
+
+  private void waitForIssueUpdateTaskIfNeeded(Map<URI, CompletableFuture<Void>> updateIssuesTasks, URI fileUri) {
+    CompletableFuture<Void> syncIssuesTask = updateIssuesTasks.remove(fileUri);
+    if (syncIssuesTask != null) {
+      try {
+        syncIssuesTask.get(5, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        Utils.interrupted(e);
+      } catch (ExecutionException e) {
+        lsLogOutput.error("Unable to fetch issues for " + fileUri, e);
+      } catch (TimeoutException e) {
+        lsLogOutput.debug("Timeout while fetching issues for " + fileUri);
+      }
+    }
   }
 
   private <G extends AbstractBuilder<G>> G buildCommonAnalysisConfiguration(WorkspaceFolderSettings settings, URI baseDirUri, Map<URI, VersionnedOpenFile> filesToAnalyze,
@@ -487,10 +536,9 @@ public class AnalysisTaskExecutor {
    * @param analyze Analysis callback
    * @param postAnalysisTask Code that will be run after the analysis, but still counted in the total analysis duration.
    */
-  private static AnalysisResultsWrapper analyzeWithTiming(Supplier<AnalysisResults> analyze, Collection<PluginDetails> allPlugins, Runnable postAnalysisTask) {
+  private static AnalysisResultsWrapper analyzeWithTiming(Supplier<AnalysisResults> analyze, Collection<PluginDetails> allPlugins) {
     long start = System.currentTimeMillis();
     var analysisResults = analyze.get();
-    postAnalysisTask.run();
     int analysisTime = (int) (System.currentTimeMillis() - start);
     return new AnalysisResultsWrapper(analysisResults, analysisTime, allPlugins);
   }

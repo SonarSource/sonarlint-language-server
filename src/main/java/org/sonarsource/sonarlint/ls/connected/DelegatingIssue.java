@@ -30,7 +30,7 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 public class DelegatingIssue implements Issue {
   private final Issue issue;
 
-  DelegatingIssue(Issue issue) {
+  public DelegatingIssue(Issue issue) {
     this.issue = issue;
   }
 

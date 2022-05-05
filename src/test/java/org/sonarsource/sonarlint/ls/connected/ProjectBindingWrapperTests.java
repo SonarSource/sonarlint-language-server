@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.connected;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings.EndpointParamsAndHttpClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -32,13 +33,14 @@ class ProjectBindingWrapperTests {
   void test_getters() {
     var binding = new ProjectBinding("projectKey", "prefix", "idePrefix");
     var engine = mock(ConnectedSonarLintEngine.class);
-    var issueTrackerWrapper = mock(ServerIssueTrackerWrapper.class);
-    var underTest = new ProjectBindingWrapper("serverId", binding, engine, issueTrackerWrapper);
+    var endpointParamsAndHttpClient = mock(EndpointParamsAndHttpClient.class);
+    var underTest = new ProjectBindingWrapper("serverId", binding, engine, endpointParamsAndHttpClient, () -> "branch");
 
     assertThat(underTest.getConnectionId()).isEqualTo("serverId");
     assertThat(underTest.getBinding()).isEqualTo(binding);
     assertThat(underTest.getEngine()).isEqualTo(engine);
-    assertThat(underTest.getServerIssueTracker()).isEqualTo(issueTrackerWrapper);
+    assertThat(underTest.getEndpointParamsAndHttpClient()).isEqualTo(endpointParamsAndHttpClient);
+    assertThat(underTest.getBranchProvider().get()).isEqualTo("branch");
   }
 
 }
