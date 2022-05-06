@@ -65,7 +65,8 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void skipJavaIfNoClasspath() throws Exception {
-    emulateConfigurationChangeOnClient("**/*Test.js", true, false, true);
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
 
     var uri = getUri("skipJavaIfNoClasspath.java");
 
@@ -81,6 +82,9 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleJavaFileReuseCachedClasspath() throws Exception {
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
+
     var uri = getUri("analyzeSimpleJavaFileOnOpen.java");
 
     var javaConfigResponse = new GetJavaConfigResponse();
@@ -159,7 +163,9 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     var currentJdkHome = javaHome.endsWith("jre") ? javaHome.getParent() : javaHome;
     var isModular = Files.exists(currentJdkHome.resolve("lib/jrt-fs.jar"));
 
-    emulateConfigurationChangeOnClient("", true, true, true);
+    setShowVerboseLogs(client.globalSettings, true);
+    setShowAnalyzerLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
 
     var uri = getUri("analyzeSimpleJavaFileOnOpen.java");
 
@@ -211,6 +217,9 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void testClassPathUpdateEvictCacheAndTriggersNewAnalysis(@TempDir Path projectRoot) throws Exception {
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
+
     var uri = getUri("testClassPathUpdate.java");
 
     var projectRootUri = projectRoot.toUri().toString();
@@ -253,7 +262,8 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void testJavaServerModeUpdateToStandardTriggersNewAnalysis() throws Exception {
-    emulateConfigurationChangeOnClient("**/*Test.js", true, false, true);
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
 
     var uri = getUri("testJavaServerModeUpdate.java");
 
@@ -289,6 +299,8 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldBatchAnalysisFromTheSameModule() throws Exception {
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
 
     var file1module1 = getUri("Foo1.java");
     var file2module1 = getUri("Foo2.java");
@@ -336,6 +348,8 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldNotBatchAnalysisFromDifferentModules() throws Exception {
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
 
     var file1module1 = getUri("file1.java");
     var file2module2 = getUri("file2.java");

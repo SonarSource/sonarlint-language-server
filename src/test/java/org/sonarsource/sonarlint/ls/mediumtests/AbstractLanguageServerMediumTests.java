@@ -28,7 +28,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -48,7 +47,6 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.assertj.core.api.iterable.ThrowingExtractor;
 import org.awaitility.core.ThrowingRunnable;
 import org.eclipse.lsp4j.ClientCapabilities;
@@ -196,7 +194,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     setUpFolderSettings(client.folderSettings);
 
-    emulateConfigurationChangeOnClient(null, false, false, true);
+    notifyConfigurationChangeOnClient();
 
     // Wait for logs to stop being produced
     await().during(1, SECONDS).atMost(5, SECONDS).until(() -> {
@@ -244,7 +242,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     Map<String, List<Diagnostic>> diagnostics = new ConcurrentHashMap<>();
     Queue<MessageParams> logs = new ConcurrentLinkedQueue<>();
-    Map<String, Object> globalSettings = null;
+    Map<String, Object> globalSettings = new HashMap<>();
     Map<String, Map<String, Object>> folderSettings = new HashMap<>();
     Map<String, GetJavaConfigResponse> javaConfigs = new HashMap<>();
     Map<String, String> branchNameByFolder = new HashMap<>();
@@ -259,7 +257,8 @@ public abstract class AbstractLanguageServerMediumTests {
     void clear() {
       diagnostics.clear();
       logs.clear();
-      globalSettings = null;
+      globalSettings = new HashMap<>();
+      setDisableTelemetry(globalSettings, true);
       folderSettings.clear();
       settingsLatch = new CountDownLatch(0);
       showRuleDescriptionLatch = new CountDownLatch(0);
@@ -394,16 +393,9 @@ public abstract class AbstractLanguageServerMediumTests {
     }
   }
 
-  protected void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, String... ruleConfigs) {
-    emulateConfigurationChangeOnClient(testFilePattern, disableTelemetry, null, null, ruleConfigs);
-  }
-
-  protected static void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
-    @Nullable Boolean showVerboseLogs, Map<String, String> analyserProperties, String pathToCompilationDatabase, String... ruleConfigs) {
-    client.globalSettings = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, analyserProperties, pathToCompilationDatabase,
-      ruleConfigs);
+  protected static void notifyConfigurationChangeOnClient() {
     client.settingsLatch = new CountDownLatch(1);
-    lsProxy.getWorkspaceService().didChangeConfiguration(changedConfiguration(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs));
+    lsProxy.getWorkspaceService().didChangeConfiguration(new DidChangeConfigurationParams(Map.of("sonarlint", client.globalSettings)));
     awaitLatch(client.settingsLatch);
     // workspace/configuration has been called by server, but give some time for the response to be processed (settings change listeners)
     try {
@@ -413,51 +405,60 @@ public abstract class AbstractLanguageServerMediumTests {
     }
   }
 
-  protected static void emulateConfigurationChangeOnClient(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
-    @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
-    emulateConfigurationChangeOnClient(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, Collections.emptyMap(), null, ruleConfigs);
-  }
-
-  private static DidChangeConfigurationParams changedConfiguration(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
-    @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
-    var values = buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, ruleConfigs);
-    return new DidChangeConfigurationParams(Map.of("sonarlint", values));
-  }
-
-  protected static Map<String, Object> buildSonarLintSettingsSection(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
-    @Nullable Boolean showVerboseLogs, String... ruleConfigs) {
-    return buildSonarLintSettingsSection(testFilePattern, disableTelemetry, showAnalyzerLogs, showVerboseLogs, Collections.emptyMap(), null, ruleConfigs);
-  }
-
-  protected static Map<String, Object> buildSonarLintSettingsSection(@Nullable String testFilePattern, @Nullable Boolean disableTelemetry, @Nullable Boolean showAnalyzerLogs,
-    @Nullable Boolean showVerboseLogs, Map<String, String> analyzerProperties, String pathToCompilationDatabase, String... ruleConfigs) {
-    var values = new HashMap<String, Object>();
+  protected static void setTestFilePattern(Map<String, Object> config, @Nullable String testFilePattern) {
     if (testFilePattern != null) {
-      values.put("testFilePattern", testFilePattern);
+      config.put("testFilePattern", testFilePattern);
+    } else {
+      config.remove("testFilePattern");
     }
-    if (!analyzerProperties.isEmpty()) {
-      values.put("analyzerProperties", analyzerProperties);
+  }
+
+  protected static void setPathToCompileCommands(Map<String, Object> config, @Nullable String pathToCompileCommands) {
+    if (pathToCompileCommands != null) {
+      config.put("pathToCompileCommands", pathToCompileCommands);
+    } else {
+      config.remove("pathToCompileCommands");
     }
-    if (StringUtils.isNotEmpty(pathToCompilationDatabase)) {
-      values.put("pathToCompileCommands", pathToCompilationDatabase);
-    }
+  }
+
+  protected static void setDisableTelemetry(Map<String, Object> config, @Nullable Boolean disableTelemetry) {
     if (disableTelemetry != null) {
-      values.put("disableTelemetry", disableTelemetry);
+      config.put("disableTelemetry", disableTelemetry);
+    } else {
+      config.remove("disableTelemetry");
     }
-    if (showAnalyzerLogs != null || showVerboseLogs != null) {
-      var output = new HashMap<String, Object>();
-      if (showAnalyzerLogs != null) {
-        output.put("showAnalyzerLogs", showAnalyzerLogs);
-      }
-      if (showVerboseLogs != null) {
-        output.put("showVerboseLogs", showVerboseLogs);
-      }
-      values.put("output", output);
+  }
+
+  protected static void setShowAnalyzerLogs(Map<String, Object> config, @Nullable Boolean showAnalyzerLogs) {
+    if (showAnalyzerLogs != null) {
+      ((HashMap<String, Object>) config.computeIfAbsent("output", k -> new HashMap<String, Object>())).put("showAnalyzerLogs", showAnalyzerLogs);
+    } else {
+      config.remove("showAnalyzerLogs");
     }
+  }
+
+  protected static void setShowVerboseLogs(Map<String, Object> config, @Nullable Boolean showVerboseLogs) {
+    if (showVerboseLogs != null) {
+      ((HashMap<String, Object>) config.computeIfAbsent("output", k -> new HashMap<String, Object>())).put("showVerboseLogs", showVerboseLogs);
+    } else {
+      config.remove("showVerboseLogs");
+    }
+  }
+
+  protected static void setAnalyzerProperties(Map<String, Object> config, Map<String, String> analyzerProperties) {
+    if (analyzerProperties.isEmpty()) {
+      config.put("analyzerProperties", analyzerProperties);
+    } else {
+      config.remove("analyzerProperties");
+    }
+  }
+
+  protected static void setRulesConfig(Map<String, Object> config, String... ruleConfigs) {
     if (ruleConfigs.length > 0) {
-      values.put("rules", buildRulesMap(ruleConfigs));
+      config.put("rules", buildRulesMap(ruleConfigs));
+    } else {
+      config.remove("rules");
     }
-    return values;
   }
 
   private static Map<String, Object> buildRulesMap(String... ruleConfigs) {
@@ -507,5 +508,9 @@ public abstract class AbstractLanguageServerMediumTests {
 
   protected void awaitUntilAsserted(ThrowingRunnable assertion) {
     await().atMost(2, MINUTES).untilAsserted(assertion);
+  }
+
+  protected Map<String, Object> getFolderSettings(String folderUri) {
+    return client.folderSettings.computeIfAbsent(folderUri, f -> new HashMap<>());
   }
 }
