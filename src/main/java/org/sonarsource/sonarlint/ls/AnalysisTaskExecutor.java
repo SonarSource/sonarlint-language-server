@@ -141,11 +141,7 @@ public class AnalysisTaskExecutor {
 
   private boolean scmIgnored(URI fileUri) {
     var isIgnored = filesIgnoredByScmCache.isIgnored(fileUri).orElse(false);
-    if (Boolean.TRUE.equals(isIgnored)) {
-      lsLogOutput.debug(format("Skip analysis for SCM ignored file: '%s'", fileUri));
-      return true;
-    }
-    return false;
+    return Boolean.TRUE.equals(isIgnored);
   }
 
   private void clearIssueCacheAndPublishEmptyDiagnostics(URI f) {
