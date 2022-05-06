@@ -55,14 +55,16 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   @Override
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
-    folderSettings.put(folder1BaseDir.toUri().toString(), buildSonarLintSettingsSection("**/*Test.js", null, null, true));
-    folderSettings.put(folder2BaseDir.toUri().toString(), buildSonarLintSettingsSection("**/*Test.js", null, null, true));
+    setTestFilePattern(getFolderSettings(folder1BaseDir.toUri().toString()), "**/*Test.js");
+    setTestFilePattern(getFolderSettings(folder2BaseDir.toUri().toString()), "**/*Test.js");
   }
 
   @Test
   void analysisShouldUseFolderSettings() throws Exception {
+    setShowVerboseLogs(client.globalSettings, true);
     // In folder settings, the test pattern is **/*Test.js while in global config we put **/*.js
-    emulateConfigurationChangeOnClient("**/*.js", true);
+    setTestFilePattern(client.globalSettings, "**/*.js");
+    notifyConfigurationChangeOnClient();
 
     var uriInFolder = folder1BaseDir.resolve("inFolder.js").toUri().toString();
     didOpen(uriInFolder, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
@@ -88,6 +90,8 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   @Test
   void shouldBatchAnalysisFromTheSameFolder() throws Exception {
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
 
     var file1InFolder = folder1BaseDir.resolve("file1.js").toUri().toString();
     var file2InFolder = folder1BaseDir.resolve("file2.js").toUri().toString();
@@ -120,6 +124,8 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   @Test
   void shouldNotBatchAnalysisFromDifferentFolders() throws Exception {
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
 
     // Simulate opening of a second workspace folder
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(

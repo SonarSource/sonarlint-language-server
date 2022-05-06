@@ -22,7 +22,6 @@ package org.sonarsource.sonarlint.ls.mediumtests;
 import com.google.gson.JsonPrimitive;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -83,8 +82,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleJsFileOnOpen() throws Exception {
-    emulateConfigurationChangeOnClient("**/*Test.js", true);
-
     var uri = getUri("analyzeSimpleJsFileOnOpen.js");
     didOpen(uri, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
 
@@ -100,11 +97,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("analyzeSimpleJsFileWithCustomRuleConfig.js");
     var jsSource = "function foo()\n {\n  var toto = 0;\n  var plouf = 0;\n}";
 
-    // Default configuration should result in 2 issues: S1442 and UnusedVariable
-    emulateConfigurationChangeOnClient("**/*Test.js", null, false, true);
-
-    assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern=**/*Test.js]");
+    // Default configuration should result in 2 issues for rule S1481
 
     didOpen(uri, "javascript", jsSource);
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
@@ -115,13 +108,10 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     client.clear();
 
-    // Update rules configuration: disable UnusedVariable, enable Semicolon
-    emulateConfigurationChangeOnClient("**/*Test.js", null,
-      "javascript:S1481", "off",
-      "javascript:S1105", "on");
-
-    assertLogContains(
-      "Global settings updated: WorkspaceSettings[connections={},disableTelemetry=false,excludedRules=[javascript:S1481],includedRules=[javascript:S1105],pathToNodeExecutable=<null>,ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=false]");
+    // Update rules configuration: disable S1481, enable S1105
+    setRulesConfig(client.globalSettings, "javascript:S1481", "off", "javascript:S1105", "on");
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -159,6 +149,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void doNotAnalyzePythonFileOnPreview() throws Exception {
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
+
     var uri = getUri("analyzeSimplePythonFileOnOpen.py");
 
     client.isOpenInEditor = false;
@@ -235,7 +228,10 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void noIssueOnTestJSFiles() throws Exception {
-    emulateConfigurationChangeOnClient("{**/*Test*}", null, null, true);
+    setTestFilePattern(client.globalSettings, "{**/*Test*}");
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
+
     assertLogContains(
       "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern={**/*Test*}]");
 
@@ -249,7 +245,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.getDiagnostics(fooTestUri)).isEmpty();
     client.clear();
 
-    emulateConfigurationChangeOnClient("{**/*MyTest*}", null, null, true);
+    setTestFilePattern(client.globalSettings, "{**/*MyTest*}");
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
     assertLogContains(
       "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern={**/*MyTest*}]");
 
@@ -302,6 +300,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void delayAnalysisOnChange() throws Exception {
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
+
     var uri = getUri("foo.js");
 
     didOpen(uri, "javascript", "function foo() {}");
@@ -337,7 +338,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void noAnalysisOnNullContent() throws Exception {
-    emulateConfigurationChangeOnClient("**/*Test.js", true, true, true);
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
 
     var uri = getUri("foo.py");
     // SLVSCODE-157 - Open/Close/Open/Close triggers a race condition that nullifies content
@@ -359,7 +361,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void vcsIgnoredShouldNotAnalyzed() throws Exception {
-    emulateConfigurationChangeOnClient("**/*Test.js", true, true, true);
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
     client.logs.clear();
 
     var uri = getUri("foo.py");
@@ -375,13 +378,16 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void optOutTelemetry() throws Exception {
     // Ensure telemetry is disabled and enable verbose logs
-    emulateConfigurationChangeOnClient(null, true, false, true);
+    setDisableTelemetry(client.globalSettings, true);
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
 
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder( "Telemetry disabled");
 
     // Enable telemetry
-    emulateConfigurationChangeOnClient(null, false, false, true);
+    setDisableTelemetry(client.globalSettings, false);
+    notifyConfigurationChangeOnClient();
 
     assertLogContains(
       "Global settings updated: WorkspaceSettings[connections={},disableTelemetry=false,excludedRules=[],includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=true]");
@@ -523,7 +529,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void fetchWorkspaceFolderConfigurationWhenAdded() {
     client.settingsLatch = new CountDownLatch(1);
     var folderUri = "file:///added_uri";
-    client.folderSettings.put(folderUri, buildSonarLintSettingsSection("another pattern", null, null, true));
+    setShowVerboseLogs(client.globalSettings, true);
+    setTestFilePattern(getFolderSettings(folderUri), "another pattern");
+    notifyConfigurationChangeOnClient();
 
     try {
       lsProxy.getWorkspaceService()
@@ -543,7 +551,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void test_analysis_logs_disabled() throws Exception {
-    emulateConfigurationChangeOnClient("**/*Test.js", true, false, false);
     Thread.sleep(1000);
     client.logs.clear();
 
@@ -560,7 +567,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void test_debug_logs_enabled() throws Exception {
-    emulateConfigurationChangeOnClient("**/*Test.js", true, false, true);
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
     Thread.sleep(1000);
     client.logs.clear();
 
@@ -578,7 +586,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void test_analysis_logs_enabled() throws Exception {
-    emulateConfigurationChangeOnClient("**/*Test.js", true, true, false);
+    setShowAnalyzerLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
     Thread.sleep(1000);
     client.logs.clear();
 
@@ -598,7 +607,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void test_analysis_with_debug_logs_enabled() throws Exception {
-    emulateConfigurationChangeOnClient("**/*Test.js", true, true, true);
+    setShowVerboseLogs(client.globalSettings, true);
+    setShowAnalyzerLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
     Thread.sleep(1000);
     client.logs.clear();
 
@@ -619,7 +630,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void preservePreviousDiagnosticsWhenFileHasParsingErrors() throws Exception {
-    emulateConfigurationChangeOnClient("", true, true, true);
+    setShowVerboseLogs(client.globalSettings, true);
+    setShowAnalyzerLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
     var uri = getUri("parsingError.py");
 
     didOpen(uri, "python", "def foo():\n  print 'toto'\n");
@@ -647,6 +660,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void updateBranchNameShouldLogAMessage() {
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
+
     lsProxy.didLocalBranchNameChange(new DidLocalBranchNameChangeParams("file:///some_folder", "some/branch/name"));
 
     assertLogContains("Folder file:///some_folder is now on branch some/branch/name.");
@@ -656,6 +672,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void updateBranchNameWithNullBranchShouldLogAnotherMessage() {
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
+
     lsProxy.didLocalBranchNameChange(new DidLocalBranchNameChangeParams("file:///some_folder", null));
 
     assertLogContains("Folder file:///some_folder is now on an unknown branch.");

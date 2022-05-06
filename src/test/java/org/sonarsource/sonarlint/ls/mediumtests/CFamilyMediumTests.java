@@ -24,7 +24,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.text.StringEscapeUtils;
@@ -50,8 +49,8 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
 
     var compilationDatabaseFile = prepareCompilationDatabase(cppProjectBaseDir, mockClang, cppFile);
 
-    emulateConfigurationChangeOnClient(null, true, true, true,
-      new HashMap<>(), compilationDatabaseFile.toString());
+    setPathToCompileCommands(client.globalSettings, compilationDatabaseFile.toString());
+    notifyConfigurationChangeOnClient();
 
     didOpen(cppFileUri, "cpp",
       "int main() {\n" +
@@ -72,8 +71,8 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
     Files.createFile(cppFile);
     var cppFileUri = cppFile.toUri().toString();
 
-    emulateConfigurationChangeOnClient(null, true, true, true,
-      new HashMap<>(), null);
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
 
     didOpen(cppFileUri, "cpp",
       "int main() {\n" +
@@ -92,8 +91,9 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
     Files.createFile(cppFile);
     var cppFileUri = cppFile.toUri().toString();
 
-    emulateConfigurationChangeOnClient(null, true, true, true,
-      new HashMap<>(), "non/existing/file");
+    setShowVerboseLogs(client.globalSettings, true);
+    setPathToCompileCommands(client.globalSettings, "non/existing/file");
+    notifyConfigurationChangeOnClient();
 
     didOpen(cppFileUri, "cpp",
       "int main() {\n" +
@@ -116,6 +116,9 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
 
     var compilationDatabaseFile = prepareCompilationDatabase(cppProjectBaseDir, mockClang, cppFile);
 
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
+
     didOpen(cppFileUri, "cpp",
       "int main() {\n" +
         "    int i = 0;\n" +
@@ -126,8 +129,8 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.needCompilationDatabaseCalls.getAndSet(0)).isEqualTo(1));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
 
-    emulateConfigurationChangeOnClient(null, true, true, true,
-      new HashMap<>(), compilationDatabaseFile.toString());
+    setPathToCompileCommands(client.globalSettings, compilationDatabaseFile.toString());
+    notifyConfigurationChangeOnClient();
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(cppFileUri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
