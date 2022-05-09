@@ -337,7 +337,7 @@
                     <artifactItem>
                       <groupId>com.sonarsource.cpp</groupId>
                       <artifactId>sonar-cfamily-plugin</artifactId>
-                      <version>6.31.0.44497</version>
+                      <version>6.33.0.46593</version>
                       <destFileName>cfamily.jar</destFileName>
                       <type>jar</type>
                     </artifactItem>
