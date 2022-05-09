@@ -79,6 +79,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspot;
+import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.ServerMain;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
@@ -98,6 +99,9 @@ public abstract class AbstractLanguageServerMediumTests {
   protected final static boolean COMMERCIAL_ENABLED = System.getProperty("commercial") != null;
 
   @TempDir
+  static Path sonarLintUserHome;
+
+  @TempDir
   Path temp;
 
   protected Set<String> toBeClosed = new HashSet<>();
@@ -109,6 +113,7 @@ public abstract class AbstractLanguageServerMediumTests {
   @BeforeAll
   static void startServer() throws Exception {
     System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+    EnginesFactory.sonarLintUserHomeOverride = sonarLintUserHome;
     serverSocket = new ServerSocket(0);
     var port = serverSocket.getLocalPort();
 
@@ -128,12 +133,12 @@ public abstract class AbstractLanguageServerMediumTests {
     });
     executor.shutdown();
 
-    var java = fullPathToJar("java");
-    var js = fullPathToJar("javascript");
-    var php = fullPathToJar("php");
-    var py = fullPathToJar("python");
-    var html = fullPathToJar("html");
-    var xml = fullPathToJar("xml");
+    var java = fullPathToJar("sonarjava");
+    var js = fullPathToJar("sonarjs");
+    var php = fullPathToJar("sonarphp");
+    var py = fullPathToJar("sonarpython");
+    var html = fullPathToJar("sonarhtml");
+    var xml = fullPathToJar("sonarxml");
     String[] languageServerArgs = new String[] {"" + port, "-analyzers", java, js, php, py, html, xml};
     if (COMMERCIAL_ENABLED) {
       var cfamily = fullPathToJar("cfamily");
@@ -451,6 +456,18 @@ public abstract class AbstractLanguageServerMediumTests {
     } else {
       config.remove("analyzerProperties");
     }
+  }
+
+  protected static void addSonarQubeConnection(Map<String, Object> config, String connectionId, String url, String token) {
+    var connectedMode = (Map<String, Object>) config.computeIfAbsent("connectedMode", k -> new HashMap<String, Object>());
+    var connections = (Map<String, Object>) connectedMode.computeIfAbsent("connections", k -> new HashMap<String, Object>());
+    var sonarqubeConnections = (List) connections.computeIfAbsent("sonarqube", k -> new ArrayList<>());
+    sonarqubeConnections.add(Map.of("connectionId", connectionId, "serverUrl", url, "token", token));
+  }
+
+  protected static void bindProject(Map<String, Object> config, String connectionId, String projectKey) {
+    var connectedMode = (Map<String, Object>) config.computeIfAbsent("connectedMode", k -> new HashMap<String, Object>());
+    connectedMode.put("project", Map.of("connectionId", connectionId, "projectKey", projectKey));
   }
 
   protected static void setRulesConfig(Map<String, Object> config, String... ruleConfigs) {

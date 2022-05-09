@@ -200,6 +200,11 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       return null;
     }
     var engine = engineOpt.get();
+    var globalStorageStatus = engine.getGlobalStorageStatus();
+    if (globalStorageStatus == null || globalStorageStatus.isStale()) {
+      LOG.error("SonarLint local storage is missing or outdated. Falling back to standalone mode.");
+      return null;
+    }
     var projectKey = requireNonNull(settings.getProjectKey());
     var projectStorageStatus = engine.getProjectStorageStatus(projectKey);
     if (projectStorageStatus == null || projectStorageStatus.isStale()) {
@@ -254,19 +259,18 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       LOG.error("Error starting connected SonarLint engine for '" + connectionId + "'", e);
       return null;
     }
-    var failedServerIds = new ArrayList<String>();
+    var failedConnectionIds = new ArrayList<String>();
     try {
       var globalStorageStatus = engine.getGlobalStorageStatus();
       if (autoUpdate && (globalStorageStatus == null || globalStorageStatus.isStale())) {
-        updateGlobalStorageAndLogResults(endpointParamsAndHttpClient, engine, failedServerIds, connectionId, progress);
+        updateGlobalStorageAndLogResults(endpointParamsAndHttpClient, engine, failedConnectionIds, connectionId, progress);
       }
     } catch (Exception e) {
       LOG.error("Error updating storage of the connected SonarLint engine '" + connectionId + "'", e);
     }
     subscribeForServerEvents(connectionId, engine);
-    if (!failedServerIds.isEmpty()) {
+    if (!failedConnectionIds.isEmpty()) {
       client.showMessage(new MessageParams(MessageType.Error, "Binding update failed for the server: " + connectionId + ". Look to the SonarLint output for details."));
-      return null;
     }
     return engine;
   }
@@ -299,8 +303,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       unbind(folder);
     } else if (newValue.hasBinding()
       && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
-      forceRebindDuringNextAnalysis(folder);
-    }
+        forceRebindDuringNextAnalysis(folder);
+      }
   }
 
   private void forceRebindDuringNextAnalysis(@Nullable WorkspaceFolderWrapper folder) {
