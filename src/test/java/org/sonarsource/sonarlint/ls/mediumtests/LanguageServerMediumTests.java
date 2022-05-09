@@ -22,7 +22,6 @@ package org.sonarsource.sonarlint.ls.mediumtests;
 import com.google.gson.JsonPrimitive;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -373,7 +372,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void optOutTelemetry() throws Exception {
+  void optOutTelemetry() {
     // Ensure telemetry is disabled and enable verbose logs
     emulateConfigurationChangeOnClient(null, true, false, true);
 
@@ -390,7 +389,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void testUnknownCommand() throws Exception {
+  void testUnknownCommand() {
     try {
       lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("unknown", Collections.emptyList())).get();
       fail("Expected exception");
@@ -403,7 +402,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void test_command_open_standalone_rule_desc_with_unknown_diagnostic_rule() throws Exception {
+  void test_command_open_standalone_rule_desc_with_unknown_diagnostic_rule() {
     try {
       lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", List.of("unknown:rule"))).get();
       fail("Expected exception");
@@ -484,7 +483,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void testListAllRules() throws Exception {
+  void testListAllRules() {
     var result = lsProxy.listAllRules().join();
     String[] commercialLanguages = new String[] {"C", "C++"};
     String[] freeLanguages = new String[] {"HTML", "JavaScript", "TypeScript", "PHP", "Python", "Java", "XML"};

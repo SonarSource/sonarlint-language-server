@@ -189,7 +189,7 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   @BeforeEach
-  void cleanup() throws InterruptedException {
+  void cleanup() {
     // Reset state on LS side
     client.clear();
     toBeClosed.clear();
@@ -506,6 +506,6 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected void awaitUntilAsserted(ThrowingRunnable assertion) {
-    await().atMost(1, MINUTES).untilAsserted(assertion);
+    await().atMost(2, MINUTES).untilAsserted(assertion);
   }
 }
