@@ -355,6 +355,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     javaConfigResponse2.setClasspath(new String[0]);
     client.javaConfigs.put(file2module2, javaConfigResponse2);
 
+    // two consecutive open files from different modules should not be batched
     didOpen(file1module1, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
     didOpen(file2module2, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
 
@@ -365,7 +366,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     client.logs.clear();
 
-    // two consecute changes on different modules should not be batched
+    // two consecutive changes on different modules should not be batched
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1module1, 2),
         List.of(new TextDocumentContentChangeEvent("public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
@@ -376,7 +377,6 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
       .containsSubsequence(
-        "[Debug] Queuing analysis of 2 files",
         "[Info] Found 3 issues",
         "[Info] Found 3 issues")
       // We don't know the order of analysis for the 2 files, so we can't have a single assertion
