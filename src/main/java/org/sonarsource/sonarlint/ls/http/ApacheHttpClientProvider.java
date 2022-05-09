@@ -67,7 +67,9 @@ public class ApacheHttpClientProvider {
 
   public void close() {
     try {
-      client.close();
+      if (client != null) {
+        client.close();
+      }
     } catch (IOException e) {
       LOG.error("Unable to close http client: ", e.getMessage());
     }
