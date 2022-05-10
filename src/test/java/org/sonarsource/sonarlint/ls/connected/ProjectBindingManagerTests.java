@@ -251,7 +251,7 @@ class ProjectBindingManagerTests {
   void get_binding_should_update_if_global_storage_missing() {
     mockFileInABoundWorkspaceFolder();
 
-    when(fakeEngine.getGlobalStorageStatus()).thenReturn(null);
+    when(fakeEngine.getGlobalStorageStatus()).thenReturn(null, globalStorageStatus);
 
     var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     assertThat(binding).isNotEmpty();
@@ -264,7 +264,7 @@ class ProjectBindingManagerTests {
   void get_binding_should_update_if_global_storage_is_stale() {
     mockFileInABoundWorkspaceFolder();
 
-    when(globalStorageStatus.isStale()).thenReturn(true);
+    when(globalStorageStatus.isStale()).thenReturn(true, false);
 
     var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     assertThat(binding).isNotEmpty();
