@@ -34,8 +34,8 @@ public class ServerMain {
   private static final String ANALYZERS_KEY = "-analyzers";
   private static final String EXTRA_ANALYZERS_KEY = "-extraAnalyzers";
   private static final String USAGE = "Usage: java -jar sonarlint-server.jar <jsonRpcPort> " +
-          "[-analyzers path/to/analyzer1.jar [path/to/analyzer2.jar] ...] " +
-          "[-extraAnalyzers path/to/analyzer3.jar [path/to/analyzer4.jar] ...]";
+    "[-analyzers path/to/analyzer1.jar [path/to/analyzer2.jar] ...] " +
+    "[-extraAnalyzers path/to/analyzer3.jar [path/to/analyzer4.jar] ...]";
 
   private final PrintStream out;
   private final PrintStream err;
@@ -46,7 +46,20 @@ public class ServerMain {
   }
 
   public static void main(String... args) {
-    new ServerMain(System.out, System.err).startLanguageServer(args);
+    // new ServerMain(System.out, System.err).startLanguageServer(args);
+    new ServerMain(System.out, System.err).startLanguageServerWithStdIO(args);
+  }
+
+  public void startLanguageServerWithStdIO(String... args) {
+    if (args.length < 1) {
+      err.println(USAGE);
+      exitWithError();
+    }
+
+    var analyzers = extractAnalyzers(args);
+    var extraAnalyzers = extractExtraAnalyzers(args);
+
+    SonarLintLanguageServer.byStdIO(analyzers, extraAnalyzers);
   }
 
   static int getIndexOfNextParam(int start, String[] args) {

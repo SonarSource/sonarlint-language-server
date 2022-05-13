@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -35,6 +36,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.eclipse.lsp4j.ClientInfo;
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Command;
@@ -54,6 +56,7 @@ import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.SetTraceParams;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.TextDocumentSyncOptions;
+import org.eclipse.lsp4j.WindowClientCapabilities;
 import org.eclipse.lsp4j.WorkDoneProgressCancelParams;
 import org.eclipse.lsp4j.WorkspaceFoldersOptions;
 import org.eclipse.lsp4j.WorkspaceServerCapabilities;
@@ -181,6 +184,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     launcher.startListening();
   }
 
+  static void byStdIO(Collection<Path> analyzers, Collection<Path> extraAnalyzers) {
+    InputStream inputStream = System.in;
+    OutputStream outputStream = System.out;
+    System.setIn(InputStream.nullInputStream());
+    System.setOut(new PrintStream(OutputStream.nullOutputStream()));
+    new SonarLintLanguageServer(inputStream, outputStream, analyzers, extraAnalyzers);
+  }
+
   static void bySocket(int port, Collection<Path> analyzers, Collection<Path> extraAnalyzers) throws IOException {
     var socket = new Socket("localhost", port);
     new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers, extraAnalyzers);
@@ -192,24 +203,29 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       cancelToken.checkCanceled();
       this.traceLevel = parseTraceLevel(params.getTrace());
 
-      progressManager.setWorkDoneProgressSupportedByClient(ofNullable(params.getCapabilities().getWindow().getWorkDoneProgress()).orElse(false));
+      WindowClientCapabilities window = ofNullable(params.getCapabilities().getWindow()).orElse(new WindowClientCapabilities());
+      progressManager.setWorkDoneProgressSupportedByClient(ofNullable(window.getWorkDoneProgress()).orElse(false));
 
       workspaceFoldersManager.initialize(params.getWorkspaceFolders());
 
       var options = Utils.parseToMap(params.getInitializationOptions());
+      if (options == null) {
+        options = Map.of();
+      }
 
       var productKey = (String) options.get("productKey");
       // deprecated, will be ignored when productKey present
       var telemetryStorage = (String) options.get("telemetryStorage");
 
-      var productName = (String) options.get("productName");
-      var productVersion = (String) options.get("productVersion");
-      var appName = params.getClientInfo().getName();
-      var workspaceName = (String) options.get("workspaceName");
-      var clientVersion = params.getClientInfo().getVersion();
-      var ideVersion = appName + " " + clientVersion;
-      var firstSecretDetected = (boolean) options.getOrDefault("firstSecretDetected", false);
+      var productName = (String) options.getOrDefault("productName", "unknown");
+      var productVersion = (String) options.getOrDefault("productVersion", "unknown");
       httpClientProvider.initialize(productName, productVersion);
+      ClientInfo clientInfo = ofNullable(params.getClientInfo()).orElse(new ClientInfo());
+      var appName = clientInfo.getName();
+      var clientVersion = clientInfo.getVersion();
+      var ideVersion = appName + " " + clientVersion;
+      var workspaceName = (String) options.get("workspaceName");
+      var firstSecretDetected = (boolean) options.getOrDefault("firstSecretDetected", false);
       var platform = (String) options.get("platform");
       var architecture = (String) options.get("architecture");
       var additionalAttributes = (Map<String, Object>) options.getOrDefault("additionalAttributes", Map.of());
@@ -318,14 +334,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didOpen(DidOpenTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
-    client.isOpenInEditor(uri.toString()).thenAccept(isOpen -> {
-      if (Boolean.TRUE.equals(isOpen)) {
-        var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
-        analysisScheduler.didOpen(file);
-      } else {
-        SonarLintLogger.get().debug("Skipping analysis for preview of file {}", uri);
-      }
-    });
+    var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
+    analysisScheduler.didOpen(file);
   }
 
   @Override

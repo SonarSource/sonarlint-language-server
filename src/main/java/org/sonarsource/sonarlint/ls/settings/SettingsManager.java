@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -83,11 +84,11 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private final WorkspaceFoldersManager foldersManager;
   private final ApacheHttpClientProvider httpClientProvider;
 
-  private WorkspaceSettings currentSettings = null;
-  private final CountDownLatch initLatch = new CountDownLatch(1);
+  private WorkspaceSettings currentSettings = new WorkspaceSettings(true, Map.of(), List.of(), List.of(), null, true, true, null);
+  private final CountDownLatch initLatch = new CountDownLatch(0);
   // Setting that are normally specific per workspace folder, but we also keep a cache of global values to analyze files outside any
   // workspace
-  private WorkspaceFolderSettings currentDefaultSettings = null;
+  private WorkspaceFolderSettings currentDefaultSettings = new WorkspaceFolderSettings(null, null, Map.of(), null, null);
 
   private final ExecutorService executor;
   private final List<WorkspaceSettingsChangeListener> globalListeners = new ArrayList<>();
@@ -140,7 +141,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   public void didChangeConfiguration() {
     executor.execute(() -> {
       try {
-        var workspaceSettingsMap = requestSonarLintConfigurationAsync(null).get(1, TimeUnit.MINUTES);
+        var workspaceSettingsMap = Optional.ofNullable(requestSonarLintConfigurationAsync(null).get(1, TimeUnit.MINUTES)).orElse(Map.of());
         var newWorkspaceSettings = parseSettings(workspaceSettingsMap, httpClientProvider);
         var oldWorkspaceSettings = currentSettings;
         this.currentSettings = newWorkspaceSettings;

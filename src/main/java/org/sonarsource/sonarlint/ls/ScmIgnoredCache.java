@@ -28,8 +28,6 @@ import java.util.concurrent.TimeUnit;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
-import static java.util.Optional.ofNullable;
-
 public class ScmIgnoredCache {
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
@@ -62,19 +60,7 @@ public class ScmIgnoredCache {
     if (filesIgnoredByUri.containsKey(fileUri)) {
       return CompletableFuture.completedFuture(filesIgnoredByUri.get(fileUri));
     }
-    return client.isIgnoredByScm(fileUri.toString())
-      .handle((r, t) -> {
-        if (t != null) {
-          LOG.error("Unable to check if file " + fileUri + " is SCM ignored", t);
-        }
-        return r;
-      })
-      .thenApply(ignored -> {
-        var ignoredOpt = ofNullable(ignored);
-        filesIgnoredByUri.put(fileUri, ignoredOpt);
-        LOG.debug("Cached SCM ignore status for file '{}': {}", fileUri, ignoredOpt.map(b -> Boolean.TRUE.equals(b) ? "Ignored" : "Not ignored").orElse("Unknown"));
-        return ignoredOpt;
-      });
+    return CompletableFuture.completedFuture(Optional.of(false));
   }
 
 }
