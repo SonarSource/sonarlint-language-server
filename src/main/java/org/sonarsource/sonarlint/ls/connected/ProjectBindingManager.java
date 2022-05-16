@@ -548,7 +548,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     String connectionId, ProgressFacade progress) {
     try {
       var updateResult = engine.update(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), progress.asCoreMonitor());
-      LOG.info("Local storage status for connection with id '{}': {}", connectionId, updateResult.status());
+      LOG.info("Local storage status for connection with id '{}': {}", connectionId, ToStringBuilder.reflectionToString(updateResult.status(), ToStringStyle.NO_CLASS_NAME_STYLE));
     } catch (CanceledException e) {
       throw e;
     } catch (Exception e) {
