@@ -89,7 +89,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private final WorkspaceFoldersManager foldersManager;
   private final SettingsManager settingsManager;
-  private final Map<URI, Optional<ProjectBindingWrapper>> folderBindingCache;
+  private final ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache;
   private final LanguageClientLogOutput globalLogOutput;
   private final ConcurrentMap<URI, Optional<ProjectBindingWrapper>> fileBindingCache = new ConcurrentHashMap<>();
   private final ConcurrentMap<String, Optional<ConnectedSonarLintEngine>> connectedEngineCacheByConnectionId = new ConcurrentHashMap<>();
@@ -108,7 +108,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClient client,
-    ProgressManager progressManager, Map<URI, Optional<ProjectBindingWrapper>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput) {
+    ProgressManager progressManager, ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput) {
     this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
@@ -294,8 +294,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       unbind(folder);
     } else if (newValue.hasBinding()
       && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
-      forceRebindDuringNextAnalysis(folder);
-    }
+        forceRebindDuringNextAnalysis(folder);
+      }
   }
 
   private void forceRebindDuringNextAnalysis(@Nullable WorkspaceFolderWrapper folder) {

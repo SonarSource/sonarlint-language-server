@@ -118,6 +118,12 @@
       <version>4.4.0</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>mockwebserver</artifactId>
+      <version>5.0.0-alpha.7</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -160,7 +166,7 @@
                   <type>jar</type>
                   <overWrite>false</overWrite>
                   <outputDirectory>${project.build.directory}/plugins</outputDirectory>
-                  <destFileName>java.jar</destFileName>
+                  <destFileName>sonarjava.jar</destFileName>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.sonarsource.javascript</groupId>
@@ -169,7 +175,7 @@
                   <type>jar</type>
                   <overWrite>false</overWrite>
                   <outputDirectory>${project.build.directory}/plugins</outputDirectory>
-                  <destFileName>javascript.jar</destFileName>
+                  <destFileName>sonarjs.jar</destFileName>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.sonarsource.python</groupId>
@@ -178,7 +184,7 @@
                   <type>jar</type>
                   <overWrite>false</overWrite>
                   <outputDirectory>${project.build.directory}/plugins</outputDirectory>
-                  <destFileName>python.jar</destFileName>
+                  <destFileName>sonarpython.jar</destFileName>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.sonarsource.php</groupId>
@@ -187,7 +193,7 @@
                   <type>jar</type>
                   <overWrite>false</overWrite>
                   <outputDirectory>${project.build.directory}/plugins</outputDirectory>
-                  <destFileName>php.jar</destFileName>
+                  <destFileName>sonarphp.jar</destFileName>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.sonarsource.html</groupId>
@@ -196,7 +202,7 @@
                   <type>jar</type>
                   <overWrite>false</overWrite>
                   <outputDirectory>${project.build.directory}/plugins</outputDirectory>
-                  <destFileName>html.jar</destFileName>
+                  <destFileName>sonarhtml.jar</destFileName>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.sonarsource.xml</groupId>
@@ -205,7 +211,7 @@
                   <type>jar</type>
                   <overWrite>false</overWrite>
                   <outputDirectory>${project.build.directory}/plugins</outputDirectory>
-                  <destFileName>xml.jar</destFileName>
+                  <destFileName>sonarxml.jar</destFileName>
                 </artifactItem>
               </artifactItems>
             </configuration>
