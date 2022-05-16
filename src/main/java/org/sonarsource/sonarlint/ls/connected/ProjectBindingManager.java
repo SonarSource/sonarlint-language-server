@@ -382,10 +382,14 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     startedEngines.stream()
       .filter(not(usedServerIds::contains))
       .forEach(startedEngineId -> {
-        folderBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().getConnectionId().equals(startedEngineId));
-        fileBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().getConnectionId().equals(startedEngineId));
-        tryStopServer(startedEngineId, connectedEngineCacheByConnectionId.remove(startedEngineId));
+        clearCachesAndStopEngine(startedEngineId);
       });
+  }
+
+  private void clearCachesAndStopEngine(String connectionId) {
+    folderBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().getConnectionId().equals(connectionId));
+    fileBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().getConnectionId().equals(connectionId));
+    tryStopServer(connectionId, connectedEngineCacheByConnectionId.remove(connectionId));
   }
 
   private void collectUsedServerId(Set<String> usedConnectionIds, WorkspaceFolderSettings folderSettings) {
@@ -402,6 +406,14 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     if (oldValue == null) {
       return;
     }
+    newValue.getServerConnections().entrySet().forEach(e -> {
+      var id = e.getKey();
+      var oldConnection = oldValue.getServerConnections().get(id);
+      if (oldConnection != null && !oldConnection.equals(e.getValue())) {
+        // Settings of the connection have been changed. Remove all cached bindings and force close the engine
+        clearCachesAndStopEngine(id);
+      }
+    });
     stopUnusedEngines();
   }
 
