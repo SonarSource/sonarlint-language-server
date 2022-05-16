@@ -39,6 +39,8 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
 public class EnginesFactory {
 
+  public static Path sonarLintUserHomeOverride = null;
+
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private final LanguageClientLogOutput logOutput;
@@ -84,6 +86,7 @@ public class EnginesFactory {
 
     try {
       var configuration = StandaloneGlobalConfiguration.builder()
+        .setSonarLintUserHome(sonarLintUserHomeOverride)
         .addEnabledLanguages(STANDALONE_LANGUAGES)
         .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
         .addPlugins(standaloneAnalyzers.toArray(Path[]::new))
@@ -110,6 +113,7 @@ public class EnginesFactory {
       throw new IllegalStateException("Language server is shutting down, won't create engine");
     }
     var builder = ConnectedGlobalConfiguration.builder()
+      .setSonarLintUserHome(sonarLintUserHomeOverride)
       .setConnectionId(connectionId)
       .addEnabledLanguages(STANDALONE_LANGUAGES)
       .addEnabledLanguages(CONNECTED_ADDITIONAL_LANGUAGES)
