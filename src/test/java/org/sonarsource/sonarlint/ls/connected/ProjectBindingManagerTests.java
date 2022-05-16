@@ -150,12 +150,14 @@ class ProjectBindingManagerTests {
     when(projectStorageStatus.isStale()).thenReturn(false);
     when(fakeEngine.getProjectStorageStatus(PROJECT_KEY)).thenReturn(projectStorageStatus);
     when(fakeEngine.update(any(), any(), any())).thenReturn(updateResult);
+    when(updateResult.status()).thenReturn(globalStorageStatus);
 
     when(globalStorageStatus2.isStale()).thenReturn(false);
     when(fakeEngine2.getGlobalStorageStatus()).thenReturn(globalStorageStatus2);
     when(projectStorageStatus2.isStale()).thenReturn(false);
     when(fakeEngine2.getProjectStorageStatus(PROJECT_KEY)).thenReturn(projectStorageStatus2);
     when(fakeEngine2.update(any(), any(), any())).thenReturn(updateResult2);
+    when(updateResult2.status()).thenReturn(globalStorageStatus2);
 
     folderBindingCache = new ConcurrentHashMap<>();
     underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, new ProgressManager(client), folderBindingCache, null);
