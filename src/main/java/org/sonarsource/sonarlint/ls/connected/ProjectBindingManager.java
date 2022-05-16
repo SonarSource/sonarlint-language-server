@@ -201,6 +201,11 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       return null;
     }
     var engine = engineOpt.get();
+    var globalStorageStatus = engine.getGlobalStorageStatus();
+    if (globalStorageStatus == null || globalStorageStatus.isStale()) {
+      LOG.error("SonarLint local storage is missing or outdated. Falling back to standalone mode.");
+      return null;
+    }
     var projectKey = requireNonNull(settings.getProjectKey());
     var projectStorageStatus = engine.getProjectStorageStatus(projectKey);
     if (projectStorageStatus == null || projectStorageStatus.isStale()) {
