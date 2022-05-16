@@ -245,19 +245,18 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       LOG.error("Error starting connected SonarLint engine for '" + connectionId + "'", e);
       return null;
     }
-    var failedServerIds = new ArrayList<String>();
+    var failedConnectionIds = new ArrayList<String>();
     try {
       var globalStorageStatus = engine.getGlobalStorageStatus();
       if (autoUpdate && (globalStorageStatus == null || globalStorageStatus.isStale())) {
-        updateGlobalStorageAndLogResults(endpointParamsAndHttpClient, engine, failedServerIds, connectionId, progress);
+        updateGlobalStorageAndLogResults(endpointParamsAndHttpClient, engine, failedConnectionIds, connectionId, progress);
       }
     } catch (Exception e) {
       LOG.error("Error updating storage of the connected SonarLint engine '" + connectionId + "'", e);
     }
     subscribeForServerEvents(connectionId, engine);
-    if (!failedServerIds.isEmpty()) {
+    if (!failedConnectionIds.isEmpty()) {
       client.showMessage(new MessageParams(MessageType.Error, "Binding update failed for the server: " + connectionId + ". Look to the SonarLint output for details."));
-      return null;
     }
     return engine;
   }
