@@ -163,15 +163,17 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   void syncStorage() {
-    LOG.debug("Synchronizing storage");
     var projectKeysPerConnectionId = new HashMap<String, Set<String>>();
     forEachBoundFolder((folder, settings) -> {
       var connectionId = requireNonNull(settings.getConnectionId());
       var projectKey = requireNonNull(settings.getProjectKey());
       projectKeysPerConnectionId.computeIfAbsent(connectionId, k -> new HashSet<>()).add(projectKey);
     });
-    projectKeysPerConnectionId.forEach((connectionId, projectKeys) -> getStartedConnectedEngine(connectionId)
-      .ifPresent(engine -> syncOneEngine(connectionId, projectKeys, engine, null)));
+    if (!projectKeysPerConnectionId.isEmpty()) {
+      LOG.debug("Synchronizing storages...");
+      projectKeysPerConnectionId.forEach((connectionId, projectKeys) -> getStartedConnectedEngine(connectionId)
+        .ifPresent(engine -> syncOneEngine(connectionId, projectKeys, engine, null)));
+    }
   }
 
   private void syncOneEngine(String connectionId, Set<String> projectKeys, ConnectedSonarLintEngine engine, @Nullable ProgressFacade progress) {
