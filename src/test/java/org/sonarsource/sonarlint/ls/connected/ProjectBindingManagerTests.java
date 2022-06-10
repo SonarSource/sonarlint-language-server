@@ -445,7 +445,9 @@ class ProjectBindingManagerTests {
 
     when(settingsManager.getCurrentSettings()).thenReturn(settingsWithServer2);
     spiedUnderTest.onChange(settingsWithServer1, settingsWithServer2);
-    verify(spiedUnderTest).validateConnection(SERVER_ID2);
+    spiedUnderTest.onChange(settingsWithServer2, settingsWithServer2);
+    // Should validate connection only once (when changed from server1 to server2)
+    verify(spiedUnderTest, times(1)).validateConnection(SERVER_ID2);
 
     binding = spiedUnderTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     assertThat(binding).isEmpty();
