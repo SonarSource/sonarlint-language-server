@@ -21,12 +21,16 @@ package org.sonarsource.sonarlint.ls.settings;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
+import org.sonarsource.sonarlint.core.client.api.connected.ConnectionValidator;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
+import org.sonarsource.sonarlint.core.serverapi.ServerApiHelper;
+import org.sonarsource.sonarlint.core.serverapi.system.ValidationResult;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 
@@ -129,6 +133,10 @@ public class ServerConnectionSettings {
 
     public ApacheHttpClient getHttpClient() {
       return httpClient;
+    }
+
+    public CompletableFuture<ValidationResult> validateConnection() {
+      return new ConnectionValidator(new ServerApiHelper(this.endpointParams, this.httpClient)).validateConnection();
     }
   }
 }

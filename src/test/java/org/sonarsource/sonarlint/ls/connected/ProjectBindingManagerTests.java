@@ -37,7 +37,6 @@ import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
-import org.eclipse.lsp4j.services.LanguageClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -50,6 +49,7 @@ import org.sonarsource.sonarlint.core.client.api.connected.UpdateResult;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
@@ -69,6 +69,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -124,7 +125,7 @@ class ProjectBindingManagerTests {
   private final ProjectStorageStatus projectStorageStatus2 = mock(ProjectStorageStatus.class);
   private final UpdateResult updateResult2 = mock(UpdateResult.class);
   private final AnalysisScheduler analysisManager = mock(AnalysisScheduler.class);
-  LanguageClient client = mock(LanguageClient.class);
+  SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
 
   @BeforeEach
   public void prepare() throws IOException {
@@ -430,18 +431,23 @@ class ProjectBindingManagerTests {
     var settingsWithServer1 = newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS));
     var settingsWithServer2 = newWorkspaceSettingsWithServers(Map.of(SERVER_ID2, GLOBAL_SETTINGS_DIFFERENT_SERVER_ID));
 
+    var spiedUnderTest = spy(underTest);
+    // Skip actual connection test
+    doNothing().when(spiedUnderTest).validateConnection(SERVER_ID2);
+
     when(settingsManager.getCurrentSettings()).thenReturn(settingsWithServer1);
 
     var folder = mockFileInABoundWorkspaceFolder();
     when(foldersManager.getAll()).thenReturn(List.of(folder));
 
-    var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
+    var binding = spiedUnderTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     assertThat(binding).isNotEmpty();
 
     when(settingsManager.getCurrentSettings()).thenReturn(settingsWithServer2);
-    underTest.onChange(settingsWithServer1, settingsWithServer2);
+    spiedUnderTest.onChange(settingsWithServer1, settingsWithServer2);
+    verify(spiedUnderTest).validateConnection(SERVER_ID2);
 
-    binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
+    binding = spiedUnderTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     assertThat(binding).isEmpty();
 
     verify(fakeEngine).stop(anyBoolean());
