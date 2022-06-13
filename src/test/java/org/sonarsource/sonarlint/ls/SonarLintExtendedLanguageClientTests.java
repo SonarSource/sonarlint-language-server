@@ -111,4 +111,24 @@ class SonarLintExtendedLanguageClientTests {
       .isNotEqualTo(otherBranch)
       .doesNotHaveSameHashCodeAs(otherBranch);
   }
+
+  @Test
+  void test_report_connection_check_success() {
+    String connectionId = "connectionId";
+    var underTest = SonarLintExtendedLanguageClient.ConnectionCheckResult.success(connectionId);
+    assertThat(underTest.getConnectionId()).isEqualTo(connectionId);
+    assertThat(underTest.isSuccess()).isTrue();
+    assertThat(underTest.getReason()).isNull();
+  }
+
+
+  @Test
+  void test_report_connection_check_failure() {
+    String connectionId = "connectionId";
+    String reason = "reason";
+    var underTest = SonarLintExtendedLanguageClient.ConnectionCheckResult.failure(connectionId, reason);
+    assertThat(underTest.getConnectionId()).isEqualTo(connectionId);
+    assertThat(underTest.isSuccess()).isFalse();
+    assertThat(underTest.getReason()).isEqualTo(reason);
+  }
 }

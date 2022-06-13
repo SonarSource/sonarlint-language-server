@@ -294,4 +294,39 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/needCompilationDatabase")
   void needCompilationDatabase();
 
+  @JsonNotification("sonarlint/reportConnectionCheckResult")
+  void reportConnectionCheckResult(ConnectionCheckResult result);
+
+  class ConnectionCheckResult {
+    private final String connectionId;
+    private final boolean success;
+    @Nullable
+    private final String reason;
+
+    private ConnectionCheckResult(String connectionId, boolean success, @Nullable String reason) {
+      this.connectionId = connectionId;
+      this.success = success;
+      this.reason = reason;
+    }
+    public static ConnectionCheckResult success(String connectionId) {
+      return new ConnectionCheckResult(connectionId, true, null);
+    }
+
+    public static ConnectionCheckResult failure(String connectionId, String reason) {
+      return new ConnectionCheckResult(connectionId, false, reason);
+    }
+
+    public String getConnectionId() {
+      return connectionId;
+    }
+
+    public boolean isSuccess() {
+      return success;
+    }
+
+    @CheckForNull
+    public String getReason() {
+      return reason;
+    }
+  }
 }

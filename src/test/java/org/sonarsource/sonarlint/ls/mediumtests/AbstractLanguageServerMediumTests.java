@@ -388,6 +388,11 @@ public abstract class AbstractLanguageServerMediumTests {
     public void needCompilationDatabase() {
       this.needCompilationDatabaseCalls.incrementAndGet();
     }
+
+    @Override
+    public void reportConnectionCheckResult(ConnectionCheckResult result) {
+      // NOP
+    }
   }
 
   protected static void notifyConfigurationChangeOnClient() {

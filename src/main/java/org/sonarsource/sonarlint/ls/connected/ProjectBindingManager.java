@@ -55,13 +55,14 @@ import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
-import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -94,21 +95,22 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final ConcurrentMap<URI, Optional<ProjectBindingWrapper>> fileBindingCache = new ConcurrentHashMap<>();
   private final ConcurrentMap<String, Optional<ConnectedSonarLintEngine>> connectedEngineCacheByConnectionId = new ConcurrentHashMap<>();
   private final ProgressManager progressManager;
-  private final LanguageClient client;
+  private final SonarLintExtendedLanguageClient client;
   private final EnginesFactory enginesFactory;
   private AnalysisScheduler analysisManager;
   private final long syncPeriod;
   private final Timer bindingUpdatesCheckerTimer = new Timer("Binding updates checker");
   private Function<URI, String> getReferenceBranchNameForFolder;
 
-  public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClient client,
-    ProgressManager progressManager, LanguageClientLogOutput globalLogOutput) {
+  public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager,
+    SonarLintExtendedLanguageClient client, ProgressManager progressManager, LanguageClientLogOutput globalLogOutput) {
     this(enginesFactory, foldersManager, settingsManager, client, progressManager, new ConcurrentHashMap<>(), globalLogOutput);
     bindingUpdatesCheckerTimer.scheduleAtFixedRate(new BindingUpdatesCheckerTask(), 10 * 1000L, syncPeriod);
   }
 
-  public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, LanguageClient client,
-    ProgressManager progressManager, ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput) {
+  public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager,
+    SonarLintExtendedLanguageClient client, ProgressManager progressManager,
+    ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput) {
     this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
@@ -294,8 +296,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       unbind(folder);
     } else if (newValue.hasBinding()
       && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
-        forceRebindDuringNextAnalysis(folder);
-      }
+      forceRebindDuringNextAnalysis(folder);
+    }
   }
 
   private void forceRebindDuringNextAnalysis(@Nullable WorkspaceFolderWrapper folder) {
@@ -381,9 +383,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var startedEngines = new HashSet<>(connectedEngineCacheByConnectionId.keySet());
     startedEngines.stream()
       .filter(not(usedServerIds::contains))
-      .forEach(startedEngineId -> {
-        clearCachesAndStopEngine(startedEngineId);
-      });
+      .forEach(this::clearCachesAndStopEngine);
   }
 
   private void clearCachesAndStopEngine(String connectionId) {
@@ -406,15 +406,29 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     if (oldValue == null) {
       return;
     }
-    newValue.getServerConnections().entrySet().forEach(e -> {
-      var id = e.getKey();
+    newValue.getServerConnections().forEach((id, value) -> {
       var oldConnection = oldValue.getServerConnections().get(id);
-      if (oldConnection != null && !oldConnection.equals(e.getValue())) {
+      if (oldConnection != null && !oldConnection.equals(value)) {
         // Settings of the connection have been changed. Remove all cached bindings and force close the engine
         clearCachesAndStopEngine(id);
       }
+      if (oldConnection == null || !oldConnection.equals(value)) {
+        // New connection or changed settings. Validate connection
+        validateConnection(id);
+      }
     });
     stopUnusedEngines();
+  }
+
+  void validateConnection(String id) {
+    Optional.ofNullable(getServerConfigurationFor(id))
+      .map(EndpointParamsAndHttpClient::validateConnection)
+      .ifPresent(validationFuture -> validationFuture.thenAccept(validationResult -> {
+        var connectionCheckResult = validationResult.success() ?
+          ConnectionCheckResult.success(id) :
+          ConnectionCheckResult.failure(id, validationResult.message());
+        client.reportConnectionCheckResult(connectionCheckResult);
+      }));
   }
 
   public void shutdown() {
