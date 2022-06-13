@@ -38,6 +38,25 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonRequest("sonarlint/listAllRules")
   CompletableFuture<Map<String, List<Rule>>> listAllRules();
 
+  @JsonRequest("sonarlint/refreshConnection")
+  CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> refreshConnection(ConnectionRefreshParams connectionId);
+
+  class ConnectionRefreshParams {
+    private String connectionId;
+
+    public ConnectionRefreshParams(String connectionId) {
+      this.connectionId = connectionId;
+    }
+
+    public String getConnectionId() {
+      return connectionId;
+    }
+
+    public void setConnectionId(String connectionId) {
+      this.connectionId = connectionId;
+    }
+  }
+
   /**
    * Not yet in lsp4j, but already sent by the client
    * See https://github.com/eclipse/lsp4j/issues/544
