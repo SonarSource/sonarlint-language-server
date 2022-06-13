@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -78,6 +79,7 @@ import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
@@ -427,5 +429,17 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void cancelProgress(WorkDoneProgressCancelParams params) {
     progressManager.cancelProgress(params);
+  }
+
+  @Override
+  public CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> refreshConnection(ConnectionRefreshParams params) {
+    SonarLintLogger.get().debug("Received refresh request for {}", params.getConnectionId());
+    ServerConnectionSettings.EndpointParamsAndHttpClient config = bindingManager.getServerConfigurationFor(params.getConnectionId());
+    if(config != null){
+      return config.validateConnection().thenApply(validationResult -> validationResult.success() ?
+              SonarLintExtendedLanguageClient.ConnectionCheckResult.success(params.getConnectionId()) :
+              SonarLintExtendedLanguageClient.ConnectionCheckResult.failure(params.getConnectionId(), validationResult.message()));
+    }
+    return null;
   }
 }
