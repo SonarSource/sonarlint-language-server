@@ -38,13 +38,13 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonRequest("sonarlint/listAllRules")
   CompletableFuture<Map<String, List<Rule>>> listAllRules();
 
-  @JsonRequest("sonarlint/refreshConnection")
-  CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> refreshConnection(ConnectionRefreshParams connectionId);
+  @JsonRequest("sonarlint/checkConnection")
+  CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> checkConnection(ConnectionCheckParams connectionId);
 
-  class ConnectionRefreshParams {
+  class ConnectionCheckParams {
     private String connectionId;
 
-    public ConnectionRefreshParams(String connectionId) {
+    public ConnectionCheckParams(String connectionId) {
       this.connectionId = connectionId;
     }
 
