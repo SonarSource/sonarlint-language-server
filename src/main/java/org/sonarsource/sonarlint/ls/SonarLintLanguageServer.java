@@ -432,7 +432,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> refreshConnection(ConnectionRefreshParams params) {
+  public CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> checkConnection(ConnectionCheckParams params) {
     SonarLintLogger.get().debug("Received refresh request for {}", params.getConnectionId());
     ServerConnectionSettings.EndpointParamsAndHttpClient config = bindingManager.getServerConfigurationFor(params.getConnectionId());
     if(config != null){
@@ -440,6 +440,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
               SonarLintExtendedLanguageClient.ConnectionCheckResult.success(params.getConnectionId()) :
               SonarLintExtendedLanguageClient.ConnectionCheckResult.failure(params.getConnectionId(), validationResult.message()));
     }
-    return null;
+    return CompletableFuture.completedFuture(null);
   }
 }
