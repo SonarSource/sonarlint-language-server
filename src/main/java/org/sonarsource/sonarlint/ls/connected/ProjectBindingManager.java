@@ -389,7 +389,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private void clearCachesAndStopEngine(String connectionId) {
     folderBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().getConnectionId().equals(connectionId));
     fileBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().getConnectionId().equals(connectionId));
-    tryStopServer(connectionId, connectedEngineCacheByConnectionId.remove(connectionId));
+    if (connectedEngineCacheByConnectionId.containsKey(connectionId)) {
+      tryStopServer(connectionId, connectedEngineCacheByConnectionId.remove(connectionId));
+    }
   }
 
   private void collectUsedServerId(Set<String> usedConnectionIds, WorkspaceFolderSettings folderSettings) {

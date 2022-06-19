@@ -43,6 +43,9 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterEachCall
   private MockWebServer server;
   protected final Map<String, MockResponse> responsesByPath = new HashMap<>();
 
+  public MockWebServerExtension() {
+    this.server = new MockWebServer();
+  }
   @Override
   public void beforeEach(ExtensionContext context) throws Exception {
     server = new MockWebServer();

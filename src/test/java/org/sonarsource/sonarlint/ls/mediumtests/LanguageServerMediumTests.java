@@ -25,10 +25,12 @@ import java.nio.file.Files;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
+
 import org.apache.commons.lang3.ArrayUtils;
 import org.eclipse.lsp4j.CodeActionContext;
 import org.eclipse.lsp4j.CodeActionParams;
@@ -50,13 +52,17 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
+import testutils.MockWebServerExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
@@ -64,6 +70,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
+
+  private static final String CONNECTION_ID = "known";
+  private static final String TOKEN = "xxxxx";
+
+  @RegisterExtension
+  private static final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
 
   @BeforeAll
   static void initialize() throws Exception {
@@ -78,6 +90,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @BeforeEach
   void prepare() {
     client.isIgnoredByScm = false;
+  }
+
+  @BeforeEach
+  public void mockSonarQube() {
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.3\", \"id\": \"xzy\"}");
   }
 
   @Test
@@ -390,7 +407,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     notifyConfigurationChangeOnClient();
 
     assertLogContains(
-      "Global settings updated: WorkspaceSettings[connections={},disableTelemetry=false,excludedRules=[],includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=true]");
+      String.format("Global settings updated: WorkspaceSettings[connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false,organizationKey=<null>,serverUrl=%s,token=%s]},disableTelemetry=false,excludedRules=[],includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=true]",
+              CONNECTION_ID, CONNECTION_ID, mockWebServerExtension.url("/"), TOKEN));
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder( "Telemetry enabled");
   }
@@ -680,6 +698,38 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertLogContains("Folder file:///some_folder is now on an unknown branch.");
 
     assertThat(client.referenceBranchNameByFolder.get("file:///some_folder")).isNull();
+  }
+
+  @Test
+  void testCheckConnectionWithUnknownConnection() throws ExecutionException, InterruptedException {
+    SonarLintExtendedLanguageServer.ConnectionCheckParams testParams = new SonarLintExtendedLanguageServer.ConnectionCheckParams("unknown");
+    CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> result = lsProxy.checkConnection(testParams);
+
+    assertThat(result.get()).isNull();
+  }
+
+  @Test
+  void testCheckConnectionWithKnownConnection() throws ExecutionException, InterruptedException {
+    SonarLintExtendedLanguageServer.ConnectionCheckParams testParams = new SonarLintExtendedLanguageServer.ConnectionCheckParams(CONNECTION_ID);
+    CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> result = lsProxy.checkConnection(testParams);
+
+    assertThat(result.get()).isNotNull();
+    assertThat(result.get().getConnectionId()).isEqualTo(CONNECTION_ID);
+  }
+
+  @Test
+  void testSetConnectionIdInCheckConnectionParams() {
+    String OLD = "old";
+    String NEW = "new";
+    SonarLintExtendedLanguageServer.ConnectionCheckParams connectionCheckParams = new SonarLintExtendedLanguageServer.ConnectionCheckParams(OLD);
+    connectionCheckParams.setConnectionId(NEW);
+
+    assertThat(connectionCheckParams.getConnectionId()).isEqualTo(NEW);
+  }
+
+  @Override
+  protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings){
+    addSonarQubeConnection(client.globalSettings, CONNECTION_ID, mockWebServerExtension.url("/"), TOKEN);
   }
 
   private Predicate<? super MessageParams> notFromContextualTSserver() {

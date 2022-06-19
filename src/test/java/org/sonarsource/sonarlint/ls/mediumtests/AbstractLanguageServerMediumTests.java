@@ -92,7 +92,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
-
 public abstract class AbstractLanguageServerMediumTests {
 
   protected final static boolean COMMERCIAL_ENABLED = System.getProperty("commercial") != null;
