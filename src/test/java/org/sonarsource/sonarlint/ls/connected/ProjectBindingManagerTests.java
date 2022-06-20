@@ -30,8 +30,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
@@ -128,7 +130,7 @@ class ProjectBindingManagerTests {
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
 
   @BeforeEach
-  public void prepare() throws IOException {
+  public void prepare() throws IOException, ExecutionException, InterruptedException {
     workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
     Files.createDirectories(workspaceFolderPath);
     workspaceFolderPath2 = basedir.resolve("myWorkspaceFolder2");
@@ -160,6 +162,7 @@ class ProjectBindingManagerTests {
     when(fakeEngine2.getProjectStorageStatus(PROJECT_KEY)).thenReturn(projectStorageStatus2);
     when(fakeEngine2.update(any(), any(), any())).thenReturn(updateResult2);
     when(updateResult2.status()).thenReturn(globalStorageStatus2);
+    when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token"));
 
     folderBindingCache = new ConcurrentHashMap<>();
     underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, new ProgressManager(client), folderBindingCache, null);

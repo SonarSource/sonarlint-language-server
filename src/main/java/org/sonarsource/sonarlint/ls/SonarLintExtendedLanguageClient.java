@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
@@ -329,4 +330,8 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       return reason;
     }
   }
+
+  @JsonRequest("sonarlint/getTokenForServer")
+  CompletableFuture<String> getTokenForServer(String serverUrlOrOrganization);
+
 }

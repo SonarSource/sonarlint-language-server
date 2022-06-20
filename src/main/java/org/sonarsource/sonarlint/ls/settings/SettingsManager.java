@@ -31,6 +31,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -40,8 +41,8 @@ import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
-import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -79,7 +80,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
-  private final LanguageClient client;
+  private final SonarLintExtendedLanguageClient client;
   private final WorkspaceFoldersManager foldersManager;
   private final ApacheHttpClientProvider httpClientProvider;
 
@@ -94,11 +95,11 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private final List<WorkspaceFolderSettingsChangeListener> folderListeners = new ArrayList<>();
   private ProjectBindingManager bindingManager;
 
-  public SettingsManager(LanguageClient client, WorkspaceFoldersManager foldersManager, ApacheHttpClientProvider httpClientProvider) {
+  public SettingsManager(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager foldersManager, ApacheHttpClientProvider httpClientProvider) {
     this(client, foldersManager, httpClientProvider, Executors.newCachedThreadPool(Utils.threadFactory("SonarLint settings manager", false)));
   }
 
-  SettingsManager(LanguageClient client, WorkspaceFoldersManager foldersManager, ApacheHttpClientProvider httpClientProvider, ExecutorService executor) {
+  SettingsManager(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager foldersManager, ApacheHttpClientProvider httpClientProvider, ExecutorService executor) {
     this.client = client;
     this.foldersManager = foldersManager;
     this.httpClientProvider = httpClientProvider;
@@ -182,14 +183,18 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       }
     });
     currentWorkspaceSettings.getServerConnections().forEach((connectionId, settings) -> {
+      var token = getTokenFromClient(settings.getServerUrl());
       if (previousWorkspaceSettings == null
         || !previousWorkspaceSettings.getServerConnections().containsKey(connectionId)
         || !previousWorkspaceSettings.getServerConnections().get(connectionId).getServerUrl().equals(settings.getServerUrl())
-        || !previousWorkspaceSettings.getServerConnections().get(connectionId).getToken().equals(settings.getToken())) {
+        || !previousWorkspaceSettings.getServerConnections().get(connectionId).getToken().equals(token)) {
         impactedConnectionsIds.add(connectionId);
       }
     });
-    impactedConnectionsIds.forEach(bindingManager::subscribeForServerEvents);
+    var projectBindingManager = bindingManager;
+    for (String impactedConnectionsId : impactedConnectionsIds) {
+      projectBindingManager.subscribeForServerEvents(impactedConnectionsId);
+    }
   }
 
   private void notifyListeners(WorkspaceSettings newWorkspaceSettings, WorkspaceSettings oldWorkspaceSettings, WorkspaceFolderSettings newDefaultFolderSettings,
@@ -247,7 +252,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     }
   }
 
-  private static WorkspaceSettings parseSettings(Map<String, Object> params, ApacheHttpClientProvider httpClientProvider) {
+  private WorkspaceSettings parseSettings(Map<String, Object> params, ApacheHttpClientProvider httpClientProvider) {
     var disableTelemetry = (Boolean) params.getOrDefault(DISABLE_TELEMETRY, false);
     var pathToNodeExecutable = (String) params.get(PATH_TO_NODE_EXECUTABLE);
     var serverConnections = parseServerConnections(params, httpClientProvider);
@@ -261,7 +266,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable);
   }
 
-  private static Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params, ApacheHttpClientProvider httpClientProvider) {
+  private Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params, ApacheHttpClientProvider httpClientProvider) {
     @SuppressWarnings("unchecked")
     var connectedModeMap = (Map<String, Object>) params.getOrDefault("connectedMode", Collections.emptyMap());
     var serverConnections = new HashMap<String, ServerConnectionSettings>();
@@ -289,7 +294,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     });
   }
 
-  private static void parseSonarQubeConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections,
+  private void parseSonarQubeConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections,
     ApacheHttpClientProvider httpClientProvider) {
     @SuppressWarnings("unchecked")
     var sonarqubeEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarqube", Collections.emptyList());
@@ -297,7 +302,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       if (checkRequiredAttribute(m, "SonarQube server", SERVER_URL, TOKEN)) {
         var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
         var url = (String) m.get(SERVER_URL);
-        var token = (String) m.get(TOKEN);
+        var token = getTokenFromClient(url);
         var disableNotifications = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
         var connectionSettings = new ServerConnectionSettings(connectionId, url, token, null, disableNotifications, httpClientProvider);
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
@@ -305,7 +310,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     });
   }
 
-  private static void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections,
+  private void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections,
     ApacheHttpClientProvider httpClientProvider) {
     @SuppressWarnings("unchecked")
     var sonarcloudEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
@@ -314,12 +319,25 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       if (checkRequiredAttribute(m, "SonarCloud", ORGANIZATION_KEY, TOKEN)) {
         var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
         var organizationKey = (String) m.get(ORGANIZATION_KEY);
-        var token = (String) m.get(TOKEN);
+        var token = getTokenFromClient(organizationKey);
         var disableNotifs = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
         addIfUniqueConnectionId(serverConnections, connectionId,
           new ServerConnectionSettings(connectionId, ServerConnectionSettings.SONARCLOUD_URL, token, organizationKey, disableNotifs, httpClientProvider));
       }
     });
+  }
+
+  private String getTokenFromClient(String serverUrlOrOrganization) {
+    try {
+      return client.getTokenForServer(serverUrlOrOrganization).get();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.error("Can't get token for server " + serverUrlOrOrganization, e);
+      return null;
+    } catch (ExecutionException e) {
+      LOG.error("Can't get token for server " + serverUrlOrOrganization, e);
+      return null;
+    }
   }
 
   private static boolean checkRequiredAttribute(Map<String, Object> map, String label, String... requiredAttributes) {

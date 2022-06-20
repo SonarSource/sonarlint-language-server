@@ -392,6 +392,11 @@ public abstract class AbstractLanguageServerMediumTests {
     public void reportConnectionCheckResult(ConnectionCheckResult result) {
       // NOP
     }
+
+    @Override
+    public CompletableFuture<String> getTokenForServer(String serverId) {
+      return CompletableFutures.computeAsync(server -> "token");
+    }
   }
 
   protected static void notifyConfigurationChangeOnClient() {

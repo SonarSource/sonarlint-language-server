@@ -440,4 +440,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     }
     return CompletableFuture.completedFuture(null);
   }
+
+  @Override
+  public void onTokenUpdate(TokenUpdateParams params) {
+    SonarLintLogger.get().info("Updating configuration on token change.");
+    didChangeConfiguration(new DidChangeConfigurationParams());
+  }
 }
