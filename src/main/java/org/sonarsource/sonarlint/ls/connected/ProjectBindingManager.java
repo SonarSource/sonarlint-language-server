@@ -234,6 +234,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return serverConnectionSettings.getServerConfiguration();
   }
 
+
   private Optional<ConnectedSonarLintEngine> getOrCreateConnectedEngine(
     String connectionId, EndpointParamsAndHttpClient endpointParamsAndHttpClient, boolean autoUpdate, ProgressFacade progress) {
     return connectedEngineCacheByConnectionId.computeIfAbsent(connectionId,

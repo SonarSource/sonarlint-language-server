@@ -171,4 +171,18 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/didLocalBranchNameChange")
   void didLocalBranchNameChange(DidLocalBranchNameChangeParams params);
+
+  class TokenUpdateParams {
+    private String serverId;
+    private String token;
+
+    public TokenUpdateParams(String serverId, String token) {
+      this.serverId = serverId;
+      this.token = token;
+    }
+
+  }
+
+  @JsonNotification("sonarlint/onTokenUpdate")
+  void onTokenUpdate(TokenUpdateParams params);
 }

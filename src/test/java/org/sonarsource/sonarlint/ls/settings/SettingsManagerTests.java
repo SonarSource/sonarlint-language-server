@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.services.LanguageClient;
@@ -36,6 +37,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput.Level;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
@@ -47,6 +49,7 @@ import testutils.SonarLintLogTester;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -125,12 +128,15 @@ class SettingsManagerTests {
   private SettingsManager underTest;
   private WorkspaceFoldersManager foldersManager;
   private ProjectBindingManager bindingManager;
+  private SonarLintExtendedLanguageClient client;
 
   @BeforeEach
-  void prepare() {
+  void prepare() throws ExecutionException, InterruptedException {
     foldersManager = mock(WorkspaceFoldersManager.class);
     bindingManager = mock(ProjectBindingManager.class);
-    underTest = new SettingsManager(mock(LanguageClient.class), foldersManager, mock(ApacheHttpClientProvider.class), new ImmediateExecutorService());
+    client = mock(SonarLintExtendedLanguageClient.class);
+    when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token-from-storage"));
+    underTest = new SettingsManager(client, foldersManager, mock(ApacheHttpClientProvider.class), new ImmediateExecutorService());
     underTest.setBindingManager(bindingManager);
     underTest = spy(underTest);
   }
@@ -181,10 +187,10 @@ class SettingsManagerTests {
       .extracting(ServerConnectionSettings::getConnectionId, ServerConnectionSettings::getServerUrl, ServerConnectionSettings::getToken,
         ServerConnectionSettings::getOrganizationKey)
       .containsExactlyInAnyOrder(
-        tuple("sq1", "https://mysonarqube1.mycompany.org", "ab12", null),
-        tuple("sq2", "https://mysonarqube2.mycompany.org", "cd34", null),
-        tuple("sc1", "https://sonarcloud.io", "ab12", "myOrga1"),
-        tuple("sc2", "https://sonarcloud.io", "cd34", "myOrga2"));
+        tuple("sq1", "https://mysonarqube1.mycompany.org", "token-from-storage", null),
+        tuple("sq2", "https://mysonarqube2.mycompany.org", "token-from-storage", null),
+        tuple("sc1", "https://sonarcloud.io", "token-from-storage", "myOrga1"),
+        tuple("sc2", "https://sonarcloud.io", "token-from-storage", "myOrga2"));
   }
 
   @Test
@@ -689,11 +695,12 @@ class SettingsManagerTests {
     verify(bindingManager).subscribeForServerEvents("sq1");
     clearInvocations(bindingManager);
 
+    // should not react on change of the token in settings file, only to change of server URL
     var newConfiguration = "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"connections\": {\n" +
       "      \"sonarqube\": [\n" +
-      "        { \"connectionId\": \"sq1\", \"serverUrl\": \"https://mysonarqube1.mycompany.org\", \"token\": \"ab123\" }" +
+      "        { \"connectionId\": \"sq1\", \"serverUrl\": \"https://mysonarqube11.mycompany.org\", \"token\": \"ab12\" }" +
       "      ]\n" +
       "    },\n" +
       "    \"project\": {\n" +
@@ -708,6 +715,29 @@ class SettingsManagerTests {
     underTest.didChangeConfiguration();
 
     verify(bindingManager).subscribeForServerEvents("sq1");
+  }
+
+  @Test
+  void ifCanNotGetTokenFromClientShouldLogError() {
+    when(client.getTokenForServer(any())).thenReturn(CompletableFuture.failedFuture(new InterruptedException()));
+    mockConfigurationRequest(null, "{\n" +
+      "  \"connectedMode\": {\n" +
+      "    \"connections\": {\n" +
+      "      \"sonarqube\": [\n" +
+      "        { \"connectionId\": \"sq1\", \"serverUrl\": \"https://mysonarqube1.mycompany.org\", \"token\": \"ab12\" }," +
+      "      ]\n" +
+      "    },\n" +
+      "    \"project\": {\n" +
+      "      \"connectionId\": \"sq1\",\n" +
+      "      \"projectKey\": \"myProject\"\n" +
+      "    }\n" +
+      "  }\n" +
+      "}\n");
+
+    underTest.didChangeConfiguration();
+
+    assertThat(logTester.logs(Level.ERROR))
+      .contains("Can't get token for server https://mysonarqube1.mycompany.org");
   }
 
   private static Map<String, Object> fromJsonString(String json) {

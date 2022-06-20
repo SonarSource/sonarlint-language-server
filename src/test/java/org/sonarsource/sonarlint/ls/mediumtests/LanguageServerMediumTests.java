@@ -42,6 +42,7 @@ import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
@@ -61,6 +62,7 @@ import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams;
+import org.sonarsource.sonarlint.ls.SonarLintLanguageServer;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import testutils.MockWebServerExtension;
 
@@ -68,11 +70,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 
 class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   private static final String CONNECTION_ID = "known";
-  private static final String TOKEN = "xxxxx";
+  private static final String TOKEN = "token";
 
   @RegisterExtension
   private static final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
@@ -725,6 +729,17 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     connectionCheckParams.setConnectionId(NEW);
 
     assertThat(connectionCheckParams.getConnectionId()).isEqualTo(NEW);
+  }
+
+  @Test
+  void shouldUpdateConfigurationOnTokenChange() {
+    var params = new SonarLintExtendedLanguageServer.TokenUpdateParams("foo", "bar");
+    lsProxy.onTokenUpdate(params);
+
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Info] Updating configuration on token change."));
+    client.logs.clear();
   }
 
   @Override
