@@ -187,7 +187,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       if (previousWorkspaceSettings == null
         || !previousWorkspaceSettings.getServerConnections().containsKey(connectionId)
         || !previousWorkspaceSettings.getServerConnections().get(connectionId).getServerUrl().equals(settings.getServerUrl())
-        || !previousWorkspaceSettings.getServerConnections().get(connectionId).getToken().equals(token)) {
+        || (token != null && !token.equals(previousWorkspaceSettings.getServerConnections().get(connectionId).getToken()))) {
         impactedConnectionsIds.add(connectionId);
       }
     });
@@ -299,7 +299,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     @SuppressWarnings("unchecked")
     var sonarqubeEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarqube", Collections.emptyList());
     sonarqubeEntries.forEach(m -> {
-      if (checkRequiredAttribute(m, "SonarQube server", SERVER_URL, TOKEN)) {
+      if (checkRequiredAttribute(m, "SonarQube server", SERVER_URL)) {
         var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
         var url = (String) m.get(SERVER_URL);
         var token = getTokenFromClient(url);
@@ -316,7 +316,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     var sonarcloudEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
     sonarcloudEntries.forEach(m -> {
 
-      if (checkRequiredAttribute(m, "SonarCloud", ORGANIZATION_KEY, TOKEN)) {
+      if (checkRequiredAttribute(m, "SonarCloud", ORGANIZATION_KEY)) {
         var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
         var organizationKey = (String) m.get(ORGANIZATION_KEY);
         var token = getTokenFromClient(organizationKey);

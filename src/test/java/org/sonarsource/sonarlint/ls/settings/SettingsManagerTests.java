@@ -199,17 +199,14 @@ class SettingsManagerTests {
       "  \"connectedMode\": {\n" +
       "    \"servers\": [\n" +
       "      { \"serverUrl\": \"https://mysonarqube.mycompany.org\", \"token\": \"ab12\" }," +
-      "      { \"serverId\": \"server1\", \"token\": \"ab12\" }," +
-      "      { \"serverId\": \"server1\", \"serverUrl\": \"https://mysonarqube.mycompany.org\" }" +
+      "      { \"serverId\": \"server1\", \"token\": \"ab12\" }" +
       "    ],\n" +
       "    \"connections\": {\n" +
       "      \"sonarqube\": [\n" +
-      "        { \"serverUrl\": \"https://mysonarqube1.mycompany.org\" }," +
       "        { \"token\": \"cd34\" }" +
       "      ],\n" +
       "      \"sonarcloud\": [\n" +
-      "        { \"token\": \"ab12\" }," +
-      "        { \"organizationKey\": \"myOrga2\" }" +
+      "        { \"token\": \"ab12\" }" +
       "      ]\n" +
       "    }\n" +
       "  }\n" +
@@ -221,11 +218,8 @@ class SettingsManagerTests {
     assertThat(logTester.logs(Level.ERROR))
       .containsExactly("Incomplete server connection configuration. Required parameters must not be blank: serverId.",
         "Incomplete server connection configuration. Required parameters must not be blank: serverUrl.",
-        "Incomplete server connection configuration. Required parameters must not be blank: token.",
-        "Incomplete SonarQube server connection configuration. Required parameters must not be blank: token.",
         "Incomplete SonarQube server connection configuration. Required parameters must not be blank: serverUrl.",
-        "Incomplete SonarCloud connection configuration. Required parameters must not be blank: organizationKey.",
-        "Incomplete SonarCloud connection configuration. Required parameters must not be blank: token.");
+        "Incomplete SonarCloud connection configuration. Required parameters must not be blank: organizationKey.");
   }
 
   @Test
@@ -718,8 +712,31 @@ class SettingsManagerTests {
   }
 
   @Test
-  void ifCanNotGetTokenFromClientShouldLogError() {
+  void ifCanNotGetTokenFromClientDueToInterruptedExceptionShouldLogError() {
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.failedFuture(new InterruptedException()));
+    mockConfigurationRequest(null, "{\n" +
+      "  \"connectedMode\": {\n" +
+      "    \"connections\": {\n" +
+      "      \"sonarqube\": [\n" +
+      "        { \"connectionId\": \"sq1\", \"serverUrl\": \"https://mysonarqube1.mycompany.org\", \"token\": \"ab12\" }," +
+      "      ]\n" +
+      "    },\n" +
+      "    \"project\": {\n" +
+      "      \"connectionId\": \"sq1\",\n" +
+      "      \"projectKey\": \"myProject\"\n" +
+      "    }\n" +
+      "  }\n" +
+      "}\n");
+
+    underTest.didChangeConfiguration();
+
+    assertThat(logTester.logs(Level.ERROR))
+      .contains("Can't get token for server https://mysonarqube1.mycompany.org");
+  }
+
+  @Test
+  void ifCanNotGetTokenFromClientDueToExcecutionExceptionShouldLogError() {
+    when(client.getTokenForServer(any())).thenReturn(CompletableFuture.failedFuture(new ExecutionException(new IllegalStateException())));
     mockConfigurationRequest(null, "{\n" +
       "  \"connectedMode\": {\n" +
       "    \"connections\": {\n" +
