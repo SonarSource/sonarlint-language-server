@@ -99,6 +99,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @BeforeEach
   public void mockSonarQube() {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.3\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addStringResponse("/api/authentication/validate?format=json", "{\"valid\": true}");
   }
 
   @Test
@@ -706,10 +707,14 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void testCheckConnectionWithUnknownConnection() throws ExecutionException, InterruptedException {
-    SonarLintExtendedLanguageServer.ConnectionCheckParams testParams = new SonarLintExtendedLanguageServer.ConnectionCheckParams("unknown");
+    String unknownConnectionId = "unknown";
+    SonarLintExtendedLanguageServer.ConnectionCheckParams testParams = new SonarLintExtendedLanguageServer.ConnectionCheckParams(unknownConnectionId);
     CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> result = lsProxy.checkConnection(testParams);
 
-    assertThat(result.get()).isNull();
+    SonarLintExtendedLanguageClient.ConnectionCheckResult actual = result.get();
+    assertThat(actual).isNotNull();
+    assertThat(actual.getConnectionId()).isEqualTo(unknownConnectionId);
+    assertThat(actual.getReason()).isEqualTo("Connection 'unknown' is unknown");
   }
 
   @Test
@@ -717,8 +722,10 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     SonarLintExtendedLanguageServer.ConnectionCheckParams testParams = new SonarLintExtendedLanguageServer.ConnectionCheckParams(CONNECTION_ID);
     CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> result = lsProxy.checkConnection(testParams);
 
-    assertThat(result.get()).isNotNull();
-    assertThat(result.get().getConnectionId()).isEqualTo(CONNECTION_ID);
+    SonarLintExtendedLanguageClient.ConnectionCheckResult actual = result.get();
+    assertThat(actual).isNotNull();
+    assertThat(actual.getConnectionId()).isEqualTo(CONNECTION_ID);
+    assertThat(actual.isSuccess()).isTrue();
   }
 
   @Test
@@ -733,8 +740,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldUpdateConfigurationOnTokenChange() {
-    var params = new SonarLintExtendedLanguageServer.TokenUpdateParams("foo", "bar");
-    lsProxy.onTokenUpdate(params);
+    lsProxy.onTokenUpdate();
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())

@@ -63,6 +63,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.SecurityHotspotsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -88,6 +89,8 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.net.URI.create;
 import static java.util.Optional.ofNullable;
+import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
+import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
 
 public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer, WorkspaceService, TextDocumentService {
 
@@ -430,19 +433,18 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> checkConnection(ConnectionCheckParams params) {
-    SonarLintLogger.get().debug("Received refresh request for {}", params.getConnectionId());
-    var config = bindingManager.getServerConfigurationFor(params.getConnectionId());
+  public CompletableFuture<ConnectionCheckResult> checkConnection(ConnectionCheckParams params) {
+    String connectionId = params.getConnectionId();
+    SonarLintLogger.get().debug("Received refresh request for {}", connectionId);
+    var config = bindingManager.getServerConfigurationFor(connectionId);
     if(config != null){
-      return config.validateConnection().thenApply(validationResult -> validationResult.success() ?
-              SonarLintExtendedLanguageClient.ConnectionCheckResult.success(params.getConnectionId()) :
-              SonarLintExtendedLanguageClient.ConnectionCheckResult.failure(params.getConnectionId(), validationResult.message()));
+      return config.validateConnection().thenApply(validationResult -> validationResult.success() ? success(connectionId) : failure(connectionId, validationResult.message()));
     }
-    return CompletableFuture.completedFuture(null);
+    return CompletableFuture.completedFuture(failure(connectionId, String.format("Connection '%s' is unknown", connectionId)));
   }
 
   @Override
-  public void onTokenUpdate(TokenUpdateParams params) {
+  public void onTokenUpdate() {
     SonarLintLogger.get().info("Updating configuration on token change.");
     didChangeConfiguration(new DidChangeConfigurationParams());
   }
