@@ -12,7 +12,7 @@ resources:
     - repository: commonTemplates
       type: git
       name: pipelines-yaml-templates
-      ref:  refs/tags/v1.0.9
+      ref:  refs/tags/v1.0.17
 
 stages:
 - template: stage-with-burgr-notifications.yml@commonTemplates
@@ -85,7 +85,7 @@ stages:
     burgrName: 'validate'
     burgrType: 'validate'
     stageName: 'validate'
-    stageDisplayName: Run UTs and trigger SonarQube analysis
+    stageDisplayName: Run UTs and trigger SonarQube and WhiteSource analysis
     jobs:
     - job: test_windows
       displayName: Run unit tests on Windows
@@ -165,8 +165,8 @@ stages:
           javaHomeOption: 'JDKVersion'
           jdkVersionOption: '1.11'
           mavenOptions: $(MAVEN_OPTS)
-    - job: sonarqube
-      displayName: SonarQube analysis on Next
+    - job: sonarqubeAndWhiteSource
+      displayName: SonarQube analysis on Next and WhiteSource scan
       variables:
         MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
         MAVEN_OPTS: '-Xmx3072m -Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
@@ -198,6 +198,13 @@ stages:
           mavenOptions: $(MAVEN_OPTS)
           sonarQubeRunAnalysis: true
           sqMavenPluginVersionChoice: 'latest'
+
+      - template: whitesource-with-maven-repox.yml@commonTemplates
+        parameters:
+          productName : 'SonarLint/LanguageServer'
+          mavenRepositoryPath: '$(MAVEN_CACHE_FOLDER)'
+          mavenSettingsFilePath: '$(mavenSettings.secureFilePath)'
+
 - template: promote-stage.yml@commonTemplates
   parameters:
     stageDependencies:
