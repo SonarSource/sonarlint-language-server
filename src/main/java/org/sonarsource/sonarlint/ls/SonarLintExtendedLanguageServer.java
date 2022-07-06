@@ -57,13 +57,6 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
   }
 
-  /**
-   * Not yet in lsp4j, but already sent by the client
-   * See https://github.com/eclipse/lsp4j/issues/544
-   */
-  @JsonNotification("$/setTrace")
-  void setTrace(SetTraceParams params);
-
   class DidClasspathUpdateParams {
 
     @NonNull
