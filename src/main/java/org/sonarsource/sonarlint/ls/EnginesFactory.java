@@ -124,6 +124,8 @@ public class EnginesFactory {
 
     useEmbeddedPluginOrFailIfNotFound(builder, "html", Language.HTML);
     useEmbeddedPluginOrFailIfNotFound(builder, "js", Language.JS);
+    useEmbeddedPluginOrFailIfNotFound(builder, "xml", Language.XML);
+
     extraAnalyzers.forEach(analyzer -> builder.addExtraPlugin(guessPluginKey(analyzer.toString()), analyzer));
     var engine = newConnectedEngine(builder.build());
 

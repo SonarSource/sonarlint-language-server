@@ -45,7 +45,8 @@ class EnginesFactoryTests {
       Paths.get("plugin1.jar"),
       Paths.get("plugin2.jar"),
       Paths.get("sonarjs.jar"),
-      Paths.get("sonarhtml.jar"));
+      Paths.get("sonarhtml.jar"),
+      Paths.get("sonarxml.jar"));
     underTest = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
       mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
     underTest = spy(underTest);
@@ -76,7 +77,7 @@ class EnginesFactoryTests {
 
   @Test
   void failIfJsTsAnalyserNotFound() {
-    var standaloneAnalysers = List.of(Paths.get("sonarhtml.jar"));
+    var standaloneAnalysers = List.of(Paths.get("sonarhtml.jar", "sonarxml.jar"));
     var factory = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
       mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
 
@@ -87,12 +88,23 @@ class EnginesFactoryTests {
 
   @Test
   void failIfHtmlAnalyserNotFound() {
-    var standaloneAnalysers = List.of(Paths.get("sonarjs.jar"));
+    var standaloneAnalysers = List.of(Paths.get("sonarjs.jar", "sonarxml.jar"));
     var factory = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
       mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
 
     assertThatThrownBy(() -> factory.createConnectedEngine("foo"))
       .isInstanceOf(IllegalStateException.class)
       .hasMessageContaining("Embedded plugin not found: " + Language.HTML.getLabel());
+  }
+
+  @Test
+  void failIfXmlAnalyserNotFound() {
+    var standaloneAnalysers = List.of(Paths.get("sonarjs.jar", "sonarhtml.jar"));
+    var factory = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
+      mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
+
+    assertThatThrownBy(() -> factory.createConnectedEngine("foo"))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessageContaining("Embedded plugin not found: " + Language.XML.getLabel());
   }
 }
