@@ -59,6 +59,7 @@ import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEng
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
+import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -620,5 +621,18 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     public void run() {
       syncStorage();
     }
+  }
+
+  public Map<String, String> getRemoteProjects(String connectionId) {
+    var serverConfiguration = getServerConfigurationFor(connectionId);
+    if (serverConfiguration == null) {
+      return Collections.emptyMap();
+    }
+    return getOrCreateConnectedEngine(connectionId, serverConfiguration, false, new NoOpProgressFacade())
+      .map(ConnectedSonarLintEngine::allProjectsByKey)
+      .map(Map::values)
+      .map(Collection::stream)
+      .map(s -> s.collect(Collectors.toMap(ServerProject::getKey, ServerProject::getName)))
+      .orElse(Collections.emptyMap());
   }
 }

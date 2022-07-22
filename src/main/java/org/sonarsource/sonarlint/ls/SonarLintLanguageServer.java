@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.CodeAction;
@@ -447,5 +448,16 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public void onTokenUpdate() {
     SonarLintLogger.get().info("Updating configuration on token change.");
     didChangeConfiguration(new DidChangeConfigurationParams());
+  }
+
+  @Override
+  public CompletableFuture<Map<String, String>> getRemoteProjectNames(GetRemoteProjectsNamesParams params) {
+    return CompletableFuture.completedFuture(
+      bindingManager.getRemoteProjects(params.getConnectionId())
+        .entrySet()
+        .stream()
+        .filter(e -> params.getProjectKeys().contains(e.getKey()))
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))
+    );
   }
 }

@@ -25,7 +25,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.eclipse.lsp4j.SetTraceParams;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
@@ -167,4 +166,33 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/onTokenUpdate")
   void onTokenUpdate();
+
+  class GetRemoteProjectsNamesParams {
+    private String connectionId;
+    private List<String> projectKeys;
+
+    public GetRemoteProjectsNamesParams(String connectionId, List<String> projectKeys) {
+      setConnectionId(connectionId);
+      setProjectKeys(projectKeys);
+    }
+
+    public List<String> getProjectKeys() {
+      return projectKeys;
+    }
+
+    public void setProjectKeys(List<String> projectKeys) {
+      this.projectKeys = projectKeys;
+    }
+
+    public String getConnectionId() {
+      return connectionId;
+    }
+
+    public void setConnectionId(String connectionId) {
+      this.connectionId = connectionId;
+    }
+  }
+
+  @JsonRequest("sonarlint/getRemoteProjectNames")
+  CompletableFuture<Map<String, String>> getRemoteProjectNames(GetRemoteProjectsNamesParams params);
 }
