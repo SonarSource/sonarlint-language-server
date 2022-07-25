@@ -56,6 +56,25 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
   }
 
+  @JsonRequest("sonarlint/getRemoteProjectsForConnection")
+  CompletableFuture<Map<String, String>> getRemoteProjectsForConnection(GetRemoteProjectsForConnectionParams getRemoteProjectsForConnectionParams);
+
+  class GetRemoteProjectsForConnectionParams {
+    private String connectionId;
+
+    public GetRemoteProjectsForConnectionParams(String connectionId) {
+      this.connectionId = connectionId;
+    }
+
+    public String getConnectionId() {
+      return connectionId;
+    }
+
+    public void setConnectionId(String connectionId) {
+      this.connectionId = connectionId;
+    }
+  }
+
   class DidClasspathUpdateParams {
 
     @NonNull
