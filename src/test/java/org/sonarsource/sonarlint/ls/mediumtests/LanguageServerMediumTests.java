@@ -748,6 +748,17 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     client.logs.clear();
   }
 
+  @Test
+  void shouldSetConnectionIdForGetRemoteProjectsParams() {
+    String OLD = "old";
+    String NEW = "new";
+
+    SonarLintExtendedLanguageServer.GetRemoteProjectsForConnectionParams testParams = new SonarLintExtendedLanguageServer.GetRemoteProjectsForConnectionParams(OLD);
+    testParams.setConnectionId(NEW);
+
+    assertThat(testParams.getConnectionId()).isEqualTo(NEW);
+  }
+
   @Override
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings){
     addSonarQubeConnection(client.globalSettings, CONNECTION_ID, mockWebServerExtension.url("/"), TOKEN);

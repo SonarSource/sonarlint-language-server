@@ -22,6 +22,8 @@ package org.sonarsource.sonarlint.ls.mediumtests;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.ExecuteCommandParams;
@@ -33,6 +35,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonar.scanner.protocol.Constants.Severity;
 import org.sonar.scanner.protocol.input.ScannerInput;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.GetRemoteProjectsNamesParams;
 import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Common;
 import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Components;
@@ -49,9 +52,7 @@ import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Rules.Rule;
 import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Settings;
 import testutils.MockWebServerExtension;
 
-import static org.assertj.core.api.Assertions.as;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
 
 class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
@@ -202,6 +203,29 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var params = new GetRemoteProjectsNamesParams("unknown connection", List.of("unknown-project"));
 
     var future = lsProxy.getRemoteProjectNames(params);
+    awaitUntilAsserted(() -> assertThat(future).isCompletedExceptionally());
+  }
+
+  @Test
+  void shouldReturnRemoteProjectsForKnownConnection() throws ExecutionException, InterruptedException {
+    SonarLintExtendedLanguageServer.GetRemoteProjectsForConnectionParams testParams = new SonarLintExtendedLanguageServer.GetRemoteProjectsForConnectionParams(CONNECTION_ID);
+    var result = lsProxy.getRemoteProjectsForConnection(testParams);
+
+    var actual = result.get();
+    awaitUntilAsserted(() -> assertThat(actual)
+                                      .isNotNull()
+                                      .hasSize(2)
+                                      .containsKey(PROJECT_KEY1)
+                                      .containsKey(PROJECT_KEY2)
+                                      .containsValue(PROJECT_NAME1)
+                                      .containsValue(PROJECT_NAME2));
+  }
+
+  @Test
+  void shouldThrowExceptionForUnknownConnection() {
+    SonarLintExtendedLanguageServer.GetRemoteProjectsForConnectionParams testParams = new SonarLintExtendedLanguageServer.GetRemoteProjectsForConnectionParams("random_string");
+    var future = lsProxy.getRemoteProjectsForConnection(testParams);
+
     awaitUntilAsserted(() -> assertThat(future).isCompletedExceptionally());
   }
 }
