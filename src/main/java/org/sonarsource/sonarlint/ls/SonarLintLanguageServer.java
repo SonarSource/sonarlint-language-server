@@ -448,6 +448,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
+  public CompletableFuture<Map<String, String>> getRemoteProjectsForConnection(GetRemoteProjectsForConnectionParams getRemoteProjectsForConnectionParams) {
+    return CompletableFuture.completedFuture(
+            bindingManager.getRemoteProjects(getRemoteProjectsForConnectionParams.getConnectionId()));
+  }
+
+  @Override
   public void onTokenUpdate() {
     SonarLintLogger.get().info("Updating configuration on token change.");
     didChangeConfiguration(new DidChangeConfigurationParams());
