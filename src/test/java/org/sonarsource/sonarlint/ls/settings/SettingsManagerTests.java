@@ -757,6 +757,17 @@ class SettingsManagerTests {
       .contains("Can't get token for server https://mysonarqube1.mycompany.org");
   }
 
+  @Test
+  void shouldReturnUntouchedNonNullConnectionId() {
+    var connectionId = "connectionId";
+    assertThat(SettingsManager.connectionIdOrDefault(connectionId)).isEqualTo(connectionId);
+  }
+
+  @Test
+  void shouldReturnDefaultConnectionIdIfNull() {
+    assertThat(SettingsManager.connectionIdOrDefault(null)).isEqualTo(SettingsManager.DEFAULT_CONNECTION_ID);
+  }
+
   private static Map<String, Object> fromJsonString(String json) {
     return Utils.parseToMap(new Gson().fromJson(json, JsonElement.class));
   }

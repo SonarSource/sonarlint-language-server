@@ -60,7 +60,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static final String ORGANIZATION_KEY = "organizationKey";
   private static final String DISABLE_NOTIFICATIONS = "disableNotifications";
   private static final String PROJECT = "project";
-  private static final String DEFAULT_CONNECTION_ID = "<default>";
+  static final String DEFAULT_CONNECTION_ID = "<default>";
   private static final String SERVER_URL = "serverUrl";
   private static final String SERVER_ID = "serverId";
   private static final String TOKEN = "token";
@@ -454,5 +454,9 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   public void shutdown() {
     Utils.shutdownAndAwait(executor, true);
+  }
+
+  public static String connectionIdOrDefault(@Nullable String connectionId) {
+    return connectionId == null ? DEFAULT_CONNECTION_ID : connectionId;
   }
 }

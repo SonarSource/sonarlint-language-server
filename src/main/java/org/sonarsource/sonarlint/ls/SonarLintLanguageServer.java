@@ -452,12 +452,17 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public CompletableFuture<Map<String, String>> getRemoteProjectNames(GetRemoteProjectsNamesParams params) {
-    return CompletableFuture.completedFuture(
-      bindingManager.getRemoteProjects(params.getConnectionId())
-        .entrySet()
-        .stream()
-        .filter(e -> params.getProjectKeys().contains(e.getKey()))
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))
-    );
+    try {
+      return CompletableFuture.completedFuture(
+        bindingManager.getRemoteProjects(params.getConnectionId())
+          .entrySet()
+          .stream()
+          .filter(e -> params.getProjectKeys().contains(e.getKey()))
+          .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))
+      );
+    } catch (IllegalStateException failed) {
+      return CompletableFuture.failedFuture(failed);
+    }
+
   }
 }
