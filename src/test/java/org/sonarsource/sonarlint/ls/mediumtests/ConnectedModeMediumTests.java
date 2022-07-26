@@ -49,7 +49,9 @@ import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Rules.Rule;
 import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Settings;
 import testutils.MockWebServerExtension;
 
+import static org.assertj.core.api.Assertions.as;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
 
 class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
@@ -191,5 +193,15 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     // Update of storage is asynchronous, eventually we get the right data in the storage :)
     awaitUntilAsserted(() -> assertThat(lsProxy.getRemoteProjectNames(params).get()).containsExactly(Map.entry(PROJECT_KEY1, PROJECT_NAME1)));
+  }
+
+  @Test
+  void shouldThrowGettingServerNamesForUnknownConnection() throws Exception {
+    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
+
+    var params = new GetRemoteProjectsNamesParams("unknown connection", List.of("unknown-project"));
+
+    var future = lsProxy.getRemoteProjectNames(params);
+    awaitUntilAsserted(() -> assertThat(future).isCompletedExceptionally());
   }
 }
