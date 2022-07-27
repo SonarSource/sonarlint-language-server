@@ -56,9 +56,11 @@ import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
+import org.sonarsource.sonarlint.core.client.api.exceptions.DownloadException;
 import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
+import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -225,13 +227,22 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   @CheckForNull
-  public EndpointParamsAndHttpClient getServerConfigurationFor(String connectionId) {
-    var serverConnectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
+  public EndpointParamsAndHttpClient getServerConfigurationFor(@Nullable String connectionId) {
+    return Optional.ofNullable(getServerConnectionSettingsFor(connectionId))
+      .map(ServerConnectionSettings::getServerConfiguration)
+      .orElse(null);
+  }
+
+  @CheckForNull
+  private ServerConnectionSettings getServerConnectionSettingsFor(@Nullable String maybeConnectionId) {
+    var connectionId = SettingsManager.connectionIdOrDefault(maybeConnectionId);
+    var allConnections = settingsManager.getCurrentSettings().getServerConnections();
+    var serverConnectionSettings = allConnections.get(connectionId);
     if (serverConnectionSettings == null) {
       LOG.error("The specified connection id '{}' doesn't exist.", connectionId);
       return null;
     }
-    return serverConnectionSettings.getServerConfiguration();
+    return serverConnectionSettings;
   }
 
   private Optional<ConnectedSonarLintEngine> getOrCreateConnectedEngine(
@@ -619,6 +630,25 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     @Override
     public void run() {
       syncStorage();
+    }
+  }
+
+  public Map<String, String> getRemoteProjects(@Nullable String maybeConnectionId) {
+    var connectionId = SettingsManager.connectionIdOrDefault(maybeConnectionId);
+    var serverConfiguration = getServerConfigurationFor(connectionId);
+    if (serverConfiguration == null) {
+      throw new IllegalArgumentException(String.format("No server configuration found with ID '%s'", connectionId));
+    }
+    var progress = new NoOpProgressFacade();
+    var engine = getOrCreateConnectedEngine(connectionId, serverConfiguration, false, progress)
+      .orElseThrow(() -> new IllegalArgumentException(String.format("No connected engine found with ID '%s'", connectionId)));
+    try {
+      return engine.downloadAllProjects(serverConfiguration.getEndpointParams(), serverConfiguration.getHttpClient(), progress.asCoreMonitor())
+        .values()
+        .stream()
+        .collect(Collectors.toMap(ServerProject::getKey, ServerProject::getName));
+    } catch(DownloadException downloadFailed) {
+      throw new IllegalStateException(String.format("Failed to fetch list of projects from '%s'", connectionId), downloadFailed);
     }
   }
 }

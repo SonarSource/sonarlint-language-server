@@ -20,9 +20,11 @@
 package org.sonarsource.sonarlint.ls.mediumtests;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
+import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +33,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonar.scanner.protocol.Constants.Severity;
 import org.sonar.scanner.protocol.input.ScannerInput;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.GetRemoteProjectsNamesParams;
+import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Common;
 import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Components;
 import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.ProjectBranches;
 import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.ProjectBranches.Branch;
@@ -45,7 +49,9 @@ import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Rules.Rule;
 import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Settings;
 import testutils.MockWebServerExtension;
 
+import static org.assertj.core.api.Assertions.as;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
 
 class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
@@ -57,6 +63,11 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
 
   private static final String CONNECTION_ID = "mediumTests";
+
+  private static final String PROJECT_KEY1 = "project:key1";
+  private static final String PROJECT_NAME1 = "Project One";
+  private static final String PROJECT_KEY2 = "project:key2";
+  private static final String PROJECT_NAME2 = "Project Two";
   @TempDir
   public static Path folder1BaseDir;
 
@@ -72,7 +83,11 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @BeforeEach
   public void mockSonarQube() {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.3\", \"id\": \"xzy\"}");
-    mockWebServerExtension.addProtobufResponse("/api/components/search.protobuf?qualifiers=TRK&ps=500&p=1", Components.SearchWsResponse.newBuilder().build());
+    mockWebServerExtension.addProtobufResponse("/api/components/search.protobuf?qualifiers=TRK&ps=500&p=1", Components.SearchWsResponse.newBuilder()
+        .addComponents(Components.Component.newBuilder().setKey(PROJECT_KEY1).setName(PROJECT_NAME1).build())
+        .addComponents(Components.Component.newBuilder().setKey(PROJECT_KEY2).setName(PROJECT_NAME2).build())
+        .setPaging(Common.Paging.newBuilder().setTotal(2).build())
+      .build());
     mockWebServerExtension.addProtobufResponse("/api/components/tree.protobuf?qualifiers=FIL,UTS&component=myProject&ps=500&p=1", Components.TreeWsResponse.newBuilder().build());
     mockWebServerExtension.addStringResponse("/api/plugins/installed",
       "{\"plugins\":[{\"key\": \"javascript\", \"hash\": \"not_used\", \"filename\": \"not_used\", \"sonarLintSupported\": true}]}");
@@ -165,4 +180,28 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         tuple(2, 6, 2, 11, JAVASCRIPT_S1481, "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Warning)));
   }
 
+  @Test
+  void shouldGetServerNamesForConnection() throws Exception {
+    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
+
+    // Trigger a binding update to fetch projects in connected mode storage
+    ExecuteCommandParams updateBindings = new ExecuteCommandParams();
+    updateBindings.setCommand("SonarLint.UpdateAllBindings");
+    lsProxy.getWorkspaceService().executeCommand(updateBindings);
+
+    var params = new GetRemoteProjectsNamesParams(CONNECTION_ID, List.of(PROJECT_KEY1, "unknown"));
+
+    // Update of storage is asynchronous, eventually we get the right data in the storage :)
+    awaitUntilAsserted(() -> assertThat(lsProxy.getRemoteProjectNames(params).get()).containsExactly(Map.entry(PROJECT_KEY1, PROJECT_NAME1)));
+  }
+
+  @Test
+  void shouldThrowGettingServerNamesForUnknownConnection() throws Exception {
+    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
+
+    var params = new GetRemoteProjectsNamesParams("unknown connection", List.of("unknown-project"));
+
+    var future = lsProxy.getRemoteProjectNames(params);
+    awaitUntilAsserted(() -> assertThat(future).isCompletedExceptionally());
+  }
 }
