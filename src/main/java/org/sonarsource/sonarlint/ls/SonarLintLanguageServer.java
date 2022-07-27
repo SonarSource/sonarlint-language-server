@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.CodeAction;
@@ -59,7 +60,10 @@ import org.eclipse.lsp4j.WorkspaceFoldersOptions;
 import org.eclipse.lsp4j.WorkspaceServerCapabilities;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
+import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
+import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
@@ -447,5 +451,22 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public void onTokenUpdate() {
     SonarLintLogger.get().info("Updating configuration on token change.");
     didChangeConfiguration(new DidChangeConfigurationParams());
+  }
+
+  @Override
+  public CompletableFuture<Map<String, String>> getRemoteProjectNames(GetRemoteProjectsNamesParams params) {
+    try {
+      return CompletableFuture.completedFuture(
+        bindingManager.getRemoteProjects(params.getConnectionId())
+          .entrySet()
+          .stream()
+          .filter(e -> params.getProjectKeys().contains(e.getKey()))
+          .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))
+      );
+    } catch (IllegalStateException | IllegalArgumentException failed) {
+      var responseError = new ResponseError(ResponseErrorCode.InternalError, "Could not get remote project names", failed);
+      return CompletableFuture.failedFuture(new ResponseErrorException(responseError));
+    }
+
   }
 }

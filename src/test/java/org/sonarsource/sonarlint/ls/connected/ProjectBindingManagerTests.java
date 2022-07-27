@@ -48,7 +48,9 @@ import org.sonarsource.sonarlint.core.client.api.connected.GlobalStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.UpdateResult;
+import org.sonarsource.sonarlint.core.client.api.exceptions.DownloadException;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
+import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -63,6 +65,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -827,6 +830,68 @@ class ProjectBindingManagerTests {
     underTest.subscribeForServerEvents(List.of(folder), List.of());
 
     verify(fakeEngine).subscribeForEvents(any(), isNull(), eq(Set.of(PROJECT_KEY)), isNull());
+  }
+
+  @Test
+  void should_get_all_projects_for_a_connection() {
+    var key1 = "key1";
+    var key2 = "key2";
+    var name1 = "name1";
+    var name2 = "name2";
+    var project1 = mock(ServerProject.class);
+    when(project1.getKey()).thenReturn(key1);
+    when(project1.getName()).thenReturn(name1);
+    var project2 = mock(ServerProject.class);
+    when(project2.getKey()).thenReturn(key2);
+    when(project2.getName()).thenReturn(name2);
+    when(fakeEngine.downloadAllProjects(any(), any(), any())).thenReturn(Map.of(
+      key1, project1,
+      key2, project2
+    ));
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+    assertThat(underTest.getRemoteProjects(CONNECTION_ID)).containsExactlyInAnyOrderEntriesOf(Map.of(
+      key1, name1,
+      key2, name2
+    ));
+  }
+
+  @Test
+  void should_get_all_projects_for_default_connection() {
+    var key1 = "key1";
+    var key2 = "key2";
+    var name1 = "name1";
+    var name2 = "name2";
+    var project1 = mock(ServerProject.class);
+    when(project1.getKey()).thenReturn(key1);
+    when(project1.getName()).thenReturn(name1);
+    var project2 = mock(ServerProject.class);
+    when(project2.getKey()).thenReturn(key2);
+    when(project2.getName()).thenReturn(name2);
+    when(fakeEngine.downloadAllProjects(any(), any(), any())).thenReturn(Map.of(
+      key1, project1,
+      key2, project2
+    ));
+    servers.put(SettingsManager.connectionIdOrDefault(null), GLOBAL_SETTINGS);
+    assertThat(underTest.getRemoteProjects(null)).containsExactlyInAnyOrderEntriesOf(Map.of(
+      key1, name1,
+      key2, name2
+    ));
+  }
+
+  @Test
+  void should_get_no_project_for_unknown_connection() {
+    assertThatThrownBy(() -> underTest.getRemoteProjects("unknown"))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("No server configuration found with ID 'unknown'");
+  }
+
+  @Test
+  void should_wrap_download_exception_when_downloading_projects() {
+    when(fakeEngine.downloadAllProjects(any(), any(), any())).thenThrow(DownloadException.class);
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+    assertThatThrownBy(() -> underTest.getRemoteProjects(CONNECTION_ID))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessage("Failed to fetch list of projects from '" + CONNECTION_ID + "'");
   }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {
