@@ -640,7 +640,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       throw new IllegalArgumentException(String.format("No server configuration found with ID '%s'", connectionId));
     }
     var progress = new NoOpProgressFacade();
-    var engine = getOrCreateConnectedEngine(connectionId, serverConfiguration, false, progress)
+    var engine = getOrCreateConnectedEngine(connectionId, serverConfiguration, true, progress)
       .orElseThrow(() -> new IllegalArgumentException(String.format("No connected engine found with ID '%s'", connectionId)));
     try {
       return engine.downloadAllProjects(serverConfiguration.getEndpointParams(), serverConfiguration.getHttpClient(), progress.asCoreMonitor())
