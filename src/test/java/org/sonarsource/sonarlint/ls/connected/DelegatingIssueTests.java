@@ -24,8 +24,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
-import org.sonarsource.sonarlint.core.analysis.api.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
+import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.commons.TextRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -38,8 +40,8 @@ class DelegatingIssueTests {
 
   @BeforeEach
   public void prepare() {
-    when(issue.getSeverity()).thenReturn("BLOCKER");
-    when(issue.getType()).thenReturn("BUG");
+    when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(issue.getType()).thenReturn(RuleType.BUG);
     when(issue.getMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
     when(issue.getStartLine()).thenReturn(2);
@@ -53,12 +55,12 @@ class DelegatingIssueTests {
 
   @Test
   void testGetSeverity() {
-    assertThat(delegatingIssue.getSeverity()).isNotEmpty().isEqualTo(issue.getSeverity());
+    assertThat(delegatingIssue.getSeverity()).isEqualTo(issue.getSeverity());
   }
 
   @Test
   void testGetType() {
-    assertThat(delegatingIssue.getType()).isNotEmpty().isEqualTo(issue.getType());
+    assertThat(delegatingIssue.getType()).isEqualTo(issue.getType());
   }
 
   @Test
