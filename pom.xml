@@ -24,7 +24,9 @@
 
   <properties>
     <jdk.min.version>11</jdk.min.version>
-    <sonarlint.core.version>8.6.0.47852</sonarlint.core.version>
+    <sonarlint.core.version>8.7.0.52152</sonarlint.core.version>
+    <!-- Version used by Xodus -->
+    <kotlin.version>1.6.10</kotlin.version>
     <!-- analyzers used for tests -->
     <sonar.java.version>7.7.0.28547</sonar.java.version>
     <sonar.javascript.version>9.2.0.17876</sonar.javascript.version>
@@ -85,6 +87,13 @@
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-nop</artifactId>
       <version>1.7.35</version>
+    </dependency>
+    <!-- Needed for Xodus -->
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-stdlib</artifactId>
+      <version>${kotlin.version}</version>
+      <scope>runtime</scope>
     </dependency>
 
     <!-- unit tests -->

@@ -27,7 +27,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
@@ -40,6 +39,7 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleListener {
 
   private static final SonarLintLogger LOG = SonarLintLogger.get();
+  private static final String MASTER_BRANCH = "master";
 
   private final Map<URI, Optional<String>> referenceBranchNameByFolderUri = new ConcurrentHashMap<>();
   private final SonarLintExtendedLanguageClient client;
@@ -80,7 +80,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
         var repo = GitUtils.getRepositoryForDir(Paths.get(folderUri));
         if (repo != null) {
           try (repo) {
-            electedBranchName = GitUtils.electBestMatchingServerBranchForCurrentHead(repo, serverBranchNames, serverBranches.getMainBranchName().orElse(null));
+            electedBranchName = GitUtils.electBestMatchingServerBranchForCurrentHead(repo, serverBranchNames, serverBranches.getMainBranchName());
           }
         }
       }
@@ -91,17 +91,16 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
 
   /**
    * @param folderUri a workspace folder's URI
-   * @return the current known reference branch name for the folder, <code>null</code> if unknown or not in connected mode
+   * @return the current known reference branch name for the folder, <code>master</code> if unknown or not in connected mode
    */
-  @CheckForNull
   public String getReferenceBranchNameForFolder(URI folderUri) {
     try {
       var uriWithoutTrailingSlash = StringUtils.removeEnd(folderUri.toString(), "/");
-      return referenceBranchNameByFolderUri.getOrDefault(new URI(uriWithoutTrailingSlash), Optional.empty()).orElse(null);
+      return referenceBranchNameByFolderUri.getOrDefault(new URI(uriWithoutTrailingSlash), Optional.empty()).orElse(MASTER_BRANCH);
     } catch (URISyntaxException e) {
       LOG.error(e.getMessage());
     }
-    return null;
+    return MASTER_BRANCH;
   }
 
   public void shutdown() {
