@@ -27,6 +27,7 @@ import org.eclipse.lsp4j.Range;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
+import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionnedIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
@@ -57,7 +58,7 @@ class DiagnosticPublisherTests {
   @Test
   void testConvertGlobalIssues() {
     var issue = mock(Issue.class);
-    when(issue.getSeverity()).thenReturn("BLOCKER");
+    when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getMessage()).thenReturn("Do this, don't do that");
     when(issue.getStartLine()).thenReturn(null);
     var versionnedIssue = new VersionnedIssue(issue, 1);
@@ -70,17 +71,17 @@ class DiagnosticPublisherTests {
     var id = "id";
     var issue = mock(Issue.class);
     when(issue.getStartLine()).thenReturn(1);
-    when(issue.getSeverity()).thenReturn("BLOCKER");
+    when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getMessage()).thenReturn("Do this, don't do that");
     var versionnedIssue = new VersionnedIssue(issue, 1);
     assertThat(convert(entry(id, versionnedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
-    when(issue.getSeverity()).thenReturn("CRITICAL");
+    when(issue.getSeverity()).thenReturn(IssueSeverity.CRITICAL);
     assertThat(convert(entry(id, versionnedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
-    when(issue.getSeverity()).thenReturn("MAJOR");
+    when(issue.getSeverity()).thenReturn(IssueSeverity.MAJOR);
     assertThat(convert(entry(id, versionnedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
-    when(issue.getSeverity()).thenReturn("MINOR");
+    when(issue.getSeverity()).thenReturn(IssueSeverity.MINOR);
     assertThat(convert(entry(id, versionnedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Information);
-    when(issue.getSeverity()).thenReturn("INFO");
+    when(issue.getSeverity()).thenReturn(IssueSeverity.INFO);
     assertThat(convert(entry(id, versionnedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
   }
 
@@ -115,7 +116,7 @@ class DiagnosticPublisherTests {
   private URI initWithOneSecretIssue() {
     var issue = mock(Issue.class);
     when(issue.getRuleKey()).thenReturn("secrets:123");
-    when(issue.getSeverity()).thenReturn("MAJOR");
+    when(issue.getSeverity()).thenReturn(IssueSeverity.MAJOR);
     when(issue.getMessage()).thenReturn("Boo");
 
     var uri = URI.create("file://foo");

@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -81,7 +82,7 @@ class EnginesFactoryTests {
     var factory = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
       mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
 
-    assertThatThrownBy(() -> factory.createConnectedEngine("foo"))
+    assertThatThrownBy(() -> factory.createConnectedEngine("foo", mock(ServerConnectionSettings.class)))
       .isInstanceOf(IllegalStateException.class)
       .hasMessageContaining("Embedded plugin not found: " + Language.JS.getLabel());
   }
@@ -92,7 +93,7 @@ class EnginesFactoryTests {
     var factory = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
       mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
 
-    assertThatThrownBy(() -> factory.createConnectedEngine("foo"))
+    assertThatThrownBy(() -> factory.createConnectedEngine("foo", mock(ServerConnectionSettings.class)))
       .isInstanceOf(IllegalStateException.class)
       .hasMessageContaining("Embedded plugin not found: " + Language.HTML.getLabel());
   }
@@ -103,7 +104,7 @@ class EnginesFactoryTests {
     var factory = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
       mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
 
-    assertThatThrownBy(() -> factory.createConnectedEngine("foo"))
+    assertThatThrownBy(() -> factory.createConnectedEngine("foo", mock(ServerConnectionSettings.class)))
       .isInstanceOf(IllegalStateException.class)
       .hasMessageContaining("Embedded plugin not found: " + Language.XML.getLabel());
   }

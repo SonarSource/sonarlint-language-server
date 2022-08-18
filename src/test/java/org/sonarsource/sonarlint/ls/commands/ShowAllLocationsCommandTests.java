@@ -79,7 +79,7 @@ class ShowAllLocationsCommandTests {
       ).containsExactly(
         fileUri,
         "message",
-        "severity",
+        IssueSeverity.BLOCKER,
         "ruleKey"
       );
     assertThat(params.getFlows()).hasSize(2);
