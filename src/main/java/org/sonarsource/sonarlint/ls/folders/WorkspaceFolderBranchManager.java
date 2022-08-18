@@ -80,7 +80,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
         var repo = GitUtils.getRepositoryForDir(Paths.get(folderUri));
         if (repo != null) {
           try (repo) {
-            electedBranchName = GitUtils.electBestMatchingServerBranchForCurrentHead(repo, serverBranchNames, serverBranches.getMainBranchName().orElse(null));
+            electedBranchName = GitUtils.electBestMatchingServerBranchForCurrentHead(repo, serverBranchNames, serverBranches.getMainBranchName());
           }
         }
       }

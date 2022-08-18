@@ -23,13 +23,14 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonSyntaxException;
 import java.net.URI;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.Position;
@@ -38,14 +39,16 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
+import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 
 public class Utils {
 
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
+  private static final Pattern MATCH_ALL_WHITESPACES = Pattern.compile("\\s");
   private static final String MESSAGE_WITH_PLURALIZED_SUFFIX = "%s [+%d %s]";
 
   private Utils() {
@@ -111,33 +114,51 @@ public class Utils {
         issue.getEndLineOffset()));
   }
 
-  public static Range convert(ServerIssueLocation issue) {
+
+  public static Range convert(ServerTaintIssue issue) {
+    TextRangeWithHash textRange = issue.getTextRange();
+    if (textRange == null) {
+      return new Range(new Position(0, 0), new Position(0, 0));
+    }
     return new Range(
       new Position(
-        issue.getStartLine() - 1,
-        issue.getStartLineOffset()),
+        textRange.getStartLine() - 1,
+        textRange.getStartLineOffset()),
       new Position(
-        issue.getEndLine() - 1,
-        issue.getEndLineOffset()));
+        textRange.getEndLine() - 1,
+        textRange.getEndLineOffset()));
   }
 
-  public static boolean locationMatches(Issue i, Diagnostic d) {
+
+
+  public static Range convert(ServerTaintIssue.ServerIssueLocation issue) {
+    // TODO refactor
+    return new Range(
+      new Position(
+        issue.getTextRange().getStartLine() - 1,
+        issue.getTextRange().getStartLineOffset()),
+      new Position(
+        issue.getTextRange().getEndLine() - 1,
+        issue.getTextRange().getEndLineOffset()));
+  }
+
+  public static boolean locationMatches(ServerTaintIssue i, Diagnostic d) {
     return convert(i).equals(d.getRange());
   }
 
-  public static boolean locationMatches(ServerIssue i, Diagnostic d) {
-    return convert(i).equals(d.getRange());
-  }
+//  public static boolean locationMatches(ServerTaintIssue i, Diagnostic d) {
+//    return convert(i).equals(d.getRange());
+//  }
 
-  public static DiagnosticSeverity severity(String severity) {
-    switch (severity.toUpperCase(Locale.ENGLISH)) {
-      case "BLOCKER":
-      case "CRITICAL":
-      case "MAJOR":
+  public static DiagnosticSeverity severity(IssueSeverity severity) {
+    switch (severity) {
+      case BLOCKER:
+      case CRITICAL:
+      case MAJOR:
         return DiagnosticSeverity.Warning;
-      case "MINOR":
+      case MINOR:
         return DiagnosticSeverity.Information;
-      case "INFO":
+      case INFO:
       default:
         return DiagnosticSeverity.Hint;
     }
@@ -149,5 +170,10 @@ public class Utils {
 
   public static boolean uriHasFileSchema(URI uri) {
     return uri.getScheme().equalsIgnoreCase("file");
+  }
+
+  public static String hash(String codeSnippet) {
+    String codeSnippetWithoutWhitespaces = MATCH_ALL_WHITESPACES.matcher(codeSnippet).replaceAll("");
+    return DigestUtils.md5Hex(codeSnippetWithoutWhitespaces);
   }
 }

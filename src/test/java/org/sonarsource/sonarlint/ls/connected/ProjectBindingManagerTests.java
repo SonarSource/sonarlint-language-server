@@ -44,13 +44,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.connected.GlobalStorageStatus;
-import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
-import org.sonarsource.sonarlint.core.client.api.connected.ProjectStorageStatus;
 import org.sonarsource.sonarlint.core.client.api.connected.UpdateResult;
-import org.sonarsource.sonarlint.core.client.api.exceptions.DownloadException;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
+import org.sonarsource.sonarlint.core.serverconnection.GlobalStorageStatus;
+import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
+import org.sonarsource.sonarlint.core.serverconnection.ProjectStorageStatus;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -151,19 +150,11 @@ class ProjectBindingManagerTests {
       .thenReturn(newWorkspaceSettingsWithServers(servers));
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(UNBOUND_SETTINGS);
 
-    when(enginesFactory.createConnectedEngine(anyString())).thenReturn(fakeEngine);
+    when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class))).thenReturn(fakeEngine);
     when(globalStorageStatus.isStale()).thenReturn(false);
-    when(fakeEngine.getGlobalStorageStatus()).thenReturn(globalStorageStatus);
-    when(projectStorageStatus.isStale()).thenReturn(false);
-    when(fakeEngine.getProjectStorageStatus(PROJECT_KEY)).thenReturn(projectStorageStatus);
-    when(fakeEngine.update(any(), any(), any())).thenReturn(updateResult);
     when(updateResult.status()).thenReturn(globalStorageStatus);
 
     when(globalStorageStatus2.isStale()).thenReturn(false);
-    when(fakeEngine2.getGlobalStorageStatus()).thenReturn(globalStorageStatus2);
-    when(projectStorageStatus2.isStale()).thenReturn(false);
-    when(fakeEngine2.getProjectStorageStatus(PROJECT_KEY)).thenReturn(projectStorageStatus2);
-    when(fakeEngine2.update(any(), any(), any())).thenReturn(updateResult2);
     when(updateResult2.status()).thenReturn(globalStorageStatus2);
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token"));
 
@@ -219,7 +210,7 @@ class ProjectBindingManagerTests {
   void get_binding_default_to_standalone_if_server_fail_to_start() {
     mockFileInABoundWorkspaceFolder();
 
-    when(enginesFactory.createConnectedEngine(anyString())).thenThrow(new IllegalStateException("Unable to start"));
+    when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class))).thenThrow(new IllegalStateException("Unable to start"));
 
     assertThat(underTest.getBinding(fileInAWorkspaceFolderPath.toUri())).isEmpty();
 
@@ -233,8 +224,7 @@ class ProjectBindingManagerTests {
     var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     assertThat(binding).isNotEmpty();
 
-    verify(fakeEngine, never()).update(any(), any(), any());
-    verify(fakeEngine, never()).updateProject(any(), any(), any(), anyBoolean(), any(), any());
+    verify(fakeEngine, never()).updateProject(any(), any(), any(), any());
 
     assertThat(underTest.usesConnectedMode()).isTrue();
   }
@@ -258,17 +248,15 @@ class ProjectBindingManagerTests {
     verify(fakeEngine).calculatePathPrefixes(eq(PROJECT_KEY), argThat(set -> set.contains(FILE_PHP)));
   }
 
+  // TODO remove this test?
   @Test
   void get_binding_should_update_if_global_storage_missing() {
     mockFileInABoundWorkspaceFolder();
 
-    when(fakeEngine.getGlobalStorageStatus()).thenReturn(null, globalStorageStatus);
-
     var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     assertThat(binding).isNotEmpty();
 
-    verify(fakeEngine, times(1)).update(any(), any(), any());
-    verify(fakeEngine, never()).updateProject(any(), any(), any(), anyBoolean(), any(), any());
+    verify(fakeEngine, never()).updateProject(any(), any(), any(), any());
   }
 
   @Test
@@ -280,34 +268,17 @@ class ProjectBindingManagerTests {
     var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     assertThat(binding).isNotEmpty();
 
-    verify(fakeEngine, times(1)).update(any(), any(), any());
-    verify(fakeEngine, never()).updateProject(any(), any(), any(), anyBoolean(), any(), any());
+    verify(fakeEngine, never()).updateProject(any(), any(), any(), any());
   }
 
   @Test
   void get_binding_should_update_if_project_storage_missing() {
     mockFileInABoundWorkspaceFolder();
 
-    when(fakeEngine.getProjectStorageStatus(PROJECT_KEY)).thenReturn(null);
-
     var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     assertThat(binding).isNotEmpty();
 
-    verify(fakeEngine, never()).update(any(), any(), any());
-    verify(fakeEngine, times(1)).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any(), any());
-  }
-
-  @Test
-  void get_binding_should_update_if_project_storage_stale() {
-    mockFileInABoundWorkspaceFolder();
-
-    when(projectStorageStatus.isStale()).thenReturn(true);
-
-    var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
-    assertThat(binding).isNotEmpty();
-
-    verify(fakeEngine, never()).update(any(), any(), any());
-    verify(fakeEngine, times(1)).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any(), any());
+    verify(fakeEngine, times(1)).updateProject(any(), any(), eq(PROJECT_KEY), any());
   }
 
   @Test
@@ -494,7 +465,7 @@ class ProjectBindingManagerTests {
     servers.put(SERVER_ID2, GLOBAL_SETTINGS_DIFFERENT_SERVER_ID);
     var folder = mockFileInABoundWorkspaceFolder();
 
-    when(enginesFactory.createConnectedEngine(anyString()))
+    when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class)))
       .thenReturn(fakeEngine)
       .thenReturn(fakeEngine2);
 
@@ -521,9 +492,9 @@ class ProjectBindingManagerTests {
     mockFileInABoundWorkspaceFolder();
     mockFileInABoundWorkspaceFolder2();
 
-    when(enginesFactory.createConnectedEngine("myServer"))
+    when(enginesFactory.createConnectedEngine("myServer", mock(ServerConnectionSettings.class)))
       .thenReturn(fakeEngine);
-    when(enginesFactory.createConnectedEngine("myServer2"))
+    when(enginesFactory.createConnectedEngine("myServer2", mock(ServerConnectionSettings.class)))
       .thenReturn(fakeEngine2);
 
     var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
@@ -538,8 +509,8 @@ class ProjectBindingManagerTests {
     assertThat(logTester.logs())
       .contains("Starting connected SonarLint engine for 'myServer2'...");
 
-    verify(enginesFactory).createConnectedEngine("myServer");
-    verify(enginesFactory).createConnectedEngine("myServer2");
+    verify(enginesFactory).createConnectedEngine("myServer", mock(ServerConnectionSettings.class));
+    verify(enginesFactory).createConnectedEngine("myServer2", mock(ServerConnectionSettings.class));
 
     underTest.shutdown();
 
@@ -552,7 +523,7 @@ class ProjectBindingManagerTests {
     mockFileInABoundWorkspaceFolder();
     mockFileInABoundWorkspaceFolder2();
 
-    when(enginesFactory.createConnectedEngine(anyString()))
+    when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class)))
       .thenReturn(fakeEngine)
       .thenReturn(fakeEngine2);
 
@@ -580,10 +551,7 @@ class ProjectBindingManagerTests {
     var folder2 = mockFileInABoundWorkspaceFolder2();
 
     when(foldersManager.getAll()).thenReturn(List.of(folder1, folder2));
-
-    when(fakeEngine2.getProjectStorageStatus(PROJECT_KEY2)).thenReturn(projectStorageStatus2);
-
-    when(enginesFactory.createConnectedEngine(anyString()))
+    when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class)))
       .thenReturn(fakeEngine)
       .thenReturn(fakeEngine2);
 
@@ -595,11 +563,10 @@ class ProjectBindingManagerTests {
 
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
-    verify(fakeEngine).update(any(), any(), any());
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any(), any());
+
+    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
     verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
-    verify(fakeEngine2).update(any(), any(), any());
-    verify(fakeEngine2).updateProject(any(), any(), eq(PROJECT_KEY2), anyBoolean(), any(), any());
+    verify(fakeEngine2).updateProject(any(), any(), eq(PROJECT_KEY2), any());
     verify(fakeEngine2).sync(any(), any(), eq(Set.of(PROJECT_KEY2)), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
@@ -614,19 +581,16 @@ class ProjectBindingManagerTests {
 
     when(foldersManager.getAll()).thenReturn(List.of(folder1, folder2));
 
-    when(fakeEngine2.getProjectStorageStatus(PROJECT_KEY2)).thenReturn(projectStorageStatus2);
 
-    when(enginesFactory.createConnectedEngine(anyString()))
+    when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class)))
       .thenReturn(fakeEngine)
       .thenReturn(fakeEngine2);
 
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
-    verify(fakeEngine).update(any(), any(), any());
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any(), any());
+    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
     verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
-    verify(fakeEngine2).update(any(), any(), any());
-    verify(fakeEngine2).updateProject(any(), any(), eq(PROJECT_KEY2), anyBoolean(), any(), any());
+    verify(fakeEngine2).updateProject(any(), any(), eq(PROJECT_KEY2), any());
     verify(fakeEngine2).sync(any(), any(), eq(Set.of(PROJECT_KEY2)), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
@@ -643,14 +607,13 @@ class ProjectBindingManagerTests {
 
     when(foldersManager.getAll()).thenReturn(List.of(folder1, folder2));
 
-    when(enginesFactory.createConnectedEngine(anyString()))
+    when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class)))
       .thenReturn(fakeEngine);
 
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
-    verify(fakeEngine).update(any(), any(), any());
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any(), any());
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY2), anyBoolean(), any(), any());
+    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
+    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY2), any());
     verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY, PROJECT_KEY2)), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
@@ -667,13 +630,12 @@ class ProjectBindingManagerTests {
 
     when(foldersManager.getAll()).thenReturn(List.of(folder1, folder2));
 
-    when(enginesFactory.createConnectedEngine(anyString()))
+    when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class)))
       .thenReturn(fakeEngine);
 
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
-    verify(fakeEngine).update(any(), any(), any());
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any(), any());
+    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
     verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
@@ -717,8 +679,7 @@ class ProjectBindingManagerTests {
     var serverConnectionSettings = new ServerConnectionSettings("serverId", "serverUrl", "token", "organizationKey", true, httpClientProvider);
     when(settings.getServerConnections()).thenReturn(Map.of(serverId, serverConnectionSettings));
     when(globalStorageStatus.isStale()).thenReturn(true);
-    when(enginesFactory.createConnectedEngine(serverId)).thenReturn(fakeEngine);
-    doThrow(new RuntimeException("Boom")).when(fakeEngine).update(any(), any(), any());
+    when(enginesFactory.createConnectedEngine(serverId, mock(ServerConnectionSettings.class))).thenReturn(fakeEngine);
 
     underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
@@ -739,12 +700,9 @@ class ProjectBindingManagerTests {
     var serverConnectionSettings = new ServerConnectionSettings("serverId", "serverUrl", "token", "organizationKey", true, httpClientProvider);
     when(settings.getServerConnections()).thenReturn(Map.of(connectionId, serverConnectionSettings));
     when(globalStorageStatus.isStale()).thenReturn(true);
-    when(enginesFactory.createConnectedEngine(connectionId)).thenReturn(fakeEngine);
+    when(enginesFactory.createConnectedEngine(connectionId, mock(ServerConnectionSettings.class))).thenReturn(fakeEngine);
     when(settingsManager.getCurrentSettings()).thenReturn(settings);
-    when(enginesFactory.createConnectedEngine(connectionId)).thenReturn(fakeEngine);
-    when(fakeEngine.update(any(), any(), any()))
-      .thenReturn(mock(UpdateResult.class))
-      .thenThrow(new RuntimeException("Boom"));
+    when(enginesFactory.createConnectedEngine(connectionId, mock(ServerConnectionSettings.class))).thenReturn(fakeEngine);
     var calls = new AtomicInteger(0);
     doAnswer(ignored -> {
       if (calls.getAndIncrement() == 0) {
@@ -753,7 +711,7 @@ class ProjectBindingManagerTests {
         throw new RuntimeException("Boom at project update");
       }
     })
-      .when(fakeEngine).updateProject(any(), any(), eq(projectKey), anyBoolean(), eq(null), any());
+      .when(fakeEngine).updateProject(any(), any(), eq(projectKey), any());
     when(fakeEngine.calculatePathPrefixes(eq(projectKey), anyCollection())).thenReturn(new ProjectBinding(projectKey, "", ""));
 
     underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
@@ -806,8 +764,7 @@ class ProjectBindingManagerTests {
 
     underTest.updateBinding(CONNECTION_ID, PROJECT_KEY).join();
 
-    verify(fakeEngine).update(any(), any(), any());
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), anyBoolean(), any(), any());
+    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
   }
 
   @Test
@@ -817,7 +774,7 @@ class ProjectBindingManagerTests {
 
     underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
-    verify(fakeEngine).subscribeForEvents(any(), isNull(), eq(Set.of(PROJECT_KEY)), isNull());
+    verify(fakeEngine).subscribeForEvents(any(), isNull(), eq(Set.of(PROJECT_KEY)), event -> {}, isNull());
   }
 
   @Test
@@ -829,7 +786,7 @@ class ProjectBindingManagerTests {
 
     underTest.subscribeForServerEvents(List.of(folder), List.of());
 
-    verify(fakeEngine).subscribeForEvents(any(), isNull(), eq(Set.of(PROJECT_KEY)), isNull());
+    verify(fakeEngine).subscribeForEvents(any(), isNull(), eq(Set.of(PROJECT_KEY)), event -> {}, isNull());
   }
 
   @Test

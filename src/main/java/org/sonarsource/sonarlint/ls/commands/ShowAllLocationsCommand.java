@@ -30,13 +30,18 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.IssueLocation;
-import org.sonarsource.sonarlint.core.analysis.api.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
+import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
+import org.sonarsource.sonarlint.core.serverconnection.issues.ServerIssue;
+import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.LocalCodeFile;
+import org.sonarsource.sonarlint.ls.util.FileUtils;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 public final class ShowAllLocationsCommand {
 
@@ -49,7 +54,7 @@ public final class ShowAllLocationsCommand {
   public static class Param {
     private final URI fileUri;
     private final String message;
-    private final String severity;
+    private final IssueSeverity severity;
     private final String ruleKey;
     private final List<Flow> flows;
     private final String connectionId;
@@ -65,14 +70,14 @@ public final class ShowAllLocationsCommand {
       this.creationDate = null;
     }
 
-    Param(ServerIssue issue, String connectionId, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localFileCache) {
+    Param(ServerTaintIssue issue, String connectionId, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localFileCache) {
       this.fileUri = pathResolver.apply(issue.getFilePath()).orElse(null);
       this.message = issue.getMessage();
-      this.severity = issue.severity();
-      this.ruleKey = issue.ruleKey();
+      this.severity = issue.getSeverity();
+      this.ruleKey = issue.getRuleKey();
       this.flows = issue.getFlows().stream().map(f -> new Flow(f, pathResolver, localFileCache)).collect(Collectors.toList());
       this.connectionId = connectionId;
-      this.creationDate = DateTimeFormatter.ISO_DATE_TIME.format(issue.creationDate().atOffset(ZoneOffset.UTC));
+      this.creationDate = DateTimeFormatter.ISO_DATE_TIME.format(issue.getCreationDate().atOffset(ZoneOffset.UTC));
     }
 
     public URI getFileUri() {
@@ -83,7 +88,7 @@ public final class ShowAllLocationsCommand {
       return message;
     }
 
-    public String getSeverity() {
+    public IssueSeverity getSeverity() {
       return severity;
     }
 
@@ -113,7 +118,7 @@ public final class ShowAllLocationsCommand {
       this.locations = flow.locations().stream().map(Location::new).collect(Collectors.toList());
     }
 
-    private Flow(ServerIssue.Flow flow, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localFileCache) {
+    private Flow(ServerTaintIssue.Flow flow, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localFileCache) {
       this.locations = flow.locations().stream().map(l -> new Location(l, pathResolver, localFileCache)).collect(Collectors.toList());
     }
 
@@ -139,7 +144,7 @@ public final class ShowAllLocationsCommand {
       this.codeMatches = true;
     }
 
-    private Location(ServerIssueLocation location, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localCodeCache) {
+    private Location(ServerTaintIssue.ServerIssueLocation location, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localCodeCache) {
       this.textRange = location.getTextRange();
       this.uri = pathResolver.apply(location.getFilePath()).orElse(null);
       this.filePath = location.getFilePath();
@@ -154,8 +159,14 @@ public final class ShowAllLocationsCommand {
           this.codeMatches = false;
         } else {
           this.exists = true;
-          String remoteSnippet = location.getCodeSnippet();
-          this.codeMatches = remoteSnippet != null && remoteSnippet.equals(localCode);
+          var locationTextRange = location.getTextRange();
+          if (locationTextRange == null) {
+            this.codeMatches = false;
+          } else {
+            var textRangeHash = locationTextRange.getHash();
+            var localCodeHash = Utils.hash(localCode);
+            this.codeMatches = textRangeHash.equals(localCodeHash);
+          }
         }
       }
     }
@@ -189,7 +200,7 @@ public final class ShowAllLocationsCommand {
     return new Param(issue);
   }
 
-  public static Param params(ServerIssue issue, String connectionId, Function<String, Optional<URI>> pathResolver) {
+  public static Param params(ServerTaintIssue issue, String connectionId, Function<String, Optional<URI>> pathResolver) {
     return new Param(issue, connectionId, pathResolver, new HashMap<>());
   }
 

@@ -31,10 +31,11 @@ import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.analysis.api.IssueLocation;
-import org.sonarsource.sonarlint.core.analysis.api.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
+import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
+import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.LocalCodeFile;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,7 +52,7 @@ class ShowAllLocationsCommandTests {
     var fileUri = URI.create("file:///tmp/plop");
     when(file.uri()).thenReturn(fileUri);
     when(issue.getMessage()).thenReturn("message");
-    when(issue.getSeverity()).thenReturn("severity");
+    when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getRuleKey()).thenReturn("ruleKey");
 
     var flow1 = mock(Flow.class);
@@ -90,30 +91,28 @@ class ShowAllLocationsCommandTests {
 
   @Test
   void pathResolverTest() {
-    var issue = mock(ServerIssue.class);
+    var issue = mock(ServerTaintIssue.class);
     when(issue.getFilePath()).thenReturn("filePath");
-    var flow = mock(ServerIssue.Flow.class);
+    var flow = mock(ServerTaintIssue.Flow.class);
     when(issue.getFlows()).thenReturn(List.of(flow));
-    when(issue.creationDate()).thenReturn(Instant.EPOCH);
+    when(issue.getCreationDate()).thenReturn(Instant.EPOCH);
 
     var locationFilePath = "locationFilePath";
 
-    var location1 = mock(ServerIssueLocation.class);
+    var location1 = mock(ServerTaintIssue.ServerIssueLocation.class);
     when(location1.getFilePath()).thenReturn(locationFilePath);
-    var range1 = new TextRange(0, 1, 1, 1);
+    var range1 = new TextRangeWithHash(0, 1, 1, 1, "some hash");
     when(location1.getTextRange()).thenReturn(range1);
-    when(location1.getCodeSnippet()).thenReturn("some code");
 
-    var location2 = mock(ServerIssueLocation.class);
+    var location2 = mock(ServerTaintIssue.ServerIssueLocation.class);
     when(location2.getFilePath()).thenReturn(locationFilePath);
-    var range2 = new TextRange(2, 1, 2, 1);
+    var range2 = new TextRangeWithHash(2, 1, 2, 1, "other hash");
     when(location2.getTextRange()).thenReturn(range2);
-    when(location2.getCodeSnippet()).thenReturn("other code");
 
     when(flow.locations()).thenReturn(List.of(location1, location2));
 
     var mockCodeFile = mock(LocalCodeFile.class);
-    when(mockCodeFile.codeAt(range1)).thenReturn("some code");
+    when(mockCodeFile.codeAt(range1)).thenReturn("some hash");
     when(mockCodeFile.codeAt(range2)).thenReturn(null);
     var cache = new HashMap<>(Map.of(Paths.get(locationFilePath).toUri(), mockCodeFile));
 

@@ -21,7 +21,7 @@ package org.sonarsource.sonarlint.ls.connected;
 
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
+import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;

@@ -30,6 +30,8 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
+import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspot;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
@@ -73,13 +75,13 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     @Expose
     private final String htmlDescription;
     @Expose
-    private final String type;
+    private final RuleType type;
     @Expose
-    private final String severity;
+    private final IssueSeverity severity;
     @Expose
     private final RuleParameter[] parameters;
 
-    public ShowRuleDescriptionParams(String ruleKey, String ruleName, @Nullable String htmlDescription, @Nullable String type, String severity,
+    public ShowRuleDescriptionParams(String ruleKey, String ruleName, @Nullable String htmlDescription, @Nullable RuleType type,  IssueSeverity severity,
       Collection<StandaloneRuleParam> params) {
       this.key = ruleKey;
       this.name = ruleName;
@@ -101,11 +103,11 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       return htmlDescription;
     }
 
-    public String getType() {
+    public RuleType getType() {
       return type;
     }
 
-    public String getSeverity() {
+    public IssueSeverity getSeverity() {
       return severity;
     }
 

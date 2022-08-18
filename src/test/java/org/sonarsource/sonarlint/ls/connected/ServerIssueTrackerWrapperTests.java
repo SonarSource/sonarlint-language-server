@@ -32,8 +32,6 @@ import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -85,7 +83,7 @@ class ServerIssueTrackerWrapperTests {
     var trackedIssues = matchAndTrack(tracker, "dummy", issues);
     assertThat(trackedIssues).extracting("issue").containsOnlyElementsOf(issues);
 
-    when(resolvedServerIssue.resolution()).thenReturn("CLOSED");
+    when(resolvedServerIssue.isResolved()).thenReturn("CLOSED");
     var trackedIssues2 = matchAndTrack(tracker, "dummy", issues);
     assertThat(trackedIssues2).extracting("issue").isEqualTo(List.of(unresolved));
   }
@@ -197,7 +195,7 @@ class ServerIssueTrackerWrapperTests {
 
     // basic setup to prevent NPEs
     when(serverIssue.creationDate()).thenReturn(Instant.ofEpochMilli(++counter));
-    when(serverIssue.resolution()).thenReturn("");
+    when(serverIssue.isResolved()).thenReturn("");
     when(serverIssue.lineHash()).thenReturn("dummy checksum " + (++counter));
 
     // if issue itself is a mock, need to extract value to variable first
@@ -209,7 +207,7 @@ class ServerIssueTrackerWrapperTests {
     // copy fields to match during tracking
 
     var ruleKey = issue.getRuleKey();
-    when(serverIssue.ruleKey()).thenReturn(ruleKey);
+    when(serverIssue.getRuleKey()).thenReturn(ruleKey);
 
     var startLine = issue.getStartLine();
     when(serverIssue.getStartLine()).thenReturn(startLine);
