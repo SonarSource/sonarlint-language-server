@@ -35,6 +35,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonar.scanner.protocol.Constants.Severity;
 import org.sonar.scanner.protocol.input.ScannerInput;
+import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Components;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.ProjectBranches;
@@ -96,9 +97,10 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     Rules.Actives.Builder activeBuilder = Rules.Actives.newBuilder();
     activeBuilder.putActives(JAVASCRIPT_S1481, Rules.ActiveList.newBuilder().addActiveList(Rules.Active.newBuilder().setSeverity("BLOCKER")).build());
     mockWebServerExtension.addProtobufResponse(
-      "/api/rules/search.protobuf?qprofile=" + QPROFILE_KEY + "&activation=true&f=templateKey,actives&types=CODE_SMELL,BUG,VULNERABILITY&ps=500&p=1",
+      "/api/rules/search.protobuf?qprofile=" + QPROFILE_KEY + "&activation=true&f=templateKey,actives&types=CODE_SMELL,BUG,VULNERABILITY&s=key&ps=500&p=1",
       Rules.SearchResponse.newBuilder()
         .setActives(activeBuilder.build())
+        .setTotal(1)
         .addRules(Rules.Rule.newBuilder()
           .setKey(JAVASCRIPT_S1481)
           .setLang("js")
@@ -110,6 +112,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .addBranches(ProjectBranches.Branch.newBuilder()
           .setName("master")
           .setIsMain(true)
+          .setType(Common.BranchType.BRANCH)
           .build())
         .build());
   }
@@ -153,11 +156,12 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
 
     mockWebServerExtension.addProtobufResponseDelimited(
-      "/batch/issues?key=myProject%3AinFolder.js",
+      "/batch/issues?key=myProject%3AinFolder.js&branch=master",
       ScannerInput.ServerIssue.newBuilder()
         .setKey("xyz")
         .setRuleRepository("javascript")
         .setRuleKey("S1481")
+        .setType(RuleType.BUG.name())
         .setMsg("Remove the declaration of the unused 'toto' variable.")
         .setSeverity(Severity.INFO)
         .setManualSeverity(true)

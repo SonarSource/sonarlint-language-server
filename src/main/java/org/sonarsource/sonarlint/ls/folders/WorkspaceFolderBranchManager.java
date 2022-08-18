@@ -27,7 +27,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
@@ -91,17 +90,16 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
 
   /**
    * @param folderUri a workspace folder's URI
-   * @return the current known reference branch name for the folder, <code>null</code> if unknown or not in connected mode
+   * @return the current known reference branch name for the folder, <code>master</code> if unknown or not in connected mode
    */
-  @CheckForNull
   public String getReferenceBranchNameForFolder(URI folderUri) {
     try {
       var uriWithoutTrailingSlash = StringUtils.removeEnd(folderUri.toString(), "/");
-      return referenceBranchNameByFolderUri.getOrDefault(new URI(uriWithoutTrailingSlash), Optional.empty()).orElse(null);
+      return referenceBranchNameByFolderUri.getOrDefault(new URI(uriWithoutTrailingSlash), Optional.empty()).orElse("master");
     } catch (URISyntaxException e) {
       LOG.error(e.getMessage());
     }
-    return null;
+    return "master";
   }
 
   public void shutdown() {

@@ -41,7 +41,6 @@ import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -154,7 +153,8 @@ class ServerIssueTrackerWrapperTests {
     engine = mock(ConnectedSonarLintEngine.class);
     tracker = newTracker(baseDir, engine);
     matchAndTrack(tracker, "dummy", issues, true);
-    verify(engine).downloadAllServerIssues(any(), any(), any(), eq("branchName"), any());
+    verify(engine).downloadAllServerIssuesForFile(any(), any(), any(), any(), eq("branchName"), any());
+    verify(engine).getServerIssues(any(), eq("branchName"), any());
     verifyNoMoreInteractions(engine);
   }
 

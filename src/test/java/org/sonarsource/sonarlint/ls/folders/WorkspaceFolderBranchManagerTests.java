@@ -51,7 +51,7 @@ class WorkspaceFolderBranchManagerTests {
 
     var folderUri = new URI("file:///some_dir");
 
-    assertThat(underTest.getReferenceBranchNameForFolder(folderUri)).isNull();
+    assertThat(underTest.getReferenceBranchNameForFolder(folderUri)).isEqualTo("master");
   }
 
   @Test

@@ -98,21 +98,20 @@ class ShowAllLocationsCommandTests {
     when(issue.getCreationDate()).thenReturn(Instant.EPOCH);
 
     var locationFilePath = "locationFilePath";
-
     var location1 = mock(ServerTaintIssue.ServerIssueLocation.class);
     when(location1.getFilePath()).thenReturn(locationFilePath);
-    var range1 = new TextRangeWithHash(0, 1, 1, 1, "some hash");
+    var range1 = new TextRangeWithHash(0, 1, 1, 1, "82b3b93d07679915d2486e460668a907");
     when(location1.getTextRange()).thenReturn(range1);
 
     var location2 = mock(ServerTaintIssue.ServerIssueLocation.class);
     when(location2.getFilePath()).thenReturn(locationFilePath);
-    var range2 = new TextRangeWithHash(2, 1, 2, 1, "other hash");
+    var range2 = new TextRangeWithHash(2, 1, 2, 1, "658282ae00158c6a5fdd52f7f7b513b6");
     when(location2.getTextRange()).thenReturn(range2);
 
     when(flow.locations()).thenReturn(List.of(location1, location2));
 
     var mockCodeFile = mock(LocalCodeFile.class);
-    when(mockCodeFile.codeAt(range1)).thenReturn("some hash");
+    when(mockCodeFile.codeAt(range1)).thenReturn("some code");
     when(mockCodeFile.codeAt(range2)).thenReturn(null);
     var cache = new HashMap<>(Map.of(Paths.get(locationFilePath).toUri(), mockCodeFile));
 

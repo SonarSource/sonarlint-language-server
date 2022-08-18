@@ -114,13 +114,11 @@ public class EnginesFactory {
     if (shutdown.get().equals(true)) {
       throw new IllegalStateException("Language server is shutting down, won't create engine");
     }
-    // TODO is this check valid?
-    var isSonarQube = serverConnectionSettings.getServerUrl() != null;
     ConnectedGlobalConfiguration.Builder builder;
-    if (isSonarQube) {
-      builder = ConnectedGlobalConfiguration.sonarQubeBuilder();
-    } else {
+    if (serverConnectionSettings.isSonarCloudAlias()) {
       builder = ConnectedGlobalConfiguration.sonarCloudBuilder();
+    } else {
+      builder = ConnectedGlobalConfiguration.sonarQubeBuilder();
     }
     builder
       .setSonarLintUserHome(sonarLintUserHomeOverride)
