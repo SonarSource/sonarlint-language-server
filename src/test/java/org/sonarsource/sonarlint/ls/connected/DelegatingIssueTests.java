@@ -24,8 +24,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
-import org.sonarsource.sonarlint.core.analysis.api.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
+import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.commons.TextRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -34,12 +36,12 @@ import static org.mockito.Mockito.when;
 class DelegatingIssueTests {
 
   private final Issue issue = mock(Issue.class);
-  private final DelegatingIssue delegatingIssue = new DelegatingIssue(issue);
+  private DelegatingIssue delegatingIssue;
 
   @BeforeEach
   public void prepare() {
-    when(issue.getSeverity()).thenReturn("BLOCKER");
-    when(issue.getType()).thenReturn("BUG");
+    when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(issue.getType()).thenReturn(RuleType.BUG);
     when(issue.getMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
     when(issue.getStartLine()).thenReturn(2);
@@ -49,16 +51,24 @@ class DelegatingIssueTests {
     when(issue.flows()).thenReturn(List.of(mock(Flow.class)));
     when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
     when(issue.getTextRange()).thenReturn(mock(TextRange.class));
+    delegatingIssue = new DelegatingIssue(issue, null);
   }
 
   @Test
   void testGetSeverity() {
-    assertThat(delegatingIssue.getSeverity()).isNotEmpty().isEqualTo(issue.getSeverity());
+    assertThat(delegatingIssue.getSeverity()).isEqualTo(issue.getSeverity());
+  }
+
+  @Test
+  void testGetUserSeverity() {
+    var delegatingIssueWithUserSeverity = new DelegatingIssue(issue, IssueSeverity.INFO);
+
+    assertThat(delegatingIssueWithUserSeverity.getSeverity()).isEqualTo(IssueSeverity.INFO);
   }
 
   @Test
   void testGetType() {
-    assertThat(delegatingIssue.getType()).isNotEmpty().isEqualTo(issue.getType());
+    assertThat(delegatingIssue.getType()).isEqualTo(issue.getType());
   }
 
   @Test

@@ -19,7 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
@@ -28,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,12 +35,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 class EnginesFactoryTests {
-
-  private static final Path FAKE_TYPESCRIPT_PATH = Paths.get("some/path");
   private EnginesFactory underTest;
 
   @BeforeEach
-  void prepare() throws Exception {
+  void prepare() {
     var standaloneAnalysers = List.of(
       Paths.get("plugin1.jar"),
       Paths.get("plugin2.jar"),
@@ -81,7 +79,7 @@ class EnginesFactoryTests {
     var factory = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
       mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
 
-    assertThatThrownBy(() -> factory.createConnectedEngine("foo"))
+    assertThatThrownBy(() -> factory.createConnectedEngine("foo", mock(ServerConnectionSettings.class)))
       .isInstanceOf(IllegalStateException.class)
       .hasMessageContaining("Embedded plugin not found: " + Language.JS.getLabel());
   }
@@ -92,7 +90,7 @@ class EnginesFactoryTests {
     var factory = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
       mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
 
-    assertThatThrownBy(() -> factory.createConnectedEngine("foo"))
+    assertThatThrownBy(() -> factory.createConnectedEngine("foo", mock(ServerConnectionSettings.class)))
       .isInstanceOf(IllegalStateException.class)
       .hasMessageContaining("Embedded plugin not found: " + Language.HTML.getLabel());
   }
@@ -103,7 +101,7 @@ class EnginesFactoryTests {
     var factory = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
       mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
 
-    assertThatThrownBy(() -> factory.createConnectedEngine("foo"))
+    assertThatThrownBy(() -> factory.createConnectedEngine("foo", mock(ServerConnectionSettings.class)))
       .isInstanceOf(IllegalStateException.class)
       .hasMessageContaining("Embedded plugin not found: " + Language.XML.getLabel());
   }

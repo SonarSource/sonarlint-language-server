@@ -29,8 +29,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBranches;
+import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
@@ -51,7 +51,7 @@ class WorkspaceFolderBranchManagerTests {
 
     var folderUri = new URI("file:///some_dir");
 
-    assertThat(underTest.getReferenceBranchNameForFolder(folderUri)).isNull();
+    assertThat(underTest.getReferenceBranchNameForFolder(folderUri)).isEqualTo("master");
   }
 
   @Test
@@ -96,7 +96,7 @@ class WorkspaceFolderBranchManagerTests {
     when(bindingWrapper.getEngine()).thenReturn(engine);
     String projectKey = "project_key";
     when(bindingWrapper.getBinding()).thenReturn(new ProjectBinding(projectKey, null, null));
-    when(engine.getServerBranches(projectKey)).thenReturn(new ProjectBranches(Set.of("main", currentBranchName), Optional.of("main")));
+    when(engine.getServerBranches(projectKey)).thenReturn(new ProjectBranches(Set.of("main", currentBranchName), "main"));
 
     underTest.didBranchNameChange(folderUri, currentBranchName);
 

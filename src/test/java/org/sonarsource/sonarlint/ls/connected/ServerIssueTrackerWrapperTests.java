@@ -32,13 +32,15 @@ import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
+import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
+import org.sonarsource.sonarlint.core.serverconnection.issues.LineLevelServerIssue;
+import org.sonarsource.sonarlint.core.serverconnection.issues.ServerIssue;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -79,13 +81,13 @@ class ServerIssueTrackerWrapperTests {
     var serverIssues = List.of(mockServerIssue(unresolved), resolvedServerIssue);
 
     var engine = mock(ConnectedSonarLintEngine.class);
-    when(engine.getServerIssues(any(), any())).thenReturn(serverIssues);
+    when(engine.getServerIssues(any(), any(), any())).thenReturn(serverIssues);
 
     var tracker = newTracker(baseDir, engine);
     var trackedIssues = matchAndTrack(tracker, "dummy", issues);
     assertThat(trackedIssues).extracting("issue").containsOnlyElementsOf(issues);
 
-    when(resolvedServerIssue.resolution()).thenReturn("CLOSED");
+    when(resolvedServerIssue.isResolved()).thenReturn(true);
     var trackedIssues2 = matchAndTrack(tracker, "dummy", issues);
     assertThat(trackedIssues2).extracting("issue").isEqualTo(List.of(unresolved));
   }
@@ -100,15 +102,15 @@ class ServerIssueTrackerWrapperTests {
     when(matched.getInputFile().getPath()).thenReturn(dummyFilePath);
     var issues = List.of(unmatched, matched);
 
-    var serverIssueSeverity = "BLOCKER*";
-    var serverIssueType = "BUG*";
+    var serverIssueSeverity = IssueSeverity.BLOCKER;
+    var serverIssueType = RuleType.BUG;
     var matchedServerIssue = mockServerIssue(matched);
-    when(matchedServerIssue.severity()).thenReturn(serverIssueSeverity);
-    when(matchedServerIssue.type()).thenReturn(serverIssueType);
+    when(matchedServerIssue.getUserSeverity()).thenReturn(serverIssueSeverity);
+    when(matchedServerIssue.getType()).thenReturn(serverIssueType);
     var serverIssues = List.of(mockServerIssue(mockIssue()), matchedServerIssue);
 
     var engine = mock(ConnectedSonarLintEngine.class);
-    when(engine.getServerIssues(any(), any())).thenReturn(serverIssues);
+    when(engine.getServerIssues(any(), any(), any())).thenReturn(serverIssues);
 
     var tracker = newTracker(baseDir, engine);
     var trackedIssues = matchAndTrack(tracker, "dummy", issues);
@@ -145,13 +147,14 @@ class ServerIssueTrackerWrapperTests {
     var engine = mock(ConnectedSonarLintEngine.class);
     var tracker = newTracker(baseDir, engine);
     matchAndTrack(tracker, "dummy", issues, false);
-    verify(engine).getServerIssues(any(), any());
+    verify(engine).getServerIssues(any(), any(), any());
     verifyNoMoreInteractions(engine);
 
     engine = mock(ConnectedSonarLintEngine.class);
     tracker = newTracker(baseDir, engine);
     matchAndTrack(tracker, "dummy", issues, true);
-    verify(engine).downloadServerIssues(any(), any(), any(), any(), anyBoolean(), eq("branchName"), any());
+    verify(engine).downloadAllServerIssuesForFile(any(), any(), any(), any(), eq("branchName"), any());
+    verify(engine).getServerIssues(any(), eq("branchName"), any());
     verifyNoMoreInteractions(engine);
   }
 
@@ -193,12 +196,12 @@ class ServerIssueTrackerWrapperTests {
 
   // copy enough fields so that tracker finds a match
   private ServerIssue mockServerIssue(Issue issue) {
-    var serverIssue = mock(ServerIssue.class);
+    var serverIssue = mock(LineLevelServerIssue.class);
 
     // basic setup to prevent NPEs
-    when(serverIssue.creationDate()).thenReturn(Instant.ofEpochMilli(++counter));
-    when(serverIssue.resolution()).thenReturn("");
-    when(serverIssue.lineHash()).thenReturn("dummy checksum " + (++counter));
+    when(serverIssue.getCreationDate()).thenReturn(Instant.ofEpochMilli(++counter));
+    when(serverIssue.isResolved()).thenReturn(false);
+    when(serverIssue.getLineHash()).thenReturn("dummy checksum " + (++counter));
 
     // if issue itself is a mock, need to extract value to variable first
     // as Mockito doesn't handle nested mocking inside mocking
@@ -209,10 +212,10 @@ class ServerIssueTrackerWrapperTests {
     // copy fields to match during tracking
 
     var ruleKey = issue.getRuleKey();
-    when(serverIssue.ruleKey()).thenReturn(ruleKey);
+    when(serverIssue.getRuleKey()).thenReturn(ruleKey);
 
-    var startLine = issue.getStartLine();
-    when(serverIssue.getStartLine()).thenReturn(startLine);
+    var line = issue.getStartLine();
+    when(serverIssue.getLine()).thenReturn(line);
 
     return serverIssue;
   }

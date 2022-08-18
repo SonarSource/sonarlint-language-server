@@ -36,6 +36,7 @@ import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintE
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 public class EnginesFactory {
 
@@ -108,11 +109,18 @@ public class EnginesFactory {
     return new StandaloneSonarLintEngineImpl(configuration);
   }
 
-  public ConnectedSonarLintEngine createConnectedEngine(String connectionId) {
+  public ConnectedSonarLintEngine createConnectedEngine(String connectionId,
+    ServerConnectionSettings serverConnectionSettings) {
     if (shutdown.get().equals(true)) {
       throw new IllegalStateException("Language server is shutting down, won't create engine");
     }
-    var builder = ConnectedGlobalConfiguration.builder()
+    ConnectedGlobalConfiguration.Builder builder;
+    if (serverConnectionSettings.isSonarCloudAlias()) {
+      builder = ConnectedGlobalConfiguration.sonarCloudBuilder();
+    } else {
+      builder = ConnectedGlobalConfiguration.sonarQubeBuilder();
+    }
+    builder
       .setSonarLintUserHome(sonarLintUserHomeOverride)
       .setConnectionId(connectionId)
       .addEnabledLanguages(STANDALONE_LANGUAGES)

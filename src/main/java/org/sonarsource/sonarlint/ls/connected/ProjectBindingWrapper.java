@@ -22,7 +22,8 @@ package org.sonarsource.sonarlint.ls.connected;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
+import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
+
 
 public class ProjectBindingWrapper {
 
