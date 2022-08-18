@@ -28,7 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.analysis.api.TextRange;
+import org.sonarsource.sonarlint.core.commons.TextRange;
 
 public class LocalCodeFile {
 

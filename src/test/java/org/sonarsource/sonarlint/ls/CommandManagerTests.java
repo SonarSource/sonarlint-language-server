@@ -43,19 +43,19 @@ import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
 import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
-import org.sonarsource.sonarlint.core.analysis.api.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.connected.ProjectBinding;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerIssue;
-import org.sonarsource.sonarlint.core.client.api.connected.ServerIssueLocation;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
-import org.sonarsource.sonarlint.core.container.standalone.rule.DefaultStandaloneRuleParam;
+import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamDefinition;
 import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamType;
+import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
+import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionnedIssue;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -228,14 +228,14 @@ class CommandManagerTests {
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARQUBE_TAINT_SOURCE, "ruleKey");
 
-    var issue = mock(ServerIssue.class);
-    when(issue.ruleKey()).thenReturn("ruleKey");
-    when(issue.creationDate()).thenReturn(Instant.EPOCH);
-    var flow = mock(ServerIssue.Flow.class);
+    var issue = mock(ServerTaintIssue.class);
+    when(issue.getRuleKey()).thenReturn("ruleKey");
+    when(issue.getCreationDate()).thenReturn(Instant.EPOCH);
+    var flow = mock(ServerTaintIssue.Flow.class);
     when(issue.getFlows()).thenReturn(List.of(flow));
-    var location = mock(ServerIssueLocation.class);
+    var location = mock(ServerTaintIssue.ServerIssueLocation.class);
     when(flow.locations()).thenReturn(List.of(location));
-    when(issue.key()).thenReturn("SomeIssueKey");
+    when(issue.getKey()).thenReturn("SomeIssueKey");
     when(mockTaintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
@@ -280,15 +280,15 @@ class CommandManagerTests {
     when(ruleDetails.getName()).thenReturn("Name");
     when(ruleDetails.getHtmlDescription()).thenReturn("Desc");
     when(ruleDetails.getExtendedDescription()).thenReturn("");
-    when(ruleDetails.getType()).thenReturn("Type");
-    when(ruleDetails.getSeverity()).thenReturn("Severity");
+    when(ruleDetails.getType()).thenReturn(RuleType.BUG);
+    when(ruleDetails.getDefaultSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(bindingManager.getServerConfigurationFor(connectionId)).thenReturn(mock(ServerConnectionSettings.EndpointParamsAndHttpClient.class));
     when(mockConnectedEngine.getActiveRuleDetails(null, null, FAKE_RULE_KEY, "projectKey")).thenReturn(CompletableFuture.completedFuture(ruleDetails));
     underTest.executeCommand(
       new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, List.of(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
       NOP_CANCEL_TOKEN);
 
-    verify(mockClient).showRuleDescription(new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc", "Type", "Severity", Collections.emptyList()));
+    verify(mockClient).showRuleDescription(new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc", RuleType.BUG, IssueSeverity.BLOCKER, Collections.emptyList()));
   }
 
   @Test
@@ -312,14 +312,14 @@ class CommandManagerTests {
     when(ruleDetails.getKey()).thenReturn(FAKE_RULE_KEY);
     when(ruleDetails.getName()).thenReturn("Name");
     when(ruleDetails.getHtmlDescription()).thenReturn("Desc");
-    when(ruleDetails.getType()).thenReturn("Type");
-    when(ruleDetails.getSeverity()).thenReturn("Severity");
+    when(ruleDetails.getType()).thenReturn(RuleType.BUG);
+    when(ruleDetails.getDefaultSeverity()).thenReturn(IssueSeverity.BLOCKER);
     var apiParam = mock(SonarLintRuleParamDefinition.class);
     when(apiParam.name()).thenReturn("intParam");
     when(apiParam.type()).thenReturn(SonarLintRuleParamType.INTEGER);
     when(apiParam.description()).thenReturn("An integer parameter");
     when(apiParam.defaultValue()).thenReturn("42");
-    List<StandaloneRuleParam> params = List.of(new DefaultStandaloneRuleParam(apiParam));
+    List<StandaloneRuleParam> params = List.of(new StandaloneRuleParam(apiParam));
     when(ruleDetails.paramDetails()).thenReturn(params);
     when(mockStandaloneEngine.getRuleDetails(FAKE_RULE_KEY)).thenReturn(Optional.of(ruleDetails));
     var sonarLintEngine = mock(StandaloneSonarLintEngine.class);
@@ -331,7 +331,7 @@ class CommandManagerTests {
       NOP_CANCEL_TOKEN);
 
     verify(mockClient).showRuleDescription(
-      new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc", "Type", "Severity", params));
+      new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc", RuleType.BUG, IssueSeverity.BLOCKER, params));
   }
 
   @Test
@@ -346,12 +346,12 @@ class CommandManagerTests {
   void showTaintVulnerabilityFlows() {
     var issueKey = "someIssueKey";
     var connectionId = "connectionId";
-    var issue = mock(ServerIssue.class);
-    when(issue.ruleKey()).thenReturn("ruleKey");
-    when(issue.creationDate()).thenReturn(Instant.EPOCH);
-    var flow = mock(ServerIssue.Flow.class);
+    var issue = mock(ServerTaintIssue.class);
+    when(issue.getRuleKey()).thenReturn("ruleKey");
+    when(issue.getCreationDate()).thenReturn(Instant.EPOCH);
+    var flow = mock(ServerTaintIssue.Flow.class);
     when(issue.getFlows()).thenReturn(List.of(flow));
-    var location = mock(ServerIssueLocation.class);
+    var location = mock(ServerTaintIssue.ServerIssueLocation.class);
     when(flow.locations()).thenReturn(List.of(location));
     when(mockTaintVulnerabilitiesCache.getTaintVulnerabilityByKey(issueKey)).thenReturn(Optional.of(issue));
 

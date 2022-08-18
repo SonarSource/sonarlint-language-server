@@ -43,7 +43,6 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedAnalysisConfiguration;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneAnalysisConfiguration;
-import org.sonarsource.sonarlint.core.client.api.util.FileUtils;
 import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
 import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
@@ -61,6 +60,7 @@ import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
+import org.sonarsource.sonarlint.ls.util.FileUtils;
 
 import static java.lang.String.format;
 import static java.util.Optional.ofNullable;
@@ -449,7 +449,8 @@ public class AnalysisTaskExecutor {
         var filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, fileUri));
         serverIssueTracker.matchAndTrack(filePath, issues, issueListener, task.shouldFetchServerIssues());
         if (task.shouldFetchServerIssues()) {
-          var serverIssues = engine.getServerIssues(binding.getBinding(), filePath);
+          var branchName = bindingManager.resolveBranchNameForFolder(fileUri);
+          var serverIssues = engine.getServerTaintIssues(binding.getBinding(), branchName, filePath);
           taintVulnerabilitiesCache.reload(fileUri, serverIssues);
           long foundVulnerabilities = taintVulnerabilitiesCache.getAsDiagnostics(fileUri).count();
           if (foundVulnerabilities > 0) {

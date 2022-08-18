@@ -35,21 +35,15 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonar.scanner.protocol.Constants.Severity;
 import org.sonar.scanner.protocol.input.ScannerInput;
+import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
+import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Components;
+import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.ProjectBranches;
+import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Qualityprofiles;
+import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Rules;
+import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Settings;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.GetRemoteProjectsNamesParams;
-import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Common;
-import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Components;
-import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.ProjectBranches;
-import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.ProjectBranches.Branch;
-import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Qualityprofiles;
-import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Qualityprofiles.SearchWsResponse.QualityProfile;
-import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Rules;
-import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Rules.Active;
-import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Rules.ActiveList;
-import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Rules.Actives;
-import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Rules.Actives.Builder;
-import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Rules.Rule;
-import org.sonarsource.sonarlint.shaded.org.sonarqube.ws.Settings;
 import testutils.MockWebServerExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -94,19 +88,20 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       "{\"plugins\":[{\"key\": \"javascript\", \"hash\": \"not_used\", \"filename\": \"not_used\", \"sonarLintSupported\": true}]}");
     mockWebServerExtension.addProtobufResponse("/api/settings/values.protobuf?component=myProject", Settings.Values.newBuilder().build());
     mockWebServerExtension.addProtobufResponse("/api/qualityprofiles/search.protobuf?project=myProject", Qualityprofiles.SearchWsResponse.newBuilder()
-      .addProfiles(QualityProfile.newBuilder()
+      .addProfiles(Qualityprofiles.SearchWsResponse.QualityProfile.newBuilder()
         .setKey(QPROFILE_KEY)
         .setLanguage("js")
         .setRulesUpdatedAt("2022-03-14T11:13:26+0000")
         .build())
       .build());
-    Builder activeBuilder = Actives.newBuilder();
-    activeBuilder.putActives(JAVASCRIPT_S1481, ActiveList.newBuilder().addActiveList(Active.newBuilder().setSeverity("BLOCKER")).build());
+    Rules.Actives.Builder activeBuilder = Rules.Actives.newBuilder();
+    activeBuilder.putActives(JAVASCRIPT_S1481, Rules.ActiveList.newBuilder().addActiveList(Rules.Active.newBuilder().setSeverity("BLOCKER")).build());
     mockWebServerExtension.addProtobufResponse(
-      "/api/rules/search.protobuf?qprofile=" + QPROFILE_KEY + "&activation=true&f=templateKey,actives&types=CODE_SMELL,BUG,VULNERABILITY&ps=500&p=1",
+      "/api/rules/search.protobuf?qprofile=" + QPROFILE_KEY + "&activation=true&f=templateKey,actives&types=CODE_SMELL,BUG,VULNERABILITY&s=key&ps=500&p=1",
       Rules.SearchResponse.newBuilder()
         .setActives(activeBuilder.build())
-        .addRules(Rule.newBuilder()
+        .setTotal(1)
+        .addRules(Rules.Rule.newBuilder()
           .setKey(JAVASCRIPT_S1481)
           .setLang("js")
           .build())
@@ -114,9 +109,10 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     mockWebServerExtension.addProtobufResponse(
       "/api/project_branches/list.protobuf?project=myProject",
       ProjectBranches.ListWsResponse.newBuilder()
-        .addBranches(Branch.newBuilder()
+        .addBranches(ProjectBranches.Branch.newBuilder()
           .setName("master")
           .setIsMain(true)
+          .setType(Common.BranchType.BRANCH)
           .build())
         .build());
   }
@@ -160,11 +156,12 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
 
     mockWebServerExtension.addProtobufResponseDelimited(
-      "/batch/issues?key=myProject%3AinFolder.js",
+      "/batch/issues?key=myProject%3AinFolder.js&branch=master",
       ScannerInput.ServerIssue.newBuilder()
         .setKey("xyz")
         .setRuleRepository("javascript")
         .setRuleKey("S1481")
+        .setType(RuleType.BUG.name())
         .setMsg("Remove the declaration of the unused 'toto' variable.")
         .setSeverity(Severity.INFO)
         .setManualSeverity(true)

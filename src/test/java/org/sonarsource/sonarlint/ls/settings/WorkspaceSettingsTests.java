@@ -22,7 +22,7 @@ package org.sonarsource.sonarlint.ls.settings;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.client.api.common.RuleKey;
+import org.sonarsource.sonarlint.core.commons.RuleKey;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 
 import static org.assertj.core.api.Assertions.assertThat;

@@ -22,7 +22,9 @@ package org.sonarsource.sonarlint.ls;
 import java.util.Collections;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.sonarsource.sonarlint.core.container.standalone.rule.DefaultStandaloneRuleParam;
+import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
+import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamDefinition;
 import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamType;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
@@ -39,10 +41,10 @@ class SonarLintExtendedLanguageClientTests {
     when(apiParam.description()).thenReturn("description");
     when(apiParam.type()).thenReturn(SonarLintRuleParamType.INTEGER);
     when(apiParam.defaultValue()).thenReturn("42");
-    var param1 = new DefaultStandaloneRuleParam(apiParam);
+    var param1 = new StandaloneRuleParam(apiParam);
 
-    var ruleDesc1 = new ShowRuleDescriptionParams("key1", "name1", "desc1", "type1", "severity1", Collections.singleton(param1));
-    var ruleDescSame1 = new ShowRuleDescriptionParams("key1", "name1", "desc1", "type1", "severity1", Collections.singleton(param1));
+    var ruleDesc1 = new ShowRuleDescriptionParams("key1", "name1", "desc1", RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
+    var ruleDescSame1 = new ShowRuleDescriptionParams("key1", "name1", "desc1", RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
 
     assertThat(ruleDesc1).hasSameHashCodeAs(ruleDescSame1)
       .isEqualTo(ruleDesc1)
@@ -50,27 +52,27 @@ class SonarLintExtendedLanguageClientTests {
       .isNotEqualTo("foo")
       .isNotEqualTo(null);
 
-    var ruleDescDiffKey = new ShowRuleDescriptionParams("key2", "name1", "desc1", "type1", "severity1", Collections.singleton(param1));
+    var ruleDescDiffKey = new ShowRuleDescriptionParams("key2", "name1", "desc1", RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffKey.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffKey);
 
-    var ruleDescDiffName = new ShowRuleDescriptionParams("key1", "name2", "desc1", "type1", "severity1", Collections.singleton(param1));
+    var ruleDescDiffName = new ShowRuleDescriptionParams("key1", "name2", "desc1", RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffName.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffName);
 
-    var ruleDescDiffDesc = new ShowRuleDescriptionParams("key1", "name1", "desc2", "type1", "severity1", Collections.singleton(param1));
+    var ruleDescDiffDesc = new ShowRuleDescriptionParams("key1", "name1", "desc2", RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffDesc.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffDesc);
 
-    var ruleDescDiffType = new ShowRuleDescriptionParams("key1", "name1", "desc1", "type2", "severity1", Collections.singleton(param1));
+    var ruleDescDiffType = new ShowRuleDescriptionParams("key1", "name1", "desc1", RuleType.VULNERABILITY, IssueSeverity.BLOCKER, Collections.singleton(param1));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffType.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffType);
 
-    var ruleDescDiffSeverity = new ShowRuleDescriptionParams("key1", "name1", "desc1", "type1", "severity2", Collections.singleton(param1));
+    var ruleDescDiffSeverity = new ShowRuleDescriptionParams("key1", "name1", "desc1", RuleType.BUG, IssueSeverity.CRITICAL, Collections.singleton(param1));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffSeverity.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffSeverity);
 
-    var ruleDescDiffParams = new ShowRuleDescriptionParams("key1", "name1", "desc1", "type1", "severity1", Collections.emptyList());
+    var ruleDescDiffParams = new ShowRuleDescriptionParams("key1", "name1", "desc1", RuleType.BUG, IssueSeverity.BLOCKER, Collections.emptyList());
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffParams.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffParams);
 

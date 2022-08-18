@@ -24,8 +24,10 @@ import javax.annotation.CheckForNull;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
-import org.sonarsource.sonarlint.core.analysis.api.TextRange;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
+import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.commons.TextRange;
 
 public class DelegatingIssue implements Issue {
   private final Issue issue;
@@ -35,13 +37,13 @@ public class DelegatingIssue implements Issue {
   }
 
   @Override
-  public String getSeverity() {
+  public IssueSeverity getSeverity() {
     return issue.getSeverity();
   }
 
   @CheckForNull
   @Override
-  public String getType() {
+  public RuleType getType() {
     return issue.getType();
   }
 

@@ -29,7 +29,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.sonarsource.sonarlint.core.container.model.DefaultServerNotification;
+import org.sonarsource.sonarlint.core.serverconnection.smartnotifications.ServerNotification;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
@@ -233,7 +233,7 @@ class ServerNotificationsTests {
     var message = "message";
     var link = "http://some.link";
     var projectKey = "projectKey";
-    var notification = new DefaultServerNotification(category, message, link, projectKey, ZonedDateTime.now());
+    var notification = new ServerNotification(category, message, link, projectKey, ZonedDateTime.now());
 
     var browseAction = new MessageActionItem("Show on SonarQube");
     var settingsAction = new MessageActionItem("Open Settings");
@@ -258,7 +258,7 @@ class ServerNotificationsTests {
     var message = "message";
     var link = "http://some.link";
     var projectKey = "projectKey";
-    var notification = new DefaultServerNotification(category, message, link, projectKey, ZonedDateTime.now());
+    var notification = new ServerNotification(category, message, link, projectKey, ZonedDateTime.now());
 
     var browseAction = new MessageActionItem("Show on SonarQube");
     var settingsAction = new MessageActionItem("Open Settings");
@@ -283,7 +283,7 @@ class ServerNotificationsTests {
     var message = "message";
     var link = "http://some.link";
     var projectKey = "projectKey";
-    var notification = new DefaultServerNotification(category, message, link, projectKey, ZonedDateTime.now());
+    var notification = new ServerNotification(category, message, link, projectKey, ZonedDateTime.now());
 
     var browseAction = new MessageActionItem("Show on SonarCloud");
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(null));
