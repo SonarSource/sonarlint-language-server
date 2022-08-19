@@ -116,7 +116,14 @@ public class Utils {
 
 
   public static Range convert(ServerTaintIssue issue) {
-    TextRangeWithHash textRange = issue.getTextRange();
+    return convert(issue.getTextRange());
+  }
+
+  public static Range convert(ServerTaintIssue.ServerIssueLocation issue) {
+    return convert(issue.getTextRange());
+  }
+
+  public static Range convert(@Nullable TextRangeWithHash textRange) {
     if (textRange == null) {
       return new Range(new Position(0, 0), new Position(0, 0));
     }
@@ -129,26 +136,9 @@ public class Utils {
         textRange.getEndLineOffset()));
   }
 
-
-
-  public static Range convert(ServerTaintIssue.ServerIssueLocation issue) {
-    // TODO refactor
-    return new Range(
-      new Position(
-        issue.getTextRange().getStartLine() - 1,
-        issue.getTextRange().getStartLineOffset()),
-      new Position(
-        issue.getTextRange().getEndLine() - 1,
-        issue.getTextRange().getEndLineOffset()));
-  }
-
   public static boolean locationMatches(ServerTaintIssue i, Diagnostic d) {
     return convert(i).equals(d.getRange());
   }
-
-//  public static boolean locationMatches(ServerTaintIssue i, Diagnostic d) {
-//    return convert(i).equals(d.getRange());
-//  }
 
   public static DiagnosticSeverity severity(IssueSeverity severity) {
     switch (severity) {

@@ -25,10 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
-import org.sonarsource.sonarlint.core.serverconnection.issues.ServerIssue;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.util.Utils;
@@ -37,8 +35,6 @@ import static java.util.Collections.emptyList;
 import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralizedSuffix;
 
 public class TaintVulnerabilitiesCache {
-
-  private static final String SECURITY_REPOSITORY_HINT = "security";
 
   private final Map<URI, List<ServerTaintIssue>> taintVulnerabilitiesPerFile = new ConcurrentHashMap<>();
 

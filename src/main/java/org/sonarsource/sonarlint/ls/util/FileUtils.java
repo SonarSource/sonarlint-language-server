@@ -34,7 +34,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
-import org.apache.commons.codec.digest.DigestUtils;
 
 public class FileUtils {
 
@@ -119,6 +118,19 @@ public class FileUtils {
       return path.replaceAll(PATH_SEPARATOR_PATTERN, "/");
     }
     return path;
+  }
+
+  /**
+   * Creates a directory by creating all nonexistent parent directories first.
+   *
+   * @param path the directory to create
+   */
+  public static void mkdirs(Path path) {
+    try {
+      Files.createDirectories(path);
+    } catch (IOException e) {
+      throw new IllegalStateException("Unable to create directory: " + path, e);
+    }
   }
 
 
