@@ -21,9 +21,13 @@ package org.sonarsource.sonarlint.ls.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.HashSet;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -62,6 +66,20 @@ class FileUtilsTests {
 
     var relativePaths = FileUtils.allRelativePathsForFilesInTree(deeplyNestedDir);
     assertThat(relativePaths).isEmpty();
+  }
+
+  @Test
+  void allRelativePathsForFilesInTree_should_throw_on_io_error(@TempDir Path basedir) {
+    var deeplyNestedDir = basedir.resolve("a");
+    FileUtils.mkdirs(deeplyNestedDir);
+    SimpleFileVisitor<Path> visitor = new SimpleFileVisitor<>() {
+      @Override
+      public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+        throw new IOException();
+      }
+    };
+    assertThrows(IllegalStateException.class,
+      () -> FileUtils.allRelativePathsForFilesInTree(deeplyNestedDir, visitor, new HashSet<>()));
   }
 
   @Test

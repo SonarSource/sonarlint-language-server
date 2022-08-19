@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.connected;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -790,6 +791,13 @@ class ProjectBindingManagerTests {
     assertThatThrownBy(() -> underTest.getRemoteProjects(CONNECTION_ID))
       .isInstanceOf(IllegalStateException.class)
       .hasMessage("Failed to fetch list of projects from '" + CONNECTION_ID + "'");
+  }
+
+  @Test
+  void should_resolve_branch_to_null_if_resolver_not_set() throws URISyntaxException {
+    var branch = underTest.resolveBranchNameForFolder(new URI("some/path"));
+
+    assertThat(branch).isNull();
   }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {

@@ -38,7 +38,7 @@ import java.util.regex.Pattern;
 public class FileUtils {
 
   private static final String PATH_SEPARATOR_PATTERN = Pattern.quote(File.separator);
-  private static final String OS_NAME_PROPERTY = "os.name";
+  static final String OS_NAME_PROPERTY = "os.name";
   private static final boolean WINDOWS = System.getProperty(OS_NAME_PROPERTY) != null && System.getProperty(OS_NAME_PROPERTY).startsWith("Windows");
 
   /**
@@ -51,34 +51,40 @@ public class FileUtils {
   }
 
   public static Collection<String> allRelativePathsForFilesInTree(Path dir) {
+    Set<String> paths = new HashSet<>();
+    var visitor = new SimpleFileVisitor<Path>() {
+      @Override
+      public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+        if (!isHidden(file)) {
+          retry(() -> paths.add(toSonarQubePath(dir.relativize(file).toString())));
+        }
+        return FileVisitResult.CONTINUE;
+      }
+
+      @Override
+      public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+        if (isHidden(dir)) {
+          return FileVisitResult.SKIP_SUBTREE;
+        } else {
+          return FileVisitResult.CONTINUE;
+        }
+      }
+
+      @Override
+      public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
+        return FileVisitResult.CONTINUE;
+      }
+    };
+    return allRelativePathsForFilesInTree(dir, visitor, paths);
+  }
+
+  public static Collection<String> allRelativePathsForFilesInTree(Path dir, SimpleFileVisitor<Path> visitor, Set<String> paths) {
     if (!dir.toFile().exists()) {
       return Collections.emptySet();
     }
-    Set<String> paths = new HashSet<>();
+
     try {
-      Files.walkFileTree(dir, new SimpleFileVisitor<Path>() {
-        @Override
-        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-          if (!isHidden(file)) {
-            retry(() -> paths.add(toSonarQubePath(dir.relativize(file).toString())));
-          }
-          return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-          if (isHidden(dir)) {
-            return FileVisitResult.SKIP_SUBTREE;
-          } else {
-            return FileVisitResult.CONTINUE;
-          }
-        }
-
-        @Override
-        public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
-          return FileVisitResult.CONTINUE;
-        }
-      });
+      Files.walkFileTree(dir, visitor);
     } catch (IOException e) {
       throw new IllegalStateException("Unable to list files in directory " + dir, e);
     }
@@ -136,7 +142,6 @@ public class FileUtils {
 
   /**
    * On Windows, retries the provided IO operation a number of times, in an effort to make the operation succeed.
-   *
    * Operations that might fail on Windows are file & directory move, as well as file deletion. These failures
    * are typically caused by the virus scanner and/or the Windows Indexing Service. These services tend to open a file handle
    * on newly created files in an effort to scan their content.
