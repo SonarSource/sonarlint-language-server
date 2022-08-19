@@ -63,6 +63,8 @@ class AnalysisClientInputFileTests {
       Arguments.of("c", Language.C),
       Arguments.of("cpp", Language.CPP),
 
+      Arguments.of("yaml", Language.YAML),
+
       Arguments.of("unknown", null)
     );
   }

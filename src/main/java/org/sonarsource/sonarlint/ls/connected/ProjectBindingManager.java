@@ -594,10 +594,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return branchNameForFolderSupplier.apply(folder);
   }
 
-  public String resolveBranchNameForFolder(URI folder) {
-    return branchNameForFolderSupplier.apply(folder);
-  }
-
   private class BindingUpdatesCheckerTask extends TimerTask {
     @Override
     public void run() {
