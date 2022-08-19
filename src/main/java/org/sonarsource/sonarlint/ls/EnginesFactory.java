@@ -56,7 +56,8 @@ public class EnginesFactory {
     Language.PYTHON,
     Language.SECRETS,
     Language.TS,
-    Language.XML
+    Language.XML,
+    Language.YAML,
   };
 
   private static final Language[] CONNECTED_ADDITIONAL_LANGUAGES = {
