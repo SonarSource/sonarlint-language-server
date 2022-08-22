@@ -89,6 +89,11 @@ class FileUtilsTests {
   }
 
   @Test
+  void toSonarQubePath_should_just_return_string_back_on_valid_path() {
+    assertThat(FileUtils.toSonarQubePath("valid/relative/path")).isEqualTo("valid/relative/path");
+  }
+
+  @Test
   void mkdirs(@TempDir Path temp) {
     var deeplyNestedDir = temp.resolve("a").resolve("b").resolve("c");
     assertThat(deeplyNestedDir).doesNotExist();

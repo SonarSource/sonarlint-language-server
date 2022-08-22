@@ -19,7 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
@@ -36,12 +35,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 class EnginesFactoryTests {
-
-  private static final Path FAKE_TYPESCRIPT_PATH = Paths.get("some/path");
   private EnginesFactory underTest;
 
   @BeforeEach
-  void prepare() throws Exception {
+  void prepare() {
     var standaloneAnalysers = List.of(
       Paths.get("plugin1.jar"),
       Paths.get("plugin2.jar"),
