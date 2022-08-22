@@ -39,6 +39,7 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleListener {
 
   private static final SonarLintLogger LOG = SonarLintLogger.get();
+  private static final String MASTER_BRANCH = "master";
 
   private final Map<URI, Optional<String>> referenceBranchNameByFolderUri = new ConcurrentHashMap<>();
   private final SonarLintExtendedLanguageClient client;
@@ -79,7 +80,9 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
         var repo = GitUtils.getRepositoryForDir(Paths.get(folderUri));
         if (repo != null) {
           try (repo) {
-            electedBranchName = GitUtils.electBestMatchingServerBranchForCurrentHead(repo, serverBranchNames, serverBranches.getMainBranchName());
+            var mainBranchNameFromServer = serverBranches.getMainBranchName();
+            var mainBranchName = mainBranchNameFromServer != null ? mainBranchNameFromServer : MASTER_BRANCH;
+            electedBranchName = GitUtils.electBestMatchingServerBranchForCurrentHead(repo, serverBranchNames, mainBranchName);
           }
         }
       }
@@ -95,11 +98,11 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
   public String getReferenceBranchNameForFolder(URI folderUri) {
     try {
       var uriWithoutTrailingSlash = StringUtils.removeEnd(folderUri.toString(), "/");
-      return referenceBranchNameByFolderUri.getOrDefault(new URI(uriWithoutTrailingSlash), Optional.empty()).orElse("master");
+      return referenceBranchNameByFolderUri.getOrDefault(new URI(uriWithoutTrailingSlash), Optional.empty()).orElse(MASTER_BRANCH);
     } catch (URISyntaxException e) {
       LOG.error(e.getMessage());
     }
-    return "master";
+    return MASTER_BRANCH;
   }
 
   public void shutdown() {

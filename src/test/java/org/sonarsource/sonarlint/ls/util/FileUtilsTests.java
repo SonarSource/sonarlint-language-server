@@ -101,7 +101,7 @@ class FileUtilsTests {
   }
 
   @Test
-  void mkdirs_should_fail_if_destination_is_a_file(@TempDir Path temp) throws IOException {
+  void mkdirs_should_fail_if_destination_is_a_file(@TempDir Path temp) {
     var file = createNewFile(temp, "foo").toPath();
     assertThrows(IllegalStateException.class, () -> {
       FileUtils.mkdirs(file);

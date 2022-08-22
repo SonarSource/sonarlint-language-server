@@ -83,6 +83,30 @@ class TaintVulnerabilitiesCacheTests {
   }
 
   @Test
+  void testCacheOnlyUnresolvedTaintVulnerabilities() throws Exception {
+    var uri = new URI("/");
+    var taint = mock(ServerTaintIssue.class);
+    when(taint.getKey()).thenReturn("key1");
+    when(taint.getRuleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
+    when(taint.isResolved()).thenReturn(false);
+    when(taint.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(taint.getTextRange()).thenReturn(new TextRangeWithHash(1,1,1,1, ""));
+    when(taint.getMessage()).thenReturn("Boo");
+
+    var resolvedTaint = mock(ServerTaintIssue.class);
+    when(resolvedTaint.getRuleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
+    when(resolvedTaint.isResolved()).thenReturn(true);
+    when(resolvedTaint.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(resolvedTaint.getTextRange()).thenReturn(new TextRangeWithHash(1,1,1,1, ""));
+    when(resolvedTaint.getMessage()).thenReturn("Foo");
+
+
+    underTest.reload(uri, List.of(taint, resolvedTaint));
+
+    assertThat(underTest.getAsDiagnostics(uri)).hasSize(2);
+  }
+
+  @Test
   void testGetServerIssueForDiagnosticBasedOnKey() throws Exception {
     var uri = new URI("/");
     var issue = mock(ServerTaintIssue.class);

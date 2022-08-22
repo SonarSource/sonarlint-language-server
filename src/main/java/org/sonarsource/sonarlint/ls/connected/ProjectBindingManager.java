@@ -100,7 +100,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private AnalysisScheduler analysisManager;
   private final long syncPeriod;
   private final Timer bindingUpdatesCheckerTimer = new Timer("Binding updates checker");
-  private Function<URI, String> getReferenceBranchNameForFolder;
+  private Function<URI, String> branchNameForFolderSupplier;
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager,
     SonarLintExtendedLanguageClient client, ProgressManager progressManager, LanguageClientLogOutput globalLogOutput) {
@@ -213,7 +213,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     LOG.debug("Resolved binding {} for folder {}",
       ToStringBuilder.reflectionToString(projectBinding, ToStringStyle.SHORT_PREFIX_STYLE),
       folderRoot);
-    Supplier<String> branchProvider = () -> this.getReferenceBranchNameForFolder.apply(folderRoot.toUri());
+    Supplier<String> branchProvider = () -> this.branchNameForFolderSupplier.apply(folderRoot.toUri());
     var issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, endpointParamsAndHttpClient, projectBinding, branchProvider);
     return new ProjectBindingWrapper(connectionId, projectBinding, engine, issueTrackerWrapper);
   }
@@ -239,11 +239,11 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private Optional<ConnectedSonarLintEngine> getOrCreateConnectedEngine(String connectionId) {
     return connectedEngineCacheByConnectionId.computeIfAbsent(connectionId,
-      s -> Optional.ofNullable(createConnectedEngineAndUpdateIfNeeded(connectionId)));
+      s -> Optional.ofNullable(createConnectedEngine(connectionId)));
   }
 
   @CheckForNull
-  private ConnectedSonarLintEngine createConnectedEngineAndUpdateIfNeeded(String connectionId) {
+  private ConnectedSonarLintEngine createConnectedEngine(String connectionId) {
     LOG.debug("Starting connected SonarLint engine for '{}'...", connectionId);
 
     ConnectedSonarLintEngine engine;
@@ -587,14 +587,11 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   public void setBranchResolver(Function<URI, String> getReferenceBranchNameForFolder) {
-    this.getReferenceBranchNameForFolder = getReferenceBranchNameForFolder;
+    this.branchNameForFolderSupplier = getReferenceBranchNameForFolder;
   }
 
   public String resolveBranchNameForFolder(URI folder) {
-    if (getReferenceBranchNameForFolder == null) {
-      return null;
-    }
-    return getReferenceBranchNameForFolder.apply(folder);
+    return branchNameForFolderSupplier.apply(folder);
   }
 
   private class BindingUpdatesCheckerTask extends TimerTask {
