@@ -297,6 +297,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       moduleEventsProcessor::shutdown,
       // shutdown engines after the rest so that no operations remain on them, and they won't be recreated accidentally
       bindingManager::shutdown,
+      serverSynchronizer::shutdown,
       standaloneEngineManager::shutdown)
       // Do last
       .forEach(this::invokeQuietly);

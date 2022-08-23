@@ -19,8 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls.connected.sync;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -43,8 +41,6 @@ import org.sonarsource.sonarlint.ls.progress.ProgressFacade;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
-import static java.util.Objects.requireNonNull;
-
 public class ServerSynchronizer {
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
@@ -52,26 +48,31 @@ public class ServerSynchronizer {
   private final ProgressManager progressManager;
   private final ProjectBindingManager bindingManager;
   private final AnalysisScheduler analysisScheduler;
-  private final Timer bindingUpdatesCheckerTimer = new Timer("Binding updates checker");
+  private final Timer serverSyncTimer;
 
   public ServerSynchronizer(LanguageClient client, ProgressManager progressManager, ProjectBindingManager bindingManager, AnalysisScheduler analysisScheduler) {
+    this(client, progressManager, bindingManager, analysisScheduler, new Timer("Binding updates checker"));
+  }
+
+  ServerSynchronizer(LanguageClient client, ProgressManager progressManager, ProjectBindingManager bindingManager, AnalysisScheduler analysisScheduler, Timer serverSyncTimer) {
     this.client = client;
     this.progressManager = progressManager;
     this.bindingManager = bindingManager;
     this.analysisScheduler = analysisScheduler;
     var syncPeriod = Long.parseLong(StringUtils.defaultIfBlank(System.getenv("SONARLINT_INTERNAL_SYNC_PERIOD"), "3600")) * 1000;
-    bindingUpdatesCheckerTimer.scheduleAtFixedRate(new BindingUpdatesCheckerTask(), 10 * 1000L, syncPeriod);
+    this.serverSyncTimer = serverSyncTimer;
+    this.serverSyncTimer.scheduleAtFixedRate(new SyncTask(), 10 * 1000L, syncPeriod);
   }
 
   public void updateAllBindings(CancelChecker cancelToken, @Nullable Either<String, Integer> workDoneToken) {
     progressManager.doWithProgress("Update bindings", workDoneToken, cancelToken, progress -> {
       // Clear cached bindings to force rebind during next analysis
       bindingManager.clearBindingCache();
-      updateBindings(bindingManager.collectConnectionsAndProjectsToUpdate(), progress);
+      updateBindings(bindingManager.getActiveConnectionsAndProjects(), progress);
     });
   }
 
-  private void updateBindings(Map<String, Set<String>> projectKeyByConnectionIdsToUpdate, ProgressFacade progress) {
+  private void updateBindings(Map<String, Map<String, Set<String>>> projectKeyByConnectionIdsToUpdate, ProgressFacade progress) {
     var failedConnectionIds = tryUpdateConnectionsAndBoundProjectStorages(projectKeyByConnectionIdsToUpdate, progress);
     showOperationResult(failedConnectionIds);
     triggerAnalysisOfAllOpenFilesInBoundFolders(failedConnectionIds);
@@ -95,16 +96,19 @@ public class ServerSynchronizer {
     }
   }
 
-  private Set<String> tryUpdateConnectionsAndBoundProjectStorages(Map<String, Set<String>> projectKeyByConnectionIdsToUpdate, ProgressFacade progress) {
+  private Set<String> tryUpdateConnectionsAndBoundProjectStorages(Map<String, Map<String, Set<String>>> projectKeyByConnectionIdsToUpdate, ProgressFacade progress) {
     var failedConnectionIds = new LinkedHashSet<String>();
     projectKeyByConnectionIdsToUpdate.forEach(
-      (connectionId, projectKeys) -> tryUpdateConnectionAndBoundProjectsStorages(projectKeyByConnectionIdsToUpdate, progress, failedConnectionIds, connectionId, projectKeys));
+      (connectionId, projectKeys) -> {
+        var progressFraction = 1.0f / projectKeyByConnectionIdsToUpdate.size();
+        tryUpdateConnectionAndBoundProjectsStorages(progress, failedConnectionIds, connectionId, projectKeys, progressFraction);
+      });
     return failedConnectionIds;
   }
 
-  private void tryUpdateConnectionAndBoundProjectsStorages(Map<String, Set<String>> projectKeyByConnectionIdsToUpdate, ProgressFacade progress,
-    Set<String> failedConnectionIds, String connectionId, Set<String> projectKeys) {
-    progress.doInSubProgress(connectionId, 1.0f / projectKeyByConnectionIdsToUpdate.size(), subProgress -> {
+  private void tryUpdateConnectionAndBoundProjectsStorages(ProgressFacade progress, Set<String> failedConnectionIds, String connectionId,
+    Map<String, Set<String>> branchNamesByProjectKey, float progressFraction) {
+    progress.doInSubProgress(connectionId, progressFraction, subProgress -> {
       var endpointParamsAndHttpClient = bindingManager.getServerConfigurationFor(connectionId);
       if (endpointParamsAndHttpClient == null) {
         failedConnectionIds.add(connectionId);
@@ -116,16 +120,16 @@ public class ServerSynchronizer {
         return;
       }
       subProgress.doInSubProgress("Update projects storages", 0.5f, s -> tryUpdateBoundProjectsStorage(
-        projectKeys, endpointParamsAndHttpClient, engineOpt.get(), s));
+        branchNamesByProjectKey.keySet(), endpointParamsAndHttpClient, engineOpt.get(), s));
       subProgress.doInSubProgress("Sync projects storages", 0.5f, s -> syncOneEngine(
-        connectionId, projectKeys, engineOpt.get(), s));
+        connectionId, branchNamesByProjectKey, engineOpt.get(), s));
     });
   }
 
   private static void tryUpdateBoundProjectsStorage(Set<String> projectKeys, ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient,
     ConnectedSonarLintEngine engine,
     ProgressFacade progress) {
-    projectKeys.forEach(projectKey -> progress.doInSubProgress(projectKey, 1.0f / projectKey.length(), subProgress -> {
+    projectKeys.forEach(projectKey -> progress.doInSubProgress(projectKey, 1.0f / projectKeys.size(), subProgress -> {
       try {
         engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, subProgress.asCoreMonitor());
       } catch (CanceledException e) {
@@ -136,43 +140,50 @@ public class ServerSynchronizer {
     }));
   }
 
-  private void syncStorage() {
-    var projectKeyPerConnectionId = new HashMap<String, Set<String>>();
-    bindingManager.forEachBoundFolder((folder, settings) -> {
-      var connectionId = requireNonNull(settings.getConnectionId());
-      var projectKey = requireNonNull(settings.getProjectKey());
-      projectKeyPerConnectionId
-        .computeIfAbsent(connectionId, k -> new HashSet<>())
-        .add(projectKey);
-    });
-    if (!projectKeyPerConnectionId.isEmpty()) {
+  private void syncBoundProjects() {
+    var projectsToSynchronize = bindingManager.getActiveConnectionsAndProjects();
+    if (!projectsToSynchronize.isEmpty()) {
       LOG.debug("Synchronizing storages...");
-      projectKeyPerConnectionId.forEach((connectionId, projectKeys) -> bindingManager.getStartedConnectedEngine(connectionId)
-        .ifPresent(engine -> syncOneEngine(connectionId, projectKeys, engine, null)));
+      projectsToSynchronize.forEach((connectionId, branchNamesByProjectKey) -> bindingManager.getStartedConnectedEngine(connectionId)
+        .ifPresent(engine -> syncOneEngine(connectionId, branchNamesByProjectKey, engine, null)));
     }
   }
 
-  private void syncOneEngine(String connectionId, Set<String> projectKeys, ConnectedSonarLintEngine engine, @Nullable ProgressFacade progress) {
+  private void syncOneEngine(String connectionId, Map<String, Set<String>> branchNamesByProjectKey, ConnectedSonarLintEngine engine, @Nullable ProgressFacade progress) {
     try {
       var paramsAndHttpClient = bindingManager.getServerConfigurationFor(connectionId);
       if (paramsAndHttpClient == null) {
         return;
       }
       var progressMonitor = progress != null ? progress.asCoreMonitor() : null;
-      engine.sync(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKeys, progressMonitor);
+      engine.sync(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), branchNamesByProjectKey.keySet(), progressMonitor);
+      syncIssues(engine, paramsAndHttpClient, branchNamesByProjectKey, progressMonitor);
     } catch (Exception e) {
       LOG.error("Error while synchronizing storage", e);
     }
   }
 
-  public void shutdown() {
-    bindingUpdatesCheckerTimer.cancel();
+  private static void syncIssues(ConnectedSonarLintEngine engine, ServerConnectionSettings.EndpointParamsAndHttpClient paramsAndHttpClient,
+    Map<String, Set<String>> branchNamesByProjectKey,
+    @Nullable ClientProgressMonitor progressMonitor) {
+    branchNamesByProjectKey
+      .forEach((projectKey, branchNames) -> branchNames.forEach(branchName -> syncIssuesForBranch(engine, paramsAndHttpClient, projectKey, branchName, progressMonitor)));
   }
 
-  private class BindingUpdatesCheckerTask extends TimerTask {
+  private static void syncIssuesForBranch(ConnectedSonarLintEngine engine, ServerConnectionSettings.EndpointParamsAndHttpClient paramsAndHttpClient, String projectKey,
+    String branchName, @Nullable ClientProgressMonitor progressMonitor) {
+    engine.syncServerIssues(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKey, branchName, progressMonitor);
+    engine.syncServerTaintIssues(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKey, branchName, progressMonitor);
+  }
+
+  public void shutdown() {
+    serverSyncTimer.cancel();
+  }
+
+  private class SyncTask extends TimerTask {
     @Override
     public void run() {
-      syncStorage();
+      syncBoundProjects();
     }
   }
 }

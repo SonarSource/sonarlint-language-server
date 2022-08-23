@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -41,6 +43,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
@@ -63,6 +66,7 @@ import testutils.SonarLintLogTester;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -79,14 +83,14 @@ class ServerSynchronizerTests {
   private static final ProjectBinding FAKE_BINDING = new ProjectBinding(PROJECT_KEY, "sqPrefix", "idePrefix");
   private static final ProjectBinding FAKE_BINDING2 = new ProjectBinding(PROJECT_KEY2, "sqPrefix2", "idePrefix2");
   private static final String CONNECTION_ID = "myServer";
-  private static final String SERVER_ID2 = "myServer2";
+  private static final String CONNECTION_ID2 = "myServer2";
   private static final ApacheHttpClientProvider httpClientProvider = mock(ApacheHttpClientProvider.class);
   private static final ServerConnectionSettings GLOBAL_SETTINGS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, true, httpClientProvider);
-  private static final ServerConnectionSettings GLOBAL_SETTINGS_DIFFERENT_SERVER_ID = new ServerConnectionSettings(SERVER_ID2, "http://foo2", "token2", null, true,
+  private static final ServerConnectionSettings GLOBAL_SETTINGS_DIFFERENT_SERVER_ID = new ServerConnectionSettings(CONNECTION_ID2, "http://foo2", "token2", null, true,
     httpClientProvider);
   private static final WorkspaceFolderSettings UNBOUND_SETTINGS = new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null, null);
   private static final WorkspaceFolderSettings BOUND_SETTINGS = new WorkspaceFolderSettings(CONNECTION_ID, PROJECT_KEY, Collections.emptyMap(), null, null);
-  private static final WorkspaceFolderSettings BOUND_SETTINGS2 = new WorkspaceFolderSettings(SERVER_ID2, PROJECT_KEY2, Collections.emptyMap(), null, null);
+  private static final WorkspaceFolderSettings BOUND_SETTINGS2 = new WorkspaceFolderSettings(CONNECTION_ID2, PROJECT_KEY2, Collections.emptyMap(), null, null);
   private static final WorkspaceFolderSettings BOUND_SETTINGS_DIFFERENT_PROJECT_KEY = new WorkspaceFolderSettings(CONNECTION_ID, PROJECT_KEY2, Collections.emptyMap(), null, null);
 
   @RegisterExtension
@@ -109,6 +113,9 @@ class ServerSynchronizerTests {
   private final ConnectedSonarLintEngine fakeEngine2 = mock(ConnectedSonarLintEngine.class);
   private final AnalysisScheduler analysisManager = mock(AnalysisScheduler.class);
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
+  private ProjectBindingManager bindingManager;
+  private Timer syncTimer;
+  private Runnable syncTask;
 
   @BeforeEach
   public void prepare() throws IOException, ExecutionException, InterruptedException {
@@ -134,10 +141,14 @@ class ServerSynchronizerTests {
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token"));
 
     folderBindingCache = new ConcurrentHashMap<>();
-    var projectBindingManager = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, mock(LanguageClientLogOutput.class));
-    underTest = new ServerSynchronizer(client, new ProgressManager(client), projectBindingManager, analysisManager);
-    projectBindingManager.setAnalysisManager(analysisManager);
-    projectBindingManager.setBranchResolver(uri -> "master");
+    bindingManager = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, mock(LanguageClientLogOutput.class));
+    syncTimer = mock(Timer.class);
+    var syncTaskCaptor = ArgumentCaptor.forClass(TimerTask.class);
+    underTest = new ServerSynchronizer(client, new ProgressManager(client), bindingManager, analysisManager, syncTimer);
+    verify(syncTimer).scheduleAtFixedRate(syncTaskCaptor.capture(), anyLong(), anyLong());
+    syncTask = syncTaskCaptor.getValue();
+    bindingManager.setAnalysisManager(analysisManager);
+    bindingManager.setBranchResolver(uri -> "master");
   }
 
   private static WorkspaceSettings newWorkspaceSettingsWithServers(Map<String, ServerConnectionSettings> servers) {
@@ -281,6 +292,35 @@ class ServerSynchronizerTests {
     verify(client).showMessage(new MessageParams(MessageType.Info, "All SonarLint bindings successfully updated"));
   }
 
+  @Test
+  void sync_bound_folders() {
+    var folder1 = mockFileInABoundWorkspaceFolder();
+    var folder2 = mockFileInABoundWorkspaceFolder2();
+
+    when(foldersManager.getAll()).thenReturn(List.of(folder1, folder2));
+    when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class)))
+      .thenReturn(fakeEngine)
+      .thenReturn(fakeEngine2);
+    bindingManager.getOrCreateConnectedEngine(CONNECTION_ID);
+    bindingManager.getOrCreateConnectedEngine(CONNECTION_ID2);
+
+    syncTask.run();
+
+    verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
+    verify(fakeEngine).syncServerIssues(any(), any(), eq(PROJECT_KEY), eq("master"), any());
+    verify(fakeEngine).syncServerTaintIssues(any(), any(), eq(PROJECT_KEY), eq("master"), any());
+    verify(fakeEngine2).sync(any(), any(), eq(Set.of(PROJECT_KEY2)), any());
+    verify(fakeEngine2).syncServerIssues(any(), any(), eq(PROJECT_KEY2), eq("master"), any());
+    verify(fakeEngine2).syncServerTaintIssues(any(), any(), eq(PROJECT_KEY2), eq("master"), any());
+  }
+
+  @Test
+  void shutdown_should_stop_automatic_sync() {
+    underTest.shutdown();
+
+    verify(syncTimer).cancel();
+  }
+
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {
     var folder = mockFileInAFolder();
     folder.setSettings(BOUND_SETTINGS);
@@ -292,7 +332,7 @@ class ServerSynchronizerTests {
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder2() {
     var folder2 = mockFileInAFolder2();
     folder2.setSettings(BOUND_SETTINGS2);
-    servers.put(SERVER_ID2, GLOBAL_SETTINGS_DIFFERENT_SERVER_ID);
+    servers.put(CONNECTION_ID2, GLOBAL_SETTINGS_DIFFERENT_SERVER_ID);
     when(fakeEngine2.calculatePathPrefixes(eq(PROJECT_KEY2), any())).thenReturn(FAKE_BINDING2);
     return folder2;
   }
