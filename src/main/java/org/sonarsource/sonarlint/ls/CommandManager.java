@@ -59,6 +59,7 @@ import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
+import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
@@ -92,16 +93,18 @@ public class CommandManager {
   private final SonarLintExtendedLanguageClient client;
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
+  private final ServerSynchronizer serverSynchronizer;
   private final SonarLintTelemetry telemetry;
   private final StandaloneEngineManager standaloneEngineManager;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final IssuesCache issuesCache;
 
-  CommandManager(SonarLintExtendedLanguageClient client, SettingsManager settingsManager, ProjectBindingManager bindingManager,
+  CommandManager(SonarLintExtendedLanguageClient client, SettingsManager settingsManager, ProjectBindingManager bindingManager, ServerSynchronizer serverSynchronizer,
     SonarLintTelemetry telemetry, StandaloneEngineManager standaloneEngineManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache) {
     this.client = client;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
+    this.serverSynchronizer = serverSynchronizer;
     this.telemetry = telemetry;
     this.standaloneEngineManager = standaloneEngineManager;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
@@ -254,7 +257,7 @@ public class CommandManager {
         telemetry.addQuickFixAppliedForRule(getAsString(params.getArguments().get(0)));
         break;
       case SONARLINT_UPDATE_ALL_BINDINGS_COMMAND:
-        bindingManager.updateAllBindings(cancelToken, params.getWorkDoneToken());
+        serverSynchronizer.updateAllBindings(cancelToken, params.getWorkDoneToken());
         break;
       case SONARLINT_OPEN_STANDALONE_RULE_DESCRIPTION_COMMAND:
         handleOpenStandaloneRuleDescriptionCommand(params);
