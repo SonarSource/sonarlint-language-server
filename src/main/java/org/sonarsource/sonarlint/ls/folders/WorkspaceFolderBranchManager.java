@@ -34,6 +34,7 @@ import org.sonarsource.sonarlint.core.vcs.GitUtils;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleListener {
@@ -44,15 +45,18 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
   private final Map<URI, Optional<String>> referenceBranchNameByFolderUri = new ConcurrentHashMap<>();
   private final SonarLintExtendedLanguageClient client;
   private final ProjectBindingManager bindingManager;
+  private final ServerSynchronizer serverSynchronizer;
   private final ExecutorService executorService;
 
-  public WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager) {
-    this(client, bindingManager, Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Branch Manager", false)));
+  public WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager, ServerSynchronizer serverSynchronizer) {
+    this(client, bindingManager, serverSynchronizer, Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Branch Manager", false)));
   }
 
-  WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager, ExecutorService executorService) {
+  WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager, ServerSynchronizer serverSynchronizer,
+    ExecutorService executorService) {
     this.client = client;
     this.bindingManager = bindingManager;
+    this.serverSynchronizer = serverSynchronizer;
     this.executorService = executorService;
   }
 
@@ -83,6 +87,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
             electedBranchName = GitUtils.electBestMatchingServerBranchForCurrentHead(repo, serverBranchNames, serverBranches.getMainBranchName());
           }
         }
+        serverSynchronizer.syncIssues(binding, electedBranchName != null ? electedBranchName : MASTER_BRANCH);
       }
       client.setReferenceBranchNameForFolder(SonarLintExtendedLanguageClient.ReferenceBranchForFolder.of(folderUri.toString(), electedBranchName));
       referenceBranchNameByFolderUri.put(folderUri, Optional.ofNullable(electedBranchName));
