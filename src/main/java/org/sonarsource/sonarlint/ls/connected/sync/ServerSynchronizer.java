@@ -37,6 +37,7 @@ import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
 import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.progress.ProgressFacade;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
@@ -140,15 +141,6 @@ public class ServerSynchronizer {
     }));
   }
 
-  private void syncBoundProjects() {
-    var projectsToSynchronize = bindingManager.getActiveConnectionsAndProjects();
-    if (!projectsToSynchronize.isEmpty()) {
-      LOG.debug("Synchronizing storages...");
-      projectsToSynchronize.forEach((connectionId, branchNamesByProjectKey) -> bindingManager.getStartedConnectedEngine(connectionId)
-        .ifPresent(engine -> syncOneEngine(connectionId, branchNamesByProjectKey, engine, null)));
-    }
-  }
-
   private void syncOneEngine(String connectionId, Map<String, Set<String>> branchNamesByProjectKey, ConnectedSonarLintEngine engine, @Nullable ProgressFacade progress) {
     try {
       var paramsAndHttpClient = bindingManager.getServerConfigurationFor(connectionId);
@@ -176,6 +168,15 @@ public class ServerSynchronizer {
     engine.syncServerTaintIssues(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKey, branchName, progressMonitor);
   }
 
+  public void syncIssues(ProjectBindingWrapper binding, String branchName) {
+    var connectionId = binding.getConnectionId();
+    var paramsAndHttpClient = bindingManager.getServerConfigurationFor(connectionId);
+    if (paramsAndHttpClient == null) {
+      return;
+    }
+    syncIssuesForBranch(binding.getEngine(), paramsAndHttpClient, binding.getBinding().projectKey(), branchName, null);
+  }
+
   public void shutdown() {
     serverSyncTimer.cancel();
   }
@@ -184,6 +185,15 @@ public class ServerSynchronizer {
     @Override
     public void run() {
       syncBoundProjects();
+    }
+
+    private void syncBoundProjects() {
+      var projectsToSynchronize = bindingManager.getActiveConnectionsAndProjects();
+      if (!projectsToSynchronize.isEmpty()) {
+        LOG.debug("Synchronizing storages...");
+        projectsToSynchronize.forEach((connectionId, branchNamesByProjectKey) -> bindingManager.getStartedConnectedEngine(connectionId)
+          .ifPresent(engine -> syncOneEngine(connectionId, branchNamesByProjectKey, engine, null)));
+      }
     }
   }
 }

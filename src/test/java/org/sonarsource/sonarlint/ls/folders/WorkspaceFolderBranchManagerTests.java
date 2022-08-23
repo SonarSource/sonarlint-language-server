@@ -19,36 +19,53 @@
  */
 package org.sonarsource.sonarlint.ls.folders;
 
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Set;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBranches;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
+import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
+import org.sonarsource.sonarlint.ls.progress.ProgressManager;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import testutils.ImmediateExecutorService;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class WorkspaceFolderBranchManagerTests {
 
+  private SonarLintExtendedLanguageClient client;
+  private ProjectBindingManager bindingManager;
+  private WorkspaceFolderBranchManager underTest;
+
+  @BeforeEach
+  void setUp() {
+    client = mock(SonarLintExtendedLanguageClient.class);
+    bindingManager = mock(ProjectBindingManager.class);
+    ServerSynchronizer serverSynchronizer = new ServerSynchronizer(client, new ProgressManager(client), bindingManager, mock(AnalysisScheduler.class));
+    underTest = new WorkspaceFolderBranchManager(client, bindingManager, serverSynchronizer, new ImmediateExecutorService());
+  }
+
   @Test
   void projectNotUnderScm() throws Exception {
-    var client = mock(SonarLintExtendedLanguageClient.class);
-    var bindingManager = mock(ProjectBindingManager.class);
-    var underTest = new WorkspaceFolderBranchManager(client, bindingManager, new ImmediateExecutorService());
-
     var folderUri = new URI("file:///some_dir");
 
     assertThat(underTest.getReferenceBranchNameForFolder(folderUri)).isEqualTo("master");
@@ -56,10 +73,6 @@ class WorkspaceFolderBranchManagerTests {
 
   @Test
   void didBranchNameChangeNoBinding() throws Exception {
-    var client = mock(SonarLintExtendedLanguageClient.class);
-    var bindingManager = mock(ProjectBindingManager.class);
-    var underTest = new WorkspaceFolderBranchManager(client, bindingManager, new ImmediateExecutorService());
-
     var folderUri = new URI("file:///some_dir");
     var branchName = "some/branch/name";
 
@@ -75,18 +88,7 @@ class WorkspaceFolderBranchManagerTests {
   @Test
   void didBranchNameChangeBindingPresent(@TempDir Path gitProjectBasedir) throws Exception {
     String currentBranchName = "some/branch/name";
-
-    try (Git git = Git.init().setInitialBranch("main").setDirectory(gitProjectBasedir.toFile()).call()) {
-      Path readme = gitProjectBasedir.resolve("README.txt");
-      Files.createFile(readme);
-      git.add().addFilepattern("README.txt").call();
-      git.commit().setMessage("Initial commit").call();
-      git.checkout().setName(currentBranchName).setCreateBranch(true).call();
-    }
-
-    var client = mock(SonarLintExtendedLanguageClient.class);
-    var bindingManager = mock(ProjectBindingManager.class);
-    var underTest = new WorkspaceFolderBranchManager(client, bindingManager, new ImmediateExecutorService());
+    createAndCheckoutBranch(gitProjectBasedir, currentBranchName);
 
     var folderUri = gitProjectBasedir.toUri();
 
@@ -105,6 +107,36 @@ class WorkspaceFolderBranchManagerTests {
     var capturedValue = branchCaptor.getValue();
     assertThat(capturedValue.getFolderUri()).isEqualTo(folderUri.toString());
     assertThat(capturedValue.getBranchName()).isEqualTo(currentBranchName);
+  }
+
+  @Test
+  void didBranchNameChangeTriggersSync(@TempDir Path gitProjectBasedir) throws Exception {
+    createAndCheckoutBranch(gitProjectBasedir, "branchName");
+    var folderUri = gitProjectBasedir.toUri();
+    var bindingWrapper = mock(ProjectBindingWrapper.class);
+    when(bindingManager.getServerConfigurationFor("connectionId")).thenReturn(mock(ServerConnectionSettings.EndpointParamsAndHttpClient.class));
+    when(bindingManager.getBinding(folderUri)).thenReturn(Optional.of(bindingWrapper));
+    var engine = mock(ConnectedSonarLintEngine.class);
+    when(bindingWrapper.getEngine()).thenReturn(engine);
+    when(bindingWrapper.getConnectionId()).thenReturn("connectionId");
+    String projectKey = "project_key";
+    when(bindingWrapper.getBinding()).thenReturn(new ProjectBinding(projectKey, null, null));
+    when(engine.getServerBranches(projectKey)).thenReturn(new ProjectBranches(Set.of("main", "branchName"), "main"));
+
+    underTest.didBranchNameChange(folderUri, "branchName");
+
+    verify(engine).syncServerIssues(any(), any(), eq(projectKey), eq("branchName"), any());
+    verify(engine).syncServerTaintIssues(any(), any(), eq(projectKey), eq("branchName"), any());
+  }
+
+  private void createAndCheckoutBranch(Path gitProjectBasedir, String currentBranchName) throws IOException, GitAPIException {
+    try (Git git = Git.init().setInitialBranch("main").setDirectory(gitProjectBasedir.toFile()).call()) {
+      Path readme = gitProjectBasedir.resolve("README.txt");
+      Files.createFile(readme);
+      git.add().addFilepattern("README.txt").call();
+      git.commit().setMessage("Initial commit").call();
+      git.checkout().setName(currentBranchName).setCreateBranch(true).call();
+    }
   }
 
 }
