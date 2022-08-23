@@ -72,6 +72,7 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.SecurityHotspotsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
+import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.folders.ModuleEventsProcessor;
@@ -120,6 +121,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final IssuesCache issuesCache;
   private final DiagnosticPublisher diagnosticPublisher;
   private final ScmIgnoredCache scmIgnoredCache;
+  private ServerSynchronizer serverSynchronizer;
   private final LanguageClientLogger lsLogOutput;
 
   /**
@@ -160,7 +162,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, javaConfigCache), extraAnalyzers);
     this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
     this.settingsManager.addListener(lsLogOutput);
-    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, progressManager, globalLogOutput);
+    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, globalLogOutput);
     this.settingsManager.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(httpClientProvider, settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager);
     this.settingsManager.addListener(telemetry);
@@ -180,7 +182,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     bindingManager.setAnalysisManager(analysisScheduler);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) analysisScheduler);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) analysisScheduler);
-    this.commandManager = new CommandManager(client, settingsManager, bindingManager, telemetry, standaloneEngineManager, taintVulnerabilitiesCache, issuesCache);
+    this.serverSynchronizer = new ServerSynchronizer(client, progressManager, bindingManager, analysisScheduler);
+    this.commandManager = new CommandManager(client, settingsManager, bindingManager, serverSynchronizer, telemetry, standaloneEngineManager, taintVulnerabilitiesCache,
+      issuesCache);
     this.securityHotspotsHandlerServer = new SecurityHotspotsHandlerServer(lsLogOutput, bindingManager, client, telemetry, settingsManager);
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
@@ -441,7 +445,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     String connectionId = params.getConnectionId();
     SonarLintLogger.get().debug("Received refresh request for {}", connectionId);
     var config = bindingManager.getServerConfigurationFor(connectionId);
-    if(config != null){
+    if (config != null) {
       return config.validateConnection().thenApply(validationResult -> validationResult.success() ? success(connectionId) : failure(connectionId, validationResult.message()));
     }
     return CompletableFuture.completedFuture(failure(connectionId, String.format("Connection '%s' is unknown", connectionId)));
@@ -450,7 +454,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<Map<String, String>> getRemoteProjectsForConnection(GetRemoteProjectsForConnectionParams getRemoteProjectsForConnectionParams) {
     return CompletableFuture.completedFuture(
-            bindingManager.getRemoteProjects(getRemoteProjectsForConnectionParams.getConnectionId()));
+      bindingManager.getRemoteProjects(getRemoteProjectsForConnectionParams.getConnectionId()));
   }
 
   @Override
@@ -467,8 +471,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
           .entrySet()
           .stream()
           .filter(e -> params.getProjectKeys().contains(e.getKey()))
-          .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))
-      );
+          .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
     } catch (IllegalStateException | IllegalArgumentException failed) {
       var responseError = new ResponseError(ResponseErrorCode.InternalError, "Could not get remote project names", failed);
       return CompletableFuture.failedFuture(new ResponseErrorException(responseError));

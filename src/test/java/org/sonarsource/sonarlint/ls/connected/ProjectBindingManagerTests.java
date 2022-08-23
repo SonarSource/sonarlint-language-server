@@ -34,15 +34,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
-import org.eclipse.lsp4j.MessageParams;
-import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
-import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
-import org.mockito.Mockito;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
@@ -54,7 +50,6 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
-import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
@@ -65,7 +60,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -78,7 +72,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 class ProjectBindingManagerTests {
@@ -146,12 +139,13 @@ class ProjectBindingManagerTests {
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token"));
 
     folderBindingCache = new ConcurrentHashMap<>();
-    underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, new ProgressManager(client), folderBindingCache, null);
+    underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, folderBindingCache, null);
     underTest.setAnalysisManager(analysisManager);
+    underTest.setBranchResolver(uri -> "master");
   }
 
   private static WorkspaceSettings newWorkspaceSettingsWithServers(Map<String, ServerConnectionSettings> servers) {
-    return new WorkspaceSettings(false, servers, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), false, false, null);
+    return new WorkspaceSettings(false, servers, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), false, false, "");
   }
 
   @Test
@@ -501,36 +495,6 @@ class ProjectBindingManagerTests {
   }
 
   @Test
-  void update_all_project_bindings_update_already_started_servers() {
-    var folder1 = mockFileInABoundWorkspaceFolder();
-    var folder2 = mockFileInABoundWorkspaceFolder2();
-
-    when(foldersManager.getAll()).thenReturn(List.of(folder1, folder2));
-    when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class)))
-      .thenReturn(fakeEngine)
-      .thenReturn(fakeEngine2);
-
-    var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
-    assertThat(binding).isNotEmpty();
-    var binding2 = underTest.getBinding(fileInAWorkspaceFolderPath2.toUri());
-    assertThat(binding2).isNotEmpty();
-    Mockito.reset(fakeEngine, fakeEngine2);
-
-    underTest.updateAllBindings(mock(CancelChecker.class), null);
-
-
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
-    verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
-    verify(fakeEngine2).updateProject(any(), any(), eq(PROJECT_KEY2), any());
-    verify(fakeEngine2).sync(any(), any(), eq(Set.of(PROJECT_KEY2)), any());
-
-    verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
-    verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
-    verifyNoMoreInteractions(analysisManager);
-  }
-
-
-  @Test
   void update_all_project_bindings_on_get_binding() {
     var folder1 = mockFileInABoundWorkspaceFolder();
     when(foldersManager.getAll()).thenReturn(List.of(folder1));
@@ -542,124 +506,6 @@ class ProjectBindingManagerTests {
 
     verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
     verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
-  }
-
-  @Test
-  void update_all_project_bindings_update_not_started_servers() {
-    var folder1 = mockFileInABoundWorkspaceFolder();
-    var folder2 = mockFileInABoundWorkspaceFolder2();
-
-    when(foldersManager.getAll()).thenReturn(List.of(folder1, folder2));
-
-
-    when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class)))
-      .thenReturn(fakeEngine)
-      .thenReturn(fakeEngine2);
-
-    underTest.updateAllBindings(mock(CancelChecker.class), null);
-
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
-    verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
-    verify(fakeEngine2).updateProject(any(), any(), eq(PROJECT_KEY2), any());
-    verify(fakeEngine2).sync(any(), any(), eq(Set.of(PROJECT_KEY2)), any());
-
-    verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
-    verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
-    verifyNoMoreInteractions(analysisManager);
-  }
-
-  @Test
-  void update_all_project_bindings_update_once_each_project_same_server() {
-    var folder1 = mockFileInABoundWorkspaceFolder();
-    var folder2 = mockFileInABoundWorkspaceFolder2();
-    // Folder 2 is bound to the same server, different project
-    folder2.setSettings(BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
-
-    when(foldersManager.getAll()).thenReturn(List.of(folder1, folder2));
-
-    when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class)))
-      .thenReturn(fakeEngine);
-
-    underTest.updateAllBindings(mock(CancelChecker.class), null);
-
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY2), any());
-    verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY, PROJECT_KEY2)), any());
-
-    verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
-    verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
-    verifyNoMoreInteractions(analysisManager);
-  }
-
-  @Test
-  void update_all_project_bindings_update_only_once_each_project_same_server() {
-    var folder1 = mockFileInABoundWorkspaceFolder();
-    var folder2 = mockFileInABoundWorkspaceFolder2();
-    // Folder 2 is bound to the same server, same project
-    folder2.setSettings(BOUND_SETTINGS);
-
-    when(foldersManager.getAll()).thenReturn(List.of(folder1, folder2));
-
-    when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class)))
-      .thenReturn(fakeEngine);
-
-    underTest.updateAllBindings(mock(CancelChecker.class), null);
-
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
-    verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
-
-    verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
-    verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
-    verifyNoMoreInteractions(analysisManager);
-  }
-
-  @Test
-  void update_all_project_bindings_ignore_wrong_binding() {
-    var folder = mockFileInAFolder();
-    folder.setSettings(BOUND_SETTINGS);
-
-    when(foldersManager.getAll()).thenReturn(List.of(folder));
-
-    underTest.updateAllBindings(mock(CancelChecker.class), null);
-
-    verifyNoMoreInteractions(analysisManager);
-    assertThat(logTester.logs(ClientLogOutput.Level.ERROR)).contains("The specified connection id '" + CONNECTION_ID + "' doesn't exist.");
-  }
-
-  @Test
-  void update_all_project_bindings_ignore_wrong_binding_default_folder() {
-    mockFileOutsideFolder();
-    when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(BOUND_SETTINGS);
-
-    underTest.updateAllBindings(mock(CancelChecker.class), null);
-
-    verifyNoMoreInteractions(analysisManager);
-    assertThat(logTester.logs(ClientLogOutput.Level.ERROR)).contains("The specified connection id '" + CONNECTION_ID + "' doesn't exist.");
-  }
-
-  @Test
-  void update_all_bindings_success() {
-    var folderSettings = mock(WorkspaceFolderSettings.class);
-    var settings = mock(WorkspaceSettings.class);
-    var connectionId = "serverId";
-    var projectKey = "projectKey";
-    when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(folderSettings);
-    when(folderSettings.hasBinding()).thenReturn(true);
-    when(folderSettings.getConnectionId()).thenReturn(connectionId);
-    when(folderSettings.getProjectKey()).thenReturn(projectKey);
-    when(settingsManager.getCurrentSettings()).thenReturn(settings);
-    var serverConnectionSettings = new ServerConnectionSettings("serverId", "serverUrl", "token", "organizationKey", true, httpClientProvider);
-    when(settings.getServerConnections()).thenReturn(Map.of(connectionId, serverConnectionSettings));
-    when(enginesFactory.createConnectedEngine(connectionId, serverConnectionSettings)).thenReturn(fakeEngine);
-    when(settingsManager.getCurrentSettings()).thenReturn(settings);
-    when(enginesFactory.createConnectedEngine(connectionId, serverConnectionSettings)).thenReturn(fakeEngine);
-    when(fakeEngine.calculatePathPrefixes(eq(projectKey), anyCollection())).thenReturn(new ProjectBinding(projectKey, "", ""));
-
-    underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
-    underTest.updateAllBindings(mock(CancelChecker.class), null);
-
-    verify(client, times(1))
-      .showMessage(new MessageParams(MessageType.Info, "All SonarLint bindings successfully updated"));
   }
 
   @Test
@@ -786,7 +632,6 @@ class ProjectBindingManagerTests {
 
     verify(fakeEngine, times(0)).subscribeForEvents(any(), isNull(), eq(Set.of(PROJECT_KEY)), any(), isNull());
   }
-
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {
     var folder = mockFileInAFolder();

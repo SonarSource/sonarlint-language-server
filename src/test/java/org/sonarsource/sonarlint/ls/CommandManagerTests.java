@@ -61,6 +61,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDesc
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
+import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -102,6 +103,7 @@ class CommandManagerTests {
   private SettingsManager mockSettingsManager;
   private SonarLintTelemetry mockTelemetry;
   private StandaloneEngineManager standaloneEngineManager;
+  private ServerSynchronizer serverSynchronizer;
 
   @BeforeEach
   public void prepareMocks() {
@@ -119,7 +121,8 @@ class CommandManagerTests {
     standaloneEngineManager = mock(StandaloneEngineManager.class);
     when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(mockStandaloneEngine);
     mockTelemetry = mock(SonarLintTelemetry.class);
-    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, mockTelemetry, standaloneEngineManager, mockTaintVulnerabilitiesCache, issuesCache);
+    serverSynchronizer = mock(ServerSynchronizer.class);
+    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, serverSynchronizer, mockTelemetry, standaloneEngineManager, mockTaintVulnerabilitiesCache, issuesCache);
   }
 
   @Test
@@ -141,7 +144,7 @@ class CommandManagerTests {
   void updateAllBinding() {
     underTest.executeCommand(new ExecuteCommandParams(SONARLINT_UPDATE_ALL_BINDINGS_COMMAND, emptyList()), NOP_CANCEL_TOKEN);
 
-    verify(bindingManager).updateAllBindings(NOP_CANCEL_TOKEN, null);
+    verify(serverSynchronizer).updateAllBindings(NOP_CANCEL_TOKEN, null);
   }
 
   @Test
