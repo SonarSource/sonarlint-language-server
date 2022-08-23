@@ -23,7 +23,6 @@ import java.io.File;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -34,7 +33,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
@@ -51,7 +49,6 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
-import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
@@ -445,15 +442,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       folderBindingCache.clear();
       fileBindingCache.clear();
       updateBindings(collectConnectionsAndProjectsToUpdate(), progress);
-    });
-  }
-
-  CompletableFuture<Void> updateBinding(String connectionId, String projectKey) {
-    return CompletableFutures.computeAsync(cancelToken -> {
-      cancelToken.checkCanceled();
-      progressManager.doWithProgress("Update binding for " + projectKey, null, cancelToken,
-        progress -> updateBindings(Collections.singletonMap(connectionId, Collections.singleton(projectKey)), progress));
-      return null;
     });
   }
 

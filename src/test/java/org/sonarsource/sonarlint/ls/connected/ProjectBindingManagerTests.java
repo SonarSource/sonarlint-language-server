@@ -697,18 +697,6 @@ class ProjectBindingManagerTests {
   }
 
   @Test
-  void should_update_engine_updating_binding() {
-    var folder = mockFileInABoundWorkspaceFolder();
-    when(foldersManager.getAll()).thenReturn(List.of(folder));
-    // create engine
-    underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
-
-    underTest.updateBinding(CONNECTION_ID, PROJECT_KEY).join();
-
-    verify(fakeEngine, times(2)).updateProject(any(), any(), eq(PROJECT_KEY), any());
-  }
-
-  @Test
   void should_subscribe_for_server_events_when_starting_engine() {
     var folder = mockFileInABoundWorkspaceFolder();
     when(foldersManager.getAll()).thenReturn(List.of(folder));
