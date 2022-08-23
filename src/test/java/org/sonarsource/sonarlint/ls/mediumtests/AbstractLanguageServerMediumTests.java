@@ -205,7 +205,7 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   @AfterEach
-  final void closeFiles() throws InterruptedException {
+  final void closeFiles() {
     // Close all opened files
     for (var uri : toBeClosed) {
       lsProxy.getTextDocumentService().didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
