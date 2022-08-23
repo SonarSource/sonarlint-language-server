@@ -395,16 +395,17 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     });
   }
 
-  public Map<String, Set<String>> collectConnectionsAndProjectsToUpdate() {
-    var projectKeyByConnectionIdsToUpdate = new HashMap<String, Set<String>>();
+  public Map<String, Map<String, Set<String>>> getActiveConnectionsAndProjects() {
+    var projectKeyByConnectionIdsToUpdate = new HashMap<String, Map<String, Set<String>>>();
     // Update all engines that are already started and cached, even if no folders are bound
-    connectedEngineCacheByConnectionId.keySet().forEach(id -> projectKeyByConnectionIdsToUpdate.computeIfAbsent(id, i -> new HashSet<>()));
+    connectedEngineCacheByConnectionId.keySet().forEach(id -> projectKeyByConnectionIdsToUpdate.computeIfAbsent(id, i -> new HashMap<>()));
     // Start and update all engines that used in a folder binding, even if not yet started
     forEachBoundFolder((folder, folderSettings) -> {
       String connectionId = requireNonNull(folderSettings.getConnectionId());
       String projectKey = requireNonNull(folderSettings.getProjectKey());
-      projectKeyByConnectionIdsToUpdate.computeIfAbsent(connectionId, id -> new HashSet<>())
-        .add(projectKey);
+      projectKeyByConnectionIdsToUpdate.computeIfAbsent(connectionId, id -> new HashMap<>())
+        .computeIfAbsent(projectKey, k -> new HashSet<>())
+        .add(folder != null ? resolveBranchNameForFolder(folder.getUri()) : "master");
     });
     return projectKeyByConnectionIdsToUpdate;
   }
