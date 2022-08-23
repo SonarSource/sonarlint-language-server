@@ -60,10 +60,6 @@ public class JavaConfigCache {
     this.lsLogOutput = lsLogOutput;
   }
 
-  public Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> get(URI fileUri) {
-    return Optional.ofNullable(javaConfigPerFileURI.get(fileUri)).orElse(Optional.empty());
-  }
-
   public Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> getOrFetch(URI fileUri) {
     Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> javaConfigOpt;
     try {
