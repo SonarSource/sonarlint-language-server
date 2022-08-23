@@ -792,6 +792,14 @@ class ProjectBindingManagerTests {
       .hasMessage("Failed to fetch list of projects from '" + CONNECTION_ID + "'");
   }
 
+  @Test
+  void should_not_subscribe_for_server_events_if_no_config() {
+    underTest.subscribeForServerEvents(CONNECTION_ID);
+
+    verify(fakeEngine, times(0)).subscribeForEvents(any(), isNull(), eq(Set.of(PROJECT_KEY)), any(), isNull());
+  }
+
+
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {
     var folder = mockFileInAFolder();
     folder.setSettings(BOUND_SETTINGS);
