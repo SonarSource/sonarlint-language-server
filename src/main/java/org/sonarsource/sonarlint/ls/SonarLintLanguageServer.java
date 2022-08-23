@@ -29,11 +29,13 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -175,6 +177,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final BackendServiceFacade backendServiceFacade;
   private final Collection<Path> analyzers;
 
+  private final CountDownLatch shutdownLatch;
+
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
     var input = new ExitingInputStream(inputStream, this);
@@ -249,12 +253,17 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.workspaceFoldersManager.addListener(this.branchManager);
     this.workspaceFoldersManager.setBindingManager(bindingManager);
     this.taintIssuesUpdater = new TaintIssuesUpdater(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, settingsManager, diagnosticPublisher);
+    this.shutdownLatch = new CountDownLatch(1);
     launcher.startListening();
   }
 
-  static void bySocket(int port, Collection<Path> analyzers) throws IOException {
+  static SonarLintLanguageServer bySocket(int port, Collection<Path> analyzers) throws IOException {
     var socket = new Socket("localhost", port);
-    new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers);
+    return new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers);
+  }
+
+  static SonarLintLanguageServer byStdio(List<Path> analyzers) {
+    return new SonarLintLanguageServer(System.in, System.out, analyzers);
   }
 
   @Override
@@ -263,11 +272,18 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       cancelToken.checkCanceled();
       this.traceLevel = parseTraceLevel(params.getTrace());
 
-      progressManager.setWorkDoneProgressSupportedByClient(ofNullable(params.getCapabilities().getWindow().getWorkDoneProgress()).orElse(false));
+      boolean workDoneSupportedByClient = ofNullable(params.getCapabilities())
+        .flatMap(capabilities -> ofNullable(capabilities.getWindow()))
+        .map(window -> window.getWorkDoneProgress())
+        .orElse(false);
+      progressManager.setWorkDoneProgressSupportedByClient(workDoneSupportedByClient);
 
       workspaceFoldersManager.initialize(params.getWorkspaceFolders());
 
       var options = Utils.parseToMap(params.getInitializationOptions());
+      if (options == null) {
+        options = Collections.emptyMap();
+      }
 
       var productKey = (String) options.get("productKey");
       // deprecated, will be ignored when productKey present
@@ -275,9 +291,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
       var productName = (String) options.get("productName");
       var productVersion = (String) options.get("productVersion");
-      this.appName = params.getClientInfo().getName();
+      var clientInfo = ofNullable(params.getClientInfo());
+      this.appName = clientInfo.map(ci -> ci.getName()).orElse("Unknown");
       var workspaceName = (String) options.get("workspaceName");
-      var clientVersion = params.getClientInfo().getVersion();
+      var clientVersion = clientInfo.map(ci -> ci.getVersion()).orElse("Unknown");
       var ideVersion = appName + " " + clientVersion;
       var firstSecretDetected = (boolean) options.getOrDefault("firstSecretDetected", false);
       httpClientProvider.initialize(productName, productVersion);
@@ -322,7 +339,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var classLoader = ClassLoader.getSystemClassLoader();
     try (var is = classLoader.getResourceAsStream(fileName)) {
       try (var isr = new InputStreamReader(is, StandardCharsets.UTF_8);
-           var reader = new BufferedReader(isr)) {
+        var reader = new BufferedReader(isr)) {
         return reader.lines().findFirst().orElse(null);
       }
     } catch (IOException e) {
@@ -369,7 +386,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       backendServiceFacade::shutdown)
       // Do last
       .forEach(this::invokeQuietly);
+
+    shutdownLatch.countDown();
+
     return CompletableFuture.completedFuture(null);
+  }
+
+  public void waitForShutDown() throws InterruptedException {
+    shutdownLatch.await();
   }
 
   private void invokeQuietly(Runnable call) {
