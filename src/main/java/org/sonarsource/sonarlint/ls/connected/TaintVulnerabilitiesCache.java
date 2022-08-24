@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
@@ -106,4 +107,11 @@ public class TaintVulnerabilitiesCache {
     taintVulnerabilitiesPerFile.put(fileUri, serverTaintIssues);
   }
 
+  public Set<URI> getAllFilesWithTaintIssues(){
+    return taintVulnerabilitiesPerFile.keySet();
+  }
+
+  public Map<URI, List<ServerTaintIssue>> getTaintVulnerabilitiesPerFile() {
+    return taintVulnerabilitiesPerFile;
+  }
 }

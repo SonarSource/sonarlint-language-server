@@ -454,8 +454,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S930");
     assertThat(client.ruleDesc.getName()).isEqualTo("Function calls should not pass extra arguments");
     assertThat(client.ruleDesc.getHtmlDescription()).contains("You can easily call a JavaScript function with more arguments than the function needs");
-    assertThat(client.ruleDesc.getType()).isEqualTo(RuleType.BUG);
-    assertThat(client.ruleDesc.getSeverity()).isEqualTo(IssueSeverity.CRITICAL);
+    assertThat(client.ruleDesc.getType()).isEqualTo("BUG");
+    assertThat(client.ruleDesc.getSeverity()).isEqualTo("CRITICAL");
     assertThat(client.ruleDesc.getParameters()).isEmpty();
   }
 
@@ -468,8 +468,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S103");
     assertThat(client.ruleDesc.getName()).isEqualTo("Lines should not be too long");
     assertThat(client.ruleDesc.getHtmlDescription()).contains("Having to scroll horizontally makes it harder to get a quick overview and understanding of any piece of code");
-    assertThat(client.ruleDesc.getType()).isEqualTo(RuleType.CODE_SMELL);
-    assertThat(client.ruleDesc.getSeverity()).isEqualTo(IssueSeverity.MAJOR);
+    assertThat(client.ruleDesc.getType()).isEqualTo("CODE_SMELL");
+    assertThat(client.ruleDesc.getSeverity()).isEqualTo("MAJOR");
     assertThat(client.ruleDesc.getParameters()).hasSize(1)
       .extracting(SonarLintExtendedLanguageClient.RuleParameter::getName, SonarLintExtendedLanguageClient.RuleParameter::getDescription,
         SonarLintExtendedLanguageClient.RuleParameter::getDefaultValue)
@@ -485,8 +485,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S930");
     assertThat(client.ruleDesc.getName()).isEqualTo("Function calls should not pass extra arguments");
     assertThat(client.ruleDesc.getHtmlDescription()).contains("You can easily call a JavaScript function with more arguments than the function needs");
-    assertThat(client.ruleDesc.getType()).isEqualTo(RuleType.BUG);
-    assertThat(client.ruleDesc.getSeverity()).isEqualTo(IssueSeverity.CRITICAL);
+    assertThat(client.ruleDesc.getType()).isEqualTo("BUG");
+    assertThat(client.ruleDesc.getSeverity()).isEqualTo("CRITICAL");
   }
 
   @Test
