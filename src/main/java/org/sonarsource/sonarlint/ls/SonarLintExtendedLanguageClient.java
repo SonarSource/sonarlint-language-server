@@ -75,19 +75,19 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     @Expose
     private final String htmlDescription;
     @Expose
-    private final RuleType type;
+    private final String type;
     @Expose
-    private final IssueSeverity severity;
+    private final String severity;
     @Expose
     private final RuleParameter[] parameters;
 
-    public ShowRuleDescriptionParams(String ruleKey, String ruleName, @Nullable String htmlDescription, @Nullable RuleType type,  IssueSeverity severity,
+    public ShowRuleDescriptionParams(String ruleKey, String ruleName, @Nullable String htmlDescription, RuleType type,  IssueSeverity severity,
       Collection<StandaloneRuleParam> params) {
       this.key = ruleKey;
       this.name = ruleName;
       this.htmlDescription = htmlDescription;
-      this.type = type;
-      this.severity = severity;
+      this.type = type.toString();
+      this.severity = severity.toString();
       this.parameters = params.stream().map(p -> new RuleParameter(p.name(), p.description(), p.defaultValue())).toArray(RuleParameter[]::new);
     }
 
@@ -103,11 +103,11 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       return htmlDescription;
     }
 
-    public RuleType getType() {
+    public String getType() {
       return type;
     }
 
-    public IssueSeverity getSeverity() {
+    public String getSeverity() {
       return severity;
     }
 

@@ -42,6 +42,7 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 
 public class Utils {
@@ -165,5 +166,13 @@ public class Utils {
   public static String hash(String codeSnippet) {
     String codeSnippetWithoutWhitespaces = MATCH_ALL_WHITESPACES.matcher(codeSnippet).replaceAll("");
     return DigestUtils.md5Hex(codeSnippetWithoutWhitespaces);
+  }
+
+  public static TextRangeWithHash textRangeWithHashFromTextRange(TaintVulnerabilityRaisedEvent.Location.TextRange textRange) {
+    return new TextRangeWithHash(textRange.getStartLine(),
+      textRange.getStartLineOffset(),
+      textRange.getEndLine(),
+      textRange.getEndLineOffset(),
+      textRange.getHash());
   }
 }

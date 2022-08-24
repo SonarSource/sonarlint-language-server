@@ -262,6 +262,7 @@ class CommandManagerTests {
     var versionedIssue = new VersionedIssue(issue, 1);
     when(issue.flows()).thenReturn(flows);
     when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionedIssue));
+    when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
@@ -352,6 +353,7 @@ class CommandManagerTests {
     var issue = mock(ServerTaintIssue.class);
     when(issue.getRuleKey()).thenReturn("ruleKey");
     when(issue.getCreationDate()).thenReturn(Instant.EPOCH);
+    when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     var flow = mock(ServerTaintIssue.Flow.class);
     when(issue.getFlows()).thenReturn(List.of(flow));
     var location = mock(ServerTaintIssue.ServerIssueLocation.class);

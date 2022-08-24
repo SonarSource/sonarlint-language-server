@@ -49,7 +49,7 @@ public final class ShowAllLocationsCommand {
   public static class Param {
     private final URI fileUri;
     private final String message;
-    private final IssueSeverity severity;
+    private final String severity;
     private final String ruleKey;
     private final List<Flow> flows;
     private final String connectionId;
@@ -58,7 +58,7 @@ public final class ShowAllLocationsCommand {
     private Param(Issue issue) {
       this.fileUri = nullableUri(issue.getInputFile());
       this.message = issue.getMessage();
-      this.severity = issue.getSeverity();
+      this.severity = issue.getSeverity().toString();
       this.ruleKey = issue.getRuleKey();
       this.flows = issue.flows().stream().map(Flow::new).collect(Collectors.toList());
       this.connectionId = null;
@@ -68,7 +68,7 @@ public final class ShowAllLocationsCommand {
     Param(ServerTaintIssue issue, String connectionId, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localFileCache) {
       this.fileUri = pathResolver.apply(issue.getFilePath()).orElse(null);
       this.message = issue.getMessage();
-      this.severity = issue.getSeverity();
+      this.severity = issue.getSeverity().toString();
       this.ruleKey = issue.getRuleKey();
       this.flows = issue.getFlows().stream().map(f -> new Flow(f, pathResolver, localFileCache)).collect(Collectors.toList());
       this.connectionId = connectionId;
@@ -83,7 +83,7 @@ public final class ShowAllLocationsCommand {
       return message;
     }
 
-    public IssueSeverity getSeverity() {
+    public String getSeverity() {
       return severity;
     }
 

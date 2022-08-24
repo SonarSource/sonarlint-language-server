@@ -79,7 +79,7 @@ class ShowAllLocationsCommandTests {
       ).containsExactly(
         fileUri,
         "message",
-        IssueSeverity.BLOCKER,
+        "BLOCKER",
         "ruleKey"
       );
     assertThat(params.getFlows()).hasSize(2);
@@ -96,6 +96,7 @@ class ShowAllLocationsCommandTests {
     var flow = mock(ServerTaintIssue.Flow.class);
     when(issue.getFlows()).thenReturn(List.of(flow));
     when(issue.getCreationDate()).thenReturn(Instant.EPOCH);
+    when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
 
     var locationFilePath = "locationFilePath";
     var location1 = mock(ServerTaintIssue.ServerIssueLocation.class);

@@ -48,10 +48,12 @@ import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEng
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
+import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
@@ -116,6 +118,8 @@ class ServerSynchronizerTests {
   private ProjectBindingManager bindingManager;
   private Timer syncTimer;
   private Runnable syncTask;
+  private TaintVulnerabilitiesCache taintVulnerabilitiesCache;
+  private DiagnosticPublisher diagnosticPublisher;
 
   @BeforeEach
   public void prepare() throws IOException, ExecutionException, InterruptedException {
@@ -141,7 +145,9 @@ class ServerSynchronizerTests {
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token"));
 
     folderBindingCache = new ConcurrentHashMap<>();
-    bindingManager = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, mock(LanguageClientLogOutput.class));
+    taintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
+    diagnosticPublisher = mock(DiagnosticPublisher.class);
+    bindingManager = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, mock(LanguageClientLogOutput.class), taintVulnerabilitiesCache, diagnosticPublisher);
     syncTimer = mock(Timer.class);
     var syncTaskCaptor = ArgumentCaptor.forClass(TimerTask.class);
     underTest = new ServerSynchronizer(client, new ProgressManager(client), bindingManager, analysisManager, syncTimer);
