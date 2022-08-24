@@ -36,7 +36,7 @@ import static org.mockito.Mockito.when;
 class DelegatingIssueTests {
 
   private final Issue issue = mock(Issue.class);
-  private final DelegatingIssue delegatingIssue = new DelegatingIssue(issue);
+  private DelegatingIssue delegatingIssue;
 
   @BeforeEach
   public void prepare() {
@@ -51,11 +51,19 @@ class DelegatingIssueTests {
     when(issue.flows()).thenReturn(List.of(mock(Flow.class)));
     when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
     when(issue.getTextRange()).thenReturn(mock(TextRange.class));
+    delegatingIssue = new DelegatingIssue(issue, null);
   }
 
   @Test
   void testGetSeverity() {
     assertThat(delegatingIssue.getSeverity()).isEqualTo(issue.getSeverity());
+  }
+
+  @Test
+  void testGetUserSeverity() {
+    var delegatingIssueWithUserSeverity = new DelegatingIssue(issue, IssueSeverity.INFO);
+
+    assertThat(delegatingIssueWithUserSeverity.getSeverity()).isEqualTo(IssueSeverity.INFO);
   }
 
   @Test

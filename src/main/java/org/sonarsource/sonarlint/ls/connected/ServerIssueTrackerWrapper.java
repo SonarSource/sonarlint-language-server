@@ -78,12 +78,7 @@ public class ServerIssueTrackerWrapper {
 
     issueTrackerCache.getLiveOrFail(filePath).stream()
       .filter(not(Trackable::isResolved))
-      .forEach(trackable -> issueListener.handle(new DelegatingIssue(trackable.getClientObject()) {
-        @Override
-        public IssueSeverity getSeverity() {
-          return trackable.getSeverity();
-        }
-
+      .forEach(trackable -> issueListener.handle(new DelegatingIssue(trackable.getClientObject(), trackable.getSeverity()) {
         @CheckForNull
         @Override
         public RuleType getType() {

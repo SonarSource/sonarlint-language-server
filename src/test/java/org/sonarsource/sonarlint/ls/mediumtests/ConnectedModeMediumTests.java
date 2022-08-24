@@ -38,12 +38,14 @@ import org.sonar.scanner.protocol.input.ScannerInput;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Components;
+import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Issues;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.ProjectBranches;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Qualityprofiles;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Rules;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Settings;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.GetRemoteProjectsNamesParams;
+import org.sonarsource.sonarlint.ls.util.Utils;
 import testutils.MockWebServerExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -179,7 +181,50 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void shouldGetServerNamesForConnection() throws Exception {
+  void analysisConnected_matching_server_issues_on_sq_with_pull_issues() throws Exception {
+    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.6\", \"id\": \"xzy\"}");
+
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=apex,c,cpp,web,java,js,php,plsql,py,secrets,ts,xml,yaml",
+      Issues.IssuesPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(System.currentTimeMillis())
+        .build(),
+      // no user-overridden severity
+      Issues.IssueLite.newBuilder()
+        .setKey("xyz")
+        .setRuleKey(JAVASCRIPT_S1481)
+        .setType(Common.RuleType.BUG)
+        .setMainLocation(Issues.Location.newBuilder()
+          .setFilePath("inFolder.js")
+          .setMessage("Remove the declaration of the unused 'toto' variable.")
+          .setTextRange(Issues.TextRange.newBuilder()
+            .setStartLine(1)
+            .setStartLineOffset(6)
+            .setEndLine(1)
+            .setEndLineOffset(10)
+            .setHash(Utils.hash("toto"))
+            .build())
+          .build())
+        .build());
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=apex,c,cpp,web,java,js,php,plsql,py,secrets,ts,xml,yaml",
+      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(System.currentTimeMillis())
+        .build());
+
+    var uriInFolder = folder1BaseDir.resolve("inFolder.js").toUri().toString();
+    didOpen(uriInFolder, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactlyInAnyOrder(
+        tuple(1, 6, 1, 10, JAVASCRIPT_S1481, "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Warning),
+        tuple(2, 6, 2, 11, JAVASCRIPT_S1481, "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Warning)));
+  }
+
+  @Test
+  void shouldGetServerNamesForConnection() {
     assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
 
     // Trigger a binding update to fetch projects in connected mode storage
@@ -194,7 +239,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void shouldThrowGettingServerNamesForUnknownConnection() throws Exception {
+  void shouldThrowGettingServerNamesForUnknownConnection() {
     assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
 
     var params = new GetRemoteProjectsNamesParams("unknown connection", List.of("unknown-project"));
