@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.connected;
 
 import java.util.List;
 import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
@@ -31,14 +32,16 @@ import org.sonarsource.sonarlint.core.commons.TextRange;
 
 public class DelegatingIssue implements Issue {
   private final Issue issue;
+  private final IssueSeverity severity;
 
-  DelegatingIssue(Issue issue) {
+  DelegatingIssue(Issue issue, @Nullable IssueSeverity userSeverity) {
     this.issue = issue;
+    this.severity = userSeverity != null ? userSeverity : issue.getSeverity();
   }
 
   @Override
   public IssueSeverity getSeverity() {
-    return issue.getSeverity();
+    return severity;
   }
 
   @CheckForNull
