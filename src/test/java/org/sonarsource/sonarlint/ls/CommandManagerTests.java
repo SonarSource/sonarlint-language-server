@@ -56,7 +56,7 @@ import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamDefinitio
 import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamType;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
-import org.sonarsource.sonarlint.ls.IssuesCache.VersionnedIssue;
+import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
@@ -172,8 +172,8 @@ class CommandManagerTests {
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
     var issue = mock(Issue.class);
-    var versionnedIssue = new VersionnedIssue(issue, 1);
-    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionnedIssue));
+    var versionedIssue = new VersionedIssue(issue, 1);
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionedIssue));
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
@@ -192,8 +192,8 @@ class CommandManagerTests {
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
     var issue = mock(Issue.class);
-    var versionnedIssue = new VersionnedIssue(issue, 1);
-    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionnedIssue));
+    var versionedIssue = new VersionedIssue(issue, 1);
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionedIssue));
 
     var textEdit = mock(TextEdit.class);
     when(textEdit.newText()).thenReturn("");
@@ -259,9 +259,9 @@ class CommandManagerTests {
     var flow = mock(Flow.class);
     var flows = List.of(flow);
     var issue = mock(Issue.class);
-    var versionnedIssue = new VersionnedIssue(issue, 1);
+    var versionedIssue = new VersionedIssue(issue, 1);
     when(issue.flows()).thenReturn(flows);
-    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionnedIssue));
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionedIssue));
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);

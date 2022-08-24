@@ -50,7 +50,7 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
-import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
+import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
@@ -122,7 +122,7 @@ public class AnalysisTaskExecutor {
   }
 
   private void analyze(AnalysisTask task) {
-    var filesToAnalyze = task.getFilesToAnalyze().stream().collect(Collectors.toMap(VersionnedOpenFile::getUri, f -> f));
+    var filesToAnalyze = task.getFilesToAnalyze().stream().collect(Collectors.toMap(VersionedOpenFile::getUri, f -> f));
 
     var scmIgnored = filesToAnalyze.keySet().stream()
       .filter(this::scmIgnored)
@@ -135,7 +135,7 @@ public class AnalysisTaskExecutor {
     });
 
     var filesToAnalyzePerFolder = filesToAnalyze.entrySet().stream()
-      .collect(groupingBy(entry -> workspaceFoldersManager.findFolderForFile(entry.getKey()), mapping(Entry::getValue, toMap(VersionnedOpenFile::getUri, f -> f))));
+      .collect(groupingBy(entry -> workspaceFoldersManager.findFolderForFile(entry.getKey()), mapping(Entry::getValue, toMap(VersionedOpenFile::getUri, f -> f))));
     filesToAnalyzePerFolder.forEach((folder, filesToAnalyzeInFolder) -> analyze(task, folder, filesToAnalyzeInFolder));
   }
 
@@ -149,7 +149,7 @@ public class AnalysisTaskExecutor {
     diagnosticPublisher.publishDiagnostics(f);
   }
 
-  private void analyze(AnalysisTask task, Optional<WorkspaceFolderWrapper> workspaceFolder, Map<URI, VersionnedOpenFile> filesToAnalyze) {
+  private void analyze(AnalysisTask task, Optional<WorkspaceFolderWrapper> workspaceFolder, Map<URI, VersionedOpenFile> filesToAnalyze) {
     if (workspaceFolder.isPresent()) {
       // We can only have the same binding for a given folder
       var binding = bindingManager.getBinding(workspaceFolder.get());
@@ -158,17 +158,17 @@ public class AnalysisTaskExecutor {
       // Files outside a folder can possibly have a different binding, so fork one analysis per binding
       // TODO is it really possible to have different settings (=binding) for files outside workspace folder
       filesToAnalyze.entrySet().stream()
-        .collect(groupingBy(entry -> bindingManager.getBinding(entry.getKey()), mapping(Entry::getValue, toMap(VersionnedOpenFile::getUri, f -> f))))
+        .collect(groupingBy(entry -> bindingManager.getBinding(entry.getKey()), mapping(Entry::getValue, toMap(VersionedOpenFile::getUri, f -> f))))
         .forEach((binding, files) -> analyze(task, Optional.empty(), binding, files));
     }
   }
 
-  private void analyze(AnalysisTask task, Optional<WorkspaceFolderWrapper> workspaceFolder, Optional<ProjectBindingWrapper> binding, Map<URI, VersionnedOpenFile> filesToAnalyze) {
-    Map<Boolean, Map<URI, VersionnedOpenFile>> splitJavaAndNonJavaFiles = filesToAnalyze.entrySet().stream().collect(partitioningBy(
+  private void analyze(AnalysisTask task, Optional<WorkspaceFolderWrapper> workspaceFolder, Optional<ProjectBindingWrapper> binding, Map<URI, VersionedOpenFile> filesToAnalyze) {
+    Map<Boolean, Map<URI, VersionedOpenFile>> splitJavaAndNonJavaFiles = filesToAnalyze.entrySet().stream().collect(partitioningBy(
       entry -> entry.getValue().isJava(),
       toMap(Entry::getKey, Entry::getValue)));
-    Map<URI, VersionnedOpenFile> javaFiles = ofNullable(splitJavaAndNonJavaFiles.get(true)).orElse(Map.of());
-    Map<URI, VersionnedOpenFile> nonJavaFiles = ofNullable(splitJavaAndNonJavaFiles.get(false)).orElse(Map.of());
+    Map<URI, VersionedOpenFile> javaFiles = ofNullable(splitJavaAndNonJavaFiles.get(true)).orElse(Map.of());
+    Map<URI, VersionedOpenFile> nonJavaFiles = ofNullable(splitJavaAndNonJavaFiles.get(false)).orElse(Map.of());
 
     Map<URI, GetJavaConfigResponse> javaFilesWithConfig = collectJavaFilesWithConfig(javaFiles);
 
@@ -189,7 +189,7 @@ public class AnalysisTaskExecutor {
     } else {
       var isFirst = true;
       for (var javaFilesForSingleProjectRoot : javaFilesByProjectRoot.values()) {
-        Map<URI, VersionnedOpenFile> toAnalyze = new HashMap<>();
+        Map<URI, VersionedOpenFile> toAnalyze = new HashMap<>();
         javaFilesForSingleProjectRoot.forEach(uri -> toAnalyze.put(uri, javaFiles.get(uri)));
         if (isFirst) {
           toAnalyze.putAll(nonJavaFiles);
@@ -202,12 +202,12 @@ public class AnalysisTaskExecutor {
     }
   }
 
-  private Map<URI, VersionnedOpenFile> excludeCAndCppFilesIfMissingCompilationDatabase(Map<URI, VersionnedOpenFile> nonJavaFiles, WorkspaceFolderSettings settings) {
-    Map<Boolean, Map<URI, VersionnedOpenFile>> splitCppAndNonCppFiles = nonJavaFiles.entrySet().stream().collect(partitioningBy(
+  private Map<URI, VersionedOpenFile> excludeCAndCppFilesIfMissingCompilationDatabase(Map<URI, VersionedOpenFile> nonJavaFiles, WorkspaceFolderSettings settings) {
+    Map<Boolean, Map<URI, VersionedOpenFile>> splitCppAndNonCppFiles = nonJavaFiles.entrySet().stream().collect(partitioningBy(
       entry -> entry.getValue().isCOrCpp(),
       toMap(Entry::getKey, Entry::getValue)));
-    Map<URI, VersionnedOpenFile> cOrCppFiles = ofNullable(splitCppAndNonCppFiles.get(true)).orElse(Map.of());
-    Map<URI, VersionnedOpenFile> nonCNOrCppFiles = ofNullable(splitCppAndNonCppFiles.get(false)).orElse(Map.of());
+    Map<URI, VersionedOpenFile> cOrCppFiles = ofNullable(splitCppAndNonCppFiles.get(true)).orElse(Map.of());
+    Map<URI, VersionedOpenFile> nonCNOrCppFiles = ofNullable(splitCppAndNonCppFiles.get(false)).orElse(Map.of());
     if (!cOrCppFiles.isEmpty() && (settings.getPathToCompileCommands() == null || !Files.isRegularFile(Paths.get(settings.getPathToCompileCommands())))) {
       if (settings.getPathToCompileCommands() == null) {
         lsLogOutput.debug("Skipping analysis of C and C++ file(s) because no compilation database was configured");
@@ -221,7 +221,7 @@ public class AnalysisTaskExecutor {
     return nonJavaFiles;
   }
 
-  private Map<URI, GetJavaConfigResponse> collectJavaFilesWithConfig(Map<URI, VersionnedOpenFile> javaFiles) {
+  private Map<URI, GetJavaConfigResponse> collectJavaFilesWithConfig(Map<URI, VersionedOpenFile> javaFiles) {
     Map<URI, GetJavaConfigResponse> javaFilesWithConfig = new HashMap<>();
     javaFiles.forEach((uri, openFile) -> {
       var javaConfigOpt = javaConfigCache.getOrFetch(uri);
@@ -239,7 +239,7 @@ public class AnalysisTaskExecutor {
    * Here we have only files from the same folder, same binding, same Java module, so we can run the analysis engine.
    */
   private void analyzeSingleModule(AnalysisTask task, Optional<WorkspaceFolderWrapper> workspaceFolder, WorkspaceFolderSettings settings, Optional<ProjectBindingWrapper> binding,
-    Map<URI, VersionnedOpenFile> filesToAnalyze,
+    Map<URI, VersionedOpenFile> filesToAnalyze,
     Map<URI, GetJavaConfigResponse> javaConfigs) {
 
     var baseDirUri = workspaceFolder.map(WorkspaceFolderWrapper::getUri)
@@ -279,7 +279,7 @@ public class AnalysisTaskExecutor {
   }
 
   private void analyzeSingleModuleNonExcluded(AnalysisTask task, WorkspaceFolderSettings settings, Optional<ProjectBindingWrapper> binding,
-    Map<URI, VersionnedOpenFile> filesToAnalyze, URI baseDirUri, Map<URI, GetJavaConfigResponse> javaConfigs) {
+    Map<URI, VersionedOpenFile> filesToAnalyze, URI baseDirUri, Map<URI, GetJavaConfigResponse> javaConfigs) {
     task.checkCanceled();
     if (filesToAnalyze.size() == 1) {
       lsLogOutput.info(format("Analyzing file '%s'...", filesToAnalyze.keySet().iterator().next()));
@@ -335,14 +335,14 @@ public class AnalysisTaskExecutor {
     }
   }
 
-  private IssueListener createIssueListener(Map<URI, VersionnedOpenFile> filesToAnalyze, Set<String> ruleKeys) {
+  private IssueListener createIssueListener(Map<URI, VersionedOpenFile> filesToAnalyze, Set<String> ruleKeys) {
     return issue -> {
       var inputFile = issue.getInputFile();
       // FIXME SLVSCODE-255 support project level issues
       if (inputFile != null) {
         URI uri = inputFile.getClientObject();
-        var versionnedOpenFile = filesToAnalyze.get(uri);
-        issuesCache.reportIssue(versionnedOpenFile, issue);
+        var versionedOpenFile = filesToAnalyze.get(uri);
+        issuesCache.reportIssue(versionedOpenFile, issue);
         diagnosticPublisher.publishDiagnostics(uri);
         ruleKeys.add(issue.getRuleKey());
       }
@@ -389,7 +389,7 @@ public class AnalysisTaskExecutor {
     }
   }
 
-  private AnalysisResultsWrapper analyzeStandalone(AnalysisTask task, WorkspaceFolderSettings settings, URI baseDirUri, Map<URI, VersionnedOpenFile> filesToAnalyze,
+  private AnalysisResultsWrapper analyzeStandalone(AnalysisTask task, WorkspaceFolderSettings settings, URI baseDirUri, Map<URI, VersionedOpenFile> filesToAnalyze,
     Map<URI, GetJavaConfigResponse> javaConfigs, IssueListener issueListener) {
     var baseDir = Paths.get(baseDirUri);
 
@@ -409,7 +409,7 @@ public class AnalysisTaskExecutor {
   }
 
   private AnalysisResultsWrapper analyzeConnected(AnalysisTask task, ProjectBindingWrapper binding, WorkspaceFolderSettings settings, URI baseDirUri,
-    Map<URI, VersionnedOpenFile> filesToAnalyze,
+    Map<URI, VersionedOpenFile> filesToAnalyze,
     Map<URI, GetJavaConfigResponse> javaConfigs, IssueListener issueListener) {
     var baseDir = Paths.get(baseDirUri);
 
@@ -441,7 +441,7 @@ public class AnalysisTaskExecutor {
       }));
   }
 
-  private <G extends AbstractBuilder<G>> G buildCommonAnalysisConfiguration(WorkspaceFolderSettings settings, URI baseDirUri, Map<URI, VersionnedOpenFile> filesToAnalyze,
+  private <G extends AbstractBuilder<G>> G buildCommonAnalysisConfiguration(WorkspaceFolderSettings settings, URI baseDirUri, Map<URI, VersionedOpenFile> filesToAnalyze,
     Map<URI, GetJavaConfigResponse> javaConfigs, Path baseDir,
     G configurationBuilder) {
     configurationBuilder.setBaseDir(baseDir)
