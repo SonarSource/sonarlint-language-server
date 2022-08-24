@@ -34,14 +34,14 @@ import static java.lang.String.format;
 public class OpenFilesCache {
   private final LanguageClientLogger lsLogOutput;
 
-  private final Map<URI, VersionnedOpenFile> openFilesPerFileURI = new ConcurrentHashMap<>();
+  private final Map<URI, VersionedOpenFile> openFilesPerFileURI = new ConcurrentHashMap<>();
 
   public OpenFilesCache(LanguageClientLogger lsLogOutput) {
     this.lsLogOutput = lsLogOutput;
   }
 
-  public VersionnedOpenFile didOpen(URI fileUri, String languageId, String fileContent, int version) {
-    var file = new VersionnedOpenFile(fileUri, languageId, version, fileContent);
+  public VersionedOpenFile didOpen(URI fileUri, String languageId, String fileContent, int version) {
+    var file = new VersionedOpenFile(fileUri, languageId, version, fileContent);
     openFilesPerFileURI.put(fileUri, file);
     return file;
   }
@@ -50,18 +50,18 @@ public class OpenFilesCache {
     if (!openFilesPerFileURI.containsKey(fileUri)) {
       lsLogOutput.warn(format("Illegal state. File '%s' is reported changed but we missed the open notification", fileUri));
     }
-    openFilesPerFileURI.computeIfPresent(fileUri, (uri, previous) -> new VersionnedOpenFile(uri, previous.getLanguageId(), version, fileContent));
+    openFilesPerFileURI.computeIfPresent(fileUri, (uri, previous) -> new VersionedOpenFile(uri, previous.getLanguageId(), version, fileContent));
   }
 
   public void didClose(URI fileUri) {
     openFilesPerFileURI.remove(fileUri);
   }
 
-  public Optional<VersionnedOpenFile> getFile(URI fileUri) {
+  public Optional<VersionedOpenFile> getFile(URI fileUri) {
     return Optional.ofNullable(openFilesPerFileURI.get(fileUri));
   }
 
-  public Collection<VersionnedOpenFile> getAll() {
+  public Collection<VersionedOpenFile> getAll() {
     return openFilesPerFileURI.values();
   }
 

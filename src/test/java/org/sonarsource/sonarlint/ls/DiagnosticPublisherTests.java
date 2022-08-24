@@ -28,9 +28,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
-import org.sonarsource.sonarlint.ls.IssuesCache.VersionnedIssue;
+import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
-import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
+import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -61,8 +61,8 @@ class DiagnosticPublisherTests {
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getMessage()).thenReturn("Do this, don't do that");
     when(issue.getStartLine()).thenReturn(null);
-    var versionnedIssue = new VersionnedIssue(issue, 1);
-    Diagnostic diagnostic = convert(entry("id", versionnedIssue));
+    var versionedIssue = new VersionedIssue(issue, 1);
+    Diagnostic diagnostic = convert(entry("id", versionedIssue));
     assertThat(diagnostic.getRange()).isEqualTo(new Range(new Position(0, 0), new Position(0, 0)));
   }
 
@@ -73,16 +73,16 @@ class DiagnosticPublisherTests {
     when(issue.getStartLine()).thenReturn(1);
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getMessage()).thenReturn("Do this, don't do that");
-    var versionnedIssue = new VersionnedIssue(issue, 1);
-    assertThat(convert(entry(id, versionnedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    var versionedIssue = new VersionedIssue(issue, 1);
+    assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.CRITICAL);
-    assertThat(convert(entry(id, versionnedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.MAJOR);
-    assertThat(convert(entry(id, versionnedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.MINOR);
-    assertThat(convert(entry(id, versionnedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Information);
+    assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Information);
     when(issue.getSeverity()).thenReturn(IssueSeverity.INFO);
-    assertThat(convert(entry(id, versionnedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
+    assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
   }
 
   @Test
@@ -121,10 +121,10 @@ class DiagnosticPublisherTests {
 
     var uri = URI.create("file://foo");
 
-    VersionnedOpenFile versionnedOpenFile = new VersionnedOpenFile(uri, null, 1, null);
-    issuesCache.analysisStarted(versionnedOpenFile);
-    issuesCache.reportIssue(versionnedOpenFile, issue);
-    issuesCache.analysisSucceeded(versionnedOpenFile);
+    VersionedOpenFile versionedOpenFile = new VersionedOpenFile(uri, null, 1, null);
+    issuesCache.analysisStarted(versionedOpenFile);
+    issuesCache.reportIssue(versionedOpenFile, issue);
+    issuesCache.analysisSucceeded(versionedOpenFile);
     return uri;
   }
 }

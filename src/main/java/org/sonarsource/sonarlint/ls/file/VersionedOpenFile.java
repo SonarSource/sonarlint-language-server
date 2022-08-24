@@ -24,16 +24,16 @@ import javax.annotation.concurrent.Immutable;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 /**
- * Represent a versionned open file and its immutable metadata in the editor.
+ * Represent a versioned open file and its immutable metadata in the editor.
  */
 @Immutable
-public class VersionnedOpenFile {
+public class VersionedOpenFile {
   private final URI uri;
   private final String languageId;
   private final int version;
   private final String content;
 
-  public VersionnedOpenFile(URI uri, String languageId, int version, String content) {
+  public VersionedOpenFile(URI uri, String languageId, int version, String content) {
     this.uri = uri;
     this.languageId = languageId;
     this.version = version;

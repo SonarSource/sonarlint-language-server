@@ -41,20 +41,20 @@ package org.sonarsource.sonarlint.ls;
 import java.util.Set;
 import java.util.concurrent.Future;
 import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
-import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
+import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 
 class AnalysisTask {
 
-  private final Set<VersionnedOpenFile> filesToAnalyze;
+  private final Set<VersionedOpenFile> filesToAnalyze;
   private final boolean shouldFetchServerIssues;
   private Future<?> future;
 
-  public AnalysisTask(Set<VersionnedOpenFile> filesToAnalyze, boolean shouldFetchServerIssues) {
+  public AnalysisTask(Set<VersionedOpenFile> filesToAnalyze, boolean shouldFetchServerIssues) {
     this.filesToAnalyze = filesToAnalyze;
     this.shouldFetchServerIssues = shouldFetchServerIssues;
   }
 
-  public Set<VersionnedOpenFile> getFilesToAnalyze() {
+  public Set<VersionedOpenFile> getFilesToAnalyze() {
     return filesToAnalyze;
   }
 

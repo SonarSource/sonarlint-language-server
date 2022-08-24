@@ -29,7 +29,7 @@ import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.ServerMode;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
-import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
+import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
@@ -46,7 +46,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 class AnalysisSchedulerTests {
 
   private static final URI JS_FILE_URI = URI.create("file://foo.js");
-  private static final VersionnedOpenFile JS_FILE = new VersionnedOpenFile(JS_FILE_URI, "javascript", 1, "alert();");
+  private static final VersionedOpenFile JS_FILE = new VersionedOpenFile(JS_FILE_URI, "javascript", 1, "alert();");
   private AnalysisScheduler underTest;
   private AnalysisTaskExecutor taskExecutor;
   private OpenFilesCache openFilesCache;
@@ -82,7 +82,7 @@ class AnalysisSchedulerTests {
 
   @Test
   void shouldSkipAnalysisOfNonFSFiles() {
-    underTest.didOpen(new VersionnedOpenFile(URI.create("ftp://foo.js"), "javascript", 1, "alert();"));
+    underTest.didOpen(new VersionedOpenFile(URI.create("ftp://foo.js"), "javascript", 1, "alert();"));
 
     verify(taskExecutor, timeout(1000).times(0)).run(any());
 
@@ -129,7 +129,7 @@ class AnalysisSchedulerTests {
     verify(taskExecutor, timeout(1000)).run(taskCaptor.capture());
 
     AnalysisTask submittedTask = taskCaptor.getValue();
-    assertThat(submittedTask.getFilesToAnalyze()).hasSize(2).extracting(VersionnedOpenFile::getLanguageId).containsOnly("java");
+    assertThat(submittedTask.getFilesToAnalyze()).hasSize(2).extracting(VersionedOpenFile::getLanguageId).containsOnly("java");
     assertThat(submittedTask.shouldFetchServerIssues()).isFalse();
   }
 
@@ -145,7 +145,7 @@ class AnalysisSchedulerTests {
     verify(taskExecutor, timeout(1000)).run(taskCaptor.capture());
 
     AnalysisTask submittedTask = taskCaptor.getValue();
-    assertThat(submittedTask.getFilesToAnalyze()).hasSize(2).extracting(VersionnedOpenFile::getLanguageId).containsOnly("java");
+    assertThat(submittedTask.getFilesToAnalyze()).hasSize(2).extracting(VersionedOpenFile::getLanguageId).containsOnly("java");
     assertThat(submittedTask.shouldFetchServerIssues()).isFalse();
   }
 
@@ -179,7 +179,7 @@ class AnalysisSchedulerTests {
     verify(taskExecutor, timeout(1000)).run(taskCaptor1.capture());
     var task1 = taskCaptor1.getValue();
     assertThat(task1.isCanceled()).isFalse();
-    assertThat(task1.getFilesToAnalyze()).extracting(VersionnedOpenFile::getVersion).containsOnly(1);
+    assertThat(task1.getFilesToAnalyze()).extracting(VersionedOpenFile::getVersion).containsOnly(1);
 
     reset(taskExecutor);
 
@@ -191,7 +191,7 @@ class AnalysisSchedulerTests {
     ArgumentCaptor<AnalysisTask> taskCaptor2 = ArgumentCaptor.forClass(AnalysisTask.class);
     verify(taskExecutor, timeout(1000)).run(taskCaptor2.capture());
     var task2 = taskCaptor2.getValue();
-    assertThat(task2.getFilesToAnalyze()).extracting(VersionnedOpenFile::getVersion).containsOnly(2);
+    assertThat(task2.getFilesToAnalyze()).extracting(VersionedOpenFile::getVersion).containsOnly(2);
     task2.getFuture().cancel(false);
 
     waitAtMost(1, TimeUnit.SECONDS).untilAsserted(() -> assertThat(task2.getFuture().isDone()).isTrue());
@@ -240,7 +240,7 @@ class AnalysisSchedulerTests {
     ArgumentCaptor<AnalysisTask> onChangeTaskCaptor2 = ArgumentCaptor.forClass(AnalysisTask.class);
     verify(taskExecutor, timeout(10000)).run(onChangeTaskCaptor2.capture());
     var task2 = onChangeTaskCaptor2.getValue();
-    assertThat(task2.getFilesToAnalyze()).extracting(VersionnedOpenFile::getVersion).containsOnly(3);
+    assertThat(task2.getFilesToAnalyze()).extracting(VersionedOpenFile::getVersion).containsOnly(3);
   }
 
 }
