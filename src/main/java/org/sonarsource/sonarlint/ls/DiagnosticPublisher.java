@@ -27,7 +27,7 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.Language;
-import org.sonarsource.sonarlint.ls.IssuesCache.VersionnedIssue;
+import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
@@ -62,7 +62,7 @@ public class DiagnosticPublisher {
     client.publishDiagnostics(createPublishDiagnosticsParams(f));
   }
 
-  static Diagnostic convert(Map.Entry<String, VersionnedIssue> entry) {
+  static Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
     var issue = entry.getValue().getIssue();
     var diagnostic = new Diagnostic();
     var severity = severity(issue.getSeverity());
@@ -95,7 +95,7 @@ public class DiagnosticPublisher {
   private PublishDiagnosticsParams createPublishDiagnosticsParams(URI newUri) {
     var p = new PublishDiagnosticsParams();
 
-    Map<String, VersionnedIssue> localIssues = issuesCache.get(newUri);
+    Map<String, VersionedIssue> localIssues = issuesCache.get(newUri);
 
     if (!firstSecretIssueDetected && localIssues.values().stream().anyMatch(v -> v.getIssue().getRuleKey().startsWith(Language.SECRETS.getPluginKey()))) {
       client.showFirstSecretDetectionNotification();

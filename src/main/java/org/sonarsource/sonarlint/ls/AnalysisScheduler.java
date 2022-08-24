@@ -34,7 +34,7 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
-import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
+import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -92,7 +92,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     this.watcher = new EventWatcher(defaultTimerMs);
   }
 
-  public void didOpen(VersionnedOpenFile file) {
+  public void didOpen(VersionedOpenFile file) {
     analyzeAsync(List.of(file), true);
   }
 
@@ -133,7 +133,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
       var now = System.currentTimeMillis();
 
       var it = eventMap.entrySet().iterator();
-      var filesToTrigger = new ArrayList<VersionnedOpenFile>();
+      var filesToTrigger = new ArrayList<VersionedOpenFile>();
       while (it.hasNext()) {
         var e = it.next();
         if (e.getValue() + defaultTimerMs < now) {
@@ -143,7 +143,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
       triggerFiles(filesToTrigger);
     }
 
-    private void triggerFiles(List<VersionnedOpenFile> filesToTrigger) {
+    private void triggerFiles(List<VersionedOpenFile> filesToTrigger) {
       if (!filesToTrigger.isEmpty()) {
         if (!onChangeCurrentTask.isDone()) {
           lsLogOutput.debug("Attempt to cancel previous analysis...");
@@ -164,7 +164,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   /**
    * Handle analysis asynchronously to not block client events for too long
    */
-  Future<?> analyzeAsync(List<VersionnedOpenFile> files, boolean shouldFetchServerIssues) {
+  Future<?> analyzeAsync(List<VersionedOpenFile> files, boolean shouldFetchServerIssues) {
     var trueFileUris = files.stream().filter(f -> {
       if (!Utils.uriHasFileSchema(f.getUri())) {
         lsLogOutput.warn(format("URI '%s' is not in local filesystem, analysis not supported", f.getUri()));
@@ -176,7 +176,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
       return COMPLETED_FUTURE;
     }
     if (trueFileUris.size() == 1) {
-      VersionnedOpenFile openFile = trueFileUris.iterator().next();
+      VersionedOpenFile openFile = trueFileUris.iterator().next();
       lsLogOutput.debug(format("Queuing analysis of file '%s' (version %d)", openFile.getUri(), openFile.getVersion()));
     } else {
       lsLogOutput.debug(format("Queuing analysis of %d files", trueFileUris.size()));
@@ -235,7 +235,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
 
   public void analyzeAllOpenCOrCppFilesInFolder(@Nullable WorkspaceFolderWrapper folder) {
     var openedCorCppFileUrisInFolder = openFilesCache.getAll().stream()
-      .filter(VersionnedOpenFile::isCOrCpp)
+      .filter(VersionedOpenFile::isCOrCpp)
       .filter(f -> belongToFolder(folder, f.getUri()))
       .collect(Collectors.toList());
     analyzeAsync(openedCorCppFileUrisInFolder, false);
@@ -250,7 +250,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
 
   private void analyzeAllOpenJavaFiles() {
     var openedJavaFileUris = openFilesCache.getAll().stream()
-      .filter(VersionnedOpenFile::isJava)
+      .filter(VersionedOpenFile::isJava)
       .collect(toList());
     analyzeAsync(openedJavaFileUris, false);
   }
