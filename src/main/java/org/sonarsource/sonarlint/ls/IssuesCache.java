@@ -29,47 +29,47 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.lsp4j.Diagnostic;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
+import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 
 public class IssuesCache {
 
-  private final Map<URI, Map<String, VersionnedIssue>> issuesPerIdPerFileURI = new ConcurrentHashMap<>();
-  private final Map<URI, Map<String, VersionnedIssue>> inProgressAnalysisIssuesPerIdPerFileURI = new ConcurrentHashMap<>();
+  private final Map<URI, Map<String, VersionedIssue>> issuesPerIdPerFileURI = new ConcurrentHashMap<>();
+  private final Map<URI, Map<String, VersionedIssue>> inProgressAnalysisIssuesPerIdPerFileURI = new ConcurrentHashMap<>();
 
   public void clear(URI fileUri) {
     issuesPerIdPerFileURI.remove(fileUri);
     inProgressAnalysisIssuesPerIdPerFileURI.remove(fileUri);
   }
 
-  public void analysisStarted(VersionnedOpenFile versionnedOpenFile) {
-    inProgressAnalysisIssuesPerIdPerFileURI.remove(versionnedOpenFile.getUri());
+  public void analysisStarted(VersionedOpenFile versionedOpenFile) {
+    inProgressAnalysisIssuesPerIdPerFileURI.remove(versionedOpenFile.getUri());
   }
 
-  public void reportIssue(VersionnedOpenFile versionnedOpenFile, Issue issue) {
-    inProgressAnalysisIssuesPerIdPerFileURI.computeIfAbsent(versionnedOpenFile.getUri(), u -> new HashMap<>()).put(UUID.randomUUID().toString(),
-      new VersionnedIssue(issue, versionnedOpenFile.getVersion()));
+  public void reportIssue(VersionedOpenFile versionedOpenFile, Issue issue) {
+    inProgressAnalysisIssuesPerIdPerFileURI.computeIfAbsent(versionedOpenFile.getUri(), u -> new HashMap<>()).put(UUID.randomUUID().toString(),
+      new VersionedIssue(issue, versionedOpenFile.getVersion()));
   }
 
   public int count(URI f) {
     return get(f).size();
   }
 
-  public void analysisFailed(VersionnedOpenFile versionnedOpenFile) {
+  public void analysisFailed(VersionedOpenFile versionedOpenFile) {
     // Keep issues of the previous analysis
-    inProgressAnalysisIssuesPerIdPerFileURI.remove(versionnedOpenFile.getUri());
+    inProgressAnalysisIssuesPerIdPerFileURI.remove(versionedOpenFile.getUri());
   }
 
-  public void analysisSucceeded(VersionnedOpenFile versionnedOpenFile) {
+  public void analysisSucceeded(VersionedOpenFile versionedOpenFile) {
     // Swap issues
-    var newIssues = inProgressAnalysisIssuesPerIdPerFileURI.remove(versionnedOpenFile.getUri());
+    var newIssues = inProgressAnalysisIssuesPerIdPerFileURI.remove(versionedOpenFile.getUri());
     if (newIssues != null) {
-      issuesPerIdPerFileURI.put(versionnedOpenFile.getUri(), newIssues);
+      issuesPerIdPerFileURI.put(versionedOpenFile.getUri(), newIssues);
     } else {
-      issuesPerIdPerFileURI.remove(versionnedOpenFile.getUri());
+      issuesPerIdPerFileURI.remove(versionedOpenFile.getUri());
     }
   }
 
-  public Optional<VersionnedIssue> getIssueForDiagnostic(URI fileUri, Diagnostic d) {
+  public Optional<VersionedIssue> getIssueForDiagnostic(URI fileUri, Diagnostic d) {
     var issuesForFile = get(fileUri);
     return Optional.ofNullable(d.getData())
       .map(JsonPrimitive.class::cast)
@@ -78,11 +78,11 @@ public class IssuesCache {
       .filter(Objects::nonNull);
   }
 
-  public static class VersionnedIssue {
+  public static class VersionedIssue {
     private final Issue issue;
     private final int documentVersion;
 
-    public VersionnedIssue(Issue issue, int documentVersion) {
+    public VersionedIssue(Issue issue, int documentVersion) {
       this.issue = issue;
       this.documentVersion = documentVersion;
     }
@@ -96,7 +96,7 @@ public class IssuesCache {
     }
   }
 
-  public Map<String, VersionnedIssue> get(URI fileUri) {
+  public Map<String, VersionedIssue> get(URI fileUri) {
     return inProgressAnalysisIssuesPerIdPerFileURI.getOrDefault(fileUri, issuesPerIdPerFileURI.getOrDefault(fileUri, Map.of()));
   }
 }

@@ -121,19 +121,19 @@ public class CommandManager {
         var ruleKey = diagnostic.getCode().getLeft();
         cancelToken.checkCanceled();
         var issueForDiagnostic = issuesCache.getIssueForDiagnostic(uri, diagnostic);
-        issueForDiagnostic.ifPresent(versionnedIssue -> versionnedIssue.getIssue().quickFixes().forEach(fix -> {
+        issueForDiagnostic.ifPresent(versionedIssue -> versionedIssue.getIssue().quickFixes().forEach(fix -> {
           var newCodeAction = new CodeAction(SONARLINT_ACTION_PREFIX + fix.message());
           newCodeAction.setKind(CodeActionKind.QuickFix);
           newCodeAction.setDiagnostics(List.of(diagnostic));
-          newCodeAction.setEdit(newWorkspaceEdit(fix, versionnedIssue.getDocumentVersion()));
+          newCodeAction.setEdit(newWorkspaceEdit(fix, versionedIssue.getDocumentVersion()));
           newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, List.of(ruleKey)));
           codeActions.add(Either.forRight(newCodeAction));
         }));
         addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey);
-        issueForDiagnostic.ifPresent(versionnedIssue -> {
-          if (!versionnedIssue.getIssue().flows().isEmpty()) {
+        issueForDiagnostic.ifPresent(versionedIssue -> {
+          if (!versionedIssue.getIssue().flows().isEmpty()) {
             var titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
-            codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(versionnedIssue.getIssue()))));
+            codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(versionedIssue.getIssue()))));
           }
         });
         if (binding.isEmpty()) {

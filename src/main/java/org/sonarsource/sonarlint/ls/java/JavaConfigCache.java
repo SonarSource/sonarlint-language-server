@@ -37,7 +37,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.ServerMode;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
-import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
+import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
@@ -78,7 +78,7 @@ public class JavaConfigCache {
    * Try to fetch Java config. In case of any error, cache an empty result to avoid repeated calls.
    */
   private CompletableFuture<Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse>> getOrFetchAsync(URI fileUri) {
-    Optional<VersionnedOpenFile> openFile = openFilesCache.getFile(fileUri);
+    Optional<VersionedOpenFile> openFile = openFilesCache.getFile(fileUri);
     if (openFile.isPresent() && !openFile.get().isJava()) {
       return CompletableFuture.completedFuture(Optional.empty());
     }
