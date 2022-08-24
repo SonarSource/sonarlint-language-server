@@ -165,7 +165,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, javaConfigCache), extraAnalyzers);
     this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
     this.settingsManager.addListener(lsLogOutput);
-    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, globalLogOutput);
+    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, globalLogOutput,
+            taintVulnerabilitiesCache, diagnosticPublisher);
     this.settingsManager.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(httpClientProvider, settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager);
     this.settingsManager.addListener(telemetry);

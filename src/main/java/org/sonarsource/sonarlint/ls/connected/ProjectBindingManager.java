@@ -45,8 +45,13 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
+import org.sonarsource.sonarlint.core.serverapi.push.IssueChangedEvent;
+import org.sonarsource.sonarlint.core.serverapi.push.ServerEvent;
+import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityClosedEvent;
+import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
 import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
+import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
@@ -65,6 +70,7 @@ import org.sonarsource.sonarlint.ls.util.FileUtils;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
+import static org.sonarsource.sonarlint.ls.util.FileUtils.getFileRelativePath;
 
 /**
  * Keep a cache of project bindings. Files that are part of a workspace workspaceFolderPath will share the same binding.
@@ -84,20 +90,26 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final EnginesFactory enginesFactory;
   private AnalysisScheduler analysisManager;
   private Function<URI, String> branchNameForFolderSupplier;
+  private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
+  private final DiagnosticPublisher diagnosticPublisher;
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
-    LanguageClientLogOutput globalLogOutput) {
-    this(enginesFactory, foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput);
+    LanguageClientLogOutput globalLogOutput,
+    TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher) {
+    this(enginesFactory, foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput, taintVulnerabilitiesCache, diagnosticPublisher);
   }
 
   ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
-    ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput) {
+    ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput,
+    TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher) {
     this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
     this.client = client;
     this.folderBindingCache = folderBindingCache;
     this.globalLogOutput = globalLogOutput;
+    this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
+    this.diagnosticPublisher = diagnosticPublisher;
   }
 
   // Can't use constructor injection because of cyclic dependency
@@ -305,8 +317,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var configuration = getServerConfigurationFor(connectionId);
     if (configuration != null) {
       engine.subscribeForEvents(configuration.getEndpointParams(), configuration.getHttpClient(),
-        getProjectKeysBoundTo(connectionId), event -> {
-        }, globalLogOutput);
+        getProjectKeysBoundTo(connectionId), this::handleEvents, globalLogOutput);
     }
   }
 
@@ -424,7 +435,34 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         boundFolderConsumer.accept(f, settings);
       }
     });
+  }
 
+  public void handleEvents(ServerEvent event){
+    if(event instanceof TaintVulnerabilityRaisedEvent){
+      var filePathFromEvent = ((TaintVulnerabilityRaisedEvent) event).getMainLocation().getFilePath();
+      var localFileUri = serverPathToFileUri(filePathFromEvent);
+      localFileUri.ifPresent(this::updateTaintIssueCacheFromStorageForFile);
+    } else if(event instanceof TaintVulnerabilityClosedEvent ||
+      event instanceof IssueChangedEvent) {
+      taintVulnerabilitiesCache.getAllFilesWithTaintIssues()
+        .forEach(this::updateTaintIssueCacheFromStorageForFile);
+    }
+  }
+
+  private void updateTaintIssueCacheFromStorageForFile(URI fileUri) {
+    var workspaceFolder = foldersManager.findFolderForFile(fileUri);
+    if(workspaceFolder.isPresent()){
+      var baseDir = Paths.get(workspaceFolder.get().getUri());
+      var filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, fileUri));
+      Optional<ProjectBindingWrapper> folderBinding = folderBindingCache.get(fileUri);
+      if(folderBinding.isPresent()){
+        var engine = folderBinding.get().getEngine();
+        var branchName = this.resolveBranchNameForFolder(fileUri);
+        var serverTaintIssues = engine.getServerTaintIssues(folderBinding.get().getBinding(), branchName, filePath);
+        taintVulnerabilitiesCache.reload(fileUri, serverTaintIssues);
+        diagnosticPublisher.publishDiagnostics(fileUri);
+      }
+    }
   }
 
   Optional<EndpointParamsAndHttpClient> getServerConnectionSettingsForUrl(String url) {
