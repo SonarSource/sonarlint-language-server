@@ -46,20 +46,14 @@ import org.sonarsource.sonarlint.ls.file.VersionnedOpenFile;
 class AnalysisTask {
 
   private final Set<VersionnedOpenFile> filesToAnalyze;
-  private final boolean shouldFetchServerIssues;
   private Future<?> future;
 
-  public AnalysisTask(Set<VersionnedOpenFile> filesToAnalyze, boolean shouldFetchServerIssues) {
+  public AnalysisTask(Set<VersionnedOpenFile> filesToAnalyze) {
     this.filesToAnalyze = filesToAnalyze;
-    this.shouldFetchServerIssues = shouldFetchServerIssues;
   }
 
   public Set<VersionnedOpenFile> getFilesToAnalyze() {
     return filesToAnalyze;
-  }
-
-  public boolean shouldFetchServerIssues() {
-    return shouldFetchServerIssues;
   }
 
   public boolean isCanceled() {

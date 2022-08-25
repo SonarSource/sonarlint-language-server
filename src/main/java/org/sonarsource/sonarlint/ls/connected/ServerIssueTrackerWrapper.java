@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.connected;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
@@ -33,8 +34,10 @@ import org.sonarsource.sonarlint.core.issuetracking.CachingIssueTracker;
 import org.sonarsource.sonarlint.core.issuetracking.InMemoryIssueTrackerCache;
 import org.sonarsource.sonarlint.core.issuetracking.IssueTrackerCache;
 import org.sonarsource.sonarlint.core.issuetracking.Trackable;
+import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.core.tracking.IssueTrackable;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static java.util.function.Predicate.not;
@@ -42,7 +45,6 @@ import static java.util.function.Predicate.not;
 public class ServerIssueTrackerWrapper {
 
   private final ConnectedSonarLintEngine engine;
-  private final ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient;
   private final ProjectBinding projectBinding;
   private final Supplier<String> getReferenceBranchNameForFolder;
 
@@ -50,10 +52,9 @@ public class ServerIssueTrackerWrapper {
   private final CachingIssueTracker cachingIssueTracker;
   private final org.sonarsource.sonarlint.core.tracking.ServerIssueTracker tracker;
 
-  ServerIssueTrackerWrapper(ConnectedSonarLintEngine engine, ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient,
+  ServerIssueTrackerWrapper(ConnectedSonarLintEngine engine,
     ProjectBinding projectBinding, Supplier<String> getReferenceBranchNameForFolder) {
     this.engine = engine;
-    this.endpointParamsAndHttpClient = endpointParamsAndHttpClient;
     this.projectBinding = projectBinding;
     this.getReferenceBranchNameForFolder = getReferenceBranchNameForFolder;
 
@@ -62,19 +63,14 @@ public class ServerIssueTrackerWrapper {
     this.tracker = new org.sonarsource.sonarlint.core.tracking.ServerIssueTracker(cachingIssueTracker);
   }
 
-  public void matchAndTrack(String filePath, Collection<Issue> issues, IssueListener issueListener, boolean shouldFetchServerIssues) {
+  public void matchAndTrack(String filePath, Collection<Issue> issues, IssueListener issueListener) {
     if (issues.isEmpty()) {
       issueTrackerCache.put(filePath, Collections.emptyList());
       return;
     }
 
     cachingIssueTracker.matchAndTrackAsNew(filePath, toTrackables(issues));
-    if (shouldFetchServerIssues) {
-      tracker.update(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), engine, projectBinding,
-        Collections.singleton(filePath), getReferenceBranchNameForFolder.get());
-    } else {
-      tracker.update(engine, projectBinding, getReferenceBranchNameForFolder.get(), Collections.singleton(filePath));
-    }
+    tracker.update(engine, projectBinding, getReferenceBranchNameForFolder.get(), Collections.singleton(filePath));
 
     issueTrackerCache.getLiveOrFail(filePath).stream()
       .filter(not(Trackable::isResolved))
@@ -94,5 +90,10 @@ public class ServerIssueTrackerWrapper {
 
   private static Collection<Trackable> toTrackables(Collection<Issue> issues) {
     return issues.stream().map(IssueTrackable::new).collect(Collectors.toList());
+  }
+
+  public void update(EndpointParams endpointParams, ApacheHttpClient httpClient, ConnectedSonarLintEngine engine,
+    ProjectBinding binding, Set<String> fileKeys, String branchName) {
+    tracker.update(endpointParams, httpClient, engine, binding, fileKeys, branchName);
   }
 }

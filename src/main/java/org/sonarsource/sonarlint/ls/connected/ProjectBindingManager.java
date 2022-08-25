@@ -209,12 +209,15 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     engine.sync(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), Set.of(projectKey), null);
 
     var ideFilePaths = FileUtils.allRelativePathsForFilesInTree(folderRoot);
+
     var projectBinding = engine.calculatePathPrefixes(projectKey, ideFilePaths);
     LOG.debug("Resolved binding {} for folder {}",
       ToStringBuilder.reflectionToString(projectBinding, ToStringStyle.SHORT_PREFIX_STYLE),
       folderRoot);
+    LOG.debug("Resolved IDE prefix: " + projectBinding.idePathPrefix());
+
     Supplier<String> branchProvider = () -> this.branchNameForFolderSupplier.apply(folderRoot.toUri());
-    var issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, endpointParamsAndHttpClient, projectBinding, branchProvider);
+    var issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, projectBinding, branchProvider);
     return new ProjectBindingWrapper(connectionId, projectBinding, engine, issueTrackerWrapper);
   }
 

@@ -77,7 +77,6 @@ class AnalysisSchedulerTests {
 
     AnalysisTask submittedTask = taskCaptor.getValue();
     assertThat(submittedTask.getFilesToAnalyze()).containsExactly(JS_FILE);
-    assertThat(submittedTask.shouldFetchServerIssues()).isTrue();
   }
 
   @Test
@@ -99,7 +98,6 @@ class AnalysisSchedulerTests {
 
     AnalysisTask submittedTask = taskCaptor.getValue();
     assertThat(submittedTask.getFilesToAnalyze()).containsExactly(file);
-    assertThat(submittedTask.shouldFetchServerIssues()).isFalse();
   }
 
   @Test
@@ -114,7 +112,6 @@ class AnalysisSchedulerTests {
 
     AnalysisTask submittedTask = taskCaptor.getValue();
     assertThat(submittedTask.getFilesToAnalyze()).containsExactlyInAnyOrder(file1, file2);
-    assertThat(submittedTask.shouldFetchServerIssues()).isFalse();
   }
 
   @Test
@@ -130,7 +127,6 @@ class AnalysisSchedulerTests {
 
     AnalysisTask submittedTask = taskCaptor.getValue();
     assertThat(submittedTask.getFilesToAnalyze()).hasSize(2).extracting(VersionnedOpenFile::getLanguageId).containsOnly("java");
-    assertThat(submittedTask.shouldFetchServerIssues()).isFalse();
   }
 
   @Test
@@ -146,7 +142,6 @@ class AnalysisSchedulerTests {
 
     AnalysisTask submittedTask = taskCaptor.getValue();
     assertThat(submittedTask.getFilesToAnalyze()).hasSize(2).extracting(VersionnedOpenFile::getLanguageId).containsOnly("java");
-    assertThat(submittedTask.shouldFetchServerIssues()).isFalse();
   }
 
   @Test

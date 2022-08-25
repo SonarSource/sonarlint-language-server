@@ -135,36 +135,9 @@ class ServerIssueTrackerWrapperTests {
     verifyNoInteractions(engine);
   }
 
-  @Test
-  void fetch_server_issues_when_needed() throws IOException {
-    var dummyFilePath = baseDir.resolve("dummy").toString();
-
-    var issue = mockIssue();
-    when(issue.getInputFile().getPath()).thenReturn(dummyFilePath);
-
-    var issues = Collections.singleton(issue);
-
-    var engine = mock(ConnectedSonarLintEngine.class);
-    var tracker = newTracker(baseDir, engine);
-    matchAndTrack(tracker, "dummy", issues, false);
-    verify(engine).getServerIssues(any(), any(), any());
-    verifyNoMoreInteractions(engine);
-
-    engine = mock(ConnectedSonarLintEngine.class);
-    tracker = newTracker(baseDir, engine);
-    matchAndTrack(tracker, "dummy", issues, true);
-    verify(engine).downloadAllServerIssuesForFile(any(), any(), any(), any(), eq("branchName"), any());
-    verify(engine).getServerIssues(any(), eq("branchName"), any());
-    verifyNoMoreInteractions(engine);
-  }
-
   private Collection<Issue> matchAndTrack(ServerIssueTrackerWrapper tracker, String filePath, Collection<Issue> issues) {
-    return matchAndTrack(tracker, filePath, issues, false);
-  }
-
-  private Collection<Issue> matchAndTrack(ServerIssueTrackerWrapper tracker, String filePath, Collection<Issue> issues, boolean shouldFetchServerIssues) {
     var recorded = new LinkedList<Issue>();
-    tracker.matchAndTrack(filePath, issues, recorded::add, shouldFetchServerIssues);
+    tracker.matchAndTrack(filePath, issues, recorded::add);
     return recorded;
   }
 
@@ -172,7 +145,7 @@ class ServerIssueTrackerWrapperTests {
     var projectKey = "project1";
     var projectBinding = new ProjectBinding(projectKey, "", "");
     Supplier<String> branchSupplier = () -> "branchName";
-    return new ServerIssueTrackerWrapper(engine, new ServerConnectionSettings.EndpointParamsAndHttpClient(null, null), projectBinding, branchSupplier);
+    return new ServerIssueTrackerWrapper(engine, projectBinding, branchSupplier);
   }
 
   private ServerIssueTrackerWrapper newTracker(Path baseDir) {

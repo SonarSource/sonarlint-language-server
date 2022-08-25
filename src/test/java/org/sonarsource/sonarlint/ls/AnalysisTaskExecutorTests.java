@@ -59,7 +59,7 @@ class AnalysisTaskExecutorTests {
   void testCancellation() {
     Future<Void> future = mock(Future.class);
     when(future.isCancelled()).thenReturn(true);
-    AnalysisTask cancelledTask = new AnalysisTask(Set.of(), false).setFuture(future);
+    AnalysisTask cancelledTask = new AnalysisTask(Set.of()).setFuture(future);
 
     underTest.run(cancelledTask);
 
@@ -68,7 +68,7 @@ class AnalysisTaskExecutorTests {
 
   @Test
   void taskCompletedOnError() {
-    AnalysisTask errorTask = spy(new AnalysisTask(Set.of(), false));
+    AnalysisTask errorTask = spy(new AnalysisTask(Set.of()));
     when(errorTask.getFilesToAnalyze()).thenThrow(new IllegalStateException());
 
     var future = executor.submit(() -> underTest.run(errorTask));

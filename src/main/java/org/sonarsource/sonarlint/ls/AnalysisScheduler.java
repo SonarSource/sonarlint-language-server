@@ -93,7 +93,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   }
 
   public void didOpen(VersionnedOpenFile file) {
-    analyzeAsync(List.of(file), true);
+    analyzeAsync(List.of(file));
   }
 
   public void didChange(URI fileUri) {
@@ -152,7 +152,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
           return;
         }
         filesToTrigger.forEach(f -> eventMap.remove(f.getUri()));
-        onChangeCurrentTask = analyzeAsync(filesToTrigger, false);
+        onChangeCurrentTask = analyzeAsync(filesToTrigger);
       }
     }
   }
@@ -164,7 +164,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   /**
    * Handle analysis asynchronously to not block client events for too long
    */
-  Future<?> analyzeAsync(List<VersionnedOpenFile> files, boolean shouldFetchServerIssues) {
+  Future<?> analyzeAsync(List<VersionnedOpenFile> files) {
     var trueFileUris = files.stream().filter(f -> {
       if (!Utils.uriHasFileSchema(f.getUri())) {
         lsLogOutput.warn(format("URI '%s' is not in local filesystem, analysis not supported", f.getUri()));
@@ -181,7 +181,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     } else {
       lsLogOutput.debug(format("Queuing analysis of %d files", trueFileUris.size()));
     }
-    var task = new AnalysisTask(trueFileUris, shouldFetchServerIssues);
+    var task = new AnalysisTask(trueFileUris);
     var future = asyncExecutor.submit(() -> analysisTaskExecutor.run(task));
     task.setFuture(future);
     return future;
@@ -201,7 +201,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     var openedFileUrisInFolder = openFilesCache.getAll().stream()
       .filter(f -> belongToFolder(folder, f.getUri()))
       .collect(Collectors.toList());
-    analyzeAsync(openedFileUrisInFolder, false);
+    analyzeAsync(openedFileUrisInFolder);
   }
 
   private boolean belongToFolder(WorkspaceFolderWrapper folder, URI fileUri) {
@@ -238,21 +238,21 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
       .filter(VersionnedOpenFile::isCOrCpp)
       .filter(f -> belongToFolder(folder, f.getUri()))
       .collect(Collectors.toList());
-    analyzeAsync(openedCorCppFileUrisInFolder, false);
+    analyzeAsync(openedCorCppFileUrisInFolder);
   }
 
   private void analyzeAllUnboundOpenFiles() {
     var openedUnboundFileUris = openFilesCache.getAll().stream()
       .filter(f -> bindingManager.getBinding(f.getUri()).isEmpty())
       .collect(Collectors.toList());
-    analyzeAsync(openedUnboundFileUris, false);
+    analyzeAsync(openedUnboundFileUris);
   }
 
   private void analyzeAllOpenJavaFiles() {
     var openedJavaFileUris = openFilesCache.getAll().stream()
       .filter(VersionnedOpenFile::isJava)
       .collect(toList());
-    analyzeAsync(openedJavaFileUris, false);
+    analyzeAsync(openedJavaFileUris);
   }
 
   public void didClasspathUpdate() {
