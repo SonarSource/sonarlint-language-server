@@ -165,6 +165,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var projectKey = requireNonNull(settings.getProjectKey());
     engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, null);
     engine.sync(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), Set.of(projectKey), null);
+    var currentBranchName = resolveBranchNameForFolder(folderRoot.toUri());
+    engine.syncServerIssues(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, currentBranchName, null);
+    engine.syncServerTaintIssues(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, currentBranchName, null);
 
     var ideFilePaths = FileUtils.allRelativePathsForFilesInTree(folderRoot);
     var projectBinding = engine.calculatePathPrefixes(projectKey, ideFilePaths);
