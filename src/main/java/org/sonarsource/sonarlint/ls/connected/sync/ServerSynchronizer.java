@@ -62,7 +62,7 @@ public class ServerSynchronizer {
     this.analysisScheduler = analysisScheduler;
     var syncPeriod = Long.parseLong(StringUtils.defaultIfBlank(System.getenv("SONARLINT_INTERNAL_SYNC_PERIOD"), "3600")) * 1000;
     this.serverSyncTimer = serverSyncTimer;
-    this.serverSyncTimer.scheduleAtFixedRate(new SyncTask(), 10 * 1000L, syncPeriod);
+    this.serverSyncTimer.scheduleAtFixedRate(new SyncTask(), syncPeriod, syncPeriod);
   }
 
   public void updateAllBindings(CancelChecker cancelToken, @Nullable Either<String, Integer> workDoneToken) {
