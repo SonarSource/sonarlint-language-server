@@ -251,7 +251,7 @@ public class AnalysisTaskExecutor {
       var connectedEngine = binding.get().getEngine();
       var excludedByServerConfiguration = connectedEngine.getExcludedFiles(binding.get().getBinding(),
         filesToAnalyze.keySet(),
-        uri -> getFileRelativePath(Paths.get(baseDirUri), uri),
+        uri -> FileUtils.getFileRelativePath(Paths.get(baseDirUri), uri, lsLogOutput),
         uri -> fileTypeClassifier.isTest(settings, uri, javaConfigCache.getOrFetch(uri)));
       excludedByServerConfiguration.forEach(f -> {
         lsLogOutput.debug(format("Skip analysis of file '%s' excluded by server configuration", f));
@@ -264,16 +264,6 @@ public class AnalysisTaskExecutor {
       analyzeSingleModuleNonExcluded(task, settings, binding, nonExcludedFiles, baseDirUri, javaConfigs);
     }
 
-  }
-
-  String getFileRelativePath(Path baseDir, URI uri) {
-    try {
-      return baseDir.relativize(Paths.get(uri)).toString();
-    } catch (IllegalArgumentException e) {
-      // Possibly the file has not the same root as baseDir
-      lsLogOutput.debug("Unable to relativize " + uri + " to " + baseDir);
-      return Paths.get(uri).toString();
-    }
   }
 
   private static Path findCommonPrefix(List<Path> paths) {
@@ -446,18 +436,9 @@ public class AnalysisTaskExecutor {
       engine.getPluginDetails(),
       () -> filesToAnalyze.forEach((fileUri, openFile) -> {
         var issues = issuesPerFiles.computeIfAbsent(fileUri, uri -> List.of());
-        var filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, fileUri));
+        var filePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(baseDir, fileUri, lsLogOutput));
         serverIssueTracker.matchAndTrack(filePath, issues, issueListener, task.shouldFetchServerIssues());
-        if (task.shouldFetchServerIssues()) {
-          var branchName = bindingManager.resolveBranchNameForFolder(fileUri);
-          var serverIssues = engine.getServerTaintIssues(binding.getBinding(), branchName, filePath);
-          taintVulnerabilitiesCache.reload(fileUri, serverIssues);
-          long foundVulnerabilities = taintVulnerabilitiesCache.getAsDiagnostics(fileUri).count();
-          if (foundVulnerabilities > 0) {
-            lsLogOutput
-              .info(format("Fetched %s %s from %s", foundVulnerabilities, pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), binding.getConnectionId()));
-          }
-        }
+        // TODO fetching taints moved from here
       }));
   }
 
@@ -474,7 +455,7 @@ public class AnalysisTaskExecutor {
     }
     filesToAnalyze.forEach((uri, openFile) -> configurationBuilder
       .addInputFiles(
-        new AnalysisClientInputFile(uri, getFileRelativePath(baseDir, uri), openFile.getContent(),
+        new AnalysisClientInputFile(uri, FileUtils.getFileRelativePath(baseDir, uri, lsLogOutput), openFile.getContent(),
           fileTypeClassifier.isTest(settings, uri, ofNullable(javaConfigs.get(uri))),
           openFile.getLanguageId())));
     return configurationBuilder;

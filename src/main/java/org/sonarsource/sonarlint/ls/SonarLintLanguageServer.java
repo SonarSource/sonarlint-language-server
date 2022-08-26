@@ -70,6 +70,7 @@ import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.SecurityHotspotsHandlerServer;
+import org.sonarsource.sonarlint.ls.connected.TaintIssuesUpdater;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
@@ -121,6 +122,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final DiagnosticPublisher diagnosticPublisher;
   private final ScmIgnoredCache scmIgnoredCache;
   private final LanguageClientLogger lsLogOutput;
+
+  private final TaintIssuesUpdater taintIssuesUpdater;
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
@@ -185,6 +188,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
     this.workspaceFoldersManager.addListener(this.branchManager);
+    this.taintIssuesUpdater = new TaintIssuesUpdater(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, lsLogOutput, settingsManager);
     launcher.startListening();
   }
 
@@ -329,6 +333,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       if (Boolean.TRUE.equals(isOpen)) {
         var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
         analysisScheduler.didOpen(file);
+        taintIssuesUpdater.updateTaintIssues(uri);
       } else {
         SonarLintLogger.get().debug("Skipping analysis for preview of file {}", uri);
       }
