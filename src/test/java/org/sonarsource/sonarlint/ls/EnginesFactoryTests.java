@@ -62,7 +62,8 @@ class EnginesFactoryTests {
       Language.PYTHON,
       Language.SECRETS,
       Language.TS,
-      Language.XML);
+      Language.XML,
+      Language.YAML);
   }
 
   @Test
