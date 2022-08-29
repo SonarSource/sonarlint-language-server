@@ -21,11 +21,13 @@ package org.sonarsource.sonarlint.ls.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.DosFileAttributes;
@@ -34,9 +36,11 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 
 public class FileUtils {
 
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
   private static final String PATH_SEPARATOR_PATTERN = Pattern.quote(File.separator);
   static final String OS_NAME_PROPERTY = "os.name";
   private static final boolean WINDOWS = System.getProperty(OS_NAME_PROPERTY) != null && System.getProperty(OS_NAME_PROPERTY).startsWith("Windows");
@@ -139,6 +143,16 @@ public class FileUtils {
     }
   }
 
+  public static String getFileRelativePath(Path baseDir, URI uri) {
+    var path = Paths.get(uri);
+    try {
+      return baseDir.relativize(path).toString();
+    } catch (IllegalArgumentException e) {
+      // Possibly the file has not the same root as baseDir
+      LOG.debug("Unable to relativize " + uri + " to " + baseDir);
+      return path.toString();
+    }
+  }
 
   /**
    * On Windows, retries the provided IO operation a number of times, in an effort to make the operation succeed.
