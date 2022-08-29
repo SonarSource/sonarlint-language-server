@@ -251,7 +251,7 @@ public class AnalysisTaskExecutor {
       var connectedEngine = binding.get().getEngine();
       var excludedByServerConfiguration = connectedEngine.getExcludedFiles(binding.get().getBinding(),
         filesToAnalyze.keySet(),
-        uri -> FileUtils.getFileRelativePath(Paths.get(baseDirUri), uri, lsLogOutput),
+        uri -> FileUtils.getFileRelativePath(Paths.get(baseDirUri), uri),
         uri -> fileTypeClassifier.isTest(settings, uri, javaConfigCache.getOrFetch(uri)));
       excludedByServerConfiguration.forEach(f -> {
         lsLogOutput.debug(format("Skip analysis of file '%s' excluded by server configuration", f));
@@ -436,7 +436,7 @@ public class AnalysisTaskExecutor {
       engine.getPluginDetails(),
       () -> filesToAnalyze.forEach((fileUri, openFile) -> {
         var issues = issuesPerFiles.computeIfAbsent(fileUri, uri -> List.of());
-        var filePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(baseDir, fileUri, lsLogOutput));
+        var filePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(baseDir, fileUri));
         serverIssueTracker.matchAndTrack(filePath, issues, issueListener, task.shouldFetchServerIssues());
       }));
   }
@@ -454,7 +454,7 @@ public class AnalysisTaskExecutor {
     }
     filesToAnalyze.forEach((uri, openFile) -> configurationBuilder
       .addInputFiles(
-        new AnalysisClientInputFile(uri, FileUtils.getFileRelativePath(baseDir, uri, lsLogOutput), openFile.getContent(),
+        new AnalysisClientInputFile(uri, FileUtils.getFileRelativePath(baseDir, uri), openFile.getContent(),
           fileTypeClassifier.isTest(settings, uri, ofNullable(javaConfigs.get(uri))),
           openFile.getLanguageId())));
     return configurationBuilder;

@@ -36,10 +36,11 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 
 public class FileUtils {
 
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
   private static final String PATH_SEPARATOR_PATTERN = Pattern.quote(File.separator);
   static final String OS_NAME_PROPERTY = "os.name";
   private static final boolean WINDOWS = System.getProperty(OS_NAME_PROPERTY) != null && System.getProperty(OS_NAME_PROPERTY).startsWith("Windows");
@@ -142,13 +143,13 @@ public class FileUtils {
     }
   }
 
-  public static String getFileRelativePath(Path baseDir, URI uri, LanguageClientLogger logger) {
+  public static String getFileRelativePath(Path baseDir, URI uri) {
     var path = Paths.get(uri);
     try {
       return baseDir.relativize(path).toString();
     } catch (IllegalArgumentException e) {
       // Possibly the file has not the same root as baseDir
-      logger.debug("Unable to relativize " + uri + " to " + baseDir);
+      LOG.debug("Unable to relativize " + uri + " to " + baseDir);
       return path.toString();
     }
   }

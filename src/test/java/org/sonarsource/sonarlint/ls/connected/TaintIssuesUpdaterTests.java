@@ -34,10 +34,10 @@ import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
+import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -55,32 +55,37 @@ import static org.mockito.Mockito.when;
 
 class TaintIssuesUpdaterTests {
 
+  @RegisterExtension
+  SonarLintLogTester logTester = new SonarLintLogTester();
   private final static URI FILE_URI = URI.create("file:///some/file/uri/Name.java");
   private final static URI FOLDER_URI = URI.create("file:///folder/uri");
+  private final static String PROJECT_KEY = "projectKey";
   private final static String CONNECTION_ID = "Connection ID";
+  private final static String BRANCH_NAME = "my/branch";
   private final WorkspaceFoldersManager workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
   private final WorkspaceFolderWrapper workspaceFolderWrapper = mock(WorkspaceFolderWrapper.class);
   private final WorkspaceSettings workspaceSettings = mock(WorkspaceSettings.class);
   private final ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
   private final ProjectBindingWrapper bindingWrapper = mock(ProjectBindingWrapper.class);
   private final ProjectBinding binding = mock(ProjectBinding.class);
-  private final LanguageClientLogger lsLogOutput = mock(LanguageClientLogger.class);
+  private final DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
   private final SettingsManager settingsManager = mock(SettingsManager.class);
   private final ServerConnectionSettings serverConnectionSettings = mock(ServerConnectionSettings.class);
   private final ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient = mock(ServerConnectionSettings.EndpointParamsAndHttpClient.class);
   private final ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
   private final Map<String, ServerConnectionSettings> SERVER_CONNECTIONS = Map.of(CONNECTION_ID, serverConnectionSettings);
-  private final TaintIssuesUpdater underTest = new TaintIssuesUpdater(bindingManager, new TaintVulnerabilitiesCache(), workspaceFoldersManager, lsLogOutput, settingsManager);
+  private final TaintIssuesUpdater underTest = new TaintIssuesUpdater(bindingManager, new TaintVulnerabilitiesCache(), workspaceFoldersManager, settingsManager, diagnosticPublisher);
 
   @BeforeEach
   void init() {
     when(bindingManager.getBinding(FILE_URI)).thenReturn(Optional.of(bindingWrapper));
+    when(bindingManager.resolveBranchNameForFolder(FOLDER_URI)).thenReturn(BRANCH_NAME);
     when(workspaceFoldersManager.findFolderForFile(FILE_URI)).thenReturn(Optional.of(workspaceFolderWrapper));
     when(workspaceFolderWrapper.getUri()).thenReturn(FOLDER_URI);
     when(bindingWrapper.getEngine()).thenReturn(engine);
     when(bindingWrapper.getConnectionId()).thenReturn(CONNECTION_ID);
     when(bindingWrapper.getBinding()).thenReturn(binding);
-    when(binding.projectKey()).thenReturn("projectKey");
+    when(binding.projectKey()).thenReturn(PROJECT_KEY);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     when(workspaceSettings.getServerConnections()).thenReturn(SERVER_CONNECTIONS);
     when(serverConnectionSettings.getServerConfiguration()).thenReturn(endpointParamsAndHttpClient);
@@ -88,24 +93,27 @@ class TaintIssuesUpdaterTests {
     when(endpointParamsAndHttpClient.getHttpClient()).thenReturn(mock(ApacheHttpClient.class));
   }
 
-
-  @Test
-  void should_default_branch_to_master() {
-    when(bindingManager.resolveBranchNameForFolder(FILE_URI)).thenReturn(null);
-
-    underTest.updateTaintIssues(FILE_URI);
-
-    verify(engine).syncServerTaintIssues(any(), any(), any(), eq("master"), isNull());
-  }
-
   @Test
   void should_sync_and_download_taints() {
     underTest.updateTaintIssues(FILE_URI);
 
-    verify(engine).syncServerTaintIssues(any(), any(), any(), eq("master"), isNull());
-    verify(engine).downloadAllServerTaintIssuesForFile(any(), any(), any(), anyString(), eq("master"), isNull());
-    verify(engine).getServerTaintIssues(any(), eq("master"), any());
+    verify(engine).syncServerTaintIssues(any(), any(), eq(PROJECT_KEY), eq(BRANCH_NAME), isNull());
+    verify(engine).downloadAllServerTaintIssuesForFile(any(), any(), any(), anyString(), eq(BRANCH_NAME), isNull());
+    verify(engine).getServerTaintIssues(any(), eq(BRANCH_NAME), any());
+    verify(diagnosticPublisher).publishDiagnostics(FILE_URI);
+    verifyNoMoreInteractions(diagnosticPublisher);
     verifyNoMoreInteractions(engine);
+  }
+
+  @Test
+  void should_log_number_of_downloaded_taints() {
+    var taint1 = new ServerTaintIssue("taint1", false, "ruleKey1", "message", "filePath", Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY, new TextRangeWithHash(1,1,1,1,""));
+    var taint2 = new ServerTaintIssue("taint2", false, "ruleKey2", "message", "filePath", Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY, new TextRangeWithHash(1,1,1,1,""));
+    when(engine.getServerTaintIssues(any(), any(), any())).thenReturn(List.of(taint1, taint2));
+
+    underTest.updateTaintIssues(FILE_URI);
+
+    assertThat(logTester.logs()).containsExactly("Fetched 2 vulnerabilities from Connection ID");
   }
 
 }

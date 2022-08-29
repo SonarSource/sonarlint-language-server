@@ -21,9 +21,9 @@ package org.sonarsource.sonarlint.ls.connected;
 
 import java.net.URI;
 import java.nio.file.Paths;
-import org.apache.commons.lang3.StringUtils;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.util.FileUtils;
 
@@ -32,19 +32,21 @@ import static org.sonarsource.sonarlint.ls.util.Utils.pluralize;
 
 public class TaintIssuesUpdater {
 
+  private static final SonarLintLogger LOG = SonarLintLogger.get();
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final ProjectBindingManager bindingManager;
-  private final LanguageClientLogger lsLogOutput;
   private final SettingsManager settingsManager;
+  private final DiagnosticPublisher diagnosticPublisher;
+
 
   public TaintIssuesUpdater(ProjectBindingManager bindingManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
-    WorkspaceFoldersManager workspaceFoldersManager, LanguageClientLogger lsLogOutput, SettingsManager settingsManager) {
+    WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, DiagnosticPublisher diagnosticPublisher) {
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
-    this.lsLogOutput = lsLogOutput;
+    this.diagnosticPublisher = diagnosticPublisher;
   }
 
   public void updateTaintIssues(URI fileUri) {
@@ -58,13 +60,11 @@ public class TaintIssuesUpdater {
       return;
     }
     var bindingWrapper = bindingWrapperOptional.get();
+    var folderUri = folderForFile.get().getUri();
 
     var binding = bindingWrapper.getBinding();
     var engine = bindingWrapper.getEngine();
-    var branchName = bindingManager.resolveBranchNameForFolder(fileUri);
-    if (StringUtils.isEmpty(branchName)) {
-      branchName = "master";
-    }
+    var branchName = bindingManager.resolveBranchNameForFolder(folderUri);
     var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(bindingWrapper.getConnectionId());
     var serverConfiguration = connectionSettings.getServerConfiguration();
 
@@ -73,8 +73,7 @@ public class TaintIssuesUpdater {
       serverConfiguration.getHttpClient(), binding.projectKey(), branchName, null);
 
     // download taints
-    var folderUri = folderForFile.get().getUri();
-    var sqFilePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(Paths.get(folderUri), fileUri, lsLogOutput));
+    var sqFilePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(Paths.get(folderUri), fileUri));
     engine.downloadAllServerTaintIssuesForFile(serverConfiguration.getEndpointParams(),
       serverConfiguration.getHttpClient(), binding,
       sqFilePath, branchName, null);
@@ -84,10 +83,10 @@ public class TaintIssuesUpdater {
     taintVulnerabilitiesCache.reload(fileUri, serverIssues);
     long foundVulnerabilities = taintVulnerabilitiesCache.getAsDiagnostics(fileUri).count();
     if (foundVulnerabilities > 0) {
-      lsLogOutput
-        .info(format("Fetched %s %s from %s", foundVulnerabilities,
+      LOG.info(format("Fetched %s %s from %s", foundVulnerabilities,
           pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), bindingWrapper.getConnectionId()));
     }
+    diagnosticPublisher.publishDiagnostics(fileUri);
   }
 
 }
