@@ -55,8 +55,6 @@ import static org.mockito.Mockito.when;
 
 class TaintIssuesUpdaterTests {
 
-  @RegisterExtension
-  SonarLintLogTester logTester = new SonarLintLogTester();
   private final static URI FILE_URI = URI.create("file:///some/file/uri/Name.java");
   private final static URI FOLDER_URI = URI.create("file:///folder/uri");
   private final static String CONNECTION_ID = "Connection ID";
@@ -108,17 +106,6 @@ class TaintIssuesUpdaterTests {
     verify(engine).downloadAllServerTaintIssuesForFile(any(), any(), any(), anyString(), eq("master"), isNull());
     verify(engine).getServerTaintIssues(any(), eq("master"), any());
     verifyNoMoreInteractions(engine);
-  }
-
-  @Test
-  void should_log_number_of_downloaded_taints() {
-    var taint1 = new ServerTaintIssue("taint1", false, "ruleKey1", "message", "filePath", Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY, new TextRangeWithHash(1,1,1,1,""));
-    var taint2 = new ServerTaintIssue("taint2", false, "ruleKey2", "message", "filePath", Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY, new TextRangeWithHash(1,1,1,1,""));
-    when(engine.getServerTaintIssues(any(), any(), any())).thenReturn(List.of(taint1, taint2));
-
-    underTest.updateTaintIssues(FILE_URI);
-
-    assertThat(logTester.logs()).isEmpty();
   }
 
 }
