@@ -41,6 +41,7 @@ import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
+import testutils.ImmediateExecutorService;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -74,7 +75,8 @@ class TaintIssuesUpdaterTests {
   private final ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient = mock(ServerConnectionSettings.EndpointParamsAndHttpClient.class);
   private final ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
   private final Map<String, ServerConnectionSettings> SERVER_CONNECTIONS = Map.of(CONNECTION_ID, serverConnectionSettings);
-  private final TaintIssuesUpdater underTest = new TaintIssuesUpdater(bindingManager, new TaintVulnerabilitiesCache(), workspaceFoldersManager, settingsManager, diagnosticPublisher);
+  private final ImmediateExecutorService executorService = new ImmediateExecutorService();
+  private final TaintIssuesUpdater underTest = new TaintIssuesUpdater(bindingManager, new TaintVulnerabilitiesCache(), workspaceFoldersManager, settingsManager, diagnosticPublisher, executorService);
 
   @BeforeEach
   void init() {
@@ -95,7 +97,7 @@ class TaintIssuesUpdaterTests {
 
   @Test
   void should_sync_and_download_taints() {
-    underTest.updateTaintIssues(FILE_URI);
+    underTest.updateTaintIssuesAsync(FILE_URI);
 
     verify(engine).syncServerTaintIssues(any(), any(), eq(PROJECT_KEY), eq(BRANCH_NAME), isNull());
     verify(engine).downloadAllServerTaintIssuesForFile(any(), any(), any(), anyString(), eq(BRANCH_NAME), isNull());
@@ -111,9 +113,16 @@ class TaintIssuesUpdaterTests {
     var taint2 = new ServerTaintIssue("taint2", false, "ruleKey2", "message", "filePath", Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY, new TextRangeWithHash(1,1,1,1,""));
     when(engine.getServerTaintIssues(any(), any(), any())).thenReturn(List.of(taint1, taint2));
 
-    underTest.updateTaintIssues(FILE_URI);
+    underTest.updateTaintIssuesAsync(FILE_URI);
 
     assertThat(logTester.logs()).containsExactly("Fetched 2 vulnerabilities from Connection ID");
+  }
+
+  @Test
+  void should_stop_executor_on_shutdown() {
+    underTest.shutdown();
+
+    assertThat(executorService.isShutdown()).isTrue();
   }
 
 }

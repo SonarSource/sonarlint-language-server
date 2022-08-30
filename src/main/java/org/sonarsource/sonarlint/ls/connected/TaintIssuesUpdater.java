@@ -21,11 +21,14 @@ package org.sonarsource.sonarlint.ls.connected;
 
 import java.net.URI;
 import java.nio.file.Paths;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.util.FileUtils;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
 import static org.sonarsource.sonarlint.ls.util.Utils.pluralize;
@@ -38,18 +41,29 @@ public class TaintIssuesUpdater {
   private final ProjectBindingManager bindingManager;
   private final SettingsManager settingsManager;
   private final DiagnosticPublisher diagnosticPublisher;
-
+  private final ExecutorService asyncExecutor;
 
   public TaintIssuesUpdater(ProjectBindingManager bindingManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
     WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, DiagnosticPublisher diagnosticPublisher) {
+    this(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, settingsManager, diagnosticPublisher,
+      Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Analysis Scheduler", false)));
+  }
+
+  TaintIssuesUpdater(ProjectBindingManager bindingManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache, WorkspaceFoldersManager workspaceFoldersManager,
+    SettingsManager settingsManager, DiagnosticPublisher diagnosticPublisher, ExecutorService asyncExecutor) {
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
     this.diagnosticPublisher = diagnosticPublisher;
+    this.asyncExecutor = asyncExecutor;
   }
 
-  public void updateTaintIssues(URI fileUri) {
+  public void updateTaintIssuesAsync(URI fileUri) {
+    asyncExecutor.submit(() -> updateTaintIssues(fileUri));
+  }
+
+  private void updateTaintIssues(URI fileUri) {
     var bindingWrapperOptional = bindingManager.getBinding(fileUri);
 
     if (bindingWrapperOptional.isEmpty()) {
@@ -84,9 +98,12 @@ public class TaintIssuesUpdater {
     long foundVulnerabilities = taintVulnerabilitiesCache.getAsDiagnostics(fileUri).count();
     if (foundVulnerabilities > 0) {
       LOG.info(format("Fetched %s %s from %s", foundVulnerabilities,
-          pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), bindingWrapper.getConnectionId()));
+        pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), bindingWrapper.getConnectionId()));
     }
     diagnosticPublisher.publishDiagnostics(fileUri);
   }
 
+  public void shutdown() {
+    Utils.shutdownAndAwait(asyncExecutor, true);
+  }
 }
