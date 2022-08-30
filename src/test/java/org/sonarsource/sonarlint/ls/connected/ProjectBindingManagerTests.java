@@ -823,7 +823,7 @@ class ProjectBindingManagerTests {
     var projectBindingWrapperMock = mock(ProjectBindingWrapper.class);
     var projectBinding = mock(ProjectBinding.class);
     when(projectBindingWrapperMock.getBinding()).thenReturn(projectBinding);
-    folderBindingCache.put(fileInAWorkspaceFolderPath.toUri(), Optional.of(projectBindingWrapperMock));
+    folderBindingCache.put(workspaceFolderPath.toUri(), Optional.of(projectBindingWrapperMock));
     when(projectBindingWrapperMock.getEngine()).thenReturn(fakeEngine);
     when(projectBinding.serverPathToIdePath(fileInAWorkspaceFolderPath.toUri().toString())).thenReturn(Optional.of(fileInAWorkspaceFolderPath.toString()));
   }

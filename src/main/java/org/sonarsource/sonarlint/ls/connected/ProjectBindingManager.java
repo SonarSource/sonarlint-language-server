@@ -259,8 +259,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       unbind(folder);
     } else if (newValue.hasBinding()
       && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
-        forceRebindDuringNextAnalysis(folder);
-      }
+      forceRebindDuringNextAnalysis(folder);
+    }
   }
 
   private void forceRebindDuringNextAnalysis(@Nullable WorkspaceFolderWrapper folder) {
@@ -437,12 +437,12 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     });
   }
 
-  public void handleEvents(ServerEvent event){
-    if(event instanceof TaintVulnerabilityRaisedEvent){
+  public void handleEvents(ServerEvent event) {
+    if (event instanceof TaintVulnerabilityRaisedEvent) {
       var filePathFromEvent = ((TaintVulnerabilityRaisedEvent) event).getMainLocation().getFilePath();
       var localFileUri = serverPathToFileUri(filePathFromEvent);
       localFileUri.ifPresent(this::updateTaintIssueCacheFromStorageForFile);
-    } else if(event instanceof TaintVulnerabilityClosedEvent ||
+    } else if (event instanceof TaintVulnerabilityClosedEvent ||
       event instanceof IssueChangedEvent) {
       taintVulnerabilitiesCache.getAllFilesWithTaintIssues()
         .forEach(this::updateTaintIssueCacheFromStorageForFile);
@@ -451,11 +451,11 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private void updateTaintIssueCacheFromStorageForFile(URI fileUri) {
     var workspaceFolder = foldersManager.findFolderForFile(fileUri);
-    if(workspaceFolder.isPresent()){
-      var baseDir = Paths.get(workspaceFolder.get().getUri());
-      var filePath = FileUtils.toSonarQubePath(getFileRelativePath(baseDir, fileUri));
-      Optional<ProjectBindingWrapper> folderBinding = folderBindingCache.get(fileUri);
-      if(folderBinding.isPresent()){
+    if (workspaceFolder.isPresent()) {
+      var baseDir = workspaceFolder.get().getUri();
+      var filePath = FileUtils.toSonarQubePath(getFileRelativePath(Paths.get(baseDir), fileUri));
+      Optional<ProjectBindingWrapper> folderBinding = folderBindingCache.get(baseDir);
+      if (folderBinding.isPresent()) {
         var engine = folderBinding.get().getEngine();
         var branchName = this.resolveBranchNameForFolder(fileUri);
         var serverTaintIssues = engine.getServerTaintIssues(folderBinding.get().getBinding(), branchName, filePath);
