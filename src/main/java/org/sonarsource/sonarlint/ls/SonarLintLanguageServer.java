@@ -296,6 +296,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       httpClientProvider::close,
       serverNotifications::shutdown,
       moduleEventsProcessor::shutdown,
+      taintIssuesUpdater::shutdown,
       // shutdown engines after the rest so that no operations remain on them, and they won't be recreated accidentally
       bindingManager::shutdown,
       serverSynchronizer::shutdown,
@@ -339,7 +340,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       if (Boolean.TRUE.equals(isOpen)) {
         var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
         analysisScheduler.didOpen(file);
-        taintIssuesUpdater.updateTaintIssues(uri);
+        taintIssuesUpdater.updateTaintIssuesAsync(uri);
       } else {
         SonarLintLogger.get().debug("Skipping analysis for preview of file {}", uri);
       }

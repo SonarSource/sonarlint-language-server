@@ -31,19 +31,22 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public class ImmediateExecutorService implements ExecutorService {
+  private boolean shutdown;
+
   @Override
   public void shutdown() {
-
+    shutdown = true;
   }
 
   @Override
   public List<Runnable> shutdownNow() {
+    shutdown = true;
     return null;
   }
 
   @Override
   public boolean isShutdown() {
-    return false;
+    return shutdown;
   }
 
   @Override
