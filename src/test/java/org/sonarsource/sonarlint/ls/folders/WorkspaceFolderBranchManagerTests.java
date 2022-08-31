@@ -110,6 +110,30 @@ class WorkspaceFolderBranchManagerTests {
   }
 
   @Test
+  void didBranchNameChangeShouldFallbackToMainBranchNameFromServer(@TempDir Path gitProjectBasedir) throws Exception {
+    String currentBranchName = "not/on/server";
+    createAndCheckoutBranch(gitProjectBasedir, currentBranchName);
+
+    var folderUri = gitProjectBasedir.toUri();
+
+    var bindingWrapper = mock(ProjectBindingWrapper.class);
+    when(bindingManager.getBinding(folderUri)).thenReturn(Optional.of(bindingWrapper));
+    var engine = mock(ConnectedSonarLintEngine.class);
+    when(bindingWrapper.getEngine()).thenReturn(engine);
+    String projectKey = "project_key";
+    when(bindingWrapper.getBinding()).thenReturn(new ProjectBinding(projectKey, null, null));
+    when(engine.getServerBranches(projectKey)).thenReturn(new ProjectBranches(Set.of("server-main", "other-branch"), "server-main"));
+
+    underTest.didBranchNameChange(folderUri, currentBranchName);
+
+    var branchCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.ReferenceBranchForFolder.class);
+    verify(client).setReferenceBranchNameForFolder(branchCaptor.capture());
+    var capturedValue = branchCaptor.getValue();
+    assertThat(capturedValue.getFolderUri()).isEqualTo(folderUri.toString());
+    assertThat(capturedValue.getBranchName()).isEqualTo("server-main");
+  }
+
+  @Test
   void didBranchNameChangeTriggersSync(@TempDir Path gitProjectBasedir) throws Exception {
     createAndCheckoutBranch(gitProjectBasedir, "branchName");
     var folderUri = gitProjectBasedir.toUri();

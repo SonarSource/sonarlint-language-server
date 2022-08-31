@@ -87,7 +87,10 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
             electedBranchName = GitUtils.electBestMatchingServerBranchForCurrentHead(repo, serverBranchNames, serverBranches.getMainBranchName());
           }
         }
-        serverSynchronizer.syncIssues(binding, electedBranchName != null ? electedBranchName : MASTER_BRANCH);
+        if (electedBranchName == null) {
+          electedBranchName = serverBranches.getMainBranchName();
+        }
+        serverSynchronizer.syncIssues(binding, electedBranchName);
       }
       client.setReferenceBranchNameForFolder(SonarLintExtendedLanguageClient.ReferenceBranchForFolder.of(folderUri.toString(), electedBranchName));
       referenceBranchNameByFolderUri.put(folderUri, Optional.ofNullable(electedBranchName));
