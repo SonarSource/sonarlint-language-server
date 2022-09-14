@@ -89,7 +89,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final SonarLintExtendedLanguageClient client;
   private final EnginesFactory enginesFactory;
   private AnalysisScheduler analysisManager;
-  private Function<URI, String> branchNameForFolderSupplier;
+  private Function<URI, Optional<String>> branchNameForFolderSupplier;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final DiagnosticPublisher diagnosticPublisher;
 
@@ -177,7 +177,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var projectKey = requireNonNull(settings.getProjectKey());
     engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, null);
     engine.sync(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), Set.of(projectKey), null);
-    var currentBranchName = resolveBranchNameForFolder(folderRoot.toUri());
+    Supplier<String> branchProvider = () -> resolveBranchNameForFolder(folderRoot.toUri()).orElse(engine.getServerBranches(projectKey).getMainBranchName());
+    var currentBranchName = branchProvider.get();
     engine.syncServerIssues(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, currentBranchName, null);
     engine.syncServerTaintIssues(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, currentBranchName, null);
 
@@ -186,7 +187,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     LOG.debug("Resolved binding {} for folder {}",
       ToStringBuilder.reflectionToString(projectBinding, ToStringStyle.SHORT_PREFIX_STYLE),
       folderRoot);
-    Supplier<String> branchProvider = () -> resolveBranchNameForFolder(folderRoot.toUri());
     var issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, endpointParamsAndHttpClient, projectBinding, branchProvider);
     return new ProjectBindingWrapper(connectionId, projectBinding, engine, issueTrackerWrapper);
   }
@@ -419,7 +419,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       String projectKey = requireNonNull(folderSettings.getProjectKey());
       projectKeyByConnectionIdsToUpdate.computeIfAbsent(connectionId, id -> new HashMap<>())
         .computeIfAbsent(projectKey, k -> new HashSet<>())
-        .add(folder != null ? resolveBranchNameForFolder(folder.getUri()) : "master");
+        .add(folder != null ? resolveBranchNameForFolder(folder.getUri()).orElse(null) : null);
     });
     return projectKeyByConnectionIdsToUpdate;
   }
@@ -456,9 +456,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       var filePath = FileUtils.toSonarQubePath(getFileRelativePath(Paths.get(baseDir), fileUri));
       Optional<ProjectBindingWrapper> folderBinding = folderBindingCache.get(baseDir);
       if (folderBinding.isPresent()) {
-        var engine = folderBinding.get().getEngine();
-        var branchName = this.resolveBranchNameForFolder(fileUri);
-        var serverTaintIssues = engine.getServerTaintIssues(folderBinding.get().getBinding(), branchName, filePath);
+        ProjectBindingWrapper bindingWrapper = folderBinding.get();
+        var engine = bindingWrapper.getEngine();
+        var branchName = this.resolveBranchNameForFolder(fileUri).orElse(engine.getServerBranches(bindingWrapper.getBinding().projectKey()).getMainBranchName());
+        var serverTaintIssues = engine.getServerTaintIssues(bindingWrapper.getBinding(), branchName, filePath);
         taintVulnerabilitiesCache.reload(fileUri, serverTaintIssues);
         diagnosticPublisher.publishDiagnostics(fileUri);
       }
@@ -503,11 +504,11 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       .filter(File::exists);
   }
 
-  public void setBranchResolver(Function<URI, String> getReferenceBranchNameForFolder) {
+  public void setBranchResolver(Function<URI, Optional<String>> getReferenceBranchNameForFolder) {
     this.branchNameForFolderSupplier = getReferenceBranchNameForFolder;
   }
 
-  public String resolveBranchNameForFolder(URI folder) {
+  public Optional<String> resolveBranchNameForFolder(URI folder) {
     return branchNameForFolderSupplier.apply(folder);
   }
 

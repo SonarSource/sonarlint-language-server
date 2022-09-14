@@ -68,7 +68,7 @@ class WorkspaceFolderBranchManagerTests {
   void projectNotUnderScm() throws Exception {
     var folderUri = new URI("file:///some_dir");
 
-    assertThat(underTest.getReferenceBranchNameForFolder(folderUri)).isEqualTo("master");
+    assertThat(underTest.getReferenceBranchNameForFolder(folderUri)).isEmpty();
   }
 
   @Test

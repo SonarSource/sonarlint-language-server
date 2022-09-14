@@ -40,7 +40,6 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleListener {
 
   private static final SonarLintLogger LOG = SonarLintLogger.get();
-  private static final String MASTER_BRANCH = "master";
 
   private final Map<URI, Optional<String>> referenceBranchNameByFolderUri = new ConcurrentHashMap<>();
   private final SonarLintExtendedLanguageClient client;
@@ -101,14 +100,14 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
    * @param folderUri a workspace folder's URI
    * @return the current known reference branch name for the folder, <code>master</code> if unknown or not in connected mode
    */
-  public String getReferenceBranchNameForFolder(URI folderUri) {
+  public Optional<String> getReferenceBranchNameForFolder(URI folderUri) {
     try {
       var uriWithoutTrailingSlash = StringUtils.removeEnd(folderUri.toString(), "/");
-      return referenceBranchNameByFolderUri.getOrDefault(new URI(uriWithoutTrailingSlash), Optional.empty()).orElse(MASTER_BRANCH);
+      return referenceBranchNameByFolderUri.getOrDefault(new URI(uriWithoutTrailingSlash), Optional.empty());
     } catch (URISyntaxException e) {
       LOG.error(e.getMessage());
     }
-    return MASTER_BRANCH;
+    return Optional.empty();
   }
 
   public void shutdown() {

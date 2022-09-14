@@ -154,7 +154,7 @@ class ServerSynchronizerTests {
     verify(syncTimer).scheduleAtFixedRate(syncTaskCaptor.capture(), anyLong(), anyLong());
     syncTask = syncTaskCaptor.getValue();
     bindingManager.setAnalysisManager(analysisManager);
-    bindingManager.setBranchResolver(uri -> "master");
+    bindingManager.setBranchResolver(uri -> Optional.of("master"));
   }
 
   private static WorkspaceSettings newWorkspaceSettingsWithServers(Map<String, ServerConnectionSettings> servers) {
