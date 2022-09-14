@@ -36,14 +36,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
-import org.eclipse.lsp4j.MessageParams;
-import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
+import org.sonarsource.sonarlint.core.client.api.connected.ProjectBranches;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
@@ -159,6 +158,8 @@ class ProjectBindingManagerTests {
       .thenReturn(newWorkspaceSettingsWithServers(servers));
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(UNBOUND_SETTINGS);
 
+    when(fakeEngine.getServerBranches(any(String.class))).thenReturn(new ProjectBranches(Set.of(BRANCH_NAME), BRANCH_NAME));
+    when(fakeEngine2.getServerBranches(any(String.class))).thenReturn(new ProjectBranches(Set.of(BRANCH_NAME), BRANCH_NAME));
     when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class))).thenReturn(fakeEngine);
 
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token"));
@@ -168,7 +169,7 @@ class ProjectBindingManagerTests {
 
     underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, folderBindingCache, null, taintVulnerabilitiesCache, diagnosticPublisher);
     underTest.setAnalysisManager(analysisManager);
-    underTest.setBranchResolver(uri -> "main");
+    underTest.setBranchResolver(uri -> Optional.of("main"));
 
     MAIN_LOCATION = new TaintVulnerabilityRaisedEvent.Location(fileInAWorkspaceFolderPath.toUri().toString(),
       "Change this code to not construct SQL queries directly from user-controlled data.",
@@ -473,7 +474,9 @@ class ProjectBindingManagerTests {
     when(enginesFactory.createConnectedEngine("myServer2", GLOBAL_SETTINGS_DIFFERENT_SERVER_ID))
       .thenReturn(fakeEngine2);
     var projectBinding = mock(ProjectBinding.class);
+    when(projectBinding.projectKey()).thenReturn(PROJECT_KEY);
     var projectBinding2 = mock(ProjectBinding.class);
+    when(projectBinding2.projectKey()).thenReturn(PROJECT_KEY2);
     when(fakeEngine.calculatePathPrefixes(any(), any())).thenReturn(projectBinding);
     when(fakeEngine2.calculatePathPrefixes(any(), any())).thenReturn(projectBinding2);
 
@@ -822,6 +825,7 @@ class ProjectBindingManagerTests {
     mockFileInAFolder();
     var projectBindingWrapperMock = mock(ProjectBindingWrapper.class);
     var projectBinding = mock(ProjectBinding.class);
+    when(projectBinding.projectKey()).thenReturn(PROJECT_KEY);
     when(projectBindingWrapperMock.getBinding()).thenReturn(projectBinding);
     folderBindingCache.put(workspaceFolderPath.toUri(), Optional.of(projectBindingWrapperMock));
     when(projectBindingWrapperMock.getEngine()).thenReturn(fakeEngine);

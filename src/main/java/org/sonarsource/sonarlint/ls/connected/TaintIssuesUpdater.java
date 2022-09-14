@@ -78,7 +78,7 @@ public class TaintIssuesUpdater {
 
     var binding = bindingWrapper.getBinding();
     var engine = bindingWrapper.getEngine();
-    var branchName = bindingManager.resolveBranchNameForFolder(folderUri);
+    var branchName = bindingManager.resolveBranchNameForFolder(folderUri).orElse(engine.getServerBranches(binding.projectKey()).getMainBranchName());
     var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(bindingWrapper.getConnectionId());
     var serverConfiguration = connectionSettings.getServerConfiguration();
 
