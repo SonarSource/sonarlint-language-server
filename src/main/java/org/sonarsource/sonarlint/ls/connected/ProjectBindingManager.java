@@ -177,7 +177,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var projectKey = requireNonNull(settings.getProjectKey());
     engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, null);
     engine.sync(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), Set.of(projectKey), null);
-    Supplier<String> branchProvider = () -> resolveBranchNameForFolder(folderRoot.toUri()).orElse(engine.getServerBranches(projectKey).getMainBranchName());
+    Supplier<String> branchProvider = () -> resolveBranchNameForFolder(folderRoot.toUri(), engine, projectKey);
     var currentBranchName = branchProvider.get();
     engine.syncServerIssues(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, currentBranchName, null);
     engine.syncServerTaintIssues(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, currentBranchName, null);
@@ -415,11 +415,11 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     connectedEngineCacheByConnectionId.keySet().forEach(id -> projectKeyByConnectionIdsToUpdate.computeIfAbsent(id, i -> new HashMap<>()));
     // Start and update all engines that used in a folder binding, even if not yet started
     forEachBoundFolder((folder, folderSettings) -> {
-      String connectionId = requireNonNull(folderSettings.getConnectionId());
-      String projectKey = requireNonNull(folderSettings.getProjectKey());
-      projectKeyByConnectionIdsToUpdate.computeIfAbsent(connectionId, id -> new HashMap<>())
+      var connectionId = requireNonNull(folderSettings.getConnectionId());
+      var projectKey = requireNonNull(folderSettings.getProjectKey());
+      getOrCreateConnectedEngine(connectionId).ifPresent(engine -> projectKeyByConnectionIdsToUpdate.computeIfAbsent(connectionId, id -> new HashMap<>())
         .computeIfAbsent(projectKey, k -> new HashSet<>())
-        .add(folder != null ? resolveBranchNameForFolder(folder.getUri()).orElse(null) : null);
+        .add(resolveBranchNameForFolder(folder == null ? null : folder.getUri(), engine, projectKey)));
     });
     return projectKeyByConnectionIdsToUpdate;
   }
@@ -458,7 +458,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       if (folderBinding.isPresent()) {
         ProjectBindingWrapper bindingWrapper = folderBinding.get();
         var engine = bindingWrapper.getEngine();
-        var branchName = this.resolveBranchNameForFolder(fileUri).orElse(engine.getServerBranches(bindingWrapper.getBinding().projectKey()).getMainBranchName());
+        var branchName = this.resolveBranchNameForFolder(fileUri, engine, bindingWrapper.getBinding().projectKey());
         var serverTaintIssues = engine.getServerTaintIssues(bindingWrapper.getBinding(), branchName, filePath);
         taintVulnerabilitiesCache.reload(fileUri, serverTaintIssues);
         diagnosticPublisher.publishDiagnostics(fileUri);
@@ -508,8 +508,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     this.branchNameForFolderSupplier = getReferenceBranchNameForFolder;
   }
 
-  public Optional<String> resolveBranchNameForFolder(URI folder) {
-    return branchNameForFolderSupplier.apply(folder);
+  public String resolveBranchNameForFolder(@Nullable URI folder, ConnectedSonarLintEngine engine, String projectKey) {
+    return branchNameForFolderSupplier.apply(folder).orElse(engine.getServerBranches(projectKey).getMainBranchName());
   }
 
   public Map<String, String> getRemoteProjects(@Nullable String maybeConnectionId) {
