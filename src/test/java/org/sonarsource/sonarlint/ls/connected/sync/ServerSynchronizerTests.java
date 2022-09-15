@@ -45,6 +45,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
+import org.sonarsource.sonarlint.core.client.api.connected.ProjectBranches;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
@@ -71,6 +72,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -136,6 +138,10 @@ class ServerSynchronizerTests {
     fileNotInAWorkspaceFolderPath = anotherFolderPath.resolve(FILE_PHP);
     Files.createFile(fileNotInAWorkspaceFolderPath);
 
+    ProjectBranches serverBranches = new ProjectBranches(Set.of("main", "dev"), "main");
+    when(fakeEngine.getServerBranches(anyString())).thenReturn(serverBranches);
+    when(fakeEngine2.getServerBranches(anyString())).thenReturn(serverBranches);
+
     when(settingsManager.getCurrentSettings())
       .thenReturn(newWorkspaceSettingsWithServers(servers));
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(UNBOUND_SETTINGS);
@@ -171,6 +177,9 @@ class ServerSynchronizerTests {
       .thenReturn(fakeEngine)
       .thenReturn(fakeEngine2);
 
+    bindingManager.getOrCreateConnectedEngine(CONNECTION_ID);
+    bindingManager.getOrCreateConnectedEngine(CONNECTION_ID2);
+
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
@@ -193,6 +202,9 @@ class ServerSynchronizerTests {
     when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class)))
       .thenReturn(fakeEngine)
       .thenReturn(fakeEngine2);
+
+    bindingManager.getOrCreateConnectedEngine(CONNECTION_ID);
+    bindingManager.getOrCreateConnectedEngine(CONNECTION_ID2);
 
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
@@ -218,6 +230,8 @@ class ServerSynchronizerTests {
     when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class)))
       .thenReturn(fakeEngine);
 
+    bindingManager.getOrCreateConnectedEngine(CONNECTION_ID);
+
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
@@ -241,6 +255,8 @@ class ServerSynchronizerTests {
     when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class)))
       .thenReturn(fakeEngine);
 
+    bindingManager.getOrCreateConnectedEngine(CONNECTION_ID);
+
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
     verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
@@ -260,6 +276,7 @@ class ServerSynchronizerTests {
 
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
+    verify(analysisManager).analyzeAllOpenFilesInFolder(folder);
     verifyNoMoreInteractions(analysisManager);
     assertThat(logTester.logs(ClientLogOutput.Level.ERROR)).contains("The specified connection id '" + CONNECTION_ID + "' doesn't exist.");
   }
@@ -271,6 +288,7 @@ class ServerSynchronizerTests {
 
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
+    verify(analysisManager).analyzeAllOpenFilesInFolder(null);
     verifyNoMoreInteractions(analysisManager);
     assertThat(logTester.logs(ClientLogOutput.Level.ERROR)).contains("The specified connection id '" + CONNECTION_ID + "' doesn't exist.");
   }
@@ -292,6 +310,7 @@ class ServerSynchronizerTests {
     when(settingsManager.getCurrentSettings()).thenReturn(settings);
     when(enginesFactory.createConnectedEngine(connectionId, serverConnectionSettings)).thenReturn(fakeEngine);
     when(fakeEngine.calculatePathPrefixes(eq(projectKey), anyCollection())).thenReturn(new ProjectBinding(projectKey, "", ""));
+    bindingManager.getOrCreateConnectedEngine(connectionId);
 
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 

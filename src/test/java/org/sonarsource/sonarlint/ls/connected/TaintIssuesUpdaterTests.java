@@ -83,7 +83,7 @@ class TaintIssuesUpdaterTests {
   @BeforeEach
   void init() {
     when(bindingManager.getBinding(FILE_URI)).thenReturn(Optional.of(bindingWrapper));
-    when(bindingManager.resolveBranchNameForFolder(FOLDER_URI)).thenReturn(Optional.of(BRANCH_NAME));
+    when(bindingManager.resolveBranchNameForFolder(FOLDER_URI, engine, PROJECT_KEY)).thenReturn(BRANCH_NAME);
     when(workspaceFoldersManager.findFolderForFile(FILE_URI)).thenReturn(Optional.of(workspaceFolderWrapper));
     when(workspaceFolderWrapper.getUri()).thenReturn(FOLDER_URI);
     when(engine.getServerBranches(PROJECT_KEY)).thenReturn(new ProjectBranches(Set.of("main", BRANCH_NAME), "main"));
@@ -103,7 +103,6 @@ class TaintIssuesUpdaterTests {
     underTest.updateTaintIssuesAsync(FILE_URI);
 
     verify(engine).syncServerTaintIssues(any(), any(), eq(PROJECT_KEY), eq(BRANCH_NAME), isNull());
-    verify(engine).getServerBranches(PROJECT_KEY);
     verify(engine).downloadAllServerTaintIssuesForFile(any(), any(), any(), anyString(), eq(BRANCH_NAME), isNull());
     verify(engine).getServerTaintIssues(any(), eq(BRANCH_NAME), any());
     verify(diagnosticPublisher).publishDiagnostics(FILE_URI);

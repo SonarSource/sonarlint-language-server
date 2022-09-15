@@ -98,16 +98,19 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
 
   /**
    * @param folderUri a workspace folder's URI
-   * @return the current known reference branch name for the folder, <code>master</code> if unknown or not in connected mode
+   * @return the current known reference branch name for the folder, or empty if unknown or not in connected mode
    */
-  public Optional<String> getReferenceBranchNameForFolder(URI folderUri) {
+  public Optional<String> getReferenceBranchNameForFolder(@Nullable URI folderUri) {
+    if (folderUri == null) {
+      return Optional.empty();
+    }
     try {
       var uriWithoutTrailingSlash = StringUtils.removeEnd(folderUri.toString(), "/");
       return referenceBranchNameByFolderUri.getOrDefault(new URI(uriWithoutTrailingSlash), Optional.empty());
     } catch (URISyntaxException e) {
       LOG.error(e.getMessage());
+      return Optional.empty();
     }
-    return Optional.empty();
   }
 
   public void shutdown() {
