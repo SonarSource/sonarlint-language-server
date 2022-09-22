@@ -69,9 +69,9 @@ import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.SecurityHotspotsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.TaintIssuesUpdater;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
+import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
 import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
@@ -115,7 +115,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final CommandManager commandManager;
   private final ProgressManager progressManager;
   private final ExecutorService threadPool;
-  private final SecurityHotspotsHandlerServer securityHotspotsHandlerServer;
+  private final RequestsHandlerServer requestsHandlerServer;
   private final ApacheHttpClientProvider httpClientProvider;
   private final WorkspaceFolderBranchManager branchManager;
   private final JavaConfigCache javaConfigCache;
@@ -189,7 +189,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.serverSynchronizer = new ServerSynchronizer(client, progressManager, bindingManager, analysisScheduler);
     this.commandManager = new CommandManager(client, settingsManager, bindingManager, serverSynchronizer, telemetry, standaloneEngineManager, taintVulnerabilitiesCache,
       issuesCache);
-    this.securityHotspotsHandlerServer = new SecurityHotspotsHandlerServer(lsLogOutput, bindingManager, client, telemetry, settingsManager);
+    this.requestsHandlerServer = new RequestsHandlerServer(lsLogOutput, bindingManager, client, telemetry, settingsManager);
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager, serverSynchronizer);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
     this.workspaceFoldersManager.addListener(this.branchManager);
@@ -235,7 +235,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       analysisScheduler.initialize();
       diagnosticPublisher.initialize(firstSecretDetected);
 
-      securityHotspotsHandlerServer.initialize(appName, clientVersion, workspaceName);
+      requestsHandlerServer.initialize(appName, clientVersion, workspaceName);
       telemetry.initialize(productKey, telemetryStorage, productName, productVersion, ideVersion, platform, architecture, additionalAttributes);
 
       var c = new ServerCapabilities();
@@ -289,7 +289,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       enginesFactory::shutdown,
       analysisScheduler::shutdown,
       branchManager::shutdown,
-      securityHotspotsHandlerServer::shutdown,
+      requestsHandlerServer::shutdown,
       telemetry::stop,
       settingsManager::shutdown,
       workspaceFoldersManager::shutdown,
