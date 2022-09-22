@@ -86,6 +86,7 @@ public class RequestsHandlerServer {
           .addFilterFirst("CORS", new CorsFilter())
           .register("/sonarlint/api/status", new StatusRequestHandler(this, ideName, clientVersion, workspaceName))
           .register("/sonarlint/api/hotspots/show", new ShowHotspotRequestHandler(output, bindingManager, client, telemetry, hotspotApiFactory))
+          .register("/sonarlint/api/submit-token", new SubmitTokenRequestHandler(output, client))
           .create();
         startedServer.start();
         port = triedPort;
@@ -95,10 +96,10 @@ public class RequestsHandlerServer {
       }
     }
     if (port > 0) {
-      output.info("Started security hotspot handler on port " + port);
+      output.info("Started request handler on port " + port);
       server = startedServer;
     } else {
-      output.error("Unable to start security hotspot handler");
+      output.error("Unable to start request handler");
       server = null;
     }
   }

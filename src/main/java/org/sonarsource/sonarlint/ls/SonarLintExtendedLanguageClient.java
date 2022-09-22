@@ -58,6 +58,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/showTaintVulnerability")
   void showTaintVulnerability(ShowAllLocationsCommand.Param params);
 
+  @JsonNotification("sonarlint/submitToken")
+  void submitToken(String token);
+
   @JsonRequest("sonarlint/isIgnoredByScm")
   CompletableFuture<Boolean> isIgnoredByScm(String fileUri);
 
