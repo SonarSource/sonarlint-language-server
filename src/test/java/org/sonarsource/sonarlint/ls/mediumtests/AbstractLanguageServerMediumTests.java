@@ -345,6 +345,10 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
+    public void submitToken(String token) {
+    }
+
+    @Override
     public CompletableFuture<Boolean> isIgnoredByScm(String fileUri) {
       return CompletableFutures.computeAsync(cancelToken -> isIgnoredByScm);
     }

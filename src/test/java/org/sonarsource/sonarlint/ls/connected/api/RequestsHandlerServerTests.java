@@ -20,9 +20,11 @@
 package org.sonarsource.sonarlint.ls.connected.api;
 
 import com.google.gson.Gson;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +33,7 @@ import java.util.concurrent.CompletableFuture;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ClassicHttpRequest;
+import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.junit.jupiter.api.AfterEach;
@@ -55,7 +58,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -302,5 +307,80 @@ class RequestsHandlerServerTests {
         assertThat(responseHttp.getCode()).isEqualTo(400);
       }
     }
+  }
+
+  @Test
+  void shouldNotifyClientWhenTokenIsReceived() throws IOException {
+    var ideName = "SonarSource Editor";
+    var clientVersion = "1.42";
+    var workspaceName = "polop";
+    server.initialize(ideName, clientVersion, workspaceName);
+
+    var port = server.getPort();
+    assertThat(port).isBetween(RequestsHandlerServer.STARTING_PORT, RequestsHandlerServer.ENDING_PORT);
+
+    String token = "dsadasdastgr342534534";
+
+    try (CloseableHttpClient httpClient = HttpClients.custom().build()) {
+      ClassicHttpRequest request = ClassicRequestBuilder.get()
+        .setUri(String.format("http://localhost:%d/sonarlint/api/submit-token", port))
+        .setHeader("Origin", TRUSTED_SERVER_URL)
+        .setEntity(
+          String.format("{ \"login\":\"grace.hopper\", \"name\":\"SonarLint\", \"createdAt\":\"2018-01-10T14:06:05+0100\", \"token\":%s, \"type\":\"USER_TOKEN\" }", token))
+        .build();
+      var responseHttp = httpClient.execute(request);
+      assertThat(responseHttp.getCode()).isEqualTo(200);
+    }
+
+    verify(client).submitToken(token);
+  }
+
+  @Test
+  void shouldRespondWith200WhenParamsIsValidJSONFormat() throws IOException {
+    var ideName = "SonarSource Editor";
+    var clientVersion = "1.42";
+    var workspaceName = "polop";
+    server.initialize(ideName, clientVersion, workspaceName);
+
+    var port = server.getPort();
+    assertThat(port).isBetween(RequestsHandlerServer.STARTING_PORT, RequestsHandlerServer.ENDING_PORT);
+
+    String token = "fdfsdafsavvf545342654";
+    String stringContent = String.format("{ \"login\":\"grace.hopper\", \"name\":\"SonarLint\", \"createdAt\":\"2018-01-10T14:06:05+0100\", \"token\":%s, \"type\":\"USER_TOKEN\" }", token);
+
+    try (CloseableHttpClient httpClient = HttpClients.custom().build()) {
+      ClassicHttpRequest request = ClassicRequestBuilder.get()
+        .setUri(String.format("http://localhost:%d/sonarlint/api/submit-token", port))
+        .setHeader("Origin", TRUSTED_SERVER_URL)
+        .setEntity(stringContent.getBytes(StandardCharsets.UTF_8), ContentType.APPLICATION_JSON)
+        .build();
+      var responseHttp = httpClient.execute(request);
+      assertThat(responseHttp.getCode()).isEqualTo(200);
+    }
+
+    verify(client).submitToken(token);
+  }
+
+  @Test
+  void shouldRespondWith400WhenTokenIsNotInParams() throws IOException {
+    var ideName = "SonarSource Editor";
+    var clientVersion = "1.42";
+    var workspaceName = "polop";
+    server.initialize(ideName, clientVersion, workspaceName);
+
+    var port = server.getPort();
+    assertThat(port).isBetween(RequestsHandlerServer.STARTING_PORT, RequestsHandlerServer.ENDING_PORT);
+
+    try (CloseableHttpClient httpClient = HttpClients.custom().build()) {
+      ClassicHttpRequest request = ClassicRequestBuilder.get()
+        .setUri(String.format("http://localhost:%d/sonarlint/api/submit-token", port))
+        .setHeader("Origin", TRUSTED_SERVER_URL)
+        .setEntity("{ \"login\":\"grace.hopper\", \"name\":\"SonarLint\" }")
+        .build();
+      var responseHttp = httpClient.execute(request);
+      assertThat(responseHttp.getCode()).isEqualTo(400);
+    }
+
+    verify(client, never()).submitToken(any(String.class));
   }
 }
