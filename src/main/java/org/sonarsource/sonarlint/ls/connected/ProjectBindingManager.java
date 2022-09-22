@@ -466,7 +466,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     }
   }
 
-  Optional<EndpointParamsAndHttpClient> getServerConnectionSettingsForUrl(String url) {
+  public Optional<EndpointParamsAndHttpClient> getServerConnectionSettingsForUrl(String url) {
     return settingsManager.getCurrentSettings().getServerConnections()
       .values()
       .stream()

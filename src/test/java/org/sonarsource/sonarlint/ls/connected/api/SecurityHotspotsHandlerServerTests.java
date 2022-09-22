@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls.connected;
+package org.sonarsource.sonarlint.ls.connected.api;
 
 import com.google.gson.Gson;
 import java.io.InputStreamReader;
@@ -43,6 +43,7 @@ import org.sonarsource.sonarlint.core.serverapi.hotspot.GetSecurityHotspotReques
 import org.sonarsource.sonarlint.core.serverapi.hotspot.HotspotApi;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspot;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
@@ -58,10 +59,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class SecurityHotspotsHandlerServerTests {
+class RequestsHandlerServerTests {
 
   private static final String TRUSTED_SERVER_URL = "http://myServer";
-  private SecurityHotspotsHandlerServer server;
+  private RequestsHandlerServer server;
   private final ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
   private final SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   private final LanguageClientLogger output = mock(LanguageClientLogger.class);
@@ -72,7 +73,7 @@ class SecurityHotspotsHandlerServerTests {
   @BeforeEach
   void setUp() {
     mockTrustedServer();
-    server = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry, (e, c) -> hotspotApi, settingsManager);
+    server = new RequestsHandlerServer(output, bindingManager, client, telemetry, (e, c) -> hotspotApi, settingsManager);
   }
 
   @AfterEach
@@ -88,7 +89,7 @@ class SecurityHotspotsHandlerServerTests {
     server.initialize(ideName, clientVersion, workspaceName);
 
     var port = server.getPort();
-    assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
+    assertThat(port).isBetween(RequestsHandlerServer.STARTING_PORT, RequestsHandlerServer.ENDING_PORT);
 
     Map<String, String> response;
     try (CloseableHttpClient client = HttpClients.custom().build()) {
@@ -114,7 +115,7 @@ class SecurityHotspotsHandlerServerTests {
     server.initialize(ideName, clientVersion, workspaceName);
 
     var port = server.getPort();
-    assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
+    assertThat(port).isBetween(RequestsHandlerServer.STARTING_PORT, RequestsHandlerServer.ENDING_PORT);
 
     Map<String, String> response;
     try (CloseableHttpClient client = HttpClients.custom().build()) {
@@ -139,7 +140,7 @@ class SecurityHotspotsHandlerServerTests {
     server.initialize(ideName, clientVersion, null);
 
     int port = server.getPort();
-    assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
+    assertThat(port).isBetween(RequestsHandlerServer.STARTING_PORT, RequestsHandlerServer.ENDING_PORT);
 
     Map<String, String> response;
     try (CloseableHttpClient client = HttpClients.custom().build()) {
@@ -173,7 +174,7 @@ class SecurityHotspotsHandlerServerTests {
     String workspaceName2 = "palap";
     server.initialize(ideName, clientVersion, workspaceName1);
 
-    SecurityHotspotsHandlerServer otherServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry, mock(SettingsManager.class));
+    RequestsHandlerServer otherServer = new RequestsHandlerServer(output, bindingManager, client, telemetry, mock(SettingsManager.class));
     try {
       otherServer.initialize(ideName, clientVersion, workspaceName2);
       assertThat(otherServer.getPort()).isNotEqualTo(server.getPort());
@@ -187,24 +188,24 @@ class SecurityHotspotsHandlerServerTests {
     String ideName = "SonarSource Editor";
     String clientVersion = "1.42";
 
-    List<SecurityHotspotsHandlerServer> startedServers = new ArrayList<>();
+    List<RequestsHandlerServer> startedServers = new ArrayList<>();
 
     int serverId = 0;
-    int lastPortTried = SecurityHotspotsHandlerServer.STARTING_PORT;
+    int lastPortTried = RequestsHandlerServer.STARTING_PORT;
     try {
-      while (lastPortTried < SecurityHotspotsHandlerServer.ENDING_PORT) {
-        SecurityHotspotsHandlerServer triedServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry, mock(SettingsManager.class));
+      while (lastPortTried < RequestsHandlerServer.ENDING_PORT) {
+        RequestsHandlerServer triedServer = new RequestsHandlerServer(output, bindingManager, client, telemetry, mock(SettingsManager.class));
         triedServer.initialize(ideName, clientVersion, "sample-" + serverId);
         assertThat(triedServer.isStarted()).isTrue();
         startedServers.add(triedServer);
         lastPortTried = triedServer.getPort();
       }
 
-      SecurityHotspotsHandlerServer failedServer = new SecurityHotspotsHandlerServer(output, bindingManager, client, telemetry, mock(SettingsManager.class));
+      RequestsHandlerServer failedServer = new RequestsHandlerServer(output, bindingManager, client, telemetry, mock(SettingsManager.class));
       failedServer.initialize(ideName, clientVersion, "sample-" + serverId);
       assertThat(failedServer.isStarted()).isFalse();
     } finally {
-      for (SecurityHotspotsHandlerServer serverToShutdown : startedServers) {
+      for (RequestsHandlerServer serverToShutdown : startedServers) {
         serverToShutdown.shutdown();
       }
     }
@@ -221,7 +222,7 @@ class SecurityHotspotsHandlerServerTests {
     when(hotspotApi.fetch(any(GetSecurityHotspotRequestParams.class))).thenReturn(Optional.of(remoteHotspot));
 
     int port = server.getPort();
-    assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
+    assertThat(port).isBetween(RequestsHandlerServer.STARTING_PORT, RequestsHandlerServer.ENDING_PORT);
 
     String server = "http://some.sonar.server";
     String hotspot = "someHotspotKey";
@@ -257,7 +258,7 @@ class SecurityHotspotsHandlerServerTests {
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(new MessageActionItem("Open Settings")));
 
     int port = server.getPort();
-    assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
+    assertThat(port).isBetween(RequestsHandlerServer.STARTING_PORT, RequestsHandlerServer.ENDING_PORT);
 
     String server = "http://some.sonar.server";
     String hotspot = "someHotspotKey";
@@ -291,7 +292,7 @@ class SecurityHotspotsHandlerServerTests {
     server.initialize(ideName, clientVersion, workspaceName);
 
     int port = server.getPort();
-    assertThat(port).isBetween(SecurityHotspotsHandlerServer.STARTING_PORT, SecurityHotspotsHandlerServer.ENDING_PORT);
+    assertThat(port).isBetween(RequestsHandlerServer.STARTING_PORT, RequestsHandlerServer.ENDING_PORT);
 
     try (CloseableHttpClient client = HttpClients.custom().build()) {
       ClassicHttpRequest request = ClassicRequestBuilder.get()
