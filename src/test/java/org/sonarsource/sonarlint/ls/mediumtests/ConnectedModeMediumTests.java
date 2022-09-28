@@ -308,7 +308,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var actual = result.get();
 
     assertThat(actual.getServerUrl()).isEmpty();
-    assertThat(actual.getErrorMessage()).isEqualTo("Can't get server status for invalid/url/");
+    assertThat(actual.getErrorMessage()).isEqualTo("Can't get server status for invalid/url");
   }
 
   private String stripTrailingSlash(String url) {
