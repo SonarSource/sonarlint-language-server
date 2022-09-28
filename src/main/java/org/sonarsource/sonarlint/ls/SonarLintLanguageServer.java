@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -67,6 +68,8 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
+import org.sonarsource.sonarlint.core.serverconnection.ServerPathProvider;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintIssuesUpdater;
@@ -126,6 +129,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final LanguageClientLogger lsLogOutput;
 
   private final TaintIssuesUpdater taintIssuesUpdater;
+
+  private String appName;
 
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
@@ -220,7 +225,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
       var productName = (String) options.get("productName");
       var productVersion = (String) options.get("productVersion");
-      var appName = params.getClientInfo().getName();
+      this.appName = params.getClientInfo().getName();
       var workspaceName = (String) options.get("workspaceName");
       var clientVersion = params.getClientInfo().getVersion();
       var ideVersion = appName + " " + clientVersion;
@@ -485,5 +490,22 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       return CompletableFuture.failedFuture(new ResponseErrorException(responseError));
     }
 
+  }
+
+  @Override
+  public CompletableFuture<GetServerVersionAndPortResponse> getServerVersionAndPort(GetServerVersionAndPortParams params) {
+    var port = securityHotspotsHandlerServer.getPort();
+    var endpointParams = new EndpointParams(params.getServerUrl(), false, null);
+    String serverUrl = "";
+    String errorMessage = "";
+    try {
+      serverUrl = ServerPathProvider.getServerUrlForTokenGeneration(endpointParams, httpClientProvider.anonymous(), port, appName);
+    } catch (ExecutionException | IllegalStateException e) {
+      errorMessage = "Can't get server status for " + endpointParams.getBaseUrl();
+    } catch (InterruptedException e) {
+      errorMessage = "Can't get server status for " + endpointParams.getBaseUrl() + " due to thread interruption";
+      Thread.currentThread().interrupt();
+    }
+    return CompletableFuture.completedFuture(new GetServerVersionAndPortResponse(serverUrl, errorMessage));
   }
 }
