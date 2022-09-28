@@ -63,7 +63,7 @@ public class FolderFileSystem implements ClientModuleFileSystem {
     try {
       return Files.walk(folder.getRootPath())
         .filter(Files::isRegularFile)
-        .map(filePath -> toClientInputFile(filePath, isTestFile(settings, filePath.toUri()) ? InputFile.Type.TEST : InputFile.Type.MAIN));
+        .map(filePath -> toClientInputFile(filePath, getInputFileType(settings, filePath)));
     } catch (IOException e) {
       throw new IllegalStateException("Cannot browse the files", e);
     }
@@ -71,6 +71,10 @@ public class FolderFileSystem implements ClientModuleFileSystem {
 
   private boolean typeMatches(URI uri, InputFile.Type type, WorkspaceFolderSettings settings) {
     return isTestType(type) == isTestFile(settings, uri);
+  }
+
+  private InputFile.Type getInputFileType(WorkspaceFolderSettings settings, Path filePath) {
+    return isTestFile(settings, filePath.toUri()) ? InputFile.Type.TEST : InputFile.Type.MAIN;
   }
 
   private boolean isTestFile(WorkspaceFolderSettings settings, URI fileUri) {
