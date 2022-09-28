@@ -271,6 +271,10 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(future).isCompletedExceptionally());
   }
 
+  /**
+   * This test assumes that there is no SonarLint instance running on the localhost.
+   * Other way it will fail with ports difference.
+   */
   @Test
   void shouldGetTokenGenerationServerPath() throws ExecutionException, InterruptedException {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.7\", \"id\": \"xzy\"}");
@@ -281,7 +285,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var result = lsProxy.getServerPathForTokenGeneration(params);
     var actual = result.get();
 
-    assertThat(actual.getServerUrl()).isEqualTo(cleanUrl + "/sonarlint/auth?port=64122&ideName=SonarLint+LS+Medium+tests");
+    assertThat(actual.getServerUrl()).isEqualTo(cleanUrl + "/sonarlint/auth?port=64120&ideName=SonarLint+LS+Medium+tests");
     assertThat(actual.getErrorMessage()).isEmpty();
   }
 
