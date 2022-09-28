@@ -95,7 +95,9 @@ public class JavaConfigCache {
       .thenApply(javaConfig -> {
         var configOpt = ofNullable(javaConfig);
         javaConfigPerFileURI.put(fileUri, configOpt);
-        lsLogOutput.debug("Cached Java config for file '" + fileUri + "'");
+        openFile.map(VersionedOpenFile::isJava)
+          .filter(Boolean::booleanValue)
+          .ifPresent(isJava -> lsLogOutput.debug("Cached Java config for file '" + fileUri + "'"));
         return configOpt;
       });
   }
