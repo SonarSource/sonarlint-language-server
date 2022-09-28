@@ -275,12 +275,13 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   void shouldGetTokenGenerationServerPath() throws ExecutionException, InterruptedException {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.7\", \"id\": \"xzy\"}");
     var serverUrl = mockWebServerExtension.url("");
-    var params = new SonarLintExtendedLanguageServer.GetServerPathForTokenGenerationParams(mockWebServerExtension.url(""));
+    var cleanUrl = stripTrailingSlash(serverUrl);
+    var params = new SonarLintExtendedLanguageServer.GetServerPathForTokenGenerationParams(cleanUrl);
 
     var result = lsProxy.getServerPathForTokenGeneration(params);
     var actual = result.get();
 
-    assertThat(actual.getServerUrl()).isEqualTo(serverUrl + "sonarlint/auth?port=64122&ideName=SonarLint+LS+Medium+tests");
+    assertThat(actual.getServerUrl()).isEqualTo(cleanUrl + "/sonarlint/auth?port=64122&ideName=SonarLint+LS+Medium+tests");
     assertThat(actual.getErrorMessage()).isEmpty();
   }
 
@@ -288,25 +289,33 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   void shouldGetTokenGenerationServerPathOld() throws ExecutionException, InterruptedException {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.6\", \"id\": \"xzy\"}");
     var serverUrl = mockWebServerExtension.url("");
-    var params = new SonarLintExtendedLanguageServer.GetServerPathForTokenGenerationParams(mockWebServerExtension.url(""));
+    var cleanUrl = stripTrailingSlash(serverUrl);
+    var params = new SonarLintExtendedLanguageServer.GetServerPathForTokenGenerationParams(cleanUrl);
 
     var result = lsProxy.getServerPathForTokenGeneration(params);
     var actual = result.get();
 
-    assertThat(actual.getServerUrl()).isEqualTo(serverUrl + "account/security");
+    assertThat(actual.getServerUrl()).isEqualTo(cleanUrl + "/account/security");
     assertThat(actual.getErrorMessage()).isEmpty();
   }
 
   @Test
-  void shouldReturnErrorForWrongUrl() throws ExecutionException, InterruptedException {
+  void shouldReturnErrorForInvalidUrl() throws ExecutionException, InterruptedException {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.6\", \"id\": \"xzy\"}");
-    var params = new SonarLintExtendedLanguageServer.GetServerPathForTokenGenerationParams("wrong/url/");
+    var params = new SonarLintExtendedLanguageServer.GetServerPathForTokenGenerationParams("invalid/url");
 
     var result = lsProxy.getServerPathForTokenGeneration(params);
     var actual = result.get();
 
     assertThat(actual.getServerUrl()).isEmpty();
-    assertThat(actual.getErrorMessage()).isEqualTo("Can't get server status for wrong/url/");
+    assertThat(actual.getErrorMessage()).isEqualTo("Can't get server status for invalid/url/");
+  }
+
+  private String stripTrailingSlash(String url) {
+    if (url.endsWith("/")) {
+      return url.substring(0, url.length() - 1);
+    }
+    return url;
   }
 
 }
