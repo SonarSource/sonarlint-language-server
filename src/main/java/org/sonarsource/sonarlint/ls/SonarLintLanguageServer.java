@@ -493,11 +493,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<GetServerVersionAndPortResponse> getServerVersionAndPort(GetServerVersionAndPortParams params) {
-    var port = securityHotspotsHandlerServer.getPort();
+  public CompletableFuture<GetServerPathForTokenGenerationResponse> getServerPathForTokenGeneration(GetServerPathForTokenGenerationParams params) {
+    var port = requestsHandlerServer.getPort();
     var endpointParams = new EndpointParams(params.getServerUrl(), false, null);
-    String serverUrl = "";
-    String errorMessage = "";
+    var serverUrl = "";
+    var errorMessage = "";
     try {
       serverUrl = ServerPathProvider.getServerUrlForTokenGeneration(endpointParams, httpClientProvider.anonymous(), port, appName);
     } catch (ExecutionException | IllegalStateException e) {
@@ -506,6 +506,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       errorMessage = "Can't get server status for " + endpointParams.getBaseUrl() + " due to thread interruption";
       Thread.currentThread().interrupt();
     }
-    return CompletableFuture.completedFuture(new GetServerVersionAndPortResponse(serverUrl, errorMessage));
+    return CompletableFuture.completedFuture(new GetServerPathForTokenGenerationResponse(serverUrl, errorMessage));
   }
 }

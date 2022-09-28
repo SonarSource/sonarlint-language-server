@@ -215,11 +215,11 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonRequest("sonarlint/getRemoteProjectNames")
   CompletableFuture<Map<String, String>> getRemoteProjectNames(GetRemoteProjectsNamesParams params);
 
-  class GetServerVersionAndPortResponse {
+  class GetServerPathForTokenGenerationResponse {
     private String serverUrl;
     private  String errorMessage;
 
-    public GetServerVersionAndPortResponse(String serverVersion, String errorMessage) {
+    public GetServerPathForTokenGenerationResponse(String serverVersion, String errorMessage) {
       setServerUrl(serverVersion);
       setErrorMessage(errorMessage);
     }
@@ -239,12 +239,14 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     public void setErrorMessage(String errorMessage) {
       this.errorMessage = errorMessage;
     }
+
+
   }
 
-  class GetServerVersionAndPortParams {
+  class GetServerPathForTokenGenerationParams {
     String serverUrl;
 
-    public GetServerVersionAndPortParams(String serverUrl) {
+    public GetServerPathForTokenGenerationParams(String serverUrl) {
       setServerUrl(serverUrl);
     }
 
@@ -258,5 +260,5 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   }
 
   @JsonRequest("sonarlint/getServerVersionAndPort")
-  CompletableFuture<GetServerVersionAndPortResponse> getServerVersionAndPort(GetServerVersionAndPortParams params);
+  CompletableFuture<GetServerPathForTokenGenerationResponse> getServerPathForTokenGeneration(GetServerPathForTokenGenerationParams params);
 }

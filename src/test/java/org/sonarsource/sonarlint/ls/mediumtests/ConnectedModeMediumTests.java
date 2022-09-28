@@ -270,4 +270,43 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     awaitUntilAsserted(() -> assertThat(future).isCompletedExceptionally());
   }
+
+  @Test
+  void shouldGetTokenGenerationServerPath() throws ExecutionException, InterruptedException {
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.7\", \"id\": \"xzy\"}");
+    var serverUrl = mockWebServerExtension.url("");
+    var params = new SonarLintExtendedLanguageServer.GetServerPathForTokenGenerationParams(mockWebServerExtension.url(""));
+
+    var result = lsProxy.getServerPathForTokenGeneration(params);
+    var actual = result.get();
+
+    assertThat(actual.getServerUrl()).isEqualTo(serverUrl + "sonarlint/auth?port=64122&ideName=SonarLint+LS+Medium+tests");
+    assertThat(actual.getErrorMessage()).isEmpty();
+  }
+
+  @Test
+  void shouldGetTokenGenerationServerPathOld() throws ExecutionException, InterruptedException {
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.6\", \"id\": \"xzy\"}");
+    var serverUrl = mockWebServerExtension.url("");
+    var params = new SonarLintExtendedLanguageServer.GetServerPathForTokenGenerationParams(mockWebServerExtension.url(""));
+
+    var result = lsProxy.getServerPathForTokenGeneration(params);
+    var actual = result.get();
+
+    assertThat(actual.getServerUrl()).isEqualTo(serverUrl + "account/security");
+    assertThat(actual.getErrorMessage()).isEmpty();
+  }
+
+  @Test
+  void shouldReturnErrorForWrongUrl() throws ExecutionException, InterruptedException {
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.6\", \"id\": \"xzy\"}");
+    var params = new SonarLintExtendedLanguageServer.GetServerPathForTokenGenerationParams("wrong/url/");
+
+    var result = lsProxy.getServerPathForTokenGeneration(params);
+    var actual = result.get();
+
+    assertThat(actual.getServerUrl()).isEmpty();
+    assertThat(actual.getErrorMessage()).isEqualTo("Can't get server status for wrong/url/");
+  }
+
 }
