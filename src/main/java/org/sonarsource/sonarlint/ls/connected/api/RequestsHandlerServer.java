@@ -104,7 +104,7 @@ public class RequestsHandlerServer {
     }
   }
 
-  int getPort() {
+  public int getPort() {
     return port;
   }
 
