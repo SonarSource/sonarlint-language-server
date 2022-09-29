@@ -495,7 +495,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<GetServerPathForTokenGenerationResponse> getServerPathForTokenGeneration(GetServerPathForTokenGenerationParams params) {
     var port = requestsHandlerServer.getPort();
-    var endpointParams = new EndpointParams(params.getServerUrl(), false, null);
+    var endpointParams = new EndpointParams(params.getBaseServerUrl(), false, null);
     var serverUrl = "";
     var errorMessage = "";
     try {
