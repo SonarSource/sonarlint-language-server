@@ -86,7 +86,7 @@ public class RequestsHandlerServer {
           .addFilterFirst("CORS", new CorsFilter())
           .register("/sonarlint/api/status", new StatusRequestHandler(this, ideName, clientVersion, workspaceName))
           .register("/sonarlint/api/hotspots/show", new ShowHotspotRequestHandler(output, bindingManager, client, telemetry, hotspotApiFactory))
-          .register("/sonarlint/api/submit-token", new SubmitTokenRequestHandler(output, client))
+          .register("/sonarlint/api/token", new SubmitTokenRequestHandler(output, client))
           .create();
         startedServer.start();
         port = triedPort;

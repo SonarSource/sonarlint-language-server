@@ -323,7 +323,7 @@ class RequestsHandlerServerTests {
 
     try (CloseableHttpClient httpClient = HttpClients.custom().build()) {
       ClassicHttpRequest request = ClassicRequestBuilder.get()
-        .setUri(String.format("http://localhost:%d/sonarlint/api/submit-token", port))
+        .setUri(String.format("http://localhost:%d/sonarlint/api/token", port))
         .setHeader("Origin", TRUSTED_SERVER_URL)
         .setEntity(
           String.format("{ \"login\":\"grace.hopper\", \"name\":\"SonarLint\", \"createdAt\":\"2018-01-10T14:06:05+0100\", \"token\":%s, \"type\":\"USER_TOKEN\" }", token))
@@ -350,7 +350,7 @@ class RequestsHandlerServerTests {
 
     try (CloseableHttpClient httpClient = HttpClients.custom().build()) {
       ClassicHttpRequest request = ClassicRequestBuilder.get()
-        .setUri(String.format("http://localhost:%d/sonarlint/api/submit-token", port))
+        .setUri(String.format("http://localhost:%d/sonarlint/api/token", port))
         .setHeader("Origin", TRUSTED_SERVER_URL)
         .setEntity(stringContent.getBytes(StandardCharsets.UTF_8), ContentType.APPLICATION_JSON)
         .build();
@@ -373,7 +373,7 @@ class RequestsHandlerServerTests {
 
     try (CloseableHttpClient httpClient = HttpClients.custom().build()) {
       ClassicHttpRequest request = ClassicRequestBuilder.get()
-        .setUri(String.format("http://localhost:%d/sonarlint/api/submit-token", port))
+        .setUri(String.format("http://localhost:%d/sonarlint/api/token", port))
         .setHeader("Origin", TRUSTED_SERVER_URL)
         .setEntity("{ \"login\":\"grace.hopper\", \"name\":\"SonarLint\" }")
         .build();
