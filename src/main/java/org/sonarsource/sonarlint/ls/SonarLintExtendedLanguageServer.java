@@ -258,6 +258,6 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
   }
 
-  @JsonRequest("sonarlint/getServerVersionAndPort")
+  @JsonRequest("sonarlint/getServerPathForTokenGeneration")
   CompletableFuture<GetServerPathForTokenGenerationResponse> getServerPathForTokenGeneration(GetServerPathForTokenGenerationParams params);
 }
