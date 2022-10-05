@@ -123,6 +123,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final WorkspaceFolderBranchManager branchManager;
   private final JavaConfigCache javaConfigCache;
   private final IssuesCache issuesCache;
+  private final SerialPortNotifier serialPortNotifier;
   private final DiagnosticPublisher diagnosticPublisher;
   private final ScmIgnoredCache scmIgnoredCache;
   private ServerSynchronizer serverSynchronizer;
@@ -159,7 +160,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
     this.issuesCache = new IssuesCache();
     this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
-    this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache);
+    this.serialPortNotifier = new SerialPortNotifier();
+    this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache, serialPortNotifier);
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.progressManager = new ProgressManager(client);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClientProvider);
@@ -305,7 +307,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       // shutdown engines after the rest so that no operations remain on them, and they won't be recreated accidentally
       bindingManager::shutdown,
       serverSynchronizer::shutdown,
-      standaloneEngineManager::shutdown)
+      standaloneEngineManager::shutdown,
+      serialPortNotifier::shutdown)
       // Do last
       .forEach(this::invokeQuietly);
     return CompletableFuture.completedFuture(null);

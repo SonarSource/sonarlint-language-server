@@ -46,12 +46,14 @@ public class DiagnosticPublisher {
   private boolean firstSecretIssueDetected;
 
   private final IssuesCache issuesCache;
+  private SerialPortNotifier serialPortNotifier;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
 
-  public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache) {
+  public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache, SerialPortNotifier serialPortNotifier) {
     this.client = client;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.issuesCache = issuesCache;
+    this.serialPortNotifier = serialPortNotifier;
   }
 
   public void initialize(boolean firstSecretDetected) {
@@ -59,7 +61,13 @@ public class DiagnosticPublisher {
   }
 
   public void publishDiagnostics(URI f) {
-    client.publishDiagnostics(createPublishDiagnosticsParams(f));
+    var diagnosticsParams = createPublishDiagnosticsParams(f);
+    if (diagnosticsParams.getDiagnostics().isEmpty()) {
+      serialPortNotifier.send("0");
+    } else {
+      serialPortNotifier.send("1");
+    }
+    client.publishDiagnostics(diagnosticsParams);
   }
 
   static Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
