@@ -24,9 +24,11 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.Language;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.util.Utils;
@@ -62,11 +64,13 @@ public class DiagnosticPublisher {
 
   public void publishDiagnostics(URI f) {
     var diagnosticsParams = createPublishDiagnosticsParams(f);
-    if (diagnosticsParams.getDiagnostics().isEmpty()) {
-      serialPortNotifier.send("0");
-    } else {
-      serialPortNotifier.send("1");
-    }
+    var allDiagnostics = diagnosticsParams.getDiagnostics();
+    var numberOfHint = allDiagnostics.stream().filter(d -> d.getSeverity() == DiagnosticSeverity.Hint).count();
+    var numberOfInfo = allDiagnostics.stream().filter(d -> d.getSeverity() == DiagnosticSeverity.Information).count();
+    var numberOfWarning = allDiagnostics.stream().filter(d -> d.getSeverity() == DiagnosticSeverity.Warning).count();
+    var messageSentToSerial = String.format("%d %d %d", numberOfHint, numberOfInfo, numberOfWarning);
+    SonarLintLogger.get().error("Sending message to serial: " + messageSentToSerial);
+    serialPortNotifier.send(messageSentToSerial);
     client.publishDiagnostics(diagnosticsParams);
   }
 
