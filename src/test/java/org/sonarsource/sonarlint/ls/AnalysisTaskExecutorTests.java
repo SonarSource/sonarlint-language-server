@@ -46,7 +46,7 @@ class AnalysisTaskExecutorTests {
   @BeforeEach
   public void init() {
     lsLogOutput = mock(LanguageClientLogger.class);
-    underTest = new AnalysisTaskExecutor(null, lsLogOutput, null, null, null, null, null, null, null, null, null, null, null, null);
+    underTest = new AnalysisTaskExecutor(null, lsLogOutput, null, null, null, null, null, null, null, null, null, null, null, null, mock(SerialPortNotifier.class));
     executor = Executors.newSingleThreadExecutor();
   }
 

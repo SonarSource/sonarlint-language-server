@@ -23,6 +23,7 @@ import com.fazecast.jSerialComm.SerialPort;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 
 public class SerialPortNotifier {
 
@@ -44,6 +45,7 @@ public class SerialPortNotifier {
   }
 
   public void send(String message) {
+    SonarLintLogger.get().error("Sending message to serial: '" + message + "'");
     if (output != null) {
       output.println(message);
       output.flush();
@@ -53,12 +55,12 @@ public class SerialPortNotifier {
   public void shutdown() {
     try {
       output.close();
-    } catch (Throwable ignored) {
+    } catch (Exception ignored) {
       // NOP
     }
     try {
       serialPort.closePort();
-    } catch (Throwable ignored) {
+    } catch (Exception ignored) {
       // NOP
     }
   }

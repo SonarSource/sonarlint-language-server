@@ -47,14 +47,12 @@ class DiagnosticPublisherTests {
   private DiagnosticPublisher underTest;
   private IssuesCache issuesCache;
   private SonarLintExtendedLanguageClient languageClient;
-  private SerialPortNotifier serialPortNotifier;
 
   @BeforeEach
   public void init() {
     issuesCache = new IssuesCache();
     languageClient = mock(SonarLintExtendedLanguageClient.class);
-    serialPortNotifier = mock(SerialPortNotifier.class);
-    underTest = new DiagnosticPublisher(languageClient, new TaintVulnerabilitiesCache(), issuesCache, serialPortNotifier);
+    underTest = new DiagnosticPublisher(languageClient, new TaintVulnerabilitiesCache(), issuesCache);
   }
 
   @Test
