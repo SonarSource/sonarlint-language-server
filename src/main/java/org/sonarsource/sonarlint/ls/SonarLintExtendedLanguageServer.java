@@ -217,11 +217,9 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   class GetServerPathForTokenGenerationResponse {
     private String serverUrl;
-    private  String errorMessage;
 
-    public GetServerPathForTokenGenerationResponse(String serverUrl, String errorMessage) {
+    public GetServerPathForTokenGenerationResponse(String serverUrl) {
       setServerUrl(serverUrl);
-      setErrorMessage(errorMessage);
     }
 
     public String getServerUrl() {
@@ -230,14 +228,6 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
     public void setServerUrl(String serverUrl) {
       this.serverUrl = serverUrl;
-    }
-
-    public String getErrorMessage() {
-      return errorMessage;
-    }
-
-    public void setErrorMessage(String errorMessage) {
-      this.errorMessage = errorMessage;
     }
 
   }
