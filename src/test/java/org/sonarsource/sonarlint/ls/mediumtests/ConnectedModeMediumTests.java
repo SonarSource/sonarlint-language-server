@@ -48,6 +48,7 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 import testutils.MockWebServerExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
 
 class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
@@ -296,6 +297,15 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var actual = result.get();
 
     assertThat(actual.getServerUrl()).isEqualTo(cleanUrl + "/account/security");
+  }
+
+  @Test
+  void shouldReturnErrorForInvalidUrl() {
+    var params = new SonarLintExtendedLanguageServer.GetServerPathForTokenGenerationParams("invalid/url");
+
+    var result = lsProxy.getServerPathForTokenGeneration(params);
+
+    assertThatThrownBy(result::get).hasMessage("org.eclipse.lsp4j.jsonrpc.ResponseErrorException: Internal error.");
   }
 
   private String stripTrailingSlash(String url) {
