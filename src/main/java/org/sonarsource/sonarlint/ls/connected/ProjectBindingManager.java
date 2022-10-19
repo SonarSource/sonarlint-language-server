@@ -45,16 +45,13 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
-import org.sonarsource.sonarlint.core.serverapi.push.IssueChangedEvent;
-import org.sonarsource.sonarlint.core.serverapi.push.ServerEvent;
-import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityClosedEvent;
-import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
 import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
+import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -92,6 +89,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private Function<URI, Optional<String>> branchNameForFolderSupplier;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final DiagnosticPublisher diagnosticPublisher;
+  private ServerSentEventsHandlerService serverSentEventsHandler;
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
     LanguageClientLogOutput globalLogOutput,
@@ -99,9 +97,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     this(enginesFactory, foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput, taintVulnerabilitiesCache, diagnosticPublisher);
   }
 
-  ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
-    ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput,
-    TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher) {
+  public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
+                               ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput,
+                               TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher) {
     this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
@@ -110,6 +108,11 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     this.globalLogOutput = globalLogOutput;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.diagnosticPublisher = diagnosticPublisher;
+  }
+
+  // Can't use constructor injection because of cyclic dependency
+  public void setServerSentEventsHandler(ServerSentEventsHandlerService serverSentEventsHandlerService) {
+    this.serverSentEventsHandler = serverSentEventsHandlerService;
   }
 
   // Can't use constructor injection because of cyclic dependency
@@ -317,7 +320,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var configuration = getServerConfigurationFor(connectionId);
     if (configuration != null) {
       engine.subscribeForEvents(configuration.getEndpointParams(), configuration.getHttpClient(),
-        getProjectKeysBoundTo(connectionId), this::handleEvents, globalLogOutput);
+        getProjectKeysBoundTo(connectionId), serverSentEventsHandler::handleEvents, globalLogOutput);
     }
   }
 
@@ -437,19 +440,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     });
   }
 
-  public void handleEvents(ServerEvent event) {
-    if (event instanceof TaintVulnerabilityRaisedEvent) {
-      var filePathFromEvent = ((TaintVulnerabilityRaisedEvent) event).getMainLocation().getFilePath();
-      var localFileUri = serverPathToFileUri(filePathFromEvent);
-      localFileUri.ifPresent(this::updateTaintIssueCacheFromStorageForFile);
-    } else if (event instanceof TaintVulnerabilityClosedEvent ||
-      event instanceof IssueChangedEvent) {
-      taintVulnerabilitiesCache.getAllFilesWithTaintIssues()
-        .forEach(this::updateTaintIssueCacheFromStorageForFile);
-    }
-  }
-
-  private void updateTaintIssueCacheFromStorageForFile(URI fileUri) {
+  public void updateTaintIssueCacheFromStorageForFile(URI fileUri) {
     var workspaceFolder = foldersManager.findFolderForFile(fileUri);
     if (workspaceFolder.isPresent()) {
       var baseDir = workspaceFolder.get().getUri();

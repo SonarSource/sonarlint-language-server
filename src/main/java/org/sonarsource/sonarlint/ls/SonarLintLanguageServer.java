@@ -75,7 +75,10 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintIssuesUpdater;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
+import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandler;
+import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
+import org.sonarsource.sonarlint.ls.connected.notifications.TaintVulnerabilityRaisedNotification;
 import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
@@ -138,6 +141,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private TraceValue traceLevel;
 
   private final ModuleEventsProcessor moduleEventsProcessor;
+  private final ServerSentEventsHandlerService serverSentEventsHandler;
+  private final TaintVulnerabilityRaisedNotification taintVulnerabilityRaisedNotification;
 
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers, Collection<Path> extraAnalyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
@@ -194,6 +199,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.serverSynchronizer = new ServerSynchronizer(client, progressManager, bindingManager, analysisScheduler);
     this.commandManager = new CommandManager(client, settingsManager, bindingManager, serverSynchronizer, telemetry, standaloneEngineManager, taintVulnerabilitiesCache,
       issuesCache);
+    this.taintVulnerabilityRaisedNotification = new TaintVulnerabilityRaisedNotification(client, commandManager);
+    this.serverSentEventsHandler = new ServerSentEventsHandler(bindingManager, taintVulnerabilitiesCache, taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager);
+    bindingManager.setServerSentEventsHandler(serverSentEventsHandler);
     this.requestsHandlerServer = new RequestsHandlerServer(lsLogOutput, bindingManager, client, telemetry, settingsManager);
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager, serverSynchronizer);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
