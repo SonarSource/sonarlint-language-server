@@ -93,6 +93,10 @@ class SonarLintExtendedLanguageClientTests {
     var paramDiffDefaultValue = new SonarLintExtendedLanguageClient.RuleParameter(exposedParam.name, exposedParam.description, "other");
     assertThat(exposedParam.hashCode()).isNotEqualTo(paramDiffDefaultValue.hashCode());
     assertThat(exposedParam).isNotEqualTo(paramDiffDefaultValue);
+
+    var ruleDescTaintParams = new ShowRuleDescriptionParams("key1", "javasecurity:S1234", "desc1", RuleType.VULNERABILITY, IssueSeverity.BLOCKER, Collections.emptyList());
+    assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescTaintParams.hashCode());
+    assertThat(ruleDesc1).isNotEqualTo(ruleDescTaintParams);
   }
 
   @Test
@@ -133,4 +137,17 @@ class SonarLintExtendedLanguageClientTests {
     assertThat(underTest.isSuccess()).isFalse();
     assertThat(underTest.getReason()).isEqualTo(reason);
   }
+
+  @Test
+  void test_rule_description_params_is_taint() {
+    var taint = new ShowRuleDescriptionParams("javasecurity:S5168", "Rule Name", null, RuleType.VULNERABILITY, IssueSeverity.BLOCKER, Collections.emptyList());
+    var notTaint1 = new ShowRuleDescriptionParams("java:S5168", "Rule Name", null, RuleType.VULNERABILITY, IssueSeverity.BLOCKER, Collections.emptyList());
+    var notTaint2= new ShowRuleDescriptionParams("javasecurity:S5168", "Rule Name", null, RuleType.BUG, IssueSeverity.BLOCKER, Collections.emptyList());
+
+    assertThat(taint.isTaint()).isTrue();
+    assertThat(notTaint1.isTaint()).isFalse();
+    assertThat(notTaint2.isTaint()).isFalse();
+  }
+
+
 }
