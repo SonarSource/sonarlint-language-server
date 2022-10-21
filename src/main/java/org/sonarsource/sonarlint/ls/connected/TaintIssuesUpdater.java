@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
+import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.util.FileUtils;
@@ -94,7 +95,7 @@ public class TaintIssuesUpdater {
     var serverIssues = engine.getServerTaintIssues(binding, branchName, sqFilePath);
 
     // reload cache
-    taintVulnerabilitiesCache.reload(fileUri, serverIssues);
+    taintVulnerabilitiesCache.reload(fileUri, TaintIssue.from(serverIssues, connectionSettings.isSonarCloudAlias()));
     long foundVulnerabilities = taintVulnerabilitiesCache.getAsDiagnostics(fileUri).count();
     if (foundVulnerabilities > 0) {
       LOG.info(format("Fetched %s %s from %s", foundVulnerabilities,

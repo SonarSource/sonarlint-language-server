@@ -38,6 +38,8 @@ import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
@@ -61,6 +63,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDesc
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
+import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -76,6 +79,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARCLOUD_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARLINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_BROWSE_TAINT_VULNERABILITY;
@@ -218,8 +222,9 @@ class CommandManagerTests {
         "SonarLint: Deactivate rule 'XYZ'");
   }
 
-  @Test
-  void codeActionsForTaint() {
+  @ParameterizedTest
+  @ValueSource(strings = {SONARQUBE_TAINT_SOURCE, SONARCLOUD_TAINT_SOURCE})
+  void codeActionsForTaint(String taintSource) {
     var connId = "connectionId";
     when(mockBinding.getConnectionId()).thenReturn(connId);
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
@@ -229,9 +234,9 @@ class CommandManagerTests {
     when(mockWorkspacesettings.getServerConnections()).thenReturn(Collections.singletonMap(connId, serverSettings));
     when(mockSettingsManager.getCurrentSettings()).thenReturn(mockWorkspacesettings);
 
-    var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARQUBE_TAINT_SOURCE, "ruleKey");
+    var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, taintSource, "ruleKey");
 
-    var issue = mock(ServerTaintIssue.class);
+    var issue = mock(TaintIssue.class);
     when(issue.getRuleKey()).thenReturn("ruleKey");
     when(issue.getCreationDate()).thenReturn(Instant.EPOCH);
     var flow = mock(ServerTaintIssue.Flow.class);
@@ -350,7 +355,7 @@ class CommandManagerTests {
   void showTaintVulnerabilityFlows() {
     var issueKey = "someIssueKey";
     var connectionId = "connectionId";
-    var issue = mock(ServerTaintIssue.class);
+    var issue = mock(TaintIssue.class);
     when(issue.getRuleKey()).thenReturn("ruleKey");
     when(issue.getCreationDate()).thenReturn(Instant.EPOCH);
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
