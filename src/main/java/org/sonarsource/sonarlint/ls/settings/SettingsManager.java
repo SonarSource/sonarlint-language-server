@@ -60,7 +60,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static final String ORGANIZATION_KEY = "organizationKey";
   private static final String DISABLE_NOTIFICATIONS = "disableNotifications";
   private static final String PROJECT = "project";
-  static final String DEFAULT_CONNECTION_ID = "<default>";
+  public static final String DEFAULT_CONNECTION_ID = "<default>";
   private static final String SERVER_URL = "serverUrl";
   private static final String SERVER_ID = "serverId";
   private static final String TOKEN = "token";
