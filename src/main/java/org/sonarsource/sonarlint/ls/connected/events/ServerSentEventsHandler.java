@@ -29,12 +29,13 @@ import org.sonarsource.sonarlint.ls.connected.notifications.TaintVulnerabilityRa
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.DEFAULT_CONNECTION_ID;
+
 public class ServerSentEventsHandler implements ServerSentEventsHandlerService {
   private final ProjectBindingManager projectBindingManager;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final TaintVulnerabilityRaisedNotification taintVulnerabilityRaisedNotification;
   private final SettingsManager settingsManager;
-  private final String DEFAULT_CONNECTION_ID = "<default>";
   private final WorkspaceFoldersManager workspaceFoldersManager;
 
   public ServerSentEventsHandler(ProjectBindingManager projectBindingManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
@@ -78,7 +79,7 @@ public class ServerSentEventsHandler implements ServerSentEventsHandlerService {
     }
     var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
     if(connectionSettings != null && !connectionSettings.isDevNotificationsDisabled() && currentBranch.equals(taintVulnerabilityRaisedEvent.getBranchName())) {
-      taintVulnerabilityRaisedNotification.newTaintVulnerabilityNotification(taintVulnerabilityRaisedEvent, connectionId);
+      taintVulnerabilityRaisedNotification.showTaintVulnerabilityNotification(taintVulnerabilityRaisedEvent, connectionId, connectionSettings.isSonarCloudAlias());
     }
   }
 }
