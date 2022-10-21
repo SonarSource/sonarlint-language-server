@@ -59,7 +59,8 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   private static final int QUEUE_POLLING_PERIOD_MS = 200;
 
   static final String SONARLINT_SOURCE = "sonarlint";
-  public static final String SONARQUBE_TAINT_SOURCE = "SonarQube Taint Analyzer";
+  public static final String SONARQUBE_TAINT_SOURCE = "Latest SonarQube Analysis";
+  public static final String SONARCLOUD_TAINT_SOURCE = "Latest SonarCloud Analysis";
 
   public static final String ITEM_LOCATION = "location";
   public static final String ITEM_FLOW = "flow";

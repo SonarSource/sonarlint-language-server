@@ -66,6 +66,7 @@ import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
 import static java.net.URI.create;
 import static java.util.Objects.requireNonNull;
+import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARCLOUD_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARLINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARQUBE_TAINT_SOURCE;
 
@@ -140,7 +141,7 @@ public class CommandManager {
           var titleDeactivate = String.format("Deactivate rule '%s'", ruleKey);
           codeActions.add(newQuickFix(diagnostic, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, List.of(ruleKey)));
         }
-      } else if (SONARQUBE_TAINT_SOURCE.equals(diagnostic.getSource())) {
+      } else if (SONARQUBE_TAINT_SOURCE.equals(diagnostic.getSource()) || SONARCLOUD_TAINT_SOURCE.equals((diagnostic.getSource()))) {
         var actualBinding = binding.orElseThrow(() -> new IllegalStateException("Binding not found for taint vulnerability"));
         var ruleKey = diagnostic.getCode().getLeft();
         addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey);

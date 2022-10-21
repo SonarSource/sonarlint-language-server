@@ -52,6 +52,7 @@ import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
+import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -451,7 +452,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         var engine = bindingWrapper.getEngine();
         var branchName = this.resolveBranchNameForFolder(fileUri, engine, bindingWrapper.getBinding().projectKey());
         var serverTaintIssues = engine.getServerTaintIssues(bindingWrapper.getBinding(), branchName, filePath);
-        taintVulnerabilitiesCache.reload(fileUri, serverTaintIssues);
+        var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(bindingWrapper.getConnectionId());
+        var isSonarCloud = connectionSettings != null && connectionSettings.isSonarCloudAlias();
+        taintVulnerabilitiesCache.reload(fileUri, TaintIssue.from(serverTaintIssues, isSonarCloud));
         diagnosticPublisher.publishDiagnostics(fileUri);
       }
     }

@@ -28,8 +28,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
-import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
+import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.Collections.emptyList;
@@ -37,7 +37,7 @@ import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralized
 
 public class TaintVulnerabilitiesCache {
 
-  private final Map<URI, List<ServerTaintIssue>> taintVulnerabilitiesPerFile = new ConcurrentHashMap<>();
+  private final Map<URI, List<TaintIssue>> taintVulnerabilitiesPerFile = new ConcurrentHashMap<>();
 
   public void didClose(URI fileUri) {
     clear(fileUri);
@@ -47,22 +47,22 @@ public class TaintVulnerabilitiesCache {
     taintVulnerabilitiesPerFile.remove(fileUri);
   }
 
-  public Optional<ServerTaintIssue> getTaintVulnerabilityForDiagnostic(URI fileUri, Diagnostic d) {
+  public Optional<TaintIssue> getTaintVulnerabilityForDiagnostic(URI fileUri, Diagnostic d) {
     return taintVulnerabilitiesPerFile.getOrDefault(fileUri, Collections.emptyList())
       .stream()
       .filter(i -> hasSameKey(d, i) || hasSameRuleKeyAndLocation(d, i))
       .findFirst();
   }
 
-  private static boolean hasSameKey(Diagnostic d, ServerTaintIssue i) {
+  private static boolean hasSameKey(Diagnostic d, TaintIssue i) {
     return d.getData() != null && d.getData().equals(i.getKey());
   }
 
-  private static boolean hasSameRuleKeyAndLocation(Diagnostic d, ServerTaintIssue i) {
+  private static boolean hasSameRuleKeyAndLocation(Diagnostic d, TaintIssue i) {
     return i.getRuleKey().equals(d.getCode().getLeft()) && Utils.locationMatches(i, d);
   }
 
-  public Optional<ServerTaintIssue> getTaintVulnerabilityByKey(String issueId) {
+  public Optional<TaintIssue> getTaintVulnerabilityByKey(String issueId) {
     return taintVulnerabilitiesPerFile.values().stream()
       .flatMap(List::stream)
       .filter(i -> issueId.equals(i.getKey()))
@@ -75,7 +75,7 @@ public class TaintVulnerabilitiesCache {
       .flatMap(i -> TaintVulnerabilitiesCache.convert(i).stream());
   }
 
-  static Optional<Diagnostic> convert(ServerTaintIssue issue) {
+  static Optional<Diagnostic> convert(TaintIssue issue) {
     if (issue.getTextRange() != null) {
       var range = Utils.convert(issue);
       var diagnostic = new Diagnostic();
@@ -85,7 +85,7 @@ public class TaintVulnerabilitiesCache {
       diagnostic.setRange(range);
       diagnostic.setCode(issue.getRuleKey());
       diagnostic.setMessage(message(issue));
-      diagnostic.setSource(AnalysisScheduler.SONARQUBE_TAINT_SOURCE);
+      diagnostic.setSource(issue.getSource());
       diagnostic.setData(issue.getKey());
 
       return Optional.of(diagnostic);
@@ -93,7 +93,7 @@ public class TaintVulnerabilitiesCache {
     return Optional.empty();
   }
 
-  static String message(ServerTaintIssue issue) {
+  static String message(TaintIssue issue) {
     if (issue.getFlows().isEmpty()) {
       return issue.getMessage();
     } else if (issue.getFlows().size() == 1) {
@@ -103,7 +103,7 @@ public class TaintVulnerabilitiesCache {
     }
   }
 
-  public void reload(URI fileUri, List<ServerTaintIssue> serverTaintIssues) {
+  public void reload(URI fileUri, List<TaintIssue> serverTaintIssues) {
     taintVulnerabilitiesPerFile.put(fileUri, serverTaintIssues);
   }
 
@@ -111,7 +111,7 @@ public class TaintVulnerabilitiesCache {
     return taintVulnerabilitiesPerFile.keySet();
   }
 
-  public Map<URI, List<ServerTaintIssue>> getTaintVulnerabilitiesPerFile() {
+  public Map<URI, List<TaintIssue>> getTaintVulnerabilitiesPerFile() {
     return taintVulnerabilitiesPerFile;
   }
 }

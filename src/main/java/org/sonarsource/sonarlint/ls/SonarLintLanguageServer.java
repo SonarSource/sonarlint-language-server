@@ -200,7 +200,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.commandManager = new CommandManager(client, settingsManager, bindingManager, serverSynchronizer, telemetry, standaloneEngineManager, taintVulnerabilitiesCache,
       issuesCache);
     this.taintVulnerabilityRaisedNotification = new TaintVulnerabilityRaisedNotification(client, commandManager);
-    this.serverSentEventsHandler = new ServerSentEventsHandler(bindingManager, taintVulnerabilitiesCache, taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager);
+    this.serverSentEventsHandler = new ServerSentEventsHandler(bindingManager, taintVulnerabilitiesCache,
+      taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager);
     bindingManager.setServerSentEventsHandler(serverSentEventsHandler);
     this.requestsHandlerServer = new RequestsHandlerServer(lsLogOutput, bindingManager, client, telemetry, settingsManager);
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager, serverSynchronizer);
