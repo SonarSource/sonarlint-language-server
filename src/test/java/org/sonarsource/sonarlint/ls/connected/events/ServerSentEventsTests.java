@@ -62,6 +62,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.when;
+import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARCLOUD_TAINT_SOURCE;
+import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.util.Utils.textRangeWithHashFromTextRange;
 
 class ServerSentEventsTests {
@@ -82,6 +84,7 @@ class ServerSentEventsTests {
     private static final ApacheHttpClientProvider httpClientProvider = mock(ApacheHttpClientProvider.class);
     private static final ServerConnectionSettings GLOBAL_SETTINGS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, false, httpClientProvider);
     private static final ServerConnectionSettings GLOBAL_SETTINGS_DISABLED_NOTIFICATIONS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, true, httpClientProvider);
+    private static final ServerConnectionSettings GLOBAL_SETTINGS_SONARCLOUD = new ServerConnectionSettings(CONNECTION_ID, "https://sonarcloud.io", "token", "test-org", true, httpClientProvider);
     private static final String FILE_PHP = "fileInAWorkspaceFolderPath.php";
     private static final String PROJECT_KEY = "myProject";
     private static final String BRANCH_NAME = "main";
@@ -118,8 +121,8 @@ class ServerSentEventsTests {
         underTest = new ServerSentEventsHandler(projectBindingManager, taintVulnerabilitiesCache, taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager);
 
         MAIN_LOCATION = new TaintVulnerabilityRaisedEvent.Location(fileInAWorkspaceFolderPath.toUri().toString(),
-                "Change this code to not construct SQL queries directly from user-controlled data.",
-                new TaintVulnerabilityRaisedEvent.Location.TextRange(1, 2, 3, 4, "blablabla"));
+          "Change this code to not construct SQL queries directly from user-controlled data.",
+          new TaintVulnerabilityRaisedEvent.Location.TextRange(1, 2, 3, 4, "blablabla"));
     }
 
     @Test
@@ -127,14 +130,14 @@ class ServerSentEventsTests {
         prepareForServerEventTests();
 
         ServerTaintIssue existingIssue = new ServerTaintIssue(ISSUE_KEY1, false, RULE_KEY, MAIN_LOCATION.getMessage(),
-                fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()));
+          fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()));
         when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP))).thenReturn(List.of(existingIssue));
-        when(settingsManager.getCurrentSettings()).thenReturn(newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS)));
+        when(settingsManager.getCurrentSettings()).thenReturn(newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS_SONARCLOUD)));
 
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().get(fileInAWorkspaceFolderPath.toUri())).isNull();
 
         TaintVulnerabilityRaisedEvent fakeEvent = new TaintVulnerabilityRaisedEvent(ISSUE_KEY1, PROJECT_KEY, BRANCH_NAME, CREATION_DATE, RULE_KEY,
-                ISSUE_SEVERITY, RULE_TYPE, MAIN_LOCATION, FLOWS);
+          ISSUE_SEVERITY, RULE_TYPE, MAIN_LOCATION, FLOWS);
 
         underTest.handleEvents(fakeEvent);
 
@@ -142,6 +145,7 @@ class ServerSentEventsTests {
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY1)).isNotEmpty();
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY1).get().getRuleKey()).isEqualTo(RULE_KEY);
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY1).get().isResolved()).isFalse();
+        assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY1).get().getSource()).isEqualTo(SONARCLOUD_TAINT_SOURCE);
     }
 
     @Test
@@ -151,12 +155,12 @@ class ServerSentEventsTests {
 
         // there is already 1 issue in cache
         ServerTaintIssue existingIssue = new ServerTaintIssue(ISSUE_KEY1, false, RULE_KEY, MAIN_LOCATION.getMessage(),
-                fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()));
+          fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()));
         issuesList.add(existingIssue);
         taintVulnerabilitiesCache.reload(fileInAWorkspaceFolderPath.toUri(), TaintIssue.from(issuesList, false));
 
         ServerTaintIssue newIssue = new ServerTaintIssue(ISSUE_KEY2, false, RULE_KEY, MAIN_LOCATION.getMessage(),
-                fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()));
+          fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()));
         issuesList.add(newIssue);
 
         when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP))).thenReturn(issuesList);
@@ -164,13 +168,14 @@ class ServerSentEventsTests {
 
         // Event for new issue is received
         TaintVulnerabilityRaisedEvent fakeEvent = new TaintVulnerabilityRaisedEvent(ISSUE_KEY2, PROJECT_KEY, BRANCH_NAME, CREATION_DATE, RULE_KEY,
-                ISSUE_SEVERITY, RULE_TYPE, MAIN_LOCATION, FLOWS);
+          ISSUE_SEVERITY, RULE_TYPE, MAIN_LOCATION, FLOWS);
         underTest.handleEvents(fakeEvent);
 
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().get(fileInAWorkspaceFolderPath.toUri())).hasSize(2);
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY1)).isNotEmpty();
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY2)).isNotEmpty();
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY2).get().getRuleKey()).isEqualTo(RULE_KEY);
+        assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY2).get().getSource()).isEqualTo(SONARQUBE_TAINT_SOURCE);
     }
 
     @Test
@@ -180,12 +185,13 @@ class ServerSentEventsTests {
 
         // there is already 1 issue in cache
         ServerTaintIssue existingIssue = new ServerTaintIssue(ISSUE_KEY1, false, RULE_KEY, MAIN_LOCATION.getMessage(),
-                fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()));
+          fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()));
         issuesList.add(existingIssue);
         taintVulnerabilitiesCache.reload(fileInAWorkspaceFolderPath.toUri(), TaintIssue.from(issuesList, false));
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().get(fileInAWorkspaceFolderPath.toUri())).hasSize(1);
 
         when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP))).thenReturn(new ArrayList<>());
+        when(settingsManager.getCurrentSettings()).thenReturn(newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS)));
 
         TaintVulnerabilityClosedEvent fakeEvent = new TaintVulnerabilityClosedEvent(PROJECT_KEY, ISSUE_KEY1);
         underTest.handleEvents(fakeEvent);
@@ -214,15 +220,17 @@ class ServerSentEventsTests {
 
         // there is already 1 issue in cache
         ServerTaintIssue existingIssue = new ServerTaintIssue(ISSUE_KEY1, false, RULE_KEY, MAIN_LOCATION.getMessage(),
-                fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()));
+          fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()));
         issuesList.add(existingIssue);
         taintVulnerabilitiesCache.reload(fileInAWorkspaceFolderPath.toUri(), TaintIssue.from(issuesList, false));
+
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().get(fileInAWorkspaceFolderPath.toUri())).hasSize(1);
 
         IssueChangedEvent fakeEvent = new IssueChangedEvent(PROJECT_KEY, List.of(ISSUE_KEY1), NEW_ISSUE_SEVERITY, NEW_RULE_TYPE, null);
         existingIssue.setSeverity(NEW_ISSUE_SEVERITY);
         existingIssue.setType(NEW_RULE_TYPE);
         when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP))).thenReturn(issuesList);
+        when(settingsManager.getCurrentSettings()).thenReturn(newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS)));
         underTest.handleEvents(fakeEvent);
 
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().get(fileInAWorkspaceFolderPath.toUri())).hasSize(1);
@@ -231,6 +239,7 @@ class ServerSentEventsTests {
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY1).get().isResolved()).isFalse();
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY1).get().getSeverity()).isEqualTo(NEW_ISSUE_SEVERITY);
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY1).get().getTextRange()).isEqualTo(textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()));
+        assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY1).get().getSource()).isEqualTo(SONARQUBE_TAINT_SOURCE);
     }
 
     @Test
@@ -242,14 +251,16 @@ class ServerSentEventsTests {
 
         // there is already 1 issue in cache
         ServerTaintIssue existingIssue = new ServerTaintIssue(ISSUE_KEY1, false, RULE_KEY, MAIN_LOCATION.getMessage(),
-                fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()));
+          fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()));
         issuesList.add(existingIssue);
-        taintVulnerabilitiesCache.reload(fileInAWorkspaceFolderPath.toUri(), TaintIssue.from(issuesList, false));
+
+        taintVulnerabilitiesCache.reload(fileInAWorkspaceFolderPath.toUri(), TaintIssue.from(issuesList, true));
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().get(fileInAWorkspaceFolderPath.toUri())).hasSize(1);
 
         IssueChangedEvent fakeEvent = new IssueChangedEvent(PROJECT_KEY, List.of(ISSUE_KEY1), null, null, true);
         existingIssue.setResolved(fakeEvent.getResolved());
         when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP))).thenReturn(issuesList);
+        when(settingsManager.getCurrentSettings()).thenReturn(newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS_SONARCLOUD)));
         underTest.handleEvents(fakeEvent);
 
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().get(fileInAWorkspaceFolderPath.toUri())).hasSize(1);
@@ -258,6 +269,7 @@ class ServerSentEventsTests {
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY1).get().isResolved()).isTrue();
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY1).get().getSeverity()).isEqualTo(ISSUE_SEVERITY);
         assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY1).get().getTextRange()).isEqualTo(textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()));
+        assertThat(taintVulnerabilitiesCache.getTaintVulnerabilityByKey(ISSUE_KEY1).get().getSource()).isEqualTo(SONARCLOUD_TAINT_SOURCE);
     }
 
     @Test

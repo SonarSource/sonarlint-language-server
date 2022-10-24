@@ -27,6 +27,8 @@ import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
@@ -35,6 +37,8 @@ import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARCLOUD_TAINT_SOURCE;
+import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache.convert;
 
 class TaintVulnerabilitiesCacheTests {
@@ -42,8 +46,9 @@ class TaintVulnerabilitiesCacheTests {
   private static final String SAMPLE_SECURITY_RULE_KEY = "javasecurity:S12345";
   private final TaintVulnerabilitiesCache underTest = new TaintVulnerabilitiesCache();
 
-  @Test
-  void testIssueConversion() {
+  @ParameterizedTest
+  @ValueSource(strings = {SONARCLOUD_TAINT_SOURCE, SONARQUBE_TAINT_SOURCE})
+  void testIssueConversion(String taintSource) {
     var issue = mock(TaintIssue.class);
     var flow = mock(ServerTaintIssue.Flow.class);
     var loc1 = mock(ServerTaintIssue.ServerIssueLocation.class);
@@ -55,12 +60,13 @@ class TaintVulnerabilitiesCacheTests {
     when(issue.getMessage()).thenReturn("message");
     when(issue.getKey()).thenReturn("issueKey");
     when(issue.getFlows()).thenReturn(List.of(flow));
+    when(issue.getSource()).thenReturn(taintSource);
 
     var diagnostic = convert(issue).get();
 
     assertThat(diagnostic.getMessage()).isEqualTo("message [+2 locations]");
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
-    assertThat(diagnostic.getSource()).isEqualTo("SonarQube Taint Analyzer");
+    assertThat(diagnostic.getSource()).isEqualTo(taintSource);
     assertThat(diagnostic.getCode().getLeft()).isEqualTo("ruleKey");
     assertThat(diagnostic.getData()).isEqualTo("issueKey");
   }
