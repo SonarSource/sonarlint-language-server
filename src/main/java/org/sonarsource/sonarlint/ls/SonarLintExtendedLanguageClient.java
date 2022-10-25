@@ -71,6 +71,8 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   void showFirstSecretDetectionNotification();
 
   class ShowRuleDescriptionParams {
+
+    private static final String TAINT_RULE_REPO_SUFFIX = "security";
     @Expose
     private final String key;
     @Expose
@@ -82,6 +84,8 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     @Expose
     private final String severity;
     @Expose
+    private final boolean isTaint;
+    @Expose
     private final RuleParameter[] parameters;
 
     public ShowRuleDescriptionParams(String ruleKey, String ruleName, @Nullable String htmlDescription, RuleType type,  IssueSeverity severity,
@@ -91,6 +95,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       this.htmlDescription = htmlDescription;
       this.type = type.toString();
       this.severity = severity.toString();
+      this.isTaint = ruleKey.contains(TAINT_RULE_REPO_SUFFIX) && type == RuleType.VULNERABILITY;
       this.parameters = params.stream().map(p -> new RuleParameter(p.name(), p.description(), p.defaultValue())).toArray(RuleParameter[]::new);
     }
 
@@ -114,13 +119,17 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       return severity;
     }
 
+    public boolean isTaint() {
+      return isTaint;
+    }
+
     public RuleParameter[] getParameters() {
       return parameters;
     }
 
     @Override
     public int hashCode() {
-      var result = Objects.hash(key, name, htmlDescription, type, severity);
+      int result = Objects.hash(key, name, htmlDescription, type, severity, isTaint);
       result = 31 * result + Arrays.hashCode(parameters);
       return result;
     }
@@ -130,12 +139,13 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       if (this == obj) {
         return true;
       }
-      if (!(obj instanceof ShowRuleDescriptionParams)) {
+      if (obj == null || getClass() != obj.getClass()) {
         return false;
       }
       var other = (ShowRuleDescriptionParams) obj;
-      return Objects.equals(htmlDescription, other.htmlDescription) && Objects.equals(key, other.key) && Objects.equals(name, other.name)
-        && Objects.equals(severity, other.severity) && Objects.equals(type, other.type) && Arrays.equals(parameters, other.parameters);
+      return Objects.equals(key, other.key) && Objects.equals(name, other.name)
+        && Objects.equals(htmlDescription, other.htmlDescription) && Objects.equals(type, other.type)
+        && Objects.equals(severity, other.severity) && isTaint == other.isTaint && Arrays.equals(parameters, other.parameters);
     }
 
   }
