@@ -31,7 +31,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -505,16 +504,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<GetServerPathForTokenGenerationResponse> getServerPathForTokenGeneration(GetServerPathForTokenGenerationParams params) {
     var port = requestsHandlerServer.getPort();
     var endpointParams = new EndpointParams(params.getBaseServerUrl(), false, null);
-    var serverUrl = "";
-    var errorMessage = "";
-    try {
-      serverUrl = ServerPathProvider.getServerUrlForTokenGeneration(endpointParams, httpClientProvider.anonymous(), port, appName);
-    } catch (ExecutionException | IllegalStateException e) {
-      errorMessage = "Can't get server status for " + endpointParams.getBaseUrl();
-    } catch (InterruptedException e) {
-      errorMessage = "Can't get server status for " + endpointParams.getBaseUrl() + " due to thread interruption";
-      Thread.currentThread().interrupt();
-    }
-    return CompletableFuture.completedFuture(new GetServerPathForTokenGenerationResponse(serverUrl, errorMessage));
+    return ServerPathProvider.getServerUrlForTokenGeneration(endpointParams, httpClientProvider.anonymous(), port, appName)
+      .thenApply(GetServerPathForTokenGenerationResponse::new);
   }
 }

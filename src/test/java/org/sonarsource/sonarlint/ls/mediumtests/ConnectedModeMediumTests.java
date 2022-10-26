@@ -23,7 +23,6 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.ExecuteCommandParams;
@@ -49,6 +48,7 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 import testutils.MockWebServerExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
 
 class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
@@ -283,9 +283,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     assertThat(actual.getServerUrl())
       // Local port range is dynamic in range [64120-64130]
-      .startsWith(cleanUrl + "/sonarlint/auth?port=641")
-      .endsWith("&ideName=SonarLint+LS+Medium+tests");
-    assertThat(actual.getErrorMessage()).isEmpty();
+      .startsWith(cleanUrl + "/sonarlint/auth?ideName=SonarLint+LS+Medium+tests&port=641");
   }
 
   @Test
@@ -299,19 +297,15 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var actual = result.get();
 
     assertThat(actual.getServerUrl()).isEqualTo(cleanUrl + "/account/security");
-    assertThat(actual.getErrorMessage()).isEmpty();
   }
 
   @Test
-  void shouldReturnErrorForInvalidUrl() throws ExecutionException, InterruptedException {
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.6\", \"id\": \"xzy\"}");
+  void shouldReturnErrorForInvalidUrl() {
     var params = new SonarLintExtendedLanguageServer.GetServerPathForTokenGenerationParams("invalid/url");
 
     var result = lsProxy.getServerPathForTokenGeneration(params);
-    var actual = result.get();
 
-    assertThat(actual.getServerUrl()).isEmpty();
-    assertThat(actual.getErrorMessage()).isEqualTo("Can't get server status for invalid/url");
+    assertThatThrownBy(result::get).hasMessage("org.eclipse.lsp4j.jsonrpc.ResponseErrorException: Internal error.");
   }
 
   private String stripTrailingSlash(String url) {
