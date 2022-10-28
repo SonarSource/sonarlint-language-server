@@ -70,6 +70,7 @@ public class ServerSynchronizer {
       // Clear cached bindings to force rebind during next analysis
       bindingManager.clearBindingCache();
       updateBindings(bindingManager.getActiveConnectionsAndProjects(), progress);
+      bindingManager.updateAllTaintIssues();
     });
   }
 
@@ -193,6 +194,7 @@ public class ServerSynchronizer {
         LOG.debug("Synchronizing storages...");
         projectsToSynchronize.forEach((connectionId, branchNamesByProjectKey) -> bindingManager.getStartedConnectedEngine(connectionId)
           .ifPresent(engine -> syncOneEngine(connectionId, branchNamesByProjectKey, engine, null)));
+        bindingManager.updateAllTaintIssues();
       }
     }
   }
