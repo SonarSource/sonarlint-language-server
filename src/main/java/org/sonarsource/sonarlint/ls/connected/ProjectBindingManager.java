@@ -46,6 +46,8 @@ import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEng
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
 import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
+import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
+import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
@@ -155,7 +157,11 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         return Optional.empty();
       } else {
         var folderRoot = folder.map(WorkspaceFolderWrapper::getRootPath).orElse(Paths.get(fileUri).getParent());
-        return Optional.ofNullable(computeProjectBinding(settings, folderRoot));
+        Optional<ProjectBindingWrapper> maybeBinding = Optional.ofNullable(computeProjectBinding(settings, folderRoot));
+        maybeBinding.ifPresent(binding ->
+          folder.ifPresent(actualFolder ->
+            updateAllTaintIssuesForOneFolder(actualFolder, binding.getBinding(), binding.getConnectionId())));
+        return maybeBinding;
       }
     });
   }
@@ -439,6 +445,32 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         boundFolderConsumer.accept(f, settings);
       }
     });
+  }
+
+  public void updateAllTaintIssues() {
+    forEachBoundFolder((folder, folderSettings) -> {
+      if (folder == null) {
+        return;
+      }
+      getBinding(folder).ifPresent(binding ->
+        updateAllTaintIssuesForOneFolder(folder, binding.getBinding(), binding.getConnectionId()));
+    });
+  }
+
+  private void updateAllTaintIssuesForOneFolder(@Nullable WorkspaceFolderWrapper folder, ProjectBinding binding, String connectionId) {
+    getStartedConnectedEngine(connectionId).ifPresent(engine -> {
+      var branchName = resolveBranchNameForFolder(folder == null ? null : folder.getUri(), engine, binding.projectKey());
+      engine.getAllServerTaintIssues(binding, branchName)
+        .stream()
+        .map(ServerTaintIssue::getFilePath)
+        .distinct()
+        .forEach(this::updateTaintIssueCacheFromStorageForServerPath);
+    });
+  }
+
+  private void updateTaintIssueCacheFromStorageForServerPath(String filePathFromEvent) {
+    LOG.debug("Re-publishing taint vulnerabilities for '{}'", filePathFromEvent);
+    serverPathToFileUri(filePathFromEvent).ifPresent(this::updateTaintIssueCacheFromStorageForFile);
   }
 
   public void updateTaintIssueCacheFromStorageForFile(URI fileUri) {

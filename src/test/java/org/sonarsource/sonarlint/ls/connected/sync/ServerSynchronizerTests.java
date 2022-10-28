@@ -77,6 +77,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -186,10 +187,10 @@ class ServerSynchronizerTests {
 
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
-    verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
-    verify(fakeEngine2).updateProject(any(), any(), eq(PROJECT_KEY2), any());
-    verify(fakeEngine2).sync(any(), any(), eq(Set.of(PROJECT_KEY2)), any());
+    verify(fakeEngine, times(2)).updateProject(any(), any(), eq(PROJECT_KEY), any());
+    verify(fakeEngine, times(2)).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
+    verify(fakeEngine2, times(2)).updateProject(any(), any(), eq(PROJECT_KEY2), any());
+    verify(fakeEngine2, times(2)).sync(any(), any(), eq(Set.of(PROJECT_KEY2)), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
@@ -212,10 +213,10 @@ class ServerSynchronizerTests {
 
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
-    verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
-    verify(fakeEngine2).updateProject(any(), any(), eq(PROJECT_KEY2), any());
-    verify(fakeEngine2).sync(any(), any(), eq(Set.of(PROJECT_KEY2)), any());
+    verify(fakeEngine, times(2)).updateProject(any(), any(), eq(PROJECT_KEY), any());
+    verify(fakeEngine, times(2)).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
+    verify(fakeEngine2, times(2)).updateProject(any(), any(), eq(PROJECT_KEY2), any());
+    verify(fakeEngine2, times(2)).sync(any(), any(), eq(Set.of(PROJECT_KEY2)), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
@@ -230,7 +231,7 @@ class ServerSynchronizerTests {
     folder2.setSettings(BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
 
     when(foldersManager.getAll()).thenReturn(List.of(folder1, folder2));
-
+    when(fakeEngine.calculatePathPrefixes(eq(PROJECT_KEY2), anyCollection())).thenReturn(new ProjectBinding(PROJECT_KEY2, "", ""));
     when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class)))
       .thenReturn(fakeEngine);
 
@@ -238,8 +239,8 @@ class ServerSynchronizerTests {
 
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY2), any());
+    verify(fakeEngine, times(2)).updateProject(any(), any(), eq(PROJECT_KEY), any());
+    verify(fakeEngine, times(2)).updateProject(any(), any(), eq(PROJECT_KEY2), any());
     verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY, PROJECT_KEY2)), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
@@ -263,8 +264,8 @@ class ServerSynchronizerTests {
 
     underTest.updateAllBindings(mock(CancelChecker.class), null);
 
-    verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
-    verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
+    verify(fakeEngine, times(3)).updateProject(any(), any(), eq(PROJECT_KEY), any());
+    verify(fakeEngine, times(3)).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder1);
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder2);
@@ -335,12 +336,12 @@ class ServerSynchronizerTests {
 
     syncTask.run();
 
-    verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
-    verify(fakeEngine).syncServerIssues(any(), any(), eq(PROJECT_KEY), eq("master"), any());
-    verify(fakeEngine).syncServerTaintIssues(any(), any(), eq(PROJECT_KEY), eq("master"), any());
-    verify(fakeEngine2).sync(any(), any(), eq(Set.of(PROJECT_KEY2)), any());
-    verify(fakeEngine2).syncServerIssues(any(), any(), eq(PROJECT_KEY2), eq("master"), any());
-    verify(fakeEngine2).syncServerTaintIssues(any(), any(), eq(PROJECT_KEY2), eq("master"), any());
+    verify(fakeEngine, times(2)).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
+    verify(fakeEngine, times(2)).syncServerIssues(any(), any(), eq(PROJECT_KEY), eq("master"), any());
+    verify(fakeEngine, times(2)).syncServerTaintIssues(any(), any(), eq(PROJECT_KEY), eq("master"), any());
+    verify(fakeEngine2, times(2)).sync(any(), any(), eq(Set.of(PROJECT_KEY2)), any());
+    verify(fakeEngine2, times(2)).syncServerIssues(any(), any(), eq(PROJECT_KEY2), eq("master"), any());
+    verify(fakeEngine2, times(2)).syncServerTaintIssues(any(), any(), eq(PROJECT_KEY2), eq("master"), any());
   }
 
   @Test
