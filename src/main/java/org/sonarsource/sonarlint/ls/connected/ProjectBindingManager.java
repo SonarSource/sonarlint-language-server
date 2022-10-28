@@ -450,7 +450,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       if (folderBinding.isPresent()) {
         ProjectBindingWrapper bindingWrapper = folderBinding.get();
         var engine = bindingWrapper.getEngine();
-        var branchName = this.resolveBranchNameForFolder(fileUri, engine, bindingWrapper.getBinding().projectKey());
+        var folder = foldersManager.findFolderForFile(fileUri);
+        var folderUri = folder.isPresent() ? folder.get().getUri() : URI.create("");
+        var branchName = this.resolveBranchNameForFolder(folderUri, engine, bindingWrapper.getBinding().projectKey());
         var serverTaintIssues = engine.getServerTaintIssues(bindingWrapper.getBinding(), branchName, filePath);
         var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(bindingWrapper.getConnectionId());
         var isSonarCloud = connectionSettings != null && connectionSettings.isSonarCloudAlias();

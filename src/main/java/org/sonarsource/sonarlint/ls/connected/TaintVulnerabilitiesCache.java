@@ -103,8 +103,8 @@ public class TaintVulnerabilitiesCache {
     }
   }
 
-  public void reload(URI fileUri, List<TaintIssue> serverTaintIssues) {
-    taintVulnerabilitiesPerFile.put(fileUri, serverTaintIssues);
+  public void reload(URI fileUri, List<TaintIssue> taintIssues) {
+    taintVulnerabilitiesPerFile.put(fileUri, taintIssues);
   }
 
   public Set<URI> getAllFilesWithTaintIssues(){

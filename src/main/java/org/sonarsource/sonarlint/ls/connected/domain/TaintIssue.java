@@ -20,8 +20,6 @@
 package org.sonarsource.sonarlint.ls.connected.domain;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.Nullable;
@@ -35,8 +33,9 @@ public class TaintIssue extends ServerTaintIssue {
   private String source;
   public TaintIssue(String key, boolean resolved, String ruleKey, String message, String filePath,
     Instant creationDate, IssueSeverity severity, RuleType type,
-    @Nullable TextRangeWithHash textRange, String source) {
+    @Nullable TextRangeWithHash textRange, List<Flow> flows, String source) {
     super(key, resolved, ruleKey, message, filePath, creationDate, severity, type, textRange);
+    this.setFlows(flows);
     this.source = source;
   }
 
@@ -51,7 +50,7 @@ public class TaintIssue extends ServerTaintIssue {
   public static TaintIssue from(ServerTaintIssue serverTaintIssue, String source) {
     return new TaintIssue(serverTaintIssue.getKey(), serverTaintIssue.isResolved(), serverTaintIssue.getRuleKey(),
       serverTaintIssue.getMessage(), serverTaintIssue.getFilePath(), serverTaintIssue.getCreationDate(), serverTaintIssue.getSeverity(),
-      serverTaintIssue.getType(), serverTaintIssue.getTextRange(), source);
+      serverTaintIssue.getType(), serverTaintIssue.getTextRange(), serverTaintIssue.getFlows(), source);
   }
 
   public static List<TaintIssue> from(List<ServerTaintIssue> serverTaintIssues, boolean isSonarCloudAlias) {
