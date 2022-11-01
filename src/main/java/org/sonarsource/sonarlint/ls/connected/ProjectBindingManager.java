@@ -150,20 +150,20 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private Optional<ProjectBindingWrapper> getBinding(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {
     var bindingCache = folder.isPresent() ? folderBindingCache : fileBindingCache;
-    return bindingCache.computeIfAbsent(fileUri, k -> {
+    var maybeBinding = bindingCache.computeIfAbsent(fileUri, k -> {
       var settings = folder.map(WorkspaceFolderWrapper::getSettings)
         .orElse(settingsManager.getCurrentDefaultFolderSettings());
       if (!settings.hasBinding()) {
         return Optional.empty();
       } else {
         var folderRoot = folder.map(WorkspaceFolderWrapper::getRootPath).orElse(Paths.get(fileUri).getParent());
-        Optional<ProjectBindingWrapper> maybeBinding = Optional.ofNullable(computeProjectBinding(settings, folderRoot));
-        maybeBinding.ifPresent(binding ->
-          folder.ifPresent(actualFolder ->
-            updateAllTaintIssuesForOneFolder(actualFolder, binding.getBinding(), binding.getConnectionId())));
-        return maybeBinding;
+        return Optional.ofNullable(computeProjectBinding(settings, folderRoot));
       }
     });
+    maybeBinding.ifPresent(binding ->
+      folder.ifPresent(actualFolder ->
+        updateAllTaintIssuesForOneFolder(actualFolder, binding.getBinding(), binding.getConnectionId())));
+    return maybeBinding;
   }
 
   public Optional<ConnectedSonarLintEngine> getStartedConnectedEngine(String connectionId) {
@@ -452,8 +452,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       if (folder == null) {
         return;
       }
-      getBinding(folder).ifPresent(binding ->
-        updateAllTaintIssuesForOneFolder(folder, binding.getBinding(), binding.getConnectionId()));
+      getBinding(folder);
     });
   }
 
