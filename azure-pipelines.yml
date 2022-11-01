@@ -85,7 +85,7 @@ stages:
     burgrName: 'validate'
     burgrType: 'validate'
     stageName: 'validate'
-    stageDisplayName: Run UTs and trigger SonarQube and WhiteSource analysis
+    stageDisplayName: Run UTs and trigger SonarQube and Mend analysis
     jobs:
     - job: test_windows
       displayName: Run unit tests on Windows
@@ -165,8 +165,8 @@ stages:
           javaHomeOption: 'JDKVersion'
           jdkVersionOption: '1.11'
           mavenOptions: $(MAVEN_OPTS)
-    - job: sonarqubeAndWhiteSource
-      displayName: SonarQube analysis on Next and WhiteSource scan
+    - job: sonarqubeAndMend
+      displayName: SonarQube analysis on Next and Mend scan
       variables:
         MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
         MAVEN_OPTS: '-Xmx3072m -Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
