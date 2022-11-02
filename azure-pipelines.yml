@@ -12,7 +12,7 @@ resources:
     - repository: commonTemplates
       type: git
       name: pipelines-yaml-templates
-      ref:  refs/tags/v1.0.17
+      ref:  refs/tags/v2.0.0
 
 stages:
 - template: stage-with-burgr-notifications.yml@commonTemplates
@@ -199,7 +199,7 @@ stages:
           sonarQubeRunAnalysis: true
           sqMavenPluginVersionChoice: 'latest'
 
-      - template: whitesource-with-maven-repox.yml@commonTemplates
+      - template: mend-with-maven-repox.yml@commonTemplates
         parameters:
           productName : 'SonarLint/LanguageServer'
           mavenRepositoryPath: '$(MAVEN_CACHE_FOLDER)'
