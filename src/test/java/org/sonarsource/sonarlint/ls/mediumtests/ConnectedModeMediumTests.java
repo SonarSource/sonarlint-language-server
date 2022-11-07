@@ -186,7 +186,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.6\", \"id\": \"xzy\"}");
 
     mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=apex,c,cpp,web,java,js,php,plsql,py,secrets,ts,xml,yaml",
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml",
       Issues.IssuesPullQueryTimestamp.newBuilder()
         .setQueryTimestamp(System.currentTimeMillis())
         .build(),
@@ -208,7 +208,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .build())
         .build());
     mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=apex,c,cpp,web,java,js,php,plsql,py,secrets,ts,xml,yaml",
+      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml",
       Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
         .setQueryTimestamp(System.currentTimeMillis())
         .build());
