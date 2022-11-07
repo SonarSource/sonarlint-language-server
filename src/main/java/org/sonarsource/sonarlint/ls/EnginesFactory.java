@@ -49,6 +49,7 @@ public class EnginesFactory {
   private static final Language[] STANDALONE_LANGUAGES = {
     Language.CPP,
     Language.C,
+    Language.CSS,
     Language.HTML,
     Language.JAVA,
     Language.JS,
