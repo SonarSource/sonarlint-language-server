@@ -93,7 +93,7 @@ class WorkspaceFolderBranchManagerTests {
     var folderUri = gitProjectBasedir.toUri();
 
     var bindingWrapper = mock(ProjectBindingWrapper.class);
-    when(bindingManager.getBinding(folderUri)).thenReturn(Optional.of(bindingWrapper));
+    when(bindingManager.getBindingAndRepublishTaints(folderUri)).thenReturn(Optional.of(bindingWrapper));
     var engine = mock(ConnectedSonarLintEngine.class);
     when(bindingWrapper.getEngine()).thenReturn(engine);
     String projectKey = "project_key";
@@ -117,7 +117,7 @@ class WorkspaceFolderBranchManagerTests {
     var folderUri = gitProjectBasedir.toUri();
 
     var bindingWrapper = mock(ProjectBindingWrapper.class);
-    when(bindingManager.getBinding(folderUri)).thenReturn(Optional.of(bindingWrapper));
+    when(bindingManager.getBindingAndRepublishTaints(folderUri)).thenReturn(Optional.of(bindingWrapper));
     var engine = mock(ConnectedSonarLintEngine.class);
     when(bindingWrapper.getEngine()).thenReturn(engine);
     String projectKey = "project_key";
@@ -139,7 +139,7 @@ class WorkspaceFolderBranchManagerTests {
     var folderUri = gitProjectBasedir.toUri();
     var bindingWrapper = mock(ProjectBindingWrapper.class);
     when(bindingManager.getServerConfigurationFor("connectionId")).thenReturn(mock(ServerConnectionSettings.EndpointParamsAndHttpClient.class));
-    when(bindingManager.getBinding(folderUri)).thenReturn(Optional.of(bindingWrapper));
+    when(bindingManager.getBindingAndRepublishTaints(folderUri)).thenReturn(Optional.of(bindingWrapper));
     var engine = mock(ConnectedSonarLintEngine.class);
     when(bindingWrapper.getEngine()).thenReturn(engine);
     when(bindingWrapper.getConnectionId()).thenReturn("connectionId");

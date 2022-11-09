@@ -148,9 +148,19 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return getBinding(folder, cacheKey);
   }
 
+  public void getBindingAndRepublishTaints(WorkspaceFolderWrapper folder) {
+    getBindingAndRepublishTaints(Optional.of(folder), folder.getUri());
+  }
+
+  public Optional<ProjectBindingWrapper> getBindingAndRepublishTaints(URI fileUri) {
+    var folder = foldersManager.findFolderForFile(fileUri);
+    var cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
+    return getBindingAndRepublishTaints(folder, cacheKey);
+  }
+
   private Optional<ProjectBindingWrapper> getBinding(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {
     var bindingCache = folder.isPresent() ? folderBindingCache : fileBindingCache;
-    var maybeBinding = bindingCache.computeIfAbsent(fileUri, k -> {
+    return bindingCache.computeIfAbsent(fileUri, k -> {
       var settings = folder.map(WorkspaceFolderWrapper::getSettings)
         .orElse(settingsManager.getCurrentDefaultFolderSettings());
       if (!settings.hasBinding()) {
@@ -160,6 +170,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         return Optional.ofNullable(computeProjectBinding(settings, folderRoot));
       }
     });
+  }
+
+  private Optional<ProjectBindingWrapper> getBindingAndRepublishTaints(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {
+    var maybeBinding = getBinding(folder, fileUri);
     maybeBinding.ifPresent(binding ->
       folder.ifPresent(actualFolder ->
         updateAllTaintIssuesForOneFolder(actualFolder, binding.getBinding(), binding.getConnectionId())));
@@ -452,7 +466,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       if (folder == null) {
         return;
       }
-      getBinding(folder);
+      getBindingAndRepublishTaints(folder);
     });
   }
 
