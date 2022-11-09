@@ -74,7 +74,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
       return;
     }
     executorService.submit(() -> {
-      Optional<ProjectBindingWrapper> bindingOptional = bindingManager.getBinding(folderUri);
+      Optional<ProjectBindingWrapper> bindingOptional = bindingManager.getBindingAndRepublishTaints(folderUri);
       String electedBranchName = null;
       if (bindingOptional.isPresent()) {
         ProjectBindingWrapper binding = bindingOptional.get();
