@@ -29,7 +29,7 @@
     <kotlin.version>1.6.10</kotlin.version>
     <!-- analyzers used for tests -->
     <sonar.java.version>7.7.0.28547</sonar.java.version>
-    <sonar.javascript.version>9.2.0.17876</sonar.javascript.version>
+    <sonar.javascript.version>9.11.0.20075</sonar.javascript.version>
     <sonar.php.version>3.5.0.5655</sonar.php.version>
     <sonar.python.version>2.13.0.7236</sonar.python.version>
     <sonar.html.version>3.2.0.2082</sonar.html.version>

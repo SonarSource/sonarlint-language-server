@@ -317,7 +317,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     didOpen(file1module1, "java", "public class Foo1 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
     didOpen(file2module1, "java", "public class Foo2 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
-    didOpen(nonJavaFilemodule1, "javascript", "function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}");
+    didOpen(nonJavaFilemodule1, "javascript", "function foo() {\n  let toto1 = 0;\n  let plouf1 = 0;\n}");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
@@ -336,7 +336,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
         List.of(new TextDocumentContentChangeEvent("public class Foo2 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(nonJavaFilemodule1, 2),
-        List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}"))));
+        List.of(new TextDocumentContentChangeEvent("function foo() {\n  let toto1 = 0;\n  let plouf1 = 0;\n}"))));
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
