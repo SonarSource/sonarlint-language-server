@@ -99,7 +99,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void analyzeSimpleJsFileOnOpen() throws Exception {
     var uri = getUri("analyzeSimpleJsFileOnOpen.js");
-    didOpen(uri, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
+    didOpen(uri, "javascript", "function foo() {\n  let toto = 0;\n  let plouf = 0;\n}");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -111,7 +111,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void analyzeSimpleJsFileWithCustomRuleConfig() throws Exception {
     var uri = getUri("analyzeSimpleJsFileWithCustomRuleConfig.js");
-    var jsSource = "function foo()\n {\n  var toto = 0;\n  var plouf = 0;\n}";
+    var jsSource = "function foo()\n {\n  let toto = 0;\n  let plouf = 0;\n}";
 
     // Default configuration should result in 2 issues for rule S1481
 
@@ -251,7 +251,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertLogContains(
       "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern={**/*Test*}]");
 
-    var jsContent = "function foo() {\n  var toto = 0;\n}";
+    var jsContent = "function foo() {\n  let toto = 0;\n}";
     var fooTestUri = getUri("fooTest.js");
     didOpen(fooTestUri, "javascript", jsContent);
 
@@ -292,7 +292,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(withoutTimestamp())
       .contains("[Info] Found 0 issues"));
 
-    didChange(uri, "function foo() {\n  var toto = 0;\n}");
+    didChange(uri, "function foo() {\n  let toto = 0;\n}");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -312,6 +312,18 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
         tuple(2, 2, 2, 27, "xml:S1135", "sonarlint", "Complete the task associated to this \"TODO\" comment.", DiagnosticSeverity.Hint)));
+  }
+
+  @Test
+  void analyzeSimpleCssFileOnOpen() throws Exception {
+    var uri = getUri("analyzeSimpleCssFileOnOpen.css");
+
+    didOpen(uri, "css", "* {}\n");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(0, 0, 0, 4, "css:S4658", "sonarlint", "Unexpected empty block", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -335,7 +347,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
         new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 2), List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n}"))));
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 3),
-        List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n  var plouf = 0;\n}"))));
+        List.of(new TextDocumentContentChangeEvent("function foo() {\n  let toto = 0;\n  let plouf = 0;\n}"))));
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
@@ -510,7 +522,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void testListAllRules() {
     var result = lsProxy.listAllRules().join();
     String[] commercialLanguages = new String[] {"C", "C++"};
-    String[] freeLanguages = new String[] {"HTML", "JavaScript", "TypeScript", "PHP", "Python", "Java", "XML"};
+    String[] freeLanguages = new String[] {"CSS", "HTML", "JavaScript", "TypeScript", "PHP", "Python", "Java", "XML"};
     if (COMMERCIAL_ENABLED) {
       assertThat(result).containsOnlyKeys(ArrayUtils.addAll(commercialLanguages, freeLanguages));
     } else {
@@ -572,7 +584,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     client.logs.clear();
 
     var uri = getUri("testAnalysisLogsDisabled.js");
-    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
+    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  let plouf = 0;\n}");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .filteredOn(notFromContextualTSserver())
@@ -590,7 +602,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     client.logs.clear();
 
     var uri = getUri("testAnalysisLogsDebugEnabled.js");
-    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
+    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  let plouf = 0;\n}");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .filteredOn(notFromContextualTSserver())
@@ -609,7 +621,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     client.logs.clear();
 
     var uri = getUri("testAnalysisLogsEnabled.js");
-    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
+    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  let plouf = 0;\n}");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .filteredOn(notFromContextualTSserver())
@@ -631,7 +643,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     client.logs.clear();
 
     var uri = getUri("testAnalysisLogsWithDebugEnabled.js");
-    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  var plouf = 0;\n}");
+    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  let plouf = 0;\n}");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .filteredOn(notFromContextualTSserver())

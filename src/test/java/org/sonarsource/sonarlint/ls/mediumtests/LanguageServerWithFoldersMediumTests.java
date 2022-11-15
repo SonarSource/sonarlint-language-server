@@ -67,7 +67,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     notifyConfigurationChangeOnClient();
 
     var uriInFolder = folder1BaseDir.resolve("inFolder.js").toUri().toString();
-    didOpen(uriInFolder, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
+    didOpen(uriInFolder, "javascript", "function foo() {\n  let toto = 0;\n  let plouf = 0;\n}");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -78,7 +78,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     client.logs.clear();
 
     var uriOutsideFolder = getUri("outsideFolder.js");
-    didOpen(uriOutsideFolder, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
+    didOpen(uriOutsideFolder, "javascript", "function foo() {\n  let toto = 0;\n  let plouf = 0;\n}");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
@@ -109,10 +109,10 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     // two consecute changes should be batched
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1InFolder, 2),
-        List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}"))));
+        List.of(new TextDocumentContentChangeEvent("function foo() {\n  let toto1 = 0;\n  let plouf1 = 0;\n}"))));
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder, 2),
-        List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto2 = 0;\n  var plouf2 = 0;\n}"))));
+        List.of(new TextDocumentContentChangeEvent("function foo() {\n  let toto2 = 0;\n  let plouf2 = 0;\n}"))));
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
@@ -134,18 +134,18 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     var file1InFolder1 = folder1BaseDir.resolve("file1.js").toUri().toString();
     var file2InFolder2 = folder2BaseDir.resolve("file2.js").toUri().toString();
 
-    didOpen(file1InFolder1, "javascript", "function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}");
-    didOpen(file2InFolder2, "javascript", "function foo() {\n  var toto2 = 0;\n  var plouf2 = 0;\n}");
+    didOpen(file1InFolder1, "javascript", "function foo() {\n  let toto1 = 0;\n  let plouf1 = 0;\n}");
+    didOpen(file2InFolder2, "javascript", "function foo() {\n  let toto2 = 0;\n  let plouf2 = 0;\n}");
 
     client.logs.clear();
 
     // two consecute changes on different folders should not be batched
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1InFolder1, 2),
-        List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto1 = 0;\n  var plouf1 = 0;\n}"))));
+        List.of(new TextDocumentContentChangeEvent("function foo() {\n  let toto1 = 0;\n  let plouf1 = 0;\n}"))));
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder2, 2),
-        List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto2 = 0;\n  var plouf2 = 0;\n}"))));
+        List.of(new TextDocumentContentChangeEvent("function foo() {\n  let toto2 = 0;\n  let plouf2 = 0;\n}"))));
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
