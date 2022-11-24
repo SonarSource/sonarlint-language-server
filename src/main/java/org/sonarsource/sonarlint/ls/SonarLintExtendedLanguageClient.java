@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageClient;
@@ -348,4 +349,6 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonRequest("sonarlint/getTokenForServer")
   CompletableFuture<String> getTokenForServer(String serverUrlOrOrganization);
 
+  @JsonNotification("sonarlint/publishSecurityHotspots")
+  void publishSecurityHotspots(PublishDiagnosticsParams publishDiagnosticsParams);
 }

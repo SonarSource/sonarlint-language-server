@@ -46,12 +46,14 @@ public class DiagnosticPublisher {
   private boolean firstSecretIssueDetected;
 
   private final IssuesCache issuesCache;
+  private final IssuesCache hotspotsCache;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
 
-  public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache) {
+  public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache, IssuesCache hotspotsCache) {
     this.client = client;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.issuesCache = issuesCache;
+    this.hotspotsCache = hotspotsCache;
   }
 
   public void initialize(boolean firstSecretDetected) {
@@ -59,7 +61,8 @@ public class DiagnosticPublisher {
   }
 
   public void publishDiagnostics(URI f) {
-    client.publishDiagnostics(createPublishDiagnosticsParams(f));
+    client.publishDiagnostics(createPublishDiagnosticsParams(issuesCache, f));
+    client.publishSecurityHotspots(createPublishDiagnosticsParams(hotspotsCache, f));
   }
 
   static Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
@@ -92,10 +95,10 @@ public class DiagnosticPublisher {
     }
   }
 
-  private PublishDiagnosticsParams createPublishDiagnosticsParams(URI newUri) {
+  private PublishDiagnosticsParams createPublishDiagnosticsParams(IssuesCache cache, URI newUri) {
     var p = new PublishDiagnosticsParams();
 
-    Map<String, VersionedIssue> localIssues = issuesCache.get(newUri);
+    Map<String, VersionedIssue> localIssues = cache.get(newUri);
 
     if (!firstSecretIssueDetected && localIssues.values().stream().anyMatch(v -> v.getIssue().getRuleKey().startsWith(Language.SECRETS.getPluginKey()))) {
       client.showFirstSecretDetectionNotification();
