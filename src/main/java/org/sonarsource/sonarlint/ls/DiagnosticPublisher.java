@@ -61,8 +61,8 @@ public class DiagnosticPublisher {
   }
 
   public void publishDiagnostics(URI f) {
-    client.publishDiagnostics(createPublishDiagnosticsParams(issuesCache, f));
-    client.publishSecurityHotspots(createPublishDiagnosticsParams(hotspotsCache, f));
+    client.publishDiagnostics(createPublishDiagnosticsParams(issuesCache, true, f));
+    client.publishSecurityHotspots(createPublishDiagnosticsParams(hotspotsCache, false, f));
   }
 
   static Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
@@ -95,7 +95,7 @@ public class DiagnosticPublisher {
     }
   }
 
-  private PublishDiagnosticsParams createPublishDiagnosticsParams(IssuesCache cache, URI newUri) {
+  private PublishDiagnosticsParams createPublishDiagnosticsParams(IssuesCache cache, boolean withTaints, URI newUri) {
     var p = new PublishDiagnosticsParams();
 
     Map<String, VersionedIssue> localIssues = cache.get(newUri);
@@ -110,7 +110,7 @@ public class DiagnosticPublisher {
       .map(DiagnosticPublisher::convert);
     var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostics(newUri);
 
-    p.setDiagnostics(Stream.concat(localDiagnostics, taintDiagnostics)
+    p.setDiagnostics((withTaints ? Stream.concat(localDiagnostics, taintDiagnostics) : localDiagnostics)
       .sorted(DiagnosticPublisher.byLineNumber())
       .collect(toList()));
     p.setUri(newUri.toString());
