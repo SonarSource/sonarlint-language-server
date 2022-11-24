@@ -149,6 +149,7 @@ public class AnalysisTaskExecutor {
 
   private void clearIssueCacheAndPublishEmptyDiagnostics(URI f) {
     issuesCache.clear(f);
+    securityHotspotsCache.clear(f);
     diagnosticPublisher.publishDiagnostics(f);
   }
 
@@ -292,6 +293,7 @@ public class AnalysisTaskExecutor {
 
     filesToAnalyze.forEach((fileUri, openFile) -> {
       issuesCache.analysisStarted(openFile);
+      securityHotspotsCache.analysisStarted(openFile);
       if (binding.isEmpty()) {
         // Clear taint vulnerabilities if the folder was previously bound and just now changed to standalone
         taintVulnerabilitiesCache.clear(fileUri);
@@ -322,13 +324,17 @@ public class AnalysisTaskExecutor {
       .map(URI.class::cast)
       .forEach(fileUri -> {
         filesSuccessfullyAnalyzed.remove(fileUri);
-        issuesCache.analysisFailed(filesToAnalyze.get(fileUri));
+        var file = filesToAnalyze.get(fileUri);
+        issuesCache.analysisFailed(file);
+        securityHotspotsCache.analysisFailed(file);
       });
 
     if (!filesSuccessfullyAnalyzed.isEmpty()) {
       var totalIssueCount = new AtomicInteger();
       filesSuccessfullyAnalyzed.forEach(f -> {
-        issuesCache.analysisSucceeded(filesToAnalyze.get(f));
+        var file = filesToAnalyze.get(f);
+        issuesCache.analysisSucceeded(file);
+        securityHotspotsCache.analysisSucceeded(file);
         var foundIssues = issuesCache.count(f);
         totalIssueCount.addAndGet(foundIssues);
         diagnosticPublisher.publishDiagnostics(f);
