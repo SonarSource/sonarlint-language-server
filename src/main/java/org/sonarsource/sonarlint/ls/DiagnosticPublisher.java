@@ -61,7 +61,7 @@ public class DiagnosticPublisher {
   }
 
   public void publishDiagnostics(URI f) {
-    client.publishDiagnostics(createPublishDiagnosticsParams(f));
+    client.publishDiagnostics(createPublishDiagnosticsParams(issuesCache, f));
     client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
   }
 
@@ -96,10 +96,10 @@ public class DiagnosticPublisher {
     }
   }
 
-  private PublishDiagnosticsParams createPublishDiagnosticsParams(URI newUri) {
+  private PublishDiagnosticsParams createPublishDiagnosticsParams(IssuesCache cache, URI newUri) {
     var p = new PublishDiagnosticsParams();
 
-    Map<String, VersionedIssue> localIssues = issuesCache.get(newUri);
+    Map<String, VersionedIssue> localIssues = cache.get(newUri);
 
     if (!firstSecretIssueDetected && localIssues.values().stream().anyMatch(v -> v.getIssue().getRuleKey().startsWith(Language.SECRETS.getPluginKey()))) {
       client.showFirstSecretDetectionNotification();
