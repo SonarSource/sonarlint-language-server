@@ -61,8 +61,8 @@ public class DiagnosticPublisher {
   }
 
   public void publishDiagnostics(URI f) {
-    client.publishDiagnostics(createPublishDiagnosticsParams(issuesCache, true, f));
-    client.publishSecurityHotspots(createPublishDiagnosticsParams(hotspotsCache, false, f));
+    client.publishDiagnostics(createPublishDiagnosticsParams(f));
+    client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
   }
 
   static Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
@@ -96,10 +96,10 @@ public class DiagnosticPublisher {
     }
   }
 
-  private PublishDiagnosticsParams createPublishDiagnosticsParams(IssuesCache cache, boolean withTaints, URI newUri) {
+  private PublishDiagnosticsParams createPublishDiagnosticsParams(URI newUri) {
     var p = new PublishDiagnosticsParams();
 
-    Map<String, VersionedIssue> localIssues = cache.get(newUri);
+    Map<String, VersionedIssue> localIssues = issuesCache.get(newUri);
 
     if (!firstSecretIssueDetected && localIssues.values().stream().anyMatch(v -> v.getIssue().getRuleKey().startsWith(Language.SECRETS.getPluginKey()))) {
       client.showFirstSecretDetectionNotification();
@@ -111,7 +111,20 @@ public class DiagnosticPublisher {
       .map(DiagnosticPublisher::convert);
     var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostics(newUri);
 
-    p.setDiagnostics((withTaints ? Stream.concat(localDiagnostics, taintDiagnostics) : localDiagnostics)
+    p.setDiagnostics(Stream.concat(localDiagnostics, taintDiagnostics)
+      .sorted(DiagnosticPublisher.byLineNumber())
+      .collect(toList()));
+    p.setUri(newUri.toString());
+
+    return p;
+  }
+
+  private PublishDiagnosticsParams createPublishSecurityHotspotsParams(URI newUri) {
+    var p = new PublishDiagnosticsParams();
+
+    p.setDiagnostics(hotspotsCache.get(newUri).entrySet()
+      .stream()
+      .map(DiagnosticPublisher::convert)
       .sorted(DiagnosticPublisher.byLineNumber())
       .collect(toList()));
     p.setUri(newUri.toString());
