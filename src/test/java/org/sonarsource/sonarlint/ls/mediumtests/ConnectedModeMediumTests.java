@@ -161,6 +161,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analysisConnected_find_hotspot() throws Exception {
+    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
+
     var uriInFolder = folder1BaseDir.resolve("hotspot.js").toUri().toString();
     didOpen(uriInFolder, "javascript", "const IP_ADDRESS = '12.34.56.78';\n");
 
