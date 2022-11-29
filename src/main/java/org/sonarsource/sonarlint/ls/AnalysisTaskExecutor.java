@@ -43,6 +43,7 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedAnalysisConfiguration;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneAnalysisConfiguration;
+import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
 import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
@@ -82,6 +83,7 @@ public class AnalysisTaskExecutor {
   private final SettingsManager settingsManager;
   private final FileTypeClassifier fileTypeClassifier;
   private final IssuesCache issuesCache;
+  private final IssuesCache securityHotspotsCache;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final SonarLintTelemetry telemetry;
   private final SkippedPluginsNotifier skippedPluginsNotifier;
@@ -91,8 +93,8 @@ public class AnalysisTaskExecutor {
 
   public AnalysisTaskExecutor(ScmIgnoredCache filesIgnoredByScmCache, LanguageClientLogger lsLogOutput,
     WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, JavaConfigCache javaConfigCache, SettingsManager settingsManager,
-    FileTypeClassifier fileTypeClassifier, IssuesCache issuesCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache, SonarLintTelemetry telemetry,
-    SkippedPluginsNotifier skippedPluginsNotifier, StandaloneEngineManager standaloneEngineManager, DiagnosticPublisher diagnosticPublisher,
+    FileTypeClassifier fileTypeClassifier, IssuesCache issuesCache, IssuesCache securityHotspotsCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
+    SonarLintTelemetry telemetry, SkippedPluginsNotifier skippedPluginsNotifier, StandaloneEngineManager standaloneEngineManager, DiagnosticPublisher diagnosticPublisher,
     SonarLintExtendedLanguageClient lsClient) {
     this.filesIgnoredByScmCache = filesIgnoredByScmCache;
     this.lsLogOutput = lsLogOutput;
@@ -102,6 +104,7 @@ public class AnalysisTaskExecutor {
     this.settingsManager = settingsManager;
     this.fileTypeClassifier = fileTypeClassifier;
     this.issuesCache = issuesCache;
+    this.securityHotspotsCache = securityHotspotsCache;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.telemetry = telemetry;
     this.skippedPluginsNotifier = skippedPluginsNotifier;
@@ -146,6 +149,7 @@ public class AnalysisTaskExecutor {
 
   private void clearIssueCacheAndPublishEmptyDiagnostics(URI f) {
     issuesCache.clear(f);
+    securityHotspotsCache.clear(f);
     diagnosticPublisher.publishDiagnostics(f);
   }
 
@@ -289,7 +293,8 @@ public class AnalysisTaskExecutor {
 
     filesToAnalyze.forEach((fileUri, openFile) -> {
       issuesCache.analysisStarted(openFile);
-      if (!binding.isPresent()) {
+      securityHotspotsCache.analysisStarted(openFile);
+      if (binding.isEmpty()) {
         // Clear taint vulnerabilities if the folder was previously bound and just now changed to standalone
         taintVulnerabilitiesCache.clear(fileUri);
       }
@@ -300,11 +305,9 @@ public class AnalysisTaskExecutor {
 
     AnalysisResultsWrapper analysisResults;
     var filesSuccessfullyAnalyzed = new HashSet<>(filesToAnalyze.keySet());
-    if (binding.isPresent()) {
-      analysisResults = analyzeConnected(task, binding.get(), settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener);
-    } else {
-      analysisResults = analyzeStandalone(task, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener);
-    }
+    analysisResults = binding
+      .map(projectBindingWrapper -> analyzeConnected(task, projectBindingWrapper, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener))
+      .orElseGet(() -> analyzeStandalone(task, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener));
     task.checkCanceled();
     skippedPluginsNotifier.notifyOnceForSkippedPlugins(analysisResults.results, analysisResults.allPlugins);
 
@@ -319,13 +322,17 @@ public class AnalysisTaskExecutor {
       .map(URI.class::cast)
       .forEach(fileUri -> {
         filesSuccessfullyAnalyzed.remove(fileUri);
-        issuesCache.analysisFailed(filesToAnalyze.get(fileUri));
+        var file = filesToAnalyze.get(fileUri);
+        issuesCache.analysisFailed(file);
+        securityHotspotsCache.analysisFailed(file);
       });
 
     if (!filesSuccessfullyAnalyzed.isEmpty()) {
       var totalIssueCount = new AtomicInteger();
       filesSuccessfullyAnalyzed.forEach(f -> {
-        issuesCache.analysisSucceeded(filesToAnalyze.get(f));
+        var file = filesToAnalyze.get(f);
+        issuesCache.analysisSucceeded(file);
+        securityHotspotsCache.analysisSucceeded(file);
         var foundIssues = issuesCache.count(f);
         totalIssueCount.addAndGet(foundIssues);
         diagnosticPublisher.publishDiagnostics(f);
@@ -342,7 +349,11 @@ public class AnalysisTaskExecutor {
       if (inputFile != null) {
         URI uri = inputFile.getClientObject();
         var versionedOpenFile = filesToAnalyze.get(uri);
-        issuesCache.reportIssue(versionedOpenFile, issue);
+        if (issue.getType() == RuleType.SECURITY_HOTSPOT) {
+          securityHotspotsCache.reportIssue(versionedOpenFile, issue);
+        } else {
+          issuesCache.reportIssue(versionedOpenFile, issue);
+        }
         diagnosticPublisher.publishDiagnostics(uri);
         ruleKeys.add(issue.getRuleKey());
       }

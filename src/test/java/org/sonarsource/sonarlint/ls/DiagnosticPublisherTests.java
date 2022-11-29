@@ -46,13 +46,15 @@ class DiagnosticPublisherTests {
 
   private DiagnosticPublisher underTest;
   private IssuesCache issuesCache;
+  private IssuesCache hotspotsCache;
   private SonarLintExtendedLanguageClient languageClient;
 
   @BeforeEach
   public void init() {
     issuesCache = new IssuesCache();
+    hotspotsCache = new IssuesCache();
     languageClient = mock(SonarLintExtendedLanguageClient.class);
-    underTest = new DiagnosticPublisher(languageClient, new TaintVulnerabilitiesCache(), issuesCache);
+    underTest = new DiagnosticPublisher(languageClient, new TaintVulnerabilitiesCache(), issuesCache, hotspotsCache);
   }
 
   @Test

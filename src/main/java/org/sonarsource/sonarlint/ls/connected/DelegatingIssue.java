@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 import java.util.List;
+import java.util.Optional;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
@@ -105,5 +106,10 @@ public class DelegatingIssue implements Issue {
   @Override
   public List<QuickFix> quickFixes() {
     return issue.quickFixes();
+  }
+
+  @Override
+  public Optional<String> getRuleDescriptionContextKey() {
+    return issue.getRuleDescriptionContextKey();
   }
 }
