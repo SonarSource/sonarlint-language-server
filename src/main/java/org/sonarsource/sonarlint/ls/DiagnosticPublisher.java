@@ -132,19 +132,6 @@ public class DiagnosticPublisher {
     return p;
   }
 
-  private PublishDiagnosticsParams createPublishSecurityHotspotsParams(URI newUri) {
-    var p = new PublishDiagnosticsParams();
-
-    p.setDiagnostics(hotspotsCache.get(newUri).entrySet()
-      .stream()
-      .map(DiagnosticPublisher::convert)
-      .sorted(DiagnosticPublisher.byLineNumber())
-      .collect(toList()));
-    p.setUri(newUri.toString());
-
-    return p;
-  }
-
   private static Comparator<? super Diagnostic> byLineNumber() {
     return Comparator.comparing((Diagnostic d) -> d.getRange().getStart().getLine())
       .thenComparing(Diagnostic::getMessage);
