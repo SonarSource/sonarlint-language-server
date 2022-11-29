@@ -55,6 +55,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   private static final String QPROFILE_KEY = "AXDEr5Q7LjElHiH99ZhW";
   private static final String JAVASCRIPT_S1481 = "javascript:S1481";
+  private static final String JAVASCRIPT_S1313 = "javascript:S1313";
 
   @RegisterExtension
   private final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
@@ -98,13 +99,18 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .build());
     Rules.Actives.Builder activeBuilder = Rules.Actives.newBuilder();
     activeBuilder.putActives(JAVASCRIPT_S1481, Rules.ActiveList.newBuilder().addActiveList(Rules.Active.newBuilder().setSeverity("BLOCKER")).build());
+    activeBuilder.putActives(JAVASCRIPT_S1313, Rules.ActiveList.newBuilder().addActiveList(Rules.Active.newBuilder().setSeverity("MINOR")).build());
     mockWebServerExtension.addProtobufResponse(
       "/api/rules/search.protobuf?qprofile=" + QPROFILE_KEY + "&activation=true&f=templateKey,actives&types=CODE_SMELL,BUG,VULNERABILITY,SECURITY_HOTSPOT&s=key&ps=500&p=1",
       Rules.SearchResponse.newBuilder()
         .setActives(activeBuilder.build())
-        .setTotal(1)
+        .setTotal(2)
         .addRules(Rules.Rule.newBuilder()
           .setKey(JAVASCRIPT_S1481)
+          .setLang("js")
+          .build())
+        .addRules(Rules.Rule.newBuilder()
+          .setKey(JAVASCRIPT_S1313)
           .setLang("js")
           .build())
         .build());
@@ -151,6 +157,17 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .containsExactlyInAnyOrder(
         tuple(1, 6, 1, 10, JAVASCRIPT_S1481, "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Warning),
         tuple(2, 6, 2, 11, JAVASCRIPT_S1481, "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Warning)));
+  }
+
+  @Test
+  void analysisConnected_find_hotspot() throws Exception {
+    var uriInFolder = folder1BaseDir.resolve("hotspot.js").toUri().toString();
+    didOpen(uriInFolder, "javascript", "const IP_ADDRESS = '12.34.56.78';\n");
+
+    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(0, 19, 0, 32, JAVASCRIPT_S1313, "sonarlint", "Make sure using a hardcoded IP address 12.34.56.78 is safe here.", DiagnosticSeverity.Information)));
   }
 
   @Test
