@@ -305,11 +305,9 @@ public class AnalysisTaskExecutor {
 
     AnalysisResultsWrapper analysisResults;
     var filesSuccessfullyAnalyzed = new HashSet<>(filesToAnalyze.keySet());
-    if (binding.isPresent()) {
-      analysisResults = analyzeConnected(task, binding.get(), settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener);
-    } else {
-      analysisResults = analyzeStandalone(task, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener);
-    }
+    analysisResults = binding
+      .map(projectBindingWrapper -> analyzeConnected(task, projectBindingWrapper, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener))
+      .orElseGet(() -> analyzeStandalone(task, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener));
     task.checkCanceled();
     skippedPluginsNotifier.notifyOnceForSkippedPlugins(analysisResults.results, analysisResults.allPlugins);
 
