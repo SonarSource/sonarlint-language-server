@@ -19,12 +19,14 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import com.google.gson.JsonPrimitive;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -108,6 +110,7 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.net.URI.create;
 import static java.util.Optional.ofNullable;
+import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
 
@@ -211,7 +214,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) analysisScheduler);
     this.serverSynchronizer = new ServerSynchronizer(client, progressManager, bindingManager, analysisScheduler);
     this.commandManager = new CommandManager(client, settingsManager, bindingManager, serverSynchronizer, telemetry, standaloneEngineManager, taintVulnerabilitiesCache,
-      issuesCache);
+      issuesCache, securityHotspotsCache);
     this.taintVulnerabilityRaisedNotification = new TaintVulnerabilityRaisedNotification(client, commandManager);
     this.serverSentEventsHandler = new ServerSentEventsHandler(bindingManager, taintVulnerabilitiesCache,
       taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager);
@@ -560,4 +563,15 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     params.setEmbeddedPluginPaths(Collections.emptySet());
   }
 
+  public CompletableFuture<Void> showHotspotLocations(ShowHotspotLocationsParams showHotspotLocationsParams) {
+    var fileUri = showHotspotLocationsParams.fileUri;
+    var hotspotKey = showHotspotLocationsParams.hotspotKey;
+    var showHotspotCommandParams = new ExecuteCommandParams(SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS,
+      List.of(new JsonPrimitive(fileUri), new JsonPrimitive(hotspotKey)));
+    return CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      commandManager.executeCommand(showHotspotCommandParams, cancelToken);
+      return null;
+    });
+  }
 }

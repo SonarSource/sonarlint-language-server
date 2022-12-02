@@ -56,8 +56,8 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/showHotspot")
   void showHotspot(ServerHotspotDetails hotspot);
 
-  @JsonNotification("sonarlint/showTaintVulnerability")
-  void showTaintVulnerability(ShowAllLocationsCommand.Param params);
+  @JsonNotification("sonarlint/showIssueOrHotspot")
+  void showIssueOrHotspot(ShowAllLocationsCommand.Param params);
 
   @JsonNotification("sonarlint/submitToken")
   void submitToken(String token);

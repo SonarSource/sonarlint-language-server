@@ -251,6 +251,26 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonRequest("sonarlint/getServerPathForTokenGeneration")
   CompletableFuture<GetServerPathForTokenGenerationResponse> getServerPathForTokenGeneration(GetServerPathForTokenGenerationParams params);
 
+  class ShowHotspotLocationsParams {
+    String hotspotKey;
+    String fileUri;
+
+    public ShowHotspotLocationsParams(String hotspotKey) {
+      setHotspotKey(hotspotKey);
+    }
+
+    public String getHotspotKey() {
+      return hotspotKey;
+    }
+
+    public void setHotspotKey(String hotspotKey) {
+      this.hotspotKey = hotspotKey;
+    }
+  }
+
+  @JsonRequest("sonarlint/showHotspotLocations")
+  CompletableFuture<Void> showHotspotLocations(ShowHotspotLocationsParams hotspotKey);
+
   class OpenHotspotParams {
     private String hotspotId;
     private String fileUri;

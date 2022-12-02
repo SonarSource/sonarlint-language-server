@@ -108,6 +108,7 @@ class CommandManagerTests {
   private SonarLintTelemetry mockTelemetry;
   private StandaloneEngineManager standaloneEngineManager;
   private ServerSynchronizer serverSynchronizer;
+  private IssuesCache securityHotspotsCache;
 
   @BeforeEach
   public void prepareMocks() {
@@ -126,7 +127,8 @@ class CommandManagerTests {
     when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(mockStandaloneEngine);
     mockTelemetry = mock(SonarLintTelemetry.class);
     serverSynchronizer = mock(ServerSynchronizer.class);
-    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, serverSynchronizer, mockTelemetry, standaloneEngineManager, mockTaintVulnerabilitiesCache, issuesCache);
+    securityHotspotsCache = mock(IssuesCache.class);
+    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, serverSynchronizer, mockTelemetry, standaloneEngineManager, mockTaintVulnerabilitiesCache, issuesCache, securityHotspotsCache);
   }
 
   @Test

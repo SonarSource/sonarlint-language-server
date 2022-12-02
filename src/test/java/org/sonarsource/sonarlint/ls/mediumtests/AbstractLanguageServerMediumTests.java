@@ -353,7 +353,7 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public void showTaintVulnerability(ShowAllLocationsCommand.Param params) {
+    public void showIssueOrHotspot(ShowAllLocationsCommand.Param params) {
     }
 
     @Override
