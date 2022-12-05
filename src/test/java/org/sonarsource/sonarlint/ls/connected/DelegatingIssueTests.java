@@ -27,7 +27,8 @@ import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
-import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
+import org.sonarsource.sonarlint.core.issuetracking.Trackable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -35,23 +36,27 @@ import static org.mockito.Mockito.when;
 
 class DelegatingIssueTests {
 
+  private final Trackable<Issue> trackable = mock(Trackable.class);
+  private final TextRangeWithHash textRange = mock(TextRangeWithHash.class);
   private final Issue issue = mock(Issue.class);
   private DelegatingIssue delegatingIssue;
 
   @BeforeEach
   public void prepare() {
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
-    when(issue.getType()).thenReturn(RuleType.BUG);
+    when(trackable.getType()).thenReturn(RuleType.BUG);
     when(issue.getMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
+    when(issue.getTextRange()).thenReturn(textRange);
     when(issue.getStartLine()).thenReturn(2);
     when(issue.getStartLineOffset()).thenReturn(3);
     when(issue.getEndLine()).thenReturn(4);
     when(issue.getEndLineOffset()).thenReturn(5);
+    when(trackable.getClientObject()).thenReturn(issue);
     when(issue.flows()).thenReturn(List.of(mock(Flow.class)));
     when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
-    when(issue.getTextRange()).thenReturn(mock(TextRange.class));
-    delegatingIssue = new DelegatingIssue(issue, null);
+    when(trackable.getTextRange()).thenReturn(mock(TextRangeWithHash.class));
+    delegatingIssue = new DelegatingIssue(trackable);
   }
 
   @Test
@@ -61,14 +66,15 @@ class DelegatingIssueTests {
 
   @Test
   void testGetUserSeverity() {
-    var delegatingIssueWithUserSeverity = new DelegatingIssue(issue, IssueSeverity.INFO);
+    when(trackable.getSeverity()).thenReturn(IssueSeverity.INFO);
+    var delegatingIssueWithUserSeverity = new DelegatingIssue(trackable);
 
     assertThat(delegatingIssueWithUserSeverity.getSeverity()).isEqualTo(IssueSeverity.INFO);
   }
 
   @Test
   void testGetType() {
-    assertThat(delegatingIssue.getType()).isEqualTo(issue.getType());
+    assertThat(delegatingIssue.getType()).isEqualTo(trackable.getType());
   }
 
   @Test

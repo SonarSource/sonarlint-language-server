@@ -22,7 +22,6 @@ package org.sonarsource.sonarlint.ls.connected;
 import java.util.List;
 import java.util.Optional;
 import javax.annotation.CheckForNull;
-import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
@@ -30,14 +29,20 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.issuetracking.Trackable;
 
 public class DelegatingIssue implements Issue {
   private final Issue issue;
+  private final RuleType type;
+  private final String serverIssueKey;
   private final IssueSeverity severity;
 
-  DelegatingIssue(Issue issue, @Nullable IssueSeverity userSeverity) {
-    this.issue = issue;
+  DelegatingIssue(Trackable<Issue> trackable) {
+    var userSeverity = trackable.getSeverity();
+    this.issue = trackable.getClientObject();
     this.severity = userSeverity != null ? userSeverity : issue.getSeverity();
+    this.type = trackable.getType();
+    this.serverIssueKey = trackable.getServerIssueKey();
   }
 
   @Override
@@ -48,7 +53,7 @@ public class DelegatingIssue implements Issue {
   @CheckForNull
   @Override
   public RuleType getType() {
-    return issue.getType();
+    return type;
   }
 
   @CheckForNull
@@ -111,5 +116,9 @@ public class DelegatingIssue implements Issue {
   @Override
   public Optional<String> getRuleDescriptionContextKey() {
     return issue.getRuleDescriptionContextKey();
+  }
+
+  public String getServerIssueKey() {
+    return serverIssueKey;
   }
 }

@@ -53,6 +53,7 @@ import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.UrlUtils;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
@@ -79,6 +80,7 @@ public class CommandManager {
   static final String SONARLINT_UPDATE_ALL_BINDINGS_COMMAND = "SonarLint.UpdateAllBindings";
   static final String SONARLINT_BROWSE_TAINT_VULNERABILITY = "SonarLint.BrowseTaintVulnerability";
   static final String SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS = "SonarLint.ShowTaintVulnerabilityFlows";
+  static final String SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS = "SonarLint.ShowSecurityHotspotFlows";
   static final List<String> SONARLINT_SERVERSIDE_COMMANDS = List.of(
     SONARLINT_QUICK_FIX_APPLIED,
     SONARLINT_UPDATE_ALL_BINDINGS_COMMAND,
@@ -99,9 +101,11 @@ public class CommandManager {
   private final StandaloneEngineManager standaloneEngineManager;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final IssuesCache issuesCache;
+  private final IssuesCache securityHotspotsCache;
 
   CommandManager(SonarLintExtendedLanguageClient client, SettingsManager settingsManager, ProjectBindingManager bindingManager, ServerSynchronizer serverSynchronizer,
-    SonarLintTelemetry telemetry, StandaloneEngineManager standaloneEngineManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache) {
+    SonarLintTelemetry telemetry, StandaloneEngineManager standaloneEngineManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache,
+    IssuesCache securityHotspotsCache) {
     this.client = client;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
@@ -110,6 +114,7 @@ public class CommandManager {
     this.standaloneEngineManager = standaloneEngineManager;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.issuesCache = issuesCache;
+    this.securityHotspotsCache = securityHotspotsCache;
   }
 
   public List<Either<Command, CodeAction>> computeCodeActions(CodeActionParams params, CancelChecker cancelToken) {
@@ -283,6 +288,9 @@ public class CommandManager {
       case SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS:
         handleShowTaintVulnerabilityFlows(params);
         break;
+      case SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS:
+        handleShowHotspotFlows(params);
+        break;
       default:
         throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported command: " + params.getCommand(), null));
     }
@@ -312,8 +320,20 @@ public class CommandManager {
     taintVulnerabilitiesCache.getTaintVulnerabilityByKey(issueKey)
       .ifPresent(issue -> {
         telemetry.taintVulnerabilitiesInvestigatedLocally();
-        client.showTaintVulnerability(ShowAllLocationsCommand.params(issue, connectionId, bindingManager::serverPathToFileUri));
+        client.showIssueOrHotspot(ShowAllLocationsCommand.params(issue, connectionId, bindingManager::serverPathToFileUri));
       });
+  }
+
+  private void handleShowHotspotFlows(ExecuteCommandParams params) {
+    var fileUri = getAsString(params.getArguments().get(0));
+    var issueKey = getAsString(params.getArguments().get(1));
+    var issue = securityHotspotsCache.get(create(fileUri)).get(issueKey);
+    if (issue == null) {
+      SonarLintLogger.get().error("Hotspot is not found during showing flows");
+      return;
+    }
+    var hotspot = issue.getIssue();
+    client.showIssueOrHotspot(ShowAllLocationsCommand.params(hotspot));
   }
 
   // https://github.com/eclipse/lsp4j/issues/126

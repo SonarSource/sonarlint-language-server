@@ -19,10 +19,12 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
+import com.google.gson.JsonPrimitive;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.ExecuteCommandParams;
@@ -37,6 +39,7 @@ import org.sonar.scanner.protocol.input.ScannerInput;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Components;
+import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Hotspots;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Issues;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.ProjectBranches;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Qualityprofiles;
@@ -66,16 +69,17 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private static final String PROJECT_NAME1 = "Project One";
   private static final String PROJECT_KEY2 = "project:key2";
   private static final String PROJECT_NAME2 = "Project Two";
+  private static final long CURRENT_TIME = System.currentTimeMillis();
   @TempDir
   public static Path folder1BaseDir;
 
   @BeforeAll
   public static void initialize() throws Exception {
-
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
       "productVersion", "0.1"), new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
+
   }
 
   @BeforeEach
@@ -134,6 +138,19 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  void analysisConnected_find_hotspot() throws Exception {
+    mockNoIssuesNoHotspotsForProject();
+
+    var uriInFolder = folder1BaseDir.resolve("hotspot.js").toUri().toString();
+    didOpen(uriInFolder, "javascript", "const IP_ADDRESS = '12.34.56.78';\n");
+
+    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(0, 19, 0, 32, JAVASCRIPT_S1313, "sonarlint", "Make sure using a hardcoded IP address 12.34.56.78 is safe here.", DiagnosticSeverity.Warning)));
+  }
+
+  @Test
   void analysisConnected_no_matching_server_issues() throws Exception {
     assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
 
@@ -157,19 +174,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .containsExactlyInAnyOrder(
         tuple(1, 6, 1, 10, JAVASCRIPT_S1481, "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Warning),
         tuple(2, 6, 2, 11, JAVASCRIPT_S1481, "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Warning)));
-  }
-
-  @Test
-  void analysisConnected_find_hotspot() throws Exception {
-    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
-
-    var uriInFolder = folder1BaseDir.resolve("hotspot.js").toUri().toString();
-    didOpen(uriInFolder, "javascript", "const IP_ADDRESS = '12.34.56.78';\n");
-
-    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(
-        tuple(0, 19, 0, 32, JAVASCRIPT_S1313, "sonarlint", "Make sure using a hardcoded IP address 12.34.56.78 is safe here.", DiagnosticSeverity.Information)));
   }
 
   @Test
@@ -327,11 +331,53 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     assertThatThrownBy(result::get).hasMessage("org.eclipse.lsp4j.jsonrpc.ResponseErrorException: Internal error.");
   }
 
+  @Test
+  void openHotspotInBrowserShouldLogIfBranchNotFound() {
+    lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotInBrowserLsParams("id", folder1BaseDir.toUri().toString()));
+
+    assertLogContains("Can't find branch for workspace folder " + folder1BaseDir.toUri().getPath()
+      + " during attempt to open hotspot in browser.");
+  }
+
+  @Test
+  void showHotspotLocations() {
+    var testParams = new SonarLintExtendedLanguageServer.ShowHotspotLocationsParams("hotspotKey");
+
+    var future = lsProxy.showHotspotLocations(testParams);
+
+    awaitUntilAsserted(() -> assertThat(future.isDone()).isTrue());
+  }
+
   private String stripTrailingSlash(String url) {
     if (url.endsWith("/")) {
       return url.substring(0, url.length() - 1);
     }
     return url;
+  }
+
+  private void mockNoIssuesNoHotspotsForProject() {
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.7\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml",
+      Issues.IssuesPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml&changedSince=" + CURRENT_TIME,
+      Issues.IssuesPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml",
+      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/hotspots/search.protobuf?projectKey=myProject&files=hotspot.js&branch=master&ps=500&p=1",
+      Hotspots.SearchWsResponse.newBuilder().build()
+    );
   }
 
 }

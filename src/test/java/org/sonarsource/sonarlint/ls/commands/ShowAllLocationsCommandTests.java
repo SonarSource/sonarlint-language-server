@@ -69,6 +69,7 @@ class ShowAllLocationsCommandTests {
     when(flow2.locations()).thenReturn(locations2);
     var flows = List.of(flow1, flow2);
     when(issue.flows()).thenReturn(flows);
+    when(issue.getTextRange()).thenReturn(new TextRange(1,2,3,4));
 
     var params = ShowAllLocationsCommand.params(issue);
     assertThat(params).extracting(
@@ -87,6 +88,10 @@ class ShowAllLocationsCommandTests {
     assertThat(params.getFlows().get(1).getLocations()).hasSize(1);
     assertThat(params.getConnectionId()).isNull();
     assertThat(params.getCreationDate()).isNull();
+    assertThat(params.getTextRange().getStartLine()).isEqualTo(1);
+    assertThat(params.getTextRange().getStartLineOffset()).isEqualTo(2);
+    assertThat(params.getTextRange().getEndLine()).isEqualTo(3);
+    assertThat(params.getTextRange().getEndLineOffset()).isEqualTo(4);
   }
 
   @Test

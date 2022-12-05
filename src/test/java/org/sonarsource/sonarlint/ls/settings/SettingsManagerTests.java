@@ -37,6 +37,9 @@ import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.commons.RuleKey;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput.Level;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
@@ -135,7 +138,11 @@ class SettingsManagerTests {
     bindingManager = mock(ProjectBindingManager.class);
     client = mock(SonarLintExtendedLanguageClient.class);
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token-from-storage"));
-    underTest = new SettingsManager(client, foldersManager, mock(ApacheHttpClientProvider.class), new ImmediateExecutorService());
+    var backendFacade = mock(BackendServiceFacade.class);
+    var backend = mock(BackendService.class);
+    when(backendFacade.getInitParams()).thenReturn(new BackendInitParams());
+    when(backendFacade.getBackendService()).thenReturn(backend);
+    underTest = new SettingsManager(client, foldersManager, mock(ApacheHttpClientProvider.class), new ImmediateExecutorService(), backendFacade);
     underTest.setBindingManager(bindingManager);
     underTest = spy(underTest);
   }

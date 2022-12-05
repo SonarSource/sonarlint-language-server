@@ -250,4 +250,72 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/getServerPathForTokenGeneration")
   CompletableFuture<GetServerPathForTokenGenerationResponse> getServerPathForTokenGeneration(GetServerPathForTokenGenerationParams params);
+
+  class ShowHotspotLocationsParams {
+    String hotspotKey;
+    String fileUri;
+
+    public ShowHotspotLocationsParams(String hotspotKey) {
+      setHotspotKey(hotspotKey);
+    }
+
+    public String getHotspotKey() {
+      return hotspotKey;
+    }
+
+    public void setHotspotKey(String hotspotKey) {
+      this.hotspotKey = hotspotKey;
+    }
+  }
+
+  @JsonRequest("sonarlint/showHotspotLocations")
+  CompletableFuture<Void> showHotspotLocations(ShowHotspotLocationsParams hotspotKey);
+
+  class OpenHotspotInBrowserLsParams {
+    private String hotspotId;
+    private String fileUri;
+
+    public OpenHotspotInBrowserLsParams(String hotspotId, String workspaceFolder) {
+      this.hotspotId = hotspotId;
+      this.fileUri = workspaceFolder;
+    }
+
+    public String getHotspotId() {
+      return hotspotId;
+    }
+
+    public void setHotspotId(String hotspotId) {
+      this.hotspotId = hotspotId;
+    }
+
+    public String getFileUri() {
+      return fileUri;
+    }
+
+    public void setFileUri(String fileUri) {
+      this.fileUri = fileUri;
+    }
+  }
+
+  @JsonNotification("sonarlint/openHotspotInBrowser")
+  void openHotspotInBrowser(OpenHotspotInBrowserLsParams params);
+
+  class ShowHotspotRuleDescriptionParams {
+    String ruleKey;
+    String fileUri;
+
+    public ShowHotspotRuleDescriptionParams(String hotspotKey) {
+      setHotspotKey(hotspotKey);
+    }
+
+    public String getHotspotKey() {
+      return ruleKey;
+    }
+
+    public void setHotspotKey(String ruleKey) {
+      this.ruleKey = ruleKey;
+    }
+  }
+  @JsonNotification("sonarlint/showHotspotRuleDescription")
+  CompletableFuture<Void> showHotspotRuleDescription(ShowHotspotRuleDescriptionParams params);
 }
