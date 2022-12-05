@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.file;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.util.Optional;
+import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -30,8 +31,9 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 public class FileTypeClassifier {
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
-  public boolean isTest(@Nullable WorkspaceFolderSettings settings, URI fileUri, Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> javaConfig) {
-    if (javaConfig.map(SonarLintExtendedLanguageClient.GetJavaConfigResponse::isTest).orElse(false)) {
+  public boolean isTest(@Nullable WorkspaceFolderSettings settings, URI fileUri,
+    boolean isJava, Supplier<Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse>> javaConfig) {
+    if (isJava && javaConfig.get().map(SonarLintExtendedLanguageClient.GetJavaConfigResponse::isTest).orElse(false)) {
       LOG.debug("Classified as test by vscode-java");
       return true;
     }

@@ -78,7 +78,7 @@ public class FolderFileSystem implements ClientModuleFileSystem {
   }
 
   private boolean isTestFile(WorkspaceFolderSettings settings, URI fileUri) {
-    return fileTypeClassifier.isTest(settings, fileUri, javaConfigCache.getOrFetch(fileUri));
+    return fileTypeClassifier.isTest(settings, fileUri, false, () -> javaConfigCache.getOrFetch(fileUri));
   }
 
   private static boolean isTestType(InputFile.Type type) {
