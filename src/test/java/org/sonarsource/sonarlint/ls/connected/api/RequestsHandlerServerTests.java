@@ -45,6 +45,7 @@ import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.GetSecurityHotspotRequestParams;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.HotspotApi;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspot;
+import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspotDetails;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
@@ -222,7 +223,7 @@ class RequestsHandlerServerTests {
     String clientVersion = "1.42";
     String workspaceName = "polop";
     server.initialize(ideName, clientVersion, workspaceName);
-    ServerHotspot remoteHotspot = mock(ServerHotspot.class);
+    var remoteHotspot = mock(ServerHotspotDetails.class);
     when(bindingManager.getServerConnectionSettingsForUrl(anyString())).thenReturn(Optional.of(new ServerConnectionSettings.EndpointParamsAndHttpClient(null, null)));
     when(hotspotApi.fetch(any(GetSecurityHotspotRequestParams.class))).thenReturn(Optional.of(remoteHotspot));
 

@@ -79,6 +79,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspot;
+import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspotDetails;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.ServerMain;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -348,7 +349,7 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public void showHotspot(ServerHotspot h) {
+    public void showHotspot(ServerHotspotDetails h) {
     }
 
     @Override

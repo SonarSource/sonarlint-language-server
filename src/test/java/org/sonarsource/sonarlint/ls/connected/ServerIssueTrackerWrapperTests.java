@@ -148,6 +148,7 @@ class ServerIssueTrackerWrapperTests {
     var tracker = newTracker(baseDir, engine);
     matchAndTrack(tracker, "dummy", issues, false);
     verify(engine).getServerIssues(any(), any(), any());
+    verify(engine).getServerHotspots(any(), any(), any());
     verifyNoMoreInteractions(engine);
 
     engine = mock(ConnectedSonarLintEngine.class);
@@ -155,6 +156,8 @@ class ServerIssueTrackerWrapperTests {
     matchAndTrack(tracker, "dummy", issues, true);
     verify(engine).downloadAllServerIssuesForFile(any(), any(), any(), any(), eq("branchName"), any());
     verify(engine).getServerIssues(any(), eq("branchName"), any());
+    verify(engine).downloadAllServerHotspotsForFile(any(), any(), any(), any(), any(), any());
+    verify(engine).getServerHotspots(any(), any(), any());
     verifyNoMoreInteractions(engine);
   }
 

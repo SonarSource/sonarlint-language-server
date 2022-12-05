@@ -28,6 +28,7 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -66,10 +67,16 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
+import org.sonarsource.sonarlint.core.SonarLintBackendImpl;
+import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
+import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
+import org.sonarsource.sonarlint.core.commons.Version;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverconnection.ServerPathProvider;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
+import org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient;
+import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintIssuesUpdater;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -143,6 +150,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ModuleEventsProcessor moduleEventsProcessor;
   private final ServerSentEventsHandlerService serverSentEventsHandler;
   private final TaintVulnerabilityRaisedNotification taintVulnerabilityRaisedNotification;
+  private final SonarLintVSCodeClient vsCodeClient;
+  private final BackendService backendService;
 
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers, Collection<Path> extraAnalyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
@@ -168,7 +177,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache, securityHotspotsCache);
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.progressManager = new ProgressManager(client);
-    this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClientProvider);
+    this.vsCodeClient = new SonarLintVSCodeClient(client);
+    this.backendService = new BackendService(new SonarLintBackendImpl(vsCodeClient));
+    this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClientProvider, backendService);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
     var fileTypeClassifier = new FileTypeClassifier();
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
@@ -177,7 +188,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, globalLogOutput,
-            taintVulnerabilitiesCache, diagnosticPublisher);
+      taintVulnerabilitiesCache, diagnosticPublisher);
     this.settingsManager.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(httpClientProvider, settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager);
     this.settingsManager.addListener(telemetry);
@@ -263,6 +274,21 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
       var info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
 
+      var backendInitParams = new org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams(
+        productKey,
+        SonarLintUserHome.get(),
+        Collections.emptySet(),
+        Collections.emptyMap(),
+        Collections.emptyMap(),
+        EnginesFactory.getStandaloneLanguages(),
+        EnginesFactory.getConnectedLanguages(),
+        Version.create("16"),
+        true,
+        Collections.emptyList(),
+        Collections.emptyList(),
+        telemetryStorage
+      );
+      backendService.initialize(backendInitParams);
       return new InitializeResult(c, info);
     });
   }
@@ -272,7 +298,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var classLoader = ClassLoader.getSystemClassLoader();
     try (var is = classLoader.getResourceAsStream(fileName)) {
       try (var isr = new InputStreamReader(is, StandardCharsets.UTF_8);
-        var reader = new BufferedReader(isr)) {
+           var reader = new BufferedReader(isr)) {
         return reader.lines().findFirst().orElse(null);
       }
     } catch (IOException e) {
@@ -508,5 +534,29 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var endpointParams = new EndpointParams(params.getBaseServerUrl(), false, null);
     return ServerPathProvider.getServerUrlForTokenGeneration(endpointParams, httpClientProvider.anonymous(), port, appName)
       .thenApply(GetServerPathForTokenGenerationResponse::new);
+  }
+
+  @Override
+  public void openHotspotInBrowser(OpenHotspotParams params) {
+    var hotspotId = params.getHotspotId();
+    var fileUri = create(params.getFileUri());
+    var folderForFileOptional = workspaceFoldersManager.findFolderForFile(fileUri);
+    if (folderForFileOptional.isEmpty()) {
+      lsLogOutput.error("Can't find workspace folder for file "
+        + fileUri.getPath() + " during attempt to open hotspot in browser.");
+      return;
+    }
+    var workspaceFolderUri = folderForFileOptional.get().getUri();
+    var branchNameOptional = branchManager.getReferenceBranchNameForFolder(workspaceFolderUri);
+    if (branchNameOptional.isEmpty()) {
+      lsLogOutput.error("Can't find branch for workspace folder "
+        + workspaceFolderUri.getPath() + " during attempt to open hotspot in browser.");
+      return;
+    }
+    var workspaceFolder = workspaceFolderUri.getPath();
+    var versionedIssue = securityHotspotsCache.get(fileUri).get(hotspotId);
+    var delegatingIssue = (DelegatingIssue) versionedIssue.getIssue();
+    var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(workspaceFolder, branchNameOptional.get(), delegatingIssue.getServerIssueKey());
+    backendService.openHotspotInBrowser(openHotspotInBrowserParams);
   }
 }

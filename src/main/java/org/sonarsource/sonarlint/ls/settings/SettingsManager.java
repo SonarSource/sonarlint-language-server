@@ -42,6 +42,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.ls.BackendService;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
@@ -94,16 +95,20 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private final List<WorkspaceSettingsChangeListener> globalListeners = new ArrayList<>();
   private final List<WorkspaceFolderSettingsChangeListener> folderListeners = new ArrayList<>();
   private ProjectBindingManager bindingManager;
+  private BackendService backendService;
 
-  public SettingsManager(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager foldersManager, ApacheHttpClientProvider httpClientProvider) {
-    this(client, foldersManager, httpClientProvider, Executors.newCachedThreadPool(Utils.threadFactory("SonarLint settings manager", false)));
+  public SettingsManager(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager foldersManager,
+    ApacheHttpClientProvider httpClientProvider, BackendService backendService) {
+    this(client, foldersManager, httpClientProvider, Executors.newCachedThreadPool(Utils.threadFactory("SonarLint settings manager", false)), backendService);
   }
 
-  SettingsManager(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager foldersManager, ApacheHttpClientProvider httpClientProvider, ExecutorService executor) {
+  SettingsManager(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager foldersManager,
+    ApacheHttpClientProvider httpClientProvider, ExecutorService executor, BackendService backendService) {
     this.client = client;
     this.foldersManager = foldersManager;
     this.httpClientProvider = httpClientProvider;
     this.executor = executor;
+    this.backendService = backendService;
   }
 
   public void setBindingManager(ProjectBindingManager bindingManager) {
@@ -156,6 +161,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         notifyListeners(newWorkspaceSettings, oldWorkspaceSettings, newDefaultFolderSettings, oldDefaultFolderSettings);
 
         resubscribeForServerEvents(oldWorkspaceSettings, newWorkspaceSettings, previousProjectKeysByConnectionId, currentProjectKeysByConnectionId);
+        var connections = getCurrentSettings().getServerConnections();
+        backendService.didChangeConfiguration(connections);
       } catch (InterruptedException e) {
         interrupted(e);
       } catch (Exception e) {

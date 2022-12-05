@@ -76,7 +76,8 @@ public class DiagnosticPublisher {
     diagnostic.setCode(issue.getRuleKey());
     diagnostic.setMessage(message(issue));
     diagnostic.setSource(SONARLINT_SOURCE);
-    diagnostic.setData(entry.getKey());
+    var hasFlows = !issue.flows().isEmpty();
+    diagnostic.setData(new IssueData(entry.getKey(), hasFlows));
 
     return diagnostic;
   }
@@ -134,6 +135,24 @@ public class DiagnosticPublisher {
   private static Comparator<? super Diagnostic> byLineNumber() {
     return Comparator.comparing((Diagnostic d) -> d.getRange().getStart().getLine())
       .thenComparing(Diagnostic::getMessage);
+  }
+
+  static class IssueData {
+    String hotspotServerId;
+    boolean hasFlows;
+
+    public IssueData(String hotspotServerId, boolean hasFlows) {
+      this.hotspotServerId = hotspotServerId;
+      this.hasFlows = hasFlows;
+    }
+
+    public String getHotspotServerId() {
+      return hotspotServerId;
+    }
+
+    public boolean isHasFlows() {
+      return hasFlows;
+    }
   }
 
 }

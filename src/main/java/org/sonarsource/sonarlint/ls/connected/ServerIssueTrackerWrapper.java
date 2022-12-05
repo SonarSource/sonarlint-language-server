@@ -23,7 +23,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import javax.annotation.CheckForNull;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
@@ -46,7 +45,9 @@ public class ServerIssueTrackerWrapper {
   private final Supplier<String> getReferenceBranchNameForFolder;
 
   private final IssueTrackerCache<Issue> issueTrackerCache;
+  private final IssueTrackerCache<Issue> hotspotsTrackerCache;
   private final CachingIssueTracker cachingIssueTracker;
+  private final CachingIssueTracker cachingHotspotsTracker;
   private final org.sonarsource.sonarlint.core.tracking.ServerIssueTracker tracker;
 
   ServerIssueTrackerWrapper(ConnectedSonarLintEngine engine, ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient,
@@ -57,8 +58,10 @@ public class ServerIssueTrackerWrapper {
     this.getReferenceBranchNameForFolder = getReferenceBranchNameForFolder;
 
     this.issueTrackerCache = new InMemoryIssueTrackerCache();
+    this.hotspotsTrackerCache = new InMemoryIssueTrackerCache();
     this.cachingIssueTracker = new CachingIssueTracker(issueTrackerCache);
-    this.tracker = new org.sonarsource.sonarlint.core.tracking.ServerIssueTracker(cachingIssueTracker);
+    this.cachingHotspotsTracker = new CachingIssueTracker(hotspotsTrackerCache);
+    this.tracker = new org.sonarsource.sonarlint.core.tracking.ServerIssueTracker(cachingIssueTracker, cachingHotspotsTracker);
   }
 
   public void matchAndTrack(String filePath, Collection<Issue> issues, IssueListener issueListener, boolean shouldFetchServerIssues) {
@@ -67,7 +70,8 @@ public class ServerIssueTrackerWrapper {
       return;
     }
 
-    cachingIssueTracker.matchAndTrackAsNew(filePath, toTrackables(issues));
+    cachingIssueTracker.matchAndTrackAsNew(filePath, toIssueTrackables(issues));
+    cachingHotspotsTracker.matchAndTrackAsNew(filePath, toHotspotTrackables(issues));
     if (shouldFetchServerIssues) {
       tracker.update(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), engine, projectBinding,
         Collections.singleton(filePath), getReferenceBranchNameForFolder.get());
@@ -77,16 +81,21 @@ public class ServerIssueTrackerWrapper {
 
     issueTrackerCache.getLiveOrFail(filePath).stream()
       .filter(not(Trackable::isResolved))
-      .forEach(trackable -> issueListener.handle(new DelegatingIssue(trackable.getClientObject(), trackable.getSeverity()) {
-        @CheckForNull
-        @Override
-        public RuleType getType() {
-          return trackable.getType();
-        }
-      }));
+      .forEach(trackable -> issueListener.handle(new DelegatingIssue(trackable)));
+    hotspotsTrackerCache.getLiveOrFail(filePath).stream()
+      .filter(not(Trackable::isResolved))
+      .forEach(trackable -> issueListener.handle(new DelegatingIssue(trackable)));
   }
 
-  private static Collection<Trackable> toTrackables(Collection<Issue> issues) {
-    return issues.stream().map(IssueTrackable::new).collect(Collectors.toList());
+  private static Collection<Trackable> toIssueTrackables(Collection<Issue> issues) {
+    return issues.stream()
+      .filter(it -> it.getType() != RuleType.SECURITY_HOTSPOT)
+      .map(IssueTrackable::new).collect(Collectors.toList());
+
+  }
+
+  private static Collection<Trackable> toHotspotTrackables(Collection<Issue> issues) {
+    return issues.stream().filter(it-> it.getType() == RuleType.SECURITY_HOTSPOT)
+      .map(IssueTrackable::new).collect(Collectors.toList());
   }
 }

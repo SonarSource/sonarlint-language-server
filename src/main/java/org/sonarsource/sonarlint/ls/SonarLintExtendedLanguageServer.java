@@ -250,4 +250,33 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/getServerPathForTokenGeneration")
   CompletableFuture<GetServerPathForTokenGenerationResponse> getServerPathForTokenGeneration(GetServerPathForTokenGenerationParams params);
+
+  class OpenHotspotParams {
+    private String hotspotId;
+    private String fileUri;
+
+    public OpenHotspotParams(String hotspotId, String workspaceFolder) {
+      this.hotspotId = hotspotId;
+      this.fileUri = workspaceFolder;
+    }
+
+    public String getHotspotId() {
+      return hotspotId;
+    }
+
+    public void setHotspotId(String hotspotId) {
+      this.hotspotId = hotspotId;
+    }
+
+    public String getFileUri() {
+      return fileUri;
+    }
+
+    public void setFileUri(String fileUri) {
+      this.fileUri = fileUri;
+    }
+  }
+
+  @JsonNotification("sonarlint/openHotspotInBrowser")
+  void openHotspotInBrowser(OpenHotspotParams params);
 }

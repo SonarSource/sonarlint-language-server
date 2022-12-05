@@ -36,6 +36,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.commons.RuleKey;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput.Level;
+import org.sonarsource.sonarlint.ls.BackendService;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -135,7 +136,7 @@ class SettingsManagerTests {
     bindingManager = mock(ProjectBindingManager.class);
     client = mock(SonarLintExtendedLanguageClient.class);
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token-from-storage"));
-    underTest = new SettingsManager(client, foldersManager, mock(ApacheHttpClientProvider.class), new ImmediateExecutorService());
+    underTest = new SettingsManager(client, foldersManager, mock(ApacheHttpClientProvider.class), new ImmediateExecutorService(), mock(BackendService.class));
     underTest.setBindingManager(bindingManager);
     underTest = spy(underTest);
   }
