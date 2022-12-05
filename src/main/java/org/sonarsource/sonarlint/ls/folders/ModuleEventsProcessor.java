@@ -77,8 +77,8 @@ public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
 
         var engineForFile = binding.isPresent() ? binding.get().getEngine() : standaloneEngineManager.getOrCreateStandaloneEngine();
 
-        var javaConfig = javaConfigCache.getOrFetch(fileUri);
-        var inputFile = new InFolderClientInputFile(fileUri, baseDir.relativize(Paths.get(fileUri)).toString(), fileTypeClassifier.isTest(settings, fileUri, javaConfig));
+        var inputFile = new InFolderClientInputFile(fileUri, baseDir.relativize(Paths.get(fileUri)).toString(),
+          fileTypeClassifier.isTest(settings, fileUri, false, () -> javaConfigCache.getOrFetch(fileUri)));
 
         engineForFile.fireModuleFileEvent(WorkspaceFoldersProvider.key(folder), ClientModuleFileEvent.of(inputFile, eventType));
       });
