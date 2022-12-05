@@ -252,7 +252,7 @@ public class AnalysisTaskExecutor {
       var excludedByServerConfiguration = connectedEngine.getExcludedFiles(binding.get().getBinding(),
         filesToAnalyze.keySet(),
         uri -> FileUtils.getFileRelativePath(Paths.get(baseDirUri), uri),
-        uri -> fileTypeClassifier.isTest(settings, uri, javaConfigCache.getOrFetch(uri)));
+        uri -> fileTypeClassifier.isTest(settings, uri, filesToAnalyze.get(uri).isJava(), () -> javaConfigCache.getOrFetch(uri)));
       excludedByServerConfiguration.forEach(f -> {
         lsLogOutput.debug(format("Skip analysis of file '%s' excluded by server configuration", f));
         nonExcludedFiles.remove(f);
@@ -455,7 +455,7 @@ public class AnalysisTaskExecutor {
     filesToAnalyze.forEach((uri, openFile) -> configurationBuilder
       .addInputFiles(
         new AnalysisClientInputFile(uri, FileUtils.getFileRelativePath(baseDir, uri), openFile.getContent(),
-          fileTypeClassifier.isTest(settings, uri, ofNullable(javaConfigs.get(uri))),
+          fileTypeClassifier.isTest(settings, uri, openFile.isJava(), () -> ofNullable(javaConfigs.get(uri))),
           openFile.getLanguageId())));
     return configurationBuilder;
   }
