@@ -37,6 +37,7 @@ import org.sonar.scanner.protocol.input.ScannerInput;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Components;
+import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Hotspots;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Issues;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.ProjectBranches;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Qualityprofiles;
@@ -66,6 +67,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private static final String PROJECT_NAME1 = "Project One";
   private static final String PROJECT_KEY2 = "project:key2";
   private static final String PROJECT_NAME2 = "Project Two";
+  private static final long CURRENT_TIME = System.currentTimeMillis();
   @TempDir
   public static Path folder1BaseDir;
 
@@ -161,7 +163,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analysisConnected_find_hotspot() throws Exception {
-    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
+    mockNoIssuesNoHotspotsForProject();
 
     var uriInFolder = folder1BaseDir.resolve("hotspot.js").toUri().toString();
     didOpen(uriInFolder, "javascript", "const IP_ADDRESS = '12.34.56.78';\n");
@@ -332,6 +334,31 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       return url.substring(0, url.length() - 1);
     }
     return url;
+  }
+
+  private void mockNoIssuesNoHotspotsForProject() {
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.7\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml",
+      Issues.IssuesPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml&changedSince=" + CURRENT_TIME,
+      Issues.IssuesPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml",
+      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/hotspots/search.protobuf?projectKey=myProject&files=hotspot.js&branch=master&ps=500&p=1",
+      Hotspots.SearchWsResponse.newBuilder().build()
+    );
   }
 
 }
