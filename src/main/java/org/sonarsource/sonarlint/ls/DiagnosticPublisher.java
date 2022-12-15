@@ -137,7 +137,7 @@ public class DiagnosticPublisher {
       .thenComparing(Diagnostic::getMessage);
   }
 
-  static class IssueData {
+  public static class IssueData {
     String hotspotServerId;
     boolean hasFlows;
 
