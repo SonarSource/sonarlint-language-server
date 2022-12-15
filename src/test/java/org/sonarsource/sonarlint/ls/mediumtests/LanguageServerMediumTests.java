@@ -55,6 +55,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Hotspots;
+import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Issues;
 import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
@@ -72,6 +74,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   private static final String CONNECTION_ID = "known";
   private static final String TOKEN = "token";
 
+  private static final long CURRENT_TIME = System.currentTimeMillis();
   @RegisterExtension
   private static final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
 
