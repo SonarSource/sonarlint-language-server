@@ -70,11 +70,12 @@ import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonarsource.sonarlint.core.SonarLintBackendImpl;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
-import org.sonarsource.sonarlint.core.commons.Version;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverconnection.ServerPathProvider;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
+import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -151,7 +152,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ServerSentEventsHandlerService serverSentEventsHandler;
   private final TaintVulnerabilityRaisedNotification taintVulnerabilityRaisedNotification;
   private final SonarLintVSCodeClient vsCodeClient;
-  private final BackendService backendService;
+  private final BackendServiceFacade backendServiceFacade;
 
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers, Collection<Path> extraAnalyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
@@ -178,8 +179,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.progressManager = new ProgressManager(client);
     this.vsCodeClient = new SonarLintVSCodeClient(client);
-    this.backendService = new BackendService(new SonarLintBackendImpl(vsCodeClient));
-    this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClientProvider, backendService);
+    this.backendServiceFacade = new BackendServiceFacade(new SonarLintBackendImpl(vsCodeClient));
+    this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClientProvider, backendServiceFacade);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
     var fileTypeClassifier = new FileTypeClassifier();
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
@@ -273,22 +274,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       c.setWorkspace(getWorkspaceServerCapabilities());
 
       var info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
-
-      var backendInitParams = new org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams(
-        productKey,
-        SonarLintUserHome.get(),
-        Collections.emptySet(),
-        Collections.emptyMap(),
-        Collections.emptyMap(),
-        EnginesFactory.getStandaloneLanguages(),
-        EnginesFactory.getConnectedLanguages(),
-        Version.create("16"),
-        true,
-        Collections.emptyList(),
-        Collections.emptyList(),
-        telemetryStorage
-      );
-      backendService.initialize(backendInitParams);
+      provideBackendInitData(productKey, telemetryStorage);
       return new InitializeResult(c, info);
     });
   }
@@ -557,6 +543,21 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var versionedIssue = securityHotspotsCache.get(fileUri).get(hotspotId);
     var delegatingIssue = (DelegatingIssue) versionedIssue.getIssue();
     var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(workspaceFolder, branchNameOptional.get(), delegatingIssue.getServerIssueKey());
-    backendService.openHotspotInBrowser(openHotspotInBrowserParams);
+    backendServiceFacade.getBackend().openHotspotInBrowser(openHotspotInBrowserParams);
   }
+
+  void provideBackendInitData(String productKey, String telemetryStorage) {
+    BackendInitParams params = backendServiceFacade.getInitParams();
+    params.setTelemetryProductKey(productKey);
+    params.setStorageRoot(SonarLintUserHome.get());
+    params.setSonarlintUserHome(telemetryStorage);
+
+    params.setEmbeddedPluginPaths(Collections.emptySet());
+    params.setConnectedModeExtraPluginPathsByKey(Collections.emptyMap());
+    params.setEnableSecurityHotspots(true);
+    params.setEnabledLanguagesInStandaloneMode(EnginesFactory.getStandaloneLanguages());
+    params.setExtraEnabledLanguagesInConnectedMode(EnginesFactory.getConnectedLanguages());
+    params.setEmbeddedPluginPaths(Collections.emptySet());
+  }
+
 }
