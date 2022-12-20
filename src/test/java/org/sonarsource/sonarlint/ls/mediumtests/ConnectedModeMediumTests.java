@@ -343,11 +343,13 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Issues.IssuesPullQueryTimestamp.newBuilder()
         .setQueryTimestamp(CURRENT_TIME)
         .build());
+    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/issues/pull?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml&changedSince=" + CURRENT_TIME,
       Issues.IssuesPullQueryTimestamp.newBuilder()
         .setQueryTimestamp(CURRENT_TIME)
         .build());
+    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml",
       Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
