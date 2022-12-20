@@ -25,12 +25,12 @@ import org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams;
 public class BackendServiceFacade {
 
   private final BackendService backend;
-
-  private final BackendInitParams initParams = new BackendInitParams();
+  private final BackendInitParams initParams;
   boolean initialized = false;
 
   public BackendServiceFacade(SonarLintBackend backend) {
     this.backend = new BackendService(backend);
+    this.initParams = new BackendInitParams();
   }
 
   public BackendService getBackend() {
