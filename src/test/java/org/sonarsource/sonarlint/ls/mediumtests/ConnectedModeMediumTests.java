@@ -136,6 +136,19 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  void analysisConnected_find_hotspot() throws Exception {
+    mockNoIssuesNoHotspotsForProject();
+
+    var uriInFolder = folder1BaseDir.resolve("hotspot.js").toUri().toString();
+    didOpen(uriInFolder, "javascript", "const IP_ADDRESS = '12.34.56.78';\n");
+
+    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(0, 19, 0, 32, JAVASCRIPT_S1313, "sonarlint", "Make sure using a hardcoded IP address 12.34.56.78 is safe here.", DiagnosticSeverity.Information)));
+  }
+
+  @Test
   void analysisConnected_no_matching_server_issues() throws Exception {
     assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
 
@@ -159,19 +172,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .containsExactlyInAnyOrder(
         tuple(1, 6, 1, 10, JAVASCRIPT_S1481, "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Warning),
         tuple(2, 6, 2, 11, JAVASCRIPT_S1481, "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Warning)));
-  }
-
-  @Test
-  void analysisConnected_find_hotspot() throws Exception {
-    mockNoIssuesNoHotspotsForProject();
-
-    var uriInFolder = folder1BaseDir.resolve("hotspot.js").toUri().toString();
-    didOpen(uriInFolder, "javascript", "const IP_ADDRESS = '12.34.56.78';\n");
-
-    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(
-        tuple(0, 19, 0, 32, JAVASCRIPT_S1313, "sonarlint", "Make sure using a hardcoded IP address 12.34.56.78 is safe here.", DiagnosticSeverity.Information)));
   }
 
   @Test
