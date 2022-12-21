@@ -110,6 +110,7 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.net.URI.create;
 import static java.util.Optional.ofNullable;
+import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
@@ -547,6 +548,19 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var delegatingIssue = (DelegatingIssue) versionedIssue.getIssue();
     var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(workspaceFolder, branchNameOptional.get(), delegatingIssue.getServerIssueKey());
     backendServiceFacade.getBackend().openHotspotInBrowser(openHotspotInBrowserParams);
+  }
+
+  @Override
+  public void showHotspotRuleDescription(ShowHotspotRuleDescriptionParams params) {
+    var fileUri = params.fileUri;
+    var ruleKey = params.ruleKey;
+    var showHotspotCommandParams = new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
+      List.of(new JsonPrimitive(ruleKey), new JsonPrimitive(fileUri)));
+    CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      commandManager.executeCommand(showHotspotCommandParams, cancelToken);
+      return null;
+    });
   }
 
   void provideBackendInitData(String productKey, String telemetryStorage) {

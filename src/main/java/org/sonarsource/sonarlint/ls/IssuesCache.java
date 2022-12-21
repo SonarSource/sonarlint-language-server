@@ -21,7 +21,6 @@ package org.sonarsource.sonarlint.ls;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
@@ -77,7 +76,7 @@ public class IssuesCache {
     return Optional.ofNullable(d.getData())
       .map(JsonObject.class::cast)
       .map(o -> gson.fromJson(o, DiagnosticPublisher.IssueData.class))
-      .map(DiagnosticPublisher.IssueData::getHotspotServerId)
+      .map(DiagnosticPublisher.IssueData::getHotspotKey)
       .map(issuesForFile::get)
       .filter(Objects::nonNull);
   }

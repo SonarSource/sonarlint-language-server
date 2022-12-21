@@ -299,4 +299,23 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/openHotspotInBrowser")
   void openHotspotInBrowser(OpenHotspotParams params);
+
+  class ShowHotspotRuleDescriptionParams {
+    String ruleKey;
+    String fileUri;
+
+    public ShowHotspotRuleDescriptionParams(String hotspotKey) {
+      setHotspotKey(hotspotKey);
+    }
+
+    public String getHotspotKey() {
+      return ruleKey;
+    }
+
+    public void setHotspotKey(String ruleKey) {
+      this.ruleKey = ruleKey;
+    }
+  }
+  @JsonNotification("sonarlint/showHotspotRuleDescription")
+  void showHotspotRuleDescription(ShowHotspotRuleDescriptionParams params);
 }

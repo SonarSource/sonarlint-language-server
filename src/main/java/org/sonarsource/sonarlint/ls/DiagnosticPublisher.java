@@ -28,6 +28,7 @@ import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
+import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
@@ -38,6 +39,7 @@ import static org.sonarsource.sonarlint.ls.util.Utils.severity;
 public class DiagnosticPublisher {
 
   static final String SONARLINT_SOURCE = "sonarlint";
+  static final String SONARQUBE_SOURCE = "sonarqube";
 
   public static final String ITEM_LOCATION = "location";
   public static final String ITEM_FLOW = "flow";
@@ -67,6 +69,8 @@ public class DiagnosticPublisher {
 
   static Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
     var issue = entry.getValue().getIssue();
+    var delegatedIssue = (DelegatingIssue) issue;
+    var isKnown = delegatedIssue.getServerIssueKey() != null;
     var diagnostic = new Diagnostic();
     var severity = severity(issue.getSeverity());
 
@@ -75,7 +79,7 @@ public class DiagnosticPublisher {
     diagnostic.setRange(range);
     diagnostic.setCode(issue.getRuleKey());
     diagnostic.setMessage(message(issue));
-    diagnostic.setSource(SONARLINT_SOURCE);
+    diagnostic.setSource(isKnown ? SONARQUBE_SOURCE : SONARLINT_SOURCE);
     var hasFlows = !issue.flows().isEmpty();
     diagnostic.setData(new IssueData(entry.getKey(), hasFlows));
 
@@ -138,16 +142,16 @@ public class DiagnosticPublisher {
   }
 
   public static class IssueData {
-    String hotspotServerId;
+    String hotspotKey;
     boolean hasFlows;
 
-    public IssueData(String hotspotServerId, boolean hasFlows) {
-      this.hotspotServerId = hotspotServerId;
+    public IssueData(String hotspotKey, boolean hasFlows) {
+      this.hotspotKey = hotspotKey;
       this.hasFlows = hasFlows;
     }
 
-    public String getHotspotServerId() {
-      return hotspotServerId;
+    public String getHotspotKey() {
+      return hotspotKey;
     }
 
     public boolean isHasFlows() {
