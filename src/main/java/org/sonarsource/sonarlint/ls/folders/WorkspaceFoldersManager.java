@@ -126,6 +126,11 @@ public class WorkspaceFoldersManager {
     } else {
       LOG.debug("Folder {} added", addedWrapper);
     }
+    executor.submit(() -> {
+      List<ConfigurationScopeDto> addedScopeDtos = List.of(this.getConfigScopeDto(added));
+      var params = new DidAddConfigurationScopesParams(addedScopeDtos);
+      backendServiceFacade.getBackendService().getBackend().getConfigurationService().didAddConfigurationScopes(params);
+    });
     return addedWrapper;
   }
 

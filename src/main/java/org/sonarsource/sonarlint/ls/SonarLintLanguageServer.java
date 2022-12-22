@@ -223,6 +223,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager, serverSynchronizer);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
     this.workspaceFoldersManager.addListener(this.branchManager);
+    this.workspaceFoldersManager.setBindingManager(bindingManager);
     this.taintIssuesUpdater = new TaintIssuesUpdater(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, settingsManager, diagnosticPublisher);
     launcher.startListening();
   }
@@ -545,7 +546,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var workspaceFolder = workspaceFolderUri.getPath();
     var versionedIssue = securityHotspotsCache.get(fileUri).get(hotspotId);
     var delegatingIssue = (DelegatingIssue) versionedIssue.getIssue();
-    var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(workspaceFolder, branchNameOptional.get(), delegatingIssue.getServerIssueKey());
+    var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(workspaceFolderUri.toString(), branchNameOptional.get(), delegatingIssue.getServerIssueKey());
     backendServiceFacade.getBackendService().openHotspotInBrowser(openHotspotInBrowserParams);
   }
 
