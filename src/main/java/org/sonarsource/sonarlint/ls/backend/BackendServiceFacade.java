@@ -33,7 +33,7 @@ public class BackendServiceFacade {
     this.initParams = new BackendInitParams();
   }
 
-  public BackendService getBackend() {
+  public BackendService getBackendService() {
     if (!initialized) {
       throw new IllegalStateException("Backend service is not initialized");
     }

@@ -37,8 +37,12 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
+import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidAddConfigurationScopesParams;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.net.URI.create;
@@ -50,14 +54,16 @@ public class WorkspaceFoldersManager {
   private final Map<URI, WorkspaceFolderWrapper> folders = new ConcurrentHashMap<>();
   private final List<WorkspaceFolderLifecycleListener> listeners = new ArrayList<>();
   private ProjectBindingManager bindingManager;
+  private final BackendServiceFacade backendServiceFacade;
   private final ExecutorService executor;
 
-  public WorkspaceFoldersManager() {
-    this(Executors.newCachedThreadPool(Utils.threadFactory("SonarLint folders manager", false)));
+  public WorkspaceFoldersManager(BackendServiceFacade backendServiceFacade) {
+    this(Executors.newCachedThreadPool(Utils.threadFactory("SonarLint folders manager", false)), backendServiceFacade);
   }
 
-  WorkspaceFoldersManager(ExecutorService executor) {
+  WorkspaceFoldersManager(ExecutorService executor, BackendServiceFacade backendServiceFacade) {
     this.executor = executor;
+    this.backendServiceFacade = backendServiceFacade;
   }
 
   public void setBindingManager(ProjectBindingManager bindingManager) {
@@ -65,6 +71,7 @@ public class WorkspaceFoldersManager {
   }
 
   public void initialize(@Nullable List<WorkspaceFolder> workspaceFolders) {
+    // TODO what is the parent scope here?
     if (workspaceFolders != null) {
       workspaceFolders.forEach(wf -> {
         var uri = create(wf.getUri());
@@ -90,7 +97,14 @@ public class WorkspaceFoldersManager {
       addedFolderWrappers.add(addedWrapper);
       listeners.forEach(l -> l.added(addedWrapper));
     }
-    executor.submit(() -> bindingManager.subscribeForServerEvents(addedFolderWrappers, removedFolderWrappers));
+    executor.submit(() -> {
+      bindingManager.subscribeForServerEvents(addedFolderWrappers, removedFolderWrappers);
+      List<ConfigurationScopeDto> addedScopeDtos = event.getAdded().stream().map(this::getConfigScopeDto).collect(Collectors.toList());
+      var params = new DidAddConfigurationScopesParams(addedScopeDtos);
+      backendServiceFacade.getBackendService().getBackend().getConfigurationService().didAddConfigurationScopes(params);
+      event.getRemoved().forEach(removed -> removeFolderFromBackend(removed.getUri()));
+    });
+
   }
 
   @CheckForNull
@@ -113,6 +127,15 @@ public class WorkspaceFoldersManager {
       LOG.debug("Folder {} added", addedWrapper);
     }
     return addedWrapper;
+  }
+
+  private ConfigurationScopeDto getConfigScopeDto(WorkspaceFolder added) {
+    Optional<ProjectBindingWrapper> bindingOptional = bindingManager.getBinding(create(added.getUri()));
+    return backendServiceFacade.getBackendService().getConfigScopeDto(added, bindingOptional);
+  }
+
+  private void removeFolderFromBackend(String removedUri) {
+    backendServiceFacade.getBackendService().removeWorkspaceFolder(removedUri);
   }
 
   public Optional<WorkspaceFolderWrapper> findFolderForFile(URI uri) {

@@ -141,7 +141,7 @@ class SettingsManagerTests {
     var backendFacade = mock(BackendServiceFacade.class);
     var backend = mock(BackendService.class);
     when(backendFacade.getInitParams()).thenReturn(new BackendInitParams());
-    when(backendFacade.getBackend()).thenReturn(backend);
+    when(backendFacade.getBackendService()).thenReturn(backend);
     underTest = new SettingsManager(client, foldersManager, mock(ApacheHttpClientProvider.class), new ImmediateExecutorService(), backendFacade);
     underTest.setBindingManager(bindingManager);
     underTest = spy(underTest);

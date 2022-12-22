@@ -43,6 +43,8 @@ import javax.annotation.Nullable;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
+import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.DidUpdateBindingParams;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
 import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
@@ -53,8 +55,9 @@ import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
-import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
+import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -92,17 +95,19 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private Function<URI, Optional<String>> branchNameForFolderSupplier;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final DiagnosticPublisher diagnosticPublisher;
+  private BackendServiceFacade backendServiceFacade;
   private ServerSentEventsHandlerService serverSentEventsHandler;
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
     LanguageClientLogOutput globalLogOutput,
-    TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher) {
-    this(enginesFactory, foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput, taintVulnerabilitiesCache, diagnosticPublisher);
+    TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher, BackendServiceFacade backendServiceFacade) {
+    this(enginesFactory, foldersManager, settingsManager, client,
+      new ConcurrentHashMap<>(), globalLogOutput, taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade);
   }
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
                                ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput,
-                               TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher) {
+                               TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher, BackendServiceFacade backendServiceFacade) {
     this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
@@ -111,6 +116,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     this.globalLogOutput = globalLogOutput;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.diagnosticPublisher = diagnosticPublisher;
+    this.backendServiceFacade = backendServiceFacade;
   }
 
   // Can't use constructor injection because of cyclic dependency
@@ -284,6 +290,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     } else if (newValue.hasBinding()
       && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
       forceRebindDuringNextAnalysis(folder);
+      if (folder == null) return;
+      var bindingConfigurationDto = new BindingConfigurationDto(newValue.getConnectionId(), newValue.getProjectKey(), true);
+      var params = new DidUpdateBindingParams(folder.getUri().toString(), bindingConfigurationDto);
+      backendServiceFacade.getBackendService().getBackend().getConfigurationService().didUpdateBinding(params);
     }
   }
 
@@ -330,6 +340,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     LOG.debug("Workspace '{}' unbound", folder);
     stopUnusedEngines();
     analysisManager.analyzeAllOpenFilesInFolder(folder);
+    var bindingConfigurationDto = new BindingConfigurationDto(null, null, true);
+    var params = new DidUpdateBindingParams(folder.getUri().toString(), bindingConfigurationDto);
+    backendServiceFacade.getBackendService().getBackend().getConfigurationService().didUpdateBinding(params);
   }
 
   public void subscribeForServerEvents(String connectionId) {

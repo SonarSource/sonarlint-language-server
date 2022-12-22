@@ -34,7 +34,7 @@ class BackendServiceFacadeTests {
 
   @Test
   void shouldFailIfBackendNotInitialized() {
-    assertThrows(IllegalStateException.class, () -> underTest.getBackend());
+    assertThrows(IllegalStateException.class, () -> underTest.getBackendService());
   }
 
 }

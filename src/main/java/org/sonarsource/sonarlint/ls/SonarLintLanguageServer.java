@@ -26,7 +26,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -180,10 +179,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.securityHotspotsCache = new IssuesCache();
     this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
     this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache, securityHotspotsCache);
-    this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.progressManager = new ProgressManager(client);
     this.vsCodeClient = new SonarLintVSCodeClient(client);
     this.backendServiceFacade = new BackendServiceFacade(new SonarLintBackendImpl(vsCodeClient));
+    this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClientProvider, backendServiceFacade);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
     var fileTypeClassifier = new FileTypeClassifier();
@@ -193,7 +192,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, globalLogOutput,
-      taintVulnerabilitiesCache, diagnosticPublisher);
+      taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade);
     this.settingsManager.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(httpClientProvider, settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager);
     this.settingsManager.addListener(telemetry);
@@ -547,7 +546,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var versionedIssue = securityHotspotsCache.get(fileUri).get(hotspotId);
     var delegatingIssue = (DelegatingIssue) versionedIssue.getIssue();
     var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(workspaceFolder, branchNameOptional.get(), delegatingIssue.getServerIssueKey());
-    backendServiceFacade.getBackend().openHotspotInBrowser(openHotspotInBrowserParams);
+    backendServiceFacade.getBackendService().openHotspotInBrowser(openHotspotInBrowserParams);
   }
 
   @Override

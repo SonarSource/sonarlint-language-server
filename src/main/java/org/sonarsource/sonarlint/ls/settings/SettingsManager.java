@@ -44,8 +44,6 @@ import org.eclipse.lsp4j.ConfigurationParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarCloudConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarQubeConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
-import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
-import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -178,7 +176,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         params.setSonarQubeConnections(sqConnections);
         params.setSonarCloudConnections(scConnections);
         backendServiceFacade.initOnce();
-        backendServiceFacade.getBackend().didChangeConfiguration(connections);
+        backendServiceFacade.getBackendService().didChangeConfiguration(connections);
       } catch (InterruptedException e) {
         interrupted(e);
       } catch (Exception e) {

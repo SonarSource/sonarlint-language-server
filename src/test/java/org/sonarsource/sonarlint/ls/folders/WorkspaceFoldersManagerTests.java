@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import testutils.ImmediateExecutorService;
 import testutils.SonarLintLogTester;
@@ -48,7 +49,7 @@ class WorkspaceFoldersManagerTests {
   SonarLintLogTester logTester = new SonarLintLogTester();
   ProjectBindingManager bindingManager;
 
-  private final WorkspaceFoldersManager underTest = new WorkspaceFoldersManager(new ImmediateExecutorService());
+  private final WorkspaceFoldersManager underTest = new WorkspaceFoldersManager(new ImmediateExecutorService(), mock(BackendServiceFacade.class));
 
   @BeforeEach
   void prepare() {

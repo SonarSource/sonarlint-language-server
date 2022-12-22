@@ -20,13 +20,19 @@
 package org.sonarsource.sonarlint.ls.backend;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
+import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
 import org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidRemoveConfigurationScopeParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.DidUpdateConnectionsParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarCloudConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarQubeConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 public class BackendService {
@@ -56,5 +62,26 @@ public class BackendService {
       .collect(Collectors.toList());
     var params = new DidUpdateConnectionsParams(sqConnections, scConnections);
     backend.getConnectionService().didUpdateConnections(params);
+  }
+
+  public ConfigurationScopeDto getConfigScopeDto(WorkspaceFolder added, Optional<ProjectBindingWrapper> bindingOptional) {
+    BindingConfigurationDto bindingConfigurationDto;
+    if (bindingOptional.isPresent()) {
+      ProjectBindingWrapper bindingWrapper = bindingOptional.get();
+      bindingConfigurationDto = new BindingConfigurationDto(bindingWrapper.getConnectionId(),
+        bindingWrapper.getBinding().projectKey(), true);
+    } else {
+      bindingConfigurationDto = new BindingConfigurationDto(null, null, true);
+    }
+    return new ConfigurationScopeDto(added.getUri(), null, true, added.getName(), bindingConfigurationDto);
+  }
+
+  public void removeWorkspaceFolder(String removedUri) {
+    var params = new DidRemoveConfigurationScopeParams(removedUri);
+    backend.getConfigurationService().didRemoveConfigurationScope(params);
+  }
+
+  public SonarLintBackend getBackend() {
+    return backend;
   }
 }
