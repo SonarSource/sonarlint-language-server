@@ -19,42 +19,38 @@
  */
 package org.sonarsource.sonarlint.ls.clientapi;
 
-import java.util.concurrent.CompletableFuture;
-import org.jetbrains.annotations.Nullable;
-import org.sonarsource.sonarlint.core.clientapi.SonarLintClient;
+import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
-import org.sonarsource.sonarlint.core.clientapi.client.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeParams;
-import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
-import org.sonarsource.sonarlint.core.commons.http.HttpClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 
-public class SonarLintVSCodeClient implements SonarLintClient {
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
-  private final SonarLintExtendedLanguageClient client;
+public class SonarLintVSCodeClientTests {
 
-  public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client) {
-    this.client = client;
+  SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
+  SonarLintVSCodeClient underTest = new SonarLintVSCodeClient(client);
+
+  @Test
+  void openUrlInBrowserTest() {
+    var params = new OpenUrlInBrowserParams("url");
+
+    underTest.openUrlInBrowser(params);
+
+    verify(client).browseTo(params.getUrl());
   }
 
-  @Override
-  public void suggestBinding(SuggestBindingParams params) {
-    // NOOP
+  @Test
+  void shouldReturnNullForHttpClient() {
+    assertThat(underTest.getHttpClient("")).isNull();
   }
 
-  @Override
-  public CompletableFuture<FindFileByNamesInScopeResponse> findFileByNamesInScope(FindFileByNamesInScopeParams params) {
-    return null;
+
+  @Test
+  void shouldReturnNullForFindFile() {
+    assertThat(underTest.findFileByNamesInScope(mock(FindFileByNamesInScopeParams.class))).isNull();
   }
 
-  @Nullable
-  @Override
-  public HttpClient getHttpClient(String connectionId) {
-    return null;
-  }
-
-  @Override
-  public void openUrlInBrowser(OpenUrlInBrowserParams params) {
-    client.browseTo(params.getUrl());
-  }
 }

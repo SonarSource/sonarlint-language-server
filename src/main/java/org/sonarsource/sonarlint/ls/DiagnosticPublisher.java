@@ -154,9 +154,6 @@ public class DiagnosticPublisher {
       return hotspotKey;
     }
 
-    public boolean isHasFlows() {
-      return hasFlows;
-    }
   }
 
 }
