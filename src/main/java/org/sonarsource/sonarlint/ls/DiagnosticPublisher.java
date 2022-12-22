@@ -69,8 +69,6 @@ public class DiagnosticPublisher {
 
   static Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
     var issue = entry.getValue().getIssue();
-    var delegatedIssue = (DelegatingIssue) issue;
-    var isKnown = delegatedIssue.getServerIssueKey() != null;
     var diagnostic = new Diagnostic();
     var severity = severity(issue.getSeverity());
 
@@ -79,11 +77,21 @@ public class DiagnosticPublisher {
     diagnostic.setRange(range);
     diagnostic.setCode(issue.getRuleKey());
     diagnostic.setMessage(message(issue));
-    diagnostic.setSource(isKnown ? SONARQUBE_SOURCE : SONARLINT_SOURCE);
+    setSource(issue, diagnostic);
     var hasFlows = !issue.flows().isEmpty();
     diagnostic.setData(new IssueData(entry.getKey(), hasFlows));
 
     return diagnostic;
+  }
+
+  static void setSource(Issue issue, Diagnostic diagnostic) {
+    if (issue instanceof DelegatingIssue) {
+      var delegatedIssue = (DelegatingIssue) issue;
+      var isKnown = delegatedIssue.getServerIssueKey() != null;
+      diagnostic.setSource(isKnown ? SONARQUBE_SOURCE : SONARLINT_SOURCE);
+    } else {
+      diagnostic.setSource(SONARLINT_SOURCE);
+    }
   }
 
   static String message(Issue issue) {
