@@ -27,6 +27,7 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.Language;
+import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -88,7 +89,8 @@ public class DiagnosticPublisher {
     if (issue instanceof DelegatingIssue) {
       var delegatedIssue = (DelegatingIssue) issue;
       var isKnown = delegatedIssue.getServerIssueKey() != null;
-      diagnostic.setSource(isKnown ? SONARQUBE_SOURCE : SONARLINT_SOURCE);
+      var isHotspot = delegatedIssue.getType() == RuleType.SECURITY_HOTSPOT;
+      diagnostic.setSource(isKnown && isHotspot ? SONARQUBE_SOURCE : SONARLINT_SOURCE);
     } else {
       diagnostic.setSource(SONARLINT_SOURCE);
     }
