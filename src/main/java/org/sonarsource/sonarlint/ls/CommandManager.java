@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls;
 
 import com.google.gson.JsonPrimitive;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -54,6 +53,7 @@ import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.UrlUtils;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
@@ -327,9 +327,12 @@ public class CommandManager {
   private void handleShowHotspotFlows(ExecuteCommandParams params) {
     var fileUri = getAsString(params.getArguments().get(0));
     var issueKey = getAsString(params.getArguments().get(1));
-    var hotspot = securityHotspotsCache.get(URI.create(fileUri))
-      .get(issueKey)
-      .getIssue();
+    var issue = securityHotspotsCache.get(create(fileUri)).get(issueKey);
+    if (issue == null) {
+      SonarLintLogger.get().error("Hotspot is not found during showing flows");
+      return;
+    }
+    var hotspot = issue.getIssue();
     client.showIssueOrHotspot(ShowAllLocationsCommand.params(hotspot));
   }
 

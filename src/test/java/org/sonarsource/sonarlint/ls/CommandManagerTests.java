@@ -24,6 +24,7 @@ import java.net.URI;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.CodeActionContext;
@@ -36,6 +37,7 @@ import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -78,12 +80,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARCLOUD_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARLINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_BROWSE_TAINT_VULNERABILITY;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND;
+import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_UPDATE_ALL_BINDINGS_COMMAND;
 import static org.sonarsource.sonarlint.ls.CommandManager.getHtmlDescription;
@@ -371,5 +375,78 @@ class CommandManagerTests {
       NOP_CANCEL_TOKEN);
     verify(mockTaintVulnerabilitiesCache).getTaintVulnerabilityByKey(issueKey);
     verify(mockTelemetry).taintVulnerabilitiesInvestigatedLocally();
+  }
+
+  @Test
+  void showHotspotFlowsCommandNotFound() {
+    var issueKey = "someIssueKey";
+    var fileUri = "fileUri";
+    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS, List.of(new JsonPrimitive(fileUri), new JsonPrimitive(issueKey))), NOP_CANCEL_TOKEN);
+
+    verify(securityHotspotsCache).get(URI.create("fileUri"));
+    verifyNoMoreInteractions(securityHotspotsCache, mockClient);
+  }
+
+  @Test
+  void showHotspotFlowsCommandSuccess() {
+    var issueKey = "someIssueKey";
+    var fileUri = "fileUri";
+    var issue = new Issue() {
+
+      @Nullable
+      @Override
+      public TextRange getTextRange() {
+        return null;
+      }
+
+      @Nullable
+      @Override
+      public String getMessage() {
+        return "";
+      }
+
+      @Nullable
+      @Override
+      public ClientInputFile getInputFile() {
+        return null;
+      }
+
+      @Override
+      public IssueSeverity getSeverity() {
+        return IssueSeverity.BLOCKER;
+      }
+
+      @Override
+      public RuleType getType() {
+        return RuleType.SECURITY_HOTSPOT;
+      }
+
+      @Override
+      public String getRuleKey() {
+        return "";
+      }
+
+      @Override
+      public List<Flow> flows() {
+        return emptyList();
+      }
+
+      @Override
+      public List<QuickFix> quickFixes() {
+        return null;
+      }
+
+      @Override
+      public Optional<String> getRuleDescriptionContextKey() {
+        return Optional.empty();
+      }
+    };
+    var versionedIssue = new VersionedIssue(issue, 1);
+    when(securityHotspotsCache.get(URI.create("fileUri"))).thenReturn(Map.of(issueKey, versionedIssue));
+
+    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS, List.of(new JsonPrimitive(fileUri), new JsonPrimitive(issueKey))), NOP_CANCEL_TOKEN);
+
+    verify(securityHotspotsCache).get(URI.create("fileUri"));
+    verify(mockClient).showIssueOrHotspot(any());
   }
 }
