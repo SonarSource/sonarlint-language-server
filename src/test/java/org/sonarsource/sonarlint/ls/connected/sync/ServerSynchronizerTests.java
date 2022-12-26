@@ -52,6 +52,7 @@ import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -124,6 +125,7 @@ class ServerSynchronizerTests {
   private TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private DiagnosticPublisher diagnosticPublisher;
   private ServerSentEventsHandlerService serverSentEventsHandler = mock(ServerSentEventsHandlerService.class);
+  private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
 
   @BeforeEach
   public void prepare() throws IOException, ExecutionException, InterruptedException {
@@ -155,7 +157,8 @@ class ServerSynchronizerTests {
     folderBindingCache = new ConcurrentHashMap<>();
     taintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
     diagnosticPublisher = mock(DiagnosticPublisher.class);
-    bindingManager = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, mock(LanguageClientLogOutput.class), taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade);
+    bindingManager = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, mock(LanguageClientLogOutput.class),
+      taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade);
     syncTimer = mock(Timer.class);
     var syncTaskCaptor = ArgumentCaptor.forClass(TimerTask.class);
     underTest = new ServerSynchronizer(client, new ProgressManager(client), bindingManager, analysisManager, syncTimer);

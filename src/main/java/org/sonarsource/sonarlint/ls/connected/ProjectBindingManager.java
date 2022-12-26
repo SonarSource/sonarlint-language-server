@@ -293,7 +293,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       if (folder == null) return;
       var bindingConfigurationDto = new BindingConfigurationDto(newValue.getConnectionId(), newValue.getProjectKey(), true);
       var params = new DidUpdateBindingParams(folder.getUri().toString(), bindingConfigurationDto);
-      backendServiceFacade.getBackendService().getBackend().getConfigurationService().didUpdateBinding(params);
+      backendServiceFacade.getBackendService().updateBinding(params);
     }
   }
 
@@ -342,7 +342,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     analysisManager.analyzeAllOpenFilesInFolder(folder);
     var bindingConfigurationDto = new BindingConfigurationDto(null, null, true);
     var params = new DidUpdateBindingParams(folder.getUri().toString(), bindingConfigurationDto);
-    backendServiceFacade.getBackendService().getBackend().getConfigurationService().didUpdateBinding(params);
+    backendServiceFacade.getBackendService().updateBinding(params);
   }
 
   public void subscribeForServerEvents(String connectionId) {

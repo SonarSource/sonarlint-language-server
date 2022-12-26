@@ -55,8 +55,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Hotspots;
-import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Issues;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -87,6 +85,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "productVersion", "0.1",
       "showVerboseLogs", false,
       "additionalAttributes", Map.of("extra", "value")));
+
   }
 
   @BeforeEach

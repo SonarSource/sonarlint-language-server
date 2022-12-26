@@ -73,11 +73,11 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @BeforeAll
   public static void initialize() throws Exception {
-
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
       "productVersion", "0.1"), new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
+
   }
 
   @BeforeEach

@@ -26,7 +26,9 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
 import org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.DidUpdateBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidAddConfigurationScopesParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidRemoveConfigurationScopeParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.DidUpdateConnectionsParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarCloudConnectionConfigurationDto;
@@ -81,7 +83,11 @@ public class BackendService {
     backend.getConfigurationService().didRemoveConfigurationScope(params);
   }
 
-  public SonarLintBackend getBackend() {
-    return backend;
+  public void updateBinding(DidUpdateBindingParams params) {
+    backend.getConfigurationService().didUpdateBinding(params);
+  }
+
+  public void addConfigurationScopes(DidAddConfigurationScopesParams params) {
+    backend.getConfigurationService().didAddConfigurationScopes(params);
   }
 }

@@ -101,7 +101,7 @@ public class WorkspaceFoldersManager {
       bindingManager.subscribeForServerEvents(addedFolderWrappers, removedFolderWrappers);
       List<ConfigurationScopeDto> addedScopeDtos = event.getAdded().stream().map(this::getConfigScopeDto).collect(Collectors.toList());
       var params = new DidAddConfigurationScopesParams(addedScopeDtos);
-      backendServiceFacade.getBackendService().getBackend().getConfigurationService().didAddConfigurationScopes(params);
+      backendServiceFacade.getBackendService().addConfigurationScopes(params);
       event.getRemoved().forEach(removed -> removeFolderFromBackend(removed.getUri()));
     });
 
@@ -127,9 +127,10 @@ public class WorkspaceFoldersManager {
       LOG.debug("Folder {} added", addedWrapper);
     }
     executor.submit(() -> {
-      List<ConfigurationScopeDto> addedScopeDtos = List.of(this.getConfigScopeDto(added));
+      var dto = getConfigScopeDto(added);
+      List<ConfigurationScopeDto> addedScopeDtos = List.of(dto);
       var params = new DidAddConfigurationScopesParams(addedScopeDtos);
-      backendServiceFacade.getBackendService().getBackend().getConfigurationService().didAddConfigurationScopes(params);
+      backendServiceFacade.getBackendService().addConfigurationScopes(params);
     });
     return addedWrapper;
   }
