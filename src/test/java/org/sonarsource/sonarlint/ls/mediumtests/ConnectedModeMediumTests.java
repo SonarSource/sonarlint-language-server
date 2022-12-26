@@ -329,6 +329,14 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     assertThatThrownBy(result::get).hasMessage("org.eclipse.lsp4j.jsonrpc.ResponseErrorException: Internal error.");
   }
 
+  @Test
+  void test() {
+    lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotParams("id", folder1BaseDir.toUri().toString()));
+
+    assertLogContains("Can't find branch for workspace folder " + folder1BaseDir.toUri().getPath()
+      + " during attempt to open hotspot in browser.");
+  }
+
   private String stripTrailingSlash(String url) {
     if (url.endsWith("/")) {
       return url.substring(0, url.length() - 1);

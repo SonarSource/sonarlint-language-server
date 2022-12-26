@@ -543,7 +543,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         + workspaceFolderUri.getPath() + " during attempt to open hotspot in browser.");
       return;
     }
-    var workspaceFolder = workspaceFolderUri.getPath();
     var versionedIssue = securityHotspotsCache.get(fileUri).get(hotspotId);
     var delegatingIssue = (DelegatingIssue) versionedIssue.getIssue();
     var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(workspaceFolderUri.toString(), branchNameOptional.get(), delegatingIssue.getServerIssueKey());

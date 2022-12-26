@@ -72,8 +72,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   private static final String CONNECTION_ID = "known";
   private static final String TOKEN = "token";
-
-  private static final long CURRENT_TIME = System.currentTimeMillis();
   @RegisterExtension
   private static final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
 
@@ -766,6 +764,13 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     testParams.setConnectionId(NEW);
 
     assertThat(testParams.getConnectionId()).isEqualTo(NEW);
+  }
+
+  @Test
+  void openHotspotInBrowserShouldLogIfWorkspaceNotFound() {
+    lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotParams("id", "/workspace"));
+
+    assertLogContains("Can't find workspace folder for file /workspace during attempt to open hotspot in browser.");
   }
 
   @Override
