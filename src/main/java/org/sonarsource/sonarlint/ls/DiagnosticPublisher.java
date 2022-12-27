@@ -79,8 +79,7 @@ public class DiagnosticPublisher {
     diagnostic.setCode(issue.getRuleKey());
     diagnostic.setMessage(message(issue));
     setSource(issue, diagnostic);
-    var hasFlows = !issue.flows().isEmpty();
-    diagnostic.setData(new IssueData(entry.getKey(), hasFlows));
+    diagnostic.setData(entry.getKey());
 
     return diagnostic;
   }
@@ -149,21 +148,6 @@ public class DiagnosticPublisher {
   private static Comparator<? super Diagnostic> byLineNumber() {
     return Comparator.comparing((Diagnostic d) -> d.getRange().getStart().getLine())
       .thenComparing(Diagnostic::getMessage);
-  }
-
-  public static class IssueData {
-    private final String hotspotKey;
-    private final boolean hasFlows;
-
-    public IssueData(String hotspotKey, boolean hasFlows) {
-      this.hotspotKey = hotspotKey;
-      this.hasFlows = hasFlows;
-    }
-
-    public String getHotspotKey() {
-      return hotspotKey;
-    }
-
   }
 
 }

@@ -35,7 +35,6 @@ import org.sonarsource.sonarlint.core.analysis.api.IssueLocation;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
-import org.sonarsource.sonarlint.ls.IssuesCache;
 import org.sonarsource.sonarlint.ls.LocalCodeFile;
 import org.sonarsource.sonarlint.ls.util.Utils;
 

@@ -71,7 +71,6 @@ public class WorkspaceFoldersManager {
   }
 
   public void initialize(@Nullable List<WorkspaceFolder> workspaceFolders) {
-    // TODO what is the parent scope here?
     if (workspaceFolders != null) {
       workspaceFolders.forEach(wf -> {
         var uri = create(wf.getUri());
