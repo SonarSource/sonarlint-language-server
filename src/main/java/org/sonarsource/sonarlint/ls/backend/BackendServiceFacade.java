@@ -46,7 +46,12 @@ public class BackendServiceFacade {
     return initParams;
   }
 
-  public void initOnce(Map<String, ServerConnectionSettings> connections) {
+  public void didChangeConnections(Map<String, ServerConnectionSettings> connections) {
+    initOnce(connections);
+    backend.didChangeConnections(connections);
+  }
+
+  private void initOnce(Map<String, ServerConnectionSettings> connections) {
     if (initialized) return;
     var sqConnections = BackendService.extractSonarQubeConnections(connections);
     var scConnections = BackendService.extractSonarCloudConnections(connections);
@@ -54,7 +59,6 @@ public class BackendServiceFacade {
     initParams.setSonarCloudConnections(scConnections);
     backend.initialize(toInitParams(initParams));
     initialized = true;
-    backend.didChangeConnections(connections);
   }
 
   private static InitializeParams toInitParams(BackendInitParams initParams) {

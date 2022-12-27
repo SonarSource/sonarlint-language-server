@@ -30,8 +30,6 @@ class BackendServiceFacadeTests {
   SonarLintBackend backend = mock(SonarLintBackend.class);
   BackendServiceFacade underTest = new BackendServiceFacade(backend);
 
-
-
   @Test
   void shouldFailIfBackendNotInitialized() {
     assertThrows(IllegalStateException.class, () -> underTest.getBackendService());

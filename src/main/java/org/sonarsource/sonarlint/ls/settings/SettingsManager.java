@@ -161,9 +161,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         notifyListeners(newWorkspaceSettings, oldWorkspaceSettings, newDefaultFolderSettings, oldDefaultFolderSettings);
 
         resubscribeForServerEvents(oldWorkspaceSettings, newWorkspaceSettings, previousProjectKeysByConnectionId, currentProjectKeysByConnectionId);
-        var connections = getCurrentSettings().getServerConnections();
-        backendServiceFacade.initOnce(connections);
-
+        backendServiceFacade.didChangeConnections(getCurrentSettings().getServerConnections());
       } catch (InterruptedException e) {
         interrupted(e);
       } catch (Exception e) {
