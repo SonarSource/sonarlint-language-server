@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.backend;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -54,16 +55,24 @@ public class BackendService {
   }
 
   public void didChangeConnections(Map<String, ServerConnectionSettings> connections) {
-    var scConnections = connections.entrySet().stream()
-      .filter(it -> it.getValue().isSonarCloudAlias())
-      .map(it -> new SonarCloudConnectionConfigurationDto(it.getKey(), it.getValue().getOrganizationKey()))
-      .collect(Collectors.toList());
-    var sqConnections = connections.entrySet().stream()
+    var scConnections = extractSonarCloudConnections(connections);
+    var sqConnections = extractSonarQubeConnections(connections);
+    var params = new DidUpdateConnectionsParams(sqConnections, scConnections);
+    backend.getConnectionService().didUpdateConnections(params);
+  }
+
+  public static List<SonarQubeConnectionConfigurationDto> extractSonarQubeConnections(Map<String, ServerConnectionSettings> connections) {
+    return connections.entrySet().stream()
       .filter(it -> !it.getValue().isSonarCloudAlias())
       .map(it -> new SonarQubeConnectionConfigurationDto(it.getKey(), it.getValue().getServerUrl()))
       .collect(Collectors.toList());
-    var params = new DidUpdateConnectionsParams(sqConnections, scConnections);
-    backend.getConnectionService().didUpdateConnections(params);
+  }
+
+  public static List<SonarCloudConnectionConfigurationDto> extractSonarCloudConnections(Map<String, ServerConnectionSettings> connections) {
+    return connections.entrySet().stream()
+      .filter(it -> it.getValue().isSonarCloudAlias())
+      .map(it -> new SonarCloudConnectionConfigurationDto(it.getKey(), it.getValue().getOrganizationKey()))
+      .collect(Collectors.toList());
   }
 
   public ConfigurationScopeDto getConfigScopeDto(WorkspaceFolder added, Optional<ProjectBindingWrapper> bindingOptional) {
@@ -89,5 +98,9 @@ public class BackendService {
 
   public void addConfigurationScopes(DidAddConfigurationScopesParams params) {
     backend.getConfigurationService().didAddConfigurationScopes(params);
+  }
+
+  public void shutdown() {
+    backend.shutdown();
   }
 }

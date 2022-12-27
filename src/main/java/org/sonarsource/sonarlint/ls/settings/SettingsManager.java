@@ -41,10 +41,9 @@ import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarCloudConnectionConfigurationDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarQubeConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
@@ -164,19 +163,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
         resubscribeForServerEvents(oldWorkspaceSettings, newWorkspaceSettings, previousProjectKeysByConnectionId, currentProjectKeysByConnectionId);
         var connections = getCurrentSettings().getServerConnections();
-        var params = backendServiceFacade.getInitParams();
-        var sqConnections = connections.entrySet().stream()
-          .filter(entry -> !entry.getValue().isSonarCloudAlias())
-          .map(it -> new SonarQubeConnectionConfigurationDto(it.getKey(), it.getValue().getServerUrl()))
-          .collect(Collectors.toList());
-        var scConnections = connections.entrySet().stream()
-          .filter(entry -> entry.getValue().isSonarCloudAlias())
-          .map(it -> new SonarCloudConnectionConfigurationDto(it.getKey(), it.getValue().getOrganizationKey()))
-          .collect(Collectors.toList());
-        params.setSonarQubeConnections(sqConnections);
-        params.setSonarCloudConnections(scConnections);
-        backendServiceFacade.initOnce();
-        backendServiceFacade.getBackendService().didChangeConnections(connections);
+        backendServiceFacade.initOnce(connections);
+
       } catch (InterruptedException e) {
         interrupted(e);
       } catch (Exception e) {

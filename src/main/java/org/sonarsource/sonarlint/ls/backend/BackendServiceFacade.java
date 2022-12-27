@@ -19,8 +19,10 @@
  */
 package org.sonarsource.sonarlint.ls.backend;
 
+import java.util.Map;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
 import org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 public class BackendServiceFacade {
 
@@ -44,10 +46,15 @@ public class BackendServiceFacade {
     return initParams;
   }
 
-  public void initOnce() {
+  public void initOnce(Map<String, ServerConnectionSettings> connections) {
     if (initialized) return;
+    var sqConnections = BackendService.extractSonarQubeConnections(connections);
+    var scConnections = BackendService.extractSonarCloudConnections(connections);
+    initParams.setSonarQubeConnections(sqConnections);
+    initParams.setSonarCloudConnections(scConnections);
     backend.initialize(toInitParams(initParams));
     initialized = true;
+    backend.didChangeConnections(connections);
   }
 
   private static InitializeParams toInitParams(BackendInitParams initParams) {
@@ -64,5 +71,9 @@ public class BackendServiceFacade {
       initParams.getSonarCloudConnections(),
       initParams.getSonarlintUserHome()
     );
+  }
+
+  public void shutdown() {
+    backend.shutdown();
   }
 }

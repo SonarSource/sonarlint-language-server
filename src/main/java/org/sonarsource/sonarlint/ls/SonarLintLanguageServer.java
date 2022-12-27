@@ -332,7 +332,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       // shutdown engines after the rest so that no operations remain on them, and they won't be recreated accidentally
       bindingManager::shutdown,
       serverSynchronizer::shutdown,
-      standaloneEngineManager::shutdown)
+      standaloneEngineManager::shutdown,
+      backendServiceFacade::shutdown)
       // Do last
       .forEach(this::invokeQuietly);
     return CompletableFuture.completedFuture(null);
