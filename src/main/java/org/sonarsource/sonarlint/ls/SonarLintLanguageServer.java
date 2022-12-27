@@ -52,6 +52,8 @@ import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.SetTraceParams;
@@ -154,7 +156,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ModuleEventsProcessor moduleEventsProcessor;
   private final ServerSentEventsHandlerService serverSentEventsHandler;
   private final TaintVulnerabilityRaisedNotification taintVulnerabilityRaisedNotification;
-  private final SonarLintVSCodeClient vsCodeClient;
   private final BackendServiceFacade backendServiceFacade;
 
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers, Collection<Path> extraAnalyzers) {
@@ -180,7 +181,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
     this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache, securityHotspotsCache);
     this.progressManager = new ProgressManager(client);
-    this.vsCodeClient = new SonarLintVSCodeClient(client);
+    var vsCodeClient = new SonarLintVSCodeClient(client);
     this.backendServiceFacade = new BackendServiceFacade(new SonarLintBackendImpl(vsCodeClient));
     this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClientProvider, backendServiceFacade);
@@ -527,25 +528,30 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public void openHotspotInBrowser(OpenHotspotParams params) {
+  public void openHotspotInBrowser(OpenHotspotInBrowserLsParams params) {
     var hotspotId = params.getHotspotId();
     var fileUri = create(params.getFileUri());
     var folderForFileOptional = workspaceFoldersManager.findFolderForFile(fileUri);
     if (folderForFileOptional.isEmpty()) {
-      lsLogOutput.error("Can't find workspace folder for file "
-        + fileUri.getPath() + " during attempt to open hotspot in browser.");
+      var message = "Can't find workspace folder for file "
+        + fileUri.getPath() + " during attempt to open hotspot in browser.";
+      lsLogOutput.error(message);
+      client.showMessage(new MessageParams(MessageType.Error, message));
       return;
     }
     var workspaceFolderUri = folderForFileOptional.get().getUri();
     var branchNameOptional = branchManager.getReferenceBranchNameForFolder(workspaceFolderUri);
     if (branchNameOptional.isEmpty()) {
-      lsLogOutput.error("Can't find branch for workspace folder "
-        + workspaceFolderUri.getPath() + " during attempt to open hotspot in browser.");
+      var message = "Can't find branch for workspace folder "
+        + workspaceFolderUri.getPath() + " during attempt to open hotspot in browser.";
+      lsLogOutput.error(message);
+      client.showMessage(new MessageParams(MessageType.Error, message));
       return;
     }
     var versionedIssue = securityHotspotsCache.get(fileUri).get(hotspotId);
     var delegatingIssue = (DelegatingIssue) versionedIssue.getIssue();
-    var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(workspaceFolderUri.toString(), branchNameOptional.get(), delegatingIssue.getServerIssueKey());
+    var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(workspaceFolderUri.toString(),
+      branchNameOptional.get(), delegatingIssue.getServerIssueKey());
     backendServiceFacade.getBackendService().openHotspotInBrowser(openHotspotInBrowserParams);
   }
 

@@ -271,11 +271,11 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonRequest("sonarlint/showHotspotLocations")
   CompletableFuture<Void> showHotspotLocations(ShowHotspotLocationsParams hotspotKey);
 
-  class OpenHotspotParams {
+  class OpenHotspotInBrowserLsParams {
     private String hotspotId;
     private String fileUri;
 
-    public OpenHotspotParams(String hotspotId, String workspaceFolder) {
+    public OpenHotspotInBrowserLsParams(String hotspotId, String workspaceFolder) {
       this.hotspotId = hotspotId;
       this.fileUri = workspaceFolder;
     }
@@ -298,7 +298,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   }
 
   @JsonNotification("sonarlint/openHotspotInBrowser")
-  void openHotspotInBrowser(OpenHotspotParams params);
+  void openHotspotInBrowser(OpenHotspotInBrowserLsParams params);
 
   class ShowHotspotRuleDescriptionParams {
     String ruleKey;

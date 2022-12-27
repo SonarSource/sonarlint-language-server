@@ -331,7 +331,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void openHotspotInBrowserShouldLogIfBranchNotFound() {
-    lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotParams("id", folder1BaseDir.toUri().toString()));
+    lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotInBrowserLsParams("id", folder1BaseDir.toUri().toString()));
 
     assertLogContains("Can't find branch for workspace folder " + folder1BaseDir.toUri().getPath()
       + " during attempt to open hotspot in browser.");

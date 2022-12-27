@@ -152,8 +152,8 @@ public class DiagnosticPublisher {
   }
 
   public static class IssueData {
-    String hotspotKey;
-    boolean hasFlows;
+    private final String hotspotKey;
+    private final boolean hasFlows;
 
     public IssueData(String hotspotKey, boolean hasFlows) {
       this.hotspotKey = hotspotKey;

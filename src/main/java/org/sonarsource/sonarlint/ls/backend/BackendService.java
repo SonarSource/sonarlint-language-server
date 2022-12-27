@@ -53,7 +53,7 @@ public class BackendService {
     backend.getHotspotService().openHotspotInBrowser(params);
   }
 
-  public void didChangeConfiguration(Map<String, ServerConnectionSettings> connections) {
+  public void didChangeConnections(Map<String, ServerConnectionSettings> connections) {
     var scConnections = connections.entrySet().stream()
       .filter(it -> it.getValue().isSonarCloudAlias())
       .map(it -> new SonarCloudConnectionConfigurationDto(it.getKey(), it.getValue().getOrganizationKey()))

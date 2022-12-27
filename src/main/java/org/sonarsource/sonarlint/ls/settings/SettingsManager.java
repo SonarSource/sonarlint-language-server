@@ -176,7 +176,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         params.setSonarQubeConnections(sqConnections);
         params.setSonarCloudConnections(scConnections);
         backendServiceFacade.initOnce();
-        backendServiceFacade.getBackendService().didChangeConfiguration(connections);
+        backendServiceFacade.getBackendService().didChangeConnections(connections);
       } catch (InterruptedException e) {
         interrupted(e);
       } catch (Exception e) {

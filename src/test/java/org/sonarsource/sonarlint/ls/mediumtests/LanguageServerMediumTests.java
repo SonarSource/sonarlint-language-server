@@ -768,7 +768,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void openHotspotInBrowserShouldLogIfWorkspaceNotFound() {
-    lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotParams("id", "/workspace"));
+    lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotInBrowserLsParams("id", "/workspace"));
 
     assertLogContains("Can't find workspace folder for file /workspace during attempt to open hotspot in browser.");
   }
