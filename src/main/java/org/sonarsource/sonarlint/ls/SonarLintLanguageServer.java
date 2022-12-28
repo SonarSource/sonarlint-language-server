@@ -557,12 +557,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public void showHotspotRuleDescription(ShowHotspotRuleDescriptionParams params) {
+  public CompletableFuture<Void> showHotspotRuleDescription(ShowHotspotRuleDescriptionParams params) {
     var fileUri = params.fileUri;
     var ruleKey = params.ruleKey;
     var showHotspotCommandParams = new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
       List.of(new JsonPrimitive(ruleKey), new JsonPrimitive(fileUri)));
-    CompletableFutures.computeAsync(cancelToken -> {
+    return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
       commandManager.executeCommand(showHotspotCommandParams, cancelToken);
       return null;

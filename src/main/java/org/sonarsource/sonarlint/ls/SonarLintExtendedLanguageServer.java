@@ -317,5 +317,5 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
   }
   @JsonNotification("sonarlint/showHotspotRuleDescription")
-  void showHotspotRuleDescription(ShowHotspotRuleDescriptionParams params);
+  CompletableFuture<Void> showHotspotRuleDescription(ShowHotspotRuleDescriptionParams params);
 }

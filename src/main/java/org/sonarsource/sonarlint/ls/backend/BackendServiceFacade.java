@@ -28,7 +28,7 @@ public class BackendServiceFacade {
 
   private final BackendService backend;
   private final BackendInitParams initParams;
-  boolean initialized = false;
+  private boolean initialized = false;
 
   public BackendServiceFacade(SonarLintBackend backend) {
     this.backend = new BackendService(backend);
