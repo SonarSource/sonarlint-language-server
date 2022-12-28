@@ -34,7 +34,9 @@ import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.stream.Collectors.toList;
+import static org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common.RuleType.SECURITY_HOTSPOT;
 import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralizedSuffix;
+import static org.sonarsource.sonarlint.ls.util.Utils.hotspotSeverity;
 import static org.sonarsource.sonarlint.ls.util.Utils.severity;
 
 public class DiagnosticPublisher {
@@ -71,7 +73,7 @@ public class DiagnosticPublisher {
   static Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
     var issue = entry.getValue().getIssue();
     var diagnostic = new Diagnostic();
-    var severity = severity(issue.getSeverity());
+    var severity = issue.getType() == RuleType.SECURITY_HOTSPOT ? hotspotSeverity(issue.getSeverity()) : severity(issue.getSeverity());
 
     diagnostic.setSeverity(severity);
     var range = Utils.convert(issue);
