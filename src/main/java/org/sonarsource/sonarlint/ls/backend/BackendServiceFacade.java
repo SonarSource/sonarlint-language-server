@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.backend;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
 import org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
@@ -28,7 +29,7 @@ public class BackendServiceFacade {
 
   private final BackendService backend;
   private final BackendInitParams initParams;
-  private boolean initialized = false;
+  private final AtomicBoolean initialized = new AtomicBoolean(false);
 
   public BackendServiceFacade(SonarLintBackend backend) {
     this.backend = new BackendService(backend);
@@ -36,7 +37,7 @@ public class BackendServiceFacade {
   }
 
   public BackendService getBackendService() {
-    if (!initialized) {
+    if (!initialized.get()) {
       throw new IllegalStateException("Backend service is not initialized");
     }
     return backend;
@@ -52,13 +53,13 @@ public class BackendServiceFacade {
   }
 
   private void initOnce(Map<String, ServerConnectionSettings> connections) {
-    if (initialized) return;
+    if (initialized.get()) return;
     var sqConnections = BackendService.extractSonarQubeConnections(connections);
     var scConnections = BackendService.extractSonarCloudConnections(connections);
     initParams.setSonarQubeConnections(sqConnections);
     initParams.setSonarCloudConnections(scConnections);
     backend.initialize(toInitParams(initParams));
-    initialized = true;
+    initialized.set(true);
   }
 
   private static InitializeParams toInitParams(BackendInitParams initParams) {

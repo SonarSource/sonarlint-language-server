@@ -95,7 +95,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private final List<WorkspaceSettingsChangeListener> globalListeners = new ArrayList<>();
   private final List<WorkspaceFolderSettingsChangeListener> folderListeners = new ArrayList<>();
   private ProjectBindingManager bindingManager;
-  private BackendServiceFacade backendServiceFacade;
+  private final BackendServiceFacade backendServiceFacade;
 
   public SettingsManager(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager foldersManager,
     ApacheHttpClientProvider httpClientProvider, BackendServiceFacade backendServiceFacade) {
