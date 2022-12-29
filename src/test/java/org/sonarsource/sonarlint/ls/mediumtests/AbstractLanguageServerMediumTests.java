@@ -78,7 +78,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
-import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspot;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspotDetails;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.ServerMain;
@@ -251,6 +250,7 @@ public abstract class AbstractLanguageServerMediumTests {
     boolean isIgnoredByScm = false;
     boolean isOpenInEditor = true;
     final AtomicInteger needCompilationDatabaseCalls = new AtomicInteger();
+    final Set<String> openedLinks = new HashSet<>();
 
     void clear() {
       diagnostics.clear();
@@ -383,6 +383,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void browseTo(String link) {
+      openedLinks.add(link);
     }
 
     @Override

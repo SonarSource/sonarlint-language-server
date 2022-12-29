@@ -167,6 +167,8 @@ public class ServerSynchronizer {
     String branchName, @Nullable ClientProgressMonitor progressMonitor) {
     engine.syncServerIssues(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKey, branchName, progressMonitor);
     engine.syncServerTaintIssues(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKey, branchName, progressMonitor);
+    // TODO is it fast enough to do it each sync?
+    engine.downloadAllServerHotspots(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKey, branchName, progressMonitor);
   }
 
   public void syncIssues(ProjectBindingWrapper binding, String branchName) {

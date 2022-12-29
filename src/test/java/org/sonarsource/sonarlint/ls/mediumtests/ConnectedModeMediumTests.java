@@ -19,10 +19,12 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
+import com.google.gson.JsonPrimitive;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.ExecuteCommandParams;
@@ -335,6 +337,60 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     assertLogContains("Can't find branch for workspace folder " + folder1BaseDir.toUri().getPath()
       + " during attempt to open hotspot in browser.");
+  }
+
+  @Test
+  void openHotspotInBrowserShouldLogSuccess() throws InterruptedException {
+    mockNoIssuesNoHotspotsForProject();
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml&changedSince=" + CURRENT_TIME,
+      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/hotspots/search.protobuf?projectKey=myProject&files=hotspot.js&branch=master&ps=500&p=1",
+      Hotspots.SearchWsResponse.newBuilder().setPaging(Common.Paging.newBuilder().setTotal(1).build()).addHotspots(
+          Hotspots.SearchWsResponse.Hotspot.newBuilder()
+            .setKey("hhh0-2441")
+            .setComponent("myProject:hotspot.js")
+            .setRuleKey(JAVASCRIPT_S1313)
+            .setMessage("Make sure using a hardcoded IP address 12.34.56.78 is safe here.")
+            .setCreationDate("2020-09-25T12:46:39+0000")
+            .build())
+        .addComponents(Hotspots.Component.newBuilder()
+          .setKey("myProject:hotspot.js")
+          .setPath("hotspot.js")
+          .build())
+        .build()
+    );
+    mockWebServerExtension.addProtobufResponse(
+      "/api/hotspots/search.protobuf?projectKey=myProject&branch=master&ps=500&p=1",
+      Hotspots.SearchWsResponse.newBuilder().build()
+    );
+
+    var uriInFolder = folder1BaseDir.resolve("hotspot.js").toUri().toString();
+    didOpen(uriInFolder, "javascript", "const IP_ADDRESS = '12.34.56.78';\n");
+    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder)).isNotEmpty());
+
+    var hotspotId = ((JsonPrimitive) client.getHotspots(uriInFolder).get(0).getData()).getAsString();
+    var folderUriWithoutTrailingSlash = StringUtils.removeEnd(folder1BaseDir.toUri().toString(), "/");
+    lsProxy.didLocalBranchNameChange(
+      new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folderUriWithoutTrailingSlash, "some/branch/name"));
+
+    awaitUntilAsserted(() -> assertThat(client.referenceBranchNameByFolder.get(folderUriWithoutTrailingSlash)).isNotNull());
+    lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotInBrowserLsParams(hotspotId, uriInFolder));
+
+    var url = mockWebServerExtension.url("security_hotspots?id=myProject&branch=master&hotspots=hhh0-2441");
+    awaitUntilAsserted(() -> assertThat(client.openedLinks).contains(url));
+  }
+
+  @Test
+  void showHotspotLocations() {
+    var testParams = new SonarLintExtendedLanguageServer.ShowHotspotLocationsParams("hotspotKey");
+
+    var future = lsProxy.showHotspotLocations(testParams);
+
+    awaitUntilAsserted(() -> assertThat(future.isDone()).isTrue());
   }
 
   private String stripTrailingSlash(String url) {

@@ -34,7 +34,6 @@ import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.stream.Collectors.toList;
-import static org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common.RuleType.SECURITY_HOTSPOT;
 import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralizedSuffix;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotSeverity;
 import static org.sonarsource.sonarlint.ls.util.Utils.severity;

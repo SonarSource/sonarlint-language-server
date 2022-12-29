@@ -32,13 +32,13 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
-import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidAddConfigurationScopesParams;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -98,9 +98,7 @@ public class WorkspaceFoldersManager {
     }
     executor.submit(() -> {
       bindingManager.subscribeForServerEvents(addedFolderWrappers, removedFolderWrappers);
-      List<ConfigurationScopeDto> addedScopeDtos = event.getAdded().stream().map(this::getConfigScopeDto).collect(Collectors.toList());
-      var params = new DidAddConfigurationScopesParams(addedScopeDtos);
-      backendServiceFacade.getBackendService().addConfigurationScopes(params);
+      backendServiceFacade.addFolders(event.getAdded(), getBindingProvider());
       event.getRemoved().forEach(removed -> removeFolderFromBackend(removed.getUri()));
     });
 
@@ -126,21 +124,22 @@ public class WorkspaceFoldersManager {
       LOG.debug("Folder {} added", addedWrapper);
     }
     executor.submit(() -> {
-      var dto = getConfigScopeDto(added);
-      List<ConfigurationScopeDto> addedScopeDtos = List.of(dto);
-      var params = new DidAddConfigurationScopesParams(addedScopeDtos);
-      backendServiceFacade.getBackendService().addConfigurationScopes(params);
+      var optionalProjectBindingWrapper = bindingManager.getBinding(create(added.getUri()));
+      backendServiceFacade.addFolder(added, optionalProjectBindingWrapper);
     });
     return addedWrapper;
   }
 
-  private ConfigurationScopeDto getConfigScopeDto(WorkspaceFolder added) {
-    Optional<ProjectBindingWrapper> bindingOptional = bindingManager.getBinding(create(added.getUri()));
-    return backendServiceFacade.getBackendService().getConfigScopeDto(added, bindingOptional);
+  private Map<WorkspaceFolder, Optional<ProjectBindingWrapper>> getBindingPerFolder(List<WorkspaceFolder> folders) {
+    return folders.stream().collect(Collectors.toMap(f->f,f->  bindingManager.getBinding(create(f.getUri()))));
+  }
+
+  private Function<WorkspaceFolder, Optional<ProjectBindingWrapper>> getBindingProvider() {
+    return folder -> bindingManager.getBinding(create(folder.getUri()));
   }
 
   private void removeFolderFromBackend(String removedUri) {
-    backendServiceFacade.getBackendService().removeWorkspaceFolder(removedUri);
+    backendServiceFacade.removeWorkspaceFolder(removedUri);
   }
 
   public Optional<WorkspaceFolderWrapper> findFolderForFile(URI uri) {

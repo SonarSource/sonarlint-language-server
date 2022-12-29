@@ -19,10 +19,18 @@
  */
 package org.sonarsource.sonarlint.ls.backend;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
 import org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidAddConfigurationScopesParams;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 public class BackendServiceFacade {
@@ -53,13 +61,12 @@ public class BackendServiceFacade {
   }
 
   private void initOnce(Map<String, ServerConnectionSettings> connections) {
-    if (initialized.get()) return;
+    if (initialized.getAndSet(true)) return;
     var sqConnections = BackendService.extractSonarQubeConnections(connections);
     var scConnections = BackendService.extractSonarCloudConnections(connections);
     initParams.setSonarQubeConnections(sqConnections);
     initParams.setSonarCloudConnections(scConnections);
     backend.initialize(toInitParams(initParams));
-    initialized.set(true);
   }
 
   private static InitializeParams toInitParams(BackendInitParams initParams) {
@@ -80,5 +87,23 @@ public class BackendServiceFacade {
 
   public void shutdown() {
     backend.shutdown();
+  }
+
+  public void addFolders(List<WorkspaceFolder> added, Function<WorkspaceFolder, Optional<ProjectBindingWrapper>> bindingProvider) {
+    List<ConfigurationScopeDto> addedScopeDtos = added.stream()
+      .map(folder -> getBackendService().getConfigScopeDto(folder, bindingProvider.apply(folder)))
+      .collect(Collectors.toList());
+    var params = new DidAddConfigurationScopesParams(addedScopeDtos);
+    backend.addConfigurationScopes(params);
+  }
+
+  public void addFolder(WorkspaceFolder added, Optional<ProjectBindingWrapper> bindingWrapperOptional) {
+    ConfigurationScopeDto dto = getBackendService().getConfigScopeDto(added, bindingWrapperOptional);
+    var params = new DidAddConfigurationScopesParams(List.of(dto));
+    backend.addConfigurationScopes(params);
+  }
+
+  public void removeWorkspaceFolder(String removedUri) {
+    backend.removeWorkspaceFolder(removedUri);
   }
 }
