@@ -38,6 +38,7 @@ import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.ls.folders.InFolderClientInputFile;
 
+// comment new
 public class DelegatingIssue implements Issue {
   private final Issue issue;
   private final IssueSeverity severity;
@@ -112,7 +113,7 @@ public class DelegatingIssue implements Issue {
 
   @Override
   public List<QuickFix> quickFixes() {
-    return List.of(getMultiFileQuickFixForFile(getInputFile()));
+    return List.of(getMultiFileQuickFixForFile(issue.getInputFile()));
   }
 
   @Override
@@ -127,29 +128,28 @@ public class DelegatingIssue implements Issue {
     var fileEdits = new ArrayList<ClientInputFileEdit>();
     var fileEdit = new ClientInputFileEdit(file, edits);
     fileEdits.add(fileEdit);
-    fileEdits.addAll(getOtherFileEdits());
+    fileEdits.addAll(getOtherFileEdit());
 
     return new QuickFix(fileEdits, "Dummy multi file quickfix");
   }
 
-  private Collection<ClientInputFileEdit> getOtherFileEdits() {
+  private Collection<ClientInputFileEdit> getOtherFileEdit() {
     var fileEdits = new ArrayList<ClientInputFileEdit>();
     fileEdits.add(getFileEditForFile());
     return fileEdits;
   }
 
   private ClientInputFileEdit getFileEditForFile() {
-    var fullFile = "/Users/kirill.knize/IdeaProjects/sonarlint-language-server/src/main/java/org/sonarsource/sonarlint/ls/backend/BackendInitParams.java";
-    var file = "src/main/java/org/sonarsource/sonarlint/ls/backend/BackendInitParams.java";
-    var fileUri = URI.create(file);
-    var baseProjectFolder = "/Users/kirill.knize/IdeaProjects/sonarlint-language-server";
+    var fullFile = "file:///c:/Users/Knize/IntellijProjects/sonarlint-language-server/src/main/java/org/sonarsource/sonarlint/ls/connected/DelegatingIssue.java";
+    var fileUri = URI.create(fullFile);
+    var baseProjectFolder = "file:///c:/Users/Knize/IntellijProjects/sonarlint-language-server";
     var folderUri = URI.create(baseProjectFolder);
     var folderPath = Paths.get(folderUri);
     var clientInputFile = new InFolderClientInputFile(
       URI.create(fullFile),
       folderPath.relativize(Paths.get(fileUri)).toString(), false);
     var edits = new ArrayList<TextEdit>();
-    edits.add(new TextEdit(new TextRange(1, 0, 2, 0), "// Multi file quickfix text"));
+    edits.add(new TextEdit(new TextRange(1, 0, 2, 0), "// Multi file quickfix text\n"));
     return new ClientInputFileEdit(clientInputFile, edits);
   }
 }
