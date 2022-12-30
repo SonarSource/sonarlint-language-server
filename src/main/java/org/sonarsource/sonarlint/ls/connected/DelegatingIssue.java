@@ -19,17 +19,24 @@
  */
 package org.sonarsource.sonarlint.ls.connected;
 
+import java.net.URI;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
+import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.ls.folders.InFolderClientInputFile;
 
 public class DelegatingIssue implements Issue {
   private final Issue issue;
@@ -105,11 +112,44 @@ public class DelegatingIssue implements Issue {
 
   @Override
   public List<QuickFix> quickFixes() {
-    return issue.quickFixes();
+    return List.of(getMultiFileQuickFixForFile(getInputFile()));
   }
 
   @Override
   public Optional<String> getRuleDescriptionContextKey() {
     return issue.getRuleDescriptionContextKey();
+  }
+
+
+  private QuickFix getMultiFileQuickFixForFile(ClientInputFile file) {
+    var edits = new ArrayList<TextEdit>();
+    edits.add(new TextEdit(new TextRange(1, 0, 2, 0), "// Multi file quickfix text"));
+    var fileEdits = new ArrayList<ClientInputFileEdit>();
+    var fileEdit = new ClientInputFileEdit(file, edits);
+    fileEdits.add(fileEdit);
+    fileEdits.addAll(getOtherFileEdits());
+
+    return new QuickFix(fileEdits, "Dummy multi file quickfix");
+  }
+
+  private Collection<ClientInputFileEdit> getOtherFileEdits() {
+    var fileEdits = new ArrayList<ClientInputFileEdit>();
+    fileEdits.add(getFileEditForFile());
+    return fileEdits;
+  }
+
+  private ClientInputFileEdit getFileEditForFile() {
+    var fullFile = "/Users/kirill.knize/IdeaProjects/sonarlint-language-server/src/main/java/org/sonarsource/sonarlint/ls/backend/BackendInitParams.java";
+    var file = "src/main/java/org/sonarsource/sonarlint/ls/backend/BackendInitParams.java";
+    var fileUri = URI.create(file);
+    var baseProjectFolder = "/Users/kirill.knize/IdeaProjects/sonarlint-language-server";
+    var folderUri = URI.create(baseProjectFolder);
+    var folderPath = Paths.get(folderUri);
+    var clientInputFile = new InFolderClientInputFile(
+      URI.create(fullFile),
+      folderPath.relativize(Paths.get(fileUri)).toString(), false);
+    var edits = new ArrayList<TextEdit>();
+    edits.add(new TextEdit(new TextRange(1, 0, 2, 0), "// Multi file quickfix text"));
+    return new ClientInputFileEdit(clientInputFile, edits);
   }
 }
