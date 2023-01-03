@@ -177,6 +177,10 @@ public class Utils {
     return uri.getScheme().equalsIgnoreCase("file");
   }
 
+  public static boolean uriHasNotebookCellSchema(URI uri) {
+    return uri.getScheme().equalsIgnoreCase("vscode-notebook-cell");
+  }
+
   public static String hash(String codeSnippet) {
     String codeSnippetWithoutWhitespaces = MATCH_ALL_WHITESPACES.matcher(codeSnippet).replaceAll("");
     return DigestUtils.md5Hex(codeSnippetWithoutWhitespaces);
