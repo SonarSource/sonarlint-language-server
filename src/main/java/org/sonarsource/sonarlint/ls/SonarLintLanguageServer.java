@@ -476,7 +476,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         var fullContent = StringUtils.join(params.getCellTextDocuments().stream()
           .map(TextDocumentItem::getText)
           .collect(Collectors.toList()), "\n");
-        var file = openFilesCache.didOpenDocument(uri,
+        var file = openFilesCache.didOpenNotebook(uri,
           params.getCellTextDocuments().get(0).getLanguageId(),
           fullContent, params.getNotebookDocument().getVersion());
         analysisScheduler.didOpen(file);
