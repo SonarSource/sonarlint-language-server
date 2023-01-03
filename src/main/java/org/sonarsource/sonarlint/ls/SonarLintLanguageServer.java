@@ -155,6 +155,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final LanguageClientLogger lsLogOutput;
 
   private final TaintIssuesUpdater taintIssuesUpdater;
+  private FirstNotebookCellUri firstNotebookCellUri = new FirstNotebookCellUri();
 
   private String appName;
 
@@ -185,7 +186,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var globalLogOutput = new LanguageClientLogOutput(lsLogOutput, false);
     SonarLintLogger.setTarget(globalLogOutput);
     this.openFilesCache = new OpenFilesCache(lsLogOutput);
-
     this.issuesCache = new IssuesCache();
     this.securityHotspotsCache = new IssuesCache();
     this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
@@ -217,7 +217,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.scmIgnoredCache = new ScmIgnoredCache(client);
     this.moduleEventsProcessor = new ModuleEventsProcessor(standaloneEngineManager, workspaceFoldersManager, bindingManager, fileTypeClassifier, javaConfigCache);
     var analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
-      fileTypeClassifier, issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, telemetry, skippedPluginsNotifier, standaloneEngineManager, diagnosticPublisher, client);
+      fileTypeClassifier, issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, telemetry, skippedPluginsNotifier, standaloneEngineManager, diagnosticPublisher, client, firstNotebookCellUri);
     this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, analysisTaskExecutor);
     this.workspaceFoldersManager.addListener(moduleEventsProcessor);
     bindingManager.setAnalysisManager(analysisScheduler);
@@ -479,6 +479,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         var file = openFilesCache.didOpenNotebook(uri,
           params.getCellTextDocuments().get(0).getLanguageId(),
           fullContent, params.getNotebookDocument().getVersion());
+        this.firstNotebookCellUri.setUri(params.getCellTextDocuments().get(0).getUri());
         analysisScheduler.didOpen(file);
       } else {
         SonarLintLogger.get().debug("Skipping analysis for preview of file {}", uri);
@@ -645,4 +646,18 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       return null;
     });
   }
+
+  static class FirstNotebookCellUri {
+    String uri;
+
+    public String getUri() {
+      return uri;
+    }
+
+    public void setUri(String uri) {
+      this.uri = uri;
+    }
+  }
+
 }
+

@@ -96,12 +96,13 @@ public class AnalysisTaskExecutor {
   private final StandaloneEngineManager standaloneEngineManager;
   private final DiagnosticPublisher diagnosticPublisher;
   private final SonarLintExtendedLanguageClient lsClient;
+  private SonarLintLanguageServer.FirstNotebookCellUri firstNotebookCellUri;
 
   public AnalysisTaskExecutor(ScmIgnoredCache filesIgnoredByScmCache, LanguageClientLogger lsLogOutput,
     WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, JavaConfigCache javaConfigCache, SettingsManager settingsManager,
     FileTypeClassifier fileTypeClassifier, IssuesCache issuesCache, IssuesCache securityHotspotsCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
     SonarLintTelemetry telemetry, SkippedPluginsNotifier skippedPluginsNotifier, StandaloneEngineManager standaloneEngineManager, DiagnosticPublisher diagnosticPublisher,
-    SonarLintExtendedLanguageClient lsClient) {
+    SonarLintExtendedLanguageClient lsClient, SonarLintLanguageServer.FirstNotebookCellUri firstNotebookCellUri) {
     this.filesIgnoredByScmCache = filesIgnoredByScmCache;
     this.lsLogOutput = lsLogOutput;
     this.workspaceFoldersManager = workspaceFoldersManager;
@@ -117,6 +118,7 @@ public class AnalysisTaskExecutor {
     this.standaloneEngineManager = standaloneEngineManager;
     this.diagnosticPublisher = diagnosticPublisher;
     this.lsClient = lsClient;
+    this.firstNotebookCellUri = firstNotebookCellUri;
   }
 
   public void run(AnalysisTask task) {
@@ -366,8 +368,12 @@ public class AnalysisTaskExecutor {
         } else {
           // TODO change URI to cell URI
           // TODO change TextRange to range inside cell
-          issuesCache.reportIssue(versionedOpenFile, new DelegatingNotebookIssue(issue));
-          diagnosticPublisher.publishDiagnostics(uri);
+          var cellUri = URI.create(firstNotebookCellUri.getUri());
+          var versionedOpenFileWithCellUri = new VersionedOpenFile(cellUri,
+            versionedOpenFile.getLanguageId(), versionedOpenFile.getVersion(),
+            versionedOpenFile.getContent(), true);
+          issuesCache.reportIssue(versionedOpenFileWithCellUri, new DelegatingNotebookIssue(issue));
+          diagnosticPublisher.publishDiagnostics(cellUri);
         }
       }
     };
