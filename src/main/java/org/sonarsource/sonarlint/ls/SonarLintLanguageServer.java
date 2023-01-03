@@ -38,6 +38,7 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.eclipse.jgit.util.StringUtils;
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Command;
@@ -64,6 +65,7 @@ import org.eclipse.lsp4j.NotebookSelectorCell;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.SetTraceParams;
+import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.TextDocumentSyncOptions;
 import org.eclipse.lsp4j.WorkDoneProgressCancelParams;
@@ -386,7 +388,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var uri = create(params.getTextDocument().getUri());
     client.isOpenInEditor(uri.toString()).thenAccept(isOpen -> {
       if (Boolean.TRUE.equals(isOpen)) {
-        var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
+        var file = openFilesCache.didOpenDocument(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
         analysisScheduler.didOpen(file);
         taintIssuesUpdater.updateTaintIssuesAsync(uri);
       } else {
@@ -467,7 +469,21 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public void didOpen(DidOpenNotebookDocumentParams didOpenNotebookDocumentParams) {
+  public void didOpen(DidOpenNotebookDocumentParams params) {
+    var uri = create(params.getNotebookDocument().getUri());
+    client.isOpenInEditor(uri.toString()).thenAccept(isOpen -> {
+      if (Boolean.TRUE.equals(isOpen)) {
+        var fullContent = StringUtils.join(params.getCellTextDocuments().stream()
+          .map(TextDocumentItem::getText)
+          .collect(Collectors.toList()), "\n");
+        var file = openFilesCache.didOpenDocument(uri,
+          params.getCellTextDocuments().get(0).getLanguageId(),
+          fullContent, params.getNotebookDocument().getVersion());
+        analysisScheduler.didOpen(file);
+      } else {
+        SonarLintLogger.get().debug("Skipping analysis for preview of file {}", uri);
+      }
+    });
     lsLogOutput.info("DID OPEN");
   }
 

@@ -25,6 +25,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -35,15 +36,20 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import org.jetbrains.annotations.Nullable;
 import org.sonarsource.sonarlint.core.analysis.api.AnalysisResults;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.Flow;
+import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
 import org.sonarsource.sonarlint.core.client.api.common.AbstractAnalysisConfiguration.AbstractBuilder;
 import org.sonarsource.sonarlint.core.client.api.common.PluginDetails;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedAnalysisConfiguration;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneAnalysisConfiguration;
+import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
 import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
@@ -347,17 +353,88 @@ public class AnalysisTaskExecutor {
       var inputFile = issue.getInputFile();
       // FIXME SLVSCODE-255 support project level issues
       if (inputFile != null) {
-        URI uri = inputFile.getClientObject();
-        var versionedOpenFile = filesToAnalyze.get(uri);
-        if (issue.getType() == RuleType.SECURITY_HOTSPOT) {
-          securityHotspotsCache.reportIssue(versionedOpenFile, issue);
+          URI uri = inputFile.getClientObject();
+          var versionedOpenFile = filesToAnalyze.get(uri);
+        if (!versionedOpenFile.isNotebook()) {
+          if (issue.getType() == RuleType.SECURITY_HOTSPOT) {
+            securityHotspotsCache.reportIssue(versionedOpenFile, issue);
+          } else {
+            issuesCache.reportIssue(versionedOpenFile, issue);
+          }
+          diagnosticPublisher.publishDiagnostics(uri);
+          ruleKeys.add(issue.getRuleKey());
         } else {
-          issuesCache.reportIssue(versionedOpenFile, issue);
+          // TODO change URI to cell URI
+          // TODO change TextRange to range inside cell
+          issuesCache.reportIssue(versionedOpenFile, new DelegatingNotebookIssue(issue));
+          diagnosticPublisher.publishDiagnostics(uri);
         }
-        diagnosticPublisher.publishDiagnostics(uri);
-        ruleKeys.add(issue.getRuleKey());
       }
     };
+  }
+
+
+  class DelegatingNotebookIssue implements Issue {
+    private final Issue issue;
+
+    public DelegatingNotebookIssue(Issue issue) {
+      this.issue = issue;
+    }
+
+
+    @Override
+    public IssueSeverity getSeverity() {
+      return issue.getSeverity();
+    }
+
+    @Override
+    public RuleType getType() {
+      return issue.getType();
+    }
+
+    @Override
+    public String getRuleKey() {
+      return issue.getRuleKey();
+    }
+
+    @Override
+    public List<Flow> flows() {
+      return Collections.emptyList();
+    }
+
+    @Override
+    public List<QuickFix> quickFixes() {
+      return Collections.emptyList();
+    }
+
+    @Override
+    public Optional<String> getRuleDescriptionContextKey() {
+      return Optional.empty();
+    }
+
+    @Nullable
+    @Override
+    public String getMessage() {
+      return issue.getMessage();
+    }
+
+    @Nullable
+    @Override
+    public ClientInputFile getInputFile() {
+      // FIXME ?
+      return issue.getInputFile();
+    }
+
+    @Nullable
+    @Override
+    public TextRange getTextRange() {
+      return getNotebookTextRange(issue.getInputFile().uri(), issue.getTextRange());
+    }
+  }
+
+  // TODO magic cache
+  private TextRange getNotebookTextRange(URI uri, TextRange globalTextRange) {
+    return new TextRange(1, 1, 1, 5);
   }
 
   private static final class TaskProgressMonitor implements ClientProgressMonitor {

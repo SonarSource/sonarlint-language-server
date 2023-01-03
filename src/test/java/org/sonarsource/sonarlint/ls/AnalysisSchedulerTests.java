@@ -91,7 +91,7 @@ class AnalysisSchedulerTests {
 
   @Test
   void shouldScheduleAnalysisWithoutIssueRefreshOnChange() {
-    var file = openFilesCache.didOpen(JS_FILE_URI, "javascript", "alert();", 1);
+    var file = openFilesCache.didOpenDocument(JS_FILE_URI, "javascript", "alert();", 1);
     underTest.didChange(file.getUri());
 
     ArgumentCaptor<AnalysisTask> taskCaptor = ArgumentCaptor.forClass(AnalysisTask.class);
@@ -104,8 +104,8 @@ class AnalysisSchedulerTests {
 
   @Test
   void shouldBatchAnalysisOnChange() {
-    var file1 = openFilesCache.didOpen(JS_FILE_URI, "javascript", "alert();", 1);
-    var file2 = openFilesCache.didOpen(URI.create("file://foo2.js"), "javascript", "alert();", 1);
+    var file1 = openFilesCache.didOpenDocument(JS_FILE_URI, "javascript", "alert();", 1);
+    var file2 = openFilesCache.didOpenDocument(URI.create("file://foo2.js"), "javascript", "alert();", 1);
     underTest.didChange(file1.getUri());
     underTest.didChange(file2.getUri());
 
@@ -119,9 +119,9 @@ class AnalysisSchedulerTests {
 
   @Test
   void shouldScheduleAnalysisOfAllOpenJavaFilesWithoutIssueRefreshOnClasspathChange() {
-    openFilesCache.didOpen(URI.create("file://Foo1.java"), "java", "class Foo1 {}", 1);
-    openFilesCache.didOpen(URI.create("file://Foo2.java"), "java", "class Foo2 {}", 1);
-    openFilesCache.didOpen(URI.create("file://Foo.js"), "javascript", "alert();", 1);
+    openFilesCache.didOpenDocument(URI.create("file://Foo1.java"), "java", "class Foo1 {}", 1);
+    openFilesCache.didOpenDocument(URI.create("file://Foo2.java"), "java", "class Foo2 {}", 1);
+    openFilesCache.didOpenDocument(URI.create("file://Foo.js"), "javascript", "alert();", 1);
 
     underTest.didClasspathUpdate();
 
@@ -135,9 +135,9 @@ class AnalysisSchedulerTests {
 
   @Test
   void shouldScheduleAnalysisOfAllOpenJavaFilesWithoutIssueRefreshOnJavaServerModeChangeToStandard() {
-    openFilesCache.didOpen(URI.create("file://Foo1.java"), "java", "class Foo1 {}", 1);
-    openFilesCache.didOpen(URI.create("file://Foo2.java"), "java", "class Foo2 {}", 1);
-    openFilesCache.didOpen(URI.create("file://Foo.js"), "javascript", "alert();", 1);
+    openFilesCache.didOpenDocument(URI.create("file://Foo1.java"), "java", "class Foo1 {}", 1);
+    openFilesCache.didOpenDocument(URI.create("file://Foo2.java"), "java", "class Foo2 {}", 1);
+    openFilesCache.didOpenDocument(URI.create("file://Foo.js"), "javascript", "alert();", 1);
 
     underTest.didServerModeChange(ServerMode.STANDARD);
 
@@ -151,9 +151,9 @@ class AnalysisSchedulerTests {
 
   @Test
   void shouldNotScheduleAnalysisOnJavaServerModeChangeOutToStandard() {
-    openFilesCache.didOpen(URI.create("file://Foo1.java"), "java", "class Foo1 {}", 1);
-    openFilesCache.didOpen(URI.create("file://Foo2.java"), "java", "class Foo2 {}", 1);
-    openFilesCache.didOpen(URI.create("file://Foo.js"), "javascript", "alert();", 1);
+    openFilesCache.didOpenDocument(URI.create("file://Foo1.java"), "java", "class Foo1 {}", 1);
+    openFilesCache.didOpenDocument(URI.create("file://Foo2.java"), "java", "class Foo2 {}", 1);
+    openFilesCache.didOpenDocument(URI.create("file://Foo.js"), "javascript", "alert();", 1);
 
     underTest.didServerModeChange(ServerMode.LIGHTWEIGHT);
 
@@ -174,7 +174,7 @@ class AnalysisSchedulerTests {
 
     ArgumentCaptor<AnalysisTask> taskCaptor1 = ArgumentCaptor.forClass(AnalysisTask.class);
 
-    var file = openFilesCache.didOpen(JS_FILE_URI, "javascript", "alert();", 1);
+    var file = openFilesCache.didOpenDocument(JS_FILE_URI, "javascript", "alert();", 1);
     underTest.didChange(file.getUri());
     verify(taskExecutor, timeout(1000)).run(taskCaptor1.capture());
     var task1 = taskCaptor1.getValue();
@@ -211,7 +211,7 @@ class AnalysisSchedulerTests {
 
     }).when(taskExecutor).run(any());
 
-    var file = openFilesCache.didOpen(JS_FILE_URI, "javascript", "alert(1);", 1);
+    var file = openFilesCache.didOpenDocument(JS_FILE_URI, "javascript", "alert(1);", 1);
     underTest.didOpen(file);
     verify(lsLogOutput, timeout(1000)).debug("Queuing analysis of file '" + JS_FILE_URI + "' (version 1)");
     verify(taskExecutor, timeout(1000)).run(any());

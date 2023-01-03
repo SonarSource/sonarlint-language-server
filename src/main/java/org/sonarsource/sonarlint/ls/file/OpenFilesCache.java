@@ -40,8 +40,14 @@ public class OpenFilesCache {
     this.lsLogOutput = lsLogOutput;
   }
 
-  public VersionedOpenFile didOpen(URI fileUri, String languageId, String fileContent, int version) {
+  public VersionedOpenFile didOpenDocument(URI fileUri, String languageId, String fileContent, int version) {
     var file = new VersionedOpenFile(fileUri, languageId, version, fileContent);
+    openFilesPerFileURI.put(fileUri, file);
+    return file;
+  }
+
+  public VersionedOpenFile didOpenNotebook(URI fileUri, String languageId, String fileContent, int version) {
+    var file = new VersionedOpenFile(fileUri, languageId, version, fileContent, true);
     openFilesPerFileURI.put(fileUri, file);
     return file;
   }
