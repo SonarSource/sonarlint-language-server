@@ -155,7 +155,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final LanguageClientLogger lsLogOutput;
 
   private final TaintIssuesUpdater taintIssuesUpdater;
-  private FirstNotebookCellUri firstNotebookCellUri = new FirstNotebookCellUri();
+  private NotebookCellsCache notebookCellsCache = new NotebookCellsCache();
 
   private String appName;
 
@@ -217,7 +217,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.scmIgnoredCache = new ScmIgnoredCache(client);
     this.moduleEventsProcessor = new ModuleEventsProcessor(standaloneEngineManager, workspaceFoldersManager, bindingManager, fileTypeClassifier, javaConfigCache);
     var analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
-      fileTypeClassifier, issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, telemetry, skippedPluginsNotifier, standaloneEngineManager, diagnosticPublisher, client, firstNotebookCellUri);
+      fileTypeClassifier, issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, telemetry, skippedPluginsNotifier, standaloneEngineManager, diagnosticPublisher, client, notebookCellsCache);
     this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, analysisTaskExecutor);
     this.workspaceFoldersManager.addListener(moduleEventsProcessor);
     bindingManager.setAnalysisManager(analysisScheduler);
@@ -473,13 +473,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var uri = create(params.getNotebookDocument().getUri());
     client.isOpenInEditor(uri.toString()).thenAccept(isOpen -> {
       if (Boolean.TRUE.equals(isOpen)) {
-        var fullContent = StringUtils.join(params.getCellTextDocuments().stream()
-          .map(TextDocumentItem::getText)
-          .collect(Collectors.toList()), "\n");
+        this.notebookCellsCache.populate(uri, params.getCellTextDocuments());
+        var fullContent = this.notebookCellsCache.getFullContent(uri);
         var file = openFilesCache.didOpenNotebook(uri,
           params.getCellTextDocuments().get(0).getLanguageId(),
           fullContent, params.getNotebookDocument().getVersion());
-        this.firstNotebookCellUri.setUri(params.getCellTextDocuments().get(0).getUri());
         analysisScheduler.didOpen(file);
       } else {
         SonarLintLogger.get().debug("Skipping analysis for preview of file {}", uri);

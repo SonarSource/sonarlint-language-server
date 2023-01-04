@@ -96,13 +96,13 @@ public class AnalysisTaskExecutor {
   private final StandaloneEngineManager standaloneEngineManager;
   private final DiagnosticPublisher diagnosticPublisher;
   private final SonarLintExtendedLanguageClient lsClient;
-  private SonarLintLanguageServer.FirstNotebookCellUri firstNotebookCellUri;
+  private NotebookCellsCache notebookCellsCache;
 
   public AnalysisTaskExecutor(ScmIgnoredCache filesIgnoredByScmCache, LanguageClientLogger lsLogOutput,
     WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, JavaConfigCache javaConfigCache, SettingsManager settingsManager,
     FileTypeClassifier fileTypeClassifier, IssuesCache issuesCache, IssuesCache securityHotspotsCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
     SonarLintTelemetry telemetry, SkippedPluginsNotifier skippedPluginsNotifier, StandaloneEngineManager standaloneEngineManager, DiagnosticPublisher diagnosticPublisher,
-    SonarLintExtendedLanguageClient lsClient, SonarLintLanguageServer.FirstNotebookCellUri firstNotebookCellUri) {
+    SonarLintExtendedLanguageClient lsClient, NotebookCellsCache notebookCellsCache) {
     this.filesIgnoredByScmCache = filesIgnoredByScmCache;
     this.lsLogOutput = lsLogOutput;
     this.workspaceFoldersManager = workspaceFoldersManager;
@@ -118,7 +118,7 @@ public class AnalysisTaskExecutor {
     this.standaloneEngineManager = standaloneEngineManager;
     this.diagnosticPublisher = diagnosticPublisher;
     this.lsClient = lsClient;
-    this.firstNotebookCellUri = firstNotebookCellUri;
+    this.notebookCellsCache = notebookCellsCache;
   }
 
   public void run(AnalysisTask task) {
@@ -368,7 +368,7 @@ public class AnalysisTaskExecutor {
         } else {
           // TODO change URI to cell URI
           // TODO change TextRange to range inside cell
-          var cellUri = URI.create(firstNotebookCellUri.getUri());
+          var cellUri = this.notebookCellsCache.getCellUri(uri, issue.getTextRange());
           var versionedOpenFileWithCellUri = new VersionedOpenFile(cellUri,
             versionedOpenFile.getLanguageId(), versionedOpenFile.getVersion(),
             versionedOpenFile.getContent(), true);
@@ -434,7 +434,7 @@ public class AnalysisTaskExecutor {
     @Nullable
     @Override
     public TextRange getTextRange() {
-      return getNotebookTextRange(issue.getInputFile().uri(), issue.getTextRange());
+      return AnalysisTaskExecutor.this.notebookCellsCache.getCellTextRange(issue.getInputFile().uri(), issue.getTextRange());
     }
   }
 
