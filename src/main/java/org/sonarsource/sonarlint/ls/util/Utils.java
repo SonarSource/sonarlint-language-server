@@ -155,20 +155,6 @@ public class Utils {
     }
   }
 
-  public static DiagnosticSeverity hotspotSeverity(IssueSeverity severity) {
-    switch (severity) {
-      case BLOCKER:
-      case CRITICAL:
-      case MAJOR:
-        return DiagnosticSeverity.Error;
-      case MINOR:
-        return DiagnosticSeverity.Warning;
-      case INFO:
-      default:
-        return DiagnosticSeverity.Information;
-    }
-  }
-
   public static String buildMessageWithPluralizedSuffix(@Nullable String issueMessage, long nbItems, String itemName) {
     return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issueMessage, nbItems, pluralize(nbItems, itemName));
   }

@@ -58,15 +58,4 @@ class UtilsTests {
     assertThat(Utils.uriHasFileSchema(URI.create("notfile:///path"))).isFalse();
   }
 
-  @Test
-  void shouldCorrectlyMapHotspotSeverity() {
-    assertThat(Utils.hotspotSeverity(IssueSeverity.BLOCKER)).isEqualTo(DiagnosticSeverity.Error);
-    assertThat(Utils.hotspotSeverity(IssueSeverity.CRITICAL)).isEqualTo(DiagnosticSeverity.Error);
-    assertThat(Utils.hotspotSeverity(IssueSeverity.MAJOR)).isEqualTo(DiagnosticSeverity.Error);
-
-    assertThat(Utils.hotspotSeverity(IssueSeverity.MINOR)).isEqualTo(DiagnosticSeverity.Warning);
-
-    assertThat(Utils.hotspotSeverity(IssueSeverity.INFO)).isEqualTo(DiagnosticSeverity.Information);
-  }
-
 }
