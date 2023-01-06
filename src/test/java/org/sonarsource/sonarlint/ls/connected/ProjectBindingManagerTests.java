@@ -49,6 +49,8 @@ import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
@@ -119,6 +121,7 @@ class ProjectBindingManagerTests {
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   private final DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
   private final ServerSentEventsHandlerService serverSentEventsHandlerService = mock(ServerSentEventsHandlerService.class);
+  private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
 
   @BeforeEach
   public void prepare() throws IOException, ExecutionException, InterruptedException {
@@ -142,13 +145,14 @@ class ProjectBindingManagerTests {
     when(fakeEngine.getServerBranches(any(String.class))).thenReturn(new ProjectBranches(Set.of(BRANCH_NAME), BRANCH_NAME));
     when(fakeEngine2.getServerBranches(any(String.class))).thenReturn(new ProjectBranches(Set.of(BRANCH_NAME), BRANCH_NAME));
     when(enginesFactory.createConnectedEngine(anyString(), any(ServerConnectionSettings.class))).thenReturn(fakeEngine);
-
+    when(backendServiceFacade.getBackendService()).thenReturn(mock(BackendService.class));
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token"));
 
     folderBindingCache = new ConcurrentHashMap<>();
     TaintVulnerabilitiesCache taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
 
-    underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, folderBindingCache, null, taintVulnerabilitiesCache, diagnosticPublisher);
+    underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, folderBindingCache, null,
+      taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade);
     underTest.setAnalysisManager(analysisManager);
     underTest.setServerSentEventsHandler(serverSentEventsHandlerService);
     underTest.setBranchResolver(uri -> Optional.of("main"));

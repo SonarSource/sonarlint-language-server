@@ -54,6 +54,7 @@ public final class ShowAllLocationsCommand {
     private final List<Flow> flows;
     private final String connectionId;
     private final String creationDate;
+    private final TextRange textRange;
 
     private Param(Issue issue) {
       this.fileUri = nullableUri(issue.getInputFile());
@@ -61,6 +62,7 @@ public final class ShowAllLocationsCommand {
       this.severity = issue.getSeverity().toString();
       this.ruleKey = issue.getRuleKey();
       this.flows = issue.flows().stream().map(Flow::new).collect(Collectors.toList());
+      this.textRange = issue.getTextRange();
       this.connectionId = null;
       this.creationDate = null;
     }
@@ -71,6 +73,7 @@ public final class ShowAllLocationsCommand {
       this.severity = issue.getSeverity().toString();
       this.ruleKey = issue.getRuleKey();
       this.flows = issue.getFlows().stream().map(f -> new Flow(f, pathResolver, localFileCache)).collect(Collectors.toList());
+      this.textRange = issue.getTextRange();
       this.connectionId = connectionId;
       this.creationDate = DateTimeFormatter.ISO_DATE_TIME.format(issue.getCreationDate().atOffset(ZoneOffset.UTC));
     }
@@ -103,6 +106,10 @@ public final class ShowAllLocationsCommand {
 
     public List<Flow> getFlows() {
       return flows;
+    }
+
+    public TextRange getTextRange() {
+      return textRange;
     }
   }
 

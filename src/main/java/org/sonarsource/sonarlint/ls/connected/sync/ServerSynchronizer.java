@@ -167,6 +167,7 @@ public class ServerSynchronizer {
     String branchName, @Nullable ClientProgressMonitor progressMonitor) {
     engine.syncServerIssues(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKey, branchName, progressMonitor);
     engine.syncServerTaintIssues(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKey, branchName, progressMonitor);
+    engine.downloadAllServerHotspots(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKey, branchName, progressMonitor);
   }
 
   public void syncIssues(ProjectBindingWrapper binding, String branchName) {

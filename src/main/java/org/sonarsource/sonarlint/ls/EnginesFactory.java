@@ -169,8 +169,11 @@ public class EnginesFactory {
     return EnumSet.copyOf(List.of(STANDALONE_LANGUAGES));
   }
 
+  public static Set<Language> getConnectedLanguages() {
+    return Set.of(CONNECTED_ADDITIONAL_LANGUAGES);
+  }
+
   public void shutdown() {
     shutdown.set(true);
   }
-
 }

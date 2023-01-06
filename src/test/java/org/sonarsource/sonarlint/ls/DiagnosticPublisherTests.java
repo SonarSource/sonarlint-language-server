@@ -28,6 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
@@ -85,6 +86,26 @@ class DiagnosticPublisherTests {
     assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Information);
     when(issue.getSeverity()).thenReturn(IssueSeverity.INFO);
     assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
+  }
+
+  @Test
+  void testNotConvertHotspotSeverity() {
+    var id = "id";
+    var issue = mock(Issue.class);
+    when(issue.getStartLine()).thenReturn(1);
+    when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(issue.getMessage()).thenReturn("Do this, don't do that");
+    when(issue.getType()).thenReturn(RuleType.SECURITY_HOTSPOT);
+    var versionedIssue = new VersionedIssue(issue, 1);
+    assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+    when(issue.getSeverity()).thenReturn(IssueSeverity.CRITICAL);
+    assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+    when(issue.getSeverity()).thenReturn(IssueSeverity.MAJOR);
+    assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+    when(issue.getSeverity()).thenReturn(IssueSeverity.MINOR);
+    assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    when(issue.getSeverity()).thenReturn(IssueSeverity.INFO);
+    assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Information);
   }
 
   @Test

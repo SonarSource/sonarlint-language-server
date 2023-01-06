@@ -20,9 +20,11 @@
 package org.sonarsource.sonarlint.ls.util;
 
 import java.net.URI;
+import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -54,6 +56,17 @@ class UtilsTests {
   void uriHasFileSchemaTest() {
     assertThat(Utils.uriHasFileSchema(URI.create("file:///path"))).isTrue();
     assertThat(Utils.uriHasFileSchema(URI.create("notfile:///path"))).isFalse();
+  }
+
+  @Test
+  void shouldCorrectlyMapHotspotSeverity() {
+    assertThat(Utils.hotspotSeverity(IssueSeverity.BLOCKER)).isEqualTo(DiagnosticSeverity.Error);
+    assertThat(Utils.hotspotSeverity(IssueSeverity.CRITICAL)).isEqualTo(DiagnosticSeverity.Error);
+    assertThat(Utils.hotspotSeverity(IssueSeverity.MAJOR)).isEqualTo(DiagnosticSeverity.Error);
+
+    assertThat(Utils.hotspotSeverity(IssueSeverity.MINOR)).isEqualTo(DiagnosticSeverity.Warning);
+
+    assertThat(Utils.hotspotSeverity(IssueSeverity.INFO)).isEqualTo(DiagnosticSeverity.Information);
   }
 
 }

@@ -23,6 +23,7 @@ import java.net.URI;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,16 +31,23 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import testutils.ImmediateExecutorService;
 import testutils.SonarLintLogTester;
 
 import static java.net.URI.create;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager.isAncestor;
 
 class WorkspaceFoldersManagerTests {
@@ -47,12 +55,19 @@ class WorkspaceFoldersManagerTests {
   @RegisterExtension
   SonarLintLogTester logTester = new SonarLintLogTester();
   ProjectBindingManager bindingManager;
+  BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
+  BackendService backendService = mock(BackendService.class);
 
-  private final WorkspaceFoldersManager underTest = new WorkspaceFoldersManager(new ImmediateExecutorService());
+  private final WorkspaceFoldersManager underTest = new WorkspaceFoldersManager(new ImmediateExecutorService(), backendServiceFacade);
 
   @BeforeEach
   void prepare() {
     bindingManager = mock(ProjectBindingManager.class);
+    when(bindingManager.getBinding(URI.create(""))).thenReturn(Optional.of(mock(ProjectBindingWrapper.class)));
+    when(backendServiceFacade.getBackendService()).thenReturn(backendService);
+    when(backendService.getConfigScopeDto(any(), any()))
+      .thenReturn(new ConfigurationScopeDto("id", null, true, "name",
+        new BindingConfigurationDto("connectionId", "projectKey", true)));
     underTest.setBindingManager(bindingManager);
   }
 

@@ -27,17 +27,21 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.Language;
+import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
+import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.stream.Collectors.toList;
 import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralizedSuffix;
+import static org.sonarsource.sonarlint.ls.util.Utils.hotspotSeverity;
 import static org.sonarsource.sonarlint.ls.util.Utils.severity;
 
 public class DiagnosticPublisher {
 
   static final String SONARLINT_SOURCE = "sonarlint";
+  static final String SONARQUBE_SOURCE = "sonarqube";
 
   public static final String ITEM_LOCATION = "location";
   public static final String ITEM_FLOW = "flow";
@@ -68,17 +72,28 @@ public class DiagnosticPublisher {
   static Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
     var issue = entry.getValue().getIssue();
     var diagnostic = new Diagnostic();
-    var severity = severity(issue.getSeverity());
+    var severity = issue.getType() == RuleType.SECURITY_HOTSPOT ? hotspotSeverity(issue.getSeverity()) : severity(issue.getSeverity());
 
     diagnostic.setSeverity(severity);
     var range = Utils.convert(issue);
     diagnostic.setRange(range);
     diagnostic.setCode(issue.getRuleKey());
     diagnostic.setMessage(message(issue));
-    diagnostic.setSource(SONARLINT_SOURCE);
+    setSource(issue, diagnostic);
     diagnostic.setData(entry.getKey());
 
     return diagnostic;
+  }
+
+  static void setSource(Issue issue, Diagnostic diagnostic) {
+    if (issue instanceof DelegatingIssue) {
+      var delegatedIssue = (DelegatingIssue) issue;
+      var isKnown = delegatedIssue.getServerIssueKey() != null;
+      var isHotspot = delegatedIssue.getType() == RuleType.SECURITY_HOTSPOT;
+      diagnostic.setSource(isKnown && isHotspot ? SONARQUBE_SOURCE : SONARLINT_SOURCE);
+    } else {
+      diagnostic.setSource(SONARLINT_SOURCE);
+    }
   }
 
   static String message(Issue issue) {

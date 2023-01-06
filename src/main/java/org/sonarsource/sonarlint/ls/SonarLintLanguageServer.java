@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import com.google.gson.JsonPrimitive;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,6 +29,7 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -50,6 +52,8 @@ import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.SetTraceParams;
@@ -66,10 +70,17 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
+import org.sonarsource.sonarlint.core.SonarLintBackendImpl;
+import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
+import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverconnection.ServerPathProvider;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
+import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient;
+import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintIssuesUpdater;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -100,6 +111,8 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.net.URI.create;
 import static java.util.Optional.ofNullable;
+import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND;
+import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
 
@@ -143,6 +156,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ModuleEventsProcessor moduleEventsProcessor;
   private final ServerSentEventsHandlerService serverSentEventsHandler;
   private final TaintVulnerabilityRaisedNotification taintVulnerabilityRaisedNotification;
+  private final BackendServiceFacade backendServiceFacade;
 
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers, Collection<Path> extraAnalyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
@@ -166,9 +180,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.securityHotspotsCache = new IssuesCache();
     this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
     this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache, securityHotspotsCache);
-    this.workspaceFoldersManager = new WorkspaceFoldersManager();
     this.progressManager = new ProgressManager(client);
-    this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClientProvider);
+    var vsCodeClient = new SonarLintVSCodeClient(client);
+    this.backendServiceFacade = new BackendServiceFacade(new SonarLintBackendImpl(vsCodeClient));
+    this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade);
+    this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClientProvider, backendServiceFacade);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
     var fileTypeClassifier = new FileTypeClassifier();
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
@@ -177,7 +193,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, globalLogOutput,
-            taintVulnerabilitiesCache, diagnosticPublisher);
+      taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade);
     this.settingsManager.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(httpClientProvider, settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager);
     this.settingsManager.addListener(telemetry);
@@ -199,7 +215,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) analysisScheduler);
     this.serverSynchronizer = new ServerSynchronizer(client, progressManager, bindingManager, analysisScheduler);
     this.commandManager = new CommandManager(client, settingsManager, bindingManager, serverSynchronizer, telemetry, standaloneEngineManager, taintVulnerabilitiesCache,
-      issuesCache);
+      issuesCache, securityHotspotsCache);
     this.taintVulnerabilityRaisedNotification = new TaintVulnerabilityRaisedNotification(client, commandManager);
     this.serverSentEventsHandler = new ServerSentEventsHandler(bindingManager, taintVulnerabilitiesCache,
       taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager);
@@ -208,6 +224,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager, serverSynchronizer);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
     this.workspaceFoldersManager.addListener(this.branchManager);
+    this.workspaceFoldersManager.setBindingManager(bindingManager);
     this.taintIssuesUpdater = new TaintIssuesUpdater(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, settingsManager, diagnosticPublisher);
     launcher.startListening();
   }
@@ -262,7 +279,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       c.setWorkspace(getWorkspaceServerCapabilities());
 
       var info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
-
+      provideBackendInitData(productKey, telemetryStorage);
       return new InitializeResult(c, info);
     });
   }
@@ -272,7 +289,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var classLoader = ClassLoader.getSystemClassLoader();
     try (var is = classLoader.getResourceAsStream(fileName)) {
       try (var isr = new InputStreamReader(is, StandardCharsets.UTF_8);
-        var reader = new BufferedReader(isr)) {
+           var reader = new BufferedReader(isr)) {
         return reader.lines().findFirst().orElse(null);
       }
     } catch (IOException e) {
@@ -315,7 +332,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       // shutdown engines after the rest so that no operations remain on them, and they won't be recreated accidentally
       bindingManager::shutdown,
       serverSynchronizer::shutdown,
-      standaloneEngineManager::shutdown)
+      standaloneEngineManager::shutdown,
+      backendServiceFacade::shutdown)
       // Do last
       .forEach(this::invokeQuietly);
     return CompletableFuture.completedFuture(null);
@@ -508,5 +526,72 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var endpointParams = new EndpointParams(params.getBaseServerUrl(), false, null);
     return ServerPathProvider.getServerUrlForTokenGeneration(endpointParams, httpClientProvider.anonymous(), port, appName)
       .thenApply(GetServerPathForTokenGenerationResponse::new);
+  }
+
+  @Override
+  public void openHotspotInBrowser(OpenHotspotInBrowserLsParams params) {
+    var hotspotId = params.getHotspotId();
+    var fileUri = create(params.getFileUri());
+    var folderForFileOptional = workspaceFoldersManager.findFolderForFile(fileUri);
+    if (folderForFileOptional.isEmpty()) {
+      var message = "Can't find workspace folder for file "
+        + fileUri.getPath() + " during attempt to open hotspot in browser.";
+      lsLogOutput.error(message);
+      client.showMessage(new MessageParams(MessageType.Error, message));
+      return;
+    }
+    var workspaceFolderUri = folderForFileOptional.get().getUri();
+    var branchNameOptional = branchManager.getReferenceBranchNameForFolder(workspaceFolderUri);
+    if (branchNameOptional.isEmpty()) {
+      var message = "Can't find branch for workspace folder "
+        + workspaceFolderUri.getPath() + " during attempt to open hotspot in browser.";
+      lsLogOutput.error(message);
+      client.showMessage(new MessageParams(MessageType.Error, message));
+      return;
+    }
+    var versionedIssue = securityHotspotsCache.get(fileUri).get(hotspotId);
+    var delegatingIssue = (DelegatingIssue) versionedIssue.getIssue();
+    var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(workspaceFolderUri.toString(),
+      branchNameOptional.get(), delegatingIssue.getServerIssueKey());
+    backendServiceFacade.getBackendService().openHotspotInBrowser(openHotspotInBrowserParams);
+  }
+
+  @Override
+  public CompletableFuture<Void> showHotspotRuleDescription(ShowHotspotRuleDescriptionParams params) {
+    var fileUri = params.fileUri;
+    var ruleKey = params.ruleKey;
+    var showHotspotCommandParams = new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
+      List.of(new JsonPrimitive(ruleKey), new JsonPrimitive(fileUri)));
+    return CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      commandManager.executeCommand(showHotspotCommandParams, cancelToken);
+      return null;
+    });
+  }
+
+  void provideBackendInitData(String productKey, String telemetryStorage) {
+    BackendInitParams params = backendServiceFacade.getInitParams();
+    params.setTelemetryProductKey(productKey);
+    params.setStorageRoot(SonarLintUserHome.get());
+    params.setSonarlintUserHome(telemetryStorage);
+
+    params.setEmbeddedPluginPaths(Collections.emptySet());
+    params.setConnectedModeExtraPluginPathsByKey(Collections.emptyMap());
+    params.setEnableSecurityHotspots(true);
+    params.setEnabledLanguagesInStandaloneMode(EnginesFactory.getStandaloneLanguages());
+    params.setExtraEnabledLanguagesInConnectedMode(EnginesFactory.getConnectedLanguages());
+    params.setEmbeddedPluginPaths(Collections.emptySet());
+  }
+
+  public CompletableFuture<Void> showHotspotLocations(ShowHotspotLocationsParams showHotspotLocationsParams) {
+    var fileUri = showHotspotLocationsParams.fileUri;
+    var hotspotKey = showHotspotLocationsParams.hotspotKey;
+    var showHotspotCommandParams = new ExecuteCommandParams(SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS,
+      List.of(new JsonPrimitive(fileUri), new JsonPrimitive(hotspotKey)));
+    return CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      commandManager.executeCommand(showHotspotCommandParams, cancelToken);
+      return null;
+    });
   }
 }

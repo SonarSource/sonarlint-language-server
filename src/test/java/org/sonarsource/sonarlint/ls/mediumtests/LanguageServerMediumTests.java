@@ -55,6 +55,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
@@ -71,7 +72,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   private static final String CONNECTION_ID = "known";
   private static final String TOKEN = "token";
-
   @RegisterExtension
   private static final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
 
@@ -83,6 +83,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "productVersion", "0.1",
       "showVerboseLogs", false,
       "additionalAttributes", Map.of("extra", "value")));
+
   }
 
   @BeforeEach
@@ -763,6 +764,13 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     testParams.setConnectionId(NEW);
 
     assertThat(testParams.getConnectionId()).isEqualTo(NEW);
+  }
+
+  @Test
+  void openHotspotInBrowserShouldLogIfWorkspaceNotFound() {
+    lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotInBrowserLsParams("id", "/workspace"));
+
+    assertLogContains("Can't find workspace folder for file /workspace during attempt to open hotspot in browser.");
   }
 
   @Override
