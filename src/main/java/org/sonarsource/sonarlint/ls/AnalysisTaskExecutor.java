@@ -405,7 +405,7 @@ public class AnalysisTaskExecutor {
 
     @Override
     public List<Flow> flows() {
-      return Collections.emptyList();
+      return this.issue.flows();
     }
 
     @Override

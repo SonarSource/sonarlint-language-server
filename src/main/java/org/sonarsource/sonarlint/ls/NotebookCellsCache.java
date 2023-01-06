@@ -35,15 +35,16 @@ public class NotebookCellsCache {
 
   public void populate(URI file, List<TextDocumentItem> cells) {
     Map<Integer, TextDocumentItem> index = new HashMap<>();
+    globalLineToCellLineForFile.putIfAbsent(file, new HashMap<>());
     // TODO is it 1 or 0?
-    int firstLineOfCell = 1;
+    var firstLineOfCell = 1;
     var mergedContent = new StringBuilder();
     for (TextDocumentItem cell : cells) {
       var cellContent = cell.getText();
       int cellSize = cellContent.split(System.lineSeparator()).length;
       for (int globalLineNum = firstLineOfCell, cellLineNum = 1; globalLineNum < firstLineOfCell + cellSize; globalLineNum++, cellLineNum++) {
         index.put(globalLineNum, cell);
-        globalLineToCellLineForFile.getOrDefault(file, new HashMap<>()).put(firstLineOfCell + globalLineNum - 1, cellLineNum);
+        globalLineToCellLineForFile.get(file).put(globalLineNum, cellLineNum);
       }
       firstLineOfCell = firstLineOfCell + cellSize;
       mergedContent.append(cellContent).append(System.lineSeparator());
