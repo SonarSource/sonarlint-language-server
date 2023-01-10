@@ -36,7 +36,7 @@ import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
-import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,9 +50,15 @@ import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleContextualSectionDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleContextualSectionWithDefaultContextKeyDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleDescriptionTabDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleDetailsDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleMonolithicDescriptionDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleNonContextualSectionDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleSplitDescriptionDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetActiveRuleDetailsResponse;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.TextRange;
@@ -63,11 +69,14 @@ import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -78,6 +87,7 @@ import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -91,7 +101,6 @@ import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DE
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_UPDATE_ALL_BINDINGS_COMMAND;
-import static org.sonarsource.sonarlint.ls.CommandManager.getHtmlDescription;
 
 class CommandManagerTests {
 
@@ -114,6 +123,8 @@ class CommandManagerTests {
   private StandaloneEngineManager standaloneEngineManager;
   private ServerSynchronizer serverSynchronizer;
   private IssuesCache securityHotspotsCache;
+  private BackendServiceFacade backendServiceFacade;
+  private WorkspaceFoldersManager workspaceFoldersManager;
 
   @BeforeEach
   public void prepareMocks() {
@@ -133,22 +144,10 @@ class CommandManagerTests {
     mockTelemetry = mock(SonarLintTelemetry.class);
     serverSynchronizer = mock(ServerSynchronizer.class);
     securityHotspotsCache = mock(IssuesCache.class);
-    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, serverSynchronizer, mockTelemetry, standaloneEngineManager, mockTaintVulnerabilitiesCache, issuesCache, securityHotspotsCache);
-  }
+    backendServiceFacade = mock(BackendServiceFacade.class);
+    workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
 
-  @Test
-  void getHtmlDescription_appends_extended_description_when_non_empty() {
-    var htmlDescription = "foo";
-    var extendedDescription = "bar";
-
-    var ruleDetails = mock(ConnectedRuleDetails.class);
-    when(ruleDetails.getHtmlDescription()).thenReturn(htmlDescription);
-    when(ruleDetails.getExtendedDescription()).thenReturn("");
-
-    assertThat(getHtmlDescription(ruleDetails)).isEqualTo(htmlDescription);
-
-    when(ruleDetails.getExtendedDescription()).thenReturn(extendedDescription);
-    assertThat(getHtmlDescription(ruleDetails)).isEqualTo(htmlDescription + "<div>" + extendedDescription + "</div>");
+    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, serverSynchronizer, mockTelemetry, standaloneEngineManager, mockTaintVulnerabilitiesCache, issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager);
   }
 
   @Test
@@ -288,9 +287,6 @@ class CommandManagerTests {
 
   @Test
   void openRuleDescriptionForBoundProject() {
-    var connectionId = "connId";
-    when(mockBinding.getConnectionId()).thenReturn(connectionId);
-    when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
     var ruleDetails = mock(ConnectedRuleDetails.class);
     when(ruleDetails.getKey()).thenReturn(FAKE_RULE_KEY);
     when(ruleDetails.getName()).thenReturn("Name");
@@ -298,56 +294,27 @@ class CommandManagerTests {
     when(ruleDetails.getExtendedDescription()).thenReturn("");
     when(ruleDetails.getType()).thenReturn(RuleType.BUG);
     when(ruleDetails.getDefaultSeverity()).thenReturn(IssueSeverity.BLOCKER);
-    when(bindingManager.getServerConfigurationFor(connectionId)).thenReturn(mock(ServerConnectionSettings.EndpointParamsAndHttpClient.class));
-    when(mockConnectedEngine.getActiveRuleDetails(null, null, FAKE_RULE_KEY, "projectKey")).thenReturn(CompletableFuture.completedFuture(ruleDetails));
+    var response = mock(GetActiveRuleDetailsResponse.class);
+    when(backendServiceFacade.getActiveRuleDetails(anyString(), anyString())).thenReturn(CompletableFuture.completedFuture(response));
+    var folderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
+    when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
+    var details = mock(ActiveRuleDetailsDto.class);
+    when(details.getName()).thenReturn("Name");
+    when(details.getType()).thenReturn(RuleType.BUG);
+    when(details.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(details.getParams()).thenReturn(emptyList());
+    when(details.getKey()).thenReturn(FAKE_RULE_KEY);
+    var desc = mock(ActiveRuleMonolithicDescriptionDto.class);
+    when(desc.getHtmlContent()).thenReturn("Desc");
+    when(details.getDescription()).thenReturn(Either.forLeft(desc));
+    when(response.details()).thenReturn(details);
     underTest.executeCommand(
       new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, List.of(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
       NOP_CANCEL_TOKEN);
 
-    verify(mockClient).showRuleDescription(new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc", RuleType.BUG, IssueSeverity.BLOCKER, Collections.emptyList()));
-  }
-
-  @Test
-  void throwIfUnknownRuleForBoundProject() {
-    var connectionId = "connId";
-    when(mockBinding.getConnectionId()).thenReturn(connectionId);
-    when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
-    when(bindingManager.getServerConfigurationFor(connectionId)).thenReturn(mock(ServerConnectionSettings.EndpointParamsAndHttpClient.class));
-    when(mockConnectedEngine.getActiveRuleDetails(null, null, FAKE_RULE_KEY, "projectKey")).thenThrow(new IllegalArgumentException());
-
-    var params = new ExecuteCommandParams(
-      SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
-      List.of(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI)));
-    assertThrows(ResponseErrorException.class, () -> underTest.executeCommand(params, NOP_CANCEL_TOKEN));
-  }
-
-  @Test
-  void openRuleDescriptionForUnboundProject() {
-    when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.empty());
-    var ruleDetails = mock(StandaloneRuleDetails.class);
-    when(ruleDetails.getKey()).thenReturn(FAKE_RULE_KEY);
-    when(ruleDetails.getName()).thenReturn("Name");
-    when(ruleDetails.getHtmlDescription()).thenReturn("Desc");
-    when(ruleDetails.getType()).thenReturn(RuleType.BUG);
-    when(ruleDetails.getDefaultSeverity()).thenReturn(IssueSeverity.BLOCKER);
-    var apiParam = mock(SonarLintRuleParamDefinition.class);
-    when(apiParam.name()).thenReturn("intParam");
-    when(apiParam.type()).thenReturn(SonarLintRuleParamType.INTEGER);
-    when(apiParam.description()).thenReturn("An integer parameter");
-    when(apiParam.defaultValue()).thenReturn("42");
-    List<StandaloneRuleParam> params = List.of(new StandaloneRuleParam(apiParam));
-    when(ruleDetails.paramDetails()).thenReturn(params);
-    when(mockStandaloneEngine.getRuleDetails(FAKE_RULE_KEY)).thenReturn(Optional.of(ruleDetails));
-    var sonarLintEngine = mock(StandaloneSonarLintEngine.class);
-    when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(sonarLintEngine);
-    when(sonarLintEngine.getRuleDetails("javascript:S1234")).thenReturn(Optional.of(ruleDetails));
-
-    underTest.executeCommand(
-      new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, List.of(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
-      NOP_CANCEL_TOKEN);
-
-    verify(mockClient).showRuleDescription(
-      new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc", RuleType.BUG, IssueSeverity.BLOCKER, params));
+    verify(mockClient).showRuleDescription(new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc",
+      new SonarLintExtendedLanguageClient.RuleDescriptionTab[0], RuleType.BUG, IssueSeverity.BLOCKER, Collections.emptyList()));
   }
 
   @Test
@@ -452,5 +419,70 @@ class CommandManagerTests {
 
     verify(securityHotspotsCache).get(URI.create("fileUri"));
     verify(mockClient).showIssueOrHotspot(any());
+  }
+
+  @Test
+  void getHtmlDescriptionTabsMonolithicShouldReturnNoTabs() {
+    var monolithicDesc = new ActiveRuleMonolithicDescriptionDto("monolithicHtmlContent");
+    var ruleDetails = new ActiveRuleDetailsDto(null, null, null, null, Either.forLeft(monolithicDesc), emptyList(), null);
+
+    assertThat(CommandManager.getHtmlDescriptionTabs(ruleDetails)).isEmpty();
+  }
+
+  @Test
+  void getHtmlDescriptionTabsSplitNonContextSections() {
+    var section1 = new ActiveRuleNonContextualSectionDto("nonContextSectionContent1");
+    var section2 = new ActiveRuleNonContextualSectionDto("nonContextSectionContent2");
+    var tab1 = new ActiveRuleDescriptionTabDto("title1", Either.forLeft(section1));
+    var tab2 = new ActiveRuleDescriptionTabDto("title2", Either.forLeft(section2));
+    var splitDesc = new ActiveRuleSplitDescriptionDto("introHtmlContent", List.of(tab1, tab2));
+    var ruleDetails = new ActiveRuleDetailsDto(null, null, null, null, Either.forRight(splitDesc), emptyList(), null);
+
+    var descriptionTabs = CommandManager.getHtmlDescriptionTabs(ruleDetails);
+
+    assertThat(descriptionTabs[0].getTitle()).isEqualTo("title1");
+    assertThat(descriptionTabs[1].getTitle()).isEqualTo("title2");
+    assertThat(descriptionTabs[0].getDescription()).isEqualTo("nonContextSectionContent1");
+    assertThat(descriptionTabs[1].getDescription()).isEqualTo("nonContextSectionContent2");
+  }
+
+  @Test
+  void getHtmlDescriptionTabsSplitContextSectionsShouldBeMerged() {
+    var section1 = new ActiveRuleContextualSectionDto("sectionContent1", "contextKey1", "name1");
+    var section2 = new ActiveRuleContextualSectionDto("sectionContent2", "contextKey2", "name2");
+    var section3 = new ActiveRuleContextualSectionDto("sectionContent3", "contextKey3", "name3");
+    var section4 = new ActiveRuleContextualSectionDto("sectionContent4", "contextKey4", "name4");
+    var sectionDto1 = new ActiveRuleContextualSectionWithDefaultContextKeyDto("key1", List.of(section1, section2));
+    var sectionDto2 = new ActiveRuleContextualSectionWithDefaultContextKeyDto("key1", List.of(section3, section4));
+    var tab1 = new ActiveRuleDescriptionTabDto("title1", Either.forRight(sectionDto1));
+    var tab2 = new ActiveRuleDescriptionTabDto("title2", Either.forRight(sectionDto2));
+    var splitDesc = new ActiveRuleSplitDescriptionDto("introHtmlContent", List.of(tab1, tab2));
+    var ruleDetails = new ActiveRuleDetailsDto(null, null, null, null, Either.forRight(splitDesc), emptyList(), null);
+
+    var descriptionTabs = CommandManager.getHtmlDescriptionTabs(ruleDetails);
+
+    assertThat(descriptionTabs[0].getTitle()).isEqualTo("title1");
+    assertThat(descriptionTabs[1].getTitle()).isEqualTo("title2");
+    assertThat(descriptionTabs[0].getDescription()).isEqualTo("sectionContent1sectionContent2");
+    assertThat(descriptionTabs[1].getDescription()).isEqualTo("sectionContent3sectionContent4");
+  }
+
+  @Test
+  void getHtmlDescriptionMonolithic() {
+    var monolithicDesc = new ActiveRuleMonolithicDescriptionDto("monolithicHtmlContent");
+    var ruleDetails = new ActiveRuleDetailsDto(null, null, null, null, Either.forLeft(monolithicDesc),emptyList(), null);
+
+    assertThat(CommandManager.getHtmlDescription(ruleDetails)).isEqualTo("monolithicHtmlContent");
+  }
+
+  @Test
+  void getHtmlDescriptionSplit() {
+    var section1 = new ActiveRuleNonContextualSectionDto(null);
+    var tab1 = new ActiveRuleDescriptionTabDto(null, Either.forLeft(section1));
+    var splitDesc = new ActiveRuleSplitDescriptionDto("splitHtmlContent", List.of(tab1));
+    var ruleDetails = new ActiveRuleDetailsDto(null, null, null, null, Either.forRight(splitDesc), emptyList(), null);
+
+
+    assertThat(CommandManager.getHtmlDescription(ruleDetails)).isEqualTo("splitHtmlContent");
   }
 }

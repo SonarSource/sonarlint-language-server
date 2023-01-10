@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.backend;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
@@ -35,6 +36,8 @@ import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.DidUpd
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarCloudConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarQubeConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetActiveRuleDetailsParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetActiveRuleDetailsResponse;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
@@ -102,5 +105,10 @@ public class BackendService {
 
   public void shutdown() {
     backend.shutdown();
+  }
+
+  public CompletableFuture<GetActiveRuleDetailsResponse> getRuleDetails(GetActiveRuleDetailsParams params) {
+
+    return backend.getActiveRulesService().getActiveRuleDetails(params);
   }
 }

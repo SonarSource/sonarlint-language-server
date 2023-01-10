@@ -28,13 +28,18 @@ import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScope
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
 import org.sonarsource.sonarlint.core.commons.http.HttpClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 public class SonarLintVSCodeClient implements SonarLintClient {
 
   private final SonarLintExtendedLanguageClient client;
+  private SettingsManager settingsManager;
+  private final ApacheHttpClientProvider httpClientProvider;
 
-  public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client) {
+  public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, ApacheHttpClientProvider httpClientProvider) {
     this.client = client;
+    this.httpClientProvider = httpClientProvider;
   }
 
   @Override
@@ -49,8 +54,11 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   @Nullable
   @Override
-  public HttpClient getHttpClient(String s) {
-    return null;
+  public HttpClient getHttpClient(String connectionId) {
+    var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
+    if (connectionSettings == null) return null;
+    var token = connectionSettings.getToken();
+    return httpClientProvider.withToken(token);
   }
 
   @Nullable
@@ -89,5 +97,9 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingResponse>
       assistBinding(org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams params) {
     throw new UnsupportedOperationException();
+  }
+
+  public void setSettingsManager(SettingsManager settingsManager) {
+    this.settingsManager = settingsManager;
   }
 }

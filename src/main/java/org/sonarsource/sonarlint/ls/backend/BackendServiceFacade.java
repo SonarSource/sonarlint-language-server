@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.backend;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -31,6 +32,8 @@ import org.sonarsource.sonarlint.core.clientapi.backend.HostInfoDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidAddConfigurationScopesParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetActiveRuleDetailsParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetActiveRuleDetailsResponse;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
@@ -109,4 +112,10 @@ public class BackendServiceFacade {
   public void removeWorkspaceFolder(String removedUri) {
     backend.removeWorkspaceFolder(removedUri);
   }
+
+  public CompletableFuture<GetActiveRuleDetailsResponse> getActiveRuleDetails(String workspaceFolder, String ruleKey) {
+    var params = new GetActiveRuleDetailsParams(workspaceFolder, ruleKey);
+    return backend.getRuleDetails(params);
+  }
+
 }

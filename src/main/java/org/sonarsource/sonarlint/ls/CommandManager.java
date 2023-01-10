@@ -20,21 +20,25 @@
 package org.sonarsource.sonarlint.ls;
 
 import com.google.gson.JsonPrimitive;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionKind;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.ExecuteCommandParams;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.ResourceOperation;
@@ -49,24 +53,25 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
-import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleContextualSectionDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleDetailsDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleParamDto;
 import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.UrlUtils;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
 import static java.net.URI.create;
-import static java.util.Objects.requireNonNull;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARCLOUD_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARLINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARQUBE_TAINT_SOURCE;
@@ -102,10 +107,12 @@ public class CommandManager {
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final IssuesCache issuesCache;
   private final IssuesCache securityHotspotsCache;
+  private final BackendServiceFacade backendServiceFacade;
+  private final WorkspaceFoldersManager workspaceFoldersManager;
 
   CommandManager(SonarLintExtendedLanguageClient client, SettingsManager settingsManager, ProjectBindingManager bindingManager, ServerSynchronizer serverSynchronizer,
     SonarLintTelemetry telemetry, StandaloneEngineManager standaloneEngineManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache,
-    IssuesCache securityHotspotsCache) {
+    IssuesCache securityHotspotsCache, BackendServiceFacade backendServiceFacade, WorkspaceFoldersManager workspaceFoldersManager) {
     this.client = client;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
@@ -115,6 +122,8 @@ public class CommandManager {
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.issuesCache = issuesCache;
     this.securityHotspotsCache = securityHotspotsCache;
+    this.backendServiceFacade = backendServiceFacade;
+    this.workspaceFoldersManager = workspaceFoldersManager;
   }
 
   public List<Either<Command, CodeAction>> computeCodeActions(CodeActionParams params, CancelChecker cancelToken) {
@@ -130,7 +139,7 @@ public class CommandManager {
     return codeActions;
   }
 
-  private void computeCodeActionsForSonarLintIssues(Diagnostic diagnostic,  List<Either<Command, CodeAction>> codeActions,
+  private void computeCodeActionsForSonarLintIssues(Diagnostic diagnostic, List<Either<Command, CodeAction>> codeActions,
     CodeActionParams params, CancelChecker cancelToken) {
     var uri = create(params.getTextDocument().getUri());
     var binding = bindingManager.getBinding(uri);
@@ -204,10 +213,6 @@ public class CommandManager {
   }
 
   private static Range newLspRange(TextRange range) {
-    requireNonNull(range.getStartLine());
-    requireNonNull(range.getStartLineOffset());
-    requireNonNull(range.getEndLine());
-    requireNonNull(range.getEndLineOffset());
     var lspRange = new Range();
     lspRange.setStart(new Position(range.getStartLine() - 1, range.getStartLineOffset()));
     lspRange.setEnd(new Position(range.getEndLine() - 1, range.getEndLineOffset()));
@@ -237,35 +242,31 @@ public class CommandManager {
     return result;
   }
 
-  private void openRuleDescription(@Nullable ProjectBindingWrapper binding, String ruleKey) {
-    if (binding == null) {
-      var ruleDetails = standaloneEngineManager.getOrCreateStandaloneEngine().getRuleDetails(ruleKey)
-        .orElseThrow(() -> unknownRule(ruleKey));
-      var paramDetails = ruleDetails.paramDetails();
-      showRuleDescription(ruleKey, ruleDetails, paramDetails);
-    } else {
-      var engine = binding.getEngine();
-      try {
-        var serverConfiguration = bindingManager.getServerConfigurationFor(binding.getConnectionId());
-        Objects.requireNonNull(serverConfiguration);
-        engine.getActiveRuleDetails(serverConfiguration.getEndpointParams(), serverConfiguration.getHttpClient(), ruleKey, binding.getBinding().projectKey())
-          .thenAccept(details -> showRuleDescription(ruleKey, details, Collections.emptyList()));
-      } catch (IllegalArgumentException ignored) {
-        throw unknownRule(ruleKey);
-      }
-    }
+  private void openRuleDescription(@Nullable String fileUri, String ruleKey) {
+    var workspaceFolder = Optional.ofNullable(fileUri)
+      .map(URI::create)
+      .map(workspaceFoldersManager::findFolderForFile)
+      .filter(Optional::isPresent)
+      .map(w -> w.get().getUri().toString())
+      .orElse(null);
+    backendServiceFacade.getActiveRuleDetails(workspaceFolder, ruleKey)
+      .thenAccept(detailsResponse -> showRuleDescription(ruleKey, detailsResponse.details(),
+        fileUri == null ? detailsResponse.details().getParams() : Collections.emptyList()))
+      .exceptionally(e -> {
+        var message = "Can't show rule details for unknown rule with key: " + ruleKey;
+        client.showMessage(new MessageParams(MessageType.Error, message));
+        SonarLintLogger.get().error(message, e);
+        return null;
+      });
   }
 
-  private void showRuleDescription(String ruleKey, RuleDetails ruleDetails, Collection<StandaloneRuleParam> paramDetails) {
+  private void showRuleDescription(String ruleKey, ActiveRuleDetailsDto ruleDetails, Collection<ActiveRuleParamDto> paramDetails) {
     var ruleName = ruleDetails.getName();
     var htmlDescription = getHtmlDescription(ruleDetails);
+    var htmlDescriptionTabs = getHtmlDescriptionTabs(ruleDetails);
     var type = ruleDetails.getType();
-    var severity = ruleDetails.getDefaultSeverity();
-    client.showRuleDescription(new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, type, severity, paramDetails));
-  }
-
-  private static ResponseErrorException unknownRule(String ruleKey) {
-    return new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unknown rule with key: " + ruleKey, null));
+    var severity = ruleDetails.getSeverity();
+    client.showRuleDescription(new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, htmlDescriptionTabs, type, severity, paramDetails));
   }
 
   public void executeCommand(ExecuteCommandParams params, CancelChecker cancelToken) {
@@ -303,9 +304,8 @@ public class CommandManager {
 
   private void handleOpenRuleDescriptionFromCodeActionCommand(ExecuteCommandParams params) {
     var ruleKey = getAsString(params.getArguments().get(0));
-    var uri = create(getAsString(params.getArguments().get(1)));
-    var binding = bindingManager.getBinding(uri);
-    openRuleDescription(binding.orElse(null), ruleKey);
+    var fileUri = getAsString(params.getArguments().get(1));
+    openRuleDescription(fileUri, ruleKey);
   }
 
   private void handleBrowseTaintVulnerability(ExecuteCommandParams params) {
@@ -342,15 +342,32 @@ public class CommandManager {
   }
 
   // visible for testing
-  static String getHtmlDescription(RuleDetails ruleDetails) {
-    var htmlDescription = ruleDetails.getHtmlDescription();
-    if (ruleDetails instanceof ConnectedRuleDetails) {
-      var extendedDescription = ((ConnectedRuleDetails) ruleDetails).getExtendedDescription();
-      if (!extendedDescription.isEmpty()) {
-        htmlDescription += "<div>" + extendedDescription + "</div>";
-      }
+  static String getHtmlDescription(ActiveRuleDetailsDto ruleDetails) {
+    var description = ruleDetails.getDescription();
+    if (description.isLeft()) {
+      return description.getLeft().getHtmlContent();
+    } else {
+      return StringUtils.defaultIfEmpty(description.getRight().getIntroductionHtmlContent(), "");
     }
-    return htmlDescription;
+  }
+
+  static SonarLintExtendedLanguageClient.RuleDescriptionTab[] getHtmlDescriptionTabs(ActiveRuleDetailsDto ruleDetails) {
+    var description = ruleDetails.getDescription();
+    if (description.isLeft()) {
+      return new SonarLintExtendedLanguageClient.RuleDescriptionTab[0];
+    } else {
+      return description.getRight().getTabs().stream().map(tab -> {
+        var title = tab.getTitle();
+        String htmlContent;
+        var content = tab.getContent();
+        if (content.isLeft()) {
+          htmlContent = content.getLeft().getHtmlContent();
+        } else {
+          htmlContent = content.getRight().getContextualSections().stream().map(ActiveRuleContextualSectionDto::getHtmlContent).collect(Collectors.joining());
+        }
+        return new SonarLintExtendedLanguageClient.RuleDescriptionTab(title, htmlContent);
+      }).toArray(SonarLintExtendedLanguageClient.RuleDescriptionTab[]::new);
+    }
   }
 
 }

@@ -41,6 +41,7 @@ import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
@@ -55,7 +56,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
@@ -63,8 +63,10 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidLocalBran
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import testutils.MockWebServerExtension;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -439,15 +441,10 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void test_command_open_standalone_rule_desc_with_unknown_diagnostic_rule() {
-    try {
-      lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", List.of("unknown:rule"))).get();
-      fail("Expected exception");
-    } catch (Exception e) {
-      assertThat(e).isInstanceOf(ExecutionException.class).hasCauseInstanceOf(ResponseErrorException.class);
-      assertThat(((ResponseErrorException) e.getCause()).getResponseError().getMessage())
-        .isEqualTo("Unknown rule with key: unknown:rule");
-    }
+  void test_command_open_standalone_rule_desc_with_unknown_diagnostic_rule() throws ExecutionException, InterruptedException {
+    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", List.of("unknown:rule"))).get();
+    await().atMost(10, SECONDS).untilAsserted(() -> assertThat(client.shownMessages)
+      .contains(new MessageParams(MessageType.Error, "Can't show rule details for unknown rule with key: unknown:rule")));
   }
 
   @Test
@@ -462,6 +459,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.ruleDesc.getType()).isEqualTo("BUG");
     assertThat(client.ruleDesc.getSeverity()).isEqualTo("CRITICAL");
     assertThat(client.ruleDesc.getParameters()).isEmpty();
+    assertThat(client.ruleDesc.getHtmlDescriptionTabs()).isEmpty();
   }
 
   @Test
