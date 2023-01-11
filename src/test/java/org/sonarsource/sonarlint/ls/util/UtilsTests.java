@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -57,5 +58,15 @@ class UtilsTests {
     assertThat(Utils.uriHasFileSchema(URI.create("file:///path"))).isTrue();
     assertThat(Utils.uriHasFileSchema(URI.create("notfile:///path"))).isFalse();
   }
+
+  @Test
+  void shouldCorrectlyMapHotspotSeverity() {
+    assertThat(Utils.hotspotSeverity(VulnerabilityProbability.HIGH)).isEqualTo(DiagnosticSeverity.Error);
+    assertThat(Utils.hotspotSeverity(VulnerabilityProbability.MEDIUM)).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(Utils.hotspotSeverity(VulnerabilityProbability.LOW)).isEqualTo(DiagnosticSeverity.Information);
+
+    assertThat(Utils.hotspotSeverity(null)).isEqualTo(DiagnosticSeverity.Hint);
+  }
+
 
 }

@@ -147,7 +147,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(0, 19, 0, 32, JAVASCRIPT_S1313, "sonarlint", "Make sure using a hardcoded IP address 12.34.56.78 is safe here.", DiagnosticSeverity.Information)));
+        tuple(0, 19, 0, 32, JAVASCRIPT_S1313, "sonarlint", "Make sure using a hardcoded IP address 12.34.56.78 is safe here.", DiagnosticSeverity.Hint)));
   }
 
   @Test

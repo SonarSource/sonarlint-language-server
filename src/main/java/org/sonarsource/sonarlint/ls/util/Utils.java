@@ -43,7 +43,6 @@ import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
 import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
-import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspotDetails;
 import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 
@@ -157,9 +156,9 @@ public class Utils {
     }
   }
 
-  public static DiagnosticSeverity hotspotSeverity(VulnerabilityProbability vulnerabilityProbability) {
+  public static DiagnosticSeverity hotspotSeverity(@Nullable VulnerabilityProbability vulnerabilityProbability) {
     if(vulnerabilityProbability == null) {
-      return DiagnosticSeverity.Warning;
+      return DiagnosticSeverity.Hint;
     }
     switch (vulnerabilityProbability) {
       case HIGH:
