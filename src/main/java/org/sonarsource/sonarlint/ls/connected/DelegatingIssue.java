@@ -37,7 +37,6 @@ public class DelegatingIssue implements Issue {
   private final RuleType type;
   private final String serverIssueKey;
   private final IssueSeverity severity;
-  private final VulnerabilityProbability vulnerabilityProbability;
 
   DelegatingIssue(Trackable<Issue> trackable) {
     var userSeverity = trackable.getSeverity();
@@ -45,7 +44,6 @@ public class DelegatingIssue implements Issue {
     this.severity = userSeverity != null ? userSeverity : issue.getSeverity();
     this.type = trackable.getType();
     this.serverIssueKey = trackable.getServerIssueKey();
-    this.vulnerabilityProbability = trackable.getVulnerabilityProbability();
   }
 
   @Override
@@ -125,7 +123,8 @@ public class DelegatingIssue implements Issue {
     return serverIssueKey;
   }
 
-  public VulnerabilityProbability getVulnerabilityProbability() {
-    return vulnerabilityProbability;
+  @Override
+  public Optional<VulnerabilityProbability> getVulnerabilityProbability() {
+    return issue.getVulnerabilityProbability();
   }
 }

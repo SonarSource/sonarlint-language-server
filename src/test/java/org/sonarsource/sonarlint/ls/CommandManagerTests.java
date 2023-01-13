@@ -443,7 +443,7 @@ class CommandManagerTests {
       }
 
       @Override
-      public VulnerabilityProbability getVulnerabilityProbability() { return null; }
+      public Optional<VulnerabilityProbability> getVulnerabilityProbability() { return Optional.empty(); }
     };
     var versionedIssue = new VersionedIssue(issue, 1);
     when(securityHotspotsCache.get(URI.create("fileUri"))).thenReturn(Map.of(issueKey, versionedIssue));

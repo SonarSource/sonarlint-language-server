@@ -28,6 +28,7 @@ import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -74,7 +75,7 @@ public class DiagnosticPublisher {
     var diagnostic = new Diagnostic();
     var severity =
       issue.getType() == RuleType.SECURITY_HOTSPOT ?
-        hotspotSeverity(issue.getVulnerabilityProbability()) : severity(issue.getSeverity());
+        hotspotSeverity(issue.getVulnerabilityProbability().orElse(VulnerabilityProbability.MEDIUM)) : severity(issue.getSeverity());
 
     diagnostic.setSeverity(severity);
     var range = Utils.convert(issue);

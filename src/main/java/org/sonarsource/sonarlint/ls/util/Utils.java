@@ -156,10 +156,7 @@ public class Utils {
     }
   }
 
-  public static DiagnosticSeverity hotspotSeverity(@Nullable VulnerabilityProbability vulnerabilityProbability) {
-    if(vulnerabilityProbability == null) {
-      return DiagnosticSeverity.Hint;
-    }
+  public static DiagnosticSeverity hotspotSeverity(VulnerabilityProbability vulnerabilityProbability) {
     switch (vulnerabilityProbability) {
       case HIGH:
         return DiagnosticSeverity.Error;
