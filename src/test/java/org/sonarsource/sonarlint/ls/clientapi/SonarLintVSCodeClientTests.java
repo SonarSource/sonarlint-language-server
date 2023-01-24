@@ -25,10 +25,11 @@ import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScope
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-public class SonarLintVSCodeClientTests {
+class SonarLintVSCodeClientTests {
 
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   SonarLintVSCodeClient underTest = new SonarLintVSCodeClient(client);
@@ -50,7 +51,10 @@ public class SonarLintVSCodeClientTests {
 
   @Test
   void shouldReturnNullForFindFile() {
-    assertThat(underTest.findFileByNamesInScope(mock(FindFileByNamesInScopeParams.class))).isNull();
+
+    assertThrows(UnsupportedOperationException.class, () -> {
+      underTest.findFileByNamesInScope(mock(FindFileByNamesInScopeParams.class));
+    });
   }
 
 }

@@ -39,12 +39,12 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   @Override
   public void suggestBinding(SuggestBindingParams params) {
-    // NOOP
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public CompletableFuture<FindFileByNamesInScopeResponse> findFileByNamesInScope(FindFileByNamesInScopeParams params) {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Nullable
@@ -56,7 +56,7 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   @Nullable
   @Override
   public HttpClient getHttpClientNoAuth(String s) {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -66,28 +66,28 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   @Override
   public void showMessage(org.sonarsource.sonarlint.core.clientapi.client.message.ShowMessageParams params) {
-    // NOOP
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.host.GetHostInfoResponse> getHostInfo() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void showHotspot(org.sonarsource.sonarlint.core.clientapi.client.hotspot.ShowHotspotParams params) {
-    // NOOP
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionResponse>
       assistCreatingConnection(org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams params) {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingResponse>
       assistBinding(org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams params) {
-    return null;
+    throw new UnsupportedOperationException();
   }
 }
