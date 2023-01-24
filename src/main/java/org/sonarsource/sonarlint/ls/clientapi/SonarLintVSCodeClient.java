@@ -49,12 +49,45 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   @Nullable
   @Override
-  public HttpClient getHttpClient(String connectionId) {
+  public HttpClient getHttpClient(String s) {
+    return null;
+  }
+
+  @Nullable
+  @Override
+  public HttpClient getHttpClientNoAuth(String s) {
     return null;
   }
 
   @Override
   public void openUrlInBrowser(OpenUrlInBrowserParams params) {
     client.browseTo(params.getUrl());
+  }
+
+  @Override
+  public void showMessage(org.sonarsource.sonarlint.core.clientapi.client.message.ShowMessageParams params) {
+    // NOOP
+  }
+
+  @Override
+  public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.host.GetHostInfoResponse> getHostInfo() {
+    return null;
+  }
+
+  @Override
+  public void showHotspot(org.sonarsource.sonarlint.core.clientapi.client.hotspot.ShowHotspotParams params) {
+    // NOOP
+  }
+
+  @Override
+  public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionResponse>
+      assistCreatingConnection(org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams params) {
+    return null;
+  }
+
+  @Override
+  public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingResponse>
+      assistBinding(org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams params) {
+    return null;
   }
 }
