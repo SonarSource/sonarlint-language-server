@@ -19,6 +19,8 @@
  */
 package org.sonarsource.sonarlint.ls.clientapi;
 
+import java.util.Collections;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
 import org.sonarsource.sonarlint.core.clientapi.client.SuggestBindingParams;
@@ -28,16 +30,23 @@ import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScope
 import org.sonarsource.sonarlint.core.clientapi.client.hotspot.ShowHotspotParams;
 import org.sonarsource.sonarlint.core.clientapi.client.message.ShowMessageParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
+import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class SonarLintVSCodeClientTests {
 
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
-  SonarLintVSCodeClient underTest = new SonarLintVSCodeClient(client);
+  ApacheHttpClientProvider httpClientProvider = mock(ApacheHttpClientProvider.class);
+  SonarLintVSCodeClient underTest = new SonarLintVSCodeClient(client, httpClientProvider);
 
   @Test
   void openUrlInBrowserTest() {
@@ -49,8 +58,29 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void shouldReturnNullForHttpClient() {
-    assertThat(underTest.getHttpClient("")).isNull();
+  void shouldReturnNullHttpClientForNonExistingConnection() {
+    var settingsManager = mock(SettingsManager.class);
+    underTest.setSettingsManager(settingsManager);
+    var workspaceSettings = mock(WorkspaceSettings.class);
+    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
+    when(workspaceSettings.getServerConnections()).thenReturn(Collections.emptyMap());
+
+    assertThat(underTest.getHttpClient("nonExistingConnection")).isNull();
+  }
+
+  @Test
+  void shouldReturnHttpClientForExistingConnection() {
+    var settingsManager = mock(SettingsManager.class);
+    underTest.setSettingsManager(settingsManager);
+    var workspaceSettings = mock(WorkspaceSettings.class);
+    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
+    var serverConnectionSettings = mock(ServerConnectionSettings.class);
+    when(serverConnectionSettings.getToken()).thenReturn("token");
+    when(workspaceSettings.getServerConnections()).thenReturn(Map.of("existingConnection", serverConnectionSettings));
+    var httpClient = mock(ApacheHttpClient.class);
+    when(httpClientProvider.withToken("token")).thenReturn(httpClient);
+
+    assertThat(underTest.getHttpClient("existingConnection")).isEqualTo(httpClient);
   }
 
 

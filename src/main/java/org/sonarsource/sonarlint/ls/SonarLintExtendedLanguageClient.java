@@ -30,7 +30,7 @@ import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleParamDto;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspotDetails;
@@ -81,6 +81,8 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     @Expose
     private final String htmlDescription;
     @Expose
+    private final RuleDescriptionTab[] htmlDescriptionTabs;
+    @Expose
     private final String type;
     @Expose
     private final String severity;
@@ -89,15 +91,16 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     @Expose
     private final RuleParameter[] parameters;
 
-    public ShowRuleDescriptionParams(String ruleKey, String ruleName, @Nullable String htmlDescription, RuleType type,  IssueSeverity severity,
-      Collection<StandaloneRuleParam> params) {
+    public ShowRuleDescriptionParams(String ruleKey, String ruleName, String htmlDescription, RuleDescriptionTab[] htmlDescriptionTabs,
+      RuleType type,  IssueSeverity severity, Collection<ActiveRuleParamDto> params) {
       this.key = ruleKey;
       this.name = ruleName;
       this.htmlDescription = htmlDescription;
+      this.htmlDescriptionTabs = htmlDescriptionTabs;
       this.type = type.toString();
       this.severity = severity.toString();
       this.isTaint = ruleKey.contains(TAINT_RULE_REPO_SUFFIX) && type == RuleType.VULNERABILITY;
-      this.parameters = params.stream().map(p -> new RuleParameter(p.name(), p.description(), p.defaultValue())).toArray(RuleParameter[]::new);
+      this.parameters = params.stream().map(p -> new RuleParameter(p.getName(), p.getDescription(), p.getDefaultValue())).toArray(RuleParameter[]::new);
     }
 
     public String getKey() {
@@ -106,10 +109,6 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
     public String getName() {
       return name;
-    }
-
-    public String getHtmlDescription() {
-      return htmlDescription;
     }
 
     public String getType() {
@@ -128,27 +127,69 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       return parameters;
     }
 
+    public String getHtmlDescription() {
+      return htmlDescription;
+    }
+
+    public RuleDescriptionTab[] getHtmlDescriptionTabs() {
+      return htmlDescriptionTabs;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      ShowRuleDescriptionParams that = (ShowRuleDescriptionParams) o;
+      return isTaint == that.isTaint
+        && Objects.equals(key, that.key)
+        && Objects.equals(name, that.name)
+        && Objects.equals(htmlDescription, that.htmlDescription)
+        && Arrays.equals(htmlDescriptionTabs, that.htmlDescriptionTabs)
+        && Objects.equals(type, that.type) && Objects.equals(severity, that.severity)
+        && Arrays.equals(parameters, that.parameters);
+    }
+
     @Override
     public int hashCode() {
       int result = Objects.hash(key, name, htmlDescription, type, severity, isTaint);
+      result = 31 * result + Arrays.hashCode(htmlDescriptionTabs);
       result = 31 * result + Arrays.hashCode(parameters);
       return result;
     }
+  }
 
-    @Override
-    public boolean equals(Object obj) {
-      if (this == obj) {
-        return true;
-      }
-      if (obj == null || getClass() != obj.getClass()) {
-        return false;
-      }
-      var other = (ShowRuleDescriptionParams) obj;
-      return Objects.equals(key, other.key) && Objects.equals(name, other.name)
-        && Objects.equals(htmlDescription, other.htmlDescription) && Objects.equals(type, other.type)
-        && Objects.equals(severity, other.severity) && isTaint == other.isTaint && Arrays.equals(parameters, other.parameters);
+  class RuleDescriptionTab {
+
+    @Expose
+    final String title;
+    @Expose
+    final String description;
+
+    public RuleDescriptionTab(String title, String description) {
+      this.title = title;
+      this.description = description;
     }
 
+    public String getTitle() {
+      return title;
+    }
+
+    public String getDescription() {
+      return description;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      RuleDescriptionTab that = (RuleDescriptionTab) o;
+      return Objects.equals(title, that.title) && Objects.equals(description, that.description);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(title, description);
+    }
   }
 
   class RuleParameter {

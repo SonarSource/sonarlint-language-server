@@ -21,30 +21,21 @@ package org.sonarsource.sonarlint.ls;
 
 import java.util.Collections;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleParam;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleParamDto;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
-import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamDefinition;
-import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamType;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
 
 class SonarLintExtendedLanguageClientTests {
 
   @Test
   void test_rule_parameter_equals_hashCode() {
-    var apiParam = Mockito.mock(SonarLintRuleParamDefinition.class);
-    when(apiParam.name()).thenReturn("name");
-    when(apiParam.description()).thenReturn("description");
-    when(apiParam.type()).thenReturn(SonarLintRuleParamType.INTEGER);
-    when(apiParam.defaultValue()).thenReturn("42");
-    var param1 = new StandaloneRuleParam(apiParam);
-
-    var ruleDesc1 = new ShowRuleDescriptionParams("key1", "name1", "desc1", RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
-    var ruleDescSame1 = new ShowRuleDescriptionParams("key1", "name1", "desc1", RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
+    var param1 = new ActiveRuleParamDto("name", "description", "42");
+    var ruleDescTabs = new SonarLintExtendedLanguageClient.RuleDescriptionTab[]{new SonarLintExtendedLanguageClient.RuleDescriptionTab("ruleDescTitle", "ruleDesc")};
+    var ruleDesc1 = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
+    var ruleDescSame1 = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
 
     assertThat(ruleDesc1).hasSameHashCodeAs(ruleDescSame1)
       .isEqualTo(ruleDesc1)
@@ -52,29 +43,37 @@ class SonarLintExtendedLanguageClientTests {
       .isNotEqualTo("foo")
       .isNotEqualTo(null);
 
-    var ruleDescDiffKey = new ShowRuleDescriptionParams("key2", "name1", "desc1", RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
+    var ruleDescDiffKey = new ShowRuleDescriptionParams("key2", "name1", "desc1", ruleDescTabs, RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffKey.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffKey);
 
-    var ruleDescDiffName = new ShowRuleDescriptionParams("key1", "name2", "desc1", RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
+    var ruleDescDiffName = new ShowRuleDescriptionParams("key1", "name2", "desc1", ruleDescTabs, RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffName.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffName);
 
-    var ruleDescDiffDesc = new ShowRuleDescriptionParams("key1", "name1", "desc2", RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
+    var ruleDescDiffDesc = new ShowRuleDescriptionParams("key1", "name1", "desc2", ruleDescTabs, RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffDesc.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffDesc);
 
-    var ruleDescDiffType = new ShowRuleDescriptionParams("key1", "name1", "desc1", RuleType.VULNERABILITY, IssueSeverity.BLOCKER, Collections.singleton(param1));
+    var ruleDescDiffType = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, RuleType.VULNERABILITY, IssueSeverity.BLOCKER, Collections.singleton(param1));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffType.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffType);
 
-    var ruleDescDiffSeverity = new ShowRuleDescriptionParams("key1", "name1", "desc1", RuleType.BUG, IssueSeverity.CRITICAL, Collections.singleton(param1));
+    var ruleDescDiffSeverity = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, RuleType.BUG, IssueSeverity.CRITICAL, Collections.singleton(param1));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffSeverity.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffSeverity);
 
-    var ruleDescDiffParams = new ShowRuleDescriptionParams("key1", "name1", "desc1", RuleType.BUG, IssueSeverity.BLOCKER, Collections.emptyList());
+    var ruleDescDiffParams = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, RuleType.BUG, IssueSeverity.BLOCKER, Collections.emptyList());
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffParams.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffParams);
+
+    var ruleDescTabs2 = new SonarLintExtendedLanguageClient.RuleDescriptionTab[]{
+      new SonarLintExtendedLanguageClient.RuleDescriptionTab("ruleDescTitle", "ruleDesc"),
+      new SonarLintExtendedLanguageClient.RuleDescriptionTab("ruleDescTitle1", "ruleDesc1")
+    };
+    var ruleDescDiffDescTabs = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs2, RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
+    assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffDescTabs.hashCode());
+    assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffDescTabs);
 
     var exposedParam = ruleDesc1.getParameters()[0];
     assertThat(exposedParam).hasSameHashCodeAs(ruleDescSame1.getParameters()[0])
@@ -94,9 +93,26 @@ class SonarLintExtendedLanguageClientTests {
     assertThat(exposedParam.hashCode()).isNotEqualTo(paramDiffDefaultValue.hashCode());
     assertThat(exposedParam).isNotEqualTo(paramDiffDefaultValue);
 
-    var ruleDescTaintParams = new ShowRuleDescriptionParams("key1", "javasecurity:S1234", "desc1", RuleType.VULNERABILITY, IssueSeverity.BLOCKER, Collections.emptyList());
+    var ruleDescTaintParams = new ShowRuleDescriptionParams("javasecurity:S1234", "name1", "desc1", ruleDescTabs, RuleType.VULNERABILITY, IssueSeverity.BLOCKER, Collections.emptyList());
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescTaintParams.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescTaintParams);
+  }
+
+  @Test
+  void test_rule_description_tabs_equals_hashCode() {
+    var descTab = new SonarLintExtendedLanguageClient.RuleDescriptionTab("title", "desc");
+    var descTabSame = new SonarLintExtendedLanguageClient.RuleDescriptionTab("title", "desc");
+
+    assertThat(descTab).isEqualTo(descTab).isEqualTo(descTabSame).hasSameHashCodeAs(descTabSame)
+      .isNotEqualTo(null).isNotEqualTo(new Object());
+
+    var descTabDiffTitle = new SonarLintExtendedLanguageClient.RuleDescriptionTab("anotherTitle", "desc");
+    assertThat(descTab).isNotEqualTo(descTabDiffTitle);
+    assertThat(descTab.hashCode()).isNotEqualTo(descTabDiffTitle.hashCode());
+
+    var descTabDiffDesc = new SonarLintExtendedLanguageClient.RuleDescriptionTab("title", "anotherDesc");
+    assertThat(descTab).isNotEqualTo(descTabDiffDesc);
+    assertThat(descTab.hashCode()).isNotEqualTo(descTabDiffDesc.hashCode());
   }
 
   @Test
@@ -140,9 +156,9 @@ class SonarLintExtendedLanguageClientTests {
 
   @Test
   void test_rule_description_params_is_taint() {
-    var taint = new ShowRuleDescriptionParams("javasecurity:S5168", "Rule Name", null, RuleType.VULNERABILITY, IssueSeverity.BLOCKER, Collections.emptyList());
-    var notTaint1 = new ShowRuleDescriptionParams("java:S5168", "Rule Name", null, RuleType.VULNERABILITY, IssueSeverity.BLOCKER, Collections.emptyList());
-    var notTaint2= new ShowRuleDescriptionParams("javasecurity:S5168", "Rule Name", null, RuleType.BUG, IssueSeverity.BLOCKER, Collections.emptyList());
+    var taint = new ShowRuleDescriptionParams("javasecurity:S5168", "Rule Name", null, null, RuleType.VULNERABILITY, IssueSeverity.BLOCKER, Collections.emptyList());
+    var notTaint1 = new ShowRuleDescriptionParams("java:S5168", "Rule Name", null, null, RuleType.VULNERABILITY, IssueSeverity.BLOCKER, Collections.emptyList());
+    var notTaint2= new ShowRuleDescriptionParams("javasecurity:S5168", "Rule Name", null, null, RuleType.BUG, IssueSeverity.BLOCKER, Collections.emptyList());
 
     assertThat(taint.isTaint()).isTrue();
     assertThat(notTaint1.isTaint()).isFalse();

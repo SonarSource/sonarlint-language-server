@@ -30,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -157,6 +158,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ServerSentEventsHandlerService serverSentEventsHandler;
   private final TaintVulnerabilityRaisedNotification taintVulnerabilityRaisedNotification;
   private final BackendServiceFacade backendServiceFacade;
+  private final Collection<Path> analysers;
 
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers, Collection<Path> extraAnalyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
@@ -169,6 +171,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .setExecutorService(threadPool)
       .create();
 
+    this.analysers = analyzers;
     this.client = launcher.getRemoteProxy();
     this.httpClientProvider = new ApacheHttpClientProvider();
     this.lsLogOutput = new LanguageClientLogger(this.client);
@@ -181,10 +184,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
     this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache, securityHotspotsCache);
     this.progressManager = new ProgressManager(client);
-    var vsCodeClient = new SonarLintVSCodeClient(client);
+    var vsCodeClient = new SonarLintVSCodeClient(client, httpClientProvider);
     this.backendServiceFacade = new BackendServiceFacade(new SonarLintBackendImpl(vsCodeClient));
     this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClientProvider, backendServiceFacade);
+    vsCodeClient.setSettingsManager(settingsManager);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
     var fileTypeClassifier = new FileTypeClassifier();
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
@@ -215,7 +219,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) analysisScheduler);
     this.serverSynchronizer = new ServerSynchronizer(client, progressManager, bindingManager, analysisScheduler);
     this.commandManager = new CommandManager(client, settingsManager, bindingManager, serverSynchronizer, telemetry, standaloneEngineManager, taintVulnerabilitiesCache,
-      issuesCache, securityHotspotsCache);
+      issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager);
     this.taintVulnerabilityRaisedNotification = new TaintVulnerabilityRaisedNotification(client, commandManager);
     this.serverSentEventsHandler = new ServerSentEventsHandler(bindingManager, taintVulnerabilitiesCache,
       taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager);
@@ -279,7 +283,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       c.setWorkspace(getWorkspaceServerCapabilities());
 
       var info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
-      provideBackendInitData(productKey, telemetryStorage);
+      provideBackendInitData(productKey);
       return new InitializeResult(c, info);
     });
   }
@@ -569,18 +573,18 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     });
   }
 
-  void provideBackendInitData(String productKey, String telemetryStorage) {
+  void provideBackendInitData(String productKey) {
     BackendInitParams params = backendServiceFacade.getInitParams();
     params.setTelemetryProductKey(productKey);
-    params.setStorageRoot(SonarLintUserHome.get());
-    params.setSonarlintUserHome(telemetryStorage);
+    params.setStorageRoot(SonarLintUserHome.get().resolve("storage"));
+    params.setSonarlintUserHome(SonarLintUserHome.get().toString());
 
-    params.setEmbeddedPluginPaths(Collections.emptySet());
+    params.setEmbeddedPluginPaths(new HashSet<>(analysers));
     params.setConnectedModeExtraPluginPathsByKey(Collections.emptyMap());
+    params.setConnectedModeEmbeddedPluginPathsByKey(Collections.emptyMap());
     params.setEnableSecurityHotspots(true);
     params.setEnabledLanguagesInStandaloneMode(EnginesFactory.getStandaloneLanguages());
     params.setExtraEnabledLanguagesInConnectedMode(EnginesFactory.getConnectedLanguages());
-    params.setEmbeddedPluginPaths(Collections.emptySet());
   }
 
   public CompletableFuture<Void> showHotspotLocations(ShowHotspotLocationsParams showHotspotLocationsParams) {

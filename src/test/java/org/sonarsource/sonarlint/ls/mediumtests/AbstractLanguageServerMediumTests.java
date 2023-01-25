@@ -252,6 +252,8 @@ public abstract class AbstractLanguageServerMediumTests {
     final AtomicInteger needCompilationDatabaseCalls = new AtomicInteger();
     final Set<String> openedLinks = new HashSet<>();
 
+    final Set<MessageParams> shownMessages = new HashSet<>();
+
     void clear() {
       diagnostics.clear();
       hotspots.clear();
@@ -289,7 +291,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void showMessage(MessageParams messageParams) {
-
+      shownMessages.add(messageParams);
     }
 
     @Override
