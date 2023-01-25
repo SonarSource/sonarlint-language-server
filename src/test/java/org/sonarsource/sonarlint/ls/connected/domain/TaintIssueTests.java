@@ -93,7 +93,7 @@ class TaintIssueTests {
   @Test
   void shouldConvertServerTaintIssuesToTaintIssues() {
     ServerTaintIssue serverTaintIssue = new ServerTaintIssue(ISSUE_KEY1, false, RULE_KEY, MAIN_LOCATION1.getMessage(),
-      fileInAWorkspaceFolderPath.toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION1.getTextRange()));
+      fileInAWorkspaceFolderPath.toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION1.getTextRange()), null);
     serverTaintIssue.setFlows(List.of(FLOW1));
 
     TaintIssue taintIssue = TaintIssue.from(serverTaintIssue, SONARCLOUD_TAINT_SOURCE);
@@ -117,11 +117,11 @@ class TaintIssueTests {
   @Test
   void shouldConvertListOfServerTaintIssuesToListOfTaintIssues() {
     ServerTaintIssue serverTaintIssue1 = new ServerTaintIssue(ISSUE_KEY1, false, RULE_KEY, MAIN_LOCATION1.getMessage(),
-      fileInAWorkspaceFolderPath.toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION1.getTextRange()));
+      fileInAWorkspaceFolderPath.toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION1.getTextRange()), null);
     serverTaintIssue1.setFlows(List.of(FLOW1));
 
     ServerTaintIssue serverTaintIssue2 = new ServerTaintIssue(ISSUE_KEY2, false, RULE_KEY2, MAIN_LOCATION1.getMessage(),
-      fileInAWorkspaceFolderPath.toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION2.getTextRange()));
+      fileInAWorkspaceFolderPath.toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION2.getTextRange()), null);
     serverTaintIssue1.setFlows(List.of(FLOW2));
 
     List<TaintIssue> taintIssues = TaintIssue.from(List.of(serverTaintIssue1, serverTaintIssue2), false);

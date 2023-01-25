@@ -19,12 +19,10 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import com.google.gson.JsonPrimitive;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.ExecuteCommandParams;
@@ -147,7 +145,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(0, 19, 0, 32, JAVASCRIPT_S1313, "sonarlint", "Make sure using a hardcoded IP address 12.34.56.78 is safe here.", DiagnosticSeverity.Warning)));
+        tuple(0, 19, 0, 32, JAVASCRIPT_S1313, "sonarlint", "Make sure using a hardcoded IP address 12.34.56.78 is safe here.", DiagnosticSeverity.Information)));
   }
 
   @Test

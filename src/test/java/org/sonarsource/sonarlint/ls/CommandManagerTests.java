@@ -56,6 +56,7 @@ import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintE
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamDefinition;
 import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamType;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
@@ -440,6 +441,9 @@ class CommandManagerTests {
       public Optional<String> getRuleDescriptionContextKey() {
         return Optional.empty();
       }
+
+      @Override
+      public Optional<VulnerabilityProbability> getVulnerabilityProbability() { return Optional.empty(); }
     };
     var versionedIssue = new VersionedIssue(issue, 1);
     when(securityHotspotsCache.get(URI.create("fileUri"))).thenReturn(Map.of(issueKey, versionedIssue));

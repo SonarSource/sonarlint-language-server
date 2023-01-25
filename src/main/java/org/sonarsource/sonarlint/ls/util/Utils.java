@@ -41,6 +41,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
+import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
@@ -155,17 +156,15 @@ public class Utils {
     }
   }
 
-  public static DiagnosticSeverity hotspotSeverity(IssueSeverity severity) {
-    switch (severity) {
-      case BLOCKER:
-      case CRITICAL:
-      case MAJOR:
+  public static DiagnosticSeverity hotspotSeverity(VulnerabilityProbability vulnerabilityProbability) {
+    switch (vulnerabilityProbability) {
+      case HIGH:
         return DiagnosticSeverity.Error;
-      case MINOR:
-        return DiagnosticSeverity.Warning;
-      case INFO:
-      default:
+      case LOW:
         return DiagnosticSeverity.Information;
+      case MEDIUM:
+      default:
+        return DiagnosticSeverity.Warning;
     }
   }
 

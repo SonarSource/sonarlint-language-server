@@ -27,6 +27,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
+import org.sonarsource.sonarlint.core.clientapi.backend.HostInfoDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidAddConfigurationScopesParams;
@@ -71,6 +72,7 @@ public class BackendServiceFacade {
 
   private static InitializeParams toInitParams(BackendInitParams initParams) {
     return new InitializeParams(
+      new HostInfoDto("Visual Studio Code"),
       initParams.getTelemetryProductKey(),
       initParams.getStorageRoot(),
       initParams.getEmbeddedPluginPaths(),
@@ -81,7 +83,8 @@ public class BackendServiceFacade {
       initParams.isEnableSecurityHotspots(),
       initParams.getSonarQubeConnections(),
       initParams.getSonarCloudConnections(),
-      initParams.getSonarlintUserHome()
+      initParams.getSonarlintUserHome(),
+      false
     );
   }
 

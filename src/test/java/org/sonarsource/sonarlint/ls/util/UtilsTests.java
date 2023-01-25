@@ -24,7 +24,7 @@ import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -60,13 +60,10 @@ class UtilsTests {
 
   @Test
   void shouldCorrectlyMapHotspotSeverity() {
-    assertThat(Utils.hotspotSeverity(IssueSeverity.BLOCKER)).isEqualTo(DiagnosticSeverity.Error);
-    assertThat(Utils.hotspotSeverity(IssueSeverity.CRITICAL)).isEqualTo(DiagnosticSeverity.Error);
-    assertThat(Utils.hotspotSeverity(IssueSeverity.MAJOR)).isEqualTo(DiagnosticSeverity.Error);
-
-    assertThat(Utils.hotspotSeverity(IssueSeverity.MINOR)).isEqualTo(DiagnosticSeverity.Warning);
-
-    assertThat(Utils.hotspotSeverity(IssueSeverity.INFO)).isEqualTo(DiagnosticSeverity.Information);
+    assertThat(Utils.hotspotSeverity(VulnerabilityProbability.HIGH)).isEqualTo(DiagnosticSeverity.Error);
+    assertThat(Utils.hotspotSeverity(VulnerabilityProbability.MEDIUM)).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(Utils.hotspotSeverity(VulnerabilityProbability.LOW)).isEqualTo(DiagnosticSeverity.Information);
   }
+
 
 }

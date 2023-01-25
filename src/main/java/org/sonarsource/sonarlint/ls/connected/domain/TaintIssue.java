@@ -34,7 +34,7 @@ public class TaintIssue extends ServerTaintIssue {
   public TaintIssue(String key, boolean resolved, String ruleKey, String message, String filePath,
     Instant creationDate, IssueSeverity severity, RuleType type,
     @Nullable TextRangeWithHash textRange, List<Flow> flows, String source) {
-    super(key, resolved, ruleKey, message, filePath, creationDate, severity, type, textRange);
+    super(key, resolved, ruleKey, message, filePath, creationDate, severity, type, textRange, null);
     this.setFlows(flows);
     this.source = source;
   }

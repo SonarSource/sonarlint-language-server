@@ -21,14 +21,20 @@ package org.sonarsource.sonarlint.ls.clientapi;
 
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
+import org.sonarsource.sonarlint.core.clientapi.client.SuggestBindingParams;
+import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
+import org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeParams;
+import org.sonarsource.sonarlint.core.clientapi.client.hotspot.ShowHotspotParams;
+import org.sonarsource.sonarlint.core.clientapi.client.message.ShowMessageParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-public class SonarLintVSCodeClientTests {
+class SonarLintVSCodeClientTests {
 
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   SonarLintVSCodeClient underTest = new SonarLintVSCodeClient(client);
@@ -49,8 +55,66 @@ public class SonarLintVSCodeClientTests {
 
 
   @Test
-  void shouldReturnNullForFindFile() {
-    assertThat(underTest.findFileByNamesInScope(mock(FindFileByNamesInScopeParams.class))).isNull();
+  void shouldThrowForFindFile() {
+
+    assertThrows(UnsupportedOperationException.class, () -> {
+      underTest.findFileByNamesInScope(mock(FindFileByNamesInScopeParams.class));
+    });
   }
 
+  @Test
+  void shouldThrowForSuggestBinding() {
+
+    assertThrows(UnsupportedOperationException.class, () -> {
+      underTest.suggestBinding(mock(SuggestBindingParams.class));
+    });
+  }
+
+  @Test
+  void shouldThrowForHttpClientNoAuth() {
+
+    assertThrows(UnsupportedOperationException.class, () -> {
+      underTest.getHttpClientNoAuth("");
+    });
+  }
+
+  @Test
+  void shouldThrowForShowMessage() {
+
+    assertThrows(UnsupportedOperationException.class, () -> {
+      underTest.showMessage(mock(ShowMessageParams.class));
+    });
+  }
+
+  @Test
+  void shouldThrowForGetHostInfo() {
+
+    assertThrows(UnsupportedOperationException.class, () -> {
+      underTest.getHostInfo();
+    });
+  }
+
+  @Test
+  void shouldThrowForShowHotspot() {
+
+    assertThrows(UnsupportedOperationException.class, () -> {
+      underTest.showHotspot(mock(ShowHotspotParams.class));
+    });
+  }
+
+  @Test
+  void shouldThrowForAssistCreatingConnection() {
+
+    assertThrows(UnsupportedOperationException.class, () -> {
+      underTest.assistCreatingConnection(mock(AssistCreatingConnectionParams.class));
+    });
+  }
+
+  @Test
+  void shouldThrowForAssistBinding() {
+
+    assertThrows(UnsupportedOperationException.class, () -> {
+      underTest.assistBinding(mock(AssistBindingParams.class));
+    });
+  }
 }

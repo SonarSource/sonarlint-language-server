@@ -29,6 +29,7 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 import org.sonarsource.sonarlint.core.issuetracking.Trackable;
 
 public class DelegatingIssue implements Issue {
@@ -120,5 +121,10 @@ public class DelegatingIssue implements Issue {
 
   public String getServerIssueKey() {
     return serverIssueKey;
+  }
+
+  @Override
+  public Optional<VulnerabilityProbability> getVulnerabilityProbability() {
+    return issue.getVulnerabilityProbability();
   }
 }
