@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.sonarsource.parent</groupId>
     <artifactId>parent</artifactId>
-    <version>64.0.211</version>
+    <version>65.0.218</version>
     <relativePath />
   </parent>
   <groupId>org.sonarsource.sonarlint.ls</groupId>
@@ -24,7 +24,7 @@
 
   <properties>
     <jdk.min.version>11</jdk.min.version>
-    <sonarlint.core.version>8.13.0.60370</sonarlint.core.version>
+    <sonarlint.core.version>8.13.1.60852</sonarlint.core.version>
     <!-- Version used by Xodus -->
     <kotlin.version>1.6.10</kotlin.version>
     <!-- analyzers used for tests -->
