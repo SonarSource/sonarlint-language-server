@@ -545,7 +545,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       .filter(e -> e.getValue().isPresent())
       .map(e -> tryResolveLocalFile(serverPath, e.getKey(), e.getValue().get()))
       .flatMap(Optional::stream)
-      .map(File::toURI)
+      .map(File::toPath)
+      .map(Path::toUri)
       .findFirst();
   }
 

@@ -555,7 +555,9 @@ class ProjectBindingManagerTests {
     var uri = underTest.serverPathToFileUri(serverPath);
 
     assertThat(uri).isNotEmpty();
-    assertThat(uri.get().toString()).contains("src/test/resources/sample-folder/Test.java");
+    assertThat(uri.get().toString())
+      .startsWith("file:///")
+      .contains("src/test/resources/sample-folder/Test.java");
   }
 
   @Test
