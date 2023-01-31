@@ -43,11 +43,15 @@ import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
+import org.eclipse.lsp4j.DidChangeNotebookDocumentParams;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidChangeWatchedFilesParams;
 import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
+import org.eclipse.lsp4j.DidCloseNotebookDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
+import org.eclipse.lsp4j.DidOpenNotebookDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
+import org.eclipse.lsp4j.DidSaveNotebookDocumentParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
 import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.ExecuteCommandParams;
@@ -55,6 +59,9 @@ import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.NotebookDocumentSyncRegistrationOptions;
+import org.eclipse.lsp4j.NotebookSelector;
+import org.eclipse.lsp4j.NotebookSelectorCell;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.SetTraceParams;
@@ -69,6 +76,7 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
+import org.eclipse.lsp4j.services.NotebookDocumentService;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonarsource.sonarlint.core.SonarLintBackendImpl;
@@ -117,8 +125,10 @@ import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURIT
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
 
-public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer, WorkspaceService, TextDocumentService {
+public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer, WorkspaceService, TextDocumentService, NotebookDocumentService {
 
+  public static final String JUPYTER_NOTEBOOK_TYPE = "jupyter-notebook";
+  public static final String PYTHON_LANGUAGE = "python";
   private final SonarLintExtendedLanguageClient client;
   private final SonarLintTelemetry telemetry;
   private final WorkspaceFoldersManager workspaceFoldersManager;
@@ -281,11 +291,21 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       executeCommandOptions.setWorkDoneProgress(true);
       c.setExecuteCommandProvider(executeCommandOptions);
       c.setWorkspace(getWorkspaceServerCapabilities());
+      setNotebookSyncOptions(c);
 
       var info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
       provideBackendInitData(productKey);
       return new InitializeResult(c, info);
     });
+  }
+
+  private static void setNotebookSyncOptions(ServerCapabilities c) {
+    var noteBookDocumentSyncOptions = new NotebookDocumentSyncRegistrationOptions();
+    var notebookSelector = new NotebookSelector();
+    notebookSelector.setNotebook(JUPYTER_NOTEBOOK_TYPE);
+    notebookSelector.setCells(List.of(new NotebookSelectorCell(PYTHON_LANGUAGE)));
+    noteBookDocumentSyncOptions.setNotebookSelector(List.of(notebookSelector));
+    c.setNotebookDocumentSync(noteBookDocumentSyncOptions);
   }
 
   @CheckForNull
@@ -453,6 +473,30 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .map(String::toUpperCase)
       .map(TraceValue::valueOf)
       .orElse(TraceValue.OFF);
+  }
+
+  @Override
+  public void didOpen(DidOpenNotebookDocumentParams params) {
+    lsLogOutput.info("didOpen Jupyter Document");
+    // TODO
+  }
+
+  @Override
+  public void didChange(DidChangeNotebookDocumentParams params) {
+    lsLogOutput.info("didChange Jupyter Document");
+    // TODO
+  }
+
+  @Override
+  public void didSave(DidSaveNotebookDocumentParams params) {
+    lsLogOutput.info("didSave Jupyter Document");
+    // TODO
+  }
+
+  @Override
+  public void didClose(DidCloseNotebookDocumentParams params) {
+    lsLogOutput.info("didClose Jupyter Document");
+    // TODO
   }
 
   private enum TraceValue {
