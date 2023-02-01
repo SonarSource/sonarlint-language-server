@@ -29,7 +29,7 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +81,7 @@ import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonarsource.sonarlint.core.SonarLintBackendImpl;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
+import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
@@ -168,9 +169,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ServerSentEventsHandlerService serverSentEventsHandler;
   private final TaintVulnerabilityRaisedNotification taintVulnerabilityRaisedNotification;
   private final BackendServiceFacade backendServiceFacade;
-  private final Collection<Path> analysers;
+  private final Collection<Path> analyzers;
 
-  SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers, Collection<Path> extraAnalyzers) {
+  SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
     var input = new ExitingInputStream(inputStream, this);
     var launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
@@ -181,7 +182,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .setExecutorService(threadPool)
       .create();
 
-    this.analysers = analyzers;
+    this.analyzers = analyzers;
     this.client = launcher.getRemoteProxy();
     this.httpClientProvider = new ApacheHttpClientProvider();
     this.lsLogOutput = new LanguageClientLogger(this.client);
@@ -202,8 +203,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
     var fileTypeClassifier = new FileTypeClassifier();
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
-    this.enginesFactory = new EnginesFactory(analyzers, globalLogOutput, nodeJsRuntime,
-      new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, javaConfigCache), extraAnalyzers);
+    this.enginesFactory = new EnginesFactory(analyzers, getEmbeddedPluginsToPath(), globalLogOutput, nodeJsRuntime,
+      new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, javaConfigCache));
     this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, globalLogOutput,
@@ -243,9 +244,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     launcher.startListening();
   }
 
-  static void bySocket(int port, Collection<Path> analyzers, Collection<Path> extraAnalyzers) throws IOException {
+  static void bySocket(int port, Collection<Path> analyzers) throws IOException {
     var socket = new Socket("localhost", port);
-    new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers, extraAnalyzers);
+    new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers);
   }
 
   @Override
@@ -617,15 +618,31 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     });
   }
 
+  public Map<String, Path> getEmbeddedPluginsToPath() {
+    var plugins = new HashMap<String, Path>();
+    analyzers.stream().filter(it -> it.toString().contains("cfamily")).findFirst()
+      .ifPresent(cfamilyPlugin -> plugins.put("cfamily", cfamilyPlugin));
+    addPluginPathOrFail("html", Language.HTML, plugins);
+    addPluginPathOrFail("js", Language.JS, plugins);
+    addPluginPathOrFail("xml", Language.XML, plugins);
+    addPluginPathOrFail("text", Language.SECRETS, plugins);
+    return plugins;
+  }
+
+  private void addPluginPathOrFail(String pluginName, Language language, Map<String, Path> plugins) {
+    var pluginPath = analyzers.stream().filter(it -> it.toString().contains(pluginName)).findFirst()
+      .orElseThrow(() -> new IllegalStateException("Embedded plugin not found: " + language.getLabel()));
+    plugins.put(language.getPluginKey(), pluginPath);
+  }
+
   void provideBackendInitData(String productKey) {
     BackendInitParams params = backendServiceFacade.getInitParams();
     params.setTelemetryProductKey(productKey);
     params.setStorageRoot(SonarLintUserHome.get().resolve("storage"));
     params.setSonarlintUserHome(SonarLintUserHome.get().toString());
 
-    params.setEmbeddedPluginPaths(new HashSet<>(analysers));
-    params.setConnectedModeExtraPluginPathsByKey(Collections.emptyMap());
-    params.setConnectedModeEmbeddedPluginPathsByKey(Collections.emptyMap());
+    params.setEmbeddedPluginPaths(new HashSet<>(analyzers));
+    params.setConnectedModeEmbeddedPluginPathsByKey(getEmbeddedPluginsToPath());
     params.setEnableSecurityHotspots(true);
     params.setEnabledLanguagesInStandaloneMode(EnginesFactory.getStandaloneLanguages());
     params.setExtraEnabledLanguagesInConnectedMode(EnginesFactory.getConnectedLanguages());

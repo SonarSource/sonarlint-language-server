@@ -118,7 +118,7 @@ public class DiagnosticPublisher {
 
     Map<String, VersionedIssue> localIssues = issuesCache.get(newUri);
 
-    if (!firstSecretIssueDetected && localIssues.values().stream().anyMatch(v -> v.getIssue().getRuleKey().startsWith(Language.SECRETS.getPluginKey()))) {
+    if (!firstSecretIssueDetected && localIssues.values().stream().anyMatch(v -> v.getIssue().getRuleKey().startsWith(Language.SECRETS.getLanguageKey()))) {
       client.showFirstSecretDetectionNotification();
       firstSecretIssueDetected = true;
     }

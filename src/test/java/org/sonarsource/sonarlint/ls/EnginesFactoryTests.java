@@ -45,8 +45,8 @@ class EnginesFactoryTests {
       Paths.get("sonarjs.jar"),
       Paths.get("sonarhtml.jar"),
       Paths.get("sonarxml.jar"));
-    underTest = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
-      mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
+    underTest = new EnginesFactory(standaloneAnalysers, Collections.emptyMap(), mock(LanguageClientLogOutput.class),
+      mock(NodeJsRuntime.class), mock(ClientModulesProvider.class));
     underTest = spy(underTest);
   }
 
@@ -67,44 +67,4 @@ class EnginesFactoryTests {
       Language.YAML);
   }
 
-  @Test
-  void resolve_extra_plugin_key() {
-    assertThat(EnginesFactory.guessPluginKey("file:///sonarsecrets.jar")).isEqualTo(Language.SECRETS.getPluginKey());
-    assertThatThrownBy(() -> EnginesFactory.guessPluginKey("file:///unknown.jar"))
-      .isInstanceOf(IllegalStateException.class)
-      .hasMessageContaining("Unknown analyzer.");
-  }
-
-  @Test
-  void failIfJsTsAnalyserNotFound() {
-    var standaloneAnalysers = List.of(Paths.get("sonarhtml.jar", "sonarxml.jar"));
-    var factory = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
-      mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
-
-    assertThatThrownBy(() -> factory.createConnectedEngine("foo", mock(ServerConnectionSettings.class)))
-      .isInstanceOf(IllegalStateException.class)
-      .hasMessageContaining("Embedded plugin not found: " + Language.JS.getLabel());
-  }
-
-  @Test
-  void failIfHtmlAnalyserNotFound() {
-    var standaloneAnalysers = List.of(Paths.get("sonarjs.jar", "sonarxml.jar"));
-    var factory = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
-      mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
-
-    assertThatThrownBy(() -> factory.createConnectedEngine("foo", mock(ServerConnectionSettings.class)))
-      .isInstanceOf(IllegalStateException.class)
-      .hasMessageContaining("Embedded plugin not found: " + Language.HTML.getLabel());
-  }
-
-  @Test
-  void failIfXmlAnalyserNotFound() {
-    var standaloneAnalysers = List.of(Paths.get("sonarjs.jar", "sonarhtml.jar"));
-    var factory = new EnginesFactory(standaloneAnalysers, mock(LanguageClientLogOutput.class),
-      mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), Collections.emptyList());
-
-    assertThatThrownBy(() -> factory.createConnectedEngine("foo", mock(ServerConnectionSettings.class)))
-      .isInstanceOf(IllegalStateException.class)
-      .hasMessageContaining("Embedded plugin not found: " + Language.XML.getLabel());
-  }
 }

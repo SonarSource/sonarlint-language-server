@@ -79,7 +79,6 @@ public class BackendServiceFacade {
       initParams.getTelemetryProductKey(),
       initParams.getStorageRoot(),
       initParams.getEmbeddedPluginPaths(),
-      initParams.getConnectedModeExtraPluginPathsByKey(),
       initParams.getConnectedModeEmbeddedPluginPathsByKey(),
       initParams.getEnabledLanguagesInStandaloneMode(),
       initParams.getExtraEnabledLanguagesInConnectedMode(),
