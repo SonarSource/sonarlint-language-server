@@ -109,6 +109,7 @@ import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
@@ -138,6 +139,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final AnalysisScheduler analysisScheduler;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final OpenFilesCache openFilesCache;
+  private final OpenNotebooksCache openNotebooksCache;
   private final NodeJsRuntime nodeJsRuntime;
   private final EnginesFactory enginesFactory;
   private final StandaloneEngineManager standaloneEngineManager;
@@ -188,6 +190,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var globalLogOutput = new LanguageClientLogOutput(lsLogOutput, false);
     SonarLintLogger.setTarget(globalLogOutput);
     this.openFilesCache = new OpenFilesCache(lsLogOutput);
+    this.openNotebooksCache = new OpenNotebooksCache(lsLogOutput);
 
     this.issuesCache = new IssuesCache();
     this.securityHotspotsCache = new IssuesCache();
@@ -477,14 +480,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didOpen(DidOpenNotebookDocumentParams params) {
-    lsLogOutput.info("didOpen Jupyter Document");
-    // TODO
+    openNotebooksCache.didOpen(create(params.getNotebookDocument().getUri()), params.getCellTextDocuments());
   }
 
   @Override
   public void didChange(DidChangeNotebookDocumentParams params) {
-    lsLogOutput.info("didChange Jupyter Document");
-    // TODO
+    analysisScheduler.didChange(create(params.getNotebookDocument().getUri()));
   }
 
   @Override
@@ -495,8 +496,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didClose(DidCloseNotebookDocumentParams params) {
-    lsLogOutput.info("didClose Jupyter Document");
-    // TODO
+    openNotebooksCache.didClose(create(params.getNotebookDocument().getUri()));
   }
 
   private enum TraceValue {
