@@ -6,6 +6,8 @@ pool:
 
 variables:
   - group: sonarsource-build-variables
+  - name: system.debug
+    value: true
 
 resources:
   repositories:
@@ -184,6 +186,13 @@ stages:
         name: mavenSettings
         inputs:
           secureFile: 'maven-settings.xml'
+      - bash: >
+          echo '=== Variables Used By SonarQube Scanner Task ==='
+          echo 'System.PullRequest.PullRequestId: ' '$(System.PullRequest.PullRequestId)'
+          echo 'Build.Repository.Provider: ' '$(Build.Repository.Provider)'
+          echo 'System.PullRequest.TargetBranch: ' '$(System.PullRequest.TargetBranch)'
+          echo 'System.PullRequest.SourceBranch: ' '$(System.PullRequest.SourceBranch)'
+          echo 'System.PullRequest.PullRequestNumber: ' '$(System.PullRequest.PullRequestNumber)'
       - template: prepare-sq-analysis-steps.yml
       - task: Maven@3
         env:
