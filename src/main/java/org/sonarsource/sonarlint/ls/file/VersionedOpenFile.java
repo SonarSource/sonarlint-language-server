@@ -32,12 +32,14 @@ public class VersionedOpenFile {
   private final String languageId;
   private final int version;
   private final String content;
+  private final boolean isNotebook;
 
-  public VersionedOpenFile(URI uri, String languageId, int version, String content) {
+  public VersionedOpenFile(URI uri, String languageId, int version, String content, boolean isNotebook) {
     this.uri = uri;
     this.languageId = languageId;
     this.version = version;
     this.content = content;
+    this.isNotebook = isNotebook;
   }
 
   public URI getUri() {
@@ -58,6 +60,10 @@ public class VersionedOpenFile {
 
   public boolean isJava() {
     return "java".equals(languageId);
+  }
+
+  public boolean isNotebook() {
+    return isNotebook;
   }
 
   @Override
