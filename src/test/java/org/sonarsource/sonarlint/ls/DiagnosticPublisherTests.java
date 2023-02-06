@@ -125,7 +125,7 @@ class DiagnosticPublisherTests {
 
     var uri = URI.create("file://foo");
 
-    VersionedOpenFile versionedOpenFile = new VersionedOpenFile(uri, null, 1, null);
+    VersionedOpenFile versionedOpenFile = new VersionedOpenFile(uri, null, 1, null, false);
     issuesCache.analysisStarted(versionedOpenFile);
     issuesCache.reportIssue(versionedOpenFile, issue);
     issuesCache.analysisSucceeded(versionedOpenFile);
