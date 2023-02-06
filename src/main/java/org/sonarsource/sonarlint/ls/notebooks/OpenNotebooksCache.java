@@ -36,35 +36,35 @@ import static java.lang.String.format;
 public class OpenNotebooksCache {
   private final LanguageClientLogger lsLogOutput;
 
-  private final Map<URI, OpenNotebook> openNotebooksPerFileURI = new ConcurrentHashMap<>();
+  private final Map<URI, VersionedOpenNotebook> openNotebooksPerFileURI = new ConcurrentHashMap<>();
 
   public OpenNotebooksCache(LanguageClientLogger lsLogOutput) {
     this.lsLogOutput = lsLogOutput;
   }
 
-  public OpenNotebook didOpen(URI fileUri, List<TextDocumentItem> cells) {
-    var file = OpenNotebook.create(fileUri, cells);
+  public VersionedOpenNotebook didOpen(URI fileUri, int version, List<TextDocumentItem> cells) {
+    var file = VersionedOpenNotebook.create(fileUri, version, cells);
     openNotebooksPerFileURI.put(fileUri, file);
     lsLogOutput.debug("Created notebook with URI " + fileUri + " and contents below:\n" + file.getContent());
     return file;
   }
 
-  public void didChange(URI fileUri, List<TextDocumentItem> cells) {
+  public void didChange(URI fileUri, int version, List<TextDocumentItem> cells) {
     if (!openNotebooksPerFileURI.containsKey(fileUri)) {
       lsLogOutput.warn(format("Illegal state. File '%s' is reported changed but we missed the open notification", fileUri));
     }
-    openNotebooksPerFileURI.computeIfPresent(fileUri, (uri, previous) -> OpenNotebook.create(uri, cells));
+    openNotebooksPerFileURI.computeIfPresent(fileUri, (uri, previous) -> VersionedOpenNotebook.create(uri, version, cells));
   }
 
   public void didClose(URI fileUri) {
     openNotebooksPerFileURI.remove(fileUri);
   }
 
-  public Optional<OpenNotebook> getFile(URI fileUri) {
+  public Optional<VersionedOpenNotebook> getFile(URI fileUri) {
     return Optional.ofNullable(openNotebooksPerFileURI.get(fileUri));
   }
 
-  public Collection<OpenNotebook> getAll() {
+  public Collection<VersionedOpenNotebook> getAll() {
     return openNotebooksPerFileURI.values();
   }
 

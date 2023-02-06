@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OpenNotebookTest {
+class VersionedOpenNotebookTest {
 
   @Test
   void shouldConcatenateCells() throws IOException {
@@ -46,7 +46,7 @@ class OpenNotebookTest {
     cell3.setUri(tmpUri.toString() + "#cell3");
     cell3.setText("cell3 line1\ncell3 line2\n");
 
-    var underTest = OpenNotebook.create(tmpUri, List.of(cell1, cell2, cell3));
+    var underTest = VersionedOpenNotebook.create(tmpUri, 1, List.of(cell1, cell2, cell3));
 
     var clientInputFile = underTest.asInputFile(Path.of(URI.create("file:///some")));
 

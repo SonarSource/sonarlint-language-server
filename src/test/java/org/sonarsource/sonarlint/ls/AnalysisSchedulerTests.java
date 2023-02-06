@@ -46,7 +46,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 class AnalysisSchedulerTests {
 
   private static final URI JS_FILE_URI = URI.create("file://foo.js");
-  private static final VersionedOpenFile JS_FILE = new VersionedOpenFile(JS_FILE_URI, "javascript", 1, "alert();");
+  private static final VersionedOpenFile JS_FILE = new VersionedOpenFile(JS_FILE_URI, "javascript", 1, "alert();", false);
   private AnalysisScheduler underTest;
   private AnalysisTaskExecutor taskExecutor;
   private OpenFilesCache openFilesCache;
@@ -82,7 +82,7 @@ class AnalysisSchedulerTests {
 
   @Test
   void shouldSkipAnalysisOfNonFSFiles() {
-    underTest.didOpen(new VersionedOpenFile(URI.create("ftp://foo.js"), "javascript", 1, "alert();"));
+    underTest.didOpen(new VersionedOpenFile(URI.create("ftp://foo.js"), "javascript", 1, "alert();", false));
 
     verify(taskExecutor, timeout(1000).times(0)).run(any());
 

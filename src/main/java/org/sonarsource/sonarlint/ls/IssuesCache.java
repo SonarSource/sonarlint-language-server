@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.lsp4j.Diagnostic;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
+import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 
 public class IssuesCache {
 
@@ -48,6 +49,12 @@ public class IssuesCache {
   public void reportIssue(VersionedOpenFile versionedOpenFile, Issue issue) {
     inProgressAnalysisIssuesPerIdPerFileURI.computeIfAbsent(versionedOpenFile.getUri(), u -> new HashMap<>()).put(UUID.randomUUID().toString(),
       new VersionedIssue(issue, versionedOpenFile.getVersion()));
+  }
+
+  public void reportCellIssue(VersionedOpenNotebook versionedOpenNotebook, Issue issue, URI cellUri) {
+    var cellIssue = versionedOpenNotebook.toCellIssue(issue);
+    inProgressAnalysisIssuesPerIdPerFileURI.computeIfAbsent(cellUri, u -> new HashMap<>()).put(UUID.randomUUID().toString(),
+      new VersionedIssue(cellIssue, versionedOpenNotebook.getVersion()));
   }
 
   public int count(URI f) {

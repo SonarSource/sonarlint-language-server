@@ -29,37 +29,42 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
+import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
+import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.ls.AnalysisClientInputFile;
+import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
+import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.util.FileUtils;
-import org.w3c.dom.Text;
 
-public class OpenNotebook {
+public class VersionedOpenNotebook {
 
   private final URI uri;
+  private final int version;
   private final List<TextDocumentItem> cells;
-  private final Map<Integer, TextDocumentItem> lineToCell;
+  private final Map<Integer, TextDocumentItem> fileLineToCell = new HashMap<>();
+  private final Map<Integer, Integer> virtualFileLineToCellLine = new HashMap<>();
 
-  private OpenNotebook(URI uri, List<TextDocumentItem> cells) {
+  private VersionedOpenNotebook(URI uri, int version, List<TextDocumentItem> cells) {
     this.uri = uri;
+    this.version = version;
     this.cells = Collections.unmodifiableList(cells);
-    lineToCell = indexCellsByLineNumber();
+    indexCellsByLineNumber();
   }
 
-  private Map<Integer, TextDocumentItem> indexCellsByLineNumber() {
-    var lineToCellMutable = new HashMap<Integer, TextDocumentItem>();
-    var lineCount = 0;
+  private void indexCellsByLineNumber() {
+    var lineCount = 1;
     for (var cell: cells) {
       var cellLines = cell.getText().split("\n");
-      for (var cellLineCount = 0; cellLineCount < cellLines.length; cellLineCount ++) {
-        lineToCellMutable.put(lineCount, cell);
+      for (var cellLineCount = 1; cellLineCount <= cellLines.length; cellLineCount ++) {
+        fileLineToCell.put(lineCount, cell);
+        virtualFileLineToCellLine.put(lineCount, cellLineCount);
         lineCount ++;
       }
     }
-    return Collections.unmodifiableMap(lineToCellMutable);
   }
 
-  public static OpenNotebook create(URI baseUri, List<TextDocumentItem> cells) {
-    return new OpenNotebook(baseUri, cells);
+  public static VersionedOpenNotebook create(URI baseUri, int version, List<TextDocumentItem> cells) {
+    return new VersionedOpenNotebook(baseUri, version, cells);
   }
 
   public URI getUri() {
@@ -70,14 +75,37 @@ public class OpenNotebook {
     return new AnalysisClientInputFile(uri, FileUtils.getFileRelativePath(baseDir, uri), getContent(), false, "ipynb");
   }
 
+  public VersionedOpenFile asVersionedOpenFile() {
+    // TODO change to ipynb language
+    return new VersionedOpenFile(uri, "python", this.version, getContent(), true);
+  }
+
   String getContent() {
     return cells.stream().map(TextDocumentItem::getText)
-      .collect(Collectors.joining());
+      .collect(Collectors.joining("\n"));
+  }
+
+  public int getVersion() {
+    return this.version;
   }
 
   public Optional<URI> getCellUri(int lineNumber) {
-    return Optional.ofNullable(lineToCell.get(lineNumber))
+    return Optional.ofNullable(fileLineToCell.get(lineNumber))
       .map(TextDocumentItem::getUri)
       .map(URI::create);
+  }
+
+  public DelegatingCellIssue toCellIssue(Issue issue) {
+    var fileStartLine = issue.getStartLine();
+    var fileStartLineOffset = issue.getStartLineOffset();
+    var fileEndLine = issue.getEndLine();
+    var fileEndLineOffset = issue.getEndLineOffset();
+
+    var cellStartLine = virtualFileLineToCellLine.get(fileStartLine);
+    var cellEndLine = virtualFileLineToCellLine.get(fileEndLine);
+
+    var cellTextRange = new TextRange(cellStartLine, fileStartLineOffset, cellEndLine, fileEndLineOffset);
+
+    return new DelegatingCellIssue(issue, cellTextRange);
   }
 }
