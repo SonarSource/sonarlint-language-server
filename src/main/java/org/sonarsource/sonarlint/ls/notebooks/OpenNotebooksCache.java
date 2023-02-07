@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.eclipse.lsp4j.NotebookDocumentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
@@ -49,11 +50,13 @@ public class OpenNotebooksCache {
     return file;
   }
 
-  public void didChange(URI fileUri, int version, List<TextDocumentItem> cells) {
+  public void didChange(URI fileUri, int version, NotebookDocumentChangeEvent changeEvent) {
     if (!openNotebooksPerFileURI.containsKey(fileUri)) {
       lsLogOutput.warn(format("Illegal state. File '%s' is reported changed but we missed the open notification", fileUri));
+    } else {
+      var openNotebook = openNotebooksPerFileURI.get(fileUri);
+      openNotebook.didChange(version, changeEvent);
     }
-    openNotebooksPerFileURI.computeIfPresent(fileUri, (uri, previous) -> VersionedOpenNotebook.create(uri, version, cells));
   }
 
   public void didClose(URI fileUri) {

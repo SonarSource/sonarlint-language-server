@@ -54,7 +54,7 @@ public class IssuesCache {
   public void reportCellIssue(VersionedOpenNotebook versionedOpenNotebook, Issue issue, URI cellUri) {
     var cellIssue = versionedOpenNotebook.toCellIssue(issue);
     inProgressAnalysisIssuesPerIdPerFileURI.computeIfAbsent(cellUri, u -> new HashMap<>()).put(UUID.randomUUID().toString(),
-      new VersionedIssue(cellIssue, versionedOpenNotebook.getVersion()));
+      new VersionedIssue(cellIssue, versionedOpenNotebook.getNotebookVersion()));
   }
 
   public int count(URI f) {
