@@ -57,6 +57,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -93,12 +94,13 @@ public class AnalysisTaskExecutor {
   private final DiagnosticPublisher diagnosticPublisher;
   private final SonarLintExtendedLanguageClient lsClient;
   private final OpenNotebooksCache openNotebooksCache;
+  private final NotebookDiagnosticPublisher notebookDiagnosticPublisher;
 
   public AnalysisTaskExecutor(ScmIgnoredCache filesIgnoredByScmCache, LanguageClientLogger lsLogOutput,
     WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, JavaConfigCache javaConfigCache, SettingsManager settingsManager,
     FileTypeClassifier fileTypeClassifier, IssuesCache issuesCache, IssuesCache securityHotspotsCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
     SonarLintTelemetry telemetry, SkippedPluginsNotifier skippedPluginsNotifier, StandaloneEngineManager standaloneEngineManager, DiagnosticPublisher diagnosticPublisher,
-    SonarLintExtendedLanguageClient lsClient, OpenNotebooksCache openNotebooksCache) {
+    SonarLintExtendedLanguageClient lsClient, OpenNotebooksCache openNotebooksCache, NotebookDiagnosticPublisher notebookDiagnosticPublisher) {
     this.filesIgnoredByScmCache = filesIgnoredByScmCache;
     this.lsLogOutput = lsLogOutput;
     this.workspaceFoldersManager = workspaceFoldersManager;
@@ -115,6 +117,7 @@ public class AnalysisTaskExecutor {
     this.diagnosticPublisher = diagnosticPublisher;
     this.lsClient = lsClient;
     this.openNotebooksCache = openNotebooksCache;
+    this.notebookDiagnosticPublisher = notebookDiagnosticPublisher;
   }
 
   public void run(AnalysisTask task) {
@@ -340,6 +343,7 @@ public class AnalysisTaskExecutor {
         var foundIssues = issuesCache.count(f);
         totalIssueCount.addAndGet(foundIssues);
         diagnosticPublisher.publishDiagnostics(f);
+        notebookDiagnosticPublisher.cleanupDiagnostics(f);
       });
       telemetry.addReportedRules(ruleKeys);
       lsLogOutput.info(format("Found %s %s", totalIssueCount.get(), pluralize(totalIssueCount.get(), "issue")));
@@ -354,11 +358,8 @@ public class AnalysisTaskExecutor {
         URI uri = inputFile.getClientObject();
         var versionedOpenNotebook = openNotebooksCache.getFile(uri);
         if(versionedOpenNotebook.isPresent()) {
-          var cellUri = versionedOpenNotebook.get().getCellUri(issue.getStartLine());
-          cellUri.ifPresent(cu -> {
-            issuesCache.reportCellIssue(versionedOpenNotebook.get(), issue, cu);
-            diagnosticPublisher.publishDiagnostics(cu);
-          });
+          issuesCache.reportIssue(versionedOpenNotebook.get().asVersionedOpenFile(), issue);
+          notebookDiagnosticPublisher.publishNotebookDiagnostics(uri, versionedOpenNotebook.get());
         } else {
           var versionedOpenFile = filesToAnalyze.get(uri);
           if (issue.getType() == RuleType.SECURITY_HOTSPOT) {
@@ -366,7 +367,6 @@ public class AnalysisTaskExecutor {
           } else {
             issuesCache.reportIssue(versionedOpenFile, issue);
           }
-          diagnosticPublisher.publishDiagnostics(uri);
         }
         ruleKeys.add(issue.getRuleKey());
       }

@@ -22,7 +22,6 @@ package org.sonarsource.sonarlint.ls.notebooks;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import org.eclipse.jgit.notes.Note;
 import org.eclipse.lsp4j.NotebookDocumentChangeEvent;
 import org.eclipse.lsp4j.NotebookDocumentChangeEventCellTextContent;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
@@ -52,14 +52,16 @@ public class VersionedOpenNotebook {
   private final List<TextDocumentItem> orderedCells = new ArrayList<>();
   private final Map<Integer, TextDocumentItem> fileLineToCell = new HashMap<>();
   private final Map<Integer, Integer> virtualFileLineToCellLine = new HashMap<>();
+  private final NotebookDiagnosticPublisher notebookDiagnosticPublisher;
 
-  private VersionedOpenNotebook(URI uri, int version, List<TextDocumentItem> cells) {
+  private VersionedOpenNotebook(URI uri, int version, List<TextDocumentItem> cells, NotebookDiagnosticPublisher notebookDiagnosticPublisher) {
     this.uri = uri;
     this.notebookVersion = version;
     cells.forEach(cell -> {
       this.cells.put(cell.getUri(), cell);
       this.orderedCells.add(cell);
     });
+    this.notebookDiagnosticPublisher = notebookDiagnosticPublisher;
   }
 
   private void indexCellsByLineNumber() {
@@ -78,8 +80,8 @@ public class VersionedOpenNotebook {
     indexedNotebookVersion = notebookVersion;
   }
 
-  public static VersionedOpenNotebook create(URI baseUri, int version, List<TextDocumentItem> cells) {
-    return new VersionedOpenNotebook(baseUri, version, cells);
+  public static VersionedOpenNotebook create(URI baseUri, int version, List<TextDocumentItem> cells, NotebookDiagnosticPublisher notebookDiagnosticPublisher) {
+    return new VersionedOpenNotebook(baseUri, version, cells, notebookDiagnosticPublisher);
   }
 
   public URI getUri() {
@@ -112,10 +114,11 @@ public class VersionedOpenNotebook {
   }
 
   public DelegatingCellIssue toCellIssue(Issue issue) {
-    var fileStartLine = issue.getStartLine();
-    var fileStartLineOffset = issue.getStartLineOffset();
-    var fileEndLine = issue.getEndLine();
-    var fileEndLineOffset = issue.getEndLineOffset();
+    indexCellsByLineNumber();
+    var fileStartLine = issue.getTextRange().getStartLine();
+    var fileStartLineOffset = issue.getTextRange().getStartLineOffset();
+    var fileEndLine = issue.getTextRange().getEndLine();
+    var fileEndLineOffset = issue.getTextRange().getEndLineOffset();
 
     var cellStartLine = virtualFileLineToCellLine.get(fileStartLine);
     var cellEndLine = virtualFileLineToCellLine.get(fileEndLine);
@@ -127,13 +130,13 @@ public class VersionedOpenNotebook {
 
   public void didChange(int version, NotebookDocumentChangeEvent changeEvent) {
     this.notebookVersion = version;
-    if(!changeEvent.getCells().getStructure().getDidClose().isEmpty()) {
+    if(changeEvent.getCells().getStructure() != null && !changeEvent.getCells().getStructure().getDidClose().isEmpty()) {
       handleCellDeletion(changeEvent.getCells().getStructure().getDidClose());
     }
-    if(!changeEvent.getCells().getStructure().getDidOpen().isEmpty()) {
+    if(changeEvent.getCells().getStructure() != null && !changeEvent.getCells().getStructure().getDidOpen().isEmpty()) {
       handleCellCreation(changeEvent);
     }
-    if(!changeEvent.getCells().getTextContent().isEmpty()) {
+    if(changeEvent.getCells().getTextContent() != null && !changeEvent.getCells().getTextContent().isEmpty()) {
       handleContentChange(changeEvent.getCells().getTextContent());
     }
   }
@@ -142,6 +145,7 @@ public class VersionedOpenNotebook {
     removedCellIdentifiers.forEach(removedCell -> {
       var removedItem = cells.remove(removedCell.getUri());
       orderedCells.remove(removedItem);
+      notebookDiagnosticPublisher.removeCellDiagnostics(URI.create(removedItem.getUri()));
     });
   }
 

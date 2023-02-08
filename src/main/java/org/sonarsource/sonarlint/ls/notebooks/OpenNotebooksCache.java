@@ -36,15 +36,17 @@ import static java.lang.String.format;
  */
 public class OpenNotebooksCache {
   private final LanguageClientLogger lsLogOutput;
+  private final NotebookDiagnosticPublisher notebookDiagnosticPublisher;
 
   private final Map<URI, VersionedOpenNotebook> openNotebooksPerFileURI = new ConcurrentHashMap<>();
 
-  public OpenNotebooksCache(LanguageClientLogger lsLogOutput) {
+  public OpenNotebooksCache(LanguageClientLogger lsLogOutput, NotebookDiagnosticPublisher notebookDiagnosticPublisher) {
     this.lsLogOutput = lsLogOutput;
+    this.notebookDiagnosticPublisher = notebookDiagnosticPublisher;
   }
 
   public VersionedOpenNotebook didOpen(URI fileUri, int version, List<TextDocumentItem> cells) {
-    var file = VersionedOpenNotebook.create(fileUri, version, cells);
+    var file = VersionedOpenNotebook.create(fileUri, version, cells, notebookDiagnosticPublisher);
     openNotebooksPerFileURI.put(fileUri, file);
     lsLogOutput.debug("Created notebook with URI " + fileUri + " and contents below:\n" + file.getContent());
     return file;

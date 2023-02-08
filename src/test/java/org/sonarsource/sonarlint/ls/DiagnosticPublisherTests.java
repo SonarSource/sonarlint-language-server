@@ -32,6 +32,7 @@ import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -55,7 +56,7 @@ class DiagnosticPublisherTests {
     issuesCache = new IssuesCache();
     hotspotsCache = new IssuesCache();
     languageClient = mock(SonarLintExtendedLanguageClient.class);
-    underTest = new DiagnosticPublisher(languageClient, new TaintVulnerabilitiesCache(), issuesCache, hotspotsCache);
+    underTest = new DiagnosticPublisher(languageClient, new TaintVulnerabilitiesCache(), issuesCache, hotspotsCache, mock(OpenNotebooksCache.class));
   }
 
   @Test

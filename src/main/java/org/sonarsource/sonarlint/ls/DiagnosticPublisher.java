@@ -21,7 +21,9 @@ package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
@@ -32,8 +34,12 @@ import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
+import org.sonarsource.sonarlint.ls.notebooks.DelegatingCellIssue;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
+import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralizedSuffix;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotSeverity;
@@ -53,12 +59,14 @@ public class DiagnosticPublisher {
   private final IssuesCache issuesCache;
   private final IssuesCache hotspotsCache;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
+  private final OpenNotebooksCache openNotebooksCache;
 
-  public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache, IssuesCache hotspotsCache) {
+  public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache, IssuesCache hotspotsCache, OpenNotebooksCache openNotebooksCache) {
     this.client = client;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.issuesCache = issuesCache;
     this.hotspotsCache = hotspotsCache;
+    this.openNotebooksCache = openNotebooksCache;
   }
 
   public void initialize(boolean firstSecretDetected) {
@@ -66,6 +74,9 @@ public class DiagnosticPublisher {
   }
 
   public void publishDiagnostics(URI f) {
+    if(openNotebooksCache.getFile(f).isPresent()) {
+      return;
+    }
     client.publishDiagnostics(createPublishDiagnosticsParams(f));
     client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
   }
@@ -88,7 +99,7 @@ public class DiagnosticPublisher {
     return diagnostic;
   }
 
-  static void setSource(Issue issue, Diagnostic diagnostic) {
+  public static void setSource(Issue issue, Diagnostic diagnostic) {
     if (issue instanceof DelegatingIssue) {
       var delegatedIssue = (DelegatingIssue) issue;
       var isKnown = delegatedIssue.getServerIssueKey() != null;
@@ -99,7 +110,7 @@ public class DiagnosticPublisher {
     }
   }
 
-  static String message(Issue issue) {
+  public static String message(Issue issue) {
     if (issue.flows().isEmpty()) {
       return issue.getMessage();
     } else if (issue.flows().size() == 1) {
@@ -153,5 +164,4 @@ public class DiagnosticPublisher {
     return Comparator.comparing((Diagnostic d) -> d.getRange().getStart().getLine())
       .thenComparing(Diagnostic::getMessage);
   }
-
 }
