@@ -621,7 +621,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public Map<String, Path> getEmbeddedPluginsToPath() {
     var plugins = new HashMap<String, Path>();
     analyzers.stream().filter(it -> it.toString().contains("cfamily")).findFirst()
-      .ifPresent(cfamilyPlugin -> plugins.put("cfamily", cfamilyPlugin));
+      .ifPresent(cfamilyPlugin -> plugins.put(Language.C.getPluginKey(), cfamilyPlugin));
     addPluginPathOrFail("html", Language.HTML, plugins);
     addPluginPathOrFail("js", Language.JS, plugins);
     addPluginPathOrFail("xml", Language.XML, plugins);
