@@ -108,7 +108,6 @@ public class BackendService {
   }
 
   public CompletableFuture<GetActiveRuleDetailsResponse> getRuleDetails(GetActiveRuleDetailsParams params) {
-
     return backend.getActiveRulesService().getActiveRuleDetails(params);
   }
 }

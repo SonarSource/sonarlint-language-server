@@ -32,7 +32,6 @@ public class BackendInitParams {
   private String telemetryProductKey;
   private Path storageRoot;
   private Set<Path> embeddedPluginPaths;
-  private Map<String, Path> connectedModeExtraPluginPathsByKey;
   private Map<String, Path> connectedModeEmbeddedPluginPathsByKey;
   private Set<Language> enabledLanguagesInStandaloneMode;
   private Set<Language> extraEnabledLanguagesInConnectedMode;
@@ -63,14 +62,6 @@ public class BackendInitParams {
 
   public void setEmbeddedPluginPaths(Set<Path> embeddedPluginPaths) {
     this.embeddedPluginPaths = embeddedPluginPaths;
-  }
-
-  public Map<String, Path> getConnectedModeExtraPluginPathsByKey() {
-    return connectedModeExtraPluginPathsByKey;
-  }
-
-  public void setConnectedModeExtraPluginPathsByKey(Map<String, Path> connectedModeExtraPluginPathsByKey) {
-    this.connectedModeExtraPluginPathsByKey = connectedModeExtraPluginPathsByKey;
   }
 
   public Map<String, Path> getConnectedModeEmbeddedPluginPathsByKey() {

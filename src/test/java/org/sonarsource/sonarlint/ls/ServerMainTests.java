@@ -54,8 +54,7 @@ class ServerMainTests {
     assertThat(thrown).hasMessage("exit called");
     assertThat(err.toString(StandardCharsets.UTF_8))
       .isEqualTo("Usage: java -jar sonarlint-server.jar <jsonRpcPort> " +
-        "[-analyzers path/to/analyzer1.jar [path/to/analyzer2.jar] ...] " +
-        "[-extraAnalyzers path/to/analyzer3.jar [path/to/analyzer4.jar] ...]" + System.lineSeparator());
+        "[-analyzers path/to/analyzer1.jar [path/to/analyzer2.jar] ...]" + System.lineSeparator());
   }
 
   @Test
@@ -83,18 +82,6 @@ class ServerMainTests {
   }
 
   @Test
-  void testInvalidExtraPluginPath() {
-
-    var thrown = assertThrows(RuntimeException.class, () -> {
-      underTest.startLanguageServer("1", "-analyzers", "folder/analyzer1.jar", "-extraAnalyzers", INVALID_PATH);
-    });
-
-    assertThat(thrown).hasMessage("exit called");
-    assertThat(err.toString(StandardCharsets.UTF_8))
-      .contains("Invalid argument at position 5. Expected a path.");
-  }
-
-  @Test
   void testExtractingAnalyzersPositive() {
     var args = new String[] {"-analyzers", "folder/analyzer1.jar", "folder/analyzer2.jar"};
     var paths = underTest.extractAnalyzers(args);
@@ -113,28 +100,6 @@ class ServerMainTests {
     var args = new String[] {"-analyzers", INVALID_PATH};
 
     assertThrows(RuntimeException.class, () -> underTest.extractAnalyzers(args));
-  }
-
-  @Test
-  void testExtractingExtraAnalyzersPositive() {
-    var args = new String[] {"-extraAnalyzers", "folder/analyzer1.jar", "folder/analyzer2.jar"};
-    var paths = underTest.extractExtraAnalyzers(args);
-    assertThat(paths).containsExactly(Paths.get("folder/analyzer1.jar"), Paths.get("folder/analyzer2.jar"));
-  }
-
-  @Test
-  void testExtractingExtraAnalyzersReturnsEmptyListIfNoKey() {
-    var args = new String[] {"folder/analyzer1.jar", "folder/analyzer2.jar"};
-
-    var paths = underTest.extractExtraAnalyzers(args);
-    assertThat(paths).isEmpty();
-  }
-
-  @Test
-  void testExtractingExtraAnalyzersExitsOnMalformedPaths() {
-    var args = new String[] {"-extraAnalyzers", INVALID_PATH};
-
-    assertThrows(RuntimeException.class, () -> underTest.extractExtraAnalyzers(args));
   }
 
 }

@@ -23,7 +23,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.sonarsource.sonarlint.core.ConnectedSonarLintEngineImpl;
@@ -46,6 +46,7 @@ public class EnginesFactory {
 
   private final LanguageClientLogOutput logOutput;
   private final Collection<Path> standaloneAnalyzers;
+  private final Map<String, Path> embeddedPluginsToPath;
   private static final Language[] STANDALONE_LANGUAGES = {
     Language.CPP,
     Language.C,
@@ -68,16 +69,15 @@ public class EnginesFactory {
 
   private final NodeJsRuntime nodeJsRuntime;
   private final ClientModulesProvider modulesProvider;
-  private final Collection<Path> extraAnalyzers;
   private final AtomicReference<Boolean> shutdown = new AtomicReference<>(false);
 
-  public EnginesFactory(Collection<Path> standaloneAnalyzers, LanguageClientLogOutput globalLogOutput, NodeJsRuntime nodeJsRuntime, ClientModulesProvider modulesProvider,
-    Collection<Path> extraAnalyzers) {
+  public EnginesFactory(Collection<Path> standaloneAnalyzers, Map<String, Path> embeddedPluginsToPath,
+    LanguageClientLogOutput globalLogOutput, NodeJsRuntime nodeJsRuntime, ClientModulesProvider modulesProvider) {
     this.standaloneAnalyzers = standaloneAnalyzers;
+    this.embeddedPluginsToPath = embeddedPluginsToPath;
     this.logOutput = globalLogOutput;
     this.nodeJsRuntime = nodeJsRuntime;
     this.modulesProvider = modulesProvider;
-    this.extraAnalyzers = extraAnalyzers;
   }
 
   public StandaloneSonarLintEngine createStandaloneEngine() {
@@ -93,7 +93,6 @@ public class EnginesFactory {
         .addEnabledLanguages(STANDALONE_LANGUAGES)
         .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
         .addPlugins(standaloneAnalyzers.toArray(Path[]::new))
-        .addPlugins(extraAnalyzers.toArray(Path[]::new))
         .setModulesProvider(modulesProvider)
         .setLogOutput(logOutput)
         .build();
@@ -131,34 +130,13 @@ public class EnginesFactory {
       .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
       .setModulesProvider(modulesProvider)
       .setLogOutput(logOutput);
-    getCFamilyAnalyzer().ifPresent(cFamilyAnalyzer -> builder.useEmbeddedPlugin(Language.C.getPluginKey(), cFamilyAnalyzer));
 
-    useEmbeddedPluginOrFailIfNotFound(builder, "html", Language.HTML);
-    useEmbeddedPluginOrFailIfNotFound(builder, "js", Language.JS);
-    useEmbeddedPluginOrFailIfNotFound(builder, "xml", Language.XML);
+    embeddedPluginsToPath.forEach(builder::useEmbeddedPlugin);
 
-    extraAnalyzers.forEach(analyzer -> builder.addExtraPlugin(guessPluginKey(analyzer.toString()), analyzer));
     var engine = newConnectedEngine(builder.build());
 
     LOG.debug("SonarLint engine started for connection '{}'", connectionId);
     return engine;
-  }
-
-  Optional<Path> getCFamilyAnalyzer() {
-    return standaloneAnalyzers.stream().filter(it -> it.toString().contains("cfamily")).findFirst();
-  }
-
-  void useEmbeddedPluginOrFailIfNotFound(ConnectedGlobalConfiguration.Builder builder, String pluginName, Language language) {
-    var pluginUrl = standaloneAnalyzers.stream().filter(it -> it.toString().contains(pluginName)).findFirst()
-      .orElseThrow(() -> new IllegalStateException("Embedded plugin not found: " + language.getLabel()));
-    builder.useEmbeddedPlugin(language.getPluginKey(), pluginUrl);
-  }
-
-  static String guessPluginKey(String pluginUrl) {
-    if (pluginUrl.contains("sonarsecrets")) {
-      return Language.SECRETS.getPluginKey();
-    }
-    throw new IllegalStateException("Unknown analyzer.");
   }
 
   ConnectedSonarLintEngine newConnectedEngine(ConnectedGlobalConfiguration configuration) {

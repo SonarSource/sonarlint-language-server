@@ -26,16 +26,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 public class ServerMain {
 
   private static final String ANALYZERS_KEY = "-analyzers";
-  private static final String EXTRA_ANALYZERS_KEY = "-extraAnalyzers";
   private static final String USAGE = "Usage: java -jar sonarlint-server.jar <jsonRpcPort> " +
-          "[-analyzers path/to/analyzer1.jar [path/to/analyzer2.jar] ...] " +
-          "[-extraAnalyzers path/to/analyzer3.jar [path/to/analyzer4.jar] ...]";
+          "[-analyzers path/to/analyzer1.jar [path/to/analyzer2.jar] ...]";
 
   private final PrintStream out;
   private final PrintStream err;
@@ -66,11 +63,10 @@ public class ServerMain {
     var jsonRpcPort = parsePortArgument(args);
 
     var analyzers = extractAnalyzers(args);
-    var extraAnalyzers = extractExtraAnalyzers(args);
 
     out.println("Binding to " + jsonRpcPort);
     try {
-      SonarLintLanguageServer.bySocket(jsonRpcPort, analyzers, extraAnalyzers);
+      SonarLintLanguageServer.bySocket(jsonRpcPort, analyzers);
     } catch (IOException e) {
       err.println("Unable to connect to the client");
       e.printStackTrace(err);
@@ -87,14 +83,6 @@ public class ServerMain {
     var nextParam = getIndexOfNextParam(indexOfAnalyzersParam, args);
 
     return extractAnalyzersPathsToList(args, indexOfAnalyzersParam, nextParam);
-  }
-
-  Collection<Path> extractExtraAnalyzers(String[] args) {
-    var indexOfExtraAnalyzersParam = List.of(args).indexOf(EXTRA_ANALYZERS_KEY);
-    if (indexOfExtraAnalyzersParam == -1) {
-      return Collections.emptyList();
-    }
-    return extractAnalyzersPathsToList(args, indexOfExtraAnalyzersParam, args.length);
   }
 
   List<Path> extractAnalyzersPathsToList(String[] args, int from, int to) {
