@@ -107,7 +107,7 @@ public class NotebookDiagnosticPublisher {
 
   public void cleanupDiagnostics(URI notebookUri) {
     var versionedOpenNotebook = openNotebooksCache.getFile(notebookUri);
-    var cellsWithIssues = notebookCellsWithIssues.get(notebookUri);
+    var cellsWithIssues = notebookCellsWithIssues.getOrDefault(notebookUri, List.of());
     versionedOpenNotebook.ifPresent(notebook -> notebook.getCells().forEach(cellUri -> {
       if(!cellsWithIssues.contains(URI.create(cellUri))){
         removeCellDiagnostics(URI.create(cellUri));
