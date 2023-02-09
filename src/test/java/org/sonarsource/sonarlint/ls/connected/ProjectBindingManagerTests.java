@@ -177,6 +177,11 @@ class ProjectBindingManagerTests {
   }
 
   @Test
+  void get_binding_returns_empty_for_non_file_uri() {
+    assertThat(underTest.getBinding(URI.create("not-a-file-scheme://definitely.not/a/file"))).isEmpty();
+  }
+
+  @Test
   void get_binding_returns_empty_for_file_in_a_folder_with_no_binding() {
     var folder = mockFileInAFolder();
     folder.setSettings(UNBOUND_SETTINGS);
