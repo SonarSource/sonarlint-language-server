@@ -52,16 +52,28 @@ class VersionedOpenNotebookTest {
     var clientInputFile = underTest.asInputFile(Path.of(URI.create("file:///some")));
 
     assertThat(clientInputFile.uri()).isEqualTo(tmpUri);
-    assertThat(clientInputFile.contents()).isEqualTo("cell1 line1\ncell1 line2\ncell2 line1\ncell2 line2\ncell3 line1\ncell3 line2\n");
+    assertThat(clientInputFile.contents()).isEqualTo("" +
+      "cell1 line1\n" +
+      "cell1 line2\n" +
+      "\n" +
+      "cell2 line1\n" +
+      "cell2 line2\n" +
+      "\n" +
+      "cell3 line1\n" +
+      "cell3 line2\n");
     assertThat(clientInputFile.isTest()).isFalse();
     assertThat(clientInputFile.language()).isNull();
 
-    assertThat(underTest.getCellUri(0).get()).hasFragment("cell1");
+    assertThat(underTest.getCellUri(0)).isEmpty();
     assertThat(underTest.getCellUri(1).get()).hasFragment("cell1");
-    assertThat(underTest.getCellUri(2).get()).hasFragment("cell2");
-    assertThat(underTest.getCellUri(3).get()).hasFragment("cell2");
-    assertThat(underTest.getCellUri(4).get()).hasFragment("cell3");
-    assertThat(underTest.getCellUri(5).get()).hasFragment("cell3");
-    assertThat(underTest.getCellUri(6)).isEmpty();
+    assertThat(underTest.getCellUri(2).get()).hasFragment("cell1");
+    assertThat(underTest.getCellUri(3).get()).hasFragment("cell1");
+    assertThat(underTest.getCellUri(4).get()).hasFragment("cell2");
+    assertThat(underTest.getCellUri(5).get()).hasFragment("cell2");
+    assertThat(underTest.getCellUri(6).get()).hasFragment("cell2");
+    assertThat(underTest.getCellUri(7).get()).hasFragment("cell3");
+    assertThat(underTest.getCellUri(8).get()).hasFragment("cell3");
+    assertThat(underTest.getCellUri(9).get()).hasFragment("cell3");
+    assertThat(underTest.getCellUri(10)).isEmpty();
   }
 }

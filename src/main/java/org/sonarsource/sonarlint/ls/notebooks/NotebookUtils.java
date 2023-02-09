@@ -21,43 +21,61 @@ package org.sonarsource.sonarlint.ls.notebooks;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentItem;
 
 public class NotebookUtils {
-  public static String applyChangeToCellContent(TextDocumentItem originalCell, TextDocumentContentChangeEvent textChange) {
+
+  private NotebookUtils() {
+    // Static utility method only
+  }
+
+  public static String applyChangeToCellContent(TextDocumentItem originalCell, List<TextDocumentContentChangeEvent> textChanges) {
     var cellLines = Arrays.asList(originalCell.getText().split("\n", -1));
     var modifiedLines = new ArrayList<String>();
 
-    var rangeStartLine = textChange.getRange().getStart().getLine();
-    var rangeStartLineOffset = textChange.getRange().getStart().getCharacter();
-    var rangeEndLine = textChange.getRange().getEnd().getLine();
-    var rangeEndLineOffset = textChange.getRange().getEnd().getCharacter();
+    var sortedChanges = new ArrayList<>(textChanges);
+    sortedChanges.sort(
+      Comparator.<TextDocumentContentChangeEvent>comparingInt(change -> change.getRange().getStart().getLine())
+        .thenComparingInt(change -> change.getRange().getStart().getCharacter())
+    );
 
     var currentLine = 0;
-    while (currentLine < rangeStartLine) {
-      modifiedLines.add(cellLines.get(currentLine));
-      currentLine++;
-    }
-    String replacementRange;
-    if(currentLine < cellLines.size()) {
-      replacementRange =
-        cellLines.get(currentLine).substring(0, rangeStartLineOffset) +
-          textChange.getText() +
-          cellLines.get(rangeEndLine).substring(rangeEndLineOffset);
-    } else {
-      // Newline added
-      replacementRange = textChange.getText();
+
+    for (var textChange: sortedChanges) {
+      var rangeStartLine = textChange.getRange().getStart().getLine();
+      var rangeStartLineOffset = textChange.getRange().getStart().getCharacter();
+      var rangeEndLine = textChange.getRange().getEnd().getLine();
+      var rangeEndLineOffset = textChange.getRange().getEnd().getCharacter();
+
+      while (currentLine < rangeStartLine) {
+        modifiedLines.add(cellLines.get(currentLine));
+        currentLine++;
+      }
+      String replacementRange;
+      if (currentLine < cellLines.size()) {
+        replacementRange =
+          cellLines.get(currentLine).substring(0, rangeStartLineOffset) +
+            textChange.getText() +
+            cellLines.get(rangeEndLine).substring(rangeEndLineOffset);
+      } else {
+        // Newline added
+        replacementRange = textChange.getText();
+      }
+
+      if (!replacementRange.isEmpty()) {
+        modifiedLines.add(replacementRange);
+      }
+      currentLine = rangeEndLine + 1;
     }
 
-    if (!replacementRange.isEmpty()) {
-      modifiedLines.add(replacementRange);
-    }
-    currentLine = rangeEndLine + 1;
     while (currentLine < cellLines.size()) {
       modifiedLines.add(cellLines.get(currentLine));
       currentLine++;
     }
+
     return String.join("\n", modifiedLines);
   }
 }

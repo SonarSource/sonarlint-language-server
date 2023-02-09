@@ -167,7 +167,7 @@ public class VersionedOpenNotebook {
       var cell = cells.get(changedCellUri);
       cell.setVersion(textContent.getDocument().getVersion());
 
-      cell.setText(applyChangeToCellContent(cell, textContent.getChanges().get(0)));
+      cell.setText(applyChangeToCellContent(cell, textContent.getChanges()));
     });
   }
 }

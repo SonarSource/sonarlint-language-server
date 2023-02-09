@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.notebooks;
 
+import java.util.List;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
@@ -43,7 +44,7 @@ class NotebookUtilsTest {
   void shouldApplySingleLineChangeOnTheFirstLine() {
     var textChange = newChange(0, 1, 0, 4, "a");
 
-    var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, textChange);
+    var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange));
     var expectedNewContent = "pat(\"hello\")\n" +
       "\n" +
       "a = True\n" +
@@ -56,7 +57,7 @@ class NotebookUtilsTest {
   void shouldApplySingleLineChangeOnTheSecondLine() {
     var textChange = newChange(1, 0, 1, 0, "c = 42");
 
-    var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, textChange);
+    var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange));
     var expectedNewContent = "print(\"hello\")\n" +
       "c = 42\n" +
       "a = True\n" +
@@ -66,10 +67,24 @@ class NotebookUtilsTest {
   }
 
   @Test
+  void shouldApplyTwoSingleLineChangesOnDifferentLines() {
+    var firstChange = newChange(3, 4, 3, 9, "0");
+    var secondChange = newChange(2, 4, 2, 8, "1");
+
+    var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(firstChange, secondChange));
+    var expectedNewContent = "print(\"hello\")\n" +
+      "\n" +
+      "a = 1\n" +
+      "b = 0";
+
+    assertThat(changedContent).isEqualTo(expectedNewContent);
+  }
+
+  @Test
   void shouldApplySingleLineChangeAtTheEndOfFile() {
     var textChange = newChange(3, 1 ,3, 1, "oo");
 
-    var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, textChange);
+    var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange));
     var expectedNewContent = "print(\"hello\")\n" +
       "\n" +
       "a = True\n" +
@@ -82,7 +97,7 @@ class NotebookUtilsTest {
   void shouldApplyMultiLineDeletion() {
     var textChange = newChange(1, 0, 2, 8, "");
 
-    var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, textChange);
+    var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange));
     var expectedNewContent = "print(\"hello\")\n" +
       "b = False";
 
@@ -93,7 +108,7 @@ class NotebookUtilsTest {
   void shouldApplyMultiLineChangeWithEmptyLine() {
     var textChange = newChange(1, 0, 2, 8, "\n");
 
-    var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, textChange);
+    var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange));
     var expectedNewContent = "print(\"hello\")\n" +
       "\n" +
       "\n" +
@@ -106,7 +121,7 @@ class NotebookUtilsTest {
   void shouldAddAndDeleteLastLine() {
     var textChange = newChange(3, 9, 3, 9, "\n");
 
-    String changedContent = NotebookUtils.applyChangeToCellContent(originalCell, textChange);
+    String changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange));
     String expectedNewContent = "print(\"hello\")\n" +
       "\n" +
       "a = True\n" +
@@ -117,7 +132,7 @@ class NotebookUtilsTest {
 
     textChange = newChange(3, 9, 4, 0, "");
 
-    changedContent = NotebookUtils.applyChangeToCellContent(originalCell, textChange);
+    changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange));
     expectedNewContent = "print(\"hello\")\n" +
       "\n" +
       "a = True\n" +
