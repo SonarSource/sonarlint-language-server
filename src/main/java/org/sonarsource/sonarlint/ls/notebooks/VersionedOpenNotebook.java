@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.eclipse.jgit.notes.Note;
@@ -70,7 +71,7 @@ public class VersionedOpenNotebook {
     }
     var lineCount = 1;
     for (var cell: orderedCells) {
-      var cellLines = cell.getText().split("\n");
+      var cellLines = cell.getText().split("\n", -1);
       for (var cellLineCount = 1; cellLineCount <= cellLines.length; cellLineCount ++) {
         fileLineToCell.put(lineCount, cell);
         virtualFileLineToCellLine.put(lineCount, cellLineCount);
@@ -104,6 +105,9 @@ public class VersionedOpenNotebook {
 
   public int getNotebookVersion() {
     return this.notebookVersion;
+  }
+  public Set<String> getCells() {
+    return cells.keySet();
   }
 
   public Optional<URI> getCellUri(int lineNumber) {

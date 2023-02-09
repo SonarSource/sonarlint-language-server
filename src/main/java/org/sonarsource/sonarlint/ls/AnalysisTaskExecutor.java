@@ -301,6 +301,7 @@ public class AnalysisTaskExecutor {
     filesToAnalyze.forEach((fileUri, openFile) -> {
       issuesCache.analysisStarted(openFile);
       securityHotspotsCache.analysisStarted(openFile);
+      notebookDiagnosticPublisher.cleanupCellsList(fileUri);
       if (binding.isEmpty()) {
         // Clear taint vulnerabilities if the folder was previously bound and just now changed to standalone
         taintVulnerabilitiesCache.clear(fileUri);

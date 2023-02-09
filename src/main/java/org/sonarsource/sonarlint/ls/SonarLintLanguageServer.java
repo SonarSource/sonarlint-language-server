@@ -198,6 +198,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
     this.notebookDiagnosticPublisher = new NotebookDiagnosticPublisher(client, issuesCache);
     this.openNotebooksCache = new OpenNotebooksCache(lsLogOutput, notebookDiagnosticPublisher);
+    this.notebookDiagnosticPublisher.setOpenNotebooksCache(openNotebooksCache);
     this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache, securityHotspotsCache, openNotebooksCache);
     this.progressManager = new ProgressManager(client);
     var vsCodeClient = new SonarLintVSCodeClient(client, httpClientProvider);

@@ -20,7 +20,10 @@
 package org.sonarsource.sonarlint.ls.notebooks;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
@@ -38,10 +41,16 @@ public class NotebookDiagnosticPublisher {
   private final SonarLintExtendedLanguageClient client;
 
   private final IssuesCache issuesCache;
+  private final Map<URI, List<URI>> notebookCellsWithIssues = new HashMap<>();
+  private OpenNotebooksCache openNotebooksCache;
 
   public NotebookDiagnosticPublisher(SonarLintExtendedLanguageClient client, IssuesCache issuesCache) {
     this.client = client;
     this.issuesCache = issuesCache;
+  }
+
+  public void setOpenNotebooksCache(OpenNotebooksCache openNotebooksCache) {
+    this.openNotebooksCache = openNotebooksCache;
   }
 
   static Diagnostic convertCellIssue(Map.Entry<String, DelegatingCellIssue> entry) {
@@ -61,7 +70,6 @@ public class NotebookDiagnosticPublisher {
   }
 
   public void publishNotebookDiagnostics(URI uri, VersionedOpenNotebook versionedOpenNotebook) {
-    // TODO call this either at the end of analysis or during issue listener. Put in a set a list of cellUris that have issues.
     var p = new PublishDiagnosticsParams();
 
     Map<String, VersionedIssue> localIssues = issuesCache.get(uri);
@@ -70,7 +78,18 @@ public class NotebookDiagnosticPublisher {
       .stream()
       .map(entry -> Map.entry(entry.getKey(), versionedOpenNotebook.toCellIssue(entry.getValue().getIssue())))
       .map(NotebookDiagnosticPublisher::convertCellIssue)
-      .collect(groupingBy(diagnostic -> versionedOpenNotebook.getCellUri(localIssues.get(diagnostic.getData()).getIssue().getStartLine()).get()));
+      .collect(groupingBy(diagnostic -> {
+        var cellUri = versionedOpenNotebook.getCellUri(localIssues.get(diagnostic.getData()).getIssue().getStartLine()).get();
+        var cellsWithIssues = notebookCellsWithIssues.get(uri);
+        if(cellsWithIssues != null && !cellsWithIssues.isEmpty()) {
+          cellsWithIssues.add(cellUri);
+        } else {
+          var cells = new ArrayList<URI>();
+          cells.add(cellUri);
+          notebookCellsWithIssues.put(uri, cells);
+        }
+        return cellUri;
+      }));
 
     localDiagnostics.forEach((cellUri, diagnostics) -> {
       p.setDiagnostics(diagnostics);
@@ -87,7 +106,16 @@ public class NotebookDiagnosticPublisher {
   }
 
   public void cleanupDiagnostics(URI notebookUri) {
-    // TODO call this at the end of analysis
-    // check if, for the notebook, any uri does not have an issue and publish empty diags
+    var versionedOpenNotebook = openNotebooksCache.getFile(notebookUri);
+    var cellsWithIssues = notebookCellsWithIssues.get(notebookUri);
+    versionedOpenNotebook.ifPresent(notebook -> notebook.getCells().forEach(cellUri -> {
+      if(!cellsWithIssues.contains(URI.create(cellUri))){
+        removeCellDiagnostics(URI.create(cellUri));
+      }
+    }));
+  }
+
+  public void cleanupCellsList(URI notebookUri) {
+    this.notebookCellsWithIssues.remove(notebookUri);
   }
 }
