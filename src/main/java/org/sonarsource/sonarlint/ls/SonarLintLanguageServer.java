@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -401,6 +402,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didOpen(DidOpenTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
+    if(openNotebooksCache.getFile(uri).isPresent()){
+      return;
+    }
     client.isOpenInEditor(uri.toString()).thenAccept(isOpen -> {
       if (Boolean.TRUE.equals(isOpen)) {
         var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
@@ -485,8 +489,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didOpen(DidOpenNotebookDocumentParams params) {
+    var notebookUri = create(params.getNotebookDocument().getUri());
+    if(openFilesCache.getFile(notebookUri).isPresent()){
+      openFilesCache.didClose(notebookUri);
+    }
     var notebookFile =
-      openNotebooksCache.didOpen(create(params.getNotebookDocument().getUri()), params.getNotebookDocument().getVersion(), params.getCellTextDocuments());
+      openNotebooksCache.didOpen(notebookUri, params.getNotebookDocument().getVersion(), params.getCellTextDocuments());
     analysisScheduler.didOpen(notebookFile.asVersionedOpenFile());
   }
 

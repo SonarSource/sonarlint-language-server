@@ -109,7 +109,7 @@ public class NotebookDiagnosticPublisher {
     var versionedOpenNotebook = openNotebooksCache.getFile(notebookUri);
     var cellsWithIssues = notebookCellsWithIssues.getOrDefault(notebookUri, List.of());
     versionedOpenNotebook.ifPresent(notebook -> notebook.getCells().forEach(cellUri -> {
-      if(!cellsWithIssues.contains(URI.create(cellUri))){
+      if(cellsWithIssues != null && !cellsWithIssues.contains(URI.create(cellUri))){
         removeCellDiagnostics(URI.create(cellUri));
       }
     }));
