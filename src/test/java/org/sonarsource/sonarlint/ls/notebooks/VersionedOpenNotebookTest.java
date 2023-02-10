@@ -27,9 +27,14 @@ import java.util.List;
 import org.eclipse.lsp4j.NotebookCellArrayChange;
 import org.eclipse.lsp4j.NotebookDocumentChangeEvent;
 import org.eclipse.lsp4j.NotebookDocumentChangeEventCellStructure;
+import org.eclipse.lsp4j.NotebookDocumentChangeEventCellTextContent;
 import org.eclipse.lsp4j.NotebookDocumentChangeEventCells;
+import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
+import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
@@ -293,6 +298,41 @@ class VersionedOpenNotebookTest {
       "cell3 line2\n");
     assertThat(underTest.getCellUri(2)).contains(URI.create(tmpUri + "#cell1"));
     assertThat(underTest.getCellUri(5)).contains(URI.create(tmpUri + "#cell2"));
+  }
+
+  @Test
+  void shouldHandleContentChange() {
+    var tmpUri = URI.create("file:///some/notebook.ipynb");
+    var underTest = createTestNotebookWithThreeCells(tmpUri);
+
+    var changeEvent = new NotebookDocumentChangeEvent();
+    var changeEventCells = new NotebookDocumentChangeEventCells();
+    var textContents = new NotebookDocumentChangeEventCellTextContent();
+    var documentIdentifier = new VersionedTextDocumentIdentifier();
+    var change = new TextDocumentContentChangeEvent();
+
+    documentIdentifier.setVersion(2);
+    documentIdentifier.setUri(tmpUri + "#cell2");
+    textContents.setDocument(documentIdentifier);
+    change.setRange(new Range(new Position(1, 6), new Position(1, 10)));
+    change.setText("hola");
+
+    textContents.setChanges(List.of(change));
+    changeEventCells.setTextContent(List.of(textContents));
+    changeEvent.setCells(changeEventCells);
+
+    underTest.didChange(2, changeEvent);
+
+    assertThat(underTest.getNotebookVersion()).isEqualTo(2);
+    assertThat(underTest.getContent()).isEqualTo("" +
+      "cell1 line1\n" +
+      "cell1 line2\n" +
+      "\n" +
+      "cell2 line1\n" +
+      "cell2 hola2\n" +
+      "\n" +
+      "cell3 line1\n" +
+      "cell3 line2\n");
   }
 
   VersionedOpenNotebook createTestNotebookWithThreeCells(URI tmpUri) {
