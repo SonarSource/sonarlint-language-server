@@ -153,6 +153,7 @@ public class VersionedOpenNotebook {
   }
 
   public void didChange(int version, NotebookDocumentChangeEvent changeEvent) {
+    // TODO should we update the version only after the actual change was successful?
     this.notebookVersion = version;
     if(changeEvent.getCells() != null && changeEvent.getCells().getStructure() != null && !changeEvent.getCells().getStructure().getDidClose().isEmpty()) {
       handleCellDeletion(changeEvent.getCells().getStructure().getDidClose());
