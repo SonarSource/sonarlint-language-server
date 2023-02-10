@@ -70,25 +70,25 @@ public class DelegatingCellIssue implements Issue {
   @CheckForNull
   @Override
   public Integer getStartLine() {
-    return textRange.getStartLine();
+    return textRange != null ? textRange.getStartLine() : null;
   }
 
   @CheckForNull
   @Override
   public Integer getStartLineOffset() {
-    return textRange.getStartLineOffset();
+    return textRange != null ? textRange.getStartLineOffset() : null;
   }
 
   @CheckForNull
   @Override
   public Integer getEndLine() {
-    return textRange.getEndLine();
+    return textRange != null ? textRange.getEndLine() : null;
   }
 
   @CheckForNull
   @Override
   public Integer getEndLineOffset() {
-    return textRange.getEndLineOffset();
+    return textRange != null ? textRange.getEndLineOffset() : null;
   }
 
   @Override
