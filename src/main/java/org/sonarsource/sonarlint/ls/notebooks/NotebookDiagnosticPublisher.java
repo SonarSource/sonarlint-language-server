@@ -79,7 +79,13 @@ public class NotebookDiagnosticPublisher {
       .map(entry -> Map.entry(entry.getKey(), versionedOpenNotebook.toCellIssue(entry.getValue().getIssue())))
       .map(NotebookDiagnosticPublisher::convertCellIssue)
       .collect(groupingBy(diagnostic -> {
-        var cellUri = versionedOpenNotebook.getCellUri(localIssues.get(diagnostic.getData()).getIssue().getStartLine()).get();
+        var localIssue = localIssues.get(diagnostic.getData().toString());
+        var cellUri = URI.create("");
+        if(localIssue != null && localIssue.getIssue() != null && localIssue.getIssue().getStartLine() != null){
+          // Better to not publish any diagnostics than to publish for wrong location
+          cellUri = versionedOpenNotebook.getCellUri(localIssue.getIssue().getStartLine()).orElse(URI.create(""));
+        }
+
         var cellsWithIssues = notebookCellsWithIssues.get(uri);
         if(cellsWithIssues != null && !cellsWithIssues.isEmpty()) {
           cellsWithIssues.add(cellUri);

@@ -118,16 +118,19 @@ public class VersionedOpenNotebook {
 
   public DelegatingCellIssue toCellIssue(Issue issue) {
     indexCellsByLineNumber();
-    var fileStartLine = issue.getTextRange().getStartLine();
-    var fileStartLineOffset = issue.getTextRange().getStartLineOffset();
-    var fileEndLine = issue.getTextRange().getEndLine();
-    var fileEndLineOffset = issue.getTextRange().getEndLineOffset();
+    var issueTextRange = issue.getTextRange();
+    TextRange cellTextRange = null;
+    if(issueTextRange != null){
+      var fileStartLine = issueTextRange.getStartLine();
+      var fileStartLineOffset = issueTextRange.getStartLineOffset();
+      var fileEndLine = issueTextRange.getEndLine();
+      var fileEndLineOffset = issueTextRange.getEndLineOffset();
 
-    var cellStartLine = virtualFileLineToCellLine.get(fileStartLine);
-    var cellEndLine = virtualFileLineToCellLine.get(fileEndLine);
+      var cellStartLine = virtualFileLineToCellLine.get(fileStartLine);
+      var cellEndLine = virtualFileLineToCellLine.get(fileEndLine);
 
-    var cellTextRange = new TextRange(cellStartLine, fileStartLineOffset, cellEndLine, fileEndLineOffset);
-
+      cellTextRange = new TextRange(cellStartLine, fileStartLineOffset, cellEndLine, fileEndLineOffset);
+    }
     return new DelegatingCellIssue(issue, cellTextRange);
   }
 
