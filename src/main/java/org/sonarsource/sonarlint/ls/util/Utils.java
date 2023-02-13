@@ -23,6 +23,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonSyntaxException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
@@ -52,6 +53,9 @@ public class Utils {
 
   private static final Pattern MATCH_ALL_WHITESPACES = Pattern.compile("\\s");
   private static final String MESSAGE_WITH_PLURALIZED_SUFFIX = "%s [+%d %s]";
+  private static final String VSCODE_NOTEBOOK_CELL_SCHEME = "vscode-notebook-cell";
+  private static final String FILE_SCHEME = "file";
+
 
   private Utils() {
   }
@@ -172,8 +176,17 @@ public class Utils {
     return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issueMessage, nbItems, pluralize(nbItems, itemName));
   }
 
-  public static boolean uriHasFileSchema(URI uri) {
-    return uri.getScheme().equalsIgnoreCase("file");
+  public static boolean uriHasFileScheme(URI uri) {
+    return uri.getScheme().equalsIgnoreCase(FILE_SCHEME);
+  }
+
+  public static boolean uriHasNotebookCellScheme(URI uri) {
+    return uri.getScheme().equalsIgnoreCase(VSCODE_NOTEBOOK_CELL_SCHEME);
+  }
+
+  public static URI getNotebookUriFromCellUri(URI cellUri) {
+    var rawPath = cellUri.getRawPath();
+    return URI.create("file://" + rawPath);
   }
 
   public static String hash(String codeSnippet) {

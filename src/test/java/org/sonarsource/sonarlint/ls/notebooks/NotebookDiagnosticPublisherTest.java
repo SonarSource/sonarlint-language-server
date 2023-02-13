@@ -205,7 +205,7 @@ class NotebookDiagnosticPublisherTest {
     when(issue.flows()).thenReturn(List.of(mock(Flow.class)));
     when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
 
-    return new DelegatingCellIssue(issue, textRange);
+    return new DelegatingCellIssue(issue, textRange, Collections.emptyList());
   }
 
   private DelegatingCellIssue createFakeMinorIssue() {
@@ -223,6 +223,6 @@ class NotebookDiagnosticPublisherTest {
     when(issue.flows()).thenReturn(List.of(mock(Flow.class)));
     when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
 
-    return new DelegatingCellIssue(issue, textRange);
+    return new DelegatingCellIssue(issue, textRange, Collections.emptyList());
   }
 }

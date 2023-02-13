@@ -29,16 +29,21 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.NotebookDocumentChangeEvent;
 import org.eclipse.lsp4j.NotebookDocumentChangeEventCellTextContent;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
+import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
+import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.ls.AnalysisClientInputFile;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
+import org.sonarsource.sonarlint.ls.folders.InFolderClientInputFile;
 import org.sonarsource.sonarlint.ls.util.FileUtils;
 
 import static org.sonarsource.sonarlint.ls.notebooks.NotebookUtils.applyChangeToCellContent;
@@ -119,6 +124,8 @@ public class VersionedOpenNotebook {
   public DelegatingCellIssue toCellIssue(Issue issue) {
     indexCellsByLineNumber();
     var issueTextRange = issue.getTextRange();
+    var originalQuickFixes = issue.quickFixes();
+    var convertedQuickFixes = new ArrayList<QuickFix>();
     TextRange cellTextRange = null;
     if(issueTextRange != null){
       var fileStartLine = issueTextRange.getStartLine();
@@ -131,7 +138,32 @@ public class VersionedOpenNotebook {
 
       cellTextRange = new TextRange(cellStartLine, fileStartLineOffset, cellEndLine, fileEndLineOffset);
     }
-    return new DelegatingCellIssue(issue, cellTextRange);
+    if(originalQuickFixes != null && !originalQuickFixes.isEmpty()) {
+      AtomicReference<URI> textEditCellUri = new AtomicReference<>();
+      for (QuickFix quickFix : originalQuickFixes) {
+        var newFileEdits = quickFix.inputFileEdits().stream().map(fileEdit -> {
+
+          var newTextEdits = fileEdit.textEdits().stream().map(textEdit -> {
+            var fileStartLine = textEdit.range().getStartLine();
+            var fileStartLineOffset = textEdit.range().getStartLineOffset();
+            var fileEndLine = textEdit.range().getEndLine();
+            var fileEndLineOffset = textEdit.range().getEndLineOffset();
+
+            var cellStartLine = virtualFileLineToCellLine.get(fileStartLine);
+            var cellEndLine = virtualFileLineToCellLine.get(fileEndLine);
+            textEditCellUri.set(URI.create(fileLineToCell.get(fileStartLine).getUri()));
+
+            var newTextRange = new TextRange(cellStartLine, fileStartLineOffset, cellEndLine, fileEndLineOffset);
+            return new TextEdit(newTextRange, textEdit.newText());
+          }).collect(Collectors.toList());
+          var clientInputFile = new InFolderClientInputFile(textEditCellUri.get(), null, false);
+          return new ClientInputFileEdit(clientInputFile, newTextEdits);
+        }).collect(Collectors.toList());
+        var convertedQuickFix = new QuickFix(newFileEdits, quickFix.message());
+        convertedQuickFixes.add(convertedQuickFix);
+      }
+    }
+    return new DelegatingCellIssue(issue, cellTextRange, convertedQuickFixes);
   }
 
   public void didChange(int version, NotebookDocumentChangeEvent changeEvent) {

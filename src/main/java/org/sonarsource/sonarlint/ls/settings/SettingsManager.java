@@ -418,7 +418,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       LOG.warn("Using ${workspaceFolder} variable in sonarlint.pathToCompileCommands is only supported for files in the workspace");
       return pathToCompileCommands;
     }
-    if (!Utils.uriHasFileSchema(workspaceFolderUri)) {
+    if (!Utils.uriHasFileScheme(workspaceFolderUri)) {
       LOG.error("Workspace folder is not in local filesystem, analysis not supported.");
       return null;
     }

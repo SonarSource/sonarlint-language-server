@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls;
 
 import com.google.gson.JsonPrimitive;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -31,6 +32,8 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
+
+import static org.sonarsource.sonarlint.ls.util.Utils.getNotebookUriFromCellUri;
 
 public class IssuesCache {
 
@@ -49,12 +52,6 @@ public class IssuesCache {
   public void reportIssue(VersionedOpenFile versionedOpenFile, Issue issue) {
     inProgressAnalysisIssuesPerIdPerFileURI.computeIfAbsent(versionedOpenFile.getUri(), u -> new HashMap<>()).put(UUID.randomUUID().toString(),
       new VersionedIssue(issue, versionedOpenFile.getVersion()));
-  }
-
-  public void reportCellIssue(VersionedOpenNotebook versionedOpenNotebook, Issue issue, URI cellUri) {
-    var cellIssue = versionedOpenNotebook.toCellIssue(issue);
-    inProgressAnalysisIssuesPerIdPerFileURI.computeIfAbsent(cellUri, u -> new HashMap<>()).put(UUID.randomUUID().toString(),
-      new VersionedIssue(cellIssue, versionedOpenNotebook.getNotebookVersion()));
   }
 
   public int count(URI f) {
@@ -83,6 +80,12 @@ public class IssuesCache {
       .map(JsonPrimitive::getAsString)
       .map(issuesForFile::get)
       .filter(Objects::nonNull);
+  }
+
+  public Optional<VersionedIssue> getCellIssueForDiagnostic(URI cellUri, Diagnostic diagnostic) {
+    URI notebookUri;
+    notebookUri = getNotebookUriFromCellUri(cellUri);
+    return getIssueForDiagnostic(notebookUri, diagnostic);
   }
 
   public static class VersionedIssue {

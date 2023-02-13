@@ -166,7 +166,7 @@ public class WorkspaceFoldersManager {
     if (folderUri.getPort() != fileUri.getPort()) {
       return false;
     }
-    if (Utils.uriHasFileSchema(folderUri)) {
+    if (Utils.uriHasFileScheme(folderUri)) {
       return Paths.get(fileUri).startsWith(Paths.get(folderUri));
     }
     // Assume "/" is the separator of "folders"

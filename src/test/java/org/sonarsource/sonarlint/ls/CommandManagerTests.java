@@ -77,6 +77,7 @@ import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -125,6 +126,7 @@ class CommandManagerTests {
   private IssuesCache securityHotspotsCache;
   private BackendServiceFacade backendServiceFacade;
   private WorkspaceFoldersManager workspaceFoldersManager;
+  private OpenNotebooksCache openNotebooksCache;
 
   @BeforeEach
   public void prepareMocks() {
@@ -146,8 +148,11 @@ class CommandManagerTests {
     securityHotspotsCache = mock(IssuesCache.class);
     backendServiceFacade = mock(BackendServiceFacade.class);
     workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
+    openNotebooksCache = mock(OpenNotebooksCache.class);
 
-    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, serverSynchronizer, mockTelemetry, standaloneEngineManager, mockTaintVulnerabilitiesCache, issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager);
+    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, serverSynchronizer, mockTelemetry,
+      standaloneEngineManager, mockTaintVulnerabilitiesCache,
+      issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, openNotebooksCache);
   }
 
   @Test

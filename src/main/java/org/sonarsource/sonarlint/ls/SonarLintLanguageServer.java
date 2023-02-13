@@ -238,7 +238,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) analysisScheduler);
     this.serverSynchronizer = new ServerSynchronizer(client, progressManager, bindingManager, analysisScheduler);
     this.commandManager = new CommandManager(client, settingsManager, bindingManager, serverSynchronizer, telemetry, standaloneEngineManager, taintVulnerabilitiesCache,
-      issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager);
+      issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, openNotebooksCache);
     this.taintVulnerabilityRaisedNotification = new TaintVulnerabilityRaisedNotification(client, commandManager);
     this.serverSentEventsHandler = new ServerSentEventsHandler(bindingManager, taintVulnerabilitiesCache,
       taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager);

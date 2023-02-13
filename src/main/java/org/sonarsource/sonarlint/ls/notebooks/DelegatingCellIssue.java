@@ -36,13 +36,15 @@ public class DelegatingCellIssue implements Issue {
   private final RuleType type;
   private final IssueSeverity severity;
   private final TextRange textRange;
+  private final List<QuickFix> quickFixes;
 
-  DelegatingCellIssue(Issue issue, TextRange textRange) {
+  DelegatingCellIssue(Issue issue, TextRange textRange, List<QuickFix> quickFixes) {
     var userSeverity = issue.getSeverity();
     this.issue = issue;
     this.severity = userSeverity != null ? userSeverity : this.issue.getSeverity();
     this.type = issue.getType();
     this.textRange = textRange;
+    this.quickFixes = quickFixes;
   }
 
   @Override
@@ -110,7 +112,7 @@ public class DelegatingCellIssue implements Issue {
 
   @Override
   public List<QuickFix> quickFixes() {
-    return issue.quickFixes();
+    return quickFixes;
   }
 
   @Override
