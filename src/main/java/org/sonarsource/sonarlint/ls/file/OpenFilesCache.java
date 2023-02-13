@@ -41,7 +41,7 @@ public class OpenFilesCache {
   }
 
   public VersionedOpenFile didOpen(URI fileUri, String languageId, String fileContent, int version) {
-    var file = new VersionedOpenFile(fileUri, languageId, version, fileContent, false);
+    var file = new VersionedOpenFile(fileUri, languageId, version, fileContent);
     openFilesPerFileURI.put(fileUri, file);
     return file;
   }
@@ -50,7 +50,7 @@ public class OpenFilesCache {
     if (!openFilesPerFileURI.containsKey(fileUri)) {
       lsLogOutput.warn(format("Illegal state. File '%s' is reported changed but we missed the open notification", fileUri));
     }
-    openFilesPerFileURI.computeIfPresent(fileUri, (uri, previous) -> new VersionedOpenFile(uri, previous.getLanguageId(), version, fileContent, false));
+    openFilesPerFileURI.computeIfPresent(fileUri, (uri, previous) -> new VersionedOpenFile(uri, previous.getLanguageId(), version, fileContent));
   }
 
   public void didClose(URI fileUri) {

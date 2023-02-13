@@ -101,7 +101,6 @@ class VersionedOpenNotebookTest {
       "cell3 line1\n" +
       "cell3 line2\n");
     assertThat(versionedOpenFile.getLanguageId()).isEqualTo(PYTHON_LANGUAGE);
-    assertThat(versionedOpenFile.isNotebook()).isTrue();
   }
 
   @Test

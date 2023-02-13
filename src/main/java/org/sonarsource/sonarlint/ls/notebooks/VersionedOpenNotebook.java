@@ -94,7 +94,7 @@ public class VersionedOpenNotebook {
 
   public VersionedOpenFile asVersionedOpenFile() {
     // TODO change to ipynb language
-    return new VersionedOpenFile(uri, "python", this.notebookVersion, getContent(), true);
+    return new VersionedOpenFile(uri, "python", this.notebookVersion, getContent());
   }
 
   String getContent() {
