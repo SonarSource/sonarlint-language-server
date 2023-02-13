@@ -215,7 +215,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, globalLogOutput,
-      taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade);
+      taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, openNotebooksCache);
     this.settingsManager.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(httpClientProvider, settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager);
     this.settingsManager.addListener(telemetry);
@@ -402,7 +402,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didOpen(DidOpenTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
-    if(openNotebooksCache.getFile(uri).isPresent()){
+    if(openNotebooksCache.isNotebook(uri)){
       return;
     }
     client.isOpenInEditor(uri.toString()).thenAccept(isOpen -> {

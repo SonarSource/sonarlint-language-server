@@ -65,7 +65,6 @@ import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
-import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
