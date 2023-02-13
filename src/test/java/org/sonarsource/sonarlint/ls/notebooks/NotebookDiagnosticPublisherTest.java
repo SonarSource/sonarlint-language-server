@@ -117,7 +117,7 @@ class NotebookDiagnosticPublisherTest {
 
     notebookDiagnosticPublisher.publishNotebookDiagnostics(notebookUri, fakeNotebook);
 
-    verify(client, times(2)).publishDiagnostics(any(PublishDiagnosticsParams.class));
+    verify(client, times(1)).publishDiagnostics(any(PublishDiagnosticsParams.class));
   }
 
   @Test
