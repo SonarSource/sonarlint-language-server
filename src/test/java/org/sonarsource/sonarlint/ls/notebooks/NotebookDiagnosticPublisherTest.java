@@ -155,6 +155,41 @@ class NotebookDiagnosticPublisherTest {
     verify(client, times(1)).publishDiagnostics(p2);
   }
 
+  @Test
+  void shouldCleanUpDiagnostics() {
+    var notebookUri = URI.create("file:///some/notebook.ipynb");
+
+    var cell1 = new TextDocumentItem();
+    cell1.setUri(notebookUri + "#cell1");
+    cell1.setText("cell1 line1\ncell1 line2\n");
+
+    var cell2 = new TextDocumentItem();
+    cell2.setUri(notebookUri+ "#cell2");
+    cell2.setText("cell2 line1\ncell2 line2\n");
+    var fakeNotebook = VersionedOpenNotebook.create(notebookUri, 1, List.of(cell1, cell2), mock(NotebookDiagnosticPublisher.class));
+
+
+    var issue1 = createFakeBlockerIssue();
+    var issue2 = createFakeMinorIssue();
+    var localIssues = Map.of(UUID.randomUUID().toString(), new IssuesCache.VersionedIssue(issue1, 1),
+      UUID.randomUUID().toString(), new IssuesCache.VersionedIssue(issue2, 1));
+
+
+    when(issuesCache.get(notebookUri)).thenReturn(localIssues);
+    when(openNotebooksCache.getFile(notebookUri)).thenReturn(Optional.of(fakeNotebook));
+
+    // populate notebookCellsWithIssues map
+    notebookDiagnosticPublisher.publishNotebookDiagnostics(notebookUri, fakeNotebook);
+
+    notebookDiagnosticPublisher.cleanupDiagnostics(notebookUri);
+
+    var p2 = new PublishDiagnosticsParams();
+    p2.setDiagnostics(Collections.emptyList());
+    p2.setUri(cell2.getUri());
+
+    verify(client, times(1)).publishDiagnostics(p2);
+  }
+
   private DelegatingCellIssue createFakeBlockerIssue() {
     var issue = mock(Issue.class);
     TextRange textRange = new TextRange(2, 0, 2, 5);
