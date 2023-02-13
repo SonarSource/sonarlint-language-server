@@ -61,6 +61,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -158,7 +159,7 @@ class ServerSynchronizerTests {
     taintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
     diagnosticPublisher = mock(DiagnosticPublisher.class);
     bindingManager = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, mock(LanguageClientLogOutput.class),
-      taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade);
+      taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, mock(OpenNotebooksCache.class));
     syncTimer = mock(Timer.class);
     var syncTaskCaptor = ArgumentCaptor.forClass(TimerTask.class);
     underTest = new ServerSynchronizer(client, new ProgressManager(client), bindingManager, analysisManager, syncTimer);

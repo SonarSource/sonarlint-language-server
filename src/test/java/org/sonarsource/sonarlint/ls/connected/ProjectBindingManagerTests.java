@@ -55,6 +55,8 @@ import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerServ
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
@@ -122,6 +124,7 @@ class ProjectBindingManagerTests {
   private final DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
   private final ServerSentEventsHandlerService serverSentEventsHandlerService = mock(ServerSentEventsHandlerService.class);
   private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
+  private final OpenNotebooksCache openNotebooksCache = mock(OpenNotebooksCache.class);
 
   @BeforeEach
   public void prepare() throws IOException, ExecutionException, InterruptedException {
@@ -151,8 +154,10 @@ class ProjectBindingManagerTests {
     folderBindingCache = new ConcurrentHashMap<>();
     TaintVulnerabilitiesCache taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
 
+    when(openNotebooksCache.getFile(any(URI.class))).thenReturn(Optional.empty());
+
     underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, folderBindingCache, null,
-      taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade);
+      taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, openNotebooksCache);
     underTest.setAnalysisManager(analysisManager);
     underTest.setServerSentEventsHandler(serverSentEventsHandlerService);
     underTest.setBranchResolver(uri -> Optional.of("main"));
@@ -179,6 +184,12 @@ class ProjectBindingManagerTests {
   @Test
   void get_binding_returns_empty_for_non_file_uri() {
     assertThat(underTest.getBinding(URI.create("not-a-file-scheme://definitely.not/a/file"))).isEmpty();
+  }
+
+  @Test
+  void get_binding_returns_empty_for_notebook() {
+    when(openNotebooksCache.getFile(fileInAWorkspaceFolderPath.toUri())).thenReturn(Optional.of(mock(VersionedOpenNotebook.class)));
+    assertThat(underTest.getBinding(fileInAWorkspaceFolderPath.toUri())).isEmpty();
   }
 
   @Test

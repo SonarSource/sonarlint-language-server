@@ -45,6 +45,7 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.DidUpdateBindingParams;
+import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
 import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
@@ -61,6 +62,7 @@ import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerServ
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.progress.NoOpProgressFacade;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings.EndpointParamsAndHttpClient;
@@ -98,17 +100,19 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final DiagnosticPublisher diagnosticPublisher;
   private BackendServiceFacade backendServiceFacade;
   private ServerSentEventsHandlerService serverSentEventsHandler;
+  private OpenNotebooksCache openNotebooksCache;
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
-    LanguageClientLogOutput globalLogOutput,
-    TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher, BackendServiceFacade backendServiceFacade) {
-    this(enginesFactory, foldersManager, settingsManager, client,
-      new ConcurrentHashMap<>(), globalLogOutput, taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade);
+                               LanguageClientLogOutput globalLogOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher,
+                               BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache) {
+    this(enginesFactory, foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput, taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade,
+      openNotebooksCache);
   }
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
                                ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput,
-                               TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher, BackendServiceFacade backendServiceFacade) {
+                               TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher, BackendServiceFacade backendServiceFacade,
+                               OpenNotebooksCache openNotebooksCache) {
     this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
@@ -118,6 +122,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.diagnosticPublisher = diagnosticPublisher;
     this.backendServiceFacade = backendServiceFacade;
+    this.openNotebooksCache = openNotebooksCache;
   }
 
   // Can't use constructor injection because of cyclic dependency
@@ -150,7 +155,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
    * @return empty if the file is unbound
    */
   public Optional<ProjectBindingWrapper> getBinding(URI fileUri) {
-    if (!uriHasFileSchema(fileUri)) {
+    if (!uriHasFileSchema(fileUri) || openNotebooksCache.isNotebook(fileUri)) {
+      if (globalLogOutput != null) {
+        globalLogOutput.log("Ignoring connected mode settings for unsupported URI: " + fileUri, ClientLogOutput.Level.DEBUG);
+      }
       return Optional.empty();
     }
     var folder = foldersManager.findFolderForFile(fileUri);

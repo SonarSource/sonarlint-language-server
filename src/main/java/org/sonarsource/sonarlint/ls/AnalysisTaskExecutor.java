@@ -67,6 +67,7 @@ import org.sonarsource.sonarlint.ls.util.FileUtils;
 
 import static java.lang.String.format;
 import static java.util.Optional.ofNullable;
+import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.partitioningBy;
@@ -131,7 +132,7 @@ public class AnalysisTaskExecutor {
   }
 
   private void analyze(AnalysisTask task) {
-    var filesToAnalyze = task.getFilesToAnalyze().stream().collect(Collectors.toMap(VersionedOpenFile::getUri, f -> f));
+    var filesToAnalyze = task.getFilesToAnalyze().stream().collect(Collectors.toMap(VersionedOpenFile::getUri, identity()));
 
     var scmIgnored = filesToAnalyze.keySet().stream()
       .filter(this::scmIgnored)
@@ -144,7 +145,7 @@ public class AnalysisTaskExecutor {
     });
 
     var filesToAnalyzePerFolder = filesToAnalyze.entrySet().stream()
-      .collect(groupingBy(entry -> workspaceFoldersManager.findFolderForFile(entry.getKey()), mapping(Entry::getValue, toMap(VersionedOpenFile::getUri, f -> f))));
+      .collect(groupingBy(entry -> workspaceFoldersManager.findFolderForFile(entry.getKey()), mapping(Entry::getValue, toMap(VersionedOpenFile::getUri, identity()))));
     filesToAnalyzePerFolder.forEach((folder, filesToAnalyzeInFolder) -> analyze(task, folder, filesToAnalyzeInFolder));
   }
 
@@ -161,14 +162,28 @@ public class AnalysisTaskExecutor {
 
   private void analyze(AnalysisTask task, Optional<WorkspaceFolderWrapper> workspaceFolder, Map<URI, VersionedOpenFile> filesToAnalyze) {
     if (workspaceFolder.isPresent()) {
-      // We can only have the same binding for a given folder
+
+      var notebooksToAnalyze = new HashMap<URI, VersionedOpenFile>();
+      var nonNotebooksToAnalyze = new HashMap<URI, VersionedOpenFile>();
+      filesToAnalyze.forEach((uri, file) -> {
+        if (openNotebooksCache.isNotebook(uri)) {
+          notebooksToAnalyze.put(uri, file);
+        } else {
+          nonNotebooksToAnalyze.put(uri, file);
+        }
+      });
+
+      // Notebooks must be analyzed without a binding
+      analyze(task, workspaceFolder, Optional.empty(), notebooksToAnalyze);
+
+      // All other files are analyzed with the binding configured for the folder
       var binding = bindingManager.getBinding(workspaceFolder.get());
-      analyze(task, workspaceFolder, binding, filesToAnalyze);
+      analyze(task, workspaceFolder, binding, nonNotebooksToAnalyze);
     } else {
       // Files outside a folder can possibly have a different binding, so fork one analysis per binding
       // TODO is it really possible to have different settings (=binding) for files outside workspace folder
       filesToAnalyze.entrySet().stream()
-        .collect(groupingBy(entry -> bindingManager.getBinding(entry.getKey()), mapping(Entry::getValue, toMap(VersionedOpenFile::getUri, f -> f))))
+        .collect(groupingBy(entry -> bindingManager.getBinding(entry.getKey()), mapping(Entry::getValue, toMap(VersionedOpenFile::getUri, identity()))))
         .forEach((binding, files) -> analyze(task, Optional.empty(), binding, files));
     }
   }

@@ -58,6 +58,7 @@ import org.sonarsource.sonarlint.ls.connected.notifications.TaintVulnerabilityRa
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -126,7 +127,7 @@ class ServerSentEventsTests {
         taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
 
         projectBindingManager = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, folderBindingCache,
-          null, taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade);
+          null, taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, mock(OpenNotebooksCache.class));
         projectBindingManager.setBranchResolver(uri -> Optional.of(BRANCH_NAME));
 
         underTest = new ServerSentEventsHandler(projectBindingManager, taintVulnerabilitiesCache, taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager);

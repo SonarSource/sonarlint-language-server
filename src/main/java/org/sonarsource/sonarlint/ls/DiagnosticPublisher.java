@@ -71,7 +71,7 @@ public class DiagnosticPublisher {
   }
 
   public void publishDiagnostics(URI f) {
-    if(openNotebooksCache.getFile(f).isPresent()) {
+    if(openNotebooksCache.isNotebook(f)) {
       return;
     }
     client.publishDiagnostics(createPublishDiagnosticsParams(f));

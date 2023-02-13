@@ -69,6 +69,10 @@ public class OpenNotebooksCache {
     return Optional.ofNullable(openNotebooksPerFileURI.get(fileUri));
   }
 
+  public boolean isNotebook(URI fileUri) {
+    return openNotebooksPerFileURI.containsKey(fileUri);
+  }
+
   public Collection<VersionedOpenNotebook> getAll() {
     return openNotebooksPerFileURI.values();
   }
