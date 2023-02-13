@@ -30,12 +30,9 @@ import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.ls.IssuesCache;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
-import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.stream.Collectors.groupingBy;
-import static org.sonarsource.sonarlint.ls.DiagnosticPublisher.message;
 import static org.sonarsource.sonarlint.ls.DiagnosticPublisher.prepareDiagnostic;
-import static org.sonarsource.sonarlint.ls.DiagnosticPublisher.setSource;
 import static org.sonarsource.sonarlint.ls.util.Utils.severity;
 
 public class NotebookDiagnosticPublisher {
