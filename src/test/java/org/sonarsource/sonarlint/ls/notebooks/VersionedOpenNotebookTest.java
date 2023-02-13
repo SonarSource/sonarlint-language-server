@@ -334,6 +334,44 @@ class VersionedOpenNotebookTest {
       "cell3 line1\n" +
       "cell3 line2\n");
   }
+  @Test
+  void shouldHandleMultiContentChange() {
+    var tmpUri = URI.create("file:///some/notebook.ipynb");
+    var underTest = createTestNotebookWithThreeCells(tmpUri);
+
+    var changeEvent = new NotebookDocumentChangeEvent();
+    var changeEventCells = new NotebookDocumentChangeEventCells();
+    var textContents = new NotebookDocumentChangeEventCellTextContent();
+    var documentIdentifier = new VersionedTextDocumentIdentifier();
+    var change1 = new TextDocumentContentChangeEvent();
+    var change2 = new TextDocumentContentChangeEvent();
+
+    documentIdentifier.setVersion(2);
+    documentIdentifier.setUri(tmpUri + "#cell2");
+    textContents.setDocument(documentIdentifier);
+    change1.setRange(new Range(new Position(1, 6), new Position(1, 10)));
+    change1.setText("hola");
+
+    change2.setRange(new Range(new Position(0, 0), new Position(0, 5)));
+    change2.setText("bye");
+
+    textContents.setChanges(List.of(change1, change2));
+    changeEventCells.setTextContent(List.of(textContents));
+    changeEvent.setCells(changeEventCells);
+
+    underTest.didChange(2, changeEvent);
+
+    assertThat(underTest.getNotebookVersion()).isEqualTo(2);
+    assertThat(underTest.getContent()).isEqualTo("" +
+      "cell1 line1\n" +
+      "cell1 line2\n" +
+      "\n" +
+      "bye line1\n" +
+      "cell2 hola2\n" +
+      "\n" +
+      "cell3 line1\n" +
+      "cell3 line2\n");
+  }
 
   VersionedOpenNotebook createTestNotebookWithThreeCells(URI tmpUri) {
     var cell1 = new TextDocumentItem();

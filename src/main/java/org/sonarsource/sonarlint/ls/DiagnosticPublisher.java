@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.Language;
@@ -79,10 +80,15 @@ public class DiagnosticPublisher {
 
   static Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
     var issue = entry.getValue().getIssue();
-    var diagnostic = new Diagnostic();
     var severity =
       issue.getType() == RuleType.SECURITY_HOTSPOT ?
         hotspotSeverity(issue.getVulnerabilityProbability().orElse(VulnerabilityProbability.MEDIUM)) : severity(issue.getSeverity());
+
+    return prepareDiagnostic(severity, issue, entry.getKey());
+  }
+
+  public static Diagnostic prepareDiagnostic(DiagnosticSeverity severity, Issue issue, String entryKey) {
+    var diagnostic = new Diagnostic();
 
     diagnostic.setSeverity(severity);
     var range = Utils.convert(issue);
@@ -90,7 +96,7 @@ public class DiagnosticPublisher {
     diagnostic.setCode(issue.getRuleKey());
     diagnostic.setMessage(message(issue));
     setSource(issue, diagnostic);
-    diagnostic.setData(entry.getKey());
+    diagnostic.setData(entryKey);
 
     return diagnostic;
   }

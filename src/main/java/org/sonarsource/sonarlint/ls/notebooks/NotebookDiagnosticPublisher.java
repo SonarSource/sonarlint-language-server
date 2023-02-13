@@ -34,6 +34,7 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.stream.Collectors.groupingBy;
 import static org.sonarsource.sonarlint.ls.DiagnosticPublisher.message;
+import static org.sonarsource.sonarlint.ls.DiagnosticPublisher.prepareDiagnostic;
 import static org.sonarsource.sonarlint.ls.DiagnosticPublisher.setSource;
 import static org.sonarsource.sonarlint.ls.util.Utils.severity;
 
@@ -55,18 +56,9 @@ public class NotebookDiagnosticPublisher {
 
   static Diagnostic convertCellIssue(Map.Entry<String, DelegatingCellIssue> entry) {
     var issue = entry.getValue();
-    var diagnostic = new Diagnostic();
     var severity = severity(issue.getSeverity());
-    diagnostic.setSeverity(severity);
 
-    var range = Utils.convert(issue);
-    diagnostic.setRange(range);
-    diagnostic.setCode(issue.getRuleKey());
-    diagnostic.setMessage(message(issue));
-    setSource(issue, diagnostic);
-    diagnostic.setData(entry.getKey());
-
-    return diagnostic;
+    return prepareDiagnostic(severity, issue, entry.getKey());
   }
 
   public void publishNotebookDiagnostics(URI uri, VersionedOpenNotebook versionedOpenNotebook) {
