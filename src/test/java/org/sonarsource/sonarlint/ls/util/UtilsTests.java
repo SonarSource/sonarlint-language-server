@@ -27,6 +27,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.sonarsource.sonarlint.ls.util.Utils.getNotebookUriFromCellUri;
 
 class UtilsTests {
 
@@ -56,6 +57,19 @@ class UtilsTests {
   void uriHasFileSchemeTest() {
     assertThat(Utils.uriHasFileScheme(URI.create("file:///path"))).isTrue();
     assertThat(Utils.uriHasFileScheme(URI.create("notfile:///path"))).isFalse();
+  }
+
+  @Test
+  void uriHasNotebookCellSchemaTest() {
+    assertThat(Utils.uriHasNotebookCellScheme(URI.create("vscode-notebook-cell:///path"))).isTrue();
+    assertThat(Utils.uriHasNotebookCellScheme(URI.create("file:///path"))).isFalse();
+  }
+
+  @Test
+  void shouldGetNotebookUriFromCellUri() {
+    var cellUri = URI.create("vscode-notebook-cell:/Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb#W2sZmlsZQ%3D%3D");
+    var expectedNotebookUri = URI.create("file:///Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb");
+    assertThat(getNotebookUriFromCellUri(cellUri)).isEqualTo(expectedNotebookUri);
   }
 
   @Test

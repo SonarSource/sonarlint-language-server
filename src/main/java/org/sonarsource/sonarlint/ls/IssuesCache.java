@@ -21,7 +21,6 @@ package org.sonarsource.sonarlint.ls;
 
 import com.google.gson.JsonPrimitive;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
