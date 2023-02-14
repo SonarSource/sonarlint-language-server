@@ -154,13 +154,13 @@ public class VersionedOpenNotebook {
 
   public void didChange(int version, NotebookDocumentChangeEvent changeEvent) {
     this.notebookVersion = version;
-    if(changeEvent.getCells().getStructure() != null && !changeEvent.getCells().getStructure().getDidClose().isEmpty()) {
+    if(changeEvent.getCells() != null && changeEvent.getCells().getStructure() != null && !changeEvent.getCells().getStructure().getDidClose().isEmpty()) {
       handleCellDeletion(changeEvent.getCells().getStructure().getDidClose());
     }
-    if(changeEvent.getCells().getStructure() != null && !changeEvent.getCells().getStructure().getDidOpen().isEmpty()) {
+    if(changeEvent.getCells() != null && changeEvent.getCells().getStructure() != null && !changeEvent.getCells().getStructure().getDidOpen().isEmpty()) {
       handleCellCreation(changeEvent);
     }
-    if(changeEvent.getCells().getTextContent() != null && !changeEvent.getCells().getTextContent().isEmpty()) {
+    if(changeEvent.getCells() != null && changeEvent.getCells().getTextContent() != null && !changeEvent.getCells().getTextContent().isEmpty()) {
       handleContentChange(changeEvent.getCells().getTextContent());
     }
   }

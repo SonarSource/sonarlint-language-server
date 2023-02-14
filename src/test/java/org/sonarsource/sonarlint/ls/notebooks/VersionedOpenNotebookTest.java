@@ -24,6 +24,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import org.eclipse.lsp4j.NotebookCellArrayChange;
 import org.eclipse.lsp4j.NotebookDocumentChangeEvent;
 import org.eclipse.lsp4j.NotebookDocumentChangeEventCellStructure;
@@ -37,12 +38,18 @@ import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
+import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
+import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.ls.IssuesCache;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.SonarLintLanguageServer.PYTHON_LANGUAGE;
@@ -161,6 +168,101 @@ class VersionedOpenNotebookTest {
     assertThat(cellIssue.getStartLineOffset()).isZero();
     assertThat(cellIssue.getEndLine()).isEqualTo(2);
     assertThat(cellIssue.getEndLineOffset()).isEqualTo(5);
+  }
+
+  @Test
+  void shouldConvertQuickFixWithSingleFileEdit() {
+    var issue = mock(Issue.class);
+    var tmpUri = URI.create("file:///some/notebook.ipynb");
+    var fakeNotebook = createTestNotebookWithThreeCells(tmpUri);
+    var quickFixTextRange = new TextRange(7, 0, 7, 2);
+
+    var textEdit = mock(TextEdit.class);
+    when(textEdit.newText()).thenReturn("");
+    when(textEdit.range()).thenReturn(quickFixTextRange);
+    var edit = mock(ClientInputFileEdit.class);
+    when(edit.textEdits()).thenReturn(List.of(textEdit));
+    var target = mock(ClientInputFile.class);
+    when(target.uri()).thenReturn(fakeNotebook.getCellUri(quickFixTextRange.getStartLine()).get());
+    when(edit.target()).thenReturn(target);
+    var fix = mock(QuickFix.class);
+    when(fix.message()).thenReturn("Fix the issue!");
+    when(fix.inputFileEdits()).thenReturn(List.of(edit));
+    when(issue.quickFixes()).thenReturn(List.of(fix));
+
+    var delegatingCellIssue = fakeNotebook.toCellIssue(issue);
+
+    assertThat(delegatingCellIssue.quickFixes()).hasSize(1);
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .message()).isEqualTo("Fix the issue!");
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .inputFileEdits().get(0).textEdits().get(0).range().getStartLine()).isEqualTo(1);
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .inputFileEdits().get(0).textEdits().get(0).range().getStartLineOffset()).isZero();
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .inputFileEdits().get(0).textEdits().get(0).range().getEndLine()).isEqualTo(1);
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .inputFileEdits().get(0).textEdits().get(0).range().getEndLineOffset()).isEqualTo(2);
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .inputFileEdits().get(0).target().uri()).hasToString(tmpUri + "#cell3");
+  }
+
+  @Test
+  void shouldConvertQuickFixWithMultipleFileEdits() {
+    var issue = mock(Issue.class);
+    var tmpUri = URI.create("file:///some/notebook.ipynb");
+    var fakeNotebook = createTestNotebookWithThreeCells(tmpUri);
+    var quickFixTextRange1 = new TextRange(7, 0, 7, 2);
+    var quickFixTextRange2 = new TextRange(4, 0, 5, 2);
+
+    var textEdit1 = mock(TextEdit.class);
+    when(textEdit1.newText()).thenReturn("");
+    when(textEdit1.range()).thenReturn(quickFixTextRange1);
+    var textEdit2 = mock(TextEdit.class);
+    when(textEdit2.newText()).thenReturn("");
+    when(textEdit2.range()).thenReturn(quickFixTextRange2);
+    var edit1 = mock(ClientInputFileEdit.class);
+    when(edit1.textEdits()).thenReturn(List.of(textEdit1));
+    var edit2 = mock(ClientInputFileEdit.class);
+    when(edit2.textEdits()).thenReturn(List.of(textEdit2));
+    var target1 = mock(ClientInputFile.class);
+    when(target1.uri()).thenReturn(fakeNotebook.getCellUri(quickFixTextRange1.getStartLine()).get());
+    when(edit1.target()).thenReturn(target1);
+    var target2 = mock(ClientInputFile.class);
+    when(target2.uri()).thenReturn(fakeNotebook.getCellUri(quickFixTextRange2.getStartLine()).get());
+    when(edit2.target()).thenReturn(target2);
+    var fix = mock(QuickFix.class);
+    when(fix.message()).thenReturn("Fix the issue!");
+    when(fix.inputFileEdits()).thenReturn(List.of(edit1, edit2));
+    when(issue.quickFixes()).thenReturn(List.of(fix));
+
+    var delegatingCellIssue = fakeNotebook.toCellIssue(issue);
+
+    assertThat(delegatingCellIssue.quickFixes()).hasSize(1);
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .message()).isEqualTo("Fix the issue!");
+
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .inputFileEdits().get(0).textEdits().get(0).range().getStartLine()).isEqualTo(1);
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .inputFileEdits().get(0).textEdits().get(0).range().getStartLineOffset()).isZero();
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .inputFileEdits().get(0).textEdits().get(0).range().getEndLine()).isEqualTo(1);
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .inputFileEdits().get(0).textEdits().get(0).range().getEndLineOffset()).isEqualTo(2);
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .inputFileEdits().get(0).target().uri()).hasToString(tmpUri + "#cell3");
+
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .inputFileEdits().get(1).textEdits().get(0).range().getStartLine()).isEqualTo(1);
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .inputFileEdits().get(1).textEdits().get(0).range().getStartLineOffset()).isZero();
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .inputFileEdits().get(1).textEdits().get(0).range().getEndLine()).isEqualTo(2);
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .inputFileEdits().get(1).textEdits().get(0).range().getEndLineOffset()).isEqualTo(2);
+    assertThat(delegatingCellIssue.quickFixes().get(0)
+      .inputFileEdits().get(1).target().uri()).hasToString(tmpUri + "#cell2");
   }
 
   @Test

@@ -21,7 +21,6 @@ package org.sonarsource.sonarlint.ls;
 
 import com.google.gson.JsonPrimitive;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -31,7 +30,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.lsp4j.Diagnostic;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
-import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 
 import static org.sonarsource.sonarlint.ls.util.Utils.getNotebookUriFromCellUri;
 
