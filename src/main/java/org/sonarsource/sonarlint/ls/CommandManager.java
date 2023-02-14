@@ -170,9 +170,9 @@ public class CommandManager {
         newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, List.of(ruleKey)));
         codeActions.add(Either.forRight(newCodeAction));
       });
-      addShowAllLocationsCodeAction(versionedIssue, codeActions, diagnostic, ruleKey);
     }
     addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey);
+    issueForDiagnostic.ifPresent(versionedIssue -> addShowAllLocationsCodeAction(versionedIssue, codeActions, diagnostic, ruleKey));
     if (binding.isEmpty()) {
       var titleDeactivate = String.format("Deactivate rule '%s'", ruleKey);
       codeActions.add(newQuickFix(diagnostic, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, List.of(ruleKey)));
