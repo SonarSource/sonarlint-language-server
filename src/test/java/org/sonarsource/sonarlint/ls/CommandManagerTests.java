@@ -102,12 +102,15 @@ import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DE
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_UPDATE_ALL_BINDINGS_COMMAND;
+import static org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebookTest.createTestNotebookWithThreeCells;
 
 class CommandManagerTests {
 
   private static final String FAKE_RULE_KEY = "javascript:S1234";
   private static final String FILE_URI = "file://foo.js";
+  private static final String CELL_URI = "vscode-notebook-cell:/Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb#W2sZmlsZQ%3D%3D";
   private static final TextDocumentIdentifier FAKE_TEXT_DOCUMENT = new TextDocumentIdentifier(FILE_URI);
+  private static final TextDocumentIdentifier FAKE_NOTEBOOK_CELL_DOCUMENT = new TextDocumentIdentifier(CELL_URI);
   private static final Range FAKE_RANGE = new Range(new Position(1, 1), new Position(1, 2));
   private static final CancelChecker NOP_CANCEL_TOKEN = () -> {
   };
@@ -224,6 +227,41 @@ class CommandManagerTests {
     when(issue.quickFixes()).thenReturn(List.of(fix));
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
+      new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
+
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle())
+      .containsExactly(
+        "SonarLint: Fix the issue!",
+        "SonarLint: Open description of rule 'XYZ'",
+        "SonarLint: Deactivate rule 'XYZ'");
+  }
+
+  @Test
+  void showQuickFixFromAnalyzerForNotebook() {
+    var notebookUri = URI.create("file:///Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb");
+    var fakeNotebook = createTestNotebookWithThreeCells(notebookUri);
+    when(bindingManager.getBinding(URI.create(CELL_URI))).thenReturn(Optional.empty());
+
+    var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
+
+    var issue = mock(Issue.class);
+    var textEdit = mock(TextEdit.class);
+    when(textEdit.newText()).thenReturn("");
+    when(textEdit.range()).thenReturn(new TextRange(1, 0, 1, 1));
+    var edit = mock(ClientInputFileEdit.class);
+    when(edit.textEdits()).thenReturn(List.of(textEdit));
+    var target = mock(ClientInputFile.class);
+    when(target.uri()).thenReturn(notebookUri);
+    when(edit.target()).thenReturn(target);
+    var fix = mock(QuickFix.class);
+    when(fix.message()).thenReturn("Fix the issue!");
+    when(fix.inputFileEdits()).thenReturn(List.of(edit));
+    when(issue.quickFixes()).thenReturn(List.of(fix));
+    var versionedIssue = new VersionedIssue(issue, 1);
+    when(issuesCache.getCellIssueForDiagnostic(URI.create(CELL_URI), d)).thenReturn(Optional.of(versionedIssue));
+    when(openNotebooksCache.getFile(notebookUri)).thenReturn(Optional.of(fakeNotebook));
+
+    var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_NOTEBOOK_CELL_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())

@@ -54,7 +54,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.SonarLintLanguageServer.PYTHON_LANGUAGE;
 
-class VersionedOpenNotebookTest {
+public class VersionedOpenNotebookTest {
 
   @Test
   void shouldConcatenateCells() throws IOException {
@@ -474,7 +474,7 @@ class VersionedOpenNotebookTest {
       "cell3 line2\n");
   }
 
-  VersionedOpenNotebook createTestNotebookWithThreeCells(URI tmpUri) {
+  public static VersionedOpenNotebook createTestNotebookWithThreeCells(URI tmpUri) {
     var cell1 = new TextDocumentItem();
     cell1.setUri(tmpUri.toString() + "#cell1");
     cell1.setText("cell1 line1\ncell1 line2\n");
