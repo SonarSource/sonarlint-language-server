@@ -110,6 +110,8 @@ import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
@@ -139,6 +141,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final AnalysisScheduler analysisScheduler;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final OpenFilesCache openFilesCache;
+  private final OpenNotebooksCache openNotebooksCache;
   private final NodeJsRuntime nodeJsRuntime;
   private final EnginesFactory enginesFactory;
   private final StandaloneEngineManager standaloneEngineManager;
@@ -157,6 +160,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final LanguageClientLogger lsLogOutput;
 
   private final TaintIssuesUpdater taintIssuesUpdater;
+  private final NotebookDiagnosticPublisher notebookDiagnosticPublisher;
 
   private String appName;
 
@@ -193,7 +197,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.issuesCache = new IssuesCache();
     this.securityHotspotsCache = new IssuesCache();
     this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
-    this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache, securityHotspotsCache);
+    this.notebookDiagnosticPublisher = new NotebookDiagnosticPublisher(client, issuesCache);
+    this.openNotebooksCache = new OpenNotebooksCache(lsLogOutput, notebookDiagnosticPublisher);
+    this.notebookDiagnosticPublisher.setOpenNotebooksCache(openNotebooksCache);
+    this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache, securityHotspotsCache, openNotebooksCache);
     this.progressManager = new ProgressManager(client);
     var vsCodeClient = new SonarLintVSCodeClient(client, httpClientProvider);
     this.backendServiceFacade = new BackendServiceFacade(new SonarLintBackendImpl(vsCodeClient));
@@ -222,8 +229,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.scmIgnoredCache = new ScmIgnoredCache(client);
     this.moduleEventsProcessor = new ModuleEventsProcessor(standaloneEngineManager, workspaceFoldersManager, bindingManager, fileTypeClassifier, javaConfigCache);
     var analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
-      fileTypeClassifier, issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, telemetry, skippedPluginsNotifier, standaloneEngineManager, diagnosticPublisher, client);
-    this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, analysisTaskExecutor);
+      fileTypeClassifier, issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, telemetry, skippedPluginsNotifier, standaloneEngineManager, diagnosticPublisher,
+      client, openNotebooksCache, notebookDiagnosticPublisher);
+    this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor);
     this.workspaceFoldersManager.addListener(moduleEventsProcessor);
     bindingManager.setAnalysisManager(analysisScheduler);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) analysisScheduler);
@@ -394,6 +402,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didOpen(DidOpenTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
+    if(openNotebooksCache.getFile(uri).isPresent()){
+      return;
+    }
     client.isOpenInEditor(uri.toString()).thenAccept(isOpen -> {
       if (Boolean.TRUE.equals(isOpen)) {
         var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
@@ -478,14 +489,19 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didOpen(DidOpenNotebookDocumentParams params) {
-    lsLogOutput.info("didOpen Jupyter Document");
-    // TODO
+    var notebookUri = create(params.getNotebookDocument().getUri());
+    if(openFilesCache.getFile(notebookUri).isPresent()){
+      openFilesCache.didClose(notebookUri);
+    }
+    var notebookFile =
+      openNotebooksCache.didOpen(notebookUri, params.getNotebookDocument().getVersion(), params.getCellTextDocuments());
+    analysisScheduler.didOpen(notebookFile.asVersionedOpenFile());
   }
 
   @Override
   public void didChange(DidChangeNotebookDocumentParams params) {
-    lsLogOutput.info("didChange Jupyter Document");
-    // TODO
+    openNotebooksCache.didChange(create(params.getNotebookDocument().getUri()), params.getNotebookDocument().getVersion(), params.getChange());
+    analysisScheduler.didChange(create(params.getNotebookDocument().getUri()));
   }
 
   @Override
@@ -496,8 +512,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didClose(DidCloseNotebookDocumentParams params) {
-    lsLogOutput.info("didClose Jupyter Document");
-    // TODO
+    openNotebooksCache.didClose(create(params.getNotebookDocument().getUri()));
   }
 
   private enum TraceValue {

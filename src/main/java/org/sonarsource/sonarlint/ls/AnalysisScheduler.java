@@ -38,6 +38,7 @@ import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -66,6 +67,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   public static final String ITEM_FLOW = "flow";
 
   private final OpenFilesCache openFilesCache;
+  private final OpenNotebooksCache openNotebooksCache;
   // entries in this map mean that the file is "dirty"
   private final Map<URI, Long> eventMap = new ConcurrentHashMap<>();
 
@@ -78,16 +80,17 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   private final ExecutorService asyncExecutor;
 
   public AnalysisScheduler(LanguageClientLogger lsLogOutput, WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
-    AnalysisTaskExecutor analysisTaskExecutor) {
-    this(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, analysisTaskExecutor, DEFAULT_TIMER_MS);
+    OpenNotebooksCache openNotebooksCache, AnalysisTaskExecutor analysisTaskExecutor) {
+    this(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor, DEFAULT_TIMER_MS);
   }
 
   AnalysisScheduler(LanguageClientLogger lsLogOutput, WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
-    AnalysisTaskExecutor analysisTaskExecutor, int defaultTimerMs) {
+    OpenNotebooksCache openNotebooksCache, AnalysisTaskExecutor analysisTaskExecutor, int defaultTimerMs) {
     this.lsLogOutput = lsLogOutput;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.bindingManager = bindingManager;
     this.openFilesCache = openFilesCache;
+    this.openNotebooksCache = openNotebooksCache;
     this.analysisTaskExecutor = analysisTaskExecutor;
     this.asyncExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Analysis Scheduler", false));
     this.watcher = new EventWatcher(defaultTimerMs);
@@ -139,6 +142,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
         var e = it.next();
         if (e.getValue() + defaultTimerMs < now) {
           openFilesCache.getFile(e.getKey()).ifPresent(filesToTrigger::add);
+          openNotebooksCache.getFile(e.getKey()).ifPresent(notebook -> filesToTrigger.add(notebook.asVersionedOpenFile()));
         }
       }
       triggerFiles(filesToTrigger);

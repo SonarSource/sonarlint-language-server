@@ -57,6 +57,8 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
@@ -90,12 +92,14 @@ public class AnalysisTaskExecutor {
   private final StandaloneEngineManager standaloneEngineManager;
   private final DiagnosticPublisher diagnosticPublisher;
   private final SonarLintExtendedLanguageClient lsClient;
+  private final OpenNotebooksCache openNotebooksCache;
+  private final NotebookDiagnosticPublisher notebookDiagnosticPublisher;
 
   public AnalysisTaskExecutor(ScmIgnoredCache filesIgnoredByScmCache, LanguageClientLogger lsLogOutput,
     WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, JavaConfigCache javaConfigCache, SettingsManager settingsManager,
     FileTypeClassifier fileTypeClassifier, IssuesCache issuesCache, IssuesCache securityHotspotsCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
     SonarLintTelemetry telemetry, SkippedPluginsNotifier skippedPluginsNotifier, StandaloneEngineManager standaloneEngineManager, DiagnosticPublisher diagnosticPublisher,
-    SonarLintExtendedLanguageClient lsClient) {
+    SonarLintExtendedLanguageClient lsClient, OpenNotebooksCache openNotebooksCache, NotebookDiagnosticPublisher notebookDiagnosticPublisher) {
     this.filesIgnoredByScmCache = filesIgnoredByScmCache;
     this.lsLogOutput = lsLogOutput;
     this.workspaceFoldersManager = workspaceFoldersManager;
@@ -111,6 +115,8 @@ public class AnalysisTaskExecutor {
     this.standaloneEngineManager = standaloneEngineManager;
     this.diagnosticPublisher = diagnosticPublisher;
     this.lsClient = lsClient;
+    this.openNotebooksCache = openNotebooksCache;
+    this.notebookDiagnosticPublisher = notebookDiagnosticPublisher;
   }
 
   public void run(AnalysisTask task) {
@@ -294,6 +300,7 @@ public class AnalysisTaskExecutor {
     filesToAnalyze.forEach((fileUri, openFile) -> {
       issuesCache.analysisStarted(openFile);
       securityHotspotsCache.analysisStarted(openFile);
+      notebookDiagnosticPublisher.cleanupCellsList(fileUri);
       if (binding.isEmpty()) {
         // Clear taint vulnerabilities if the folder was previously bound and just now changed to standalone
         taintVulnerabilitiesCache.clear(fileUri);
@@ -336,6 +343,7 @@ public class AnalysisTaskExecutor {
         var foundIssues = issuesCache.count(f);
         totalIssueCount.addAndGet(foundIssues);
         diagnosticPublisher.publishDiagnostics(f);
+        notebookDiagnosticPublisher.cleanupDiagnostics(f);
       });
       telemetry.addReportedRules(ruleKeys);
       lsLogOutput.info(format("Found %s %s", totalIssueCount.get(), pluralize(totalIssueCount.get(), "issue")));
@@ -348,13 +356,18 @@ public class AnalysisTaskExecutor {
       // FIXME SLVSCODE-255 support project level issues
       if (inputFile != null) {
         URI uri = inputFile.getClientObject();
-        var versionedOpenFile = filesToAnalyze.get(uri);
-        if (issue.getType() == RuleType.SECURITY_HOTSPOT) {
-          securityHotspotsCache.reportIssue(versionedOpenFile, issue);
+        var versionedOpenNotebook = openNotebooksCache.getFile(uri);
+        if(versionedOpenNotebook.isPresent()) {
+          issuesCache.reportIssue(versionedOpenNotebook.get().asVersionedOpenFile(), issue);
+          notebookDiagnosticPublisher.publishNotebookDiagnostics(uri, versionedOpenNotebook.get());
         } else {
-          issuesCache.reportIssue(versionedOpenFile, issue);
+          var versionedOpenFile = filesToAnalyze.get(uri);
+          if (issue.getType() == RuleType.SECURITY_HOTSPOT) {
+            securityHotspotsCache.reportIssue(versionedOpenFile, issue);
+          } else {
+            issuesCache.reportIssue(versionedOpenFile, issue);
+          }
         }
-        diagnosticPublisher.publishDiagnostics(uri);
         ruleKeys.add(issue.getRuleKey());
       }
     };

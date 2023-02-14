@@ -74,6 +74,7 @@ import org.sonarsource.sonarlint.ls.util.FileUtils;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 import static org.sonarsource.sonarlint.ls.util.FileUtils.getFileRelativePath;
+import static org.sonarsource.sonarlint.ls.util.Utils.uriHasFileSchema;
 
 /**
  * Keep a cache of project bindings. Files that are part of a workspace workspaceFolderPath will share the same binding.
@@ -149,6 +150,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
    * @return empty if the file is unbound
    */
   public Optional<ProjectBindingWrapper> getBinding(URI fileUri) {
+    if (!uriHasFileSchema(fileUri)) {
+      return Optional.empty();
+    }
     var folder = foldersManager.findFolderForFile(fileUri);
     var cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
     return getBinding(folder, cacheKey);

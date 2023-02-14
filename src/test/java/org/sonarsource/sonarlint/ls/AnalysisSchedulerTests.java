@@ -32,6 +32,8 @@ import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.waitAtMost;
@@ -50,6 +52,7 @@ class AnalysisSchedulerTests {
   private AnalysisScheduler underTest;
   private AnalysisTaskExecutor taskExecutor;
   private OpenFilesCache openFilesCache;
+  private OpenNotebooksCache openNotebooksCache;
   private LanguageClientLogger lsLogOutput;
 
   @BeforeEach
@@ -57,8 +60,9 @@ class AnalysisSchedulerTests {
     lsLogOutput = mock(LanguageClientLogger.class);
     taskExecutor = mock(AnalysisTaskExecutor.class);
     openFilesCache = new OpenFilesCache(lsLogOutput);
+    openNotebooksCache = new OpenNotebooksCache(lsLogOutput, mock(NotebookDiagnosticPublisher.class));
     underTest = new AnalysisScheduler(lsLogOutput, mock(WorkspaceFoldersManager.class), mock(ProjectBindingManager.class), openFilesCache,
-      taskExecutor, 200);
+      openNotebooksCache, taskExecutor, 200);
 
     underTest.initialize();
   }
