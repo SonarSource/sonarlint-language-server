@@ -68,6 +68,7 @@ import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
@@ -149,11 +150,27 @@ public class CommandManager {
     var uri = create(params.getTextDocument().getUri());
     var binding = bindingManager.getBinding(uri);
     var ruleKey = diagnostic.getCode().getLeft();
-    cancelToken.checkCanceled();
-    if (uriHasNotebookCellScheme(uri)) {
-      computeQuickFixesForNotebook(uri, diagnostic, codeActions, ruleKey);
-    } else {
-      computeQuickFixesForTextDocument(uri, diagnostic, codeActions, ruleKey);
+    var issueForDiagnostic = uriHasNotebookCellScheme(uri) ?
+      issuesCache.getCellIssueForDiagnostic(uri, diagnostic) :
+      issuesCache.getIssueForDiagnostic(uri, diagnostic);
+    Optional<VersionedOpenNotebook> versionedOpenNotebook = uriHasNotebookCellScheme(uri) ?
+      openNotebooksCache.getFile(getNotebookUriFromCellUri(uri)) :
+      Optional.empty();
+    if(issueForDiagnostic.isPresent()) {
+      var versionedIssue = issueForDiagnostic.get();
+      var quickFixes = uriHasNotebookCellScheme(uri) && versionedOpenNotebook.isPresent() ?
+        versionedOpenNotebook.get().toCellIssue(versionedIssue.getIssue()).quickFixes() :
+        versionedIssue.getIssue().quickFixes();
+      cancelToken.checkCanceled();
+      quickFixes.forEach(fix -> {
+        var newCodeAction = new CodeAction(SONARLINT_ACTION_PREFIX + fix.message());
+        newCodeAction.setKind(CodeActionKind.QuickFix);
+        newCodeAction.setDiagnostics(List.of(diagnostic));
+        newCodeAction.setEdit(newWorkspaceEdit(fix, versionedIssue.getDocumentVersion()));
+        newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, List.of(ruleKey)));
+        codeActions.add(Either.forRight(newCodeAction));
+      });
+      addShowAllLocationsCodeAction(versionedIssue, codeActions, diagnostic, ruleKey);
     }
     addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey);
     if (binding.isEmpty()) {
@@ -167,36 +184,6 @@ public class CommandManager {
     if (!versionedIssue.getIssue().flows().isEmpty()) {
       var titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
       codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(versionedIssue.getIssue()))));
-    }
-  }
-
-  private void computeQuickFixesForTextDocument(URI uri, Diagnostic diagnostic,
-    List<Either<Command, CodeAction>> codeActions, String ruleKey) {
-    var issueForDiagnostic = issuesCache.getIssueForDiagnostic(uri, diagnostic);
-    issueForDiagnostic.ifPresent(versionedIssue -> versionedIssue.getIssue().quickFixes().forEach(fix -> {
-      var newCodeAction = new CodeAction(SONARLINT_ACTION_PREFIX + fix.message());
-      newCodeAction.setKind(CodeActionKind.QuickFix);
-      newCodeAction.setDiagnostics(List.of(diagnostic));
-      newCodeAction.setEdit(newWorkspaceEdit(fix, versionedIssue.getDocumentVersion()));
-      newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, List.of(ruleKey)));
-      codeActions.add(Either.forRight(newCodeAction));
-      addShowAllLocationsCodeAction(versionedIssue, codeActions, diagnostic, ruleKey);
-    }));
-  }
-
-  private void computeQuickFixesForNotebook(URI uri, Diagnostic diagnostic, List<Either<Command, CodeAction>> codeActions, String ruleKey) {
-    var issueForDiagnostic = issuesCache.getCellIssueForDiagnostic(uri, diagnostic);
-    var versionedOpenNotebook = openNotebooksCache.getFile(getNotebookUriFromCellUri(uri));
-    if(versionedOpenNotebook.isPresent()) {
-      issueForDiagnostic.ifPresent(versionedIssue -> versionedOpenNotebook.get().toCellIssue(versionedIssue.getIssue()).quickFixes().forEach(fix -> {
-        var newCodeAction = new CodeAction(SONARLINT_ACTION_PREFIX + fix.message());
-        newCodeAction.setKind(CodeActionKind.QuickFix);
-        newCodeAction.setDiagnostics(List.of(diagnostic));
-        newCodeAction.setEdit(newWorkspaceEdit(fix, versionedIssue.getDocumentVersion()));
-        newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, List.of(ruleKey)));
-        codeActions.add(Either.forRight(newCodeAction));
-        addShowAllLocationsCodeAction(versionedIssue, codeActions, diagnostic, ruleKey);
-      }));
     }
   }
 
