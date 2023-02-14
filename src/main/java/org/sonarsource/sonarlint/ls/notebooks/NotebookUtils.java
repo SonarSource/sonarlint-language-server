@@ -23,8 +23,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentItem;
+import org.sonarsource.sonarlint.core.commons.TextRange;
 
 public class NotebookUtils {
 
@@ -77,5 +79,13 @@ public class NotebookUtils {
     }
 
     return String.join("\n", modifiedLines);
+  }
+
+  public static TextRange fileTextRangeToCellTextRange(int fileStartLine, int fileStartLineOffset,
+    int fileEndLine, int fileEndLineOffset, Map<Integer, Integer> virtualFileLineToCellLine) {
+    var cellStartLine = virtualFileLineToCellLine.get(fileStartLine);
+    var cellEndLine = virtualFileLineToCellLine.get(fileEndLine);
+
+    return new TextRange(cellStartLine, fileStartLineOffset, cellEndLine, fileEndLineOffset);
   }
 }

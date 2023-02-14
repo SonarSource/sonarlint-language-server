@@ -47,6 +47,7 @@ import org.sonarsource.sonarlint.ls.folders.InFolderClientInputFile;
 import org.sonarsource.sonarlint.ls.util.FileUtils;
 
 import static org.sonarsource.sonarlint.ls.notebooks.NotebookUtils.applyChangeToCellContent;
+import static org.sonarsource.sonarlint.ls.notebooks.NotebookUtils.fileTextRangeToCellTextRange;
 
 public class VersionedOpenNotebook {
 
@@ -128,35 +129,20 @@ public class VersionedOpenNotebook {
     var convertedQuickFixes = new ArrayList<QuickFix>();
     TextRange cellTextRange = null;
     if(issueTextRange != null){
-      var fileStartLine = issueTextRange.getStartLine();
-      var fileStartLineOffset = issueTextRange.getStartLineOffset();
-      var fileEndLine = issueTextRange.getEndLine();
-      var fileEndLineOffset = issueTextRange.getEndLineOffset();
-
-      var cellStartLine = virtualFileLineToCellLine.get(fileStartLine);
-      var cellEndLine = virtualFileLineToCellLine.get(fileEndLine);
-
-      cellTextRange = new TextRange(cellStartLine, fileStartLineOffset, cellEndLine, fileEndLineOffset);
+      cellTextRange = fileTextRangeToCellTextRange(issueTextRange.getStartLine(), issueTextRange.getStartLineOffset(),
+        issueTextRange.getEndLine(), issueTextRange.getEndLineOffset(), virtualFileLineToCellLine);
     }
     if(originalQuickFixes != null && !originalQuickFixes.isEmpty()) {
       AtomicReference<URI> textEditCellUri = new AtomicReference<>();
       for (QuickFix quickFix : originalQuickFixes) {
         var newFileEdits = quickFix.inputFileEdits().stream().map(fileEdit -> {
-
           var newTextEdits = fileEdit.textEdits().stream().map(textEdit -> {
-            var fileStartLine = textEdit.range().getStartLine();
-            var fileStartLineOffset = textEdit.range().getStartLineOffset();
-            var fileEndLine = textEdit.range().getEndLine();
-            var fileEndLineOffset = textEdit.range().getEndLineOffset();
-
-            var cellStartLine = virtualFileLineToCellLine.get(fileStartLine);
-            var cellEndLine = virtualFileLineToCellLine.get(fileEndLine);
-            textEditCellUri.set(URI.create(fileLineToCell.get(fileStartLine).getUri()));
-
-            var newTextRange = new TextRange(cellStartLine, fileStartLineOffset, cellEndLine, fileEndLineOffset);
+            textEditCellUri.set(URI.create(fileLineToCell.get(textEdit.range().getStartLine()).getUri()));
+            var newTextRange = fileTextRangeToCellTextRange(textEdit.range().getStartLine(), textEdit.range().getStartLineOffset(),
+              textEdit.range().getEndLine(), textEdit.range().getEndLineOffset(), virtualFileLineToCellLine);
             return new TextEdit(newTextRange, textEdit.newText());
           }).collect(Collectors.toList());
-          var clientInputFile = new InFolderClientInputFile(textEditCellUri.get(), null, false);
+          var clientInputFile = new InFolderClientInputFile(textEditCellUri.get(), "", false);
           return new ClientInputFileEdit(clientInputFile, newTextEdits);
         }).collect(Collectors.toList());
         var convertedQuickFix = new QuickFix(newFileEdits, quickFix.message());
