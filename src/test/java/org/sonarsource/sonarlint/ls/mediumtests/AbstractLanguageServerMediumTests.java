@@ -45,6 +45,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.ArrayUtils;
 import org.assertj.core.api.iterable.ThrowingExtractor;
@@ -56,12 +57,18 @@ import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
+import org.eclipse.lsp4j.DidCloseNotebookDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
+import org.eclipse.lsp4j.DidOpenNotebookDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializedParams;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.NotebookDocument;
+import org.eclipse.lsp4j.NotebookDocumentClientCapabilities;
+import org.eclipse.lsp4j.NotebookDocumentIdentifier;
+import org.eclipse.lsp4j.NotebookDocumentSyncClientCapabilities;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
@@ -92,6 +99,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.sonarsource.sonarlint.ls.SonarLintLanguageServer.JUPYTER_NOTEBOOK_TYPE;
+
 public abstract class AbstractLanguageServerMediumTests {
 
   protected final static boolean COMMERCIAL_ENABLED = System.getProperty("commercial") != null;
@@ -103,6 +112,7 @@ public abstract class AbstractLanguageServerMediumTests {
   Path temp;
 
   protected Set<String> toBeClosed = new HashSet<>();
+  protected Set<String> notebooksToBeClosed = new HashSet<>();
 
   private static ServerSocket serverSocket;
   protected static SonarLintExtendedLanguageServer lsProxy;
@@ -169,7 +179,14 @@ public abstract class AbstractLanguageServerMediumTests {
     initializeParams.setInitializationOptions(initializeOptions);
     initializeParams.setWorkspaceFolders(List.of(initFolders));
     initializeParams.setClientInfo(new ClientInfo("SonarLint LS Medium tests", "1.0"));
-    initializeParams.setCapabilities(new ClientCapabilities());
+    var clientCapabilities = new ClientCapabilities();
+    var notebookDocument = new NotebookDocumentClientCapabilities();
+    var synchronization = new NotebookDocumentSyncClientCapabilities();
+    synchronization.setDynamicRegistration(true);
+    synchronization.setExecutionSummarySupport(true);
+    notebookDocument.setSynchronization(synchronization);
+    clientCapabilities.setNotebookDocument(notebookDocument);
+    initializeParams.setCapabilities(clientCapabilities);
     initializeParams.getCapabilities().setWindow(new WindowClientCapabilities());
     var initializeResult = lsProxy.initialize(initializeParams).get();
     assertThat(initializeResult.getServerInfo().getName()).isEqualTo("SonarLint Language Server");
@@ -195,6 +212,7 @@ public abstract class AbstractLanguageServerMediumTests {
     // Reset state on LS side
     client.clear();
     toBeClosed.clear();
+    notebooksToBeClosed.clear();
 
     setUpFolderSettings(client.folderSettings);
 
@@ -210,6 +228,9 @@ public abstract class AbstractLanguageServerMediumTests {
     // Close all opened files
     for (var uri : toBeClosed) {
       lsProxy.getTextDocumentService().didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
+    }
+    for (var uri : notebooksToBeClosed) {
+      lsProxy.getNotebookDocumentService().didClose(new DidCloseNotebookDocumentParams(new NotebookDocumentIdentifier(uri), List.of()));
     }
   }
 
@@ -508,16 +529,37 @@ public abstract class AbstractLanguageServerMediumTests {
     return Map.ofEntries(rules);
   }
 
-  protected void didChange(String uri, String content) throws InterruptedException {
+  protected void didChange(String uri, String content) {
     var docId = new VersionedTextDocumentIdentifier(uri, 1);
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(docId, List.of(new TextDocumentContentChangeEvent(content))));
   }
 
-  protected void didOpen(String uri, String languageId, String content) throws InterruptedException {
+  protected void didOpen(String uri, String languageId, String content) {
     lsProxy.getTextDocumentService()
       .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, languageId, 1, content)));
     toBeClosed.add(uri);
+  }
+
+  protected void didOpenNotebook(String uri, String... cellContents) {
+    var notebookDocument = new NotebookDocument();
+    notebookDocument.setUri(uri);
+    notebookDocument.setNotebookType(JUPYTER_NOTEBOOK_TYPE);
+    notebookDocument.setVersion(1);
+
+    var cellDocuments = new ArrayList<TextDocumentItem>();
+    var cellIndex = new AtomicInteger();
+    Stream.of(cellContents).forEach(cellContent -> {
+      var newCellDocument = new TextDocumentItem();
+      newCellDocument.setText(cellContent);
+      newCellDocument.setUri(uri + "#" + cellIndex.incrementAndGet());
+      newCellDocument.setLanguageId("python");
+      newCellDocument.setVersion(1);
+      cellDocuments.add(newCellDocument);
+    });
+
+    lsProxy.getNotebookDocumentService().didOpen(new DidOpenNotebookDocumentParams(notebookDocument, cellDocuments));
+    notebooksToBeClosed.add(uri);
   }
 
   protected ThrowingExtractor<? super MessageParams, String, RuntimeException> withoutTimestamp() {
