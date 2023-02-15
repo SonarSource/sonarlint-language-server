@@ -21,19 +21,23 @@ package org.sonarsource.sonarlint.ls;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Path;
 import java.util.Collections;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
 import static org.mockito.Mockito.mock;
 
 class SonarLintLanguageServerTests {
 
   @Test
   void should_fail_if_analyzer_is_not_provided() {
-    var exception = catchThrowable(() -> new SonarLintLanguageServer(mock(InputStream.class), mock(OutputStream.class), Collections.emptyList()));
-    assertThat(exception).isInstanceOf(IllegalStateException.class).hasMessage("Embedded plugin not found: HTML");
+    var inputStream = mock(InputStream.class);
+    var outputStream = mock(OutputStream.class);
+    var analyzers = Collections.<Path>emptyList();
+    Assertions.assertThatThrownBy(() -> new SonarLintLanguageServer(inputStream, outputStream, analyzers))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessage("Embedded plugin not found: HTML");
   }
 
 }
