@@ -39,6 +39,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -224,6 +225,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
       !Objects.equals(oldValue.getIncludedRules(), newValue.getIncludedRules()) ||
       !Objects.equals(oldValue.getRuleParameters(), newValue.getRuleParameters())) {
       analyzeAllUnboundOpenFiles();
+      analyzeAllOpenNotebooks();
     }
   }
 
@@ -251,6 +253,13 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
       .filter(f -> bindingManager.getBinding(f.getUri()).isEmpty())
       .collect(Collectors.toList());
     analyzeAsync(openedUnboundFileUris, false);
+  }
+
+  private void analyzeAllOpenNotebooks() {
+    var openNotebookUris = openNotebooksCache.getAll().stream()
+      .map(VersionedOpenNotebook::asVersionedOpenFile)
+      .collect(Collectors.toList());
+    analyzeAsync(openNotebookUris, false);
   }
 
   private void analyzeAllOpenJavaFiles() {
