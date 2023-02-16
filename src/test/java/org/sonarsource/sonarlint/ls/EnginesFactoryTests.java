@@ -57,6 +57,7 @@ class EnginesFactoryTests {
       Language.CSS,
       Language.CPP,
       Language.HTML,
+      Language.IPYTHON,
       Language.JAVA,
       Language.JS,
       Language.PHP,

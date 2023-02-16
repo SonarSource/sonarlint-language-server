@@ -56,7 +56,7 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri + "#2"))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(1, 2, 1, 7, "python:PrintStatementUsage", "sonarlint", "Replace print statement by built-in function.", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 7, "ipython:PrintStatementUsage", "sonarlint", "Replace print statement by built-in function.", DiagnosticSeverity.Warning)));
     assertThat(client.getDiagnostics(uri + "#1")).isEmpty();
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }

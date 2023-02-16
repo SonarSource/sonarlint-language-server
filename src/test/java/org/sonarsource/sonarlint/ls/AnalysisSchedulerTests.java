@@ -135,7 +135,7 @@ class AnalysisSchedulerTests {
     AnalysisTask submittedTask = taskCaptor.getValue();
     assertThat(submittedTask.getFilesToAnalyze()).hasSize(2);
     assertThat(submittedTask.getFilesToAnalyze().iterator().next().getUri()).isIn(notebook1.getUri(), notebook2.getUri());
-    assertThat(submittedTask.getFilesToAnalyze().iterator().next().getLanguageId()).isEqualTo("python");
+    assertThat(submittedTask.getFilesToAnalyze().iterator().next().getLanguageId()).isEqualTo("ipynb");
     assertThat(submittedTask.shouldFetchServerIssues()).isFalse();
   }
 
