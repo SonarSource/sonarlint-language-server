@@ -52,7 +52,6 @@ public class Utils {
 
   private static final Pattern MATCH_ALL_WHITESPACES = Pattern.compile("\\s");
   private static final String MESSAGE_WITH_PLURALIZED_SUFFIX = "%s [+%d %s]";
-  private static final String VSCODE_NOTEBOOK_CELL_SCHEME = "vscode-notebook-cell";
   private static final String FILE_SCHEME = "file";
 
 
