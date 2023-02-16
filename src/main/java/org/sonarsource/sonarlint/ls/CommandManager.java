@@ -170,7 +170,7 @@ public class CommandManager {
       });
     }
     addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey);
-    issueForDiagnostic.ifPresent(versionedIssue -> addShowAllLocationsCodeAction(versionedIssue, codeActions, diagnostic, ruleKey));
+    issueForDiagnostic.ifPresent(versionedIssue -> addShowAllLocationsCodeAction(versionedIssue, codeActions, diagnostic, ruleKey, isNotebookCellUri));
     if (binding.isEmpty()) {
       var titleDeactivate = String.format("Deactivate rule '%s'", ruleKey);
       codeActions.add(newQuickFix(diagnostic, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, List.of(ruleKey)));
@@ -178,8 +178,8 @@ public class CommandManager {
   }
 
   private static void addShowAllLocationsCodeAction(IssuesCache.VersionedIssue versionedIssue,
-    List<Either<Command, CodeAction>> codeActions, Diagnostic diagnostic, String ruleKey) {
-    if (!versionedIssue.getIssue().flows().isEmpty()) {
+    List<Either<Command, CodeAction>> codeActions, Diagnostic diagnostic, String ruleKey, boolean isNotebook) {
+    if (!versionedIssue.getIssue().flows().isEmpty() && !isNotebook) {
       var titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
       codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(versionedIssue.getIssue()))));
     }
