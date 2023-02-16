@@ -372,7 +372,7 @@ public class AnalysisTaskExecutor {
       if (inputFile != null) {
         URI uri = inputFile.getClientObject();
         var versionedOpenNotebook = openNotebooksCache.getFile(uri);
-        if(versionedOpenNotebook.isPresent()) {
+        if (versionedOpenNotebook.isPresent()) {
           issuesCache.reportIssue(versionedOpenNotebook.get().asVersionedOpenFile(), issue);
           notebookDiagnosticPublisher.publishNotebookDiagnostics(uri, versionedOpenNotebook.get());
         } else {

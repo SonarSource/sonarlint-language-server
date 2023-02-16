@@ -47,7 +47,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher.convertCellIssue;
 
-class NotebookDiagnosticPublisherTest {
+class NotebookDiagnosticPublisherTests {
   NotebookDiagnosticPublisher notebookDiagnosticPublisher;
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   IssuesCache issuesCache = mock(IssuesCache.class);

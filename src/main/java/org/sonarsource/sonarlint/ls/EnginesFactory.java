@@ -52,6 +52,7 @@ public class EnginesFactory {
     Language.C,
     Language.CSS,
     Language.HTML,
+    Language.IPYTHON,
     Language.JAVA,
     Language.JS,
     Language.PHP,

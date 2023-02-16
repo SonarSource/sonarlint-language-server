@@ -19,9 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.notebooks;
 
-import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import org.eclipse.lsp4j.NotebookCellArrayChange;
@@ -49,42 +47,9 @@ import org.sonarsource.sonarlint.core.commons.TextRange;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.sonarsource.sonarlint.ls.SonarLintLanguageServer.PYTHON_LANGUAGE;
+import static org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook.SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER;
 
-public class VersionedOpenNotebookTest {
-
-  @Test
-  void shouldConcatenateCells() throws IOException {
-    var tmpUri = URI.create("file:///some/notebook.ipynb");
-    var underTest = createTestNotebookWithThreeCells(tmpUri);
-
-    var clientInputFile = underTest.asInputFile(Path.of(URI.create("file:///some")));
-
-    assertThat(clientInputFile.uri()).isEqualTo(tmpUri);
-    assertThat(clientInputFile.contents()).isEqualTo("" +
-      "cell1 line1\n" +
-      "cell1 line2\n" +
-      "\n" +
-      "cell2 line1\n" +
-      "cell2 line2\n" +
-      "\n" +
-      "cell3 line1\n" +
-      "cell3 line2\n");
-    assertThat(clientInputFile.isTest()).isFalse();
-    assertThat(clientInputFile.language()).isEqualTo(Language.PYTHON);
-
-    assertThat(underTest.getCellUri(0)).isEmpty();
-    assertThat(underTest.getCellUri(1).get()).hasFragment("cell1");
-    assertThat(underTest.getCellUri(2).get()).hasFragment("cell1");
-    assertThat(underTest.getCellUri(3).get()).hasFragment("cell1");
-    assertThat(underTest.getCellUri(4).get()).hasFragment("cell2");
-    assertThat(underTest.getCellUri(5).get()).hasFragment("cell2");
-    assertThat(underTest.getCellUri(6).get()).hasFragment("cell2");
-    assertThat(underTest.getCellUri(7).get()).hasFragment("cell3");
-    assertThat(underTest.getCellUri(8).get()).hasFragment("cell3");
-    assertThat(underTest.getCellUri(9).get()).hasFragment("cell3");
-    assertThat(underTest.getCellUri(10)).isEmpty();
-  }
+public class VersionedOpenNotebookTests {
 
   @Test
   void shouldConvertToVersionedOpenFile() {
@@ -99,12 +64,33 @@ public class VersionedOpenNotebookTest {
       "cell1 line1\n" +
       "cell1 line2\n" +
       "\n" +
+      SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER +
       "cell2 line1\n" +
       "cell2 line2\n" +
       "\n" +
+      SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER +
       "cell3 line1\n" +
       "cell3 line2\n");
-    assertThat(versionedOpenFile.getLanguageId()).isEqualTo(PYTHON_LANGUAGE);
+    assertThat(versionedOpenFile.getLanguageId()).isEqualTo(Language.IPYTHON.getLanguageKey());
+  }
+
+  @Test
+  void shouldNotAddDelimiterIfOnlyOneCell() {
+    var tmpUri = URI.create("file:///some/notebook.ipynb");
+    var cell1 = new TextDocumentItem();
+    cell1.setUri(tmpUri + "#cell1");
+    cell1.setText("cell1 line1\ncell1 line2\n");
+
+    var underTest = VersionedOpenNotebook.create(tmpUri, 1, List.of(cell1), mock(NotebookDiagnosticPublisher.class));
+
+    var versionedOpenFile = underTest.asVersionedOpenFile();
+
+    assertThat(versionedOpenFile.getVersion()).isEqualTo(underTest.getNotebookVersion());
+    assertThat(versionedOpenFile.getUri()).isEqualTo(underTest.getUri());
+    assertThat(versionedOpenFile.getContent()).isEqualTo("" +
+      "cell1 line1\n" +
+      "cell1 line2\n");
+    assertThat(versionedOpenFile.getLanguageId()).isEqualTo(Language.IPYTHON.getLanguageKey());
   }
 
   @Test
@@ -113,9 +99,9 @@ public class VersionedOpenNotebookTest {
     var underTest = createTestNotebookWithThreeCells(tmpUri);
 
     assertThat(underTest.getCellUris()).hasSize(3);
-    assertThat(underTest.getCellUris()).contains(tmpUri.toString() + "#cell1");
-    assertThat(underTest.getCellUris()).contains(tmpUri.toString() + "#cell2");
-    assertThat(underTest.getCellUris()).contains(tmpUri.toString() + "#cell3");
+    assertThat(underTest.getCellUris()).contains(tmpUri + "#cell1");
+    assertThat(underTest.getCellUris()).contains(tmpUri + "#cell2");
+    assertThat(underTest.getCellUris()).contains(tmpUri + "#cell3");
   }
 
   @Test
@@ -126,13 +112,15 @@ public class VersionedOpenNotebookTest {
     assertThat(underTest.getCellUri(1)).contains(URI.create(tmpUri + "#cell1"));
     assertThat(underTest.getCellUri(2)).contains(URI.create(tmpUri + "#cell1"));
     assertThat(underTest.getCellUri(3)).contains(URI.create(tmpUri + "#cell1"));
-    assertThat(underTest.getCellUri(4)).contains(URI.create(tmpUri + "#cell2"));
+    assertThat(underTest.getCellUri(4)).contains(URI.create(tmpUri + "#cell1"));
     assertThat(underTest.getCellUri(5)).contains(URI.create(tmpUri + "#cell2"));
     assertThat(underTest.getCellUri(6)).contains(URI.create(tmpUri + "#cell2"));
-    assertThat(underTest.getCellUri(7)).contains(URI.create(tmpUri + "#cell3"));
-    assertThat(underTest.getCellUri(8)).contains(URI.create(tmpUri + "#cell3"));
+    assertThat(underTest.getCellUri(7)).contains(URI.create(tmpUri + "#cell2"));
+    assertThat(underTest.getCellUri(8)).contains(URI.create(tmpUri + "#cell2"));
     assertThat(underTest.getCellUri(9)).contains(URI.create(tmpUri + "#cell3"));
-    assertThat(underTest.getCellUri(10)).isEmpty();
+    assertThat(underTest.getCellUri(10)).contains(URI.create(tmpUri + "#cell3"));
+    assertThat(underTest.getCellUri(11)).contains(URI.create(tmpUri + "#cell3"));
+    assertThat(underTest.getCellUri(12)).isEmpty();
     assertThat(underTest.getCellUri(0)).isEmpty();
     assertThat(underTest.getCellUri(-4)).isEmpty();
   }
@@ -140,15 +128,15 @@ public class VersionedOpenNotebookTest {
   @Test
   void shouldConvertToCellIssue() {
     Issue issue = mock(Issue.class);
-    TextRange textRange = new TextRange(4, 0, 5, 5);
+    TextRange textRange = new TextRange(5, 0, 6, 5);
 
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
     when(issue.getTextRange()).thenReturn(textRange);
-    when(issue.getStartLine()).thenReturn(4);
+    when(issue.getStartLine()).thenReturn(5);
     when(issue.getStartLineOffset()).thenReturn(0);
-    when(issue.getEndLine()).thenReturn(5);
+    when(issue.getEndLine()).thenReturn(6);
     when(issue.getEndLineOffset()).thenReturn(5);
     when(issue.flows()).thenReturn(List.of(mock(Flow.class)));
     when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
@@ -172,7 +160,7 @@ public class VersionedOpenNotebookTest {
     var issue = mock(Issue.class);
     var tmpUri = URI.create("file:///some/notebook.ipynb");
     var fakeNotebook = createTestNotebookWithThreeCells(tmpUri);
-    var quickFixTextRange = new TextRange(7, 0, 7, 2);
+    var quickFixTextRange = new TextRange(9, 0, 9, 2);
 
     var textEdit = mock(TextEdit.class);
     when(textEdit.newText()).thenReturn("");
@@ -209,8 +197,8 @@ public class VersionedOpenNotebookTest {
     var issue = mock(Issue.class);
     var tmpUri = URI.create("file:///some/notebook.ipynb");
     var fakeNotebook = createTestNotebookWithThreeCells(tmpUri);
-    var quickFixTextRange1 = new TextRange(7, 0, 7, 2);
-    var quickFixTextRange2 = new TextRange(4, 0, 5, 2);
+    var quickFixTextRange1 = new TextRange(9, 0, 9, 2);
+    var quickFixTextRange2 = new TextRange(5, 0, 6, 2);
 
     var textEdit1 = mock(TextEdit.class);
     when(textEdit1.newText()).thenReturn("");
@@ -320,15 +308,20 @@ public class VersionedOpenNotebookTest {
       "cell1 line1\n" +
       "cell1 line2\n" +
       "\n" +
+      SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER +
       "cell4 line1\n\n" +
       "\n" +
+      SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER +
       "cell2 line1\n" +
       "cell2 line2\n" +
       "\n" +
+      SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER +
       "cell3 line1\n" +
       "cell3 line2\n");
-    assertThat(underTest.getCellUri(4)).contains(URI.create(tmpUri + "#cell4"));
-    assertThat(underTest.getCellUri(7)).contains(URI.create(tmpUri + "#cell2"));
+    assertThat(underTest.getCellUri(4)).contains(URI.create(tmpUri + "#cell1"));
+    assertThat(underTest.getCellUri(5)).contains(URI.create(tmpUri + "#cell4"));
+    assertThat(underTest.getCellUri(7)).contains(URI.create(tmpUri + "#cell4"));
+    assertThat(underTest.getCellUri(9)).contains(URI.create(tmpUri + "#cell2"));
   }
 
   @Test
@@ -357,6 +350,7 @@ public class VersionedOpenNotebookTest {
       "cell1 line1\n" +
       "cell1 line2\n" +
       "\n" +
+      SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER +
       "cell3 line1\n" +
       "cell3 line2\n");
     assertThat(underTest.getCellUri(2)).contains(URI.create(tmpUri + "#cell1"));
@@ -389,9 +383,11 @@ public class VersionedOpenNotebookTest {
       "cell1 line1\n" +
       "cell1 line2\n" +
       "\n" +
+      SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER +
       "cell2 line1\n" +
       "cell2 line2\n" +
       "\n" +
+      SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER +
       "cell3 line1\n" +
       "cell3 line2\n");
     assertThat(underTest.getCellUri(2)).contains(URI.create(tmpUri + "#cell1"));
@@ -426,9 +422,11 @@ public class VersionedOpenNotebookTest {
       "cell1 line1\n" +
       "cell1 line2\n" +
       "\n" +
+      SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER +
       "cell2 line1\n" +
       "cell2 hola2\n" +
       "\n" +
+      SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER +
       "cell3 line1\n" +
       "cell3 line2\n");
   }
@@ -464,24 +462,26 @@ public class VersionedOpenNotebookTest {
       "cell1 line1\n" +
       "cell1 line2\n" +
       "\n" +
+      SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER +
       "bye line1\n" +
       "cell2 hola2\n" +
       "\n" +
+      SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER +
       "cell3 line1\n" +
       "cell3 line2\n");
   }
 
   public static VersionedOpenNotebook createTestNotebookWithThreeCells(URI tmpUri) {
     var cell1 = new TextDocumentItem();
-    cell1.setUri(tmpUri.toString() + "#cell1");
+    cell1.setUri(tmpUri + "#cell1");
     cell1.setText("cell1 line1\ncell1 line2\n");
 
     var cell2 = new TextDocumentItem();
-    cell2.setUri(tmpUri.toString() + "#cell2");
+    cell2.setUri(tmpUri + "#cell2");
     cell2.setText("cell2 line1\ncell2 line2\n");
 
     var cell3 = new TextDocumentItem();
-    cell3.setUri(tmpUri.toString() + "#cell3");
+    cell3.setUri(tmpUri + "#cell3");
     cell3.setText("cell3 line1\ncell3 line2\n");
 
     return VersionedOpenNotebook.create(tmpUri, 1, List.of(cell1, cell2, cell3), mock(NotebookDiagnosticPublisher.class));

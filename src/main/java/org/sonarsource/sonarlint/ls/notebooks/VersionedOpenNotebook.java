@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls.notebooks;
 
 import java.net.URI;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -35,21 +34,21 @@ import org.eclipse.lsp4j.NotebookDocumentChangeEvent;
 import org.eclipse.lsp4j.NotebookDocumentChangeEventCellTextContent;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
-import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
 import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
+import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.TextRange;
-import org.sonarsource.sonarlint.ls.AnalysisClientInputFile;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.InFolderClientInputFile;
-import org.sonarsource.sonarlint.ls.util.FileUtils;
 
 import static org.sonarsource.sonarlint.ls.notebooks.NotebookUtils.applyChangeToCellContent;
 import static org.sonarsource.sonarlint.ls.notebooks.NotebookUtils.fileTextRangeToCellTextRange;
 
 public class VersionedOpenNotebook {
+
+  static final String SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER = "#SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER\n";
 
   private final URI uri;
   private Integer notebookVersion;
@@ -71,17 +70,24 @@ public class VersionedOpenNotebook {
   }
 
   private void indexCellsByLineNumber() {
-    if(notebookVersion.equals(indexedNotebookVersion)) {
+    if (notebookVersion.equals(indexedNotebookVersion)) {
       return;
     }
     var lineCount = 1;
-    for (var cell: orderedCells) {
+    var cellCount = 1;
+    for (var cell : orderedCells) {
       var cellLines = cell.getText().split("\n", -1);
-      for (var cellLineCount = 1; cellLineCount <= cellLines.length; cellLineCount ++) {
+      for (var cellLineCount = 1; cellLineCount <= cellLines.length; cellLineCount++) {
         fileLineToCell.put(lineCount, cell);
         virtualFileLineToCellLine.put(lineCount, cellLineCount);
-        lineCount ++;
+        lineCount++;
+        if (cellLineCount == cellLines.length && cellCount < orderedCells.size()) {
+          fileLineToCell.put(lineCount, cell);
+          virtualFileLineToCellLine.put(lineCount, cellLineCount);
+          lineCount++;
+        }
       }
+      cellCount++;
     }
     indexedNotebookVersion = notebookVersion;
   }
@@ -94,23 +100,19 @@ public class VersionedOpenNotebook {
     return uri;
   }
 
-  public ClientInputFile asInputFile(Path baseDir) {
-    return new AnalysisClientInputFile(uri, FileUtils.getFileRelativePath(baseDir, uri), getContent(), false, "python");
-  }
-
   public VersionedOpenFile asVersionedOpenFile() {
-    // TODO change to ipynb language
-    return new VersionedOpenFile(uri, "python", this.notebookVersion, getContent());
+    return new VersionedOpenFile(uri, Language.PYTHON.getLanguageKey(), this.notebookVersion, getContent());
   }
 
   String getContent() {
     return orderedCells.stream().map(TextDocumentItem::getText)
-      .collect(Collectors.joining("\n"));
+      .collect(Collectors.joining("\n" + SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER));
   }
 
   public int getNotebookVersion() {
     return this.notebookVersion;
   }
+
   public Set<String> getCellUris() {
     return cells.keySet();
   }
@@ -128,11 +130,11 @@ public class VersionedOpenNotebook {
     var originalQuickFixes = issue.quickFixes();
     var convertedQuickFixes = new ArrayList<QuickFix>();
     TextRange cellTextRange = null;
-    if(issueTextRange != null){
+    if (issueTextRange != null) {
       cellTextRange = fileTextRangeToCellTextRange(issueTextRange.getStartLine(), issueTextRange.getStartLineOffset(),
         issueTextRange.getEndLine(), issueTextRange.getEndLineOffset(), virtualFileLineToCellLine);
     }
-    if(originalQuickFixes != null && !originalQuickFixes.isEmpty()) {
+    if (originalQuickFixes != null && !originalQuickFixes.isEmpty()) {
       AtomicReference<URI> textEditCellUri = new AtomicReference<>();
       for (QuickFix quickFix : originalQuickFixes) {
         var newFileEdits = quickFix.inputFileEdits().stream().map(fileEdit -> {
@@ -154,21 +156,21 @@ public class VersionedOpenNotebook {
 
   public void didChange(int version, NotebookDocumentChangeEvent changeEvent) {
     this.notebookVersion = version;
-    if(changeEvent.getCells() != null && changeEvent.getCells().getStructure() != null && !changeEvent.getCells().getStructure().getDidClose().isEmpty()) {
+    if (changeEvent.getCells() != null && changeEvent.getCells().getStructure() != null && !changeEvent.getCells().getStructure().getDidClose().isEmpty()) {
       handleCellDeletion(changeEvent.getCells().getStructure().getDidClose());
     }
-    if(changeEvent.getCells() != null && changeEvent.getCells().getStructure() != null && !changeEvent.getCells().getStructure().getDidOpen().isEmpty()) {
+    if (changeEvent.getCells() != null && changeEvent.getCells().getStructure() != null && !changeEvent.getCells().getStructure().getDidOpen().isEmpty()) {
       handleCellCreation(changeEvent);
     }
-    if(changeEvent.getCells() != null && changeEvent.getCells().getTextContent() != null && !changeEvent.getCells().getTextContent().isEmpty()) {
+    if (changeEvent.getCells() != null && changeEvent.getCells().getTextContent() != null && !changeEvent.getCells().getTextContent().isEmpty()) {
       handleContentChange(changeEvent.getCells().getTextContent());
     }
   }
 
-  private void handleCellDeletion(List<TextDocumentIdentifier>  removedCellIdentifiers) {
+  private void handleCellDeletion(List<TextDocumentIdentifier> removedCellIdentifiers) {
     removedCellIdentifiers.forEach(removedCell -> {
       var removedItem = cells.remove(removedCell.getUri());
-      if(removedItem != null) {
+      if (removedItem != null) {
         orderedCells.remove(removedItem);
         notebookDiagnosticPublisher.removeCellDiagnostics(URI.create(removedItem.getUri()));
       }

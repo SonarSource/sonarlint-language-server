@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class NotebookUtilsTest {
+class NotebookUtilsTests {
   TextDocumentItem originalCell;
   @BeforeEach
   void setup() {
@@ -76,6 +76,20 @@ class NotebookUtilsTest {
       "\n" +
       "a = 1\n" +
       "b = 0";
+
+    assertThat(changedContent).isEqualTo(expectedNewContent);
+  }
+
+  @Test
+  void shouldApplyTwoSingleLineChangesOnSameLine() {
+    var firstChange = newChange(2, 4, 2, 8, "0");
+    var secondChange = newChange(2, 0, 2, 1, "c");
+
+    var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(firstChange, secondChange));
+    var expectedNewContent = "print(\"hello\")\n" +
+      "\n" +
+      "c = 0\n" +
+      "b = False";
 
     assertThat(changedContent).isEqualTo(expectedNewContent);
   }

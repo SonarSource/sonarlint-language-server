@@ -523,7 +523,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void testListAllRules() {
     var result = lsProxy.listAllRules().join();
     String[] commercialLanguages = new String[] {"C", "C++"};
-    String[] freeLanguages = new String[] {"CSS", "HTML", "JavaScript", "TypeScript", "PHP", "Python", "Java", "XML", "Secrets"};
+    String[] freeLanguages = new String[] {"CSS", "HTML", "IPython Notebooks", "JavaScript", "TypeScript", "PHP", "Python", "Java", "XML", "Secrets"};
     if (COMMERCIAL_ENABLED) {
       assertThat(result).containsOnlyKeys(ArrayUtils.addAll(commercialLanguages, freeLanguages));
     } else {
