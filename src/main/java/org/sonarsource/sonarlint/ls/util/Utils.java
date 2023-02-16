@@ -179,15 +179,6 @@ public class Utils {
     return uri.getScheme().equalsIgnoreCase(FILE_SCHEME);
   }
 
-  public static boolean uriHasNotebookCellScheme(URI uri) {
-    return uri.getScheme().equalsIgnoreCase(VSCODE_NOTEBOOK_CELL_SCHEME);
-  }
-
-  public static URI getNotebookUriFromCellUri(URI cellUri) {
-    var rawPath = cellUri.getRawPath();
-    return URI.create("file://" + rawPath);
-  }
-
   public static String hash(String codeSnippet) {
     String codeSnippetWithoutWhitespaces = MATCH_ALL_WHITESPACES.matcher(codeSnippet).replaceAll("");
     return DigestUtils.md5Hex(codeSnippetWithoutWhitespaces);

@@ -111,10 +111,10 @@ public class VersionedOpenNotebookTest {
     var tmpUri = URI.create("file:///some/notebook.ipynb");
     var underTest = createTestNotebookWithThreeCells(tmpUri);
 
-    assertThat(underTest.getCells()).hasSize(3);
-    assertThat(underTest.getCells()).contains(tmpUri.toString() + "#cell1");
-    assertThat(underTest.getCells()).contains(tmpUri.toString() + "#cell2");
-    assertThat(underTest.getCells()).contains(tmpUri.toString() + "#cell3");
+    assertThat(underTest.getCellUris()).hasSize(3);
+    assertThat(underTest.getCellUris()).contains(tmpUri.toString() + "#cell1");
+    assertThat(underTest.getCellUris()).contains(tmpUri.toString() + "#cell2");
+    assertThat(underTest.getCellUris()).contains(tmpUri.toString() + "#cell3");
   }
 
   @Test
@@ -314,7 +314,7 @@ public class VersionedOpenNotebookTest {
     underTest.didChange(2, changeEvent);
 
     assertThat(underTest.getNotebookVersion()).isEqualTo(2);
-    assertThat(underTest.getCells()).hasSize(4);
+    assertThat(underTest.getCellUris()).hasSize(4);
     assertThat(underTest.getContent()).isEqualTo("" +
       "cell1 line1\n" +
       "cell1 line2\n" +
@@ -351,7 +351,7 @@ public class VersionedOpenNotebookTest {
     underTest.didChange(2, changeEvent);
 
     assertThat(underTest.getNotebookVersion()).isEqualTo(2);
-    assertThat(underTest.getCells()).hasSize(2);
+    assertThat(underTest.getCellUris()).hasSize(2);
     assertThat(underTest.getContent()).isEqualTo("" +
       "cell1 line1\n" +
       "cell1 line2\n" +
@@ -383,7 +383,7 @@ public class VersionedOpenNotebookTest {
     underTest.didChange(2, changeEvent);
 
     assertThat(underTest.getNotebookVersion()).isEqualTo(2);
-    assertThat(underTest.getCells()).hasSize(3);
+    assertThat(underTest.getCellUris()).hasSize(3);
     assertThat(underTest.getContent()).isEqualTo("" +
       "cell1 line1\n" +
       "cell1 line2\n" +

@@ -76,8 +76,6 @@ import static java.net.URI.create;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARCLOUD_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARLINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARQUBE_TAINT_SOURCE;
-import static org.sonarsource.sonarlint.ls.util.Utils.getNotebookUriFromCellUri;
-import static org.sonarsource.sonarlint.ls.util.Utils.uriHasNotebookCellScheme;
 
 public class CommandManager {
 
@@ -149,15 +147,16 @@ public class CommandManager {
     var uri = create(params.getTextDocument().getUri());
     var binding = bindingManager.getBinding(uri);
     var ruleKey = diagnostic.getCode().getLeft();
-    var issueForDiagnostic = uriHasNotebookCellScheme(uri) ?
-      issuesCache.getCellIssueForDiagnostic(uri, diagnostic) :
+    var isNotebookCellUri = openNotebooksCache.isKnownCellUri(uri);
+    var issueForDiagnostic = isNotebookCellUri ?
+      issuesCache.getIssueForDiagnostic(openNotebooksCache.getNotebookUriFromCellUri(uri), diagnostic) :
       issuesCache.getIssueForDiagnostic(uri, diagnostic);
-    Optional<VersionedOpenNotebook> versionedOpenNotebook = uriHasNotebookCellScheme(uri) ?
-      openNotebooksCache.getFile(getNotebookUriFromCellUri(uri)) :
+    Optional<VersionedOpenNotebook> versionedOpenNotebook = isNotebookCellUri ?
+      openNotebooksCache.getFile(openNotebooksCache.getNotebookUriFromCellUri(uri)) :
       Optional.empty();
     if(issueForDiagnostic.isPresent()) {
       var versionedIssue = issueForDiagnostic.get();
-      var quickFixes = uriHasNotebookCellScheme(uri) && versionedOpenNotebook.isPresent() ?
+      var quickFixes = isNotebookCellUri && versionedOpenNotebook.isPresent() ?
         versionedOpenNotebook.get().toCellIssue(versionedIssue.getIssue()).quickFixes() :
         versionedIssue.getIssue().quickFixes();
       cancelToken.checkCanceled();

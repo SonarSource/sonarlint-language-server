@@ -255,8 +255,10 @@ class CommandManagerTests {
     when(fix.inputFileEdits()).thenReturn(List.of(edit));
     when(issue.quickFixes()).thenReturn(List.of(fix));
     var versionedIssue = new VersionedIssue(issue, 1);
-    when(issuesCache.getCellIssueForDiagnostic(URI.create(CELL_URI), d)).thenReturn(Optional.of(versionedIssue));
     when(openNotebooksCache.getFile(notebookUri)).thenReturn(Optional.of(fakeNotebook));
+    when(openNotebooksCache.getNotebookUriFromCellUri(URI.create(CELL_URI))).thenReturn(fakeNotebook.getUri());
+    when(openNotebooksCache.isKnownCellUri(URI.create(CELL_URI))).thenReturn(true);
+    when(issuesCache.getIssueForDiagnostic(fakeNotebook.getUri(), d)).thenReturn(Optional.of(versionedIssue));
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_NOTEBOOK_CELL_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);

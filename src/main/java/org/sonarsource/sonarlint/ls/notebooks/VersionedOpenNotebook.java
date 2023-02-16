@@ -111,7 +111,7 @@ public class VersionedOpenNotebook {
   public int getNotebookVersion() {
     return this.notebookVersion;
   }
-  public Set<String> getCells() {
+  public Set<String> getCellUris() {
     return cells.keySet();
   }
 
