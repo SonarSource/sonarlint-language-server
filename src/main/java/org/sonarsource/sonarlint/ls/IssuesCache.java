@@ -31,8 +31,6 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 
-import static org.sonarsource.sonarlint.ls.util.Utils.getNotebookUriFromCellUri;
-
 public class IssuesCache {
 
   private final Map<URI, Map<String, VersionedIssue>> issuesPerIdPerFileURI = new ConcurrentHashMap<>();
@@ -78,12 +76,6 @@ public class IssuesCache {
       .map(JsonPrimitive::getAsString)
       .map(issuesForFile::get)
       .filter(Objects::nonNull);
-  }
-
-  public Optional<VersionedIssue> getCellIssueForDiagnostic(URI cellUri, Diagnostic diagnostic) {
-    URI notebookUri;
-    notebookUri = getNotebookUriFromCellUri(cellUri);
-    return getIssueForDiagnostic(notebookUri, diagnostic);
   }
 
   public static class VersionedIssue {
