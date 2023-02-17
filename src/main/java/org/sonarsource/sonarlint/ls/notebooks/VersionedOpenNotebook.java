@@ -95,7 +95,7 @@ public class VersionedOpenNotebook {
   }
 
   public ClientInputFile asInputFile(Path baseDir) {
-    return new AnalysisClientInputFile(uri, FileUtils.getFileRelativePath(baseDir, uri), getContent(), false, "ipynb");
+    return new AnalysisClientInputFile(uri, FileUtils.getFileRelativePath(baseDir, uri), getContent(), false, "python");
   }
 
   public VersionedOpenFile asVersionedOpenFile() {

@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
@@ -118,6 +119,23 @@ class AnalysisSchedulerTests {
 
     AnalysisTask submittedTask = taskCaptor.getValue();
     assertThat(submittedTask.getFilesToAnalyze()).containsExactlyInAnyOrder(file1, file2);
+    assertThat(submittedTask.shouldFetchServerIssues()).isFalse();
+  }
+
+  @Test
+  void shouldBatchAnalysisOnChangeWithNotebook() {
+    var notebook1 = openNotebooksCache.didOpen(URI.create("file:///some/notebook1.ipynb"), 1, Collections.emptyList());
+    var notebook2 = openNotebooksCache.didOpen(URI.create("file:///some/notebook2.ipynb"), 2, Collections.emptyList());
+    underTest.didChange(notebook1.getUri());
+    underTest.didChange(notebook2.getUri());
+
+    ArgumentCaptor<AnalysisTask> taskCaptor = ArgumentCaptor.forClass(AnalysisTask.class);
+    verify(taskExecutor, timeout(1000)).run(taskCaptor.capture());
+
+    AnalysisTask submittedTask = taskCaptor.getValue();
+    assertThat(submittedTask.getFilesToAnalyze()).hasSize(2);
+    assertThat(submittedTask.getFilesToAnalyze().iterator().next().getUri()).isIn(notebook1.getUri(), notebook2.getUri());
+    assertThat(submittedTask.getFilesToAnalyze().iterator().next().getLanguageId()).isEqualTo("python");
     assertThat(submittedTask.shouldFetchServerIssues()).isFalse();
   }
 
