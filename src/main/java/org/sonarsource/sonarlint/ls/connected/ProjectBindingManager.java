@@ -155,10 +155,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
    * @return empty if the file is unbound
    */
   public Optional<ProjectBindingWrapper> getBinding(URI fileUri) {
+    if (!uriHasFileScheme(fileUri) || openNotebooksCache.isNotebook(fileUri)) {
       if (globalLogOutput != null) {
         globalLogOutput.log("Ignoring connected mode settings for unsupported URI: " + fileUri, ClientLogOutput.Level.DEBUG);
       }
-    if (!uriHasFileScheme(fileUri)) {
       return Optional.empty();
     }
     var folder = foldersManager.findFolderForFile(fileUri);
