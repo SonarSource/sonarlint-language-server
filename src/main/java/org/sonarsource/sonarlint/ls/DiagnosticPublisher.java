@@ -84,17 +84,17 @@ public class DiagnosticPublisher {
       issue.getType() == RuleType.SECURITY_HOTSPOT ?
         hotspotSeverity(issue.getVulnerabilityProbability().orElse(VulnerabilityProbability.MEDIUM)) : severity(issue.getSeverity());
 
-    return prepareDiagnostic(severity, issue, entry.getKey());
+    return prepareDiagnostic(severity, issue, entry.getKey(), false);
   }
 
-  public static Diagnostic prepareDiagnostic(DiagnosticSeverity severity, Issue issue, String entryKey) {
+  public static Diagnostic prepareDiagnostic(DiagnosticSeverity severity, Issue issue, String entryKey, boolean ignoreSecondaryLocations) {
     var diagnostic = new Diagnostic();
 
     diagnostic.setSeverity(severity);
     var range = Utils.convert(issue);
     diagnostic.setRange(range);
     diagnostic.setCode(issue.getRuleKey());
-    diagnostic.setMessage(message(issue));
+    diagnostic.setMessage(message(issue, ignoreSecondaryLocations));
     setSource(issue, diagnostic);
     diagnostic.setData(entryKey);
 
@@ -112,8 +112,8 @@ public class DiagnosticPublisher {
     }
   }
 
-  public static String message(Issue issue) {
-    if (issue.flows().isEmpty()) {
+  public static String message(Issue issue, boolean ignoreSecondaryLocations) {
+    if (issue.flows().isEmpty() || ignoreSecondaryLocations) {
       return issue.getMessage();
     } else if (issue.flows().size() == 1) {
       return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.flows().get(0).locations().size(), ITEM_LOCATION);

@@ -55,7 +55,7 @@ public class NotebookDiagnosticPublisher {
     var issue = entry.getValue();
     var severity = severity(issue.getSeverity());
 
-    return prepareDiagnostic(severity, issue, entry.getKey());
+    return prepareDiagnostic(severity, issue, entry.getKey(), true);
   }
 
   public void publishNotebookDiagnostics(URI uri, VersionedOpenNotebook versionedOpenNotebook) {
