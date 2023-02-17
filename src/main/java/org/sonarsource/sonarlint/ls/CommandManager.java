@@ -66,6 +66,8 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
@@ -108,10 +110,11 @@ public class CommandManager {
   private final IssuesCache securityHotspotsCache;
   private final BackendServiceFacade backendServiceFacade;
   private final WorkspaceFoldersManager workspaceFoldersManager;
+  private final OpenNotebooksCache openNotebooksCache;
 
   CommandManager(SonarLintExtendedLanguageClient client, SettingsManager settingsManager, ProjectBindingManager bindingManager, ServerSynchronizer serverSynchronizer,
     SonarLintTelemetry telemetry, StandaloneEngineManager standaloneEngineManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache,
-    IssuesCache securityHotspotsCache, BackendServiceFacade backendServiceFacade, WorkspaceFoldersManager workspaceFoldersManager) {
+    IssuesCache securityHotspotsCache, BackendServiceFacade backendServiceFacade, WorkspaceFoldersManager workspaceFoldersManager, OpenNotebooksCache openNotebooksCache) {
     this.client = client;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
@@ -123,6 +126,7 @@ public class CommandManager {
     this.securityHotspotsCache = securityHotspotsCache;
     this.backendServiceFacade = backendServiceFacade;
     this.workspaceFoldersManager = workspaceFoldersManager;
+    this.openNotebooksCache = openNotebooksCache;
   }
 
   public List<Either<Command, CodeAction>> computeCodeActions(CodeActionParams params, CancelChecker cancelToken) {
@@ -143,26 +147,41 @@ public class CommandManager {
     var uri = create(params.getTextDocument().getUri());
     var binding = bindingManager.getBinding(uri);
     var ruleKey = diagnostic.getCode().getLeft();
-    cancelToken.checkCanceled();
-    var issueForDiagnostic = issuesCache.getIssueForDiagnostic(uri, diagnostic);
-    issueForDiagnostic.ifPresent(versionedIssue -> versionedIssue.getIssue().quickFixes().forEach(fix -> {
-      var newCodeAction = new CodeAction(SONARLINT_ACTION_PREFIX + fix.message());
-      newCodeAction.setKind(CodeActionKind.QuickFix);
-      newCodeAction.setDiagnostics(List.of(diagnostic));
-      newCodeAction.setEdit(newWorkspaceEdit(fix, versionedIssue.getDocumentVersion()));
-      newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, List.of(ruleKey)));
-      codeActions.add(Either.forRight(newCodeAction));
-    }));
+    var isNotebookCellUri = openNotebooksCache.isKnownCellUri(uri);
+    var issueForDiagnostic = isNotebookCellUri ?
+      issuesCache.getIssueForDiagnostic(openNotebooksCache.getNotebookUriFromCellUri(uri), diagnostic) :
+      issuesCache.getIssueForDiagnostic(uri, diagnostic);
+    Optional<VersionedOpenNotebook> versionedOpenNotebook = isNotebookCellUri ?
+      openNotebooksCache.getFile(openNotebooksCache.getNotebookUriFromCellUri(uri)) :
+      Optional.empty();
+    if(issueForDiagnostic.isPresent()) {
+      var versionedIssue = issueForDiagnostic.get();
+      var quickFixes = isNotebookCellUri && versionedOpenNotebook.isPresent() ?
+        versionedOpenNotebook.get().toCellIssue(versionedIssue.getIssue()).quickFixes() :
+        versionedIssue.getIssue().quickFixes();
+      cancelToken.checkCanceled();
+      quickFixes.forEach(fix -> {
+        var newCodeAction = new CodeAction(SONARLINT_ACTION_PREFIX + fix.message());
+        newCodeAction.setKind(CodeActionKind.QuickFix);
+        newCodeAction.setDiagnostics(List.of(diagnostic));
+        newCodeAction.setEdit(newWorkspaceEdit(fix, versionedIssue.getDocumentVersion()));
+        newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, List.of(ruleKey)));
+        codeActions.add(Either.forRight(newCodeAction));
+      });
+    }
     addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey);
-    issueForDiagnostic.ifPresent(versionedIssue -> {
-      if (!versionedIssue.getIssue().flows().isEmpty()) {
-        var titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
-        codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(versionedIssue.getIssue()))));
-      }
-    });
+    issueForDiagnostic.ifPresent(versionedIssue -> addShowAllLocationsCodeAction(versionedIssue, codeActions, diagnostic, ruleKey));
     if (binding.isEmpty()) {
       var titleDeactivate = String.format("Deactivate rule '%s'", ruleKey);
       codeActions.add(newQuickFix(diagnostic, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, List.of(ruleKey)));
+    }
+  }
+
+  private static void addShowAllLocationsCodeAction(IssuesCache.VersionedIssue versionedIssue,
+    List<Either<Command, CodeAction>> codeActions, Diagnostic diagnostic, String ruleKey) {
+    if (!versionedIssue.getIssue().flows().isEmpty()) {
+      var titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
+      codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(versionedIssue.getIssue()))));
     }
   }
 

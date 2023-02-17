@@ -76,7 +76,7 @@ import org.sonarsource.sonarlint.ls.util.FileUtils;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 import static org.sonarsource.sonarlint.ls.util.FileUtils.getFileRelativePath;
-import static org.sonarsource.sonarlint.ls.util.Utils.uriHasFileSchema;
+import static org.sonarsource.sonarlint.ls.util.Utils.uriHasFileScheme;
 
 /**
  * Keep a cache of project bindings. Files that are part of a workspace workspaceFolderPath will share the same binding.
@@ -155,10 +155,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
    * @return empty if the file is unbound
    */
   public Optional<ProjectBindingWrapper> getBinding(URI fileUri) {
-    if (!uriHasFileSchema(fileUri) || openNotebooksCache.isNotebook(fileUri)) {
       if (globalLogOutput != null) {
         globalLogOutput.log("Ignoring connected mode settings for unsupported URI: " + fileUri, ClientLogOutput.Level.DEBUG);
       }
+    if (!uriHasFileScheme(fileUri)) {
       return Optional.empty();
     }
     var folder = foldersManager.findFolderForFile(fileUri);

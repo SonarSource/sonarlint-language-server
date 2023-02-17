@@ -53,9 +53,9 @@ class UtilsTests {
 
 
   @Test
-  void uriHasFileSchemaTest() {
-    assertThat(Utils.uriHasFileSchema(URI.create("file:///path"))).isTrue();
-    assertThat(Utils.uriHasFileSchema(URI.create("notfile:///path"))).isFalse();
+  void uriHasFileSchemeTest() {
+    assertThat(Utils.uriHasFileScheme(URI.create("file:///path"))).isTrue();
+    assertThat(Utils.uriHasFileScheme(URI.create("notfile:///path"))).isFalse();
   }
 
   @Test

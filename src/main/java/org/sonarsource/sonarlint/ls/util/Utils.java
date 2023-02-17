@@ -52,6 +52,8 @@ public class Utils {
 
   private static final Pattern MATCH_ALL_WHITESPACES = Pattern.compile("\\s");
   private static final String MESSAGE_WITH_PLURALIZED_SUFFIX = "%s [+%d %s]";
+  private static final String FILE_SCHEME = "file";
+
 
   private Utils() {
   }
@@ -172,8 +174,8 @@ public class Utils {
     return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issueMessage, nbItems, pluralize(nbItems, itemName));
   }
 
-  public static boolean uriHasFileSchema(URI uri) {
-    return uri.getScheme().equalsIgnoreCase("file");
+  public static boolean uriHasFileScheme(URI uri) {
+    return uri.getScheme().equalsIgnoreCase(FILE_SCHEME);
   }
 
   public static String hash(String codeSnippet) {

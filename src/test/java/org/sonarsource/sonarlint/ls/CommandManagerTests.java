@@ -63,8 +63,6 @@ import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
-import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamDefinition;
-import org.sonarsource.sonarlint.core.rule.extractor.SonarLintRuleParamType;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
@@ -77,6 +75,7 @@ import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -85,7 +84,6 @@ import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -101,12 +99,15 @@ import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DE
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_UPDATE_ALL_BINDINGS_COMMAND;
+import static org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebookTest.createTestNotebookWithThreeCells;
 
 class CommandManagerTests {
 
   private static final String FAKE_RULE_KEY = "javascript:S1234";
   private static final String FILE_URI = "file://foo.js";
+  private static final String CELL_URI = "vscode-notebook-cell:/Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb#W2sZmlsZQ%3D%3D";
   private static final TextDocumentIdentifier FAKE_TEXT_DOCUMENT = new TextDocumentIdentifier(FILE_URI);
+  private static final TextDocumentIdentifier FAKE_NOTEBOOK_CELL_DOCUMENT = new TextDocumentIdentifier(CELL_URI);
   private static final Range FAKE_RANGE = new Range(new Position(1, 1), new Position(1, 2));
   private static final CancelChecker NOP_CANCEL_TOKEN = () -> {
   };
@@ -125,6 +126,7 @@ class CommandManagerTests {
   private IssuesCache securityHotspotsCache;
   private BackendServiceFacade backendServiceFacade;
   private WorkspaceFoldersManager workspaceFoldersManager;
+  private OpenNotebooksCache openNotebooksCache;
 
   @BeforeEach
   public void prepareMocks() {
@@ -146,8 +148,11 @@ class CommandManagerTests {
     securityHotspotsCache = mock(IssuesCache.class);
     backendServiceFacade = mock(BackendServiceFacade.class);
     workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
+    openNotebooksCache = mock(OpenNotebooksCache.class);
 
-    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, serverSynchronizer, mockTelemetry, standaloneEngineManager, mockTaintVulnerabilitiesCache, issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager);
+    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, serverSynchronizer, mockTelemetry,
+      standaloneEngineManager, mockTaintVulnerabilitiesCache,
+      issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, openNotebooksCache);
   }
 
   @Test
@@ -219,6 +224,43 @@ class CommandManagerTests {
     when(issue.quickFixes()).thenReturn(List.of(fix));
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
+      new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
+
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle())
+      .containsExactly(
+        "SonarLint: Fix the issue!",
+        "SonarLint: Open description of rule 'XYZ'",
+        "SonarLint: Deactivate rule 'XYZ'");
+  }
+
+  @Test
+  void showQuickFixFromAnalyzerForNotebook() {
+    var notebookUri = URI.create("file:///Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb");
+    var fakeNotebook = createTestNotebookWithThreeCells(notebookUri);
+    when(bindingManager.getBinding(URI.create(CELL_URI))).thenReturn(Optional.empty());
+
+    var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
+
+    var issue = mock(Issue.class);
+    var textEdit = mock(TextEdit.class);
+    when(textEdit.newText()).thenReturn("");
+    when(textEdit.range()).thenReturn(new TextRange(1, 0, 1, 1));
+    var edit = mock(ClientInputFileEdit.class);
+    when(edit.textEdits()).thenReturn(List.of(textEdit));
+    var target = mock(ClientInputFile.class);
+    when(target.uri()).thenReturn(notebookUri);
+    when(edit.target()).thenReturn(target);
+    var fix = mock(QuickFix.class);
+    when(fix.message()).thenReturn("Fix the issue!");
+    when(fix.inputFileEdits()).thenReturn(List.of(edit));
+    when(issue.quickFixes()).thenReturn(List.of(fix));
+    var versionedIssue = new VersionedIssue(issue, 1);
+    when(openNotebooksCache.getFile(notebookUri)).thenReturn(Optional.of(fakeNotebook));
+    when(openNotebooksCache.getNotebookUriFromCellUri(URI.create(CELL_URI))).thenReturn(fakeNotebook.getUri());
+    when(openNotebooksCache.isKnownCellUri(URI.create(CELL_URI))).thenReturn(true);
+    when(issuesCache.getIssueForDiagnostic(fakeNotebook.getUri(), d)).thenReturn(Optional.of(versionedIssue));
+
+    var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_NOTEBOOK_CELL_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())

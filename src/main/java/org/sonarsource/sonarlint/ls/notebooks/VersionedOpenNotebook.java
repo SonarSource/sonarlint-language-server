@@ -29,19 +29,25 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.NotebookDocumentChangeEvent;
 import org.eclipse.lsp4j.NotebookDocumentChangeEventCellTextContent;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
+import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
+import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
+import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.ls.AnalysisClientInputFile;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
+import org.sonarsource.sonarlint.ls.folders.InFolderClientInputFile;
 import org.sonarsource.sonarlint.ls.util.FileUtils;
 
 import static org.sonarsource.sonarlint.ls.notebooks.NotebookUtils.applyChangeToCellContent;
+import static org.sonarsource.sonarlint.ls.notebooks.NotebookUtils.fileTextRangeToCellTextRange;
 
 public class VersionedOpenNotebook {
 
@@ -105,7 +111,7 @@ public class VersionedOpenNotebook {
   public int getNotebookVersion() {
     return this.notebookVersion;
   }
-  public Set<String> getCells() {
+  public Set<String> getCellUris() {
     return cells.keySet();
   }
 
@@ -119,30 +125,42 @@ public class VersionedOpenNotebook {
   public DelegatingCellIssue toCellIssue(Issue issue) {
     indexCellsByLineNumber();
     var issueTextRange = issue.getTextRange();
+    var originalQuickFixes = issue.quickFixes();
+    var convertedQuickFixes = new ArrayList<QuickFix>();
     TextRange cellTextRange = null;
     if(issueTextRange != null){
-      var fileStartLine = issueTextRange.getStartLine();
-      var fileStartLineOffset = issueTextRange.getStartLineOffset();
-      var fileEndLine = issueTextRange.getEndLine();
-      var fileEndLineOffset = issueTextRange.getEndLineOffset();
-
-      var cellStartLine = virtualFileLineToCellLine.get(fileStartLine);
-      var cellEndLine = virtualFileLineToCellLine.get(fileEndLine);
-
-      cellTextRange = new TextRange(cellStartLine, fileStartLineOffset, cellEndLine, fileEndLineOffset);
+      cellTextRange = fileTextRangeToCellTextRange(issueTextRange.getStartLine(), issueTextRange.getStartLineOffset(),
+        issueTextRange.getEndLine(), issueTextRange.getEndLineOffset(), virtualFileLineToCellLine);
     }
-    return new DelegatingCellIssue(issue, cellTextRange);
+    if(originalQuickFixes != null && !originalQuickFixes.isEmpty()) {
+      AtomicReference<URI> textEditCellUri = new AtomicReference<>();
+      for (QuickFix quickFix : originalQuickFixes) {
+        var newFileEdits = quickFix.inputFileEdits().stream().map(fileEdit -> {
+          var newTextEdits = fileEdit.textEdits().stream().map(textEdit -> {
+            textEditCellUri.set(URI.create(fileLineToCell.get(textEdit.range().getStartLine()).getUri()));
+            var newTextRange = fileTextRangeToCellTextRange(textEdit.range().getStartLine(), textEdit.range().getStartLineOffset(),
+              textEdit.range().getEndLine(), textEdit.range().getEndLineOffset(), virtualFileLineToCellLine);
+            return new TextEdit(newTextRange, textEdit.newText());
+          }).collect(Collectors.toList());
+          var clientInputFile = new InFolderClientInputFile(textEditCellUri.get(), "", false);
+          return new ClientInputFileEdit(clientInputFile, newTextEdits);
+        }).collect(Collectors.toList());
+        var convertedQuickFix = new QuickFix(newFileEdits, quickFix.message());
+        convertedQuickFixes.add(convertedQuickFix);
+      }
+    }
+    return new DelegatingCellIssue(issue, cellTextRange, convertedQuickFixes);
   }
 
   public void didChange(int version, NotebookDocumentChangeEvent changeEvent) {
     this.notebookVersion = version;
-    if(changeEvent.getCells().getStructure() != null && !changeEvent.getCells().getStructure().getDidClose().isEmpty()) {
+    if(changeEvent.getCells() != null && changeEvent.getCells().getStructure() != null && !changeEvent.getCells().getStructure().getDidClose().isEmpty()) {
       handleCellDeletion(changeEvent.getCells().getStructure().getDidClose());
     }
-    if(changeEvent.getCells().getStructure() != null && !changeEvent.getCells().getStructure().getDidOpen().isEmpty()) {
+    if(changeEvent.getCells() != null && changeEvent.getCells().getStructure() != null && !changeEvent.getCells().getStructure().getDidOpen().isEmpty()) {
       handleCellCreation(changeEvent);
     }
-    if(changeEvent.getCells().getTextContent() != null && !changeEvent.getCells().getTextContent().isEmpty()) {
+    if(changeEvent.getCells() != null && changeEvent.getCells().getTextContent() != null && !changeEvent.getCells().getTextContent().isEmpty()) {
       handleContentChange(changeEvent.getCells().getTextContent());
     }
   }

@@ -53,4 +53,66 @@ class OpenNotebooksCacheTest {
       assertThat(underTest.getAll()).isEmpty();
     }
 
+    @Test
+    void shouldReturnNullWhenGetNotebookUriFromCellUriAndNotebookIsNotOpen() {
+      var notebookUri = URI.create("file:///some/notebook.ipynb");
+
+      var cell1 = new TextDocumentItem();
+      cell1.setUri(notebookUri + "#cell1");
+      cell1.setText("cell1 line1\ncell1 line2\n");
+
+      var cell2 = new TextDocumentItem();
+      cell2.setUri(notebookUri+ "#cell2");
+      cell2.setText("cell2 line1\ncell2 line2\n");
+      var fakeNotebook = VersionedOpenNotebook.create(notebookUri, 1, List.of(cell1, cell2), mock(NotebookDiagnosticPublisher.class));
+
+      var underTest = new OpenNotebooksCache(mock(LanguageClientLogger.class), mock(NotebookDiagnosticPublisher.class));
+      underTest.didOpen(notebookUri, 1, List.of(cell1, cell2));
+
+      var cellUri = URI.create("vscode-notebook-cell:/Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb#W2sZmlsZQ%3D%3D");
+      var expectedNotebookUri = URI.create("file:///Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb");
+      assertThat(underTest.getNotebookUriFromCellUri(cellUri)).isNull();
+    }
+
+  @Test
+  void shouldGetNotebookUriFromCellUri() {
+    var notebookUri = URI.create("file:///Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb");
+
+    var cell1 = new TextDocumentItem();
+    cell1.setUri("vscode-notebook-cell:/Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb#W2sZmlsZQ%3D%3D");
+    cell1.setText("cell1 line1\ncell1 line2\n");
+
+    var cell2 = new TextDocumentItem();
+    cell2.setUri(notebookUri+ "#cell2");
+    cell2.setText("cell2 line1\ncell2 line2\n");
+    var fakeNotebook = VersionedOpenNotebook.create(notebookUri, 1, List.of(cell1, cell2), mock(NotebookDiagnosticPublisher.class));
+
+    var underTest = new OpenNotebooksCache(mock(LanguageClientLogger.class), mock(NotebookDiagnosticPublisher.class));
+    underTest.didOpen(notebookUri, 1, List.of(cell1, cell2));
+
+    var cellUri = URI.create("vscode-notebook-cell:/Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb#W2sZmlsZQ%3D%3D");
+    assertThat(underTest.getNotebookUriFromCellUri(cellUri)).isEqualTo(fakeNotebook.getUri());
+  }
+
+  @Test
+  void shouldReturnIfUriIsCellUri() {
+    var notebookUri = URI.create("file:///Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb");
+
+    var cell1 = new TextDocumentItem();
+    cell1.setUri("vscode-notebook-cell:/Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb#W2sZmlsZQ%3D%3D");
+    cell1.setText("cell1 line1\ncell1 line2\n");
+
+    var cell2 = new TextDocumentItem();
+    cell2.setUri(notebookUri+ "#cell2");
+    cell2.setText("cell2 line1\ncell2 line2\n");
+    var fakeNotebook = VersionedOpenNotebook.create(notebookUri, 1, List.of(cell1, cell2), mock(NotebookDiagnosticPublisher.class));
+
+    var underTest = new OpenNotebooksCache(mock(LanguageClientLogger.class), mock(NotebookDiagnosticPublisher.class));
+    underTest.didOpen(notebookUri, 1, List.of(cell1, cell2));
+
+    assertThat(underTest.isKnownCellUri(URI.create(cell1.getUri()))).isTrue();
+    assertThat(underTest.isKnownCellUri(URI.create(cell2.getUri()))).isTrue();
+    assertThat(underTest.isKnownCellUri(URI.create(notebookUri + "dsdas"))).isFalse();
+  }
+
 }
