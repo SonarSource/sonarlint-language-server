@@ -43,6 +43,7 @@ import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
 import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.TextRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,7 +71,7 @@ public class VersionedOpenNotebookTest {
       "cell3 line1\n" +
       "cell3 line2\n");
     assertThat(clientInputFile.isTest()).isFalse();
-    assertThat(clientInputFile.language()).isNull();
+    assertThat(clientInputFile.language()).isEqualTo(Language.PYTHON);
 
     assertThat(underTest.getCellUri(0)).isEmpty();
     assertThat(underTest.getCellUri(1).get()).hasFragment("cell1");
