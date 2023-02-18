@@ -19,102 +19,51 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import java.io.IOException;
-import java.io.PrintStream;
-import java.nio.file.InvalidPathException;
+import com.google.common.collect.ImmutableList;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.Callable;
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Model.CommandSpec;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
+import picocli.CommandLine.Spec;
 
-public class ServerMain {
+@Command
+public class ServerMain implements Callable<Integer> {
 
-  private static final String ANALYZERS_KEY = "-analyzers";
-  private static final String USAGE = "Usage: java -jar sonarlint-server.jar <jsonRpcPort> " +
-          "[-analyzers path/to/analyzer1.jar [path/to/analyzer2.jar] ...]";
+  @Parameters(index = "0", description = "The port to which sonarlint should connect to.", defaultValue = "-1")
+  private int jsonRpcPort;
 
-  private final PrintStream out;
-  private final PrintStream err;
+  @Option(names = "-stdio", description = "The actual transport channel will be stdio")
+  private boolean useStdio;
 
-  public ServerMain(PrintStream out, PrintStream err) {
-    this.out = out;
-    this.err = err;
+  @Option(names = "-analyzers", arity = "1..*", description = "A list of paths to the analyzer JARs that should be used to analyze the code.")
+  private List<Path> analyzers = new ArrayList<>();
+
+  @Spec
+  private CommandSpec spec;
+
+  public ServerMain() {
   }
 
-  public static void main(String... args) {
-    new ServerMain(System.out, System.err).startLanguageServer(args);
+  public List<Path> getAnalyzers() {
+    return ImmutableList.copyOf(analyzers);
   }
 
-  static int getIndexOfNextParam(int start, String[] args) {
-    for (int i = start + 1; i < args.length; i++) {
-      if (args[i].startsWith("-")) {
-        return i;
-      }
-    }
-    return -1;
-  }
+  @Override
+  public Integer call() throws Exception {
+    SonarLintLanguageServer.bySocket(jsonRpcPort, analyzers);
 
-  public void startLanguageServer(String... args) {
-    if (args.length < 1) {
-      err.println(USAGE);
-      exitWithError();
-    }
-    var jsonRpcPort = parsePortArgument(args);
-
-    var analyzers = extractAnalyzers(args);
-
-    out.println("Binding to " + jsonRpcPort);
-    try {
-      SonarLintLanguageServer.bySocket(jsonRpcPort, analyzers);
-    } catch (IOException e) {
-      err.println("Unable to connect to the client");
-      e.printStackTrace(err);
-      exitWithError();
-    }
-  }
-
-  Collection<Path> extractAnalyzers(String[] args) {
-    var indexOfAnalyzersParam = List.of(args).indexOf(ANALYZERS_KEY);
-    if (indexOfAnalyzersParam == -1) {
-      err.println(USAGE);
-      exitWithError();
-    }
-    var nextParam = getIndexOfNextParam(indexOfAnalyzersParam, args);
-
-    return extractAnalyzersPathsToList(args, indexOfAnalyzersParam, nextParam);
-  }
-
-  List<Path> extractAnalyzersPathsToList(String[] args, int from, int to) {
-    if (to == -1) {
-      to = args.length;
-    }
-    var analyzers = new ArrayList<Path>();
-    for (var i = from + 1; i < to; i++) {
-      try {
-        analyzers.add(Paths.get(args[i]));
-      } catch (InvalidPathException e) {
-        err.println("Invalid argument at position " + (i + 1) + ". Expected a path.");
-        e.printStackTrace(err);
-        exitWithError();
-      }
-    }
-    return analyzers;
-  }
-
-  private int parsePortArgument(String... args) {
-    try {
-      return Integer.parseInt(args[0]);
-    } catch (NumberFormatException e) {
-      err.println("Invalid port provided as first parameter");
-      e.printStackTrace(err);
-      exitWithError();
-    }
     return 0;
   }
 
-  void exitWithError() {
-    System.exit(1);
+  public static void main(String... args) {
+    int exitCode = new CommandLine(new ServerMain()).execute(args);
+    System.exit(exitCode);
   }
 
 }
+
