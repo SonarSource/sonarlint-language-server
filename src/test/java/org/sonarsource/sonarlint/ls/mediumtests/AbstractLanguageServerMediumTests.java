@@ -19,9 +19,9 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
@@ -98,6 +98,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
+import picocli.CommandLine;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -133,7 +134,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     client = new FakeLanguageClient();
 
-    var executor = Executors.newSingleThreadExecutor();
+    var executor = Executors.newFixedThreadPool(2);
     var future = executor.submit(() -> {
       Socket socket = serverSocket.accept();
       Launcher<SonarLintExtendedLanguageServer> clientSideLauncher = new LSPLauncher.Builder<SonarLintExtendedLanguageServer>()
@@ -145,7 +146,6 @@ public abstract class AbstractLanguageServerMediumTests {
       clientSideLauncher.startListening();
       return clientSideLauncher.getRemoteProxy();
     });
-    executor.shutdown();
 
     var java = fullPathToJar("sonarjava");
     var js = fullPathToJar("sonarjs");
@@ -159,10 +159,16 @@ public abstract class AbstractLanguageServerMediumTests {
       var cfamily = fullPathToJar("cfamily");
       languageServerArgs = ArrayUtils.add(languageServerArgs, cfamily);
     }
-    var serverStdOut = new ByteArrayOutputStream();
-    var serverStdErr = new ByteArrayOutputStream();
+
     try {
-      new ServerMain(new PrintStream(serverStdOut), new PrintStream(serverStdErr)).startLanguageServer(languageServerArgs);
+      var cmd = new CommandLine(new ServerMain());
+      var cmdOutput = new StringWriter();
+      cmd.setErr(new PrintWriter(cmdOutput));
+      cmd.setOut(new PrintWriter(cmdOutput));
+
+      var clonedArgs = ArrayUtils.clone(languageServerArgs);
+      executor.submit(() -> cmd.execute(clonedArgs));
+      executor.shutdown();
     } catch (Exception e) {
       e.printStackTrace();
       future.get(1, TimeUnit.SECONDS);

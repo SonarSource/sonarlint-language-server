@@ -19,87 +19,52 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.shaded.org.apache.commons.io.output.ByteArrayOutputStream;
+import picocli.CommandLine;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.spy;
 
 class ServerMainTests {
 
   private static final String INVALID_PATH = "\0invalid?;path\n";
-  private final ByteArrayOutputStream out = new ByteArrayOutputStream();
-  private final ByteArrayOutputStream err = new ByteArrayOutputStream();
-  private ServerMain underTest = new ServerMain(new PrintStream(out), new PrintStream(err));
+  private ServerMain underTest;
+
+  private CommandLine cmd;
+  private StringWriter cmdOutput;
 
   @BeforeEach
   public void prepare() {
-    underTest = spy(underTest);
-    doThrow(new RuntimeException("exit called")).when(underTest).exitWithError();
-  }
+    underTest = new ServerMain();
+    cmd = new CommandLine(underTest);
 
-  @Test
-  void testRequiredArguments() {
-
-    var thrown = assertThrows(RuntimeException.class, () -> {
-      underTest.startLanguageServer();
-    });
-
-    assertThat(thrown).hasMessage("exit called");
-    assertThat(err.toString(StandardCharsets.UTF_8))
-      .isEqualTo("Usage: java -jar sonarlint-server.jar <jsonRpcPort> " +
-        "[-analyzers path/to/analyzer1.jar [path/to/analyzer2.jar] ...]" + System.lineSeparator());
+    cmdOutput = new StringWriter();
+    cmd.setOut(new PrintWriter(cmdOutput));
+    cmd.setErr(new PrintWriter(cmdOutput));
   }
 
   @Test
   void testInvalidPortArgument() {
+    cmd.execute("not_a_number");
 
-    var thrown = assertThrows(RuntimeException.class, () -> {
-      underTest.startLanguageServer("not_a_number");
-    });
-
-    assertThat(thrown).hasMessage("exit called");
-    assertThat(err.toString(StandardCharsets.UTF_8))
-      .contains("Invalid port provided as first parameter");
+    assertThat(cmdOutput.toString()).contains("'not_a_number' is not an int");
   }
 
   @Test
   void testInvalidPluginPath() {
+    cmd.execute("-analyzers", INVALID_PATH);
 
-    var thrown = assertThrows(RuntimeException.class, () -> {
-      underTest.startLanguageServer("1", "-analyzers", INVALID_PATH);
-    });
-
-    assertThat(thrown).hasMessage("exit called");
-    assertThat(err.toString(StandardCharsets.UTF_8))
-      .contains("Invalid argument at position 3. Expected a path.");
+    assertThat(cmdOutput.toString()).contains("java.nio.file.InvalidPathException");
   }
 
   @Test
   void testExtractingAnalyzersPositive() {
-    var args = new String[] {"-analyzers", "folder/analyzer1.jar", "folder/analyzer2.jar"};
-    var paths = underTest.extractAnalyzers(args);
+    cmd.execute("-analyzers", "folder/analyzer1.jar", "folder/analyzer2.jar");
+    var paths = underTest.getAnalyzers();
     assertThat(paths).containsExactly(Paths.get("folder/analyzer1.jar"), Paths.get("folder/analyzer2.jar"));
   }
-
-  @Test
-  void testExtractingAnalyzersExitsIfNoKey() {
-    var args = new String[] {"folder/analyzer1.jar", "folder/analyzer2.jar"};
-
-    assertThrows(RuntimeException.class, () -> underTest.extractAnalyzers(args));
-  }
-
-  @Test
-  void testExtractingAnalyzersExitsOnMalformedPath() {
-    var args = new String[] {"-analyzers", INVALID_PATH};
-
-    assertThrows(RuntimeException.class, () -> underTest.extractAnalyzers(args));
-  }
-
 }
+
