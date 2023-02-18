@@ -35,6 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -175,6 +176,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final TaintVulnerabilityRaisedNotification taintVulnerabilityRaisedNotification;
   private final BackendServiceFacade backendServiceFacade;
   private final Collection<Path> analyzers;
+  private final CountDownLatch shutdownLatch;
 
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
@@ -250,12 +252,17 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.workspaceFoldersManager.addListener(this.branchManager);
     this.workspaceFoldersManager.setBindingManager(bindingManager);
     this.taintIssuesUpdater = new TaintIssuesUpdater(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, settingsManager, diagnosticPublisher);
+    this.shutdownLatch = new CountDownLatch(1);
     launcher.startListening();
   }
 
-  static void bySocket(int port, Collection<Path> analyzers) throws IOException {
+  static SonarLintLanguageServer bySocket(int port, Collection<Path> analyzers) throws IOException {
     var socket = new Socket("localhost", port);
-    new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers);
+    return new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers);
+  }
+
+  static SonarLintLanguageServer byStdio(List<Path> analyzers) {
+    return new SonarLintLanguageServer(System.in, System.out, analyzers);
   }
 
   @Override
@@ -377,7 +384,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       backendServiceFacade::shutdown)
       // Do last
       .forEach(this::invokeQuietly);
+
+    shutdownLatch.countDown();
+
     return CompletableFuture.completedFuture(null);
+  }
+
+  public void waitForShutDown() throws InterruptedException {
+    shutdownLatch.await();
   }
 
   private void invokeQuietly(Runnable call) {

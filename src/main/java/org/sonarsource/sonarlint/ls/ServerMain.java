@@ -23,11 +23,14 @@ import com.google.common.collect.ImmutableList;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.Callable;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.ParameterException;
 import picocli.CommandLine.Parameters;
 import picocli.CommandLine.Spec;
 
@@ -35,7 +38,10 @@ import picocli.CommandLine.Spec;
 public class ServerMain implements Callable<Integer> {
 
   @Parameters(index = "0", description = "The port to which sonarlint should connect to.", defaultValue = "-1")
-  private int jsonRpcPort;
+  private int deprecatedJsonRpcPort;
+
+  @Option(names = "-port", description = "The port to which sonarlint should connect to.")
+  private Optional<Integer> jsonRpcPort;
 
   @Option(names = "-stdio", description = "The actual transport channel will be stdio")
   private boolean useStdio;
@@ -55,9 +61,37 @@ public class ServerMain implements Callable<Integer> {
 
   @Override
   public Integer call() throws Exception {
-    SonarLintLanguageServer.bySocket(jsonRpcPort, analyzers);
+    validate();
+
+    SonarLintLanguageServer server;
+    if (useStdio) {
+      server = SonarLintLanguageServer.byStdio(analyzers);
+    } else {
+      int actualJsonRpcPort = jsonRpcPort.orElse(deprecatedJsonRpcPort);
+      server = SonarLintLanguageServer.bySocket(actualJsonRpcPort, analyzers);
+    }
+
+    server.waitForShutDown();
 
     return 0;
+  }
+
+  private void validate() {
+    if (deprecatedJsonRpcPort > 0 && jsonRpcPort.isPresent()) {
+      throw new ParameterException(spec.commandLine(), "Cannot use positional port argument and option at the same time.");
+    }
+
+    int possibleJsonRpcPort = jsonRpcPort.orElse(deprecatedJsonRpcPort);
+    if (possibleJsonRpcPort > 0 && useStdio) {
+      throw new ParameterException(spec.commandLine(), "Cannot use stdio and socket port at the same time.");
+    }
+    if (possibleJsonRpcPort <= 0 && !useStdio) {
+      throw new ParameterException(spec.commandLine(), "Use -stdio or -jsonRpcPort.");
+    }
+
+    if (!useStdio && deprecatedJsonRpcPort > 0) {
+      SonarLintLogger.get().warn("Warning: using deprecated positional parameter jsonRpcPort. Please, use -jsonRpcPort instead.");
+    }
   }
 
   public static void main(String... args) {
@@ -66,4 +100,3 @@ public class ServerMain implements Callable<Integer> {
   }
 
 }
-
