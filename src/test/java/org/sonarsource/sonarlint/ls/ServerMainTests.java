@@ -47,6 +47,13 @@ class ServerMainTests {
   }
 
   @Test
+  void testRequiredArguments() {
+    cmd.execute();
+
+    assertThat(cmdOutput.toString()).startsWith("Use -stdio or -jsonRpcPort");
+  }
+
+  @Test
   void testInvalidPortArgument() {
     cmd.execute("not_a_number");
 
