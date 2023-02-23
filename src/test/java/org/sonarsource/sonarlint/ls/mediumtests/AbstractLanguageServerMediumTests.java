@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -85,6 +86,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
+import org.sonarsource.sonarlint.core.clientapi.client.SuggestBindingParams;
+import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspotDetails;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.ServerMain;
@@ -352,6 +355,15 @@ public abstract class AbstractLanguageServerMediumTests {
         }
         return result;
       });
+    }
+
+    @Override
+    public void suggestBinding(SuggestBindingParams binding) {
+    }
+
+    @Override
+    public CompletableFuture<FindFileByNamesInScopeResponse> findFileByNamesInFolder(FindFileByNamesInFolder params) {
+      return CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(Collections.emptyList()));
     }
 
     @Override

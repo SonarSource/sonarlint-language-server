@@ -303,7 +303,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
       forceRebindDuringNextAnalysis(folder);
       if (folder == null) return;
-      var bindingConfigurationDto = new BindingConfigurationDto(newValue.getConnectionId(), newValue.getProjectKey(), true);
+      var bindingConfigurationDto = new BindingConfigurationDto(newValue.getConnectionId(), newValue.getProjectKey(), false);
       var params = new DidUpdateBindingParams(folder.getUri().toString(), bindingConfigurationDto);
       backendServiceFacade.getBackendService().updateBinding(params);
     }
@@ -352,7 +352,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     LOG.debug("Workspace '{}' unbound", folder);
     stopUnusedEngines();
     analysisManager.analyzeAllOpenFilesInFolder(folder);
-    var bindingConfigurationDto = new BindingConfigurationDto(null, null, true);
+    var bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
     var params = new DidUpdateBindingParams(folder.getUri().toString(), bindingConfigurationDto);
     backendServiceFacade.getBackendService().updateBinding(params);
   }

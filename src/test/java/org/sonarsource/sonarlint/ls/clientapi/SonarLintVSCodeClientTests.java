@@ -20,8 +20,11 @@
 package org.sonarsource.sonarlint.ls.clientapi;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingSuggestionDto;
 import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
 import org.sonarsource.sonarlint.core.clientapi.client.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
@@ -85,19 +88,22 @@ class SonarLintVSCodeClientTests {
 
 
   @Test
-  void shouldThrowForFindFile() {
-
-    assertThrows(UnsupportedOperationException.class, () -> {
-      underTest.findFileByNamesInScope(mock(FindFileByNamesInScopeParams.class));
-    });
+  void shouldCallClientToFindFile() {
+    var params = mock(FindFileByNamesInScopeParams.class);
+    underTest.findFileByNamesInScope(params);
+    var expectedClientParams =
+      new SonarLintExtendedLanguageClient.FindFileByNamesInFolder(params.getConfigScopeId(), params.getFilenames());
+    verify(client).findFileByNamesInFolder(expectedClientParams);
   }
 
   @Test
   void shouldThrowForSuggestBinding() {
+    var suggestions = new HashMap<String, List<BindingSuggestionDto>>();
+    suggestions.put("key", Collections.emptyList());
+    var params = new SuggestBindingParams(suggestions);
+    underTest.suggestBinding(params);
 
-    assertThrows(UnsupportedOperationException.class, () -> {
-      underTest.suggestBinding(mock(SuggestBindingParams.class));
-    });
+    verify(client).suggestBinding(params);
   }
 
   @Test
