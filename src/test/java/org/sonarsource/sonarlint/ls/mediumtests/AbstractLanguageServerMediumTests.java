@@ -271,6 +271,8 @@ public abstract class AbstractLanguageServerMediumTests {
     Map<String, String> referenceBranchNameByFolder = new HashMap<>();
     CountDownLatch settingsLatch = new CountDownLatch(0);
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
+    CountDownLatch suggestBindingLatch = new CountDownLatch(0);
+    SuggestBindingParams suggestedBindings;
     ShowRuleDescriptionParams ruleDesc;
     boolean isIgnoredByScm = false;
     boolean isOpenInEditor = true;
@@ -288,6 +290,7 @@ public abstract class AbstractLanguageServerMediumTests {
       folderSettings.clear();
       settingsLatch = new CountDownLatch(0);
       showRuleDescriptionLatch = new CountDownLatch(0);
+      suggestBindingLatch = new CountDownLatch(0);
       needCompilationDatabaseCalls.set(0);
       isOpenInEditor = true;
     }
@@ -359,6 +362,8 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void suggestBinding(SuggestBindingParams binding) {
+      this.suggestedBindings = binding;
+      suggestBindingLatch.countDown();
     }
 
     @Override
