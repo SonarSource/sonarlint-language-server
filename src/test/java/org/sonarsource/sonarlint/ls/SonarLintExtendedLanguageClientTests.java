@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.util.Collections;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleParamDto;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
@@ -187,5 +188,16 @@ class SonarLintExtendedLanguageClientTests {
     assertThat(notTaint2.isTaint()).isFalse();
   }
 
-
+  @Test
+  void test_find_files_in_folder_equals() {
+    var uri = "file:///some/folder";
+    var files = List.of("file1", "file2");
+    var underTest = new SonarLintExtendedLanguageClient.FindFileByNamesInFolder(uri, files);
+    assertThat(underTest)
+      .isEqualTo(underTest)
+      .isEqualTo(new SonarLintExtendedLanguageClient.FindFileByNamesInFolder(uri, files))
+      .isNotEqualTo(null)
+      .isNotEqualTo(new SonarLintExtendedLanguageClient.FindFileByNamesInFolder(uri, List.of()))
+      .isNotEqualTo(new SonarLintExtendedLanguageClient.FindFileByNamesInFolder("file:///some/other/folder", files));
+  }
 }

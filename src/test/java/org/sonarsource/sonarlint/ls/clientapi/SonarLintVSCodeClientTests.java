@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingSuggestionDto;
 import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
 import org.sonarsource.sonarlint.core.clientapi.client.SuggestBindingParams;
@@ -152,5 +153,22 @@ class SonarLintVSCodeClientTests {
     assertThrows(UnsupportedOperationException.class, () -> {
       underTest.assistBinding(mock(AssistBindingParams.class));
     });
+  }
+
+  @Test
+  void shouldAskTheClientToFindFiles() {
+    var folderUri = "file:///some/folder";
+    var filesToFind = List.of("file1", "file2");
+    var params = new FindFileByNamesInScopeParams(folderUri, filesToFind);
+    underTest.findFileByNamesInScope(params);
+    var argumentCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.FindFileByNamesInFolder.class);
+    verify(client).findFileByNamesInFolder(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue()).extracting(
+      SonarLintExtendedLanguageClient.FindFileByNamesInFolder::getFolderUri,
+      SonarLintExtendedLanguageClient.FindFileByNamesInFolder::getFilenames
+    ).containsExactly(
+      folderUri,
+      filesToFind.toArray()
+    );
   }
 }
