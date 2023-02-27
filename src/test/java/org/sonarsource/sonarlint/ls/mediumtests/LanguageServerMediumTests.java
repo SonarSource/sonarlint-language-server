@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -604,6 +605,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var basedir = Paths.get("path/to/base").toAbsolutePath();
     var workspaceUri = basedir.toUri().toString();
     var workspaceFolder = new WorkspaceFolder(workspaceUri);
+    client.folderSettings = new HashMap<>();
+    client.folderSettings.put(workspaceUri, new HashMap<>());
+    foldersToRemove.add(workspaceUri);
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
       new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
 
