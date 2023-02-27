@@ -44,12 +44,14 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   @Override
   public void suggestBinding(SuggestBindingParams params) {
-    throw new UnsupportedOperationException();
+    if(!params.getSuggestions().isEmpty()) {
+      client.suggestBinding(params);
+    }
   }
 
   @Override
   public CompletableFuture<FindFileByNamesInScopeResponse> findFileByNamesInScope(FindFileByNamesInScopeParams params) {
-    throw new UnsupportedOperationException();
+    return client.findFileByNamesInFolder(new SonarLintExtendedLanguageClient.FindFileByNamesInFolder(params.getConfigScopeId(), params.getFilenames()));
   }
 
   @Nullable

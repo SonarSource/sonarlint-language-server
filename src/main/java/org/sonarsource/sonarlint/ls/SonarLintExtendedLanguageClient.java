@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls;
 import com.google.gson.annotations.Expose;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import javax.annotation.CheckForNull;
@@ -31,12 +32,20 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleParamDto;
+import org.sonarsource.sonarlint.core.clientapi.client.SuggestBindingParams;
+import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspotDetails;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
 public interface SonarLintExtendedLanguageClient extends LanguageClient {
+
+  @JsonNotification("sonarlint/suggestBinding")
+  void suggestBinding(SuggestBindingParams binding);
+
+  @JsonRequest("sonarlint/findFileByNamesInFolder")
+  CompletableFuture<FindFileByNamesInScopeResponse> findFileByNamesInFolder(FindFileByNamesInFolder params);
 
   @JsonNotification("sonarlint/showSonarLintOutput")
   void showSonarLintOutput();
@@ -189,6 +198,41 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     @Override
     public int hashCode() {
       return Objects.hash(title, description);
+    }
+  }
+
+  class FindFileByNamesInFolder {
+    @Expose
+    private final String folderUri;
+    @Expose
+    private final String[] filenames;
+
+    public FindFileByNamesInFolder(String folderUri, List<String> filenames) {
+      this.folderUri = folderUri;
+      this.filenames = filenames.toArray(new String[0]);
+    }
+
+    public String getFolderUri() {
+      return folderUri;
+    }
+
+    public String[] getFilenames() {
+      return filenames;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      FindFileByNamesInFolder that = (FindFileByNamesInFolder) o;
+      return Objects.equals(folderUri, that.folderUri) && Arrays.equals(filenames, that.filenames);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = Objects.hash(folderUri);
+      result = 31 * result + Arrays.hashCode(filenames);
+      return result;
     }
   }
 

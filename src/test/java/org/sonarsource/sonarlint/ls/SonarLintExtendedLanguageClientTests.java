@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.util.Collections;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleParamDto;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
@@ -165,5 +166,25 @@ class SonarLintExtendedLanguageClientTests {
     assertThat(notTaint2.isTaint()).isFalse();
   }
 
+  @Test
+  void test_find_file_in_folder_equals_hashCode() {
+    var findFileByNamesInFolder = new SonarLintExtendedLanguageClient
+      .FindFileByNamesInFolder("folderUri1", Collections.singletonList("file1"));
+    var findFileByNamesInFolderSame = new SonarLintExtendedLanguageClient
+      .FindFileByNamesInFolder("folderUri1", Collections.singletonList("file1"));
+    var findFileByNamesInFolderDifferent = new SonarLintExtendedLanguageClient
+      .FindFileByNamesInFolder("folderUri1", Collections.singletonList("file2"));
 
+    assertThat(findFileByNamesInFolder)
+      .isEqualTo(findFileByNamesInFolder)
+      .isEqualTo(findFileByNamesInFolderSame)
+      .hasSameHashCodeAs(findFileByNamesInFolderSame)
+      .isNotEqualTo(null)
+      .isNotEqualTo(new Object())
+      .isNotEqualTo(findFileByNamesInFolderDifferent)
+      .doesNotHaveSameHashCodeAs(findFileByNamesInFolderDifferent);
+
+    assertThat(findFileByNamesInFolder.getFolderUri()).isEqualTo(findFileByNamesInFolderSame.getFolderUri());
+    assertThat(findFileByNamesInFolder.getFilenames()).isEqualTo(findFileByNamesInFolderSame.getFilenames());
+  }
 }

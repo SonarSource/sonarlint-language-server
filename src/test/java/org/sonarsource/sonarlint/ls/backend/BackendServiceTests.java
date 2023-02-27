@@ -90,7 +90,7 @@ class BackendServiceTests {
     assertThat(result.getParentId()).isNull();
     assertThat(result.getBinding().getConnectionId()).isNull();
     assertThat(result.getBinding().getSonarProjectKey()).isNull();
-    assertThat(result.getBinding().isBindingSuggestionDisabled()).isTrue();
+    assertThat(result.getBinding().isBindingSuggestionDisabled()).isFalse();
   }
 
 

@@ -22,7 +22,9 @@ package org.sonarsource.sonarlint.ls.mediumtests;
 import com.google.gson.JsonPrimitive;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -595,6 +597,25 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
           new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), List.of(new WorkspaceFolder(folderUri, "Added")))));
 
     }
+  }
+
+  @Test
+  void test_binding_suggestion_for_client() throws Exception {
+    client.suggestBindingLatch = new CountDownLatch(1);
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    var workspaceUri = basedir.toUri().toString();
+    var workspaceFolder = new WorkspaceFolder(workspaceUri);
+    client.folderSettings = new HashMap<>();
+    client.folderSettings.put(workspaceUri, new HashMap<>());
+    foldersToRemove.add(workspaceUri);
+    lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
+      new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
+
+    assertTrue(client.suggestBindingLatch.await(10, SECONDS));
+
+    assertThat(client.suggestedBindings).isNotNull();
+    assertThat(client.suggestedBindings.getSuggestions()).isNotEmpty();
+    assertThat(client.suggestedBindings.getSuggestions().get(workspaceUri)).isNotNull();
   }
 
   @Test

@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -45,6 +46,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.ArrayUtils;
@@ -57,6 +59,7 @@ import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
+import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
 import org.eclipse.lsp4j.DidCloseNotebookDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenNotebookDocumentParams;
@@ -77,6 +80,7 @@ import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.WindowClientCapabilities;
 import org.eclipse.lsp4j.WorkspaceFolder;
+import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.launch.LSPLauncher;
@@ -85,6 +89,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
+import org.sonarsource.sonarlint.core.clientapi.client.SuggestBindingParams;
+import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspotDetails;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.ServerMain;
@@ -113,7 +119,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
   protected Set<String> toBeClosed = new HashSet<>();
   protected Set<String> notebooksToBeClosed = new HashSet<>();
-
+  protected Set<String> foldersToRemove = new HashSet<>();
   private static ServerSocket serverSocket;
   protected static SonarLintExtendedLanguageServer lsProxy;
   protected static FakeLanguageClient client;
@@ -232,6 +238,11 @@ public abstract class AbstractLanguageServerMediumTests {
     for (var uri : notebooksToBeClosed) {
       lsProxy.getNotebookDocumentService().didClose(new DidCloseNotebookDocumentParams(new NotebookDocumentIdentifier(uri), List.of()));
     }
+    var changeWorkspaceFoldersParams = new DidChangeWorkspaceFoldersParams();
+    var event = new WorkspaceFoldersChangeEvent();
+    event.setRemoved(foldersToRemove.stream().map(WorkspaceFolder::new).collect(Collectors.toList()));
+    changeWorkspaceFoldersParams.setEvent(event);
+    lsProxy.getWorkspaceService().didChangeWorkspaceFolders(changeWorkspaceFoldersParams);
   }
 
   protected static void assertLogContains(String msg) {
@@ -268,6 +279,8 @@ public abstract class AbstractLanguageServerMediumTests {
     Map<String, String> referenceBranchNameByFolder = new HashMap<>();
     CountDownLatch settingsLatch = new CountDownLatch(0);
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
+    CountDownLatch suggestBindingLatch = new CountDownLatch(0);
+    SuggestBindingParams suggestedBindings;
     ShowRuleDescriptionParams ruleDesc;
     boolean isIgnoredByScm = false;
     boolean isOpenInEditor = true;
@@ -285,6 +298,7 @@ public abstract class AbstractLanguageServerMediumTests {
       folderSettings.clear();
       settingsLatch = new CountDownLatch(0);
       showRuleDescriptionLatch = new CountDownLatch(0);
+      suggestBindingLatch = new CountDownLatch(0);
       needCompilationDatabaseCalls.set(0);
       isOpenInEditor = true;
     }
@@ -352,6 +366,17 @@ public abstract class AbstractLanguageServerMediumTests {
         }
         return result;
       });
+    }
+
+    @Override
+    public void suggestBinding(SuggestBindingParams binding) {
+      this.suggestedBindings = binding;
+      suggestBindingLatch.countDown();
+    }
+
+    @Override
+    public CompletableFuture<FindFileByNamesInScopeResponse> findFileByNamesInFolder(FindFileByNamesInFolder params) {
+      return CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(Collections.emptyList()));
     }
 
     @Override

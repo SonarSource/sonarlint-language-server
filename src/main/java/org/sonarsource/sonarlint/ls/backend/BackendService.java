@@ -85,7 +85,7 @@ public class BackendService {
       bindingConfigurationDto = new BindingConfigurationDto(bindingWrapper.getConnectionId(),
         bindingWrapper.getBinding().projectKey(), true);
     } else {
-      bindingConfigurationDto = new BindingConfigurationDto(null, null, true);
+      bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
     }
     return new ConfigurationScopeDto(added.getUri(), null, true, added.getName(), bindingConfigurationDto);
   }
