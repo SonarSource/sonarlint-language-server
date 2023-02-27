@@ -136,28 +136,6 @@ class SonarLintExtendedLanguageClientTests {
   }
 
   @Test
-  void test_find_file_in_folder_equals_hashCode() {
-    var findFileByNamesInFolder = new SonarLintExtendedLanguageClient
-      .FindFileByNamesInFolder("folderUri1", Collections.singletonList("file1"));
-    var findFileByNamesInFolderSame = new SonarLintExtendedLanguageClient
-      .FindFileByNamesInFolder("folderUri1", Collections.singletonList("file1"));
-    var findFileByNamesInFolderDifferent = new SonarLintExtendedLanguageClient
-      .FindFileByNamesInFolder("folderUri1", Collections.singletonList("file2"));
-
-    assertThat(findFileByNamesInFolder)
-      .isEqualTo(findFileByNamesInFolder)
-      .isEqualTo(findFileByNamesInFolderSame)
-      .hasSameHashCodeAs(findFileByNamesInFolderSame)
-      .isNotEqualTo(null)
-      .isNotEqualTo(new Object())
-      .isNotEqualTo(findFileByNamesInFolderDifferent)
-      .doesNotHaveSameHashCodeAs(findFileByNamesInFolderDifferent);
-
-    assertThat(findFileByNamesInFolder.getFolderUri()).isEqualTo(findFileByNamesInFolderSame.getFolderUri());
-    assertThat(findFileByNamesInFolder.getFilenames()).isEqualTo(findFileByNamesInFolderSame.getFilenames());
-  }
-
-  @Test
   void test_report_connection_check_success() {
     String connectionId = "connectionId";
     var underTest = SonarLintExtendedLanguageClient.ConnectionCheckResult.success(connectionId);
@@ -189,15 +167,24 @@ class SonarLintExtendedLanguageClientTests {
   }
 
   @Test
-  void test_find_files_in_folder_equals() {
-    var uri = "file:///some/folder";
-    var files = List.of("file1", "file2");
-    var underTest = new SonarLintExtendedLanguageClient.FindFileByNamesInFolder(uri, files);
-    assertThat(underTest)
-      .isEqualTo(underTest)
-      .isEqualTo(new SonarLintExtendedLanguageClient.FindFileByNamesInFolder(uri, files))
+  void test_find_file_in_folder_equals_hashCode() {
+    var findFileByNamesInFolder = new SonarLintExtendedLanguageClient
+      .FindFileByNamesInFolder("folderUri1", Collections.singletonList("file1"));
+    var findFileByNamesInFolderSame = new SonarLintExtendedLanguageClient
+      .FindFileByNamesInFolder("folderUri1", Collections.singletonList("file1"));
+    var findFileByNamesInFolderDifferent = new SonarLintExtendedLanguageClient
+      .FindFileByNamesInFolder("folderUri1", Collections.singletonList("file2"));
+
+    assertThat(findFileByNamesInFolder)
+      .isEqualTo(findFileByNamesInFolder)
+      .isEqualTo(findFileByNamesInFolderSame)
+      .hasSameHashCodeAs(findFileByNamesInFolderSame)
       .isNotEqualTo(null)
-      .isNotEqualTo(new SonarLintExtendedLanguageClient.FindFileByNamesInFolder(uri, List.of()))
-      .isNotEqualTo(new SonarLintExtendedLanguageClient.FindFileByNamesInFolder("file:///some/other/folder", files));
+      .isNotEqualTo(new Object())
+      .isNotEqualTo(findFileByNamesInFolderDifferent)
+      .doesNotHaveSameHashCodeAs(findFileByNamesInFolderDifferent);
+
+    assertThat(findFileByNamesInFolder.getFolderUri()).isEqualTo(findFileByNamesInFolderSame.getFolderUri());
+    assertThat(findFileByNamesInFolder.getFilenames()).isEqualTo(findFileByNamesInFolderSame.getFilenames());
   }
 }
