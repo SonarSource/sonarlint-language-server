@@ -96,6 +96,7 @@ import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.ServerMain;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
+import org.sonarsource.sonarlint.ls.SonarLintLanguageServer;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
@@ -197,6 +198,11 @@ public abstract class AbstractLanguageServerMediumTests {
     var initializeResult = lsProxy.initialize(initializeParams).get();
     assertThat(initializeResult.getServerInfo().getName()).isEqualTo("SonarLint Language Server");
     assertThat(initializeResult.getServerInfo().getVersion()).isNotBlank();
+    if (SonarLintLanguageServer.isEnableNotebooks(initializeOptions)) {
+      assertThat(initializeResult.getCapabilities().getNotebookDocumentSync()).isNotNull();
+    } else {
+      assertThat(initializeResult.getCapabilities().getNotebookDocumentSync()).isNull();
+    }
     lsProxy.initialized(new InitializedParams());
   }
 
