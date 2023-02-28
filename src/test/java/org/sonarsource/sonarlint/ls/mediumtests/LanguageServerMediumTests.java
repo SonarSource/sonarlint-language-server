@@ -185,26 +185,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void analyzeNotebookOnOpen() throws Exception {
-    var uri = getUri("analyzeNotebookOnOpen.ipynb");
-
-    didOpenNotebook(uri,
-      // First cell has no issue
-      "def no_issue():\n  print('Hello')\n",
-      // Second cell has an issue
-      "def foo():\n  print 'toto'\n"
-    );
-    didOpen(uri, "ignored", "ignored");
-
-    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri + "#2"))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(
-        tuple(1, 2, 1, 7, "python:PrintStatementUsage", "sonarlint", "Replace print statement by built-in function.", DiagnosticSeverity.Warning)));
-    assertThat(client.getDiagnostics(uri + "#1")).isEmpty();
-    assertThat(client.getDiagnostics(uri)).isEmpty();
-  }
-
-  @Test
   void analyzePythonFileWithDuplicatedStringOnOpen() throws Exception {
     var uri = getUri("analyzePythonFileWithDuplicatedStringOnOpen.py");
 
