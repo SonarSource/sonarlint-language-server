@@ -101,7 +101,7 @@ public class VersionedOpenNotebook {
   }
 
   public VersionedOpenFile asVersionedOpenFile() {
-    return new VersionedOpenFile(uri, Language.PYTHON.getLanguageKey(), this.notebookVersion, getContent());
+    return new VersionedOpenFile(uri, Language.IPYTHON.getLanguageKey(), this.notebookVersion, getContent());
   }
 
   String getContent() {

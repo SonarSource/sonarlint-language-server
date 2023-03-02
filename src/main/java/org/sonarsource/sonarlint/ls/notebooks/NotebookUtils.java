@@ -38,7 +38,7 @@ public class NotebookUtils {
 
   public static String applyChangeToCellContent(TextDocumentItem originalCell, List<TextDocumentContentChangeEvent> textChanges) {
     var cellLines = Arrays.asList(originalCell.getText().split("\n", -1));
-    var modifiedLines = new ArrayList<String>();
+    var updatedCellLines = new ArrayList<String>();
 
     var sortedChanges = new ArrayList<>(textChanges);
     sortedChanges.sort(
@@ -47,49 +47,55 @@ public class NotebookUtils {
     );
 
     var currentLine = 0;
+    var appliedChangesRangeLengthTotal = 0;
+    var appliedChangesTextLengthTotal = 0;
 
     for (var i = 0; i < sortedChanges.size(); i++) {
       var textChange = sortedChanges.get(i);
       var rangeStartLine = textChange.getRange().getStart().getLine();
       var rangeEndLine = textChange.getRange().getEnd().getLine();
 
-      currentLine = addUnchangedLinesAfterLastChanges(cellLines, modifiedLines, currentLine, rangeStartLine);
-      var fixedText = getFixedText(cellLines, currentLine, textChange);
+      currentLine = addUnchangedLinesBeforeFirstChange(currentLine, updatedCellLines, cellLines, rangeStartLine);
+      var modifiedRangeText = getModifiedRangeText(cellLines, currentLine, textChange);
 
-      if (!fixedText.isEmpty()) {
-        if (i - 1 >= 0 && sortedChanges.get(i - 1).getRange().getStart().getLine() == rangeStartLine) {
-          // this line has already been modified before, there is item inside modifiedLines
-          modifiedLines.set(currentLine, fixedText);
-        } else {
-          modifiedLines.add(fixedText);
-        }
+      if (thereWasChangeOnSameLine(sortedChanges, i, rangeStartLine)) {
+        updatedCellLines.set(currentLine, modifiedRangeText);
+      } else {
+        updatedCellLines.add(modifiedRangeText);
       }
-      currentLine = rangeEndLine + 1;
+
       if (thereIsAnotherChangeOnSameLine(sortedChanges, i, rangeStartLine)) {
-        currentLine = currentLine - 1;
-        cellLines.set(currentLine, modifiedLines.get(currentLine));
+        appliedChangesRangeLengthTotal += textChange.getRange().getEnd().getCharacter() - textChange.getRange().getStart().getCharacter();
+        appliedChangesTextLengthTotal += textChange.getText().length();
+        cellLines.set(currentLine, updatedCellLines.get(currentLine));
         // The line was modified, the original range that we got from the IDE needs to be adjusted
-        sortedChanges.get(i + 1).setRange(adjustRange(sortedChanges.get(i + 1).getRange(), textChange));
+        sortedChanges.get(i + 1).setRange(adjustRange(sortedChanges.get(i + 1).getRange(), appliedChangesRangeLengthTotal, appliedChangesTextLengthTotal));
+      } else {
+        currentLine = rangeEndLine + 1;
       }
     }
 
-    addUnchangedLinesBeforeFirstChange(currentLine, modifiedLines, cellLines);
+    addUnchangedLinesAfterLastChange(currentLine, updatedCellLines, cellLines);
 
-    return String.join("\n", modifiedLines);
+    return String.join("\n", updatedCellLines);
+  }
+
+  private static boolean thereWasChangeOnSameLine(ArrayList<TextDocumentContentChangeEvent> sortedChanges, int i, int rangeStartLine) {
+    return i - 1 >= 0 && sortedChanges.get(i - 1).getRange().getStart().getLine() == rangeStartLine;
   }
 
   private static boolean thereIsAnotherChangeOnSameLine(ArrayList<TextDocumentContentChangeEvent> sortedChanges, int i, int rangeStartLine) {
     return i + 1 < sortedChanges.size() && sortedChanges.get(i + 1).getRange().getStart().getLine() == rangeStartLine;
   }
 
-  static void addUnchangedLinesBeforeFirstChange(int currentLine, ArrayList<String> modifiedLines, List<String> cellLines) {
+  static void addUnchangedLinesAfterLastChange(int currentLine, ArrayList<String> modifiedLines, List<String> cellLines) {
     while (currentLine < cellLines.size()) {
       modifiedLines.add(cellLines.get(currentLine));
       currentLine++;
     }
   }
 
-  static int addUnchangedLinesAfterLastChanges(List<String> cellLines, ArrayList<String> modifiedLines, int currentLine, int rangeStartLine) {
+  static int addUnchangedLinesBeforeFirstChange(int currentLine, ArrayList<String> modifiedLines, List<String> cellLines, int rangeStartLine) {
     while (currentLine < rangeStartLine) {
       modifiedLines.add(cellLines.get(currentLine));
       currentLine++;
@@ -97,84 +103,28 @@ public class NotebookUtils {
     return currentLine;
   }
 
-  static String getFixedText(List<String> cellLines, int currentLine, TextDocumentContentChangeEvent textChange) {
+  static String getModifiedRangeText(List<String> cellLines, int currentLine, TextDocumentContentChangeEvent textChange) {
     var rangeStartLineOffset = textChange.getRange().getStart().getCharacter();
     var rangeEndLine = textChange.getRange().getEnd().getLine();
     var rangeEndLineOffset = textChange.getRange().getEnd().getCharacter();
-    String replacementRange;
+    String modifiedRangeText;
     if (currentLine < cellLines.size()) {
-      replacementRange =
-        cellLines.get(currentLine).substring(0, rangeStartLineOffset) +
-          textChange.getText() +
-          cellLines.get(rangeEndLine).substring(rangeEndLineOffset);
+      var textBeforeChange = cellLines.get(currentLine).substring(0, rangeStartLineOffset);
+      var textAfterChange = cellLines.get(rangeEndLine).substring(rangeEndLineOffset);
+      modifiedRangeText = textBeforeChange + textChange.getText() + textAfterChange;
     } else {
       // Newline added
-      replacementRange = textChange.getText();
+      modifiedRangeText = textChange.getText();
     }
-    return replacementRange;
+    return modifiedRangeText;
   }
 
-  private static Range adjustRange(Range originalRange, TextDocumentContentChangeEvent previousTextChange) {
-    var end = originalRange.getEnd();
-    var previousChangeRangeLength = previousTextChange.getRange().getEnd().getCharacter() - previousTextChange.getRange().getStart().getCharacter();
-    var previousChangeTextLength = previousTextChange.getText().length();
-    var start = new Position(originalRange.getStart().getLine(), originalRange.getStart().getCharacter() - (previousChangeRangeLength - previousChangeTextLength));
+  private static Range adjustRange(Range originalRange, int totalAppliedChangesRangeLength, int totalAppliedChangesTextLength) {
+    var totalRangeShift = totalAppliedChangesRangeLength - totalAppliedChangesTextLength;
+    var start = new Position(originalRange.getStart().getLine(), originalRange.getStart().getCharacter() - totalRangeShift);
+    var end = new Position(originalRange.getEnd().getLine(), originalRange.getEnd().getCharacter() - totalRangeShift);
     return new Range(start, end);
   }
-
-//  public static String applyChangeToCellContent(TextDocumentItem originalCell, List<TextDocumentContentChangeEvent> textChanges) {
-//    var cellLines = Arrays.asList(originalCell.getText().split("\n", -1));
-//    var modifiedLines = new ArrayList<String>();
-//
-//    var sortedChanges = new ArrayList<>(textChanges);
-//    sortedChanges.sort(
-//      Comparator.<TextDocumentContentChangeEvent>comparingInt(change -> change.getRange().getStart().getLine())
-//        .thenComparingInt(change -> change.getRange().getStart().getCharacter())
-//    );
-//
-//    var currentLine = cellLines.size() - 1;
-//
-//    for(var i = sortedChanges.size() - 1; i >= 0; i--) {
-//      var textChange = sortedChanges.get(i);
-//
-//      var rangeStartLine = textChange.getRange().getStart().getLine();
-//      var rangeStartLineOffset = textChange.getRange().getStart().getCharacter();
-//      var rangeEndLine = textChange.getRange().getEnd().getLine();
-//      var rangeEndLineOffset = textChange.getRange().getEnd().getCharacter();
-//
-//      while (currentLine > rangeEndLine) {
-//        modifiedLines.add(cellLines.get(currentLine));
-//        currentLine--;
-//      }
-//      String replacementRange;
-//
-//      if (currentLine < cellLines.size()) {
-//        replacementRange =
-//          cellLines.get(currentLine).substring(0, rangeStartLineOffset) +
-//            textChange.getText() +
-//            cellLines.get(rangeEndLine).substring(rangeEndLineOffset);
-//      } else {
-//        // Newline added
-//        replacementRange = textChange.getText();
-//      }
-//
-//      if (!replacementRange.isEmpty()) {
-//        modifiedLines.add(replacementRange);
-//      }
-//      if (i - 1 < 0 || (i - 1 >= 0 && sortedChanges.get(i-1).getRange().getStart().getLine() != currentLine)) {
-//        currentLine = rangeStartLine - 1;
-//      }
-//    }
-//
-//    while (currentLine >= 0) {
-//      modifiedLines.add(cellLines.get(currentLine));
-//      currentLine--;
-//    }
-//
-//    Collections.reverse(modifiedLines);
-//
-//    return String.join("\n", modifiedLines);
-//  }
 
   public static TextRange fileTextRangeToCellTextRange(int fileStartLine, int fileStartLineOffset,
     int fileEndLine, int fileEndLineOffset, Map<Integer, Integer> virtualFileLineToCellLine) {
