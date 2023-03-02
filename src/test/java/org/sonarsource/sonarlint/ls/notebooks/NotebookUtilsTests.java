@@ -81,6 +81,20 @@ class NotebookUtilsTests {
   }
 
   @Test
+  void shouldApplyTwoSingleLineChangesOnDifferentLinesAndKeepMiddleRangeUnchanged() {
+    var firstChange = newChange(0, 7, 0, 12, "hi");
+    var secondChange = newChange(3, 4, 3, 9, "0");
+
+    var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(firstChange, secondChange));
+    var expectedNewContent = "print(\"hi\")\n" +
+      "\n" +
+      "a = True\n" +
+      "b = 0";
+
+    assertThat(changedContent).isEqualTo(expectedNewContent);
+  }
+
+  @Test
   void shouldApplyTwoSingleLineChangesOnSameLine() {
     var firstChange = newChange(2, 4, 2, 8, "0");
     var secondChange = newChange(2, 0, 2, 1, "c");
@@ -89,6 +103,21 @@ class NotebookUtilsTests {
     var expectedNewContent = "print(\"hello\")\n" +
       "\n" +
       "c = 0\n" +
+      "b = False";
+
+    assertThat(changedContent).isEqualTo(expectedNewContent);
+  }
+
+  @Test
+  void shouldApplyThreeSingleLineChangesOnSameLine() {
+    var textChange1 = newChange(0, 1, 0, 4, "a");
+    var textChange2 = newChange(0, 0, 0, 1, "d");
+    var textChange3 = newChange(0, 7, 0, 9, "hello");
+
+    var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange1, textChange2, textChange3));
+    var expectedNewContent = "dat(\"hellollo\")\n" +
+      "\n" +
+      "a = True\n" +
       "b = False";
 
     assertThat(changedContent).isEqualTo(expectedNewContent);
@@ -113,6 +142,7 @@ class NotebookUtilsTests {
 
     var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange));
     var expectedNewContent = "print(\"hello\")\n" +
+      "\n" +
       "b = False";
 
     assertThat(changedContent).isEqualTo(expectedNewContent);
@@ -151,6 +181,19 @@ class NotebookUtilsTests {
       "\n" +
       "a = True\n" +
       "b = False";
+    assertThat(changedContent).isEqualTo(expectedNewContent);
+  }
+
+  @Test
+  void shouldDeleteFirstLine() {
+    var textChange = newChange(0, 0, 0, 14, "");
+
+    var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange));
+    var expectedNewContent = "\n" +
+      "\n" +
+      "a = True\n" +
+      "b = False";
+
     assertThat(changedContent).isEqualTo(expectedNewContent);
   }
 
