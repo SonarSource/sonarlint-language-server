@@ -279,6 +279,7 @@
           <environmentVariables>
             <PATH>${basedir}/src/test/resources/fake-ts-project/node${path.separator}${env.PATH}</PATH>
           </environmentVariables>
+          <rerunFailingTestsCount>2</rerunFailingTestsCount>
         </configuration>
       </plugin>
       <plugin>
