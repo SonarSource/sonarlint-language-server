@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.mediumtests;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
@@ -48,15 +49,19 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.GetRemotePro
 import org.sonarsource.sonarlint.ls.util.Utils;
 import testutils.MockWebServerExtension;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   private static final String QPROFILE_KEY = "AXDEr5Q7LjElHiH99ZhW";
   private static final String JAVASCRIPT_S1481 = "javascript:S1481";
   private static final String JAVASCRIPT_S1313 = "javascript:S1313";
+  private static final String PROJECT_KEY = "myProject";
 
   @RegisterExtension
   private final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
@@ -132,11 +137,22 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     setShowVerboseLogs(client.globalSettings, true);
     setShowAnalyzerLogs(client.globalSettings, true);
     addSonarQubeConnection(client.globalSettings, CONNECTION_ID, mockWebServerExtension.url("/"), "xxxxx");
-    bindProject(getFolderSettings(folder1BaseDir.toUri().toString()), CONNECTION_ID, "myProject");
+    String folderUri = folder1BaseDir.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
+    client.readyForTestsLatch = new CountDownLatch(1);
+  }
+
+  @Override
+  protected void verifyConfigurationChangeOnClient() {
+    try {
+      assertTrue(client.readyForTestsLatch.await(15, SECONDS));
+    } catch (InterruptedException e) {
+      fail(e);
+    }
   }
 
   @Test
-  void analysisConnected_find_hotspot() throws Exception {
+  void analysisConnected_find_hotspot() {
     mockNoIssuesNoHotspotsForProject();
 
     var uriInFolder = folder1BaseDir.resolve("hotspot.js").toUri().toString();
@@ -149,9 +165,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void analysisConnected_no_matching_server_issues() throws Exception {
-    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
-
+  void analysisConnected_no_matching_server_issues() {
     mockWebServerExtension.addProtobufResponseDelimited(
       "/batch/issues?key=myProject%3AinFolder.js",
       ScannerInput.ServerIssue.newBuilder()
@@ -175,9 +189,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void analysisConnected_matching_server_issues() throws Exception {
-    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
-
+  void analysisConnected_matching_server_issues() {
     mockWebServerExtension.addProtobufResponseDelimited(
       "/batch/issues?key=myProject%3AinFolder.js&branch=master",
       ScannerInput.ServerIssue.newBuilder()
@@ -202,8 +214,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void analysisConnected_matching_server_issues_on_sq_with_pull_issues() throws Exception {
-    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
+  void analysisConnected_matching_server_issues_on_sq_with_pull_issues() {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.6\", \"id\": \"xzy\"}");
 
     mockWebServerExtension.addProtobufResponseDelimited(
@@ -246,8 +257,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldGetServerNamesForConnection() {
-    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
-
     // Trigger a binding update to fetch projects in connected mode storage
     ExecuteCommandParams updateBindings = new ExecuteCommandParams();
     updateBindings.setCommand("SonarLint.UpdateAllBindings");
@@ -261,8 +270,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldThrowGettingServerNamesForUnknownConnection() {
-    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
-
     var params = new GetRemoteProjectsNamesParams("unknown connection", List.of("unknown-project"));
 
     var future = lsProxy.getRemoteProjectNames(params);
@@ -360,13 +367,11 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Issues.IssuesPullQueryTimestamp.newBuilder()
         .setQueryTimestamp(CURRENT_TIME)
         .build());
-    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/issues/pull?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml&changedSince=" + CURRENT_TIME,
       Issues.IssuesPullQueryTimestamp.newBuilder()
         .setQueryTimestamp(CURRENT_TIME)
         .build());
-    assertLogContains("Enabling notifications for project 'myProject' on connection 'mediumTests'");
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml",
       Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
