@@ -120,6 +120,7 @@ public class ServerNotifications implements WorkspaceSettingsChangeListener, Wor
         // Connection is unknown, or has notifications disabled - do nothing
         return;
       }
+      client.readyForTests();
       logOutput.debug(String.format("Enabling notifications for project '%s' on connection '%s'", projectKey, connectionId));
       var newConfiguration = newNotificationConfiguration(connections.get(connectionId), projectKey);
       serverNotificationsRegistry.register(newConfiguration);

@@ -102,6 +102,7 @@ class ServerNotificationsTests {
 
     verify(output, times(1)).debug("Enabling notifications for project 'projectKey' on connection 'connectionId'");
     verify(workspaceFoldersManager).getAll();
+    verify(client).readyForTests();
   }
 
   @Test
@@ -127,6 +128,7 @@ class ServerNotificationsTests {
     verify(output, times(1)).debug("Enabling notifications for project 'projectKey1' on connection 'connectionId'");
     verify(output, times(1)).debug("Enabling notifications for project 'projectKey2' on connection 'connectionId'");
     verify(workspaceFoldersManager).getAll();
+    verify(client, times(2)).readyForTests();
   }
 
   @Test
@@ -150,6 +152,7 @@ class ServerNotificationsTests {
 
     verify(output, times(1)).debug("De-registering notifications for project 'projectKey' on connection 'connectionId'");
     verify(workspaceFoldersManager).getAll();
+    verify(client).readyForTests();
   }
 
   @Test
@@ -176,6 +179,7 @@ class ServerNotificationsTests {
 
     verify(output, times(1)).debug("Enabling notifications for project 'projectKey' on connection 'connectionId'");
     verify(workspaceFoldersManager, times(2)).getAll();
+    verify(client).readyForTests();
   }
 
   @Test
@@ -224,6 +228,7 @@ class ServerNotificationsTests {
     verify(output, times(1)).debug("De-registering notifications for project 'projectKey' on connection 'connectionId'");
     verify(output, times(2)).debug("Enabling notifications for project 'projectKey' on connection 'connectionId'");
     verify(workspaceFoldersManager, times(2)).getAll();
+    verify(client, times(2)).readyForTests();
   }
 
   @Test

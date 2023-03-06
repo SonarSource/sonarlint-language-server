@@ -155,7 +155,7 @@ public abstract class AbstractLanguageServerMediumTests {
     var html = fullPathToJar("sonarhtml");
     var xml = fullPathToJar("sonarxml");
     var text = fullPathToJar("sonartext");
-    String[] languageServerArgs = new String[] {"" + port, "-analyzers", java, js, php, py, html, xml, text};
+    String[] languageServerArgs = new String[]{"" + port, "-analyzers", java, js, php, py, html, xml, text};
     if (COMMERCIAL_ENABLED) {
       var cfamily = fullPathToJar("cfamily");
       languageServerArgs = ArrayUtils.add(languageServerArgs, cfamily);
@@ -235,9 +235,14 @@ public abstract class AbstractLanguageServerMediumTests {
     setUpFolderSettings(client.folderSettings);
 
     notifyConfigurationChangeOnClient();
+    verifyConfigurationChangeOnClient();
   }
 
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
+    // do nothing by default
+  }
+
+  protected void verifyConfigurationChangeOnClient() {
     // do nothing by default
   }
 
@@ -292,6 +297,7 @@ public abstract class AbstractLanguageServerMediumTests {
     CountDownLatch settingsLatch = new CountDownLatch(0);
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
     CountDownLatch suggestBindingLatch = new CountDownLatch(0);
+    CountDownLatch readyForTestsLatch = new CountDownLatch(0);
     SuggestBindingParams suggestedBindings;
     ShowRuleDescriptionParams ruleDesc;
     boolean isIgnoredByScm = false;
@@ -311,6 +317,7 @@ public abstract class AbstractLanguageServerMediumTests {
       settingsLatch = new CountDownLatch(0);
       showRuleDescriptionLatch = new CountDownLatch(0);
       suggestBindingLatch = new CountDownLatch(0);
+      readyForTestsLatch = new CountDownLatch(0);
       needCompilationDatabaseCalls.set(0);
       isOpenInEditor = true;
     }
@@ -378,6 +385,11 @@ public abstract class AbstractLanguageServerMediumTests {
         }
         return result;
       });
+    }
+
+    @Override
+    public void readyForTests() {
+      readyForTestsLatch.countDown();
     }
 
     @Override
