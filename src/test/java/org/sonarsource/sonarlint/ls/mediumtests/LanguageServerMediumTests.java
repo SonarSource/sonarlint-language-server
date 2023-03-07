@@ -76,6 +76,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   private static final String CONNECTION_ID = "known";
   private static final String TOKEN = "token";
+  private static final String PYTHON_S1481 = "python:S1481";
+  private static final String PYTHON_S139 = "python:S139";
   @RegisterExtension
   private static final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
 
@@ -111,35 +113,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .containsExactlyInAnyOrder(
         tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information),
         tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information)));
-  }
-
-  @Test
-  void analyzeSimpleJsFileWithCustomRuleConfig() throws Exception {
-    var uri = getUri("analyzeSimpleJsFileWithCustomRuleConfig.js");
-    var jsSource = "function foo()\n {\n  let toto = 0;\n  let plouf = 0;\n}";
-
-    // Default configuration should result in 2 issues for rule S1481
-
-    didOpen(uri, "javascript", jsSource);
-    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactlyInAnyOrder(
-        tuple(2, 6, 2, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information),
-        tuple(3, 6, 3, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information)));
-
-    client.clear();
-
-    // Update rules configuration: disable S1481, enable S1105
-    setRulesConfig(client.globalSettings, "javascript:S1481", "off", "javascript:S1105", "on");
-    setShowVerboseLogs(client.globalSettings, true);
-    notifyConfigurationChangeOnClient();
-
-    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactlyInAnyOrder(
-        tuple(1, 1, 1, 2, "javascript:S1105", "sonarlint", "Opening curly brace does not appear on the same line as controlling statement.", DiagnosticSeverity.Information)
-      // Expected issues on javascript:S1481 are suppressed by rule configuration
-      ));
   }
 
   @Test
@@ -182,6 +155,34 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(withoutTimestamp())
       .contains("[Debug] Skipping analysis for preview of file " + uri));
     assertThat(client.getDiagnostics(uri)).isEmpty();
+  }
+
+  @Test
+  void analyzeSimplePythonFileWithCustomRuleConfig() throws Exception {
+    var uri = getUri("analyzeSimplePyFileWithCustomRuleConfig.py");
+    var pySource = "def foo():\n  toto = 0\n  plouf = 0   # This is a trailing comment that can be very very long\n";
+
+    // Default configuration should result in 2 issues for rule S1481
+
+    didOpen(uri, "python", pySource);
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactlyInAnyOrder(
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Information),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Information)));
+
+    client.clear();
+
+    // Update rules configuration: disable S1481, enable S139
+    setRulesConfig(client.globalSettings, PYTHON_S1481, "off", PYTHON_S139, "on");
+    notifyConfigurationChangeOnClient();
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactlyInAnyOrder(
+        tuple(2, 14, 2, 69, PYTHON_S139, "sonarlint", "Move this trailing comment on the previous empty line.", DiagnosticSeverity.Information)
+        // Expected issues on python:S1481 are suppressed by rule configuration
+      ));
   }
 
   @Test
@@ -292,20 +293,18 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void analyzeSimpleJsFileOnChange() throws Exception {
-    var uri = getUri("analyzeSimpleJsFileOnChange.js");
+  void analyzeSimplePythonFileOnChange() throws Exception {
+    var uri = getUri("analyzeSimplePythonFileOnChange.py");
 
-    didOpen(uri, "javascript", "function foo() { /* Empty */ }");
+    didOpen(uri, "python", "def foo():\n  # Empty\n");
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestamp())
-      .contains("[Info] Found 0 issues"));
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri).isEmpty()));
 
-    didChange(uri, "function foo() {\n  let toto = 0;\n}");
+    didChange(uri, "def foo():\n  toto = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information)));
+      .containsExactly(tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Information)));
   }
 
   @Test
@@ -471,31 +470,34 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void test_command_open_standalone_rule_desc_with_params() throws Exception {
     client.showRuleDescriptionLatch = new CountDownLatch(1);
-    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", List.of("javascript:S103"))).get();
+    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", List.of(PYTHON_S139))).get();
     assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
 
-    assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S103");
-    assertThat(client.ruleDesc.getName()).isEqualTo("Lines should not be too long");
-    assertThat(client.ruleDesc.getHtmlDescription()).contains("Having to scroll horizontally makes it harder to get a quick overview and understanding of any piece of code");
+    assertThat(client.ruleDesc.getKey()).isEqualTo(PYTHON_S139);
+    assertThat(client.ruleDesc.getName()).isEqualTo("Comments should not be located at the end of lines of code");
+    assertThat(client.ruleDesc.getHtmlDescription()).contains("This rule verifies that single-line comments are not located at the ends of lines of code.");
     assertThat(client.ruleDesc.getType()).isEqualTo("CODE_SMELL");
-    assertThat(client.ruleDesc.getSeverity()).isEqualTo("MAJOR");
+    assertThat(client.ruleDesc.getSeverity()).isEqualTo("MINOR");
     assertThat(client.ruleDesc.getParameters()).hasSize(1)
       .extracting(SonarLintExtendedLanguageClient.RuleParameter::getName, SonarLintExtendedLanguageClient.RuleParameter::getDescription,
         SonarLintExtendedLanguageClient.RuleParameter::getDefaultValue)
-      .containsExactly(tuple("maximumLineLength", "The maximum authorized line length.", "180"));
+      .containsExactly(
+        tuple("legalTrailingCommentPattern",
+          "Pattern for text of trailing comments that are allowed. By default, Mypy and Black pragma comments as well as comments containing only one word.",
+          "^#\\s*+([^\\s]++|fmt.*|type.*)$"));
   }
 
   @Test
   void test_command_open_rule_desc_from_code_action() throws Exception {
     client.showRuleDescriptionLatch = new CountDownLatch(1);
-    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenRuleDescCodeAction", List.of("javascript:S930", "file://foo.js"))).get();
+    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenRuleDescCodeAction", List.of(PYTHON_S1481, "file://foo.py"))).get();
     assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
 
-    assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S930");
-    assertThat(client.ruleDesc.getName()).isEqualTo("Function calls should not pass extra arguments");
-    assertThat(client.ruleDesc.getHtmlDescription()).contains("You can easily call a JavaScript function with more arguments than the function needs");
-    assertThat(client.ruleDesc.getType()).isEqualTo("BUG");
-    assertThat(client.ruleDesc.getSeverity()).isEqualTo("CRITICAL");
+    assertThat(client.ruleDesc.getKey()).isEqualTo(PYTHON_S1481);
+    assertThat(client.ruleDesc.getName()).isEqualTo("Unused local variables should be removed");
+    assertThat(client.ruleDesc.getHtmlDescription()).contains("If a local variable is declared but not used, it is dead code and should be removed.");
+    assertThat(client.ruleDesc.getType()).isEqualTo("CODE_SMELL");
+    assertThat(client.ruleDesc.getSeverity()).isEqualTo("MINOR");
   }
 
   @Test
