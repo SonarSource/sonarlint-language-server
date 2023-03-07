@@ -61,6 +61,20 @@ class ServerMainTests {
   }
 
   @Test
+  void testConflictingPortArgument() {
+    cmd.execute("42042", "-port", "42042");
+
+    assertThat(cmdOutput.toString()).contains("Cannot use positional port argument and option at the same time.");
+  }
+
+  @Test
+  void testConflictingIoArguments() {
+    cmd.execute("-port", "42042", "-stdio");
+
+    assertThat(cmdOutput.toString()).contains("Cannot use stdio and socket port at the same time.");
+  }
+
+  @Test
   void testInvalidPluginPath() {
     cmd.execute("-analyzers", INVALID_PATH);
 
