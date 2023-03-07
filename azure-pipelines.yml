@@ -88,7 +88,7 @@ stages:
     stageDisplayName: Run UTs and trigger SonarQube and Mend analysis
     jobs:
     - job: test_windows
-      displayName: Run unit tests on Windows
+      displayName: Run unit tests on Windows with Java 17
       pool:
         vmImage: 'windows-latest'
       variables:
@@ -126,10 +126,10 @@ stages:
           testResultsFiles: '**/surefire-reports/TEST-*.xml'
           testRunTitle: 'UTs on Windows'
           javaHomeOption: 'JDKVersion'
-          jdkVersionOption: '1.11'
+          jdkVersionOption: '1.17'
           mavenOptions: $(MAVEN_OPTS)
     - job: test_linux
-      displayName: 'Run unit tests on Linux'
+      displayName: 'Run unit tests on Linux with Java 11'
       pool:
         vmImage: 'ubuntu-latest'
       variables:
