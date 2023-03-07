@@ -28,12 +28,12 @@
     <!-- Version used by Xodus -->
     <kotlin.version>1.6.10</kotlin.version>
     <!-- analyzers used for tests -->
-    <sonar.java.version>7.7.0.28547</sonar.java.version>
-    <sonar.javascript.version>9.11.0.20161</sonar.javascript.version>
-    <sonar.php.version>3.5.0.5655</sonar.php.version>
+    <sonar.java.version>7.17.0.31219</sonar.java.version>
+    <sonar.javascript.version>10.0.1.20755</sonar.javascript.version>
+    <sonar.php.version>3.28.0.9490</sonar.php.version>
     <sonar.python.version>4.1.0.11182</sonar.python.version>
-    <sonar.html.version>3.2.0.2082</sonar.html.version>
-    <sonar.xml.version>2.5.0.3376</sonar.xml.version>
+    <sonar.html.version>3.7.1.3306</sonar.html.version>
+    <sonar.xml.version>2.7.0.3820</sonar.xml.version>
     <sonar.text.version>2.0.1.611</sonar.text.version>
     <gitRepositoryName>sonarlint-language-server</gitRepositoryName>
     <!-- Release: enable publication to Bintray -->

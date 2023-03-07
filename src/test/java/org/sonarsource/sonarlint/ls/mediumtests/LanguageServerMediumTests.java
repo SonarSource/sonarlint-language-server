@@ -212,7 +212,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(tuple(2, 2, 2, 6, "php:S2041", "sonarlint", "Remove the parentheses from this \"echo\" call.", DiagnosticSeverity.Warning)));
+      .containsExactlyInAnyOrder(
+        tuple(0, 0, 0, 0, "php:S113", "sonarlint", "Add a new line at the end of this file.", DiagnosticSeverity.Information),
+        tuple(1, 15, 1, 16, "php:S1808", "sonarlint", "Move this open curly brace to the beginning of the next line.", DiagnosticSeverity.Information),
+        tuple(2, 2, 2, 6, "php:S2041", "sonarlint", "Remove the parentheses from this \"echo\" call.", DiagnosticSeverity.Warning),
+        tuple(4, 0, 4, 2, "php:S1780", "sonarlint", "Remove this closing tag \"?>\".", DiagnosticSeverity.Information)));
   }
 
   @Test
