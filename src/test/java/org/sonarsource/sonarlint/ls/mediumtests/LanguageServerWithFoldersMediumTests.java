@@ -39,6 +39,8 @@ import static org.assertj.core.groups.Tuple.tuple;
 
 class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumTests {
 
+  private static final String PYTHON_S1481 = "python:S1481";
+
   @TempDir
   public static Path folder1BaseDir;
 
@@ -55,30 +57,30 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   @Override
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
-    setTestFilePattern(getFolderSettings(folder1BaseDir.toUri().toString()), "**/*Test.js");
-    setTestFilePattern(getFolderSettings(folder2BaseDir.toUri().toString()), "**/*Test.js");
+    setTestFilePattern(getFolderSettings(folder1BaseDir.toUri().toString()), "**/*Test.py");
+    setTestFilePattern(getFolderSettings(folder2BaseDir.toUri().toString()), "**/*Test.py");
   }
 
   @Test
   void analysisShouldUseFolderSettings() throws Exception {
     setShowVerboseLogs(client.globalSettings, true);
-    // In folder settings, the test pattern is **/*Test.js while in global config we put **/*.js
-    setTestFilePattern(client.globalSettings, "**/*.js");
+    // In folder settings, the test pattern is **/*Test.py while in global config we put **/*.py
+    setTestFilePattern(client.globalSettings, "**/*.py");
     notifyConfigurationChangeOnClient();
 
-    var uriInFolder = folder1BaseDir.resolve("inFolder.js").toUri().toString();
-    didOpen(uriInFolder, "javascript", "function foo() {\n  let toto = 0;\n  let plouf = 0;\n}");
+    var uriInFolder = folder1BaseDir.resolve("inFolder.py").toUri().toString();
+    didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information),
-        tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information)));
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Information),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Information)));
 
     client.logs.clear();
 
-    var uriOutsideFolder = getUri("outsideFolder.js");
-    didOpen(uriOutsideFolder, "javascript", "function foo() {\n  let toto = 0;\n  let plouf = 0;\n}");
+    var uriOutsideFolder = getUri("outsideFolder.py");
+    didOpen(uriOutsideFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
@@ -89,15 +91,15 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   }
 
   @Test
-  void shouldBatchAnalysisFromTheSameFolder() throws Exception {
+  void shouldBatchAnalysisFromTheSameFolder() {
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
 
-    var file1InFolder = folder1BaseDir.resolve("file1.js").toUri().toString();
-    var file2InFolder = folder1BaseDir.resolve("file2.js").toUri().toString();
+    var file1InFolder = folder1BaseDir.resolve("file1.py").toUri().toString();
+    var file2InFolder = folder1BaseDir.resolve("file2.py").toUri().toString();
 
-    didOpen(file1InFolder, "javascript", "function foo() { /* Empty */ }");
-    didOpen(file2InFolder, "javascript", "function foo() { /* Empty */ }");
+    didOpen(file1InFolder, "python", "def foo():\n  return\n");
+    didOpen(file2InFolder, "python", "def foo():\n  return\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
@@ -106,13 +108,13 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
     client.logs.clear();
 
-    // two consecute changes should be batched
+    // two consecutive changes should be batched
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1InFolder, 2),
-        List.of(new TextDocumentContentChangeEvent("function foo() {\n  let toto1 = 0;\n  let plouf1 = 0;\n}"))));
+        List.of(new TextDocumentContentChangeEvent("def foo():\n  toto = 0\n  plouf = 0\n"))));
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder, 2),
-        List.of(new TextDocumentContentChangeEvent("function foo() {\n  let toto2 = 0;\n  let plouf2 = 0;\n}"))));
+        List.of(new TextDocumentContentChangeEvent("def foo():\n  toto2 = 0\n  plouf2 = 0\n"))));
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
@@ -131,21 +133,21 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(
       new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folder2BaseDir.toUri().toString(), "My Folder 2")), List.of())));
 
-    var file1InFolder1 = folder1BaseDir.resolve("file1.js").toUri().toString();
-    var file2InFolder2 = folder2BaseDir.resolve("file2.js").toUri().toString();
+    var file1InFolder1 = folder1BaseDir.resolve("file1.py").toUri().toString();
+    var file2InFolder2 = folder2BaseDir.resolve("file2.py").toUri().toString();
 
-    didOpen(file1InFolder1, "javascript", "function foo() {\n  let toto1 = 0;\n  let plouf1 = 0;\n}");
-    didOpen(file2InFolder2, "javascript", "function foo() {\n  let toto2 = 0;\n  let plouf2 = 0;\n}");
+    didOpen(file1InFolder1, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
+    didOpen(file2InFolder2, "python", "def foo():\n  toto2 = 0\n  plouf2 = 0\n");
 
     client.logs.clear();
 
-    // two consecute changes on different folders should not be batched
+    // two consecutive changes on different folders should not be batched
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1InFolder1, 2),
-        List.of(new TextDocumentContentChangeEvent("function foo() {\n  let toto1 = 0;\n  let plouf1 = 0;\n}"))));
+        List.of(new TextDocumentContentChangeEvent("def foo():\n  toto = 0\n  plouf = 0\n"))));
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder2, 2),
-        List.of(new TextDocumentContentChangeEvent("function foo() {\n  let toto2 = 0;\n  let plouf2 = 0;\n}"))));
+        List.of(new TextDocumentContentChangeEvent("def foo():\n  toto2 = 0\n  plouf2 = 0\n"))));
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())

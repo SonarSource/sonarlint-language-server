@@ -182,7 +182,7 @@ public abstract class AbstractLanguageServerMediumTests {
     lsProxy = future.get();
   }
 
-  private static String fullPathToJar(String jarName) {
+  protected static String fullPathToJar(String jarName) {
     return Paths.get("target/plugins").resolve(jarName + ".jar").toAbsolutePath().toString();
   }
 

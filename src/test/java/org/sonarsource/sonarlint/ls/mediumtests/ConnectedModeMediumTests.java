@@ -19,15 +19,20 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import mockwebserver3.MockResponse;
+import okio.Buffer;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.WorkspaceFolder;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,8 +64,8 @@ import static org.junit.jupiter.api.Assertions.fail;
 class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   private static final String QPROFILE_KEY = "AXDEr5Q7LjElHiH99ZhW";
-  private static final String JAVASCRIPT_S1481 = "javascript:S1481";
-  private static final String JAVASCRIPT_S1313 = "javascript:S1313";
+  private static final String PYTHON_S1481 = "python:S1481";
+  private static final String PYTHON_S1313 = "python:S1313";
   private static final String PROJECT_KEY = "myProject";
 
   @RegisterExtension
@@ -95,30 +100,31 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .build());
     mockWebServerExtension.addProtobufResponse("/api/components/tree.protobuf?qualifiers=FIL,UTS&component=myProject&ps=500&p=1", Components.TreeWsResponse.newBuilder().build());
     mockWebServerExtension.addStringResponse("/api/plugins/installed",
-      "{\"plugins\":[{\"key\": \"javascript\", \"hash\": \"not_used\", \"filename\": \"not_used\", \"sonarLintSupported\": true}]}");
+      "{\"plugins\":[{\"key\": \"python\", \"hash\": \"ignored\", \"filename\": \"sonarpython.jar\", \"sonarLintSupported\": true}]}");
+    mockWebServerExtension.addResponse("/api/plugins/download?plugin=python", new MockResponse().setBody(safeGetSonarPython()));
     mockWebServerExtension.addProtobufResponse("/api/settings/values.protobuf?component=myProject", Settings.Values.newBuilder().build());
     mockWebServerExtension.addProtobufResponse("/api/qualityprofiles/search.protobuf?project=myProject", Qualityprofiles.SearchWsResponse.newBuilder()
       .addProfiles(Qualityprofiles.SearchWsResponse.QualityProfile.newBuilder()
         .setKey(QPROFILE_KEY)
-        .setLanguage("js")
+        .setLanguage("py")
         .setRulesUpdatedAt("2022-03-14T11:13:26+0000")
         .build())
       .build());
     Rules.Actives.Builder activeBuilder = Rules.Actives.newBuilder();
-    activeBuilder.putActives(JAVASCRIPT_S1481, Rules.ActiveList.newBuilder().addActiveList(Rules.Active.newBuilder().setSeverity("BLOCKER")).build());
-    activeBuilder.putActives(JAVASCRIPT_S1313, Rules.ActiveList.newBuilder().addActiveList(Rules.Active.newBuilder().setSeverity("MINOR")).build());
+    activeBuilder.putActives(PYTHON_S1481, Rules.ActiveList.newBuilder().addActiveList(Rules.Active.newBuilder().setSeverity("BLOCKER")).build());
+    activeBuilder.putActives(PYTHON_S1313, Rules.ActiveList.newBuilder().addActiveList(Rules.Active.newBuilder().setSeverity("MINOR")).build());
     mockWebServerExtension.addProtobufResponse(
       "/api/rules/search.protobuf?qprofile=" + QPROFILE_KEY + "&activation=true&f=templateKey,actives&types=CODE_SMELL,BUG,VULNERABILITY,SECURITY_HOTSPOT&s=key&ps=500&p=1",
       Rules.SearchResponse.newBuilder()
         .setActives(activeBuilder.build())
         .setTotal(2)
         .addRules(Rules.Rule.newBuilder()
-          .setKey(JAVASCRIPT_S1481)
-          .setLang("js")
+          .setKey(PYTHON_S1481)
+          .setLang("py")
           .build())
         .addRules(Rules.Rule.newBuilder()
-          .setKey(JAVASCRIPT_S1313)
-          .setLang("js")
+          .setKey(PYTHON_S1313)
+          .setLang("py")
           .build())
         .build());
     mockWebServerExtension.addProtobufResponse(
@@ -130,6 +136,15 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .setType(Common.BranchType.BRANCH)
           .build())
         .build());
+  }
+
+  @NotNull
+  private static Buffer safeGetSonarPython() {
+    try (var buffer = new Buffer().readFrom(new FileInputStream(fullPathToJar("sonarpython")))) {
+      return buffer;
+    } catch (IOException ioEx) {
+      throw new IllegalStateException(ioEx);
+    }
   }
 
   @Override
@@ -155,62 +170,63 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   void analysisConnected_find_hotspot() {
     mockNoIssuesNoHotspotsForProject();
 
-    var uriInFolder = folder1BaseDir.resolve("hotspot.js").toUri().toString();
-    didOpen(uriInFolder, "javascript", "const IP_ADDRESS = '12.34.56.78';\n");
+    var uriInFolder = folder1BaseDir.resolve("hotspot.py").toUri().toString();
+    didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(0, 19, 0, 32, JAVASCRIPT_S1313, "sonarlint", "Make sure using a hardcoded IP address 12.34.56.78 is safe here.", DiagnosticSeverity.Information)));
+        tuple(0, 13, 0, 26, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Information)));
   }
 
   @Test
   void analysisConnected_no_matching_server_issues() {
     mockWebServerExtension.addProtobufResponseDelimited(
-      "/batch/issues?key=myProject%3AinFolder.js",
+      "/batch/issues?key=myProject%3AinFolder.py",
       ScannerInput.ServerIssue.newBuilder()
         .setKey("xyz")
-        .setRuleRepository("javascript")
+        .setRuleRepository("python")
         .setRuleKey("S1482") // Different rule key -> no match
         .setMsg("Remove the declaration of the unused 'toto' variable.")
         .setSeverity(Severity.INFO)
         .setManualSeverity(true)
-        .setPath("inFolder.js")
+        .setPath("inFolder.py")
         .build());
 
-    var uriInFolder = folder1BaseDir.resolve("inFolder.js").toUri().toString();
-    didOpen(uriInFolder, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
+    var uriInFolder = folder1BaseDir.resolve("inFolder.py").toUri().toString();
+    didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 6, 1, 10, JAVASCRIPT_S1481, "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Warning),
-        tuple(2, 6, 2, 11, JAVASCRIPT_S1481, "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
   }
 
   @Test
   void analysisConnected_matching_server_issues() {
     mockWebServerExtension.addProtobufResponseDelimited(
-      "/batch/issues?key=myProject%3AinFolder.js&branch=master",
+      "/batch/issues?key=myProject%3AinFolder.py&branch=master",
       ScannerInput.ServerIssue.newBuilder()
         .setKey("xyz")
-        .setRuleRepository("javascript")
+        .setRuleRepository("python")
         .setRuleKey("S1481")
         .setType(RuleType.BUG.name())
-        .setMsg("Remove the declaration of the unused 'toto' variable.")
+        .setMsg("Remove the unused local variable \"toto\".")
         .setSeverity(Severity.INFO)
         .setManualSeverity(true)
-        .setPath("inFolder.js")
+        .setPath("inFolder.py")
+        .setLine(2)
         .build());
 
-    var uriInFolder = folder1BaseDir.resolve("inFolder.js").toUri().toString();
-    didOpen(uriInFolder, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
+    var uriInFolder = folder1BaseDir.resolve("inFolder.py").toUri().toString();
+    didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 6, 1, 10, JAVASCRIPT_S1481, "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Hint),
-        tuple(2, 6, 2, 11, JAVASCRIPT_S1481, "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Hint),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -225,16 +241,16 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       // no user-overridden severity
       Issues.IssueLite.newBuilder()
         .setKey("xyz")
-        .setRuleKey(JAVASCRIPT_S1481)
+        .setRuleKey(PYTHON_S1481)
         .setType(Common.RuleType.BUG)
         .setMainLocation(Issues.Location.newBuilder()
-          .setFilePath("inFolder.js")
+          .setFilePath("inFolder.py")
           .setMessage("Remove the declaration of the unused 'toto' variable.")
           .setTextRange(Issues.TextRange.newBuilder()
             .setStartLine(1)
-            .setStartLineOffset(6)
+            .setStartLineOffset(2)
             .setEndLine(1)
-            .setEndLineOffset(10)
+            .setEndLineOffset(6)
             .setHash(Utils.hash("toto"))
             .build())
           .build())
@@ -245,14 +261,14 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setQueryTimestamp(System.currentTimeMillis())
         .build());
 
-    var uriInFolder = folder1BaseDir.resolve("inFolder.js").toUri().toString();
-    didOpen(uriInFolder, "javascript", "function foo() {\n  var toto = 0;\n  var plouf = 0;\n}");
+    var uriInFolder = folder1BaseDir.resolve("inFolder.py").toUri().toString();
+    didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 6, 1, 10, JAVASCRIPT_S1481, "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Warning),
-        tuple(2, 6, 2, 11, JAVASCRIPT_S1481, "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -378,7 +394,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setQueryTimestamp(CURRENT_TIME)
         .build());
     mockWebServerExtension.addProtobufResponse(
-      "/api/hotspots/search.protobuf?projectKey=myProject&files=hotspot.js&branch=master&ps=500&p=1",
+      "/api/hotspots/search.protobuf?projectKey=myProject&files=hotspot.py&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build()
     );
   }
