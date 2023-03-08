@@ -666,8 +666,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   public Map<String, Path> getEmbeddedPluginsToPath() {
     var plugins = new HashMap<String, Path>();
-    analyzers.stream().filter(it -> it.toString().contains("cfamily")).findFirst()
-      .ifPresent(cfamilyPlugin -> plugins.put(Language.C.getPluginKey(), cfamilyPlugin));
+    addPluginPathOrWarn("cfamily", Language.C, plugins);
     addPluginPathOrWarn("html", Language.HTML, plugins);
     addPluginPathOrWarn("js", Language.JS, plugins);
     addPluginPathOrWarn("xml", Language.XML, plugins);
@@ -676,7 +675,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   private void addPluginPathOrWarn(String pluginName, Language language, Map<String, Path> plugins) {
-    analyzers.stream().filter(it -> it.toString().contains(pluginName)).findFirst()
+    analyzers.stream().filter(it -> it.toString().endsWith("sonar" + pluginName + ".jar")).findFirst()
       .ifPresentOrElse(
         pluginPath -> plugins.put(language.getPluginKey(), pluginPath),
         () -> lsLogOutput.warn(String.format("Embedded plugin not found: %s", language.getLabel()))
