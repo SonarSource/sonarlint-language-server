@@ -318,4 +318,19 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   }
   @JsonNotification("sonarlint/showHotspotRuleDescription")
   CompletableFuture<Void> showHotspotRuleDescription(ShowHotspotRuleDescriptionParams params);
+
+  class HelpAndFeedbackLinkClickedNotificationParams {
+    String id;
+
+    public HelpAndFeedbackLinkClickedNotificationParams(String id) {
+      this.id = id;
+    }
+
+    public String getId() {
+      return id;
+    }
+  }
+
+  @JsonNotification("sonarlint/helpAndFeedbackLinkClicked")
+  CompletableFuture<Void> helpAndFeedbackLinkClicked(HelpAndFeedbackLinkClickedNotificationParams params);
 }

@@ -63,6 +63,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
+import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import testutils.MockWebServerExtension;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -71,6 +72,8 @@ import static org.assertj.core.groups.Tuple.tuple;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -796,6 +799,15 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotInBrowserLsParams("id", "/workspace"));
 
     assertLogContains("Can't find workspace folder for file /workspace during attempt to open hotspot in browser.");
+  }
+
+  @Test
+  void helpAndFeedbackLinkClickedNotificationShouldCallTelemetry() {
+    SonarLintTelemetry telemetry = mock(SonarLintTelemetry.class);
+    SonarLintExtendedLanguageServer.HelpAndFeedbackLinkClickedNotificationParams params = new SonarLintExtendedLanguageServer.HelpAndFeedbackLinkClickedNotificationParams("faq");
+    var result = lsProxy.helpAndFeedbackLinkClicked(params);
+
+    assertThat(result).isNull();
   }
 
   @Override

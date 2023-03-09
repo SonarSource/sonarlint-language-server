@@ -204,6 +204,12 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     }
   }
 
+  public void helpAndFeedbackLinkClicked(String itemId) {
+    if(enabled()) {
+      telemetry.helpAndFeedbackLinkClicked(itemId);
+    }
+  }
+
   public void stop() {
     if (enabled()) {
       telemetry.stop();
