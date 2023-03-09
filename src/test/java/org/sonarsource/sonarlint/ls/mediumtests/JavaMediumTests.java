@@ -304,7 +304,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     var file1module1 = getUri("Foo1.java");
     var file2module1 = getUri("Foo2.java");
-    var nonJavaFilemodule1 = getUri("Another.js");
+    var nonJavaFilemodule1 = getUri("Another.py");
 
     // Prepare config response
     var javaConfigResponse = new GetJavaConfigResponse();
@@ -317,7 +317,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     didOpen(file1module1, "java", "public class Foo1 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
     didOpen(file2module1, "java", "public class Foo2 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
-    didOpen(nonJavaFilemodule1, "javascript", "function foo() {\n  let toto1 = 0;\n  let plouf1 = 0;\n}");
+    didOpen(nonJavaFilemodule1, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
@@ -327,7 +327,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     client.logs.clear();
 
-    // consecute changes should be batched
+    // consecutive changes should be batched
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1module1, 2),
         List.of(new TextDocumentContentChangeEvent("public class Foo1 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
@@ -336,7 +336,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
         List.of(new TextDocumentContentChangeEvent("public class Foo2 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(nonJavaFilemodule1, 2),
-        List.of(new TextDocumentContentChangeEvent("function foo() {\n  let toto1 = 0;\n  let plouf1 = 0;\n}"))));
+        List.of(new TextDocumentContentChangeEvent("def foo():\n  toto = 0\n  plouf = 0\n"))));
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
