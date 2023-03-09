@@ -339,9 +339,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
 
-    var uri = getUri("foo.js");
+    var uri = getUri("foo.py");
 
-    didOpen(uri, "javascript", "function foo() {}");
+    didOpen(uri, "python", "def foo():\n  print('Error code %d' % '42')\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
@@ -351,11 +351,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     // Emulate two quick changes, should only trigger one analysis
     lsProxy.getTextDocumentService()
-      .didChange(
-        new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 2), List.of(new TextDocumentContentChangeEvent("function foo() {\n  var toto = 0;\n}"))));
+      .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 2),
+        List.of(new TextDocumentContentChangeEvent("def foo():\n  toto = 0\n"))));
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 3),
-        List.of(new TextDocumentContentChangeEvent("function foo() {\n  let toto = 0;\n  let plouf = 0;\n}"))));
+        List.of(new TextDocumentContentChangeEvent("def foo():\n  toto = 0\n  plouf = 0\n"))));
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
@@ -368,8 +368,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Information),
-        tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Information)));
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Information),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Information)));
   }
 
   @Test
@@ -609,8 +609,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     Thread.sleep(1000);
     client.logs.clear();
 
-    var uri = getUri("testAnalysisLogsDisabled.js");
-    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  let plouf = 0;\n}");
+    var uri = getUri("testAnalysisLogsDisabled.py");
+    didOpen(uri, "python", "def foo():\n  toto = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .filteredOn(notFromContextualTSserver())
@@ -627,8 +627,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     Thread.sleep(1000);
     client.logs.clear();
 
-    var uri = getUri("testAnalysisLogsDebugEnabled.js");
-    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  let plouf = 0;\n}");
+    var uri = getUri("testAnalysisLogsDebugEnabled.py");
+    didOpen(uri, "python", "def foo():\n  toto = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .filteredOn(notFromContextualTSserver())
@@ -646,8 +646,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     Thread.sleep(1000);
     client.logs.clear();
 
-    var uri = getUri("testAnalysisLogsEnabled.js");
-    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  let plouf = 0;\n}");
+    var uri = getUri("testAnalysisLogsEnabled.py");
+    didOpen(uri, "python", "def foo():\n  toto = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .filteredOn(notFromContextualTSserver())
@@ -668,8 +668,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     Thread.sleep(1000);
     client.logs.clear();
 
-    var uri = getUri("testAnalysisLogsWithDebugEnabled.js");
-    didOpen(uri, "javascript", "function foo() {\n  alert('toto');\n  let plouf = 0;\n}");
+    var uri = getUri("testAnalysisLogsWithDebugEnabled.py");
+    didOpen(uri, "python", "def foo():\n  toto = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .filteredOn(notFromContextualTSserver())
@@ -677,9 +677,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .contains(
         "[Info] Analyzing file '" + uri + "'...",
         "[Info] Index files",
-        "[Debug] Language of file '" + uri + "' is set to 'JavaScript'",
+        "[Debug] Language of file '" + uri + "' is set to 'Python'",
         "[Info] 1 file indexed",
-        "[Debug] Execute Sensor: JavaScript analysis",
+        "[Debug] Execute Sensor: Python Sensor",
         "[Info] Found 1 issue"));
   }
 

@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.util.Collections;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleParamDto;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
