@@ -29,6 +29,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import mockwebserver3.MockResponse;
 import okio.Buffer;
+import org.apache.commons.io.FileUtils;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.ExecuteCommandParams;
@@ -169,7 +170,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @AfterAll
   public static void cleanUp() {
-    folder1BaseDir.toFile().delete();
+    FileUtils.deleteQuietly(folder1BaseDir.toFile());
   }
 
   @Test
