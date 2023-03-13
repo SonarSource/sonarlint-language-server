@@ -32,7 +32,6 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
@@ -41,14 +40,14 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   private static final String PYTHON_S1481 = "python:S1481";
 
-  @TempDir
-  public static Path folder1BaseDir;
+  private static Path folder1BaseDir;
 
-  @TempDir
-  public static Path folder2BaseDir;
+  private static Path folder2BaseDir;
 
   @BeforeAll
   public static void initialize() throws Exception {
+    folder1BaseDir = makeStaticTempDir();
+    folder2BaseDir = makeStaticTempDir();
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",

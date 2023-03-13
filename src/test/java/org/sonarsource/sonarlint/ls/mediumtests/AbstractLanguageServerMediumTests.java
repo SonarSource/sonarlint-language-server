@@ -49,6 +49,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.assertj.core.api.iterable.ThrowingExtractor;
 import org.awaitility.core.ThrowingRunnable;
@@ -88,7 +89,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.clientapi.client.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspotDetails;
@@ -113,12 +113,9 @@ public abstract class AbstractLanguageServerMediumTests {
 
   protected final static boolean COMMERCIAL_ENABLED = System.getProperty("commercial") != null;
 
-  @TempDir
-  static Path sonarLintUserHome;
-
-  @TempDir
+  private static final Set<Path> staticTempDirs = new HashSet<>();
+  private final Set<Path> instanceTempDirs = new HashSet<>();
   Path temp;
-
   protected Set<String> toBeClosed = new HashSet<>();
   protected Set<String> notebooksToBeClosed = new HashSet<>();
   protected Set<String> foldersToRemove = new HashSet<>();
@@ -129,7 +126,7 @@ public abstract class AbstractLanguageServerMediumTests {
   @BeforeAll
   static void startServer() throws Exception {
     System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
-    EnginesFactory.sonarLintUserHomeOverride = sonarLintUserHome;
+    EnginesFactory.sonarLintUserHomeOverride = makeStaticTempDir();
     serverSocket = new ServerSocket(0);
     var port = serverSocket.getLocalPort();
 
@@ -214,6 +211,8 @@ public abstract class AbstractLanguageServerMediumTests {
 
   @AfterAll
   public static void stopServer() throws Exception {
+    staticTempDirs.forEach(tempDirPath -> FileUtils.deleteQuietly(tempDirPath.toFile()));
+    staticTempDirs.clear();
     System.clearProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY);
     try {
       if (lsProxy != null) {
@@ -226,7 +225,8 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   @BeforeEach
-  void cleanup() {
+  void cleanup() throws Exception {
+    temp = makeInstanceTempDir();
     // Reset state on LS side
     client.clear();
     toBeClosed.clear();
@@ -236,6 +236,12 @@ public abstract class AbstractLanguageServerMediumTests {
 
     notifyConfigurationChangeOnClient();
     verifyConfigurationChangeOnClient();
+  }
+
+  @AfterEach
+  void cleanupTempDirs() throws Exception {
+    instanceTempDirs.forEach(tempDirPath -> FileUtils.deleteQuietly(tempDirPath.toFile()));
+    instanceTempDirs.clear();
   }
 
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
@@ -641,5 +647,23 @@ public abstract class AbstractLanguageServerMediumTests {
 
   protected Map<String, Object> getFolderSettings(String folderUri) {
     return client.folderSettings.computeIfAbsent(folderUri, f -> new HashMap<>());
+  }
+
+  /**
+   * Use this instead of {@link org.junit.jupiter.api.io.TempDir} that has issues on Windows
+   */
+  protected Path makeInstanceTempDir() throws Exception {
+    var newTempDir = Files.createTempDirectory(null);
+    instanceTempDirs.add(newTempDir);
+    return newTempDir;
+  }
+
+  /**
+   * Use this instead of {@link org.junit.jupiter.api.io.TempDir} that has issues on Windows
+   */
+  protected static Path makeStaticTempDir() throws IOException {
+    var newTempDir = Files.createTempDirectory(null);
+    staticTempDirs.add(newTempDir);
+    return newTempDir;
   }
 }

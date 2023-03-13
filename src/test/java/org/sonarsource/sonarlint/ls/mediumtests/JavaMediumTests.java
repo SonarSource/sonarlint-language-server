@@ -43,17 +43,17 @@ import static org.assertj.core.groups.Tuple.tuple;
 
 class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
-  @TempDir
-  public static Path module1Path;
+  private static Path module1Path;
 
-  @TempDir
-  public static Path module2Path;
+  private static Path module2Path;
 
   private static String MODULE_1_ROOT_URI;
   private static String MODULE_2_ROOT_URI;
 
   @BeforeAll
   static void initialize() throws Exception {
+    module1Path = makeStaticTempDir();
+    module2Path = makeStaticTempDir();
     MODULE_1_ROOT_URI = module1Path.toUri().toString();
     MODULE_2_ROOT_URI = module2Path.toUri().toString();
 
