@@ -21,7 +21,6 @@ package org.sonarsource.sonarlint.ls.mediumtests;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -84,7 +83,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @BeforeAll
   public static void initialize() throws Exception {
-    folder1BaseDir = Files.createTempDirectory(null);
+    folder1BaseDir = makeStaticTempDir();
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
