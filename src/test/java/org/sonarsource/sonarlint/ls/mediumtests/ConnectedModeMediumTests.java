@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.mediumtests;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -33,11 +34,11 @@ import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.junit.jupiter.api.io.TempDir;
 import org.sonar.scanner.protocol.Constants.Severity;
 import org.sonar.scanner.protocol.input.ScannerInput;
 import org.sonarsource.sonarlint.core.commons.RuleType;
@@ -78,11 +79,11 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private static final String PROJECT_KEY2 = "project:key2";
   private static final String PROJECT_NAME2 = "Project Two";
   private static final long CURRENT_TIME = System.currentTimeMillis();
-  @TempDir
-  public static Path folder1BaseDir;
+  private static Path folder1BaseDir;
 
   @BeforeAll
   public static void initialize() throws Exception {
+    folder1BaseDir = Files.createTempDirectory(null);
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
@@ -164,6 +165,11 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     } catch (InterruptedException e) {
       fail(e);
     }
+  }
+
+  @AfterAll
+  public static void cleanUp() {
+    folder1BaseDir.toFile().delete();
   }
 
   @Test
