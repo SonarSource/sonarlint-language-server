@@ -81,6 +81,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   private static final String TOKEN = "token";
   private static final String PYTHON_S1481 = "python:S1481";
   private static final String PYTHON_S139 = "python:S139";
+  private static final String GO_S1862 = "go:S1862";
+  private static final String GO_S108 = "go:S108";
   @RegisterExtension
   private static final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
 
@@ -130,6 +132,28 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(tuple(1, 13, 1, 18, "typescript:S1764", "sonarlint", "Correct one of the identical sub-expressions on both sides of operator \"&&\" [+1 location]",
         DiagnosticSeverity.Warning)));
+  }
+
+  @Test
+  void analyzeSimpleGoFileOnOpen() throws Exception {
+    setRulesConfig(client.globalSettings, GO_S1862, "on"); //NB: make sure the tested rule is enabled
+    notifyConfigurationChangeOnClient();
+
+    var uri = getUri("analyzeSimpleGoFileOnOpen.go");
+
+    didOpen(uri, "go", "package main\n" +
+      "import \"fmt\"\n" +
+      "func main() {\n" +
+      "\tif condition1 {\n" +
+      "\t} else if condition1 { // Noncompliant\n" +
+      "\t}\n" +
+      "}");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(3, 15, 4, 2, GO_S108, "sonarlint", "Either remove or fill this block of code.", DiagnosticSeverity.Warning),
+        tuple(4, 11, 4, 21, GO_S1862, "sonarlint", "This condition duplicates the one on line 4. [+1 location]", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -532,7 +556,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void testListAllRules() {
     var result = lsProxy.listAllRules().join();
     String[] commercialLanguages = new String[] {"C", "C++"};
-    String[] freeLanguages = new String[] {"CSS", "HTML", "IPython Notebooks", "JavaScript", "TypeScript", "PHP", "Python", "Java", "XML", "Secrets"};
+    String[] freeLanguages = new String[] {"CSS", "Go", "HTML", "IPython Notebooks", "Java", "JavaScript", "PHP", "Python", "Secrets", "TypeScript", "XML"};
     if (COMMERCIAL_ENABLED) {
       assertThat(result).containsOnlyKeys(ArrayUtils.addAll(commercialLanguages, freeLanguages));
     } else {

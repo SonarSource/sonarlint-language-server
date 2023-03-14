@@ -24,7 +24,7 @@
 
   <properties>
     <jdk.min.version>11</jdk.min.version>
-    <sonarlint.core.version>8.15.0.64498</sonarlint.core.version>
+    <sonarlint.core.version>8.15.0.65096</sonarlint.core.version>
     <!-- Version used by Xodus -->
     <kotlin.version>1.6.10</kotlin.version>
     <!-- analyzers used for tests -->
@@ -35,6 +35,7 @@
     <sonar.html.version>3.7.1.3306</sonar.html.version>
     <sonar.xml.version>2.7.0.3820</sonar.xml.version>
     <sonar.text.version>2.0.1.611</sonar.text.version>
+    <sonar.go.version>1.12.0.4243</sonar.go.version>
     <gitRepositoryName>sonarlint-language-server</gitRepositoryName>
     <!-- Release: enable publication to Bintray -->
     <artifactsToPublish>${project.groupId}:${project.artifactId}:jar</artifactsToPublish>
@@ -241,6 +242,15 @@
                   <overWrite>false</overWrite>
                   <outputDirectory>${project.build.directory}/plugins</outputDirectory>
                   <destFileName>sonartext.jar</destFileName>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>org.sonarsource.slang</groupId>
+                  <artifactId>sonar-go-plugin</artifactId>
+                  <version>${sonar.go.version}</version>
+                  <type>jar</type>
+                  <overWrite>false</overWrite>
+                  <outputDirectory>${project.build.directory}/plugins</outputDirectory>
+                  <destFileName>sonargo.jar</destFileName>
                 </artifactItem>
               </artifactItems>
             </configuration>

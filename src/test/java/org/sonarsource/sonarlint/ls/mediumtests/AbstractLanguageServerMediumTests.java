@@ -145,14 +145,15 @@ public abstract class AbstractLanguageServerMediumTests {
       return clientSideLauncher.getRemoteProxy();
     });
 
+    var go = fullPathToJar("sonargo");
+    var html = fullPathToJar("sonarhtml");
     var java = fullPathToJar("sonarjava");
     var js = fullPathToJar("sonarjs");
     var php = fullPathToJar("sonarphp");
     var py = fullPathToJar("sonarpython");
-    var html = fullPathToJar("sonarhtml");
-    var xml = fullPathToJar("sonarxml");
     var text = fullPathToJar("sonartext");
-    String[] languageServerArgs = new String[]{"" + port, "-analyzers", java, js, php, py, html, xml, text};
+    var xml = fullPathToJar("sonarxml");
+    String[] languageServerArgs = new String[]{"" + port, "-analyzers", go, java, js, php, py, html, xml, text};
     if (COMMERCIAL_ENABLED) {
       var cfamily = fullPathToJar("cfamily");
       languageServerArgs = ArrayUtils.add(languageServerArgs, cfamily);
