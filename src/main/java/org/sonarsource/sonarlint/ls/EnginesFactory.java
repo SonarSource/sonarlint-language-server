@@ -51,6 +51,7 @@ public class EnginesFactory {
     Language.CPP,
     Language.C,
     Language.CSS,
+    Language.GO,
     Language.HTML,
     Language.IPYTHON,
     Language.JAVA,
