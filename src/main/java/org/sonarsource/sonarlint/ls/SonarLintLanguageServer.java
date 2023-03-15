@@ -664,6 +664,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     });
   }
 
+  @Override
+  public CompletableFuture<Void> helpAndFeedbackLinkClicked(HelpAndFeedbackLinkClickedNotificationParams params) {
+    telemetry.helpAndFeedbackLinkClicked(params.id);
+    return CompletableFuture.completedFuture(null);
+  }
+
   public Map<String, Path> getEmbeddedPluginsToPath() {
     var plugins = new HashMap<String, Path>();
     analyzers.stream().filter(it -> it.toString().contains("cfamily")).findFirst()

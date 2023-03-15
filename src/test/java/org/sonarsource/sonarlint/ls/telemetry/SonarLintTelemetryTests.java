@@ -280,6 +280,22 @@ class SonarLintTelemetryTests {
   }
 
   @Test
+  void helpAndFeedbackLinkClicked_when_disabled() {
+    when(telemetryManager.isEnabled()).thenReturn(false);
+    telemetry.helpAndFeedbackLinkClicked("docs");
+    verify(telemetryManager).isEnabled();
+    verifyNoMoreInteractions(telemetryManager);
+  }
+
+  @Test
+  void helpAndFeedbackLinkClicked_when_enabled() {
+    when(telemetryManager.isEnabled()).thenReturn(true);
+    telemetry.helpAndFeedbackLinkClicked("suggestFeature");
+    verify(telemetryManager).isEnabled();
+    verify(telemetryManager).helpAndFeedbackLinkClicked("suggestFeature");
+  }
+
+  @Test
   void should_start_disabled_when_storagePath_null() {
     when(telemetryManager.isEnabled()).thenReturn(true);
     var telemetry = new SonarLintTelemetry(mock(ApacheHttpClientProvider.class), mock(SettingsManager.class),
