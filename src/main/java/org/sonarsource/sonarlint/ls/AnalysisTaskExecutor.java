@@ -196,7 +196,10 @@ public class AnalysisTaskExecutor {
     Map<URI, VersionedOpenFile> nonJavaFiles = ofNullable(splitJavaAndNonJavaFiles.get(false)).orElse(Map.of());
 
     Map<URI, GetJavaConfigResponse> javaFilesWithConfig = collectJavaFilesWithConfig(javaFiles);
-
+    var javaFilesWithoutConfig = javaFiles.entrySet()
+      .stream().filter(it -> !javaFilesWithConfig.containsKey(it.getKey()))
+      .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+    nonJavaFiles.putAll(javaFilesWithoutConfig);
     var settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
       .orElse(settingsManager.getCurrentDefaultFolderSettings());
 
