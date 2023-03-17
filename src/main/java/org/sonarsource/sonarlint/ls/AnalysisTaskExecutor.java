@@ -196,7 +196,10 @@ public class AnalysisTaskExecutor {
     Map<URI, VersionedOpenFile> nonJavaFiles = ofNullable(splitJavaAndNonJavaFiles.get(false)).orElse(Map.of());
 
     Map<URI, GetJavaConfigResponse> javaFilesWithConfig = collectJavaFilesWithConfig(javaFiles);
-
+    var javaFilesWithoutConfig = javaFiles.entrySet()
+      .stream().filter(it -> !javaFilesWithConfig.containsKey(it.getKey()))
+      .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+    nonJavaFiles.putAll(javaFilesWithoutConfig);
     var settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
       .orElse(settingsManager.getCurrentDefaultFolderSettings());
 
@@ -251,7 +254,8 @@ public class AnalysisTaskExecutor {
     javaFiles.forEach((uri, openFile) -> {
       var javaConfigOpt = javaConfigCache.getOrFetch(uri);
       if (javaConfigOpt.isEmpty()) {
-        lsLogOutput.debug(format("Skipping analysis of Java file '%s' because SonarLint was unable to query project configuration (classpath, source level, ...)", uri));
+        lsLogOutput.debug(format("Analysis of Java file '%s' may not show all issues because SonarLint" +
+          " was unable to query project configuration (classpath, source level, ...)", uri));
         clearIssueCacheAndPublishEmptyDiagnostics(uri);
       } else {
         javaFilesWithConfig.put(uri, javaConfigOpt.get());
