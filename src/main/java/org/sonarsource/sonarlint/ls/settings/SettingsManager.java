@@ -41,6 +41,7 @@ import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.StandaloneRuleConfigDto;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -129,6 +130,15 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     throw new IllegalStateException("Unable to get settings in time");
   }
 
+  public Map<String, StandaloneRuleConfigDto> getStandaloneRuleConfigByKey() {
+    var standaloneRuleConfigByKey = new HashMap<String, StandaloneRuleConfigDto>();
+    currentSettings.getRuleParameters().forEach(((ruleKey, paramValueByKey) -> {
+      var active = currentSettings.getIncludedRules().contains(ruleKey);
+      standaloneRuleConfigByKey.put(ruleKey.toString(), new StandaloneRuleConfigDto(active, paramValueByKey));
+    }));
+    return standaloneRuleConfigByKey;
+  }
+
   /**
    * Get default workspace folder level settings, waiting for them to be initialized
    */
@@ -153,7 +163,13 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         var newDefaultFolderSettings = parseFolderSettings(workspaceSettingsMap, null);
         var oldDefaultFolderSettings = currentDefaultSettings;
         this.currentDefaultSettings = newDefaultFolderSettings;
-        initLatch.countDown();
+        if (initLatch.getCount() != 0) {
+          initLatch.countDown();
+          backendServiceFacade.initialize(getCurrentSettings().getServerConnections());
+        } else {
+          backendServiceFacade.didChangeConnections(getCurrentSettings().getServerConnections());
+          backendServiceFacade.updateStandaloneRulesConfiguration(getStandaloneRuleConfigByKey());
+        }
 
         var previousProjectKeysByConnectionId = getProjectKeysByConnectionId();
         foldersManager.getAll().forEach(f -> updateWorkspaceFolderSettings(f, true));
@@ -161,7 +177,6 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         notifyListeners(newWorkspaceSettings, oldWorkspaceSettings, newDefaultFolderSettings, oldDefaultFolderSettings);
 
         resubscribeForServerEvents(oldWorkspaceSettings, newWorkspaceSettings, previousProjectKeysByConnectionId, currentProjectKeysByConnectionId);
-        backendServiceFacade.didChangeConnections(getCurrentSettings().getServerConnections());
       } catch (InterruptedException e) {
         interrupted(e);
       } catch (Exception e) {

@@ -24,10 +24,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleDefinitionDto;
 import org.sonarsource.sonarlint.core.commons.RuleKey;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryClientAttributesProvider;
 import org.sonarsource.sonarlint.ls.NodeJsRuntime;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
@@ -39,14 +40,16 @@ public class TelemetryClientAttributesProviderImpl implements TelemetryClientAtt
   private final NodeJsRuntime nodeJsRuntime;
   private final StandaloneEngineManager standaloneEngineManager;
   private final Map<String, Object> additionalAttributes;
+  private final BackendServiceFacade backendServiceFacade;
 
   public TelemetryClientAttributesProviderImpl(SettingsManager settingsManager, ProjectBindingManager bindingManager, NodeJsRuntime nodeJsRuntime,
-    StandaloneEngineManager standaloneEngineManager, Map<String, Object> additionalAttributes) {
+    StandaloneEngineManager standaloneEngineManager, Map<String, Object> additionalAttributes, BackendServiceFacade backendServiceFacade) {
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
     this.nodeJsRuntime = nodeJsRuntime;
     this.standaloneEngineManager = standaloneEngineManager;
     this.additionalAttributes = additionalAttributes;
+    this.backendServiceFacade = backendServiceFacade;
   }
 
   @Override
@@ -80,10 +83,14 @@ public class TelemetryClientAttributesProviderImpl implements TelemetryClientAtt
   }
 
   private Set<String> getDefaultEnabledRules() {
-    return standaloneEngineManager.getOrCreateStandaloneEngine().getAllRuleDetails().stream()
-      .filter(StandaloneRuleDetails::isActiveByDefault)
-      .map(StandaloneRuleDetails::getKey)
-      .collect(Collectors.toSet());
+    return backendServiceFacade.listAllStandaloneRulesDefinitions().thenApply(response ->
+        response.getRulesByKey()
+          .values()
+          .stream()
+          .filter(RuleDefinitionDto::isActiveByDefault)
+          .map(RuleDefinitionDto::getKey)
+          .collect(Collectors.toSet()))
+      .join();
   }
 
   @Override

@@ -37,6 +37,7 @@ import org.sonarsource.sonarlint.core.telemetry.TelemetryHttpClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
 import org.sonarsource.sonarlint.ls.NodeJsRuntime;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -61,22 +62,24 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   ScheduledFuture<?> scheduledFuture;
   private ScheduledExecutorService scheduler;
   private Map<String, Object> additionalAttributes;
+  private final BackendServiceFacade backendServiceFacade;
 
   public SonarLintTelemetry(ApacheHttpClientProvider httpClientProvider, SettingsManager settingsManager, ProjectBindingManager bindingManager, NodeJsRuntime nodeJsRuntime,
-    StandaloneEngineManager standaloneEngineManager) {
+    StandaloneEngineManager standaloneEngineManager, BackendServiceFacade backendServiceFacade) {
     this(() -> Executors.newScheduledThreadPool(1, Utils.threadFactory("SonarLint Telemetry", false)), httpClientProvider, settingsManager, bindingManager, nodeJsRuntime,
-      standaloneEngineManager);
+      standaloneEngineManager, backendServiceFacade);
   }
 
   public SonarLintTelemetry(Supplier<ScheduledExecutorService> executorFactory, ApacheHttpClientProvider httpClientProvider, SettingsManager settingsManager,
     ProjectBindingManager bindingManager,
-    NodeJsRuntime nodeJsRuntime, StandaloneEngineManager standaloneEngineManager) {
+    NodeJsRuntime nodeJsRuntime, StandaloneEngineManager standaloneEngineManager, BackendServiceFacade backendServiceFacade) {
     this.executorFactory = executorFactory;
     this.httpClientProvider = httpClientProvider;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
     this.nodeJsRuntime = nodeJsRuntime;
     this.standaloneEngineManager = standaloneEngineManager;
+    this.backendServiceFacade = backendServiceFacade;
   }
 
   private void optOut(boolean optOut) {
@@ -142,7 +145,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
   TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client) {
     return new TelemetryManager(path, client,
-      new TelemetryClientAttributesProviderImpl(settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager, additionalAttributes));
+      new TelemetryClientAttributesProviderImpl(settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager, additionalAttributes, backendServiceFacade));
   }
 
   void upload() {
@@ -206,7 +209,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   }
 
   public void helpAndFeedbackLinkClicked(String itemId) {
-    if(enabled()) {
+    if (enabled()) {
       telemetry.helpAndFeedbackLinkClicked(itemId);
     }
   }

@@ -23,6 +23,7 @@ import com.google.gson.annotations.Expose;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import javax.annotation.CheckForNull;
@@ -31,7 +32,8 @@ import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleParamDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.EffectiveRuleParamDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleParamDefinitionDto;
 import org.sonarsource.sonarlint.core.clientapi.client.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
@@ -101,7 +103,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     private final RuleParameter[] parameters;
 
     public ShowRuleDescriptionParams(String ruleKey, String ruleName, String htmlDescription, RuleDescriptionTab[] htmlDescriptionTabs,
-      RuleType type,  IssueSeverity severity, Collection<ActiveRuleParamDto> params) {
+      RuleType type, IssueSeverity severity, Collection<EffectiveRuleParamDto> params) {
       this.key = ruleKey;
       this.name = ruleName;
       this.htmlDescription = htmlDescription;
@@ -110,6 +112,19 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       this.severity = severity.toString();
       this.isTaint = ruleKey.contains(TAINT_RULE_REPO_SUFFIX) && type == RuleType.VULNERABILITY;
       this.parameters = params.stream().map(p -> new RuleParameter(p.getName(), p.getDescription(), p.getDefaultValue())).toArray(RuleParameter[]::new);
+    }
+
+    public ShowRuleDescriptionParams(String ruleKey, String ruleName, String htmlDescription, RuleDescriptionTab[] htmlDescriptionTabs,
+      RuleType type, IssueSeverity severity, Map<String, RuleParamDefinitionDto> params) {
+      this.key = ruleKey;
+      this.name = ruleName;
+      this.htmlDescription = htmlDescription;
+      this.htmlDescriptionTabs = htmlDescriptionTabs;
+      this.type = type.toString();
+      this.severity = severity.toString();
+      this.isTaint = ruleKey.contains(TAINT_RULE_REPO_SUFFIX) && type == RuleType.VULNERABILITY;
+      this.parameters = params.values().stream().map(ruleParamDefinitionDto -> new RuleParameter(ruleParamDefinitionDto.getName(), ruleParamDefinitionDto.getDescription(),
+        ruleParamDefinitionDto.getDefaultValue())).toArray(RuleParameter[]::new);
     }
 
     public String getKey() {
@@ -170,21 +185,31 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   class RuleDescriptionTab {
 
     @Expose
-    final String title;
+    private final String title;
+    @Nullable
     @Expose
-    final String description;
+    private final RuleDescriptionTabNonContextual ruleDescriptionTabNonContextual;
+    @Expose
+    private final RuleDescriptionTabContextual[] ruleDescriptionTabContextual;
+    @Expose
+    private final boolean hasContextualInformation;
+    @Expose
+    private final String defaultContextKey;
 
-    public RuleDescriptionTab(String title, String description) {
+    public RuleDescriptionTab(String title, RuleDescriptionTabContextual[] ruleDescriptionTabContextual, String defaultContextKey) {
       this.title = title;
-      this.description = description;
+      this.ruleDescriptionTabNonContextual = null;
+      this.ruleDescriptionTabContextual = ruleDescriptionTabContextual;
+      this.hasContextualInformation = true;
+      this.defaultContextKey = defaultContextKey;
     }
 
-    public String getTitle() {
-      return title;
-    }
-
-    public String getDescription() {
-      return description;
+    public RuleDescriptionTab(String title, RuleDescriptionTabNonContextual ruleDescriptionTabNonContextual) {
+      this.title = title;
+      this.ruleDescriptionTabContextual = new RuleDescriptionTabContextual[]{};
+      this.ruleDescriptionTabNonContextual = ruleDescriptionTabNonContextual;
+      this.hasContextualInformation = false;
+      this.defaultContextKey = "";
     }
 
     @Override
@@ -192,12 +217,105 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
       RuleDescriptionTab that = (RuleDescriptionTab) o;
-      return Objects.equals(title, that.title) && Objects.equals(description, that.description);
+      return hasContextualInformation == that.hasContextualInformation
+        && Objects.equals(title, that.title)
+        && Objects.equals(ruleDescriptionTabNonContextual, that.ruleDescriptionTabNonContextual)
+        && Arrays.equals(ruleDescriptionTabContextual, that.ruleDescriptionTabContextual)
+        && Objects.equals(defaultContextKey, that.defaultContextKey);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(title, description);
+      int result = Objects.hash(title, ruleDescriptionTabNonContextual, hasContextualInformation, defaultContextKey);
+      result = 31 * result + Arrays.hashCode(ruleDescriptionTabContextual);
+      return result;
+    }
+
+    public String getTitle() {
+      return title;
+    }
+
+    public RuleDescriptionTabNonContextual getRuleDescriptionTabNonContextual() {
+      return ruleDescriptionTabNonContextual;
+    }
+
+    public RuleDescriptionTabContextual[] getRuleDescriptionTabContextual() {
+      return ruleDescriptionTabContextual;
+    }
+
+    public boolean hasContextualInformation() {
+      return hasContextualInformation;
+    }
+
+    public String getDefaultContextKey() {
+      return defaultContextKey;
+    }
+  }
+
+  class RuleDescriptionTabContextual {
+    @Expose
+    private final String htmlContent;
+    @Expose
+    private final String contextKey;
+    @Expose
+    private final String displayName;
+
+    public RuleDescriptionTabContextual(String htmlContent, String contextKey, String displayName) {
+      this.htmlContent = htmlContent;
+      this.contextKey = contextKey;
+      this.displayName = displayName;
+    }
+
+    public String getHtmlContent() {
+      return htmlContent;
+    }
+
+    public String getContextKey() {
+      return contextKey;
+    }
+
+    public String getDisplayName() {
+      return displayName;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      RuleDescriptionTabContextual that = (RuleDescriptionTabContextual) o;
+      return Objects.equals(htmlContent, that.htmlContent) && Objects.equals(contextKey, that.contextKey) && Objects.equals(displayName,
+        that.displayName);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(htmlContent, contextKey, displayName);
+    }
+  }
+
+  class RuleDescriptionTabNonContextual {
+    @Expose
+    private final String htmlContent;
+
+    public RuleDescriptionTabNonContextual(String htmlContent) {
+      this.htmlContent = htmlContent;
+    }
+
+    public String getHtmlContent() {
+      return htmlContent;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      RuleDescriptionTabNonContextual that = (RuleDescriptionTabNonContextual) o;
+      return Objects.equals(htmlContent, that.htmlContent);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(htmlContent);
     }
   }
 
@@ -409,6 +527,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       this.success = success;
       this.reason = reason;
     }
+
     public static ConnectionCheckResult success(String connectionId) {
       return new ConnectionCheckResult(connectionId, true, null);
     }

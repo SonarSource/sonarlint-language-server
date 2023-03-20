@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
+import com.google.gson.JsonPrimitive;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -42,6 +43,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonar.scanner.protocol.Constants.Severity;
 import org.sonar.scanner.protocol.input.ScannerInput;
+import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Components;
@@ -62,6 +64,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.sonar.api.rules.RuleType.SECURITY_HOTSPOT;
 
 class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -362,7 +365,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void shouldGetTokenGenerationServerPath() throws ExecutionException, InterruptedException {
+  void shouldGetTokenServerPath() throws ExecutionException, InterruptedException {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.7\", \"id\": \"xzy\"}");
     var serverUrl = mockWebServerExtension.url("");
     var cleanUrl = stripTrailingSlash(serverUrl);
@@ -377,7 +380,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void shouldGetTokenGenerationServerPathOld() throws ExecutionException, InterruptedException {
+  void shouldGetTokenServerPathOldVersion() throws ExecutionException, InterruptedException {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.6\", \"id\": \"xzy\"}");
     var serverUrl = mockWebServerExtension.url("");
     var cleanUrl = stripTrailingSlash(serverUrl);
@@ -404,6 +407,28 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     assertLogContains("Can't find branch for workspace folder " + folder1BaseDir.toUri().getPath()
       + " during attempt to open hotspot in browser.");
+  }
+
+  @Test
+  void shouldOpenHotspotDescription() {
+    mockNoIssuesNoHotspotsForProject();
+    var uriInFolder = folder1BaseDir.resolve("hotspot.py").toUri().toString();
+    didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
+    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder)).hasSize(1));
+
+    var diagnostic = client.getHotspots(uriInFolder).get(0);
+    var hotspotId = ((JsonPrimitive) diagnostic.getData()).getAsString();
+    var ruleKey = diagnostic.getCode().getLeft();
+    var params = new SonarLintExtendedLanguageServer.ShowHotspotRuleDescriptionParams(ruleKey, hotspotId);
+    params.setFileUri(uriInFolder);
+
+    assertThat(lsProxy.showHotspotRuleDescription(params)).isNull();
+    awaitUntilAsserted(() -> {
+      assertThat(client.ruleDesc).isNotNull();
+      assertThat(client.ruleDesc.getType()).isEqualTo(SECURITY_HOTSPOT.toString());
+      assertThat(client.ruleDesc.getKey()).isEqualTo("python:S1313");
+      assertThat(client.ruleDesc.getName()).isEqualTo("Using hardcoded IP addresses is security-sensitive");
+    });
   }
 
   @Test
@@ -438,6 +463,15 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
       Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
         .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/rules/show.protobuf?key=python:S1313",
+      Rules.ShowResponse.newBuilder()
+        .setRule(Rules.Rule.newBuilder()
+          .setSeverity("MINOR")
+          .setType(Common.RuleType.SECURITY_HOTSPOT)
+          .setLang(Language.PYTHON.getLanguageKey())
+          .build())
         .build());
     mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=myProject&files=hotspot.py&branch=master&ps=500&p=1",

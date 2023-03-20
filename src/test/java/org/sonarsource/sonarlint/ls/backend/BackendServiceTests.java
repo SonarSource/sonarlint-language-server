@@ -20,7 +20,9 @@
 package org.sonarsource.sonarlint.ls.backend;
 
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.WorkspaceFolder;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
@@ -41,10 +43,16 @@ import static org.mockito.Mockito.when;
 
 class BackendServiceTests {
 
-  SonarLintBackend backend = mock(SonarLintBackend.class);
+  static SonarLintBackend backend = mock(SonarLintBackend.class);
   HotspotService hotspotService = mock(HotspotService.class);
   ConfigurationService configurationService = mock(ConfigurationService.class);
-  BackendService underTest = new BackendService(backend);
+  static BackendService underTest = new BackendService(backend);
+
+  @BeforeAll
+  public static void setup() {
+    when(backend.initialize(any())).thenReturn(CompletableFuture.completedFuture(null));
+    underTest.initialize(null);
+  }
 
   @BeforeEach
   void init() {
@@ -77,7 +85,7 @@ class BackendServiceTests {
     var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri), Optional.of(bindingWrapper));
 
     assertThat(result.getId()).isEqualTo(workspaceUri);
-    assertThat(result.getParentId()).isNull();
+    assertThat(result.getParentId()).isEqualTo(BackendServiceFacade.ROOT_CONFIGURATION_SCOPE);
     assertThat(result.getBinding().getConnectionId()).isEqualTo(connectionId);
   }
 
@@ -87,7 +95,7 @@ class BackendServiceTests {
     var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri), Optional.empty());
 
     assertThat(result.getId()).isEqualTo(workspaceUri);
-    assertThat(result.getParentId()).isNull();
+    assertThat(result.getParentId()).isEqualTo(BackendServiceFacade.ROOT_CONFIGURATION_SCOPE);
     assertThat(result.getBinding().getConnectionId()).isNull();
     assertThat(result.getBinding().getSonarProjectKey()).isNull();
     assertThat(result.getBinding().isBindingSuggestionDisabled()).isFalse();

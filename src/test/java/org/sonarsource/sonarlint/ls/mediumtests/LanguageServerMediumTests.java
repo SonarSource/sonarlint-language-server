@@ -63,7 +63,6 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
-import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import testutils.MockWebServerExtension;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -72,7 +71,7 @@ import static org.assertj.core.groups.Tuple.tuple;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.mockito.Mockito.mock;
+import static org.sonar.api.rules.RuleType.CODE_SMELL;
 
 class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -524,7 +523,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     assertLogContains(
       String.format("Global settings updated: WorkspaceSettings[connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false,organizationKey=<null>,serverUrl=%s,token=%s]},disableTelemetry=false,excludedRules=[],includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=true]",
-              CONNECTION_ID, CONNECTION_ID, mockWebServerExtension.url("/"), TOKEN));
+        CONNECTION_ID, CONNECTION_ID, mockWebServerExtension.url("/"), TOKEN));
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder( "Telemetry enabled");
   }
@@ -585,19 +584,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void test_command_open_rule_desc_from_code_action() throws Exception {
-    client.showRuleDescriptionLatch = new CountDownLatch(1);
-    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenRuleDescCodeAction", List.of(PYTHON_S1481, "file://foo.py"))).get();
-    assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
-
-    assertThat(client.ruleDesc.getKey()).isEqualTo(PYTHON_S1481);
-    assertThat(client.ruleDesc.getName()).isEqualTo("Unused local variables should be removed");
-    assertThat(client.ruleDesc.getHtmlDescription()).contains("If a local variable is declared but not used, it is dead code and should be removed.");
-    assertThat(client.ruleDesc.getType()).isEqualTo("CODE_SMELL");
-    assertThat(client.ruleDesc.getSeverity()).isEqualTo("MINOR");
-  }
-
-  @Test
   void testCodeAction_with_diagnostic_rule() throws Exception {
     var range = new Range(new Position(1, 0), new Position(1, 10));
     var d = new Diagnostic(range, "An issue");
@@ -611,9 +597,10 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(codeAction.getTitle()).isEqualTo("SonarLint: Open description of rule 'javascript:S930'");
     var openRuleDesc = codeAction.getCommand();
     assertThat(openRuleDesc.getCommand()).isEqualTo("SonarLint.OpenRuleDescCodeAction");
-    assertThat(openRuleDesc.getArguments()).hasSize(2);
+    assertThat(openRuleDesc.getArguments()).hasSize(3);
     assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(0)).getAsString()).isEqualTo("javascript:S930");
     assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(1)).getAsString()).isEqualTo("file://foo.js");
+    assertThat((((JsonPrimitive) openRuleDesc.getArguments().get(2)).getAsString())).isEmpty();
     var disableRuleCodeAction = list.get(1).getRight();
     assertThat(disableRuleCodeAction.getTitle()).isEqualTo("SonarLint: Deactivate rule 'javascript:S930'");
     var disableRule = disableRuleCodeAction.getCommand();
@@ -625,18 +612,18 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void testListAllRules() {
     var result = lsProxy.listAllRules().join();
-    String[] commercialLanguages = new String[] {"C", "C++"};
-    String[] freeLanguages = new String[] {"CSS", "CloudFormation", "Docker", "Go", "HTML", "IPython Notebooks", "Java",
+    String[] commercialLanguages = new String[]{"C", "C++"};
+    String[] freeLanguages = new String[]{"CSS", "CloudFormation", "Docker", "Go", "HTML", "IPython Notebooks", "Java",
       "JavaScript", "Kubernetes", "PHP", "Python", "Secrets", "Terraform", "TypeScript", "XML"};
     if (COMMERCIAL_ENABLED) {
-      assertThat(result).containsOnlyKeys(ArrayUtils.addAll(commercialLanguages, freeLanguages));
+      awaitUntilAsserted(() -> assertThat(result).containsOnlyKeys(ArrayUtils.addAll(commercialLanguages, freeLanguages)));
     } else {
-      assertThat(result).containsOnlyKeys(freeLanguages);
+      awaitUntilAsserted(() -> assertThat(result).containsOnlyKeys(freeLanguages));
     }
 
-    assertThat(result.get("HTML"))
+    awaitUntilAsserted(() -> assertThat(result.get("HTML"))
       .extracting(Rule::getKey, Rule::getName, Rule::isActiveByDefault)
-      .contains(tuple("Web:PageWithoutTitleCheck", "\"<title>\" should be present in all pages", true));
+      .contains(tuple("Web:PageWithoutTitleCheck", "\"<title>\" should be present in all pages", true)));
   }
 
   @Test
@@ -890,6 +877,19 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  void test_open_rule_desc_for_file_without_workspace() throws Exception {
+    client.showRuleDescriptionLatch = new CountDownLatch(1);
+    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenRuleDescCodeAction", List.of(PYTHON_S1481, "file://foo.py", ""))).get();
+    assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
+
+    assertThat(client.ruleDesc.getKey()).isEqualTo(PYTHON_S1481);
+    assertThat(client.ruleDesc.getName()).isEqualTo("Unused local variables should be removed");
+    assertThat(client.ruleDesc.getHtmlDescription()).contains("If a local variable is declared but not used, it is dead code and should be removed.");
+    assertThat(client.ruleDesc.getType()).isEqualTo("CODE_SMELL");
+    assertThat(client.ruleDesc.getSeverity()).isEqualTo("MINOR");
+  }
+
+  @Test
   void openHotspotInBrowserShouldLogIfWorkspaceNotFound() {
     lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotInBrowserLsParams("id", "/workspace"));
 
@@ -898,7 +898,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void helpAndFeedbackLinkClickedNotificationShouldCallTelemetry() {
-    SonarLintTelemetry telemetry = mock(SonarLintTelemetry.class);
     SonarLintExtendedLanguageServer.HelpAndFeedbackLinkClickedNotificationParams params = new SonarLintExtendedLanguageServer.HelpAndFeedbackLinkClickedNotificationParams("faq");
     var result = lsProxy.helpAndFeedbackLinkClicked(params);
 
@@ -906,7 +905,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Override
-  protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings){
+  protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
     addSonarQubeConnection(client.globalSettings, CONNECTION_ID, mockWebServerExtension.url("/"), TOKEN);
   }
 

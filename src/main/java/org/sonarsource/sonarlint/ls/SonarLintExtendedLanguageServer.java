@@ -303,18 +303,28 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   class ShowHotspotRuleDescriptionParams {
     String ruleKey;
+    String hotspotId;
     String fileUri;
 
-    public ShowHotspotRuleDescriptionParams(String hotspotKey) {
-      setHotspotKey(hotspotKey);
+    public ShowHotspotRuleDescriptionParams(String ruleKey, String hotspotId) {
+      setRuleKey(ruleKey);
+      setHotspotId(hotspotId);
     }
 
-    public String getHotspotKey() {
-      return ruleKey;
+    public String getHotspotId() {
+      return hotspotId;
     }
 
-    public void setHotspotKey(String ruleKey) {
+    public void setRuleKey(String ruleKey) {
       this.ruleKey = ruleKey;
+    }
+
+    public void setHotspotId(String hotspotId) {
+      this.hotspotId = hotspotId;
+    }
+
+    public void setFileUri(String fileUri) {
+      this.fileUri = fileUri;
     }
   }
   @JsonNotification("sonarlint/showHotspotRuleDescription")

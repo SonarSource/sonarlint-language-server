@@ -33,11 +33,9 @@ import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
 import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARCLOUD_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.util.Utils.textRangeWithHashFromTextRange;
@@ -46,7 +44,6 @@ class TaintIssueTests {
   @TempDir
   Path basedir;
   private Path fileInAWorkspaceFolderPath;
-  private static final ApacheHttpClientProvider httpClientProvider = mock(ApacheHttpClientProvider.class);
   private static final String FILE_PHP = "fileInAWorkspaceFolderPath.php";
   private static final String FILE_JAVA = "fileInAWorkspaceFolderPath.java";
   private static final String ISSUE_KEY1 = "TEST_ISSUE_KEY1";
@@ -93,7 +90,8 @@ class TaintIssueTests {
   @Test
   void shouldConvertServerTaintIssuesToTaintIssues() {
     ServerTaintIssue serverTaintIssue = new ServerTaintIssue(ISSUE_KEY1, false, RULE_KEY, MAIN_LOCATION1.getMessage(),
-      fileInAWorkspaceFolderPath.toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION1.getTextRange()), null);
+      fileInAWorkspaceFolderPath.toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE,
+      textRangeWithHashFromTextRange(MAIN_LOCATION1.getTextRange()), "java_se");
     serverTaintIssue.setFlows(List.of(FLOW1));
 
     TaintIssue taintIssue = TaintIssue.from(serverTaintIssue, SONARCLOUD_TAINT_SOURCE);
@@ -109,6 +107,7 @@ class TaintIssueTests {
       assertEquals(serverTaintIssue.getType(), taintIssue.getType());
       assertEquals(serverTaintIssue.getFlows(), taintIssue.getFlows());
       assertEquals(serverTaintIssue.getTextRange(), taintIssue.getTextRange());
+      assertEquals(serverTaintIssue.getRuleDescriptionContextKey(), taintIssue.getRuleDescriptionContextKey());
       assertEquals(SONARCLOUD_TAINT_SOURCE, taintIssue.getSource());
     });
 

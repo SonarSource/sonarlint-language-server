@@ -32,9 +32,9 @@ import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 public class TaintIssue extends ServerTaintIssue {
   private String source;
   public TaintIssue(String key, boolean resolved, String ruleKey, String message, String filePath,
-    Instant creationDate, IssueSeverity severity, RuleType type,
-    @Nullable TextRangeWithHash textRange, List<Flow> flows, String source) {
-    super(key, resolved, ruleKey, message, filePath, creationDate, severity, type, textRange, null);
+    Instant creationDate, IssueSeverity severity, RuleType type, @Nullable TextRangeWithHash textRange,
+     List<Flow> flows, @Nullable String ruleDescriptionContextKey, String source) {
+    super(key, resolved, ruleKey, message, filePath, creationDate, severity, type, textRange, ruleDescriptionContextKey);
     this.setFlows(flows);
     this.source = source;
   }
@@ -50,7 +50,8 @@ public class TaintIssue extends ServerTaintIssue {
   public static TaintIssue from(ServerTaintIssue serverTaintIssue, String source) {
     return new TaintIssue(serverTaintIssue.getKey(), serverTaintIssue.isResolved(), serverTaintIssue.getRuleKey(),
       serverTaintIssue.getMessage(), serverTaintIssue.getFilePath(), serverTaintIssue.getCreationDate(), serverTaintIssue.getSeverity(),
-      serverTaintIssue.getType(), serverTaintIssue.getTextRange(), serverTaintIssue.getFlows(), source);
+      serverTaintIssue.getType(), serverTaintIssue.getTextRange(), serverTaintIssue.getFlows(),
+      serverTaintIssue.getRuleDescriptionContextKey(), source);
   }
 
   public static List<TaintIssue> from(List<ServerTaintIssue> serverTaintIssues, boolean isSonarCloudAlias) {

@@ -33,6 +33,7 @@ import org.sonarsource.sonarlint.core.telemetry.TelemetryHttpClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
 import org.sonarsource.sonarlint.ls.NodeJsRuntime;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -67,7 +68,7 @@ class SonarLintTelemetryTests {
   private SonarLintTelemetry createTelemetry() {
     when(telemetryManager.isEnabled()).thenReturn(true);
     var telemetry = new SonarLintTelemetry(mock(ApacheHttpClientProvider.class), mock(SettingsManager.class),
-      mock(ProjectBindingManager.class), mock(NodeJsRuntime.class), mock(StandaloneEngineManager.class)) {
+      mock(ProjectBindingManager.class), mock(NodeJsRuntime.class), mock(StandaloneEngineManager.class), mock(BackendServiceFacade.class)) {
       @Override
       TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client) {
         return telemetryManager;
@@ -299,7 +300,7 @@ class SonarLintTelemetryTests {
   void should_start_disabled_when_storagePath_null() {
     when(telemetryManager.isEnabled()).thenReturn(true);
     var telemetry = new SonarLintTelemetry(mock(ApacheHttpClientProvider.class), mock(SettingsManager.class),
-      mock(ProjectBindingManager.class), mock(NodeJsRuntime.class), mock(StandaloneEngineManager.class)) {
+      mock(ProjectBindingManager.class), mock(NodeJsRuntime.class), mock(StandaloneEngineManager.class), mock(BackendServiceFacade.class)) {
       @Override
       TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client) {
         return telemetryManager;

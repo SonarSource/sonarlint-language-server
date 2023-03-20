@@ -21,7 +21,7 @@ package org.sonarsource.sonarlint.ls;
 
 import java.util.Collections;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleParamDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.EffectiveRuleParamDto;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
@@ -32,8 +32,8 @@ class SonarLintExtendedLanguageClientTests {
 
   @Test
   void test_rule_parameter_equals_hashCode() {
-    var param1 = new ActiveRuleParamDto("name", "description", "42");
-    var ruleDescTabs = new SonarLintExtendedLanguageClient.RuleDescriptionTab[]{new SonarLintExtendedLanguageClient.RuleDescriptionTab("ruleDescTitle", "ruleDesc")};
+    var param1 = new EffectiveRuleParamDto("name", "description", "42", "50");
+    var ruleDescTabs = new SonarLintExtendedLanguageClient.RuleDescriptionTab[]{new SonarLintExtendedLanguageClient.RuleDescriptionTab("ruleDescTitle", new SonarLintExtendedLanguageClient.RuleDescriptionTabNonContextual("ruleDesc"))};
     var ruleDesc1 = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
     var ruleDescSame1 = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
 
@@ -68,8 +68,8 @@ class SonarLintExtendedLanguageClientTests {
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffParams);
 
     var ruleDescTabs2 = new SonarLintExtendedLanguageClient.RuleDescriptionTab[]{
-      new SonarLintExtendedLanguageClient.RuleDescriptionTab("ruleDescTitle", "ruleDesc"),
-      new SonarLintExtendedLanguageClient.RuleDescriptionTab("ruleDescTitle1", "ruleDesc1")
+      new SonarLintExtendedLanguageClient.RuleDescriptionTab("ruleDescTitle", new SonarLintExtendedLanguageClient.RuleDescriptionTabNonContextual("ruleDesc")),
+      new SonarLintExtendedLanguageClient.RuleDescriptionTab("ruleDescTitle1", new SonarLintExtendedLanguageClient.RuleDescriptionTabNonContextual("ruleDesc1"))
     };
     var ruleDescDiffDescTabs = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs2, RuleType.BUG, IssueSeverity.BLOCKER, Collections.singleton(param1));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffDescTabs.hashCode());
@@ -99,20 +99,68 @@ class SonarLintExtendedLanguageClientTests {
   }
 
   @Test
-  void test_rule_description_tabs_equals_hashCode() {
-    var descTab = new SonarLintExtendedLanguageClient.RuleDescriptionTab("title", "desc");
-    var descTabSame = new SonarLintExtendedLanguageClient.RuleDescriptionTab("title", "desc");
+  void test_rule_description_non_contextual_tabs_equals_hashCode() {
+    var descTab = new SonarLintExtendedLanguageClient.RuleDescriptionTab("title", new SonarLintExtendedLanguageClient.RuleDescriptionTabNonContextual("desc"));
+    var descTabSame = new SonarLintExtendedLanguageClient.RuleDescriptionTab("title", new SonarLintExtendedLanguageClient.RuleDescriptionTabNonContextual("desc"));
 
-    assertThat(descTab).isEqualTo(descTab).isEqualTo(descTabSame).hasSameHashCodeAs(descTabSame)
-      .isNotEqualTo(null).isNotEqualTo(new Object());
+    assertThat(descTab)
+      .isEqualTo(descTab)
+      .isEqualTo(descTabSame)
+      .hasSameHashCodeAs(descTabSame)
+      .isNotEqualTo(null)
+      .isNotEqualTo(new Object());
 
-    var descTabDiffTitle = new SonarLintExtendedLanguageClient.RuleDescriptionTab("anotherTitle", "desc");
+    var descTabDiffTitle = new SonarLintExtendedLanguageClient.RuleDescriptionTab("anotherTitle", new SonarLintExtendedLanguageClient.RuleDescriptionTabNonContextual("desc"));
     assertThat(descTab).isNotEqualTo(descTabDiffTitle);
     assertThat(descTab.hashCode()).isNotEqualTo(descTabDiffTitle.hashCode());
 
-    var descTabDiffDesc = new SonarLintExtendedLanguageClient.RuleDescriptionTab("title", "anotherDesc");
+    var descTabDiffDesc = new SonarLintExtendedLanguageClient.RuleDescriptionTab("title", new SonarLintExtendedLanguageClient.RuleDescriptionTabNonContextual("anotherDesc"));
     assertThat(descTab).isNotEqualTo(descTabDiffDesc);
     assertThat(descTab.hashCode()).isNotEqualTo(descTabDiffDesc.hashCode());
+  }
+
+  @Test
+  void test_rule_description_contextual_tabs_equals_hashCode() {
+    var descTab = new SonarLintExtendedLanguageClient.RuleDescriptionTab("title",
+      new SonarLintExtendedLanguageClient.RuleDescriptionTabContextual[]{
+        new SonarLintExtendedLanguageClient.RuleDescriptionTabContextual("desc", "java", "java")
+      }, "java"
+    );
+    var descTabSame = new SonarLintExtendedLanguageClient.RuleDescriptionTab("title",
+      new SonarLintExtendedLanguageClient.RuleDescriptionTabContextual[]{
+        new SonarLintExtendedLanguageClient.RuleDescriptionTabContextual("desc", "java", "java")
+      }, "java"
+    );
+    assertThat(descTab)
+      .isEqualTo(descTab)
+      .isEqualTo(descTabSame)
+      .hasSameHashCodeAs(descTabSame)
+      .isNotEqualTo(null)
+      .isNotEqualTo(new Object());
+
+    var descTabDiffTitle = new SonarLintExtendedLanguageClient.RuleDescriptionTab("anotherTitle",
+      new SonarLintExtendedLanguageClient.RuleDescriptionTabContextual[]{
+        new SonarLintExtendedLanguageClient.RuleDescriptionTabContextual("desc", "java", "java")
+      }, "java"
+    );
+    assertThat(descTab).isNotEqualTo(descTabDiffTitle);
+    assertThat(descTab.hashCode()).isNotEqualTo(descTabDiffTitle.hashCode());
+
+    var descTabDiffDesc = new SonarLintExtendedLanguageClient.RuleDescriptionTab("title",
+      new SonarLintExtendedLanguageClient.RuleDescriptionTabContextual[]{
+        new SonarLintExtendedLanguageClient.RuleDescriptionTabContextual("desc1", "java", "java")
+      }, "java"
+    );
+    assertThat(descTab).isNotEqualTo(descTabDiffDesc);
+    assertThat(descTab.hashCode()).isNotEqualTo(descTabDiffDesc.hashCode());
+
+    var descTabDiffContextKey = new SonarLintExtendedLanguageClient.RuleDescriptionTab("title",
+      new SonarLintExtendedLanguageClient.RuleDescriptionTabContextual[]{
+        new SonarLintExtendedLanguageClient.RuleDescriptionTabContextual("desc", "servlet", "Servlet")
+      }, "servlet"
+    );
+    assertThat(descTab).isNotEqualTo(descTabDiffContextKey);
+    assertThat(descTab.hashCode()).isNotEqualTo(descTabDiffContextKey.hashCode());
   }
 
   @Test
@@ -158,7 +206,7 @@ class SonarLintExtendedLanguageClientTests {
   void test_rule_description_params_is_taint() {
     var taint = new ShowRuleDescriptionParams("javasecurity:S5168", "Rule Name", null, null, RuleType.VULNERABILITY, IssueSeverity.BLOCKER, Collections.emptyList());
     var notTaint1 = new ShowRuleDescriptionParams("java:S5168", "Rule Name", null, null, RuleType.VULNERABILITY, IssueSeverity.BLOCKER, Collections.emptyList());
-    var notTaint2= new ShowRuleDescriptionParams("javasecurity:S5168", "Rule Name", null, null, RuleType.BUG, IssueSeverity.BLOCKER, Collections.emptyList());
+    var notTaint2 = new ShowRuleDescriptionParams("javasecurity:S5168", "Rule Name", null, null, RuleType.BUG, IssueSeverity.BLOCKER, Collections.emptyList());
 
     assertThat(taint.isTaint()).isTrue();
     assertThat(notTaint1.isTaint()).isFalse();
