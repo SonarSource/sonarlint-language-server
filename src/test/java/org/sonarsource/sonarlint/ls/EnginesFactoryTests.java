@@ -54,16 +54,20 @@ class EnginesFactoryTests {
   void get_standalone_languages() {
     assertThat(EnginesFactory.getStandaloneLanguages()).containsExactlyInAnyOrder(
       Language.C,
+      Language.CLOUDFORMATION,
       Language.CSS,
       Language.CPP,
+      Language.DOCKER,
       Language.GO,
       Language.HTML,
       Language.IPYTHON,
       Language.JAVA,
       Language.JS,
+      Language.KUBERNETES,
       Language.PHP,
       Language.PYTHON,
       Language.SECRETS,
+      Language.TERRAFORM,
       Language.TS,
       Language.XML,
       Language.YAML);

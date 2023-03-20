@@ -146,6 +146,7 @@ public abstract class AbstractLanguageServerMediumTests {
     });
 
     var go = fullPathToJar("sonargo");
+    var iac = fullPathToJar("sonariac");
     var html = fullPathToJar("sonarhtml");
     var java = fullPathToJar("sonarjava");
     var js = fullPathToJar("sonarjs");
@@ -153,7 +154,7 @@ public abstract class AbstractLanguageServerMediumTests {
     var py = fullPathToJar("sonarpython");
     var text = fullPathToJar("sonartext");
     var xml = fullPathToJar("sonarxml");
-    String[] languageServerArgs = new String[]{"" + port, "-analyzers", go, java, js, php, py, html, xml, text};
+    String[] languageServerArgs = new String[]{"" + port, "-analyzers", go, java, js, php, py, html, xml, text, iac};
     if (COMMERCIAL_ENABLED) {
       var cfamily = fullPathToJar("cfamily");
       languageServerArgs = ArrayUtils.add(languageServerArgs, cfamily);

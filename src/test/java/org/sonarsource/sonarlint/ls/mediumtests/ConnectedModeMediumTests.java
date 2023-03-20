@@ -240,7 +240,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.6\", \"id\": \"xzy\"}");
 
     mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml,go",
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml,go,cloudformation,docker,kubernetes,terraform",
       Issues.IssuesPullQueryTimestamp.newBuilder()
         .setQueryTimestamp(System.currentTimeMillis())
         .build(),
@@ -262,7 +262,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .build())
         .build());
     mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml,go",
+      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml,go,cloudformation,docker,kubernetes,terraform",
       Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
         .setQueryTimestamp(System.currentTimeMillis())
         .build());
@@ -385,17 +385,17 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private void mockNoIssuesNoHotspotsForProject() {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml,go",
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml,go,cloudformation,docker,kubernetes,terraform",
       Issues.IssuesPullQueryTimestamp.newBuilder()
         .setQueryTimestamp(CURRENT_TIME)
         .build());
     mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml,go&changedSince=" + CURRENT_TIME,
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml,go,cloudformation,docker,kubernetes,terraform&changedSince=" + CURRENT_TIME,
       Issues.IssuesPullQueryTimestamp.newBuilder()
         .setQueryTimestamp(CURRENT_TIME)
         .build());
     mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml,go",
+      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=apex,c,cpp,css,web,java,js,php,plsql,py,secrets,ts,xml,yaml,go,cloudformation,docker,kubernetes,terraform",
       Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
         .setQueryTimestamp(CURRENT_TIME)
         .build());
