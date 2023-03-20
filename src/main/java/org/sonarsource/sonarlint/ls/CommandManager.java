@@ -27,7 +27,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
@@ -53,9 +55,12 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleContextualSectionDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleDetailsDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.ActiveRuleParamDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.EffectiveRuleDetailsDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.EffectiveRuleParamDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleDescriptionTabDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleMonolithicDescriptionDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleSplitDescriptionDto;
 import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.UrlUtils;
@@ -69,13 +74,13 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
-import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
 import static java.net.URI.create;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARCLOUD_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARLINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARQUBE_TAINT_SOURCE;
+import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 
 public class CommandManager {
 
@@ -104,7 +109,6 @@ public class CommandManager {
   private final ProjectBindingManager bindingManager;
   private final ServerSynchronizer serverSynchronizer;
   private final SonarLintTelemetry telemetry;
-  private final StandaloneEngineManager standaloneEngineManager;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final IssuesCache issuesCache;
   private final IssuesCache securityHotspotsCache;
@@ -113,14 +117,13 @@ public class CommandManager {
   private final OpenNotebooksCache openNotebooksCache;
 
   CommandManager(SonarLintExtendedLanguageClient client, SettingsManager settingsManager, ProjectBindingManager bindingManager, ServerSynchronizer serverSynchronizer,
-    SonarLintTelemetry telemetry, StandaloneEngineManager standaloneEngineManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache,
+    SonarLintTelemetry telemetry, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache,
     IssuesCache securityHotspotsCache, BackendServiceFacade backendServiceFacade, WorkspaceFoldersManager workspaceFoldersManager, OpenNotebooksCache openNotebooksCache) {
     this.client = client;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
     this.serverSynchronizer = serverSynchronizer;
     this.telemetry = telemetry;
-    this.standaloneEngineManager = standaloneEngineManager;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.issuesCache = issuesCache;
     this.securityHotspotsCache = securityHotspotsCache;
@@ -148,14 +151,16 @@ public class CommandManager {
     var binding = bindingManager.getBinding(uri);
     var ruleKey = diagnostic.getCode().getLeft();
     var isNotebookCellUri = openNotebooksCache.isKnownCellUri(uri);
+    var ruleContextKey = "";
     var issueForDiagnostic = isNotebookCellUri ?
       issuesCache.getIssueForDiagnostic(openNotebooksCache.getNotebookUriFromCellUri(uri), diagnostic) :
       issuesCache.getIssueForDiagnostic(uri, diagnostic);
     Optional<VersionedOpenNotebook> versionedOpenNotebook = isNotebookCellUri ?
       openNotebooksCache.getFile(openNotebooksCache.getNotebookUriFromCellUri(uri)) :
       Optional.empty();
-    if(issueForDiagnostic.isPresent()) {
+    if (issueForDiagnostic.isPresent()) {
       var versionedIssue = issueForDiagnostic.get();
+      ruleContextKey = versionedIssue.getIssue().getRuleDescriptionContextKey().orElse("");
       var quickFixes = isNotebookCellUri && versionedOpenNotebook.isPresent() ?
         versionedOpenNotebook.get().toCellIssue(versionedIssue.getIssue()).quickFixes() :
         versionedIssue.getIssue().quickFixes();
@@ -169,7 +174,7 @@ public class CommandManager {
         codeActions.add(Either.forRight(newCodeAction));
       });
     }
-    addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey);
+    addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey, ruleContextKey);
     issueForDiagnostic.ifPresent(versionedIssue -> addShowAllLocationsCodeAction(versionedIssue, codeActions, diagnostic, ruleKey, isNotebookCellUri));
     if (binding.isEmpty()) {
       var titleDeactivate = String.format("Deactivate rule '%s'", ruleKey);
@@ -190,8 +195,10 @@ public class CommandManager {
     var binding = bindingManager.getBinding(uri);
     var actualBinding = binding.orElseThrow(() -> new IllegalStateException("Binding not found for taint vulnerability"));
     var ruleKey = diagnostic.getCode().getLeft();
-    addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey);
-    taintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(uri, diagnostic).ifPresent(issue -> {
+    var taintVulnerability = taintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(uri, diagnostic);
+    var ruleContextKey = taintVulnerability.isPresent() ? Objects.toString(taintVulnerability.get().getRuleDescriptionContextKey(), "") : "";
+    addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey, ruleContextKey);
+    taintVulnerability.ifPresent(issue -> {
       if (!issue.getFlows().isEmpty()) {
         var titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", ruleKey);
         codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(issue.getKey(), actualBinding.getConnectionId())));
@@ -237,9 +244,10 @@ public class CommandManager {
     return lspRange;
   }
 
-  private static void addRuleDescriptionCodeAction(CodeActionParams params, List<Either<Command, CodeAction>> codeActions, Diagnostic d, String ruleKey) {
+  private static void addRuleDescriptionCodeAction(CodeActionParams params, List<Either<Command, CodeAction>> codeActions, Diagnostic d, String ruleKey, String ruleContextKey) {
     var titleShowRuleDesc = String.format("Open description of rule '%s'", ruleKey);
-    codeActions.add(newQuickFix(d, titleShowRuleDesc, SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, List.of(ruleKey, params.getTextDocument().getUri())));
+    List<Object> codeActionParams = List.of(ruleKey, params.getTextDocument().getUri(), ruleContextKey);
+    codeActions.add(newQuickFix(d, titleShowRuleDesc, SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, codeActionParams));
   }
 
   private static Either<Command, CodeAction> newQuickFix(Diagnostic diag, String title, String command, List<Object> params) {
@@ -252,24 +260,33 @@ public class CommandManager {
 
   public Map<String, List<Rule>> listAllStandaloneRules() {
     var result = new HashMap<String, List<Rule>>();
-    standaloneEngineManager.getOrCreateStandaloneEngine().getAllRuleDetails()
-      .forEach(d -> {
-        var languageName = d.getLanguage().getLabel();
-        result.computeIfAbsent(languageName, k -> new ArrayList<>()).add(Rule.of(d));
-      });
-    return result;
+    try {
+      return backendServiceFacade.listAllStandaloneRulesDefinitions()
+        .thenApply(response -> {
+          response.getRulesByKey().forEach((ruleKey, ruleDefinition) -> {
+            var languageName = ruleDefinition.getLanguage().getLabel();
+            result.computeIfAbsent(languageName, k -> new ArrayList<>()).add(Rule.of(ruleDefinition));
+          });
+          return result;
+        }).get();
+    } catch (InterruptedException e) {
+      interrupted(e);
+      return Map.of();
+    } catch (ExecutionException e) {
+      throw new IllegalStateException("Failed to list all standalone rules", e);
+    }
   }
 
-  private void openRuleDescription(@Nullable String fileUri, String ruleKey) {
-    var workspaceFolder = Optional.ofNullable(fileUri)
+  private void openRuleDescription(String fileUri, String ruleKey, String ruleContextKey) {
+    var workspaceFolder = Optional.of(fileUri)
       .map(URI::create)
       .map(workspaceFoldersManager::findFolderForFile)
       .filter(Optional::isPresent)
       .map(w -> w.get().getUri().toString())
       .orElse(null);
-    backendServiceFacade.getActiveRuleDetails(workspaceFolder, ruleKey)
+    backendServiceFacade.getEffectiveRuleDetails(workspaceFolder, ruleKey, ruleContextKey)
       .thenAccept(detailsResponse -> showRuleDescription(ruleKey, detailsResponse.details(),
-        fileUri == null ? detailsResponse.details().getParams() : Collections.emptyList()))
+        Collections.emptyList(), ruleContextKey))
       .exceptionally(e -> {
         var message = "Can't show rule details for unknown rule with key: " + ruleKey;
         client.showMessage(new MessageParams(MessageType.Error, message));
@@ -278,12 +295,33 @@ public class CommandManager {
       });
   }
 
-  private void showRuleDescription(String ruleKey, ActiveRuleDetailsDto ruleDetails, Collection<ActiveRuleParamDto> paramDetails) {
+  private void openStandaloneRuleDescription(String ruleKey) {
+    backendServiceFacade.getStandaloneRuleDetails(ruleKey)
+      .thenAccept(detailsResponse -> showStandaloneRuleDescription(ruleKey, detailsResponse))
+      .exceptionally(e -> {
+        var message = "Can't show rule details for unknown rule with key: " + ruleKey;
+        client.showMessage(new MessageParams(MessageType.Error, message));
+        SonarLintLogger.get().error(message, e);
+        return null;
+      });
+  }
+
+  private void showRuleDescription(String ruleKey, EffectiveRuleDetailsDto ruleDetails, Collection<EffectiveRuleParamDto> paramDetails, String ruleContextKey) {
     var ruleName = ruleDetails.getName();
-    var htmlDescription = getHtmlDescription(ruleDetails);
-    var htmlDescriptionTabs = getHtmlDescriptionTabs(ruleDetails);
+    var htmlDescription = getHtmlDescription(ruleDetails.getDescription());
+    var htmlDescriptionTabs = getHtmlDescriptionTabs(ruleDetails.getDescription(), ruleContextKey);
     var type = ruleDetails.getType();
     var severity = ruleDetails.getSeverity();
+    client.showRuleDescription(new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, htmlDescriptionTabs, type, severity, paramDetails));
+  }
+
+  private void showStandaloneRuleDescription(String ruleKey, GetStandaloneRuleDescriptionResponse ruleDetails) {
+    var ruleName = ruleDetails.getRuleDefinition().getName();
+    var htmlDescription = getHtmlDescription(ruleDetails.getDescription());
+    var htmlDescriptionTabs = getHtmlDescriptionTabs(ruleDetails.getDescription(), "");
+    var type = ruleDetails.getRuleDefinition().getType();
+    var severity = ruleDetails.getRuleDefinition().getDefaultSeverity();
+    var paramDetails = ruleDetails.getRuleDefinition().getParamsByKey();
     client.showRuleDescription(new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, htmlDescriptionTabs, type, severity, paramDetails));
   }
 
@@ -317,13 +355,15 @@ public class CommandManager {
 
   private void handleOpenStandaloneRuleDescriptionCommand(ExecuteCommandParams params) {
     var ruleKey = getAsString(params.getArguments().get(0));
-    openRuleDescription(null, ruleKey);
+    openStandaloneRuleDescription(ruleKey);
   }
 
   private void handleOpenRuleDescriptionFromCodeActionCommand(ExecuteCommandParams params) {
     var ruleKey = getAsString(params.getArguments().get(0));
     var fileUri = getAsString(params.getArguments().get(1));
-    openRuleDescription(fileUri, ruleKey);
+    var contextKeyParam = params.getArguments().get(2);
+    var ruleContextKey = Objects.nonNull(contextKeyParam) ? getAsString(contextKeyParam) : "";
+    openRuleDescription(fileUri, ruleKey, ruleContextKey);
   }
 
   private void handleBrowseTaintVulnerability(ExecuteCommandParams params) {
@@ -360,8 +400,7 @@ public class CommandManager {
   }
 
   // visible for testing
-  static String getHtmlDescription(ActiveRuleDetailsDto ruleDetails) {
-    var description = ruleDetails.getDescription();
+  static String getHtmlDescription(Either<RuleMonolithicDescriptionDto, RuleSplitDescriptionDto> description) {
     if (description.isLeft()) {
       return description.getLeft().getHtmlContent();
     } else {
@@ -369,22 +408,30 @@ public class CommandManager {
     }
   }
 
-  static SonarLintExtendedLanguageClient.RuleDescriptionTab[] getHtmlDescriptionTabs(ActiveRuleDetailsDto ruleDetails) {
-    var description = ruleDetails.getDescription();
+  static SonarLintExtendedLanguageClient.RuleDescriptionTab[] getHtmlDescriptionTabs(Either<RuleMonolithicDescriptionDto, RuleSplitDescriptionDto> description,
+    String ruleContextKey) {
     if (description.isLeft()) {
       return new SonarLintExtendedLanguageClient.RuleDescriptionTab[0];
     } else {
-      return description.getRight().getTabs().stream().map(tab -> {
-        var title = tab.getTitle();
-        String htmlContent;
-        var content = tab.getContent();
-        if (content.isLeft()) {
-          htmlContent = content.getLeft().getHtmlContent();
-        } else {
-          htmlContent = content.getRight().getContextualSections().stream().map(ActiveRuleContextualSectionDto::getHtmlContent).collect(Collectors.joining());
-        }
-        return new SonarLintExtendedLanguageClient.RuleDescriptionTab(title, htmlContent);
-      }).toArray(SonarLintExtendedLanguageClient.RuleDescriptionTab[]::new);
+      return description.getRight().getTabs().stream()
+        .map((RuleDescriptionTabDto tab) -> getRuleDescriptionTab(tab, ruleContextKey))
+        .toArray(SonarLintExtendedLanguageClient.RuleDescriptionTab[]::new);
+    }
+  }
+
+  private static SonarLintExtendedLanguageClient.RuleDescriptionTab getRuleDescriptionTab(RuleDescriptionTabDto tab, String ruleContextKey) {
+    var title = tab.getTitle();
+    var content = tab.getContent();
+    if (content.isLeft()) {
+      var htmlContent = content.getLeft().getHtmlContent();
+      var nonContextualDescriptions = new SonarLintExtendedLanguageClient.RuleDescriptionTabNonContextual(htmlContent);
+      return new SonarLintExtendedLanguageClient.RuleDescriptionTab(title, nonContextualDescriptions);
+    } else {
+      var defaultContextKey = ruleContextKey.isEmpty() ? content.getRight().getDefaultContextKey() : ruleContextKey;
+      var contextualDescriptions = content.getRight().getContextualSections().stream()
+        .map(o -> new SonarLintExtendedLanguageClient.RuleDescriptionTabContextual(o.getHtmlContent(), o.getContextKey(), o.getDisplayName()))
+        .toArray(SonarLintExtendedLanguageClient.RuleDescriptionTabContextual[]::new);
+      return new SonarLintExtendedLanguageClient.RuleDescriptionTab(title, contextualDescriptions, defaultContextKey);
     }
   }
 

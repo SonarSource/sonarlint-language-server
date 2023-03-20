@@ -22,10 +22,13 @@ package org.sonarsource.sonarlint.ls.mediumtests;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
+import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceFolder;
@@ -35,6 +38,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -158,6 +162,24 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
       .contains(
         "[Info] Analyzing file '" + file1InFolder1 + "'...",
         "[Info] Analyzing file '" + file2InFolder2 + "'..."));
+  }
+
+  @Test
+  void shouldOpenRuleDescFromCodeAction() throws Exception {
+    client.showRuleDescriptionLatch = new CountDownLatch(1);
+
+    lsProxy.getWorkspaceService()
+      .executeCommand(new ExecuteCommandParams(
+        "SonarLint.OpenRuleDescCodeAction",
+        List.of(PYTHON_S1481, folder1BaseDir.resolve("foo.py").toUri().toString(), "")))
+      .get();
+    assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
+
+    assertThat(client.ruleDesc.getKey()).isEqualTo(PYTHON_S1481);
+    assertThat(client.ruleDesc.getName()).isEqualTo("Unused local variables should be removed");
+    assertThat(client.ruleDesc.getHtmlDescription()).contains("If a local variable is declared but not used, it is dead code and should be removed.");
+    assertThat(client.ruleDesc.getType()).isEqualTo("CODE_SMELL");
+    assertThat(client.ruleDesc.getSeverity()).isEqualTo("MINOR");
   }
 
 }

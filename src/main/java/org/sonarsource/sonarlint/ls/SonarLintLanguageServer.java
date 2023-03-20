@@ -36,6 +36,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -213,6 +215,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClientProvider, backendServiceFacade);
     vsCodeClient.setSettingsManager(settingsManager);
+    backendServiceFacade.setSettingsManager(settingsManager);
     this.nodeJsRuntime = new NodeJsRuntime(settingsManager);
     var fileTypeClassifier = new FileTypeClassifier();
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
@@ -223,7 +226,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, globalLogOutput,
       taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, openNotebooksCache);
     this.settingsManager.setBindingManager(bindingManager);
-    this.telemetry = new SonarLintTelemetry(httpClientProvider, settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager);
+    this.telemetry = new SonarLintTelemetry(httpClientProvider, settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager, backendServiceFacade);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
@@ -243,7 +246,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) analysisScheduler);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) analysisScheduler);
     this.serverSynchronizer = new ServerSynchronizer(client, progressManager, bindingManager, analysisScheduler);
-    this.commandManager = new CommandManager(client, settingsManager, bindingManager, serverSynchronizer, telemetry, standaloneEngineManager, taintVulnerabilitiesCache,
+    this.commandManager = new CommandManager(client, settingsManager, bindingManager, serverSynchronizer, telemetry, taintVulnerabilitiesCache,
       issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, openNotebooksCache);
     this.taintVulnerabilityRaisedNotification = new TaintVulnerabilityRaisedNotification(client, commandManager);
     this.serverSentEventsHandler = new ServerSentEventsHandler(bindingManager, taintVulnerabilitiesCache,
@@ -376,23 +379,23 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<Object> shutdown() {
     List.<Runnable>of(
-      // prevent creation of new engines
-      enginesFactory::shutdown,
-      analysisScheduler::shutdown,
-      branchManager::shutdown,
-      requestsHandlerServer::shutdown,
-      telemetry::stop,
-      settingsManager::shutdown,
-      workspaceFoldersManager::shutdown,
-      httpClientProvider::close,
-      serverNotifications::shutdown,
-      moduleEventsProcessor::shutdown,
-      taintIssuesUpdater::shutdown,
-      // shutdown engines after the rest so that no operations remain on them, and they won't be recreated accidentally
-      bindingManager::shutdown,
-      serverSynchronizer::shutdown,
-      standaloneEngineManager::shutdown,
-      backendServiceFacade::shutdown)
+        // prevent creation of new engines
+        enginesFactory::shutdown,
+        analysisScheduler::shutdown,
+        branchManager::shutdown,
+        requestsHandlerServer::shutdown,
+        telemetry::stop,
+        settingsManager::shutdown,
+        workspaceFoldersManager::shutdown,
+        httpClientProvider::close,
+        serverNotifications::shutdown,
+        moduleEventsProcessor::shutdown,
+        taintIssuesUpdater::shutdown,
+        // shutdown engines after the rest so that no operations remain on them, and they won't be recreated accidentally
+        bindingManager::shutdown,
+        serverSynchronizer::shutdown,
+        standaloneEngineManager::shutdown,
+        backendServiceFacade::shutdown)
       // Do last
       .forEach(this::invokeQuietly);
 
@@ -435,7 +438,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didOpen(DidOpenTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
-    if(openNotebooksCache.isNotebook(uri)){
+    if (openNotebooksCache.isNotebook(uri)) {
       return;
     }
     client.isOpenInEditor(uri.toString()).thenAccept(isOpen -> {
@@ -523,7 +526,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didOpen(DidOpenNotebookDocumentParams params) {
     var notebookUri = create(params.getNotebookDocument().getUri());
-    if(openFilesCache.getFile(notebookUri).isPresent()){
+    if (openFilesCache.getFile(notebookUri).isPresent()) {
       openFilesCache.didClose(notebookUri);
     }
     var notebookFile =
@@ -657,8 +660,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<Void> showHotspotRuleDescription(ShowHotspotRuleDescriptionParams params) {
     var fileUri = params.fileUri;
     var ruleKey = params.ruleKey;
+    var issue = securityHotspotsCache.get(create(fileUri)).get(params.getHotspotId());
+    var ruleContextKey = Objects.isNull(issue) ? "" : issue.getIssue().getRuleDescriptionContextKey().orElse("");
     var showHotspotCommandParams = new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
-      List.of(new JsonPrimitive(ruleKey), new JsonPrimitive(fileUri)));
+      List.of(new JsonPrimitive(ruleKey), new JsonPrimitive(fileUri), new JsonPrimitive(ruleContextKey)));
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
       commandManager.executeCommand(showHotspotCommandParams, cancelToken);
@@ -695,8 +700,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   void provideBackendInitData(String productKey) {
     BackendInitParams params = backendServiceFacade.getInitParams();
     params.setTelemetryProductKey(productKey);
-    params.setStorageRoot(SonarLintUserHome.get().resolve("storage"));
-    params.setSonarlintUserHome(SonarLintUserHome.get().toString());
+    var actualSonarLintUserHome = Optional.ofNullable(EnginesFactory.sonarLintUserHomeOverride).orElse(SonarLintUserHome.get());
+    params.setStorageRoot(actualSonarLintUserHome.resolve("storage"));
+    params.setSonarlintUserHome(actualSonarLintUserHome.toString());
 
     params.setEmbeddedPluginPaths(new HashSet<>(analyzers));
     params.setConnectedModeEmbeddedPluginPathsByKey(getEmbeddedPluginsToPath());

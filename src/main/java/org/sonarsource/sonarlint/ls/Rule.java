@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleDefinitionDto;
 
 public class Rule {
 
@@ -56,6 +57,10 @@ public class Rule {
   }
 
   public static Rule of(StandaloneRuleDetails d) {
+    return new Rule(d.getKey(), d.getName(), d.isActiveByDefault());
+  }
+
+  public static Rule of(RuleDefinitionDto d) {
     return new Rule(d.getKey(), d.getName(), d.isActiveByDefault());
   }
 }

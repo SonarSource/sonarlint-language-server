@@ -26,6 +26,7 @@ import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
 import org.sonarsource.sonarlint.core.clientapi.client.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
+import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
 import org.sonarsource.sonarlint.core.commons.http.HttpClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
@@ -76,6 +77,11 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   @Override
   public void showMessage(org.sonarsource.sonarlint.core.clientapi.client.message.ShowMessageParams params) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void showSmartNotification(ShowSmartNotificationParams showSmartNotificationParams) {
     throw new UnsupportedOperationException();
   }
 

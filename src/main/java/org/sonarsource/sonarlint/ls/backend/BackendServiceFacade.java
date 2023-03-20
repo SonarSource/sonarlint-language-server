@@ -26,26 +26,41 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
 import org.sonarsource.sonarlint.core.clientapi.backend.HostInfoDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidAddConfigurationScopesParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetActiveRuleDetailsParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetActiveRuleDetailsResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.ListAllStandaloneRulesDefinitionsResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.StandaloneRuleConfigDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.UpdateStandaloneRulesConfigurationParams;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 public class BackendServiceFacade {
 
+  public static final String ROOT_CONFIGURATION_SCOPE = "<root>";
+
   private final BackendService backend;
   private final BackendInitParams initParams;
+  private final ConfigurationScopeDto rootConfigurationScope;
+  private SettingsManager settingsManager;
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
   public BackendServiceFacade(SonarLintBackend backend) {
     this.backend = new BackendService(backend);
     this.initParams = new BackendInitParams();
+    this.rootConfigurationScope = new ConfigurationScopeDto(ROOT_CONFIGURATION_SCOPE, null, false, ROOT_CONFIGURATION_SCOPE,
+      new BindingConfigurationDto(null, null, false)
+    );
   }
 
   public BackendService getBackendService() {
@@ -55,12 +70,15 @@ public class BackendServiceFacade {
     return backend;
   }
 
+  public void setSettingsManager(SettingsManager settingsManager) {
+    this.settingsManager = settingsManager;
+  }
+
   public BackendInitParams getInitParams() {
     return initParams;
   }
 
   public void didChangeConnections(Map<String, ServerConnectionSettings> connections) {
-    initOnce(connections);
     backend.didChangeConnections(connections);
   }
 
@@ -70,7 +88,9 @@ public class BackendServiceFacade {
     var scConnections = BackendService.extractSonarCloudConnections(connections);
     initParams.setSonarQubeConnections(sqConnections);
     initParams.setSonarCloudConnections(scConnections);
+    initParams.setStandaloneRuleConfigByKey(this.settingsManager.getStandaloneRuleConfigByKey());
     backend.initialize(toInitParams(initParams));
+    backend.addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(rootConfigurationScope)));
   }
 
   private static InitializeParams toInitParams(BackendInitParams initParams) {
@@ -86,6 +106,8 @@ public class BackendServiceFacade {
       initParams.getSonarQubeConnections(),
       initParams.getSonarCloudConnections(),
       initParams.getSonarlintUserHome(),
+      false,
+      initParams.getStandaloneRuleConfigByKey(),
       false
     );
   }
@@ -112,9 +134,27 @@ public class BackendServiceFacade {
     backend.removeWorkspaceFolder(removedUri);
   }
 
-  public CompletableFuture<GetActiveRuleDetailsResponse> getActiveRuleDetails(String workspaceFolder, String ruleKey) {
-    var params = new GetActiveRuleDetailsParams(workspaceFolder, ruleKey);
+  public CompletableFuture<GetEffectiveRuleDetailsResponse> getEffectiveRuleDetails(@Nullable String workspaceFolder, String ruleKey, String ruleContextKey) {
+    var workspaceOrRootScope = Optional.ofNullable(workspaceFolder).orElse(ROOT_CONFIGURATION_SCOPE);
+    var params = new GetEffectiveRuleDetailsParams(workspaceOrRootScope, ruleKey, ruleContextKey);
     return backend.getRuleDetails(params);
   }
 
+  public void updateStandaloneRulesConfiguration(Map<String, StandaloneRuleConfigDto> ruleConfigByKey) {
+    var params = new UpdateStandaloneRulesConfigurationParams(ruleConfigByKey);
+    backend.updateStandaloneRulesConfiguration(params);
+  }
+
+  public CompletableFuture<GetStandaloneRuleDescriptionResponse> getStandaloneRuleDetails(String ruleKey) {
+    var params = new GetStandaloneRuleDescriptionParams(ruleKey);
+    return backend.getStandaloneRuleDetails(params);
+  }
+
+  public CompletableFuture<ListAllStandaloneRulesDefinitionsResponse> listAllStandaloneRulesDefinitions() {
+    return backend.listAllStandaloneRulesDefinitions();
+  }
+
+  public void initialize(Map<String, ServerConnectionSettings> serverConnections) {
+    initOnce(serverConnections);
+  }
 }

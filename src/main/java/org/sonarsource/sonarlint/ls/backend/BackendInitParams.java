@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarCloudConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarQubeConnectionConfigurationDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.StandaloneRuleConfigDto;
 import org.sonarsource.sonarlint.core.commons.Language;
 
 public class BackendInitParams {
@@ -39,6 +40,7 @@ public class BackendInitParams {
   private List<SonarQubeConnectionConfigurationDto> sonarQubeConnections;
   private List<SonarCloudConnectionConfigurationDto> sonarCloudConnections;
   private String sonarlintUserHome;
+  private Map<String, StandaloneRuleConfigDto> standaloneRuleConfigByKey;
 
   public String getTelemetryProductKey() {
     return telemetryProductKey;
@@ -118,5 +120,13 @@ public class BackendInitParams {
 
   public void setSonarlintUserHome(String sonarlintUserHome) {
     this.sonarlintUserHome = sonarlintUserHome;
+  }
+
+  public void setStandaloneRuleConfigByKey(Map<String, StandaloneRuleConfigDto> standaloneRuleConfigByKey) {
+    this.standaloneRuleConfigByKey = standaloneRuleConfigByKey;
+  }
+
+  public Map<String, StandaloneRuleConfigDto> getStandaloneRuleConfigByKey() {
+    return this.standaloneRuleConfigByKey;
   }
 }

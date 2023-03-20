@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
@@ -36,45 +38,67 @@ import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.DidUpd
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarCloudConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarQubeConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetActiveRuleDetailsParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetActiveRuleDetailsResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.ListAllStandaloneRulesDefinitionsResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.UpdateStandaloneRulesConfigurationParams;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 public class BackendService {
 
   private final SonarLintBackend backend;
+  private final CountDownLatch initializeLatch = new CountDownLatch(1);
 
   public BackendService(SonarLintBackend backend) {
     this.backend = backend;
   }
 
   public void initialize(InitializeParams backendInitParams) {
-    backend.initialize(backendInitParams);
+    try {
+      backend.initialize(backendInitParams).thenRun(initializeLatch::countDown).get();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted", e);
+    } catch (ExecutionException e) {
+      throw new IllegalStateException("Could not initialize SonarLint Backend", e);
+    }
+  }
+
+  private SonarLintBackend initializedBackend() {
+    try {
+      initializeLatch.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("SonarLint backend initialization interrupted", e);
+    }
+    return backend;
   }
 
   public void openHotspotInBrowser(OpenHotspotInBrowserParams params) {
-    backend.getHotspotService().openHotspotInBrowser(params);
+    initializedBackend().getHotspotService().openHotspotInBrowser(params);
   }
 
   public void didChangeConnections(Map<String, ServerConnectionSettings> connections) {
     var scConnections = extractSonarCloudConnections(connections);
     var sqConnections = extractSonarQubeConnections(connections);
     var params = new DidUpdateConnectionsParams(sqConnections, scConnections);
-    backend.getConnectionService().didUpdateConnections(params);
+    initializedBackend().getConnectionService().didUpdateConnections(params);
   }
 
   public static List<SonarQubeConnectionConfigurationDto> extractSonarQubeConnections(Map<String, ServerConnectionSettings> connections) {
     return connections.entrySet().stream()
       .filter(it -> !it.getValue().isSonarCloudAlias())
-      .map(it -> new SonarQubeConnectionConfigurationDto(it.getKey(), it.getValue().getServerUrl()))
+      .map(it -> new SonarQubeConnectionConfigurationDto(it.getKey(), it.getValue().getServerUrl(), true))
       .collect(Collectors.toList());
   }
 
   public static List<SonarCloudConnectionConfigurationDto> extractSonarCloudConnections(Map<String, ServerConnectionSettings> connections) {
     return connections.entrySet().stream()
       .filter(it -> it.getValue().isSonarCloudAlias())
-      .map(it -> new SonarCloudConnectionConfigurationDto(it.getKey(), it.getValue().getOrganizationKey()))
+      .map(it -> new SonarCloudConnectionConfigurationDto(it.getKey(), it.getValue().getOrganizationKey(), true))
       .collect(Collectors.toList());
   }
 
@@ -87,27 +111,39 @@ public class BackendService {
     } else {
       bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
     }
-    return new ConfigurationScopeDto(added.getUri(), null, true, added.getName(), bindingConfigurationDto);
+    return new ConfigurationScopeDto(added.getUri(), BackendServiceFacade.ROOT_CONFIGURATION_SCOPE, true, added.getName(), bindingConfigurationDto);
   }
 
   public void removeWorkspaceFolder(String removedUri) {
     var params = new DidRemoveConfigurationScopeParams(removedUri);
-    backend.getConfigurationService().didRemoveConfigurationScope(params);
+    initializedBackend().getConfigurationService().didRemoveConfigurationScope(params);
   }
 
   public void updateBinding(DidUpdateBindingParams params) {
-    backend.getConfigurationService().didUpdateBinding(params);
+    initializedBackend().getConfigurationService().didUpdateBinding(params);
   }
 
   public void addConfigurationScopes(DidAddConfigurationScopesParams params) {
-    backend.getConfigurationService().didAddConfigurationScopes(params);
+    initializedBackend().getConfigurationService().didAddConfigurationScopes(params);
   }
 
   public void shutdown() {
     backend.shutdown();
   }
 
-  public CompletableFuture<GetActiveRuleDetailsResponse> getRuleDetails(GetActiveRuleDetailsParams params) {
-    return backend.getActiveRulesService().getActiveRuleDetails(params);
+  public CompletableFuture<GetEffectiveRuleDetailsResponse> getRuleDetails(GetEffectiveRuleDetailsParams params) {
+    return initializedBackend().getRulesService().getEffectiveRuleDetails(params);
+  }
+
+  public void updateStandaloneRulesConfiguration(UpdateStandaloneRulesConfigurationParams params) {
+    initializedBackend().getRulesService().updateStandaloneRulesConfiguration(params);
+  }
+
+  public CompletableFuture<GetStandaloneRuleDescriptionResponse> getStandaloneRuleDetails(GetStandaloneRuleDescriptionParams params) {
+    return initializedBackend().getRulesService().getStandaloneRuleDetails(params);
+  }
+
+  public CompletableFuture<ListAllStandaloneRulesDefinitionsResponse> listAllStandaloneRulesDefinitions() {
+    return initializedBackend().getRulesService().listAllStandaloneRulesDefinitions();
   }
 }

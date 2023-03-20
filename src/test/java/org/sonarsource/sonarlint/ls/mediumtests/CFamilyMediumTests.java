@@ -24,10 +24,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.eclipse.lsp4j.Diagnostic;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
@@ -38,6 +40,13 @@ import static org.eclipse.lsp4j.DiagnosticSeverity.Information;
 
 @EnabledIfSystemProperty(named = "commercial", matches = ".*", disabledReason = "Commercial plugin not available")
 class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
+  @BeforeAll
+  static void initialize() throws Exception {
+    initialize(Map.of(
+      "telemetryStorage", "not/exists",
+      "productName", "SLCORE tests",
+      "productVersion", "0.1"));
+  }
 
   @Test
   void analyzeSimpleCppFileOnOpen(@TempDir Path cppProjectBaseDir) throws IOException, InterruptedException {
