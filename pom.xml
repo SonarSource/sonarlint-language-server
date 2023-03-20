@@ -35,7 +35,7 @@
     <sonar.html.version>3.7.1.3306</sonar.html.version>
     <sonar.xml.version>2.7.0.3820</sonar.xml.version>
     <sonar.text.version>2.0.1.611</sonar.text.version>
-    <sonar.go.version>1.12.0.4243</sonar.go.version>
+    <sonar.go.version>1.12.0.4259</sonar.go.version>
     <gitRepositoryName>sonarlint-language-server</gitRepositoryName>
     <!-- Release: enable publication to Bintray -->
     <artifactsToPublish>${project.groupId}:${project.artifactId}:jar</artifactsToPublish>
