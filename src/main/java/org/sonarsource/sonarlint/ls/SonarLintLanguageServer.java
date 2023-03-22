@@ -678,6 +678,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     addPluginPathOrWarn("xml", Language.XML, plugins);
     addPluginPathOrWarn("text", Language.SECRETS, plugins);
     addPluginPathOrWarn("go", Language.GO, plugins);
+    addPluginPathOrWarn("iac", Language.CLOUDFORMATION, plugins);
     return plugins;
   }
 

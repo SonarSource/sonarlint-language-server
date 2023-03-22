@@ -73,7 +73,6 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 
 class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -85,6 +84,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   private static final String GO_S108 = "go:S108";
   @RegisterExtension
   private static final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
+  public static final String CLOUDFORMATION_S6273 = "cloudformation:S6273";
+  public static final String DOCKER_S6476 = "docker:S6476";
+  public static final String TERRAFORM_S6273 = "terraform:S6273";
 
   @BeforeAll
   static void initialize() throws Exception {
@@ -154,6 +156,74 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .containsExactly(
         tuple(3, 15, 4, 2, GO_S108, "sonarlint", "Either remove or fill this block of code.", DiagnosticSeverity.Warning),
         tuple(4, 11, 4, 21, GO_S1862, "sonarlint", "This condition duplicates the one on line 4. [+1 location]", DiagnosticSeverity.Warning)));
+  }
+
+  @Test
+  void analyzeSimpleCloudFormationFileOnOpen() throws Exception {
+    setRulesConfig(client.globalSettings, CLOUDFORMATION_S6273, "on"); //NB: make sure the tested rule is enabled
+    notifyConfigurationChangeOnClient();
+
+    var uri = getUri("sampleCloudFormation.yaml");
+
+    didOpen(uri, "yaml", "AWSTemplateFormatVersion: 2010-09-09\n" +
+      "Resources:\n" +
+      "  S3Bucket:\n" +
+      "    Type: 'AWS::S3::Bucket'\n" +
+      "    Properties:\n" +
+      "      BucketName: \"mybucketname\"\n" +
+      "      Tags:\n" +
+      "        - Key: \"anycompany:cost-center\" # Noncompliant\n" +
+      "          Value: \"Accounting\"\n" +
+      "        - Key: \"anycompany:EnvironmentType\" # Noncompliant\n" +
+      "          Value: \"PROD\"\n");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(7, 15, 7, 39, CLOUDFORMATION_S6273,
+          "sonarlint", "Rename tag key \"anycompany:cost-center\" to match the regular expression \"^([A-Z][A-Za-z]*:)*([A-Z][A-Za-z]*)$\".",
+          DiagnosticSeverity.Information),
+        tuple(9, 15, 9, 43, CLOUDFORMATION_S6273, "sonarlint",
+          "Rename tag key \"anycompany:EnvironmentType\" to match the regular expression \"^([A-Z][A-Za-z]*:)*([A-Z][A-Za-z]*)$\".",
+          DiagnosticSeverity.Information)));
+  }
+
+  @Test
+  void analyzeSimpleDockerFileOnOpen() throws Exception {
+    setRulesConfig(client.globalSettings, DOCKER_S6476, "on"); //NB: make sure the tested rule is enabled
+    notifyConfigurationChangeOnClient();
+
+    var uri = getUri("Dockerfile");
+
+    didOpen(uri, "docker", "from ubuntu:22.04 as jammy\n");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(0, 18, 0, 20, DOCKER_S6476, "sonarlint", "Replace `as` with upper case format `AS`.", DiagnosticSeverity.Warning),
+        tuple(0, 0, 0, 4, DOCKER_S6476, "sonarlint", "Replace `from` with upper case format `FROM`.", DiagnosticSeverity.Warning)));
+  }
+
+  @Test
+  void analyzeSimpleTerraformFileOnOpen() throws Exception {
+    setRulesConfig(client.globalSettings, TERRAFORM_S6273, "on"); //NB: make sure the tested rule is enabled
+    notifyConfigurationChangeOnClient();
+
+    var uri = getUri("sampleTerraform.tf");
+
+    didOpen(uri, "terraform", "resource \"aws_s3_bucket\" \"mynoncompliantbucket\" {\n" +
+      "  bucket = \"mybucketname\"\n" +
+      "\n" +
+      "  tags = {\n" +
+      "    \"anycompany:cost-center\" = \"Accounting\" # Noncompliant\n" +
+      "  }\n" +
+      "}");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(4, 4, 4, 28, TERRAFORM_S6273, "sonarlint",
+          "Rename tag key \"anycompany:cost-center\" to match the regular expression \"^([A-Z][A-Za-z]*:)*([A-Z][A-Za-z]*)$\".", DiagnosticSeverity.Information)));
   }
 
   @Test
@@ -556,7 +626,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void testListAllRules() {
     var result = lsProxy.listAllRules().join();
     String[] commercialLanguages = new String[] {"C", "C++"};
-    String[] freeLanguages = new String[] {"CSS", "Go", "HTML", "IPython Notebooks", "Java", "JavaScript", "PHP", "Python", "Secrets", "TypeScript", "XML"};
+    String[] freeLanguages = new String[] {"CSS", "CloudFormation", "Docker", "Go", "HTML", "IPython Notebooks", "Java",
+      "JavaScript", "Kubernetes", "PHP", "Python", "Secrets", "Terraform", "TypeScript", "XML"};
     if (COMMERCIAL_ENABLED) {
       assertThat(result).containsOnlyKeys(ArrayUtils.addAll(commercialLanguages, freeLanguages));
     } else {
