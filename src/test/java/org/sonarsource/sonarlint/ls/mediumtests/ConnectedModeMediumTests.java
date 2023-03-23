@@ -32,6 +32,7 @@ import org.apache.commons.io.FileUtils;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.ExecuteCommandParams;
+import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
@@ -184,6 +185,44 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
         tuple(0, 13, 0, 26, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Information)));
+  }
+
+  @Test
+  void analysisConnected_scan_all_hotspot() {
+    mockNoIssuesNoHotspotsForProject();
+
+    var uri1InFolder = folder1BaseDir.resolve("hotspot1.py").toUri().toString();
+    var doc1 = new TextDocumentItem();
+    doc1.setUri(uri1InFolder);
+    doc1.setText("def foo():\n  id_address = '12.34.56.78'\n");
+    doc1.setVersion(0);
+    doc1.setLanguageId("[unknown]");
+
+    var uri2InFolder = folder1BaseDir.resolve("hotspot2.py").toUri().toString();
+    var doc2 = new TextDocumentItem();
+    doc2.setUri(uri2InFolder);
+    doc2.setText("def foo():\n  id_address = '23.45.67.89'\n");
+    doc2.setVersion(0);
+    doc2.setLanguageId("[unknown]");
+
+    List<TextDocumentItem> documents = List.of(doc1, doc2);
+    var scanParams = new SonarLintExtendedLanguageServer.ScanFolderForHotspotsParams(folder1BaseDir.toString(), documents);
+
+    lsProxy.scanFolderForHotspots(scanParams);
+
+    awaitUntilAsserted(() -> {
+      assertThat(client.getHotspots(uri1InFolder))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+        .containsExactly(
+          tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Information));
+      assertThat(client.getDiagnostics(uri1InFolder)).isEmpty();
+
+      assertThat(client.getHotspots(uri2InFolder))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+        .containsExactly(
+          tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"23.45.67.89\" is safe here.", DiagnosticSeverity.Information));
+      assertThat(client.getDiagnostics(uri2InFolder)).isEmpty();
+    });
   }
 
   @Test

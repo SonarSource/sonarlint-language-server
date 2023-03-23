@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -105,6 +106,7 @@ import org.sonarsource.sonarlint.ls.connected.notifications.TaintVulnerabilityRa
 import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
+import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.ModuleEventsProcessor;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
@@ -711,6 +713,18 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
       commandManager.executeCommand(showHotspotCommandParams, cancelToken);
+      return null;
+    });
+  }
+
+  @Override
+  public CompletableFuture<Void> scanFolderForHotspots(ScanFolderForHotspotsParams params) {
+    return CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      var filesToAnalyze = params.getDocuments().stream()
+        .map(d -> new VersionedOpenFile(URI.create(d.getUri()), d.getLanguageId(), d.getVersion(), d.getText()))
+        .collect(Collectors.toList());
+      analysisScheduler.scanForHotspotsInFiles(filesToAnalyze);
       return null;
     });
   }
