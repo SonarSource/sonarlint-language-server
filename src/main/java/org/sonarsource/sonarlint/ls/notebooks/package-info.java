@@ -17,32 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls.progress;
+@ParametersAreNonnullByDefault
+package org.sonarsource.sonarlint.ls.notebooks;
 
-import java.util.function.Consumer;
-import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
-
-public class NoOpProgressFacade implements ProgressFacade {
-
-  @Override
-  public void end(@Nullable String message) {
-    // No-op
-  }
-
-  @Override
-  public ClientProgressMonitor asCoreMonitor() {
-    return null;
-  }
-
-  @Override
-  public void doInSubProgress(String connectionId, float fraction, Consumer<ProgressFacade> subRunnable) {
-    subRunnable.accept(this);
-  }
-
-  @Override
-  public void checkCanceled() {
-    // No-op
-  }
-
-}
+import javax.annotation.ParametersAreNonnullByDefault;

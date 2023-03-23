@@ -98,7 +98,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   }
 
   public void didOpen(VersionedOpenFile file) {
-    analyzeAsync(List.of(file), true);
+    analyzeAsync(AnalysisParams.newAnalysisParams(List.of(file)).withFetchServerIssues());
   }
 
   public void didChange(URI fileUri) {
@@ -158,7 +158,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
           return;
         }
         filesToTrigger.forEach(f -> eventMap.remove(f.getUri()));
-        onChangeCurrentTask = analyzeAsync(filesToTrigger, false);
+        onChangeCurrentTask = analyzeAsync(AnalysisParams.newAnalysisParams(filesToTrigger));
       }
     }
   }
@@ -167,11 +167,35 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     eventMap.remove(fileUri);
   }
 
+  public static class AnalysisParams {
+    private final List<VersionedOpenFile> files;
+    private final boolean shouldFetchServerIssues;
+    private final boolean shouldKeepHotspotsOnly;
+
+    private AnalysisParams(List<VersionedOpenFile> files, boolean shouldFetchServerIssues, boolean shouldKeepHotspotsOnly) {
+      this.files = List.copyOf(files);
+      this.shouldFetchServerIssues = shouldFetchServerIssues;
+      this.shouldKeepHotspotsOnly = shouldKeepHotspotsOnly;
+    }
+
+    static AnalysisParams newAnalysisParams(List<VersionedOpenFile> files) {
+      return new AnalysisParams(files, false, false);
+    }
+
+    AnalysisParams withFetchServerIssues() {
+      return new AnalysisParams(files, true, shouldKeepHotspotsOnly);
+    }
+
+    AnalysisParams withOnlyHotspots() {
+      return new AnalysisParams(files, shouldFetchServerIssues, true);
+    }
+  }
+
   /**
    * Handle analysis asynchronously to not block client events for too long
    */
-  Future<?> analyzeAsync(List<VersionedOpenFile> files, boolean shouldFetchServerIssues) {
-    var trueFileUris = files.stream().filter(f -> {
+  Future<?> analyzeAsync(AnalysisParams params) {
+    var trueFileUris = params.files.stream().filter(f -> {
       if (!Utils.uriHasFileScheme(f.getUri())) {
         lsLogOutput.warn(format("URI '%s' is not in local filesystem, analysis not supported", f.getUri()));
         return false;
@@ -187,7 +211,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     } else {
       lsLogOutput.debug(format("Queuing analysis of %d files", trueFileUris.size()));
     }
-    var task = new AnalysisTask(trueFileUris, shouldFetchServerIssues);
+    var task = new AnalysisTask(trueFileUris, params.shouldFetchServerIssues, params.shouldKeepHotspotsOnly);
     var future = asyncExecutor.submit(() -> analysisTaskExecutor.run(task));
     task.setFuture(future);
     return future;
@@ -207,7 +231,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     var openedFileUrisInFolder = openFilesCache.getAll().stream()
       .filter(f -> belongToFolder(folder, f.getUri()))
       .collect(Collectors.toList());
-    analyzeAsync(openedFileUrisInFolder, false);
+    analyzeAsync(AnalysisParams.newAnalysisParams(openedFileUrisInFolder));
   }
 
   private boolean belongToFolder(WorkspaceFolderWrapper folder, URI fileUri) {
@@ -245,28 +269,32 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
       .filter(VersionedOpenFile::isCOrCpp)
       .filter(f -> belongToFolder(folder, f.getUri()))
       .collect(Collectors.toList());
-    analyzeAsync(openedCorCppFileUrisInFolder, false);
+    analyzeAsync(AnalysisParams.newAnalysisParams(openedCorCppFileUrisInFolder));
+  }
+
+  public void scanForHotspotsInFiles(List<VersionedOpenFile> files) {
+    analyzeAsync(AnalysisParams.newAnalysisParams(files).withOnlyHotspots());
   }
 
   private void analyzeAllUnboundOpenFiles() {
     var openedUnboundFileUris = openFilesCache.getAll().stream()
       .filter(f -> bindingManager.getBinding(f.getUri()).isEmpty())
       .collect(Collectors.toList());
-    analyzeAsync(openedUnboundFileUris, false);
+    analyzeAsync(AnalysisParams.newAnalysisParams(openedUnboundFileUris));
   }
 
   private void analyzeAllOpenNotebooks() {
     var openNotebookUris = openNotebooksCache.getAll().stream()
       .map(VersionedOpenNotebook::asVersionedOpenFile)
       .collect(Collectors.toList());
-    analyzeAsync(openNotebookUris, false);
+    analyzeAsync(AnalysisParams.newAnalysisParams(openNotebookUris));
   }
 
   private void analyzeAllOpenJavaFiles() {
     var openedJavaFileUris = openFilesCache.getAll().stream()
       .filter(VersionedOpenFile::isJava)
       .collect(toList());
-    analyzeAsync(openedJavaFileUris, false);
+    analyzeAsync(AnalysisParams.newAnalysisParams(openedJavaFileUris));
   }
 
   public void didClasspathUpdate() {
@@ -278,5 +306,4 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
       analyzeAllOpenJavaFiles();
     }
   }
-
 }

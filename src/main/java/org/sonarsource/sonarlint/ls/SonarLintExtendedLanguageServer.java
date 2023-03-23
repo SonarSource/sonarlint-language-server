@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
@@ -333,4 +334,26 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/helpAndFeedbackLinkClicked")
   CompletableFuture<Void> helpAndFeedbackLinkClicked(HelpAndFeedbackLinkClickedNotificationParams params);
+
+  class ScanFolderForHotspotsParams {
+    String folderUri;
+
+    List<TextDocumentItem> documents;
+
+    public ScanFolderForHotspotsParams(String folderUri, List<TextDocumentItem> documents) {
+      this.folderUri = folderUri;
+      this.documents = documents;
+    }
+
+    public String getFolderUri() {
+      return folderUri;
+    }
+
+    public List<TextDocumentItem> getDocuments() {
+      return documents;
+    }
+  }
+
+  @JsonNotification("sonarlint/scanFolderForHotspots")
+  CompletableFuture<Void> scanFolderForHotspots(ScanFolderForHotspotsParams params);
 }

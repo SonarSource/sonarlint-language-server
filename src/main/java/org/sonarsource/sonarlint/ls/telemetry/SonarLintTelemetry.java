@@ -28,6 +28,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
@@ -225,7 +226,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   }
 
   @Override
-  public void onChange(WorkspaceSettings oldValue, WorkspaceSettings newValue) {
+  public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
     optOut(newValue.isDisableTelemetry());
   }
 }

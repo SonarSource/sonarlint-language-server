@@ -134,15 +134,20 @@ public class AnalysisTaskExecutor {
   private void analyze(AnalysisTask task) {
     var filesToAnalyze = task.getFilesToAnalyze().stream().collect(Collectors.toMap(VersionedOpenFile::getUri, identity()));
 
-    var scmIgnored = filesToAnalyze.keySet().stream()
-      .filter(this::scmIgnored)
-      .collect(toSet());
+    if (!task.shouldKeepHotspotsOnly()) {
+      //
+      // If the task is a "scan for hotspots", submitted files are already checked for SCM ignore status on client side
+      //
+      var scmIgnored = filesToAnalyze.keySet().stream()
+        .filter(this::scmIgnored)
+        .collect(toSet());
 
-    scmIgnored.forEach(f -> {
-      lsLogOutput.debug(format("Skip analysis for SCM ignored file: '%s'", f));
-      clearIssueCacheAndPublishEmptyDiagnostics(f);
-      filesToAnalyze.remove(f);
-    });
+      scmIgnored.forEach(f -> {
+        lsLogOutput.debug(format("Skip analysis for SCM ignored file: '%s'", f));
+        clearIssueCacheAndPublishEmptyDiagnostics(f);
+        filesToAnalyze.remove(f);
+      });
+    }
 
     var filesToAnalyzePerFolder = filesToAnalyze.entrySet().stream()
       .collect(groupingBy(entry -> workspaceFoldersManager.findFolderForFile(entry.getKey()), mapping(Entry::getValue, toMap(VersionedOpenFile::getUri, identity()))));
@@ -317,7 +322,9 @@ public class AnalysisTaskExecutor {
     }
 
     filesToAnalyze.forEach((fileUri, openFile) -> {
-      issuesCache.analysisStarted(openFile);
+      if (!task.shouldKeepHotspotsOnly()) {
+        issuesCache.analysisStarted(openFile);
+      }
       securityHotspotsCache.analysisStarted(openFile);
       notebookDiagnosticPublisher.cleanupCellsList(fileUri);
       if (binding.isEmpty()) {
@@ -327,7 +334,7 @@ public class AnalysisTaskExecutor {
     });
 
     var ruleKeys = new HashSet<String>();
-    var issueListener = createIssueListener(filesToAnalyze, ruleKeys);
+    var issueListener = createIssueListener(filesToAnalyze, ruleKeys, task);
 
     AnalysisResultsWrapper analysisResults;
     var filesSuccessfullyAnalyzed = new HashSet<>(filesToAnalyze.keySet());
@@ -355,21 +362,29 @@ public class AnalysisTaskExecutor {
 
     if (!filesSuccessfullyAnalyzed.isEmpty()) {
       var totalIssueCount = new AtomicInteger();
+      var totalHotspotCount = new AtomicInteger();
       filesSuccessfullyAnalyzed.forEach(f -> {
         var file = filesToAnalyze.get(f);
         issuesCache.analysisSucceeded(file);
         securityHotspotsCache.analysisSucceeded(file);
         var foundIssues = issuesCache.count(f);
         totalIssueCount.addAndGet(foundIssues);
+        totalHotspotCount.addAndGet(securityHotspotsCache.count(f));
         diagnosticPublisher.publishDiagnostics(f);
         notebookDiagnosticPublisher.cleanupDiagnostics(f);
       });
       telemetry.addReportedRules(ruleKeys);
-      lsLogOutput.info(format("Found %s %s", totalIssueCount.get(), pluralize(totalIssueCount.get(), "issue")));
+      if (!task.shouldKeepHotspotsOnly()) {
+        lsLogOutput.info(format("Found %s %s", totalIssueCount.get(), pluralize(totalIssueCount.get(), "issue")));
+      }
+      var hotspotsCount = totalHotspotCount.get();
+      if (hotspotsCount != 0) {
+        lsLogOutput.info(format("Found %s %s", hotspotsCount, pluralize(hotspotsCount, "security hotspot")));
+      }
     }
   }
 
-  private IssueListener createIssueListener(Map<URI, VersionedOpenFile> filesToAnalyze, Set<String> ruleKeys) {
+  private IssueListener createIssueListener(Map<URI, VersionedOpenFile> filesToAnalyze, Set<String> ruleKeys, AnalysisTask task) {
     return issue -> {
       var inputFile = issue.getInputFile();
       // FIXME SLVSCODE-255 support project level issues
@@ -383,7 +398,7 @@ public class AnalysisTaskExecutor {
           var versionedOpenFile = filesToAnalyze.get(uri);
           if (issue.getType() == RuleType.SECURITY_HOTSPOT) {
             securityHotspotsCache.reportIssue(versionedOpenFile, issue);
-          } else {
+          } else if (!task.shouldKeepHotspotsOnly()) {
             issuesCache.reportIssue(versionedOpenFile, issue);
           }
         }
