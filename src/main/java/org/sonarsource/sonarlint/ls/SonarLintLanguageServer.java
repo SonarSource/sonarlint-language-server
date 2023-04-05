@@ -734,4 +734,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       return null;
     });
   }
+
+  public CompletableFuture<Void> forgetFolderHotspots() {
+    var filesToForget = securityHotspotsCache.keepOnly(openFilesCache.getAll());
+    filesToForget.forEach(diagnosticPublisher::publishDiagnostics);
+    return null;
+  }
 }

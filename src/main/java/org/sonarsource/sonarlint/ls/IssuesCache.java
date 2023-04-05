@@ -21,12 +21,16 @@ package org.sonarsource.sonarlint.ls;
 
 import com.google.gson.JsonPrimitive;
 import java.net.URI;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import org.eclipse.lsp4j.Diagnostic;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
@@ -39,6 +43,20 @@ public class IssuesCache {
   public void clear(URI fileUri) {
     issuesPerIdPerFileURI.remove(fileUri);
     inProgressAnalysisIssuesPerIdPerFileURI.remove(fileUri);
+  }
+
+  /**
+   * Keep only the entries for the given set of files
+   * @param openFilesUri the set of file URIs to keep
+   * @return the set of file URIs that were removed
+   */
+  public Set<URI> keepOnly(Collection<VersionedOpenFile> openFiles) {
+    var keysBeforeRemoval = new HashSet<>(issuesPerIdPerFileURI.keySet());
+    var keysToRetain = openFiles.stream().map(VersionedOpenFile::getUri).collect(Collectors.toSet());
+    issuesPerIdPerFileURI.keySet().retainAll(keysToRetain);
+    inProgressAnalysisIssuesPerIdPerFileURI.keySet().retainAll(keysToRetain);
+    keysBeforeRemoval.removeAll(issuesPerIdPerFileURI.keySet());
+    return keysBeforeRemoval;
   }
 
   public void analysisStarted(VersionedOpenFile versionedOpenFile) {
