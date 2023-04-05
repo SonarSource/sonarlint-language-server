@@ -366,4 +366,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/scanFolderForHotspots")
   CompletableFuture<Void> scanFolderForHotspots(ScanFolderForHotspotsParams params);
+
+  @JsonNotification("sonarlint/forgetFolderHotspots")
+  CompletableFuture<Void> forgetFolderHotspots();
 }
