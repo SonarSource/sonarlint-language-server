@@ -191,7 +191,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void analysisConnected_scan_all_hotspot() {
+  void analysisConnected_scan_all_hotspot_then_forget() {
     mockNoIssuesNoHotspotsForProject();
 
     var uri1InFolder = folder1BaseDir.resolve("hotspot1.py").toUri().toString();
@@ -225,6 +225,22 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .containsExactly(
           tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"23.45.67.89\" is safe here.", DiagnosticSeverity.Information));
       assertThat(client.getDiagnostics(uri2InFolder)).isEmpty();
+    });
+
+    // Simulate that file 1 is open, should not be cleaned
+    didOpen(uri1InFolder, "python", "def foo():\n  id_address = '12.34.56.78'\n");
+
+    lsProxy.forgetFolderHotspots();
+
+    awaitUntilAsserted(() -> {
+      // File 1 is still open, keeping hotspots
+      assertThat(client.getHotspots(uri1InFolder))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+        .containsExactly(
+          tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Information));
+
+      // File 2 is not open, cleaning hotspots
+      assertThat(client.getHotspots(uri2InFolder)).isEmpty();
     });
   }
 
