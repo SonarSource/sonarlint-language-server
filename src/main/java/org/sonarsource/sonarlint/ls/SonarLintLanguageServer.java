@@ -731,7 +731,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       cancelToken.checkCanceled();
       var folderUri = params.getFolderUri();
       backendServiceFacade.checkLocalDetectionSupported(folderUri)
-        .thenAccept(response -> showMessageService.sendNotCompatibleServerWarningIfNeeded(folderUri, response.isSupported()));
+        .thenAccept(response -> {
+          if (response.isSupported()) {
+            showMessageService.sendNotCompatibleServerWarningIfNeeded(folderUri);
+          }
+        });
       runScan(params);
       return null;
     });

@@ -35,16 +35,14 @@ public class ShowMessageService {
     this.client = client;
   }
 
-  public void sendNotCompatibleServerWarningIfNeeded(String folderUri, boolean isSupported) {
-    if (isSupported) {
-      var browseAction = new MessageActionItem("Read more");
-      ShowMessageRequestParams messageParams = getMessageRequestForNotCompatibleServerWarning(folderUri, browseAction);
-      client.showMessageRequest(messageParams).thenAccept(action -> {
-        if (browseAction.equals(action)) {
-          client.browseTo(LEARN_MORE_ABOUT_HOTSPOTS_LINK);
-        }
-      });
-    }
+  public void sendNotCompatibleServerWarningIfNeeded(String folderUri) {
+    var browseAction = new MessageActionItem("Read more");
+    ShowMessageRequestParams messageParams = getMessageRequestForNotCompatibleServerWarning(folderUri, browseAction);
+    client.showMessageRequest(messageParams).thenAccept(action -> {
+      if (browseAction.equals(action)) {
+        client.browseTo(LEARN_MORE_ABOUT_HOTSPOTS_LINK);
+      }
+    });
   }
 
   @VisibleForTesting

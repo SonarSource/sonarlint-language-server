@@ -22,7 +22,7 @@ package org.sonarsource.sonarlint.ls;
 import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -31,33 +31,21 @@ import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.ShowMessageService.LEARN_MORE_ABOUT_HOTSPOTS_LINK;
 import static org.sonarsource.sonarlint.ls.ShowMessageService.getMessageRequestForNotCompatibleServerWarning;
 
-public class ShowMessageServiceTests {
+class ShowMessageServiceTests {
 
   private final SonarLintExtendedLanguageClient mockClient = mock(SonarLintExtendedLanguageClient.class);
   private final ShowMessageService underTest = new ShowMessageService(mockClient);
 
   @Test
-  public void shouldSendNotCompatibleServerWarning() {
+  void shouldSendNotCompatibleServerWarning() {
     var browseAction = new MessageActionItem("Read more");
     var folderUri = "folderUri";
     ShowMessageRequestParams messageParams = getMessageRequestForNotCompatibleServerWarning(folderUri, browseAction);
     when(mockClient.showMessageRequest(messageParams)).thenReturn((CompletableFuture.completedFuture(new MessageActionItem("Read more"))));
-    underTest.sendNotCompatibleServerWarningIfNeeded(folderUri, false);
+    underTest.sendNotCompatibleServerWarningIfNeeded(folderUri);
 
     verify(mockClient, times(1)).showMessageRequest(messageParams);
     verify(mockClient, times(1)).browseTo(LEARN_MORE_ABOUT_HOTSPOTS_LINK);
-  }
-
-  @Test
-  public void shouldNotSendWarningForCompatibleServer() {
-    var browseAction = new MessageActionItem("Read more");
-    var folderUri = "folderUri";
-    ShowMessageRequestParams messageParams = getMessageRequestForNotCompatibleServerWarning(folderUri, browseAction);
-    when(mockClient.showMessageRequest(messageParams)).thenReturn((CompletableFuture.completedFuture(new MessageActionItem("Read more"))));
-    underTest.sendNotCompatibleServerWarningIfNeeded(folderUri, true);
-
-    verify(mockClient, times(0)).showMessageRequest(messageParams);
-    verify(mockClient, times(0)).browseTo(LEARN_MORE_ABOUT_HOTSPOTS_LINK);
   }
 
 }
