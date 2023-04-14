@@ -182,6 +182,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final BackendServiceFacade backendServiceFacade;
   private final Collection<Path> analyzers;
   private final CountDownLatch shutdownLatch;
+  private final ShowMessageService showMessageService;
 
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
@@ -258,6 +259,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.workspaceFoldersManager.addListener(this.branchManager);
     this.workspaceFoldersManager.setBindingManager(bindingManager);
     this.taintIssuesUpdater = new TaintIssuesUpdater(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, settingsManager, diagnosticPublisher);
+    this.showMessageService = new ShowMessageService(client);
     this.shutdownLatch = new CountDownLatch(1);
     launcher.startListening();
   }
@@ -727,12 +729,19 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<Void> scanFolderForHotspots(ScanFolderForHotspotsParams params) {
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
-      var filesToAnalyze = params.getDocuments().stream()
-        .map(d -> new VersionedOpenFile(URI.create(d.getUri()), d.getLanguageId(), d.getVersion(), d.getText()))
-        .collect(Collectors.toList());
-      analysisScheduler.scanForHotspotsInFiles(filesToAnalyze);
+      var folderUri = params.getFolderUri();
+      backendServiceFacade.checkLocalDetectionSupported(folderUri)
+        .thenAccept(response -> showMessageService.sendNotCompatibleServerWarningIfNeeded(folderUri, response.isSupported()));
+      runScan(params);
       return null;
     });
+  }
+
+  private void runScan(ScanFolderForHotspotsParams params) {
+    var filesToAnalyze = params.getDocuments().stream()
+      .map(d -> new VersionedOpenFile(URI.create(d.getUri()), d.getLanguageId(), d.getVersion(), d.getText()))
+      .collect(Collectors.toList());
+    analysisScheduler.scanForHotspotsInFiles(filesToAnalyze);
   }
 
   public CompletableFuture<Void> forgetFolderHotspots() {
