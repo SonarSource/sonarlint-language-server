@@ -100,6 +100,7 @@ public class BackendServiceFacade {
       new HostInfoDto("Visual Studio Code"),
       initParams.getTelemetryProductKey(),
       initParams.getStorageRoot(),
+      null,
       initParams.getEmbeddedPluginPaths(),
       initParams.getConnectedModeEmbeddedPluginPathsByKey(),
       initParams.getEnabledLanguagesInStandaloneMode(),
@@ -110,6 +111,8 @@ public class BackendServiceFacade {
       initParams.getSonarlintUserHome(),
       false,
       initParams.getStandaloneRuleConfigByKey(),
+      false,
+      false,
       false
     );
   }

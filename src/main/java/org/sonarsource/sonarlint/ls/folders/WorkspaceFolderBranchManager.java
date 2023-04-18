@@ -30,7 +30,7 @@ import java.util.concurrent.Executors;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
-import org.sonarsource.sonarlint.core.vcs.GitUtils;
+import org.sonarsource.sonarlint.core.branch.GitUtils;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
