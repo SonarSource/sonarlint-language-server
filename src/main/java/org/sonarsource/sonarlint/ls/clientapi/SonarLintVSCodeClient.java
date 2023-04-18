@@ -26,7 +26,10 @@ import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
 import org.sonarsource.sonarlint.core.clientapi.client.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
+import org.sonarsource.sonarlint.core.clientapi.client.progress.ReportProgressParams;
+import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressParams;
 import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
+import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
 import org.sonarsource.sonarlint.core.commons.http.HttpClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
@@ -104,6 +107,21 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   @Override
   public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingResponse>
       assistBinding(org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams params) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public CompletableFuture<Void> startProgress(StartProgressParams startProgressParams) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void reportProgress(ReportProgressParams reportProgressParams) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void didSynchronizeConfigurationScopes(DidSynchronizeConfigurationScopeParams didSynchronizeConfigurationScopeParams) {
     throw new UnsupportedOperationException();
   }
 
