@@ -33,6 +33,10 @@ import org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreating
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeParams;
 import org.sonarsource.sonarlint.core.clientapi.client.hotspot.ShowHotspotParams;
 import org.sonarsource.sonarlint.core.clientapi.client.message.ShowMessageParams;
+import org.sonarsource.sonarlint.core.clientapi.client.progress.ReportProgressParams;
+import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressParams;
+import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
+import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
@@ -109,50 +113,53 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void shouldThrowForHttpClientNoAuth() {
-
-    assertThrows(UnsupportedOperationException.class, () -> {
-      underTest.getHttpClientNoAuth("");
-    });
+    assertThrows(UnsupportedOperationException.class, () -> underTest.getHttpClientNoAuth(""));
   }
 
   @Test
   void shouldThrowForShowMessage() {
-
-    assertThrows(UnsupportedOperationException.class, () -> {
-      underTest.showMessage(mock(ShowMessageParams.class));
-    });
+    assertThrows(UnsupportedOperationException.class, () -> underTest.showMessage(mock(ShowMessageParams.class)));
   }
 
   @Test
   void shouldThrowForGetHostInfo() {
-
-    assertThrows(UnsupportedOperationException.class, () -> {
-      underTest.getHostInfo();
-    });
+    assertThrows(UnsupportedOperationException.class, () -> underTest.getHostInfo());
   }
 
   @Test
   void shouldThrowForShowHotspot() {
-
-    assertThrows(UnsupportedOperationException.class, () -> {
-      underTest.showHotspot(mock(ShowHotspotParams.class));
-    });
+    assertThrows(UnsupportedOperationException.class, () -> underTest.showHotspot(mock(ShowHotspotParams.class)));
   }
 
   @Test
   void shouldThrowForAssistCreatingConnection() {
-
-    assertThrows(UnsupportedOperationException.class, () -> {
-      underTest.assistCreatingConnection(mock(AssistCreatingConnectionParams.class));
-    });
+    assertThrows(UnsupportedOperationException.class, () -> underTest.assistCreatingConnection(mock(AssistCreatingConnectionParams.class)));
   }
 
   @Test
   void shouldThrowForAssistBinding() {
+    assertThrows(UnsupportedOperationException.class, () -> underTest.assistBinding(mock(AssistBindingParams.class)));
+  }
 
-    assertThrows(UnsupportedOperationException.class, () -> {
-      underTest.assistBinding(mock(AssistBindingParams.class));
-    });
+  @Test
+  void shouldThrowForShowSmartNotification() {
+    assertThrows(UnsupportedOperationException.class, () -> underTest.showSmartNotification(mock(ShowSmartNotificationParams.class)));
+  }
+
+  @Test
+  void shouldThrowForStartProgress() {
+    assertThrows(UnsupportedOperationException.class, () -> underTest.startProgress(mock(StartProgressParams.class)));
+  }
+
+  @Test
+  void shouldThrowForReportProgress() {
+    assertThrows(UnsupportedOperationException.class, () -> underTest.reportProgress(mock(ReportProgressParams.class)));
+  }
+
+  @Test
+  void shouldThrowForDidSynchronizeConfigurationScopes() {
+    assertThrows(UnsupportedOperationException.class, () ->
+      underTest.didSynchronizeConfigurationScopes(mock(DidSynchronizeConfigurationScopeParams.class)));
   }
 
   @Test
