@@ -312,7 +312,8 @@ public class CommandManager {
     var htmlDescriptionTabs = getHtmlDescriptionTabs(ruleDetails.getDescription(), ruleContextKey);
     var type = ruleDetails.getType();
     var severity = ruleDetails.getSeverity();
-    client.showRuleDescription(new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, htmlDescriptionTabs, type, severity, paramDetails));
+    var languageKey = ruleDetails.getLanguage().getLanguageKey();
+    client.showRuleDescription(new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, htmlDescriptionTabs, type, languageKey, severity, paramDetails));
   }
 
   private void showStandaloneRuleDescription(String ruleKey, GetStandaloneRuleDescriptionResponse ruleDetails) {
@@ -321,8 +322,9 @@ public class CommandManager {
     var htmlDescriptionTabs = getHtmlDescriptionTabs(ruleDetails.getDescription(), "");
     var type = ruleDetails.getRuleDefinition().getType();
     var severity = ruleDetails.getRuleDefinition().getDefaultSeverity();
+    var languageKey = ruleDetails.getRuleDefinition().getLanguage().getLanguageKey();
     var paramDetails = ruleDetails.getRuleDefinition().getParamsByKey();
-    client.showRuleDescription(new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, htmlDescriptionTabs, type, severity, paramDetails));
+    client.showRuleDescription(new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, htmlDescriptionTabs, type, languageKey, severity, paramDetails));
   }
 
   public void executeCommand(ExecuteCommandParams params, CancelChecker cancelToken) {
