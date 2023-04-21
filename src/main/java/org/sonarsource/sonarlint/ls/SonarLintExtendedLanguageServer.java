@@ -32,6 +32,7 @@ import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.util.Preconditions;
 import org.eclipse.xtext.xbase.lib.Pure;
+import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
 
 public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
@@ -369,4 +370,19 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/forgetFolderHotspots")
   CompletableFuture<Void> forgetFolderHotspots();
+
+  class GetFilePatternsForAnalysisParams {
+    String folderUri;
+
+    public GetFilePatternsForAnalysisParams(String folderUri) {
+      this.folderUri = folderUri;
+    }
+
+    public String getFolderUri() {
+      return folderUri;
+    }
+  }
+
+  @JsonRequest("sonarlint/listSupportedFilePatterns")
+  CompletableFuture<GetSupportedFilePatternsResponse> getFilePatternsForAnalysis(GetFilePatternsForAnalysisParams params);
 }

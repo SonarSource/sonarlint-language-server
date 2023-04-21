@@ -904,6 +904,59 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(result).isNull();
   }
 
+  @Test
+  void getFilePatternsForAnalysis() throws ExecutionException, InterruptedException {
+    var result = lsProxy.getFilePatternsForAnalysis(new SonarLintExtendedLanguageServer.GetFilePatternsForAnalysisParams("notBound")).get();
+
+    assertThat(result.getPatterns()).hasSize(46);
+    assertThat(result.getPatterns()).containsExactlyInAnyOrder("**/*.c",
+      "**/*.h",
+      "**/*.cc",
+      "**/*.cpp",
+      "**/*.cxx",
+      "**/*.c++",
+      "**/*.hh",
+      "**/*.hpp",
+      "**/*.hxx",
+      "**/*.h++",
+      "**/*.ipp",
+      "**/*.css",
+      "**/*.less",
+      "**/*.scss",
+      "**/*.html",
+      "**/*.xhtml",
+      "**/*.cshtml",
+      "**/*.vbhtml",
+      "**/*.aspx",
+      "**/*.ascx",
+      "**/*.rhtml",
+      "**/*.erb",
+      "**/*.shtm",
+      "**/*.shtml",
+      "**/*.ipynb",
+      "**/*.java",
+      "**/*.jav",
+      "**/*.js",
+      "**/*.jsx",
+      "**/*.vue",
+      "**/*.php",
+      "**/*.php3",
+      "**/*.php4",
+      "**/*.php5",
+      "**/*.phtml",
+      "**/*.inc",
+      "**/*.py",
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.xml",
+      "**/*.xsd",
+      "**/*.xsl",
+      "**/*.yml",
+      "**/*.yaml",
+      "**/*.go",
+      "**/*.tf");
+  }
+
   @Override
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
     addSonarQubeConnection(client.globalSettings, CONNECTION_ID, mockWebServerExtension.url("/"), TOKEN);
