@@ -59,6 +59,7 @@ import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleMonolithicDesc
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleNonContextualSectionDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleSplitDescriptionDto;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
@@ -374,6 +375,7 @@ class CommandManagerTests {
     when(details.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(details.getParams()).thenReturn(emptyList());
     when(details.getKey()).thenReturn(FAKE_RULE_KEY);
+    when(details.getLanguage()).thenReturn(Language.JS);
     var desc = mock(RuleMonolithicDescriptionDto.class);
     when(desc.getHtmlContent()).thenReturn("Desc");
     when(details.getDescription()).thenReturn(Either.forLeft(desc));
@@ -383,7 +385,7 @@ class CommandManagerTests {
       NOP_CANCEL_TOKEN);
 
     verify(mockClient).showRuleDescription(new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc",
-      new SonarLintExtendedLanguageClient.RuleDescriptionTab[0], RuleType.BUG, IssueSeverity.BLOCKER, Collections.emptyList()));
+      new SonarLintExtendedLanguageClient.RuleDescriptionTab[0], RuleType.BUG, Language.JS.getLanguageKey(), IssueSeverity.BLOCKER, Collections.emptyList()));
   }
 
   @Test

@@ -98,29 +98,33 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     @Expose
     private final String severity;
     @Expose
+    private final String languageKey;
+    @Expose
     private final boolean isTaint;
     @Expose
     private final RuleParameter[] parameters;
 
     public ShowRuleDescriptionParams(String ruleKey, String ruleName, String htmlDescription, RuleDescriptionTab[] htmlDescriptionTabs,
-      RuleType type, IssueSeverity severity, Collection<EffectiveRuleParamDto> params) {
+      RuleType type, String languageKey, IssueSeverity severity, Collection<EffectiveRuleParamDto> params) {
       this.key = ruleKey;
       this.name = ruleName;
       this.htmlDescription = htmlDescription;
       this.htmlDescriptionTabs = htmlDescriptionTabs;
       this.type = type.toString();
+      this.languageKey = languageKey;
       this.severity = severity.toString();
       this.isTaint = ruleKey.contains(TAINT_RULE_REPO_SUFFIX) && type == RuleType.VULNERABILITY;
       this.parameters = params.stream().map(p -> new RuleParameter(p.getName(), p.getDescription(), p.getDefaultValue())).toArray(RuleParameter[]::new);
     }
 
     public ShowRuleDescriptionParams(String ruleKey, String ruleName, String htmlDescription, RuleDescriptionTab[] htmlDescriptionTabs,
-      RuleType type, IssueSeverity severity, Map<String, RuleParamDefinitionDto> params) {
+      RuleType type, String languageKey, IssueSeverity severity, Map<String, RuleParamDefinitionDto> params) {
       this.key = ruleKey;
       this.name = ruleName;
       this.htmlDescription = htmlDescription;
       this.htmlDescriptionTabs = htmlDescriptionTabs;
       this.type = type.toString();
+      this.languageKey = languageKey;
       this.severity = severity.toString();
       this.isTaint = ruleKey.contains(TAINT_RULE_REPO_SUFFIX) && type == RuleType.VULNERABILITY;
       this.parameters = params.values().stream().map(ruleParamDefinitionDto -> new RuleParameter(ruleParamDefinitionDto.getName(), ruleParamDefinitionDto.getDescription(),
@@ -129,6 +133,10 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
     public String getKey() {
       return key;
+    }
+
+    public String getLanguageKey() {
+      return languageKey;
     }
 
     public String getName() {
@@ -168,6 +176,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
         && Objects.equals(key, that.key)
         && Objects.equals(name, that.name)
         && Objects.equals(htmlDescription, that.htmlDescription)
+        && Objects.equals(languageKey, that.languageKey)
         && Arrays.equals(htmlDescriptionTabs, that.htmlDescriptionTabs)
         && Objects.equals(type, that.type) && Objects.equals(severity, that.severity)
         && Arrays.equals(parameters, that.parameters);
@@ -175,7 +184,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
     @Override
     public int hashCode() {
-      int result = Objects.hash(key, name, htmlDescription, type, severity, isTaint);
+      int result = Objects.hash(key, name, htmlDescription, type, severity, isTaint, languageKey);
       result = 31 * result + Arrays.hashCode(htmlDescriptionTabs);
       result = 31 * result + Arrays.hashCode(parameters);
       return result;
