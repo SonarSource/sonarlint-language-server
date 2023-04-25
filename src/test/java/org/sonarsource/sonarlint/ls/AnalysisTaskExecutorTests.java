@@ -46,7 +46,7 @@ class AnalysisTaskExecutorTests {
   @BeforeEach
   public void init() {
     lsLogOutput = mock(LanguageClientLogger.class);
-    underTest = new AnalysisTaskExecutor(null, lsLogOutput, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    underTest = new AnalysisTaskExecutor(null, lsLogOutput, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     executor = Executors.newSingleThreadExecutor();
   }
 
@@ -59,7 +59,7 @@ class AnalysisTaskExecutorTests {
   void testCancellation() {
     Future<Void> future = mock(Future.class);
     when(future.isCancelled()).thenReturn(true);
-    AnalysisTask cancelledTask = new AnalysisTask(Set.of(), false, false).setFuture(future);
+    AnalysisTask cancelledTask = new AnalysisTask(Set.of(), false, false, false).setFuture(future);
 
     underTest.run(cancelledTask);
 
@@ -68,7 +68,7 @@ class AnalysisTaskExecutorTests {
 
   @Test
   void taskCompletedOnError() {
-    AnalysisTask errorTask = spy(new AnalysisTask(Set.of(), false, false));
+    AnalysisTask errorTask = spy(new AnalysisTask(Set.of(), false, false, false));
     when(errorTask.getFilesToAnalyze()).thenThrow(new IllegalStateException());
 
     var future = executor.submit(() -> underTest.run(errorTask));

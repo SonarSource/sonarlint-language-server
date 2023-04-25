@@ -105,7 +105,7 @@ class TaintIssuesUpdaterTests {
     verify(engine).syncServerTaintIssues(any(), any(), eq(PROJECT_KEY), eq(BRANCH_NAME), isNull());
     verify(engine).downloadAllServerTaintIssuesForFile(any(), any(), any(), anyString(), eq(BRANCH_NAME), isNull());
     verify(engine).getServerTaintIssues(any(), eq(BRANCH_NAME), anyString());
-    verify(diagnosticPublisher).publishDiagnostics(FILE_URI);
+    verify(diagnosticPublisher).publishDiagnostics(FILE_URI, false);
     verifyNoMoreInteractions(diagnosticPublisher);
     verifyNoMoreInteractions(engine);
   }

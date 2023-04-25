@@ -676,8 +676,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var basedir = Paths.get("path/to/base").toAbsolutePath();
     var workspaceUri = basedir.toUri().toString();
     var workspaceFolder = new WorkspaceFolder(workspaceUri);
-    client.folderSettings = new HashMap<>();
-    client.folderSettings.put(workspaceUri, new HashMap<>());
+    getFolderSettings(workspaceUri);
     foldersToRemove.add(workspaceUri);
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
       new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));

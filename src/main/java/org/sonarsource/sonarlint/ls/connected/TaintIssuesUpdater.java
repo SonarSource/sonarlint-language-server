@@ -101,7 +101,7 @@ public class TaintIssuesUpdater {
       LOG.info(format("Fetched %s %s from %s", foundVulnerabilities,
         pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), bindingWrapper.getConnectionId()));
     }
-    diagnosticPublisher.publishDiagnostics(fileUri);
+    diagnosticPublisher.publishDiagnostics(fileUri, false);
   }
 
   public void shutdown() {

@@ -95,13 +95,13 @@ class DiagnosticPublisherTests {
 
     var uri = initWithOneSecretIssue();
 
-    underTest.publishDiagnostics(uri);
+    underTest.publishDiagnostics(uri, false);
 
     verify(languageClient, times(1)).showFirstSecretDetectionNotification();
 
     reset(languageClient);
 
-    underTest.publishDiagnostics(uri);
+    underTest.publishDiagnostics(uri, false);
 
     verify(languageClient, never()).showFirstSecretDetectionNotification();
   }
@@ -112,7 +112,7 @@ class DiagnosticPublisherTests {
 
     var uri = initWithOneSecretIssue();
 
-    underTest.publishDiagnostics(uri);
+    underTest.publishDiagnostics(uri, false);
 
     verify(languageClient, never()).showFirstSecretDetectionNotification();
   }
