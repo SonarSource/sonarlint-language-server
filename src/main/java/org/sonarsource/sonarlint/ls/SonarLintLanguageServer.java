@@ -86,6 +86,8 @@ import org.eclipse.lsp4j.services.NotebookDocumentService;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonarsource.sonarlint.core.SonarLintBackendImpl;
+import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
@@ -752,5 +754,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var filesToForget = securityHotspotsCache.keepOnly(openFilesCache.getAll());
     filesToForget.forEach(diagnosticPublisher::publishDiagnostics);
     return null;
+  }
+
+  @Override
+  public CompletableFuture<GetSupportedFilePatternsResponse> getFilePatternsForAnalysis(GetFilePatternsForAnalysisParams params) {
+    return backendServiceFacade.getBackendService().getFilePatternsForAnalysis(new GetSupportedFilePatternsParams(params.getFolderUri()));
   }
 }
