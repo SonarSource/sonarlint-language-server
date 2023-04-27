@@ -732,7 +732,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var folderUri = params.getFolderUri();
       backendServiceFacade.checkLocalDetectionSupported(folderUri)
         .thenAccept(response -> {
-          if (response.isSupported()) {
+          if (!response.isSupported()) {
             showMessageService.sendNotCompatibleServerWarningIfNeeded(folderUri);
           }
         });
