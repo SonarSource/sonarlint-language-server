@@ -111,7 +111,7 @@ public class BackendServiceFacade {
       initParams.getSonarlintUserHome(),
       false,
       initParams.getStandaloneRuleConfigByKey(),
-      false,
+      true,
       false,
       false
     );

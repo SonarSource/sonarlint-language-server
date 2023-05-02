@@ -32,6 +32,7 @@ import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSma
 import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
 import org.sonarsource.sonarlint.core.commons.http.HttpClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
@@ -40,6 +41,7 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   private final SonarLintExtendedLanguageClient client;
   private SettingsManager settingsManager;
   private final ApacheHttpClientProvider httpClientProvider;
+  private ServerNotifications serverNotifications;
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, ApacheHttpClientProvider httpClientProvider) {
     this.client = client;
@@ -48,7 +50,7 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   @Override
   public void suggestBinding(SuggestBindingParams params) {
-    if(!params.getSuggestions().isEmpty()) {
+    if (!params.getSuggestions().isEmpty()) {
       client.suggestBinding(params);
     }
   }
@@ -85,7 +87,11 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   @Override
   public void showSmartNotification(ShowSmartNotificationParams showSmartNotificationParams) {
-    throw new UnsupportedOperationException();
+    var connectionOpt = settingsManager.getCurrentSettings().getServerConnections().get(showSmartNotificationParams.getConnectionId());
+    if (connectionOpt == null) {
+      return;
+    }
+    serverNotifications.showDevNotification(showSmartNotificationParams, connectionOpt.isSonarCloudAlias());
   }
 
   @Override
@@ -100,13 +106,13 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   @Override
   public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionResponse>
-      assistCreatingConnection(org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams params) {
+  assistCreatingConnection(org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams params) {
     throw new UnsupportedOperationException();
   }
 
   @Override
   public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingResponse>
-      assistBinding(org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams params) {
+  assistBinding(org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams params) {
     throw new UnsupportedOperationException();
   }
 
@@ -127,5 +133,9 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   public void setSettingsManager(SettingsManager settingsManager) {
     this.settingsManager = settingsManager;
+  }
+
+  public void setServerNotifications(ServerNotifications serverNotifications) {
+    this.serverNotifications = serverNotifications;
   }
 }

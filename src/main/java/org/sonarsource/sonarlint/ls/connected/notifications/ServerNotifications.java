@@ -19,178 +19,40 @@
  */
 package org.sonarsource.sonarlint.ls.connected.notifications;
 
-import java.time.ZonedDateTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import javax.annotation.CheckForNull;
-import javax.annotation.Nullable;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
-import org.sonarsource.sonarlint.core.serverconnection.smartnotifications.LastNotificationTime;
-import org.sonarsource.sonarlint.core.serverconnection.smartnotifications.NotificationConfiguration;
-import org.sonarsource.sonarlint.core.serverconnection.smartnotifications.ServerNotification;
-import org.sonarsource.sonarlint.core.serverconnection.smartnotifications.ServerNotificationListener;
-import org.sonarsource.sonarlint.core.serverconnection.smartnotifications.ServerNotificationsRegistry;
+import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
-import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
-import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
-import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
-import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
-import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
-import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
-import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
-public class ServerNotifications implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
+public class ServerNotifications {
 
   private static final MessageActionItem SETTINGS_ACTION = new MessageActionItem("Open Settings");
 
   private final SonarLintExtendedLanguageClient client;
-  private final WorkspaceFoldersManager workspaceFoldersManager;
   private final SonarLintTelemetry telemetry;
-  private final LanguageClientLogger logOutput;
 
-  private final Map<String, ServerConnectionSettings> connections;
-  private final Map<String, Map<String, NotificationConfiguration>> configurationsByProjectKeyByConnectionId;
-  private final ServerNotificationsRegistry serverNotificationsRegistry;
-
-  public ServerNotifications(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager workspaceFoldersManager,
-    SonarLintTelemetry telemetry, LanguageClientLogger output) {
+  public ServerNotifications(SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry) {
     this.client = client;
-    this.workspaceFoldersManager = workspaceFoldersManager;
     this.telemetry = telemetry;
-    this.logOutput = output;
-
-    connections = new HashMap<>();
-    configurationsByProjectKeyByConnectionId = new HashMap<>();
-    serverNotificationsRegistry = new ServerNotificationsRegistry();
-
   }
 
-  public void shutdown() {
-    serverNotificationsRegistry.stop();
-  }
-
-  @Override
-  public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
-    connections.clear();
-    connections.putAll(newValue.getServerConnections());
-    configurationsByProjectKeyByConnectionId.keySet().forEach(connectionId -> {
-      var copyOfConfigurations = new HashMap<>(configurationsByProjectKeyByConnectionId.get(connectionId));
-      copyOfConfigurations.forEach((projectKey, config) -> {
-        unregisterConfigurationIfExists(connectionId, projectKey);
-        registerConfigurationIfNeeded(connectionId, projectKey);
-      });
+  public void showDevNotification(ShowSmartNotificationParams showSmartNotificationParams, boolean isSonarCloud) {
+    final var label = isSonarCloud ? "SonarCloud" : "SonarQube";
+    var params = new ShowMessageRequestParams();
+    params.setType(MessageType.Info);
+    params.setMessage(String.format("%s Notification: %s", label, showSmartNotificationParams.getText()));
+    var browseAction = new MessageActionItem("Show on " + label);
+    params.setActions(List.of(browseAction, SETTINGS_ACTION));
+    client.showMessageRequest(params).thenAccept(action -> {
+      if (browseAction.equals(action)) {
+        telemetry.devNotificationsClicked(showSmartNotificationParams.getCategory());
+        client.browseTo(showSmartNotificationParams.getLink());
+      } else if (SETTINGS_ACTION.equals(action)) {
+        client.openConnectionSettings(isSonarCloud);
+      }
     });
-    workspaceFoldersManager.getAll().stream()
-      .map(WorkspaceFolderWrapper::getSettings)
-      .filter(WorkspaceFolderSettings::hasBinding)
-      .forEach(s -> registerConfigurationIfNeeded(s.getConnectionId(), s.getProjectKey()));
-  }
-
-  @Override
-  public void onChange(@Nullable WorkspaceFolderWrapper folder, @Nullable WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
-    if (oldValue != null && (!newValue.hasBinding() ||
-      !connections.containsKey(newValue.getConnectionId()) ||
-      connections.get(newValue.getConnectionId()).isDevNotificationsDisabled())) {
-      // Project is now unbound, or bound to a server that has dev notifications disabled => unregister matching config if exists
-      unregisterConfigurationIfExists(oldValue.getConnectionId(), oldValue.getProjectKey());
-    }
-
-    if (newValue.hasBinding()) {
-      registerConfigurationIfNeeded(newValue.getConnectionId(), newValue.getProjectKey());
-    }
-  }
-
-  private void unregisterConfigurationIfExists(@Nullable String oldConnectionId, @Nullable String oldProjectKey) {
-    var configsForOldConnectionId = configurationsByProjectKeyByConnectionId.get(oldConnectionId);
-    if (configsForOldConnectionId != null && configsForOldConnectionId.containsKey(oldProjectKey)) {
-      logOutput.debug(String.format("De-registering notifications for project '%s' on connection '%s'", oldProjectKey, oldConnectionId));
-      var config = configsForOldConnectionId.remove(oldProjectKey);
-      serverNotificationsRegistry.remove(config.listener());
-    }
-  }
-
-  private void registerConfigurationIfNeeded(String connectionId, String projectKey) {
-    if (!alreadyHasConfiguration(connectionId, projectKey)) {
-      if (!connections.containsKey(connectionId) || connections.get(connectionId).isDevNotificationsDisabled()) {
-        // Connection is unknown, or has notifications disabled - do nothing
-        return;
-      }
-      client.readyForTests();
-      logOutput.debug(String.format("Enabling notifications for project '%s' on connection '%s'", projectKey, connectionId));
-      var newConfiguration = newNotificationConfiguration(connections.get(connectionId), projectKey);
-      serverNotificationsRegistry.register(newConfiguration);
-      configurationsByProjectKeyByConnectionId.computeIfAbsent(connectionId, k -> new HashMap<>()).put(projectKey, newConfiguration);
-    }
-  }
-
-  private boolean alreadyHasConfiguration(@Nullable String connectionId, @Nullable String projectKey) {
-    return configurationsByProjectKeyByConnectionId.containsKey(connectionId) && configurationsByProjectKeyByConnectionId.get(connectionId).containsKey(projectKey);
-  }
-
-  private NotificationConfiguration newNotificationConfiguration(ServerConnectionSettings serverConnectionSettings, String projectKey) {
-    return new NotificationConfiguration(
-      new EventListener(serverConnectionSettings.isSonarCloudAlias()),
-      new ConnectionNotificationTime(),
-      projectKey,
-      serverConnectionSettings.getServerConfiguration()::getEndpointParams,
-      serverConnectionSettings.getServerConfiguration()::getHttpClient);
-  }
-
-  /**
-   * Simply displays the events and discards it
-   */
-  class EventListener implements ServerNotificationListener {
-
-    private final boolean isSonarCloud;
-
-    EventListener(boolean isSonarCloud) {
-      this.isSonarCloud = isSonarCloud;
-    }
-
-    @Override
-    public void handle(ServerNotification serverNotification) {
-      final var category = serverNotification.category();
-      telemetry.devNotificationsReceived(category);
-      final var label = isSonarCloud ? "SonarCloud" : "SonarQube";
-      var params = new ShowMessageRequestParams();
-      params.setType(MessageType.Info);
-      params.setMessage(String.format("%s Notification: %s", label, serverNotification.message()));
-      var browseAction = new MessageActionItem("Show on " + label);
-      params.setActions(List.of(browseAction, SETTINGS_ACTION));
-      client.showMessageRequest(params).thenAccept(action -> {
-        if (browseAction.equals(action)) {
-          telemetry.devNotificationsClicked(serverNotification.category());
-          client.browseTo(serverNotification.link());
-        } else if (SETTINGS_ACTION.equals(action)) {
-          client.openConnectionSettings(isSonarCloud);
-        }
-      });
-    }
-  }
-
-  /**
-   * TODO Persist this value. For now, this is initialized to "now" at initialization of NotificationConfiguration
-   */
-  private static class ConnectionNotificationTime implements LastNotificationTime {
-
-    private ZonedDateTime last;
-
-    @Override
-    public ZonedDateTime get() {
-      if (last == null) {
-        set(ZonedDateTime.now());
-      }
-      return last;
-    }
-
-    @Override
-    public void set(ZonedDateTime dateTime) {
-      last = dateTime;
-    }
   }
 }

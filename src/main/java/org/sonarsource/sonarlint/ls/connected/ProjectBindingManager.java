@@ -25,7 +25,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -103,16 +102,16 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private OpenNotebooksCache openNotebooksCache;
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
-                               LanguageClientLogOutput globalLogOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher,
-                               BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache) {
+    LanguageClientLogOutput globalLogOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher,
+    BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache) {
     this(enginesFactory, foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput, taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade,
       openNotebooksCache);
   }
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
-                               ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput,
-                               TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher, BackendServiceFacade backendServiceFacade,
-                               OpenNotebooksCache openNotebooksCache) {
+    ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput,
+    TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher, BackendServiceFacade backendServiceFacade,
+    OpenNotebooksCache openNotebooksCache) {
     this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
@@ -269,7 +268,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       LOG.error("Error starting connected SonarLint engine for '" + connectionId + "'", e);
       return null;
     }
-    subscribeForServerEvents(connectionId, engine);
     return engine;
   }
 
@@ -355,27 +353,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
     var params = new DidUpdateBindingParams(folder.getUri().toString(), bindingConfigurationDto);
     backendServiceFacade.getBackendService().updateBinding(params);
-  }
-
-  public void subscribeForServerEvents(String connectionId) {
-    var engine = getStartedConnectedEngine(connectionId);
-    engine.ifPresent(e -> subscribeForServerEvents(connectionId, e));
-  }
-
-  private void subscribeForServerEvents(String connectionId, ConnectedSonarLintEngine engine) {
-    var configuration = getServerConfigurationFor(connectionId);
-    if (configuration != null) {
-      engine.subscribeForEvents(configuration.getEndpointParams(), configuration.getHttpClient(),
-        getProjectKeysBoundTo(connectionId), serverSentEventsHandler::handleEvents, globalLogOutput);
-    }
-  }
-
-  public void subscribeForServerEvents(List<WorkspaceFolderWrapper> added, List<WorkspaceFolderWrapper> removed) {
-    var impactedConnectionsIds = added.stream().map(this::getBinding)
-      .filter(Optional::isPresent).map(Optional::get).map(ProjectBindingWrapper::getConnectionId).collect(Collectors.toCollection(HashSet::new));
-    impactedConnectionsIds.addAll(removed.stream().map(this::getBinding)
-      .filter(Optional::isPresent).map(Optional::get).map(ProjectBindingWrapper::getConnectionId).collect(Collectors.toSet()));
-    impactedConnectionsIds.forEach(this::subscribeForServerEvents);
   }
 
   private Set<String> getProjectKeysBoundTo(String connectionId) {

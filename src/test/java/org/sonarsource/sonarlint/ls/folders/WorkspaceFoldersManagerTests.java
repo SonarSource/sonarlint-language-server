@@ -44,9 +44,7 @@ import static java.net.URI.create;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager.isAncestor;
 
@@ -208,21 +206,6 @@ class WorkspaceFoldersManagerTests {
     assertThat(underTest.getAll()).isEmpty();
     assertThat(logTester.logs()).containsExactly("Processing didChangeWorkspaceFolders event",
       "Unregistered workspace folder was missing: " + basedir.toUri());
-  }
-
-  @Test
-  void should_subscribe_for_server_events_when_adding_a_bound_folder() {
-    var addedUri = Paths.get("path/to/base/added").toAbsolutePath().toUri();
-    var addedWorkspaceFolder = mockWorkspaceFolder(addedUri);
-    var removedUri = Paths.get("path/to/base/removed").toAbsolutePath().toUri();
-    var removedWorkspaceFolder = mockWorkspaceFolder(removedUri);
-    underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(List.of(removedWorkspaceFolder), List.of()));
-
-    underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(List.of(addedWorkspaceFolder), List.of(removedWorkspaceFolder)));
-
-    verify(bindingManager).subscribeForServerEvents(
-      argThat(added -> added.size() == 1 && added.get(0).getUri().equals(addedUri)),
-      argThat(removed -> removed.size() == 1 && removed.get(0).getUri().equals(removedUri)));
   }
 
   private static WorkspaceFolder mockWorkspaceFolder(URI uri) {

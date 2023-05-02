@@ -97,14 +97,14 @@ public class BackendService {
   public static List<SonarQubeConnectionConfigurationDto> extractSonarQubeConnections(Map<String, ServerConnectionSettings> connections) {
     return connections.entrySet().stream()
       .filter(it -> !it.getValue().isSonarCloudAlias())
-      .map(it -> new SonarQubeConnectionConfigurationDto(it.getKey(), it.getValue().getServerUrl(), true))
+      .map(it -> new SonarQubeConnectionConfigurationDto(it.getKey(), it.getValue().getServerUrl(), it.getValue().isDevNotificationsDisabled()))
       .collect(Collectors.toList());
   }
 
   public static List<SonarCloudConnectionConfigurationDto> extractSonarCloudConnections(Map<String, ServerConnectionSettings> connections) {
     return connections.entrySet().stream()
       .filter(it -> it.getValue().isSonarCloudAlias())
-      .map(it -> new SonarCloudConnectionConfigurationDto(it.getKey(), it.getValue().getOrganizationKey(), true))
+      .map(it -> new SonarCloudConnectionConfigurationDto(it.getKey(), it.getValue().getOrganizationKey(), it.getValue().isDevNotificationsDisabled()))
       .collect(Collectors.toList());
   }
 
