@@ -324,10 +324,7 @@ public class AnalysisTaskExecutor {
 
   private void analyzeSingleModuleNonExcluded(AnalysisTask task, WorkspaceFolderSettings settings, Optional<ProjectBindingWrapper> binding,
     Map<URI, VersionedOpenFile> filesToAnalyze, URI baseDirUri, Map<URI, GetJavaConfigResponse> javaConfigs, @Nullable ProgressFacade progressFacade) {
-    task.checkCanceled();
-    if (progressFacade != null) {
-      progressFacade.checkCanceled();
-    }
+    checkCanceled(task, progressFacade);
     if (filesToAnalyze.size() == 1) {
       lsLogOutput.info(format("Analyzing file '%s'...", filesToAnalyze.keySet().iterator().next()));
     } else {
@@ -354,10 +351,7 @@ public class AnalysisTaskExecutor {
     analysisResults = binding
       .map(projectBindingWrapper -> analyzeConnected(task, projectBindingWrapper, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener, progressFacade))
       .orElseGet(() -> analyzeStandalone(task, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener));
-    task.checkCanceled();
-    if (progressFacade != null) {
-      progressFacade.checkCanceled();
-    }
+    checkCanceled(task, progressFacade);
     skippedPluginsNotifier.notifyOnceForSkippedPlugins(analysisResults.results, analysisResults.allPlugins);
 
     var analyzedLanguages = analysisResults.results.languagePerFile().values();
@@ -370,10 +364,7 @@ public class AnalysisTaskExecutor {
       .map(ClientInputFile::getClientObject)
       .map(URI.class::cast)
       .forEach(fileUri -> {
-        task.checkCanceled();
-        if (progressFacade != null) {
-          progressFacade.checkCanceled();
-        }
+        checkCanceled(task, progressFacade);
         filesSuccessfullyAnalyzed.remove(fileUri);
         var file = filesToAnalyze.get(fileUri);
         issuesCache.analysisFailed(file);
@@ -401,6 +392,13 @@ public class AnalysisTaskExecutor {
       if (hotspotsCount != 0) {
         lsLogOutput.info(format("Found %s %s", hotspotsCount, pluralize(hotspotsCount, "security hotspot")));
       }
+    }
+  }
+
+  private static void checkCanceled(AnalysisTask task, @Nullable ProgressFacade progressFacade) {
+    task.checkCanceled();
+    if (progressFacade != null) {
+      progressFacade.checkCanceled();
     }
   }
 
