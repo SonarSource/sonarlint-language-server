@@ -19,9 +19,8 @@
  */
 package org.sonarsource.sonarlint.ls.connected.notifications;
 
-import java.time.ZonedDateTime;
-import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
@@ -29,24 +28,15 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.sonarsource.sonarlint.core.serverconnection.smartnotifications.ServerNotification;
+import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
-import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
-import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
-import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
-import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
-import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
@@ -54,199 +44,33 @@ class ServerNotificationsTests {
 
   private final SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
 
-  private final WorkspaceFoldersManager workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
-
   private final SonarLintTelemetry telemetry = mock(SonarLintTelemetry.class);
-
-  private final LanguageClientLogger output = mock(LanguageClientLogger.class);
-
-  private final ApacheHttpClientProvider httpClientProvider = mock(ApacheHttpClientProvider.class);
 
   private ServerNotifications underTest;
 
   @BeforeEach
   public void setup() {
-    underTest = new ServerNotifications(client, workspaceFoldersManager, telemetry, output);
+    underTest = new ServerNotifications(client, telemetry);
   }
 
   @AfterEach
   public void finish() {
-    verifyNoMoreInteractions(client, workspaceFoldersManager, telemetry, output);
-    underTest.shutdown();
-  }
-
-  @Test
-  void doNothingOnEmptyFolderSettings() {
-    underTest.onChange(null, null, mock(WorkspaceFolderSettings.class));
-    verifyNoInteractions(output);
-  }
-
-  @Test
-  void registerOnlyOnceWithFullSettings() {
-    var connectionId = "connectionId";
-    var projectKey = "projectKey";
-
-    var newWorkspaceSettings = mock(WorkspaceSettings.class);
-    var settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClientProvider);
-    when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
-    underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
-
-    var folder1 = mock(WorkspaceFolderWrapper.class);
-    var newFolderSettings1 = createSettings(connectionId, projectKey);
-    underTest.onChange(folder1, null, newFolderSettings1);
-
-    // Same settings, only one registration sent
-    var folder2 = mock(WorkspaceFolderWrapper.class);
-    var newFolderSettings2 = createSettings(connectionId, projectKey);
-    underTest.onChange(folder2, null, newFolderSettings2);
-
-    verify(output, times(1)).debug("Enabling notifications for project 'projectKey' on connection 'connectionId'");
-    verify(workspaceFoldersManager).getAll();
-    verify(client).readyForTests();
-  }
-
-  @Test
-  void register2FoldersOn2Projects() {
-    var connectionId = "connectionId";
-    var projectKey1 = "projectKey1";
-    var projectKey2 = "projectKey2";
-
-    var newWorkspaceSettings = mock(WorkspaceSettings.class);
-    var settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClientProvider);
-    when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
-    underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
-
-    var folder1 = mock(WorkspaceFolderWrapper.class);
-    var newFolderSettings1 = createSettings(connectionId, projectKey1);
-    underTest.onChange(folder1, null, newFolderSettings1);
-
-    // Same settings, only one registration sent
-    var folder2 = mock(WorkspaceFolderWrapper.class);
-    var newFolderSettings2 = createSettings(connectionId, projectKey2);
-    underTest.onChange(folder2, null, newFolderSettings2);
-
-    verify(output, times(1)).debug("Enabling notifications for project 'projectKey1' on connection 'connectionId'");
-    verify(output, times(1)).debug("Enabling notifications for project 'projectKey2' on connection 'connectionId'");
-    verify(workspaceFoldersManager).getAll();
-    verify(client, times(2)).readyForTests();
-  }
-
-  @Test
-  void registerThenUnregisterOnUnknownConnection() {
-    var connectionId = "connectionId";
-    var projectKey = "projectKey";
-
-    var newWorkspaceSettings = mock(WorkspaceSettings.class);
-    var settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClientProvider);
-    when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
-    underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
-
-    var folder = mock(WorkspaceFolderWrapper.class);
-    var newFolderSettings1 = createSettings(connectionId, projectKey);
-    underTest.onChange(folder, null, newFolderSettings1);
-
-    verify(output, times(1)).debug("Enabling notifications for project 'projectKey' on connection 'connectionId'");
-
-    var newFolderSettings2 = createSettings("otherConnectionId", projectKey);
-    underTest.onChange(folder, newFolderSettings1, newFolderSettings2);
-
-    verify(output, times(1)).debug("De-registering notifications for project 'projectKey' on connection 'connectionId'");
-    verify(workspaceFoldersManager).getAll();
-    verify(client).readyForTests();
-  }
-
-  @Test
-  void doNothingOnUnknownConnectionThenRegisterOnWorkspaceSettingsChange() {
-    var connectionId = "connectionId";
-    var projectKey = "projectKey";
-
-    // Initially, do not put any connection settings
-    var newWorkspaceSettings = mock(WorkspaceSettings.class);
-    underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
-
-    // Try to bind to unknown connection
-    var folder = mock(WorkspaceFolderWrapper.class);
-    var newFolderSettings = createSettings(connectionId, projectKey);
-    underTest.onChange(folder, null, newFolderSettings);
-
-    // Then fix connection settings with known connection
-    var newWorkspaceSettings2 = mock(WorkspaceSettings.class);
-    var settings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClientProvider);
-    when(newWorkspaceSettings2.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
-    when(folder.getSettings()).thenReturn(newFolderSettings);
-    when(workspaceFoldersManager.getAll()).thenReturn(Collections.singleton(folder));
-    underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings2);
-
-    verify(output, times(1)).debug("Enabling notifications for project 'projectKey' on connection 'connectionId'");
-    verify(workspaceFoldersManager, times(2)).getAll();
-    verify(client).readyForTests();
-  }
-
-  @Test
-  void doNothingOnDisabledConnection() {
-    var connectionId = "connectionId";
-    var projectKey = "projectKey";
-
-    var newWorkspaceSettings = mock(WorkspaceSettings.class);
-    var serverConnectionSettings = new ServerConnectionSettings(connectionId, "", "", null, true, httpClientProvider);
-    when(newWorkspaceSettings.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, serverConnectionSettings));
-    underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings);
-
-    var newFolderSettings = createSettings(connectionId, projectKey);
-    underTest.onChange(mock(WorkspaceFolderWrapper.class), mock(WorkspaceFolderSettings.class), newFolderSettings);
-
-    verifyNoInteractions(output);
-    verify(workspaceFoldersManager).getAll();
-  }
-
-  @Test
-  void doNothingOnEmptyWorkspaceSettings() {
-    underTest.onChange(null, mock(WorkspaceSettings.class));
-    verifyNoInteractions(output);
-    verify(workspaceFoldersManager).getAll();
-  }
-
-  @Test
-  void updateRegistrationsOnWorkspaceSettingsChange() {
-    var connectionId = "connectionId";
-    var projectKey = "projectKey";
-
-    var newWorkspaceSettings1 = mock(WorkspaceSettings.class);
-    var serverConnectionSettings = new ServerConnectionSettings(connectionId, "http://my.sq", "token", null, false, httpClientProvider);
-    when(newWorkspaceSettings1.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, serverConnectionSettings));
-    underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings1);
-
-    var folder = mock(WorkspaceFolderWrapper.class);
-    var newFolderSettings = createSettings(connectionId, projectKey);
-    underTest.onChange(folder, null, newFolderSettings);
-
-    var newWorkspaceSettings2 = mock(WorkspaceSettings.class);
-    var settings = new ServerConnectionSettings(connectionId, "http://other.sq", "token", null, false, httpClientProvider);
-    when(newWorkspaceSettings2.getServerConnections()).thenReturn(Collections.singletonMap(connectionId, settings));
-    underTest.onChange(mock(WorkspaceSettings.class), newWorkspaceSettings2);
-
-    verify(output, times(1)).debug("De-registering notifications for project 'projectKey' on connection 'connectionId'");
-    verify(output, times(2)).debug("Enabling notifications for project 'projectKey' on connection 'connectionId'");
-    verify(workspaceFoldersManager, times(2)).getAll();
-    verify(client, times(2)).readyForTests();
+    verifyNoMoreInteractions(client, telemetry);
   }
 
   @Test
   void shouldShowSonarQubeNotificationToUserAndClickOnNotificationLink() {
-    var listener = underTest.new EventListener(false);
     var category = "category";
     var message = "message";
     var link = "http://some.link";
-    var projectKey = "projectKey";
-    var notification = new ServerNotification(category, message, link, projectKey, ZonedDateTime.now());
+    var showNotificationParams = new ShowSmartNotificationParams(message, link, Set.of(), category, "testConnection");
 
     var browseAction = new MessageActionItem("Show on SonarQube");
     var settingsAction = new MessageActionItem("Open Settings");
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(browseAction));
 
-    listener.handle(notification);
+    underTest.showDevNotification(showNotificationParams, false);
 
-    verify(telemetry).devNotificationsReceived(category);
     var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
     verify(client).showMessageRequest(messageCaptor.capture());
     var shownMessage = messageCaptor.getValue();
@@ -258,20 +82,17 @@ class ServerNotificationsTests {
 
   @Test
   void shouldShowSonarQubeNotificationToUserAndOpenSettings() {
-    var listener = underTest.new EventListener(false);
     var category = "category";
     var message = "message";
     var link = "http://some.link";
-    var projectKey = "projectKey";
-    var notification = new ServerNotification(category, message, link, projectKey, ZonedDateTime.now());
+    var showNotificationParams = new ShowSmartNotificationParams(message, link, Set.of(), category, "testConnection");
 
     var browseAction = new MessageActionItem("Show on SonarQube");
     var settingsAction = new MessageActionItem("Open Settings");
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(settingsAction));
 
-    listener.handle(notification);
+    underTest.showDevNotification(showNotificationParams, false);
 
-    verify(telemetry).devNotificationsReceived(category);
     var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
     verify(client).showMessageRequest(messageCaptor.capture());
     var shownMessage = messageCaptor.getValue();
@@ -283,20 +104,17 @@ class ServerNotificationsTests {
 
   @Test
   void shouldShowSonarCloudNotificationToUserAndNotClickOnNotification() {
-    var listener = underTest.new EventListener(true);
     var category = "category";
     var message = "message";
     var link = "http://some.link";
-    var projectKey = "projectKey";
-    var notification = new ServerNotification(category, message, link, projectKey, ZonedDateTime.now());
+    var showNotificationParams = new ShowSmartNotificationParams(message, link, Set.of(), category, "testConnection");
 
     var browseAction = new MessageActionItem("Show on SonarCloud");
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(null));
     var settingsAction = new MessageActionItem("Open Settings");
 
-    listener.handle(notification);
+    underTest.showDevNotification(showNotificationParams, true);
 
-    verify(telemetry).devNotificationsReceived(category);
     var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
     verify(client).showMessageRequest(messageCaptor.capture());
     var shownMessage = messageCaptor.getValue();
@@ -304,9 +122,4 @@ class ServerNotificationsTests {
       .containsExactly("SonarCloud Notification: message", List.of(browseAction, settingsAction));
     verify(telemetry, never()).devNotificationsClicked(category);
   }
-
-  private WorkspaceFolderSettings createSettings(String connectionId, String projectKey) {
-    return new WorkspaceFolderSettings(connectionId, projectKey, Collections.emptyMap(), null, null);
-  }
-
 }

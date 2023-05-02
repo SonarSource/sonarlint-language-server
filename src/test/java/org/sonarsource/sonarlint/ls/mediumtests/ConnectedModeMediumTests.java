@@ -100,9 +100,9 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   public void mockSonarQube() {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.3\", \"id\": \"xzy\"}");
     mockWebServerExtension.addProtobufResponse("/api/components/search.protobuf?qualifiers=TRK&ps=500&p=1", Components.SearchWsResponse.newBuilder()
-        .addComponents(Components.Component.newBuilder().setKey(PROJECT_KEY1).setName(PROJECT_NAME1).build())
-        .addComponents(Components.Component.newBuilder().setKey(PROJECT_KEY2).setName(PROJECT_NAME2).build())
-        .setPaging(Common.Paging.newBuilder().setTotal(2).build())
+      .addComponents(Components.Component.newBuilder().setKey(PROJECT_KEY1).setName(PROJECT_NAME1).build())
+      .addComponents(Components.Component.newBuilder().setKey(PROJECT_KEY2).setName(PROJECT_NAME2).build())
+      .setPaging(Common.Paging.newBuilder().setTotal(2).build())
       .build());
     mockWebServerExtension.addProtobufResponse("/api/components/tree.protobuf?qualifiers=FIL,UTS&component=myProject&ps=500&p=1", Components.TreeWsResponse.newBuilder().build());
     mockWebServerExtension.addStringResponse("/api/plugins/installed",
@@ -366,12 +366,12 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     var actual = result.get();
     awaitUntilAsserted(() -> assertThat(actual)
-                                      .isNotNull()
-                                      .hasSize(2)
-                                      .containsKey(PROJECT_KEY1)
-                                      .containsKey(PROJECT_KEY2)
-                                      .containsValue(PROJECT_NAME1)
-                                      .containsValue(PROJECT_NAME2));
+      .isNotNull()
+      .hasSize(2)
+      .containsKey(PROJECT_KEY1)
+      .containsKey(PROJECT_KEY2)
+      .containsValue(PROJECT_NAME1)
+      .containsValue(PROJECT_NAME2));
   }
 
   @Test

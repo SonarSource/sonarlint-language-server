@@ -229,15 +229,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, globalLogOutput,
       taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, openNotebooksCache);
-    this.settingsManager.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(httpClientProvider, settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager, backendServiceFacade);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);
-    this.serverNotifications = new ServerNotifications(client, workspaceFoldersManager, telemetry, lsLogOutput);
-    this.settingsManager.addListener((WorkspaceSettingsChangeListener) serverNotifications);
-    this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) serverNotifications);
+    this.serverNotifications = new ServerNotifications(client, telemetry);
+    vsCodeClient.setServerNotifications(serverNotifications);
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client);
     this.scmIgnoredCache = new ScmIgnoredCache(client);
     this.moduleEventsProcessor = new ModuleEventsProcessor(standaloneEngineManager, workspaceFoldersManager, bindingManager, fileTypeClassifier, javaConfigCache);
@@ -392,7 +390,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         settingsManager::shutdown,
         workspaceFoldersManager::shutdown,
         httpClientProvider::close,
-        serverNotifications::shutdown,
         moduleEventsProcessor::shutdown,
         taintIssuesUpdater::shutdown,
         // shutdown engines after the rest so that no operations remain on them, and they won't be recreated accidentally

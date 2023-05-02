@@ -70,7 +70,6 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -577,28 +576,6 @@ class ProjectBindingManagerTests {
   }
 
   @Test
-  void should_subscribe_for_server_events_when_starting_engine() {
-    var folder = mockFileInABoundWorkspaceFolder();
-    when(foldersManager.getAll()).thenReturn(List.of(folder));
-
-    underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
-
-    verify(fakeEngine).subscribeForEvents(any(), isNull(), eq(Set.of(PROJECT_KEY)), any(), isNull());
-  }
-
-  @Test
-  void should_subscribe_for_server_events_when_folders_change() {
-    var folder = mockFileInABoundWorkspaceFolder();
-    // create engine
-    underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
-    when(foldersManager.getAll()).thenReturn(List.of(folder));
-
-    underTest.subscribeForServerEvents(List.of(folder), List.of());
-
-    verify(fakeEngine).subscribeForEvents(any(), isNull(), eq(Set.of(PROJECT_KEY)), any(), isNull());
-  }
-
-  @Test
   void should_get_all_projects_for_a_connection() {
     var key1 = "key1";
     var key2 = "key2";
@@ -658,13 +635,6 @@ class ProjectBindingManagerTests {
     assertThatThrownBy(() -> underTest.getRemoteProjects(CONNECTION_ID))
       .isInstanceOf(IllegalStateException.class)
       .hasMessage("Failed to fetch list of projects from '" + CONNECTION_ID + "'");
-  }
-
-  @Test
-  void should_not_subscribe_for_server_events_if_no_config() {
-    underTest.subscribeForServerEvents(CONNECTION_ID);
-
-    verify(fakeEngine, times(0)).subscribeForEvents(any(), isNull(), eq(Set.of(PROJECT_KEY)), any(), isNull());
   }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {

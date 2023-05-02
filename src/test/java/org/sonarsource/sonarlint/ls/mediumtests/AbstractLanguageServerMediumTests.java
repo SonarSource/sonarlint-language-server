@@ -90,6 +90,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
 import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspotDetails;
@@ -101,6 +102,7 @@ import org.sonarsource.sonarlint.ls.SonarLintLanguageServer;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import picocli.CommandLine;
+import testutils.LogTestStartAndEnd;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -110,6 +112,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.sonarsource.sonarlint.ls.SonarLintLanguageServer.JUPYTER_NOTEBOOK_TYPE;
 
+@ExtendWith(LogTestStartAndEnd.class)
 public abstract class AbstractLanguageServerMediumTests {
 
   protected final static boolean COMMERCIAL_ENABLED = System.getProperty("commercial") != null;

@@ -297,7 +297,6 @@ class ServerSynchronizerTests {
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(null);
     verifyNoMoreInteractions(analysisManager);
-    assertThat(logTester.logs(ClientLogOutput.Level.ERROR)).contains("The specified connection id '" + CONNECTION_ID + "' doesn't exist.");
   }
 
   @Test
