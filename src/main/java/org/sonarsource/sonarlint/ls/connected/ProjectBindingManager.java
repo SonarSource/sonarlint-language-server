@@ -527,7 +527,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(bindingWrapper.getConnectionId());
         var isSonarCloud = connectionSettings != null && connectionSettings.isSonarCloudAlias();
         taintVulnerabilitiesCache.reload(fileUri, TaintIssue.from(serverTaintIssues, isSonarCloud));
-        diagnosticPublisher.publishDiagnostics(fileUri);
+        diagnosticPublisher.publishDiagnostics(fileUri, false);
       }
     }
   }

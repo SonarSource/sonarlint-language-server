@@ -47,7 +47,7 @@ public class LSProgressMonitor implements ClientProgressMonitor, ProgressFacade 
     this.progressToken = progressToken;
   }
 
-  void start(String title) {
+  public void start(String title) {
     var progressBegin = new WorkDoneProgressBegin();
     progressBegin.setTitle(title);
     progressBegin.setCancellable(true);

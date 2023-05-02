@@ -70,11 +70,13 @@ public class DiagnosticPublisher {
     this.firstSecretIssueDetected = firstSecretDetected;
   }
 
-  public void publishDiagnostics(URI f) {
+  public void publishDiagnostics(URI f, boolean onlyHotspots) {
     if(openNotebooksCache.isNotebook(f)) {
       return;
     }
-    client.publishDiagnostics(createPublishDiagnosticsParams(f));
+    if (!onlyHotspots) {
+      client.publishDiagnostics(createPublishDiagnosticsParams(f));
+    }
     client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
   }
 

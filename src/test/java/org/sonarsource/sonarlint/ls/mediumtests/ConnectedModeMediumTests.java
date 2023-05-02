@@ -109,6 +109,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       "{\"plugins\":[{\"key\": \"python\", \"hash\": \"ignored\", \"filename\": \"sonarpython.jar\", \"sonarLintSupported\": true}]}");
     mockWebServerExtension.addResponse("/api/plugins/download?plugin=python", new MockResponse().setBody(safeGetSonarPython()));
     mockWebServerExtension.addProtobufResponse("/api/settings/values.protobuf?component=myProject", Settings.Values.newBuilder().build());
+    mockWebServerExtension.addProtobufResponse("/api/rules/search.protobuf?repositories=roslyn.sonaranalyzer.security.cs,javasecurity,jssecurity,phpsecurity,pythonsecurity,tssecurity&f=repo&s=key&ps=500&p=1",
+      Rules.SearchResponse.newBuilder().build());
     mockWebServerExtension.addProtobufResponse("/api/qualityprofiles/search.protobuf?project=myProject", Qualityprofiles.SearchWsResponse.newBuilder()
       .addProfiles(Qualityprofiles.SearchWsResponse.QualityProfile.newBuilder()
         .setKey(QPROFILE_KEY)
@@ -209,7 +211,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     doc2.setLanguageId("[unknown]");
 
     List<TextDocumentItem> documents = List.of(doc1, doc2);
-    var scanParams = new SonarLintExtendedLanguageServer.ScanFolderForHotspotsParams(folder1BaseDir.toString(), documents);
+    var scanParams = new SonarLintExtendedLanguageServer.ScanFolderForHotspotsParams(folder1BaseDir.toUri().toString(), documents);
 
     lsProxy.scanFolderForHotspots(scanParams);
 

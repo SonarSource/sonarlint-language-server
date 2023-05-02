@@ -29,12 +29,14 @@ class AnalysisTask {
   private final Set<VersionedOpenFile> filesToAnalyze;
   private final boolean shouldFetchServerIssues;
   private final boolean shouldKeepHotspotsOnly;
+  private final boolean shouldShowProgress;
   private Future<?> future;
 
-  public AnalysisTask(Set<VersionedOpenFile> filesToAnalyze, boolean shouldFetchServerIssues, boolean shouldKeepHotspotsOnly) {
+  public AnalysisTask(Set<VersionedOpenFile> filesToAnalyze, boolean shouldFetchServerIssues, boolean shouldKeepHotspotsOnly, boolean shouldShowProgress) {
     this.filesToAnalyze = filesToAnalyze;
     this.shouldFetchServerIssues = shouldFetchServerIssues;
     this.shouldKeepHotspotsOnly = shouldKeepHotspotsOnly;
+    this.shouldShowProgress = shouldShowProgress;
   }
 
   public Set<VersionedOpenFile> getFilesToAnalyze() {
@@ -47,6 +49,10 @@ class AnalysisTask {
 
   public boolean shouldKeepHotspotsOnly() {
     return shouldKeepHotspotsOnly;
+  }
+
+  public boolean shouldShowProgress() {
+    return shouldShowProgress;
   }
 
   public boolean isCanceled() {

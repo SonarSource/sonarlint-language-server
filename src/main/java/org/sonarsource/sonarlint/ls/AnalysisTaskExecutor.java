@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.analysis.api.AnalysisResults;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.client.api.common.AbstractAnalysisConfiguration.AbstractBuilder;
@@ -59,6 +60,8 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.progress.ProgressFacade;
+import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
@@ -95,12 +98,13 @@ public class AnalysisTaskExecutor {
   private final SonarLintExtendedLanguageClient lsClient;
   private final OpenNotebooksCache openNotebooksCache;
   private final NotebookDiagnosticPublisher notebookDiagnosticPublisher;
+  private final ProgressManager progressManager;
 
   public AnalysisTaskExecutor(ScmIgnoredCache filesIgnoredByScmCache, LanguageClientLogger lsLogOutput,
     WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, JavaConfigCache javaConfigCache, SettingsManager settingsManager,
     FileTypeClassifier fileTypeClassifier, IssuesCache issuesCache, IssuesCache securityHotspotsCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
     SonarLintTelemetry telemetry, SkippedPluginsNotifier skippedPluginsNotifier, StandaloneEngineManager standaloneEngineManager, DiagnosticPublisher diagnosticPublisher,
-    SonarLintExtendedLanguageClient lsClient, OpenNotebooksCache openNotebooksCache, NotebookDiagnosticPublisher notebookDiagnosticPublisher) {
+    SonarLintExtendedLanguageClient lsClient, OpenNotebooksCache openNotebooksCache, NotebookDiagnosticPublisher notebookDiagnosticPublisher, ProgressManager progressManager) {
     this.filesIgnoredByScmCache = filesIgnoredByScmCache;
     this.lsLogOutput = lsLogOutput;
     this.workspaceFoldersManager = workspaceFoldersManager;
@@ -118,6 +122,7 @@ public class AnalysisTaskExecutor {
     this.lsClient = lsClient;
     this.openNotebooksCache = openNotebooksCache;
     this.notebookDiagnosticPublisher = notebookDiagnosticPublisher;
+    this.progressManager = progressManager;
   }
 
   public void run(AnalysisTask task) {
@@ -162,7 +167,7 @@ public class AnalysisTaskExecutor {
   private void clearIssueCacheAndPublishEmptyDiagnostics(URI f) {
     issuesCache.clear(f);
     securityHotspotsCache.clear(f);
-    diagnosticPublisher.publishDiagnostics(f);
+    diagnosticPublisher.publishDiagnostics(f, false);
   }
 
   private void analyze(AnalysisTask task, Optional<WorkspaceFolderWrapper> workspaceFolder, Map<URI, VersionedOpenFile> filesToAnalyze) {
@@ -295,7 +300,12 @@ public class AnalysisTaskExecutor {
     }
 
     if (!nonExcludedFiles.isEmpty()) {
-      analyzeSingleModuleNonExcluded(task, settings, binding, nonExcludedFiles, baseDirUri, javaConfigs);
+      if (task.shouldShowProgress()) {
+        progressManager.doWithProgress(String.format("SonarLint scanning %d files for hotspots", task.getFilesToAnalyze().size()), null, () -> {},
+          progressFacade -> analyzeSingleModuleNonExcluded(task, settings, binding, nonExcludedFiles, baseDirUri, javaConfigs, progressFacade));
+      } else {
+        analyzeSingleModuleNonExcluded(task, settings, binding, nonExcludedFiles, baseDirUri, javaConfigs, null);
+      }
     }
 
   }
@@ -313,8 +323,8 @@ public class AnalysisTaskExecutor {
   }
 
   private void analyzeSingleModuleNonExcluded(AnalysisTask task, WorkspaceFolderSettings settings, Optional<ProjectBindingWrapper> binding,
-    Map<URI, VersionedOpenFile> filesToAnalyze, URI baseDirUri, Map<URI, GetJavaConfigResponse> javaConfigs) {
-    task.checkCanceled();
+    Map<URI, VersionedOpenFile> filesToAnalyze, URI baseDirUri, Map<URI, GetJavaConfigResponse> javaConfigs, @Nullable ProgressFacade progressFacade) {
+    checkCanceled(task, progressFacade);
     if (filesToAnalyze.size() == 1) {
       lsLogOutput.info(format("Analyzing file '%s'...", filesToAnalyze.keySet().iterator().next()));
     } else {
@@ -339,9 +349,9 @@ public class AnalysisTaskExecutor {
     AnalysisResultsWrapper analysisResults;
     var filesSuccessfullyAnalyzed = new HashSet<>(filesToAnalyze.keySet());
     analysisResults = binding
-      .map(projectBindingWrapper -> analyzeConnected(task, projectBindingWrapper, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener))
+      .map(projectBindingWrapper -> analyzeConnected(task, projectBindingWrapper, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener, progressFacade))
       .orElseGet(() -> analyzeStandalone(task, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener));
-    task.checkCanceled();
+    checkCanceled(task, progressFacade);
     skippedPluginsNotifier.notifyOnceForSkippedPlugins(analysisResults.results, analysisResults.allPlugins);
 
     var analyzedLanguages = analysisResults.results.languagePerFile().values();
@@ -354,6 +364,7 @@ public class AnalysisTaskExecutor {
       .map(ClientInputFile::getClientObject)
       .map(URI.class::cast)
       .forEach(fileUri -> {
+        checkCanceled(task, progressFacade);
         filesSuccessfullyAnalyzed.remove(fileUri);
         var file = filesToAnalyze.get(fileUri);
         issuesCache.analysisFailed(file);
@@ -370,7 +381,7 @@ public class AnalysisTaskExecutor {
         var foundIssues = issuesCache.count(f);
         totalIssueCount.addAndGet(foundIssues);
         totalHotspotCount.addAndGet(securityHotspotsCache.count(f));
-        diagnosticPublisher.publishDiagnostics(f);
+        diagnosticPublisher.publishDiagnostics(f, task.shouldKeepHotspotsOnly());
         notebookDiagnosticPublisher.cleanupDiagnostics(f);
       });
       telemetry.addReportedRules(ruleKeys);
@@ -381,6 +392,13 @@ public class AnalysisTaskExecutor {
       if (hotspotsCount != 0) {
         lsLogOutput.info(format("Found %s %s", hotspotsCount, pluralize(hotspotsCount, "security hotspot")));
       }
+    }
+  }
+
+  private static void checkCanceled(AnalysisTask task, @Nullable ProgressFacade progressFacade) {
+    task.checkCanceled();
+    if (progressFacade != null) {
+      progressFacade.checkCanceled();
     }
   }
 
@@ -468,7 +486,7 @@ public class AnalysisTaskExecutor {
 
   private AnalysisResultsWrapper analyzeConnected(AnalysisTask task, ProjectBindingWrapper binding, WorkspaceFolderSettings settings, URI baseDirUri,
     Map<URI, VersionedOpenFile> filesToAnalyze,
-    Map<URI, GetJavaConfigResponse> javaConfigs, IssueListener issueListener) {
+    Map<URI, GetJavaConfigResponse> javaConfigs, IssueListener issueListener, @Nullable ProgressFacade progressFacade) {
     var baseDir = Paths.get(baseDirUri);
 
     var configuration = buildCommonAnalysisConfiguration(settings, baseDirUri, filesToAnalyze, javaConfigs, baseDir, ConnectedAnalysisConfiguration.builder())
@@ -490,7 +508,8 @@ public class AnalysisTaskExecutor {
         issuesPerFiles.computeIfAbsent(inputFile.getClientObject(), uri -> new ArrayList<>()).add(i);
       }
     };
-    return analyzeWithTiming(() -> engine.analyze(configuration, accumulatorIssueListener, new LanguageClientLogOutput(lsLogOutput, true), new TaskProgressMonitor(task)),
+    var progressMonitor = progressFacade == null ? new TaskProgressMonitor(task) : progressFacade.asCoreMonitor();
+    return analyzeWithTiming(() -> engine.analyze(configuration, accumulatorIssueListener, new LanguageClientLogOutput(lsLogOutput, true), progressMonitor),
       engine.getPluginDetails(),
       () -> filesToAnalyze.forEach((fileUri, openFile) -> {
         var issues = issuesPerFiles.computeIfAbsent(fileUri, uri -> List.of());

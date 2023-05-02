@@ -73,6 +73,7 @@ import org.eclipse.lsp4j.NotebookDocument;
 import org.eclipse.lsp4j.NotebookDocumentClientCapabilities;
 import org.eclipse.lsp4j.NotebookDocumentIdentifier;
 import org.eclipse.lsp4j.NotebookDocumentSyncClientCapabilities;
+import org.eclipse.lsp4j.ProgressParams;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
@@ -370,6 +371,11 @@ public abstract class AbstractLanguageServerMediumTests {
         logs.add(message);
       }
       System.out.println(message.getMessage());
+    }
+
+    @Override
+    public void notifyProgress(ProgressParams params) {
+      System.out.println(params);
     }
 
     @Override

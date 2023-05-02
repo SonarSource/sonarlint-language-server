@@ -171,23 +171,34 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     private final List<VersionedOpenFile> files;
     private final boolean shouldFetchServerIssues;
     private final boolean shouldKeepHotspotsOnly;
+    private final boolean shouldShowProgress;
 
-    private AnalysisParams(List<VersionedOpenFile> files, boolean shouldFetchServerIssues, boolean shouldKeepHotspotsOnly) {
+    private AnalysisParams(
+        List<VersionedOpenFile> files,
+        boolean shouldFetchServerIssues,
+        boolean shouldKeepHotspotsOnly,
+        boolean shouldShowProgress
+      ) {
       this.files = List.copyOf(files);
       this.shouldFetchServerIssues = shouldFetchServerIssues;
       this.shouldKeepHotspotsOnly = shouldKeepHotspotsOnly;
+      this.shouldShowProgress = shouldShowProgress;
     }
 
     static AnalysisParams newAnalysisParams(List<VersionedOpenFile> files) {
-      return new AnalysisParams(files, false, false);
+      return new AnalysisParams(files, false, false, false);
     }
 
     AnalysisParams withFetchServerIssues() {
-      return new AnalysisParams(files, true, shouldKeepHotspotsOnly);
+      return new AnalysisParams(files, true, shouldKeepHotspotsOnly, shouldShowProgress);
     }
 
     AnalysisParams withOnlyHotspots() {
-      return new AnalysisParams(files, shouldFetchServerIssues, true);
+      return new AnalysisParams(files, shouldFetchServerIssues, true, shouldShowProgress);
+    }
+
+    AnalysisParams withProgress() {
+      return new AnalysisParams(files, shouldFetchServerIssues, shouldKeepHotspotsOnly, true);
     }
   }
 
@@ -211,7 +222,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     } else {
       lsLogOutput.debug(format("Queuing analysis of %d files", trueFileUris.size()));
     }
-    var task = new AnalysisTask(trueFileUris, params.shouldFetchServerIssues, params.shouldKeepHotspotsOnly);
+    var task = new AnalysisTask(trueFileUris, params.shouldFetchServerIssues, params.shouldKeepHotspotsOnly, params.shouldShowProgress);
     var future = asyncExecutor.submit(() -> analysisTaskExecutor.run(task));
     task.setFuture(future);
     return future;
@@ -273,7 +284,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   }
 
   public void scanForHotspotsInFiles(List<VersionedOpenFile> files) {
-    analyzeAsync(AnalysisParams.newAnalysisParams(files).withOnlyHotspots());
+    analyzeAsync(AnalysisParams.newAnalysisParams(files).withOnlyHotspots().withProgress());
   }
 
   private void analyzeAllUnboundOpenFiles() {

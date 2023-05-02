@@ -242,7 +242,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.moduleEventsProcessor = new ModuleEventsProcessor(standaloneEngineManager, workspaceFoldersManager, bindingManager, fileTypeClassifier, javaConfigCache);
     var analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
       fileTypeClassifier, issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, telemetry, skippedPluginsNotifier, standaloneEngineManager, diagnosticPublisher,
-      client, openNotebooksCache, notebookDiagnosticPublisher);
+      client, openNotebooksCache, notebookDiagnosticPublisher, progressManager);
     this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor);
     this.workspaceFoldersManager.addListener(moduleEventsProcessor);
     bindingManager.setAnalysisManager(analysisScheduler);
@@ -735,10 +735,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       backendServiceFacade.checkLocalDetectionSupported(folderUri)
         .thenAccept(response -> {
           if (response.isSupported()) {
+            runScan(params);
+          } else {
             showMessageService.sendNotCompatibleServerWarningIfNeeded(folderUri);
           }
         });
-      runScan(params);
       return null;
     });
   }
@@ -752,7 +753,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   public CompletableFuture<Void> forgetFolderHotspots() {
     var filesToForget = securityHotspotsCache.keepOnly(openFilesCache.getAll());
-    filesToForget.forEach(diagnosticPublisher::publishDiagnostics);
+    filesToForget.forEach(f -> diagnosticPublisher.publishDiagnostics(f, true));
     return null;
   }
 
