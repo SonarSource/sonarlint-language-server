@@ -27,19 +27,19 @@ import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSma
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
-public class ServerNotifications {
+public class SmartNotifications {
 
   private static final MessageActionItem SETTINGS_ACTION = new MessageActionItem("Open Settings");
 
   private final SonarLintExtendedLanguageClient client;
   private final SonarLintTelemetry telemetry;
 
-  public ServerNotifications(SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry) {
+  public SmartNotifications(SonarLintExtendedLanguageClient client, SonarLintTelemetry telemetry) {
     this.client = client;
     this.telemetry = telemetry;
   }
 
-  public void showDevNotification(ShowSmartNotificationParams showSmartNotificationParams, boolean isSonarCloud) {
+  public void showSmartNotification(ShowSmartNotificationParams showSmartNotificationParams, boolean isSonarCloud) {
     final var label = isSonarCloud ? "SonarCloud" : "SonarQube";
     var params = new ShowMessageRequestParams();
     params.setType(MessageType.Info);

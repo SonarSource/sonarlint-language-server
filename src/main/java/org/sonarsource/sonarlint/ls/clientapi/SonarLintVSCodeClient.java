@@ -32,7 +32,7 @@ import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSma
 import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
 import org.sonarsource.sonarlint.core.commons.http.HttpClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
-import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
+import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
@@ -41,7 +41,7 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   private final SonarLintExtendedLanguageClient client;
   private SettingsManager settingsManager;
   private final ApacheHttpClientProvider httpClientProvider;
-  private ServerNotifications serverNotifications;
+  private SmartNotifications smartNotifications;
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, ApacheHttpClientProvider httpClientProvider) {
     this.client = client;
@@ -91,7 +91,7 @@ public class SonarLintVSCodeClient implements SonarLintClient {
     if (connectionOpt == null) {
       return;
     }
-    serverNotifications.showDevNotification(showSmartNotificationParams, connectionOpt.isSonarCloudAlias());
+    smartNotifications.showSmartNotification(showSmartNotificationParams, connectionOpt.isSonarCloudAlias());
   }
 
   @Override
@@ -135,7 +135,7 @@ public class SonarLintVSCodeClient implements SonarLintClient {
     this.settingsManager = settingsManager;
   }
 
-  public void setServerNotifications(ServerNotifications serverNotifications) {
-    this.serverNotifications = serverNotifications;
+  public void setSmartNotifications(SmartNotifications smartNotifications) {
+    this.smartNotifications = smartNotifications;
   }
 }

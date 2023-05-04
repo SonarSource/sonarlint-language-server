@@ -69,7 +69,7 @@ public class TelemetryClientAttributesProviderImpl implements TelemetryClientAtt
 
   @Override
   public boolean devNotificationsDisabled() {
-    return bindingManager.devNotificationsDisabled();
+    return bindingManager.smartNotificationsDisabled();
   }
 
   @Override

@@ -39,7 +39,7 @@ import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressPar
 import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
 import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
-import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
+import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
@@ -61,13 +61,13 @@ class SonarLintVSCodeClientTests {
   ApacheHttpClientProvider httpClientProvider = mock(ApacheHttpClientProvider.class);
 
   SettingsManager settingsManager = mock(SettingsManager.class);
-  ServerNotifications serverNotifications = mock(ServerNotifications.class);
+  SmartNotifications smartNotifications = mock(SmartNotifications.class);
   SonarLintVSCodeClient underTest;
 
   @BeforeEach
   public void setup() {
     underTest = new SonarLintVSCodeClient(client, httpClientProvider);
-    underTest.setServerNotifications(serverNotifications);
+    underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);
   }
 
@@ -173,7 +173,7 @@ class SonarLintVSCodeClientTests {
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     underTest.showSmartNotification(showSmartNotificationParams);
 
-    verify(serverNotifications).showDevNotification(any(ShowSmartNotificationParams.class), eq(false));
+    verify(smartNotifications).showSmartNotification(any(ShowSmartNotificationParams.class), eq(false));
   }
 
   @Test
@@ -193,7 +193,7 @@ class SonarLintVSCodeClientTests {
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     underTest.showSmartNotification(showSmartNotificationParams);
 
-    verify(serverNotifications).showDevNotification(any(ShowSmartNotificationParams.class), eq(true));
+    verify(smartNotifications).showSmartNotification(any(ShowSmartNotificationParams.class), eq(true));
   }
 
   @Test
@@ -206,7 +206,7 @@ class SonarLintVSCodeClientTests {
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     underTest.showSmartNotification(showSmartNotificationParams);
 
-    verify(serverNotifications, never()).showDevNotification(any(ShowSmartNotificationParams.class), eq(false));
+    verify(smartNotifications, never()).showSmartNotification(any(ShowSmartNotificationParams.class), eq(false));
   }
 
   @Test
