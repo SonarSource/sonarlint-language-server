@@ -65,20 +65,20 @@ public class ServerSentEventsHandler implements ServerSentEventsHandlerService {
     var localFileUri = projectBindingManager.serverPathToFileUri(filePathFromEvent);
     var connectionId = DEFAULT_CONNECTION_ID;
     var currentBranch = "";
-    if(localFileUri.isPresent()) {
+    if (localFileUri.isPresent()) {
       projectBindingManager.updateTaintIssueCacheFromStorageForFile(localFileUri.get());
       var bindingWrapper = projectBindingManager.getBinding(localFileUri.get());
-      if(bindingWrapper.isPresent()) {
+      if (bindingWrapper.isPresent()) {
         var binding = bindingWrapper.get();
         connectionId = binding.getConnectionId();
         var folderUri = workspaceFoldersManager.findFolderForFile(localFileUri.get());
-        if(folderUri.isPresent()) {
+        if (folderUri.isPresent()) {
           currentBranch = projectBindingManager.resolveBranchNameForFolder(folderUri.get().getUri(), binding.getEngine(), taintVulnerabilityRaisedEvent.getProjectKey());
         }
       }
     }
     var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
-    if(connectionSettings != null && !connectionSettings.isDevNotificationsDisabled() && currentBranch.equals(taintVulnerabilityRaisedEvent.getBranchName())) {
+    if (connectionSettings != null && !connectionSettings.isSmartNotificationsDisabled() && currentBranch.equals(taintVulnerabilityRaisedEvent.getBranchName())) {
       taintVulnerabilityRaisedNotification.showTaintVulnerabilityNotification(taintVulnerabilityRaisedEvent, connectionId, connectionSettings.isSonarCloudAlias());
     }
   }

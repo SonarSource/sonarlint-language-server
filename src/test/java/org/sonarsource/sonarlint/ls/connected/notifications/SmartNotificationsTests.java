@@ -40,17 +40,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-class ServerNotificationsTests {
+class SmartNotificationsTests {
 
   private final SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
 
   private final SonarLintTelemetry telemetry = mock(SonarLintTelemetry.class);
 
-  private ServerNotifications underTest;
+  private SmartNotifications underTest;
 
   @BeforeEach
   public void setup() {
-    underTest = new ServerNotifications(client, telemetry);
+    underTest = new SmartNotifications(client, telemetry);
   }
 
   @AfterEach
@@ -69,7 +69,7 @@ class ServerNotificationsTests {
     var settingsAction = new MessageActionItem("Open Settings");
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(browseAction));
 
-    underTest.showDevNotification(showNotificationParams, false);
+    underTest.showSmartNotification(showNotificationParams, false);
 
     var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
     verify(client).showMessageRequest(messageCaptor.capture());
@@ -91,7 +91,7 @@ class ServerNotificationsTests {
     var settingsAction = new MessageActionItem("Open Settings");
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(settingsAction));
 
-    underTest.showDevNotification(showNotificationParams, false);
+    underTest.showSmartNotification(showNotificationParams, false);
 
     var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
     verify(client).showMessageRequest(messageCaptor.capture());
@@ -113,7 +113,7 @@ class ServerNotificationsTests {
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(null));
     var settingsAction = new MessageActionItem("Open Settings");
 
-    underTest.showDevNotification(showNotificationParams, true);
+    underTest.showSmartNotification(showNotificationParams, true);
 
     var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
     verify(client).showMessageRequest(messageCaptor.capture());

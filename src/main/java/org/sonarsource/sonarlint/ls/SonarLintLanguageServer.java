@@ -107,7 +107,7 @@ import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandler;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
-import org.sonarsource.sonarlint.ls.connected.notifications.ServerNotifications;
+import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.connected.notifications.TaintVulnerabilityRaisedNotification;
 import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
@@ -148,7 +148,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
-  private final ServerNotifications serverNotifications;
+  private final SmartNotifications smartNotifications;
   private final AnalysisScheduler analysisScheduler;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final OpenFilesCache openFilesCache;
@@ -234,8 +234,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
     this.workspaceFoldersManager.addListener(settingsManager);
-    this.serverNotifications = new ServerNotifications(client, telemetry);
-    vsCodeClient.setServerNotifications(serverNotifications);
+    this.smartNotifications = new SmartNotifications(client, telemetry);
+    vsCodeClient.setSmartNotifications(smartNotifications);
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client);
     this.scmIgnoredCache = new ScmIgnoredCache(client);
     this.moduleEventsProcessor = new ModuleEventsProcessor(standaloneEngineManager, workspaceFoldersManager, bindingManager, fileTypeClassifier, javaConfigCache);

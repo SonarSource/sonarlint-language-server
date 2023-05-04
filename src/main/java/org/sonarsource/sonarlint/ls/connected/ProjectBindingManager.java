@@ -279,8 +279,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return hasAnyBindingThatMatch(ServerConnectionSettings::isSonarCloudAlias);
   }
 
-  public boolean devNotificationsDisabled() {
-    return hasAnyBindingThatMatch(ServerConnectionSettings::isDevNotificationsDisabled);
+  public boolean smartNotificationsDisabled() {
+    return hasAnyBindingThatMatch(ServerConnectionSettings::isSmartNotificationsDisabled);
   }
 
   private boolean hasAnyBindingThatMatch(Predicate<ServerConnectionSettings> predicate) {

@@ -84,7 +84,7 @@ public class ServerConnectionSettings {
     return List.of(SONARCLOUD_ALIAS).contains(serverUrl);
   }
 
-  public boolean isDevNotificationsDisabled() {
+  public boolean isSmartNotificationsDisabled() {
     return disableNotifications;
   }
 
