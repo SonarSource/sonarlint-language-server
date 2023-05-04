@@ -760,12 +760,19 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<GetSupportedFilePatternsResponse> getFilePatternsForAnalysis(GetFilePatternsForAnalysisParams params) {
+  public CompletableFuture<GetSupportedFilePatternsResponse> getFilePatternsForAnalysis(FolderUriParams params) {
     return backendServiceFacade.getBackendService().getFilePatternsForAnalysis(new GetSupportedFilePatternsParams(params.getFolderUri()));
   }
 
   @Override
   public CompletableFuture<GetBindingSuggestionsResponse> getBindingSuggestion(GetBindingSuggestionParams params) {
     return backendServiceFacade.getBackendService().getBindingSuggestion(params);
+  }
+
+  @Override
+  public CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(FolderUriParams params) {
+    var folderUri = params.getFolderUri();
+    return backendServiceFacade.checkLocalDetectionSupported(folderUri)
+      .thenApply(response -> new CheckLocalDetectionSupportedResponse(response.isSupported(), response.getReason()));
   }
 }

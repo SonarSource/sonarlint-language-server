@@ -350,7 +350,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   CompletableFuture<Void> helpAndFeedbackLinkClicked(HelpAndFeedbackLinkClickedNotificationParams params);
 
   class ScanFolderForHotspotsParams {
-    String folderUri;
+    private final String folderUri;
 
     List<TextDocumentItem> documents;
 
@@ -374,10 +374,10 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonNotification("sonarlint/forgetFolderHotspots")
   CompletableFuture<Void> forgetFolderHotspots();
 
-  class GetFilePatternsForAnalysisParams {
-    String folderUri;
+  class FolderUriParams {
+    private final String folderUri;
 
-    public GetFilePatternsForAnalysisParams(String folderUri) {
+    public FolderUriParams(String folderUri) {
       this.folderUri = folderUri;
     }
 
@@ -391,4 +391,30 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/getBindingSuggestion")
   CompletableFuture<GetBindingSuggestionsResponse> getBindingSuggestion(GetBindingSuggestionParams params);
+
+  CompletableFuture<GetSupportedFilePatternsResponse> getFilePatternsForAnalysis(FolderUriParams params);
+
+  class CheckLocalDetectionSupportedResponse {
+    boolean isSupported;
+    @Nullable
+    String reason;
+
+    public CheckLocalDetectionSupportedResponse(boolean isSupported, @Nullable String reason) {
+      this.isSupported = isSupported;
+      this.reason = reason;
+    }
+
+    public boolean isSupported() {
+      return isSupported;
+    }
+
+    @CheckForNull
+    public String getReason() {
+      return reason;
+    }
+  }
+
+  @JsonRequest("sonarlint/checkLocalDetectionSupported")
+  CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(FolderUriParams params);
+
 }

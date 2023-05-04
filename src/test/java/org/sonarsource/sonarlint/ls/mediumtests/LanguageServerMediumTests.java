@@ -920,7 +920,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void getFilePatternsForAnalysis() throws ExecutionException, InterruptedException {
-    var result = lsProxy.getFilePatternsForAnalysis(new SonarLintExtendedLanguageServer.GetFilePatternsForAnalysisParams("notBound")).get();
+    var result = lsProxy.getFilePatternsForAnalysis(new SonarLintExtendedLanguageServer.FolderUriParams("notBound")).get();
 
     assertThat(result.getPatterns()).hasSize(46);
     assertThat(result.getPatterns()).containsExactlyInAnyOrder("**/*.c",

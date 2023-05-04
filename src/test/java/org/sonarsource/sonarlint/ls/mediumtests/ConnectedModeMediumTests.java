@@ -458,6 +458,15 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(future.isDone()).isTrue());
   }
 
+
+  @Test
+  void checkLocalDetectionSupportedNotBound() throws ExecutionException, InterruptedException {
+    var result = lsProxy.checkLocalDetectionSupported(new SonarLintExtendedLanguageServer.FolderUriParams("notBound")).get();
+
+    assertThat(result.isSupported()).isFalse();
+    assertThat(result.getReason()).isEqualTo("The project is not bound to SonarQube 9.7+");
+  }
+
   private String stripTrailingSlash(String url) {
     if (url.endsWith("/")) {
       return url.substring(0, url.length() - 1);
