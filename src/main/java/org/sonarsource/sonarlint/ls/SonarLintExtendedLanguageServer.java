@@ -33,6 +33,7 @@ import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.util.Preconditions;
 import org.eclipse.xtext.xbase.lib.Pure;
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.authentication.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
 
@@ -219,27 +220,10 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonRequest("sonarlint/getRemoteProjectNames")
   CompletableFuture<Map<String, String>> getRemoteProjectNames(GetRemoteProjectsNamesParams params);
 
-  class GetServerPathForTokenGenerationResponse {
-    private String serverUrl;
-
-    public GetServerPathForTokenGenerationResponse(String serverUrl) {
-      setServerUrl(serverUrl);
-    }
-
-    public String getServerUrl() {
-      return serverUrl;
-    }
-
-    public void setServerUrl(String serverUrl) {
-      this.serverUrl = serverUrl;
-    }
-
-  }
-
-  class GetServerPathForTokenGenerationParams {
+  class GenerateTokenParams {
     String baseServerUrl;
 
-    public GetServerPathForTokenGenerationParams(String baseServerUrl) {
+    public GenerateTokenParams(String baseServerUrl) {
       setBaseServerUrl(baseServerUrl);
     }
 
@@ -252,8 +236,8 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
   }
 
-  @JsonRequest("sonarlint/getServerPathForTokenGeneration")
-  CompletableFuture<GetServerPathForTokenGenerationResponse> getServerPathForTokenGeneration(GetServerPathForTokenGenerationParams params);
+  @JsonRequest("sonarlint/generateToken")
+  CompletableFuture<HelpGenerateUserTokenResponse> generateToken(GenerateTokenParams params);
 
   class ShowHotspotLocationsParams {
     String hotspotKey;

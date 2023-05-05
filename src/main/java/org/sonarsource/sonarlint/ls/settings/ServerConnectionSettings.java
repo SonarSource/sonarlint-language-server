@@ -84,6 +84,10 @@ public class ServerConnectionSettings {
     return List.of(SONARCLOUD_ALIAS).contains(serverUrl);
   }
 
+  public static boolean isSonarCloudAlias(String serverUrl) {
+    return List.of(SONARCLOUD_ALIAS).contains(serverUrl);
+  }
+
   public boolean isSmartNotificationsDisabled() {
     return disableNotifications;
   }

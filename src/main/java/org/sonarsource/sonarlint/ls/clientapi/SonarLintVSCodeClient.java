@@ -72,7 +72,7 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   @Nullable
   @Override
   public HttpClient getHttpClientNoAuth(String s) {
-    throw new UnsupportedOperationException();
+    return httpClientProvider.anonymous();
   }
 
   @Override

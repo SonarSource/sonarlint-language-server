@@ -31,6 +31,8 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
 import org.sonarsource.sonarlint.core.clientapi.backend.HostInfoDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.authentication.HelpGenerateUserTokenParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.authentication.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidAddConfigurationScopesParams;
@@ -109,7 +111,7 @@ public class BackendServiceFacade {
       initParams.getSonarQubeConnections(),
       initParams.getSonarCloudConnections(),
       initParams.getSonarlintUserHome(),
-      false,
+      true,
       initParams.getStandaloneRuleConfigByKey(),
       true,
       false,
@@ -162,6 +164,11 @@ public class BackendServiceFacade {
   public CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(String workspaceFolder) {
     var params = new CheckLocalDetectionSupportedParams(workspaceFolder);
     return backend.checkLocalDetectionSupported(params);
+  }
+
+  public CompletableFuture<HelpGenerateUserTokenResponse> helpGenerateUserToken(String serverUrl, boolean isSonarCloud) {
+    var params = new HelpGenerateUserTokenParams(serverUrl, isSonarCloud);
+    return backend.helpGenerateUserToken(params);
   }
 
   public void initialize(Map<String, ServerConnectionSettings> serverConnections) {
