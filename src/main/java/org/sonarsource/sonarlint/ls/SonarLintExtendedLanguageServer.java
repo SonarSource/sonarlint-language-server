@@ -33,6 +33,8 @@ import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.util.Preconditions;
 import org.eclipse.xtext.xbase.lib.Pure;
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
+import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
 
 public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
@@ -328,6 +330,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
       this.fileUri = fileUri;
     }
   }
+
   @JsonNotification("sonarlint/showHotspotRuleDescription")
   CompletableFuture<Void> showHotspotRuleDescription(ShowHotspotRuleDescriptionParams params);
 
@@ -385,4 +388,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/listSupportedFilePatterns")
   CompletableFuture<GetSupportedFilePatternsResponse> getFilePatternsForAnalysis(GetFilePatternsForAnalysisParams params);
+
+  @JsonRequest("sonarlint/getBindingSuggestion")
+  CompletableFuture<GetBindingSuggestionsResponse> getBindingSuggestion(GetBindingSuggestionParams params);
 }

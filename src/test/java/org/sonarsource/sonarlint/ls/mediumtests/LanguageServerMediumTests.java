@@ -58,6 +58,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
@@ -71,7 +72,6 @@ import static org.assertj.core.groups.Tuple.tuple;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.sonar.api.rules.RuleType.CODE_SMELL;
 
 class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -901,6 +901,21 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var result = lsProxy.helpAndFeedbackLinkClicked(params);
 
     assertThat(result).isNull();
+  }
+
+  @Test
+  void getBindingSuggestions() throws ExecutionException, InterruptedException {
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    var workspaceUri = basedir.toUri().toString();
+    var workspaceFolder = new WorkspaceFolder(workspaceUri, "foo-bar");
+    client.folderSettings = new HashMap<>();
+    client.folderSettings.put(workspaceUri, new HashMap<>());
+    lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
+      new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
+    foldersToRemove.add(workspaceUri);
+    var result = lsProxy.getBindingSuggestion(new GetBindingSuggestionParams(workspaceUri, CONNECTION_ID)).get();
+    assertThat(result).isNotNull();
+    assertThat(result.getSuggestions()).hasSize(1);
   }
 
   @Test
