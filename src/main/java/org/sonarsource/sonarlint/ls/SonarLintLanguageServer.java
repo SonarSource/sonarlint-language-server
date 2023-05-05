@@ -88,14 +88,13 @@ import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonarsource.sonarlint.core.SonarLintBackendImpl;
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.authentication.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
-import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
-import org.sonarsource.sonarlint.core.serverconnection.ServerPathProvider;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -124,6 +123,7 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
@@ -254,7 +254,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.serverSentEventsHandler = new ServerSentEventsHandler(bindingManager, taintVulnerabilitiesCache,
       taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager);
     bindingManager.setServerSentEventsHandler(serverSentEventsHandler);
-    this.requestsHandlerServer = new RequestsHandlerServer(lsLogOutput, bindingManager, client, telemetry, settingsManager);
+    this.requestsHandlerServer = new RequestsHandlerServer();
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager, serverSynchronizer);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
     this.workspaceFoldersManager.addListener(this.branchManager);
@@ -385,7 +385,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         enginesFactory::shutdown,
         analysisScheduler::shutdown,
         branchManager::shutdown,
-        requestsHandlerServer::shutdown,
         telemetry::stop,
         settingsManager::shutdown,
         workspaceFoldersManager::shutdown,
@@ -622,11 +621,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<GetServerPathForTokenGenerationResponse> getServerPathForTokenGeneration(GetServerPathForTokenGenerationParams params) {
-    var port = requestsHandlerServer.getPort();
-    var endpointParams = new EndpointParams(params.getBaseServerUrl(), false, null);
-    return ServerPathProvider.getServerUrlForTokenGeneration(endpointParams, httpClientProvider.anonymous(), port, appName)
-      .thenApply(GetServerPathForTokenGenerationResponse::new);
+  public CompletableFuture<HelpGenerateUserTokenResponse> generateToken(GenerateTokenParams params) {
+    return backendServiceFacade.helpGenerateUserToken(params.getBaseServerUrl(),
+      ServerConnectionSettings.isSonarCloudAlias(params.getBaseServerUrl()));
   }
 
   @Override
