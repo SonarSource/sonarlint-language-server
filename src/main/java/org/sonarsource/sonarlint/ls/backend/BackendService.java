@@ -31,6 +31,7 @@ import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
 import org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.DidUpdateBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
@@ -48,6 +49,7 @@ import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleD
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.ListAllStandaloneRulesDefinitionsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.UpdateStandaloneRulesConfigurationParams;
+import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
@@ -159,4 +161,7 @@ public class BackendService {
     return initializedBackend().getAnalysisService().getSupportedFilePatterns(params);
   }
 
+  public CompletableFuture<GetBindingSuggestionsResponse> getBindingSuggestion(GetBindingSuggestionParams params) {
+    return initializedBackend().getBindingService().getBindingSuggestions(params);
+  }
 }

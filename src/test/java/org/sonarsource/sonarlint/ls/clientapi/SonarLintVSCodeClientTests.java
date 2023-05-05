@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingSuggestionDto;
 import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
-import org.sonarsource.sonarlint.core.clientapi.client.SuggestBindingParams;
+import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeParams;
