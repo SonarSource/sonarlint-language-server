@@ -186,7 +186,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final BackendServiceFacade backendServiceFacade;
   private final Collection<Path> analyzers;
   private final CountDownLatch shutdownLatch;
-  private final ShowMessageService showMessageService;
 
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
@@ -263,7 +262,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.workspaceFoldersManager.addListener(this.branchManager);
     this.workspaceFoldersManager.setBindingManager(bindingManager);
     this.taintIssuesUpdater = new TaintIssuesUpdater(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, settingsManager, diagnosticPublisher);
-    this.showMessageService = new ShowMessageService(client);
     this.shutdownLatch = new CountDownLatch(1);
     launcher.startListening();
   }
@@ -733,15 +731,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<Void> scanFolderForHotspots(ScanFolderForHotspotsParams params) {
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
-      var folderUri = params.getFolderUri();
-      backendServiceFacade.checkLocalDetectionSupported(folderUri)
-        .thenAccept(response -> {
-          if (response.isSupported()) {
-            runScan(params);
-          } else {
-            showMessageService.sendNotCompatibleServerWarningIfNeeded(folderUri);
-          }
-        });
+      runScan(params);
       return null;
     });
   }
