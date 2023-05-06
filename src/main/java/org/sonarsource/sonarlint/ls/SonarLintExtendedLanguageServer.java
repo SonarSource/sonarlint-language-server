@@ -387,12 +387,10 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   }
 
   @JsonRequest("sonarlint/listSupportedFilePatterns")
-  CompletableFuture<GetSupportedFilePatternsResponse> getFilePatternsForAnalysis(GetFilePatternsForAnalysisParams params);
+  CompletableFuture<GetSupportedFilePatternsResponse> getFilePatternsForAnalysis(FolderUriParams params);
 
   @JsonRequest("sonarlint/getBindingSuggestion")
   CompletableFuture<GetBindingSuggestionsResponse> getBindingSuggestion(GetBindingSuggestionParams params);
-
-  CompletableFuture<GetSupportedFilePatternsResponse> getFilePatternsForAnalysis(FolderUriParams params);
 
   class CheckLocalDetectionSupportedResponse {
     boolean isSupported;
