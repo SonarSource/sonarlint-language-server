@@ -23,15 +23,18 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingSuggestionDto;
 import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
-import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
+import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeParams;
+import org.sonarsource.sonarlint.core.clientapi.client.host.GetHostInfoResponse;
+import org.sonarsource.sonarlint.core.clientapi.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.clientapi.client.hotspot.ShowHotspotParams;
 import org.sonarsource.sonarlint.core.clientapi.client.message.ShowMessageParams;
 import org.sonarsource.sonarlint.core.clientapi.client.progress.ReportProgressParams;
@@ -39,6 +42,7 @@ import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressPar
 import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
 import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
@@ -64,9 +68,11 @@ class SonarLintVSCodeClientTests {
   SmartNotifications smartNotifications = mock(SmartNotifications.class);
   SonarLintVSCodeClient underTest;
 
+  RequestsHandlerServer server = mock(RequestsHandlerServer.class);
+
   @BeforeEach
   public void setup() {
-    underTest = new SonarLintVSCodeClient(client, httpClientProvider);
+    underTest = new SonarLintVSCodeClient(client, httpClientProvider, server);
     underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);
   }
@@ -127,28 +133,8 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void shouldThrowForHttpClientNoAuth() {
-    assertThrows(UnsupportedOperationException.class, () -> underTest.getHttpClientNoAuth(""));
-  }
-
-  @Test
   void shouldThrowForShowMessage() {
     assertThrows(UnsupportedOperationException.class, () -> underTest.showMessage(mock(ShowMessageParams.class)));
-  }
-
-  @Test
-  void shouldThrowForGetHostInfo() {
-    assertThrows(UnsupportedOperationException.class, () -> underTest.getHostInfo());
-  }
-
-  @Test
-  void shouldThrowForShowHotspot() {
-    assertThrows(UnsupportedOperationException.class, () -> underTest.showHotspot(mock(ShowHotspotParams.class)));
-  }
-
-  @Test
-  void shouldThrowForAssistCreatingConnection() {
-    assertThrows(UnsupportedOperationException.class, () -> underTest.assistCreatingConnection(mock(AssistCreatingConnectionParams.class)));
   }
 
   @Test
@@ -240,5 +226,43 @@ class SonarLintVSCodeClientTests {
       folderUri,
       filesToFind.toArray()
     );
+  }
+
+  @Test
+  void shouldCallServerOnGetHostInfo() {
+    underTest.getHostInfo();
+    verify(server).getHostInfo();
+  }
+
+  @Test
+  void shouldGetHostInfo() throws ExecutionException, InterruptedException {
+    var desc = "This is Test";
+    when(server.getHostInfo()).thenReturn(new GetHostInfoResponse("This is Test"));
+    var result = underTest.getHostInfo().get();
+    assertThat(result.getDescription()).isEqualTo(desc);
+  }
+
+  @Test
+  void shouldCallClientShowHotspot() {
+    var showHotspotParams = new ShowHotspotParams("myFolder", new HotspotDetailsDto("key1",
+      "message1",
+      "myfolder/myFile",
+      null,
+      null,
+      "TO_REVIEW",
+      "fixed",
+      null,
+      null
+    ));
+    underTest.showHotspot(showHotspotParams);
+    verify(client).showHotspot(showHotspotParams.getHotspotDetails());
+  }
+
+  @Test
+  void assistCreateConnectionShouldCallServerMethod() {
+    var assistCreatingConnectionParams = new AssistCreatingConnectionParams("http://localhost:9000");
+    var future = underTest.assistCreatingConnection(assistCreatingConnectionParams);
+    verify(server).showHotspotHandleUnknownServer(assistCreatingConnectionParams.getServerUrl());
+    assertThat(future).isNotCompleted();
   }
 }

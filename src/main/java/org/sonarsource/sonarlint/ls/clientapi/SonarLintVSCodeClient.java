@@ -32,6 +32,7 @@ import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSma
 import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
 import org.sonarsource.sonarlint.core.commons.http.HttpClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -42,10 +43,12 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   private SettingsManager settingsManager;
   private final ApacheHttpClientProvider httpClientProvider;
   private SmartNotifications smartNotifications;
+  private final RequestsHandlerServer server;
 
-  public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, ApacheHttpClientProvider httpClientProvider) {
+  public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, ApacheHttpClientProvider httpClientProvider, RequestsHandlerServer server) {
     this.client = client;
     this.httpClientProvider = httpClientProvider;
+    this.server = server;
   }
 
   @Override
@@ -96,18 +99,19 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   @Override
   public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.host.GetHostInfoResponse> getHostInfo() {
-    throw new UnsupportedOperationException();
+    return CompletableFuture.completedFuture(server.getHostInfo());
   }
 
   @Override
   public void showHotspot(org.sonarsource.sonarlint.core.clientapi.client.hotspot.ShowHotspotParams params) {
-    throw new UnsupportedOperationException();
+    client.showHotspot(params.getHotspotDetails());
   }
 
   @Override
   public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionResponse>
   assistCreatingConnection(org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams params) {
-    throw new UnsupportedOperationException();
+    server.showHotspotHandleUnknownServer(params.getServerUrl());
+    return CompletableFuture.failedFuture(new UnsupportedOperationException());
   }
 
   @Override
