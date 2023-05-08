@@ -36,9 +36,9 @@ import org.sonarsource.sonarlint.core.clientapi.backend.rules.EffectiveRuleParam
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleParamDefinitionDto;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
+import org.sonarsource.sonarlint.core.clientapi.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
-import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspotDetails;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
 public interface SonarLintExtendedLanguageClient extends LanguageClient {
@@ -61,17 +61,17 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/openConnectionSettings")
   void openConnectionSettings(boolean isSonarCloud);
 
+  @JsonNotification("sonarlint/assistCreatingConnection")
+  void assistCreatingConnection(CreateConnectionParams params);
+
   @JsonNotification("sonarlint/showRuleDescription")
   void showRuleDescription(ShowRuleDescriptionParams params);
 
   @JsonNotification("sonarlint/showHotspot")
-  void showHotspot(ServerHotspotDetails hotspot);
+  void showHotspot(HotspotDetailsDto hotspot);
 
   @JsonNotification("sonarlint/showIssueOrHotspot")
   void showIssueOrHotspot(ShowAllLocationsCommand.Param params);
-
-  @JsonNotification("sonarlint/submitToken")
-  void submitToken(String token);
 
   @JsonRequest("sonarlint/isIgnoredByScm")
   CompletableFuture<Boolean> isIgnoredByScm(String fileUri);
@@ -408,6 +408,25 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     @Override
     public int hashCode() {
       return Objects.hash(name, description, defaultValue);
+    }
+  }
+
+  class CreateConnectionParams {
+    private final boolean isSonarCloud;
+
+    private final String serverUrl;
+
+    public CreateConnectionParams(boolean isSonarCloud, String serverUrl) {
+      this.isSonarCloud = isSonarCloud;
+      this.serverUrl = serverUrl;
+    }
+
+    public boolean isSonarCloud() {
+      return isSonarCloud;
+    }
+
+    public String getServerUrl() {
+      return serverUrl;
     }
   }
 

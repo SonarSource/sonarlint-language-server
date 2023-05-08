@@ -19,21 +19,43 @@
  */
 package org.sonarsource.sonarlint.ls.connected.api;
 
+import java.util.List;
 import javax.annotation.Nullable;
+import org.eclipse.lsp4j.MessageActionItem;
+import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.sonarsource.sonarlint.core.clientapi.client.host.GetHostInfoResponse;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 
 public class RequestsHandlerServer {
-  private String ideName;
+  private final SonarLintExtendedLanguageClient client;
   private String clientVersion;
   private String workspaceName;
 
-  public void initialize(String ideName, String clientVersion, @Nullable String workspaceName) {
-    this.ideName = ideName;
+  public RequestsHandlerServer(SonarLintExtendedLanguageClient client) {
+    this.client = client;
+  }
+
+  public void initialize(String clientVersion, @Nullable String workspaceName) {
     this.clientVersion = clientVersion;
     this.workspaceName = workspaceName == null ? "(no open folder)" : workspaceName;
   }
 
   public GetHostInfoResponse getHostInfo() {
     return new GetHostInfoResponse(this.clientVersion + " - " + this.workspaceName);
+  }
+
+  public void showHotspotHandleUnknownServer(String url) {
+    var params = new ShowMessageRequestParams();
+    params.setMessage("To display Security Hotspots, you need to configure a connection to SonarQube (" + url + ") in the settings");
+    params.setType(MessageType.Error);
+    var createConnectionAction = new MessageActionItem("Create Connection");
+    params.setActions(List.of(createConnectionAction));
+    client.showMessageRequest(params)
+      .thenAccept(action -> {
+        if (createConnectionAction.equals(action)) {
+          client.assistCreatingConnection(new SonarLintExtendedLanguageClient.CreateConnectionParams(false, url));
+        }
+      });
   }
 }

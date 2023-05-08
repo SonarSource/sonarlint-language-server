@@ -93,7 +93,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
-import org.sonarsource.sonarlint.core.serverapi.hotspot.ServerHotspotDetails;
+import org.sonarsource.sonarlint.core.clientapi.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.ServerMain;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -439,15 +439,11 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public void showHotspot(ServerHotspotDetails h) {
+    public void showHotspot(HotspotDetailsDto h) {
     }
 
     @Override
     public void showIssueOrHotspot(ShowAllLocationsCommand.Param params) {
-    }
-
-    @Override
-    public void submitToken(String token) {
     }
 
     @Override
@@ -478,6 +474,10 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void openConnectionSettings(boolean isSonarCloud) {
+    }
+
+    @Override
+    public void assistCreatingConnection(CreateConnectionParams params) {
     }
 
     @Override

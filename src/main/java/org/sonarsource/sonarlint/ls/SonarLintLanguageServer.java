@@ -214,7 +214,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.notebookDiagnosticPublisher.setOpenNotebooksCache(openNotebooksCache);
     this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache, securityHotspotsCache, openNotebooksCache);
     this.progressManager = new ProgressManager(client);
-    var vsCodeClient = new SonarLintVSCodeClient(client, httpClientProvider);
+    this.requestsHandlerServer = new RequestsHandlerServer(client);
+    var vsCodeClient = new SonarLintVSCodeClient(client, httpClientProvider, requestsHandlerServer);
     this.backendServiceFacade = new BackendServiceFacade(new SonarLintBackendImpl(vsCodeClient));
     this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, httpClientProvider, backendServiceFacade);
@@ -254,7 +255,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.serverSentEventsHandler = new ServerSentEventsHandler(bindingManager, taintVulnerabilitiesCache,
       taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager);
     bindingManager.setServerSentEventsHandler(serverSentEventsHandler);
-    this.requestsHandlerServer = new RequestsHandlerServer();
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager, serverSynchronizer);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
     this.workspaceFoldersManager.addListener(this.branchManager);
@@ -314,7 +314,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       analysisScheduler.initialize();
       diagnosticPublisher.initialize(firstSecretDetected);
 
-      requestsHandlerServer.initialize(appName, clientVersion, workspaceName);
+      requestsHandlerServer.initialize(clientVersion, workspaceName);
       telemetry.initialize(productKey, telemetryStorage, productName, productVersion, ideVersion, platform, architecture, additionalAttributes);
 
       var c = new ServerCapabilities();
