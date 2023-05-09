@@ -91,6 +91,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.hotspot.HotspotDetailsDto;
@@ -478,6 +479,10 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void assistCreatingConnection(CreateConnectionParams params) {
+    }
+
+    @Override
+    public void assistBinding(AssistBindingParams params) {
     }
 
     @Override

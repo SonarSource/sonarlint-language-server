@@ -24,6 +24,7 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
+import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.host.GetHostInfoResponse;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 
@@ -55,6 +56,23 @@ public class RequestsHandlerServer {
       .thenAccept(action -> {
         if (createConnectionAction.equals(action)) {
           client.assistCreatingConnection(new SonarLintExtendedLanguageClient.CreateConnectionParams(false, url));
+        }
+      });
+  }
+
+  public void showHotspotHandleNoBinding(AssistBindingParams assistBindingParams) {
+    var connectionId = assistBindingParams.getConnectionId();
+    var projectKey = assistBindingParams.getProjectKey();
+    var messageRequestParams = new ShowMessageRequestParams();
+    messageRequestParams.setMessage("To display Security Hotspots, you need to configure a project binding to '"
+      + projectKey + "' on connection (" + connectionId + ")");
+    messageRequestParams.setType(MessageType.Error);
+    var configureBindingAction = new MessageActionItem("Configure Binding");
+    messageRequestParams.setActions(List.of(configureBindingAction));
+    client.showMessageRequest(messageRequestParams)
+      .thenAccept(action -> {
+        if (configureBindingAction.equals(action)) {
+          client.assistBinding(assistBindingParams);
         }
       });
   }

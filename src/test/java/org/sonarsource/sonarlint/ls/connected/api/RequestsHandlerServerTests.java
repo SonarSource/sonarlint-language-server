@@ -26,6 +26,7 @@ import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -110,6 +111,53 @@ class RequestsHandlerServerTests {
 
     assertThat(createConnectionParams.getServerUrl()).isEqualTo(serverUrl);
     assertThat(createConnectionParams.isSonarCloud()).isFalse();
+  }
 
+  @Test
+  void shouldDisplayNotificationOnShowHotspotNoBindingCallsClientMethod() {
+    underTest.initialize(clientVersion, workspaceName);
+    var connectionId = "test";
+    var projectKey = "sonarlint-language-server";
+    var expectedMessage = "To display Security Hotspots, you need to configure a project binding to '"
+      + projectKey + "' on connection (" + connectionId + ")";
+    var expectedType = MessageType.Error;
+    var expectedActions = List.of(new MessageActionItem("Configure Binding"));
+    var assistBindingParams = new AssistBindingParams(connectionId, projectKey);
+
+    var expectedParams = new ShowMessageRequestParams();
+    expectedParams.setMessage(expectedMessage);
+    expectedParams.setActions(expectedActions);
+    expectedParams.setType(expectedType);
+
+    when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(expectedActions.get(0)));
+
+    underTest.showHotspotHandleNoBinding(assistBindingParams);
+
+    verify(client).showMessageRequest(expectedParams);
+    verify(client).assistBinding(assistBindingParams);
+  }
+
+  @Test
+  void shouldDisplayNotificationOnShowHotspotNoBinding() {
+    underTest.initialize(clientVersion, workspaceName);
+    var connectionId = "test";
+    var projectKey = "sonarlint-language-server";
+    var expectedMessage = "To display Security Hotspots, you need to configure a project binding to '"
+      + projectKey + "' on connection (" + connectionId + ")";
+    var expectedType = MessageType.Error;
+    var expectedActions = List.of(new MessageActionItem("Configure Binding"));
+    var assistBindingParams = new AssistBindingParams(connectionId, projectKey);
+
+    var expectedParams = new ShowMessageRequestParams();
+    expectedParams.setMessage(expectedMessage);
+    expectedParams.setActions(expectedActions);
+    expectedParams.setType(expectedType);
+
+    when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(null));
+
+    underTest.showHotspotHandleNoBinding(assistBindingParams);
+
+    verify(client).showMessageRequest(expectedParams);
+    verify(client, never()).assistCreatingConnection(any(SonarLintExtendedLanguageClient.CreateConnectionParams.class));
   }
 }

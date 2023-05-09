@@ -117,7 +117,8 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   @Override
   public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingResponse>
   assistBinding(org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams params) {
-    throw new UnsupportedOperationException();
+    server.showHotspotHandleNoBinding(params);
+    return CompletableFuture.failedFuture(new UnsupportedOperationException());
   }
 
   @Override
