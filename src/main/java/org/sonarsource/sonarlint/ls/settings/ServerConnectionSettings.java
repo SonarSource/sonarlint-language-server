@@ -81,7 +81,7 @@ public class ServerConnectionSettings {
   }
 
   public boolean isSonarCloudAlias() {
-    return List.of(SONARCLOUD_ALIAS).contains(serverUrl);
+    return isSonarCloudAlias(serverUrl);
   }
 
   public static boolean isSonarCloudAlias(String serverUrl) {

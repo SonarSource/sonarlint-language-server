@@ -123,7 +123,7 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void shouldThrowForSuggestBinding() {
+  void shouldSuggestBinding() {
     var suggestions = new HashMap<String, List<BindingSuggestionDto>>();
     suggestions.put("key", Collections.emptyList());
     var params = new SuggestBindingParams(suggestions);
@@ -135,11 +135,6 @@ class SonarLintVSCodeClientTests {
   @Test
   void shouldThrowForShowMessage() {
     assertThrows(UnsupportedOperationException.class, () -> underTest.showMessage(mock(ShowMessageParams.class)));
-  }
-
-  @Test
-  void shouldThrowForAssistBinding() {
-    assertThrows(UnsupportedOperationException.class, () -> underTest.assistBinding(mock(AssistBindingParams.class)));
   }
 
   @Test
@@ -263,6 +258,15 @@ class SonarLintVSCodeClientTests {
     var assistCreatingConnectionParams = new AssistCreatingConnectionParams("http://localhost:9000");
     var future = underTest.assistCreatingConnection(assistCreatingConnectionParams);
     verify(server).showHotspotHandleUnknownServer(assistCreatingConnectionParams.getServerUrl());
+    assertThat(future).isNotCompleted();
+  }
+
+  @Test
+  void assistBindingShouldCallServerMethod() {
+    var assistBindingParams = new AssistBindingParams("connectionId", "projectKey");
+    var future = underTest.assistBinding(assistBindingParams);
+
+    verify(server).showHotspotHandleNoBinding(assistBindingParams);
     assertThat(future).isNotCompleted();
   }
 }
