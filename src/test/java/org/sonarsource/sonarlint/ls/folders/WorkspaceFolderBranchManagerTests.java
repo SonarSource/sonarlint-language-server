@@ -34,13 +34,12 @@ import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBranches;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
-import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
-import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
-import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
+import org.sonarsource.sonarlint.ls.util.Utils;
 import testutils.ImmediateExecutorService;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,14 +53,15 @@ class WorkspaceFolderBranchManagerTests {
 
   private SonarLintExtendedLanguageClient client;
   private ProjectBindingManager bindingManager;
+  private BackendServiceFacade backendServiceFacade;
   private WorkspaceFolderBranchManager underTest;
 
   @BeforeEach
   void setUp() {
     client = mock(SonarLintExtendedLanguageClient.class);
     bindingManager = mock(ProjectBindingManager.class);
-    ServerSynchronizer serverSynchronizer = new ServerSynchronizer(client, new ProgressManager(client), bindingManager, mock(AnalysisScheduler.class));
-    underTest = new WorkspaceFolderBranchManager(client, bindingManager, serverSynchronizer, new ImmediateExecutorService());
+    backendServiceFacade = mock(BackendServiceFacade.class);
+    underTest = new WorkspaceFolderBranchManager(client, bindingManager, backendServiceFacade, new ImmediateExecutorService());
   }
 
   @Test
@@ -149,8 +149,7 @@ class WorkspaceFolderBranchManagerTests {
 
     underTest.didBranchNameChange(folderUri, "branchName");
 
-    verify(engine).syncServerIssues(any(), any(), eq(projectKey), eq("branchName"), any());
-    verify(engine).syncServerTaintIssues(any(), any(), eq(projectKey), eq("branchName"), any());
+    verify(backendServiceFacade).notifyBackendOnBranchChanged(folderUri.toString(), "branchName");
   }
 
   private void createAndCheckoutBranch(Path gitProjectBasedir, String currentBranchName) throws IOException, GitAPIException {

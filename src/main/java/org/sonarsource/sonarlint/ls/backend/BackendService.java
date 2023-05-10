@@ -34,6 +34,7 @@ import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFil
 import org.sonarsource.sonarlint.core.clientapi.backend.authentication.HelpGenerateUserTokenParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.authentication.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.branch.DidChangeActiveSonarProjectBranchParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.DidUpdateBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
@@ -165,6 +166,11 @@ public class BackendService {
 
   public CompletableFuture<GetBindingSuggestionsResponse> getBindingSuggestion(GetBindingSuggestionParams params) {
     return initializedBackend().getBindingService().getBindingSuggestions(params);
+  }
+
+  public void notifyBackendOnBranchChanged(String folderUri, String newBranchName) {
+    var params = new DidChangeActiveSonarProjectBranchParams(folderUri, newBranchName);
+    initializedBackend().getSonarProjectBranchService().didChangeActiveSonarProjectBranch(params);
   }
 
   public CompletableFuture<HelpGenerateUserTokenResponse> helpGenerateUserToken(HelpGenerateUserTokenParams params) {

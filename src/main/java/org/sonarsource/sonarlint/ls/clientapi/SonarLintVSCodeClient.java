@@ -32,6 +32,7 @@ import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSma
 import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
 import org.sonarsource.sonarlint.core.commons.http.HttpClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
@@ -44,6 +45,7 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   private final ApacheHttpClientProvider httpClientProvider;
   private SmartNotifications smartNotifications;
   private final RequestsHandlerServer server;
+  private ProjectBindingManager bindingManager;
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, ApacheHttpClientProvider httpClientProvider, RequestsHandlerServer server) {
     this.client = client;
@@ -123,22 +125,28 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   @Override
   public CompletableFuture<Void> startProgress(StartProgressParams startProgressParams) {
-    throw new UnsupportedOperationException();
+    // no-op
+    return CompletableFuture.completedFuture(null);
   }
 
   @Override
   public void reportProgress(ReportProgressParams reportProgressParams) {
-    throw new UnsupportedOperationException();
+    // no-op
   }
 
   @Override
   public void didSynchronizeConfigurationScopes(DidSynchronizeConfigurationScopeParams didSynchronizeConfigurationScopeParams) {
-    throw new UnsupportedOperationException();
+    bindingManager.updateAllTaintIssues();
   }
 
   public void setSettingsManager(SettingsManager settingsManager) {
     this.settingsManager = settingsManager;
   }
+
+  public void setBindingManager(ProjectBindingManager bindingManager) {
+    this.bindingManager = bindingManager;
+  }
+
 
   public void setSmartNotifications(SmartNotifications smartNotifications) {
     this.smartNotifications = smartNotifications;

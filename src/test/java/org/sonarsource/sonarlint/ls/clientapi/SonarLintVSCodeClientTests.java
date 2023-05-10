@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,7 @@ import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressPar
 import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
 import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
@@ -69,12 +71,14 @@ class SonarLintVSCodeClientTests {
   SonarLintVSCodeClient underTest;
 
   RequestsHandlerServer server = mock(RequestsHandlerServer.class);
+  ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
 
   @BeforeEach
   public void setup() {
     underTest = new SonarLintVSCodeClient(client, httpClientProvider, server);
     underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);
+    underTest.setBindingManager(bindingManager);
   }
 
   @Test
@@ -191,19 +195,15 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void shouldThrowForStartProgress() {
-    assertThrows(UnsupportedOperationException.class, () -> underTest.startProgress(mock(StartProgressParams.class)));
+  void shouldReturnEmptyFutureForStartProgress() throws ExecutionException, InterruptedException {
+    assertThat(underTest.startProgress(mock(StartProgressParams.class)).get()).isNull();
   }
 
   @Test
-  void shouldThrowForReportProgress() {
-    assertThrows(UnsupportedOperationException.class, () -> underTest.reportProgress(mock(ReportProgressParams.class)));
-  }
+  void shouldUpdateAllTaintIssuesForDidSynchronizeConfigurationScopes() {
+      underTest.didSynchronizeConfigurationScopes(mock(DidSynchronizeConfigurationScopeParams.class));
 
-  @Test
-  void shouldThrowForDidSynchronizeConfigurationScopes() {
-    assertThrows(UnsupportedOperationException.class, () ->
-      underTest.didSynchronizeConfigurationScopes(mock(DidSynchronizeConfigurationScopeParams.class)));
+      verify(bindingManager).updateAllTaintIssues();
   }
 
   @Test

@@ -160,7 +160,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     setShowVerboseLogs(client.globalSettings, true);
     setShowAnalyzerLogs(client.globalSettings, true);
     addSonarQubeConnection(client.globalSettings, CONNECTION_ID, mockWebServerExtension.url("/"), "xxxxx");
-    String folderUri = folder1BaseDir.toUri().toString();
+    var folderUri = folder1BaseDir.toUri().toString();
     bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
     client.readyForTestsLatch = new CountDownLatch(1);
   }
@@ -382,34 +382,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(future).isCompletedExceptionally());
   }
 
-//  @Test
-//  void shouldGetTokenServerPath() throws ExecutionException, InterruptedException {
-//    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.7\", \"id\": \"xzy\"}");
-//    var serverUrl = mockWebServerExtension.url("");
-//    var cleanUrl = stripTrailingSlash(serverUrl);
-//    var params = new SonarLintExtendedLanguageServer.GenerateTokenParams(cleanUrl);
-//
-//    var result = lsProxy.generateToken(params);
-//    var actual = result.get();
-//
-//    assertThat(actual.getServerUrl())
-//      // Local port range is dynamic in range [64120-64130]
-//      .startsWith(cleanUrl + "/sonarlint/auth?ideName=SonarLint+LS+Medium+tests&port=641");
-//  }
-//
-//  @Test
-//  void shouldGetTokenServerPathOldVersion() throws ExecutionException, InterruptedException {
-//    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.6\", \"id\": \"xzy\"}");
-//    var serverUrl = mockWebServerExtension.url("");
-//    var cleanUrl = stripTrailingSlash(serverUrl);
-//    var params = new SonarLintExtendedLanguageServer.GenerateTokenParams(cleanUrl);
-//
-//    var result = lsProxy.generateToken(params);
-//    var actual = result.get();
-//
-//    assertThat(actual.getServerUrl()).isEqualTo(cleanUrl + "/account/security");
-//  }
-
   @Test
   void shouldReturnErrorForInvalidUrl() {
     var params = new SonarLintExtendedLanguageServer.GenerateTokenParams("invalid/url");
@@ -465,13 +437,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     assertThat(result.isSupported()).isFalse();
     assertThat(result.getReason()).isEqualTo("The provided configuration scope does not exist: notBound");
-  }
-
-  private String stripTrailingSlash(String url) {
-    if (url.endsWith("/")) {
-      return url.substring(0, url.length() - 1);
-    }
-    return url;
   }
 
   private void mockNoIssuesNoHotspotsForProject() {
