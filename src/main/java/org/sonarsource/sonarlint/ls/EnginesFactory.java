@@ -70,6 +70,7 @@ public class EnginesFactory {
 
   private static final Language[] CONNECTED_ADDITIONAL_LANGUAGES = {
     Language.APEX,
+    Language.COBOL,
     Language.PLSQL
   };
 
