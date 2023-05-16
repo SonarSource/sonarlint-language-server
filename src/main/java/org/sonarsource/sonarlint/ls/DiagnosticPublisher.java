@@ -44,7 +44,7 @@ import static org.sonarsource.sonarlint.ls.util.Utils.severity;
 public class DiagnosticPublisher {
 
   static final String SONARLINT_SOURCE = "sonarlint";
-  static final String SONARQUBE_SOURCE = "sonarqube";
+  static final String REMOTE_SOURCE = "remote";
 
   public static final String ITEM_LOCATION = "location";
   public static final String ITEM_FLOW = "flow";
@@ -71,7 +71,7 @@ public class DiagnosticPublisher {
   }
 
   public void publishDiagnostics(URI f, boolean onlyHotspots) {
-    if(openNotebooksCache.isNotebook(f)) {
+    if (openNotebooksCache.isNotebook(f)) {
       return;
     }
     if (!onlyHotspots) {
@@ -108,7 +108,7 @@ public class DiagnosticPublisher {
       var delegatedIssue = (DelegatingIssue) issue;
       var isKnown = delegatedIssue.getServerIssueKey() != null;
       var isHotspot = delegatedIssue.getType() == RuleType.SECURITY_HOTSPOT;
-      diagnostic.setSource(isKnown && isHotspot ? SONARQUBE_SOURCE : SONARLINT_SOURCE);
+      diagnostic.setSource(isKnown && isHotspot ? REMOTE_SOURCE : SONARLINT_SOURCE);
     } else {
       diagnostic.setSource(SONARLINT_SOURCE);
     }
