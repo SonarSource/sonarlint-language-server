@@ -37,7 +37,6 @@ import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
 import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.progress.ProgressFacade;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
@@ -168,15 +167,6 @@ public class ServerSynchronizer {
     engine.syncServerIssues(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKey, branchName, progressMonitor);
     engine.syncServerTaintIssues(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKey, branchName, progressMonitor);
     engine.downloadAllServerHotspots(paramsAndHttpClient.getEndpointParams(), paramsAndHttpClient.getHttpClient(), projectKey, branchName, progressMonitor);
-  }
-
-  public void syncIssues(ProjectBindingWrapper binding, String branchName) {
-    var connectionId = binding.getConnectionId();
-    var paramsAndHttpClient = bindingManager.getServerConfigurationFor(connectionId);
-    if (paramsAndHttpClient == null) {
-      return;
-    }
-    syncIssuesForBranch(binding.getEngine(), paramsAndHttpClient, binding.getBinding().projectKey(), branchName, null);
   }
 
   public void shutdown() {

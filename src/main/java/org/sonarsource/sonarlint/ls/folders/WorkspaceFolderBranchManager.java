@@ -32,9 +32,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.branch.GitUtils;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
-import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleListener {
@@ -44,18 +44,20 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
   private final Map<URI, Optional<String>> referenceBranchNameByFolderUri = new ConcurrentHashMap<>();
   private final SonarLintExtendedLanguageClient client;
   private final ProjectBindingManager bindingManager;
-  private final ServerSynchronizer serverSynchronizer;
   private final ExecutorService executorService;
+  private final BackendServiceFacade backendServiceFacade;
 
-  public WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager, ServerSynchronizer serverSynchronizer) {
-    this(client, bindingManager, serverSynchronizer, Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Branch Manager", false)));
+  public WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager,
+    BackendServiceFacade backendServiceFacade) {
+    this(client, bindingManager, backendServiceFacade,
+      Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Branch Manager", false)));
   }
 
-  WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager, ServerSynchronizer serverSynchronizer,
-    ExecutorService executorService) {
+  WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager,
+    BackendServiceFacade backendServiceFacade, ExecutorService executorService) {
     this.client = client;
     this.bindingManager = bindingManager;
-    this.serverSynchronizer = serverSynchronizer;
+    this.backendServiceFacade = backendServiceFacade;
     this.executorService = executorService;
   }
 
@@ -89,7 +91,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
         if (electedBranchName == null) {
           electedBranchName = serverBranches.getMainBranchName();
         }
-        serverSynchronizer.syncIssues(binding, electedBranchName);
+        backendServiceFacade.notifyBackendOnBranchChanged(folderUri.toString(), electedBranchName);
       }
       client.setReferenceBranchNameForFolder(SonarLintExtendedLanguageClient.ReferenceBranchForFolder.of(folderUri.toString(), electedBranchName));
       referenceBranchNameByFolderUri.put(folderUri, Optional.ofNullable(electedBranchName));

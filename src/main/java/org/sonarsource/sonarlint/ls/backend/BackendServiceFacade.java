@@ -114,8 +114,8 @@ public class BackendServiceFacade {
       true,
       initParams.getStandaloneRuleConfigByKey(),
       true,
-      false,
-      false
+      true,
+      true
     );
   }
 
@@ -173,5 +173,9 @@ public class BackendServiceFacade {
 
   public void initialize(Map<String, ServerConnectionSettings> serverConnections) {
     initOnce(serverConnections);
+  }
+
+  public void notifyBackendOnBranchChanged(String folderUri, String newBranchName) {
+    backend.notifyBackendOnBranchChanged(folderUri, newBranchName);
   }
 }

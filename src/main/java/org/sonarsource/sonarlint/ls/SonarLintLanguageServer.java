@@ -230,6 +230,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, globalLogOutput,
       taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, openNotebooksCache);
+    vsCodeClient.setBindingManager(bindingManager);
     this.settingsManager.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(httpClientProvider, settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager, backendServiceFacade);
     this.settingsManager.addListener(telemetry);
@@ -256,7 +257,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.serverSentEventsHandler = new ServerSentEventsHandler(bindingManager, taintVulnerabilitiesCache,
       taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager);
     bindingManager.setServerSentEventsHandler(serverSentEventsHandler);
-    this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager, serverSynchronizer);
+    this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager, backendServiceFacade);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
     this.workspaceFoldersManager.addListener(this.branchManager);
     this.workspaceFoldersManager.setBindingManager(bindingManager);
