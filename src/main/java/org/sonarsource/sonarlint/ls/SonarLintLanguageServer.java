@@ -230,6 +230,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, globalLogOutput,
       taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, openNotebooksCache);
+    this.settingsManager.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(httpClientProvider, settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager, backendServiceFacade);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);

@@ -52,9 +52,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SettingsManagerTests {
@@ -131,7 +133,7 @@ class SettingsManagerTests {
   private SonarLintExtendedLanguageClient client;
 
   @BeforeEach
-  void prepare() throws ExecutionException, InterruptedException {
+  void prepare() {
     foldersManager = mock(WorkspaceFoldersManager.class);
     bindingManager = mock(ProjectBindingManager.class);
     client = mock(SonarLintExtendedLanguageClient.class);
@@ -141,6 +143,7 @@ class SettingsManagerTests {
     when(backendFacade.getInitParams()).thenReturn(new BackendInitParams());
     when(backendFacade.getBackendService()).thenReturn(backend);
     underTest = new SettingsManager(client, foldersManager, mock(ApacheHttpClientProvider.class), new ImmediateExecutorService(), backendFacade);
+    underTest.setBindingManager(bindingManager);
     underTest = spy(underTest);
   }
 
@@ -600,6 +603,118 @@ class SettingsManagerTests {
     folderWrapper.getSettings();
     assertThat(logTester.logs(Level.ERROR))
       .contains("Workspace folder is not in local filesystem, analysis not supported.");
+  }
+
+  @Test
+  void should_subscribe_for_server_events_when_binding_a_folder() {
+    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
+    when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    mockConfigurationRequest(FOLDER_URI, FULL_SAMPLE_CONFIG);
+
+    underTest.didChangeConfiguration();
+
+    verify(bindingManager).subscribeForServerEvents("sq1");
+  }
+
+  @Test
+  void should_resubscribe_for_server_events_when_changing_project_key() {
+    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
+    when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    mockConfigurationRequest(FOLDER_URI, FULL_SAMPLE_CONFIG);
+
+    underTest.didChangeConfiguration();
+
+    verify(bindingManager).subscribeForServerEvents("sq1");
+    clearInvocations(bindingManager);
+
+    var newConfiguration = "{\n" +
+      "  \"connectedMode\": {\n" +
+      "    \"connections\": {\n" +
+      "      \"sonarqube\": [\n" +
+      "        { \"connectionId\": \"sq1\", \"serverUrl\": \"https://mysonarqube1.mycompany.org\", \"token\": \"ab12\" }" +
+      "      ]\n" +
+      "    },\n" +
+      "    \"project\": {\n" +
+      "      \"connectionId\": \"sq1\",\n" +
+      "      \"projectKey\": \"myProject2\"\n" +
+      "    }\n" +
+      "  }\n" +
+      "}";
+    mockConfigurationRequest(null, newConfiguration);
+    mockConfigurationRequest(FOLDER_URI, newConfiguration);
+
+    underTest.didChangeConfiguration();
+
+    verify(bindingManager).subscribeForServerEvents("sq1");
+  }
+
+  @Test
+  void should_resubscribe_for_server_events_when_changing_url() {
+    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
+    when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    mockConfigurationRequest(FOLDER_URI, FULL_SAMPLE_CONFIG);
+
+    underTest.didChangeConfiguration();
+
+    verify(bindingManager).subscribeForServerEvents("sq1");
+    clearInvocations(bindingManager);
+
+    var newConfiguration = "{\n" +
+      "  \"connectedMode\": {\n" +
+      "    \"connections\": {\n" +
+      "      \"sonarqube\": [\n" +
+      "        { \"connectionId\": \"sq1\", \"serverUrl\": \"https://mysonarqube2.mycompany.org\", \"token\": \"ab12\" }" +
+      "      ]\n" +
+      "    },\n" +
+      "    \"project\": {\n" +
+      "      \"connectionId\": \"sq1\",\n" +
+      "      \"projectKey\": \"myProject\"\n" +
+      "    }\n" +
+      "  }\n" +
+      "}";
+    mockConfigurationRequest(null, newConfiguration);
+    mockConfigurationRequest(FOLDER_URI, newConfiguration);
+
+    underTest.didChangeConfiguration();
+
+    verify(bindingManager).subscribeForServerEvents("sq1");
+  }
+
+  @Test
+  void should_resubscribe_for_server_events_when_changing_token() {
+    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
+    when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    mockConfigurationRequest(FOLDER_URI, FULL_SAMPLE_CONFIG);
+
+    underTest.didChangeConfiguration();
+
+    verify(bindingManager).subscribeForServerEvents("sq1");
+    clearInvocations(bindingManager);
+
+    // should not react on change of the token in settings file, only to change of server URL
+    var newConfiguration = "{\n" +
+      "  \"connectedMode\": {\n" +
+      "    \"connections\": {\n" +
+      "      \"sonarqube\": [\n" +
+      "        { \"connectionId\": \"sq1\", \"serverUrl\": \"https://mysonarqube11.mycompany.org\", \"token\": \"ab12\" }" +
+      "      ]\n" +
+      "    },\n" +
+      "    \"project\": {\n" +
+      "      \"connectionId\": \"sq1\",\n" +
+      "      \"projectKey\": \"myProject\"\n" +
+      "    }\n" +
+      "  }\n" +
+      "}";
+    mockConfigurationRequest(null, newConfiguration);
+    mockConfigurationRequest(FOLDER_URI, newConfiguration);
+
+    underTest.didChangeConfiguration();
+
+    verify(bindingManager).subscribeForServerEvents("sq1");
   }
 
   @Test
