@@ -757,6 +757,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(FolderUriParams params) {
     var folderUri = params.getFolderUri();
     return backendServiceFacade.checkLocalDetectionSupported(folderUri)
-      .thenApply(response -> new CheckLocalDetectionSupportedResponse(response.isSupported(), response.getReason()));
+      .thenApply(response -> new CheckLocalDetectionSupportedResponse(response.isSupported(), response.getReason()))
+      .exceptionally(exception -> new CheckLocalDetectionSupportedResponse(false, exception.getCause().getMessage()));
   }
 }
