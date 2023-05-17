@@ -464,7 +464,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var result = lsProxy.checkLocalDetectionSupported(new SonarLintExtendedLanguageServer.FolderUriParams("notBound")).get();
 
     assertThat(result.isSupported()).isFalse();
-    assertThat(result.getReason()).isEqualTo("The project is not bound to SonarQube 9.7+");
+    assertThat(result.getReason()).isEqualTo("The provided configuration scope does not exist: notBound");
   }
 
   private String stripTrailingSlash(String url) {
