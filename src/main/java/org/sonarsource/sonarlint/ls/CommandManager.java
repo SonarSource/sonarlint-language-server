@@ -53,6 +53,7 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
+import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.EffectiveRuleDetailsDto;
@@ -101,7 +102,7 @@ public class CommandManager {
     SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS);
   // Client side
   static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
-
+  static final String MUTE_ISSUE = "SonarLint.MuteIssue";
   static final String SONARLINT_ACTION_PREFIX = "SonarLint: ";
 
   private final SonarLintExtendedLanguageClient client;
@@ -173,6 +174,8 @@ public class CommandManager {
         newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, List.of(ruleKey)));
         codeActions.add(Either.forRight(newCodeAction));
       });
+      var muteIssueAction = createMuteIssueCodeAction(diagnostic, ruleKey);
+      codeActions.add(Either.forRight(muteIssueAction));
     }
     addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey, ruleContextKey);
     issueForDiagnostic.ifPresent(versionedIssue -> addShowAllLocationsCodeAction(versionedIssue, codeActions, diagnostic, ruleKey, isNotebookCellUri));
@@ -180,6 +183,17 @@ public class CommandManager {
       var titleDeactivate = String.format("Deactivate rule '%s'", ruleKey);
       codeActions.add(newQuickFix(diagnostic, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, List.of(ruleKey)));
     }
+  }
+
+  @NotNull
+  private static CodeAction createMuteIssueCodeAction(Diagnostic diagnostic, String ruleKey) {
+    var muteIssueAction = new CodeAction(String.format(SONARLINT_ACTION_PREFIX + "Mute this issue violating rule '%s'", ruleKey));
+//    muteIssueAction.setKind(CodeActionKind.Refactor); //displayed in MoreActions, not visible in Problems view
+//    muteIssueAction.setKind(CodeActionKind.Source); //not displayed in MoreActions, not visible in Problems view
+    muteIssueAction.setKind(CodeActionKind.Empty); // displayed in MoreActions, not visible in Problems view
+    muteIssueAction.setDiagnostics(List.of(diagnostic));
+    muteIssueAction.setCommand(new Command("Mute this issue", MUTE_ISSUE));
+    return muteIssueAction;
   }
 
   private static void addShowAllLocationsCodeAction(IssuesCache.VersionedIssue versionedIssue,
@@ -207,7 +221,8 @@ public class CommandManager {
       var serverUrl = settingsManager.getCurrentSettings().getServerConnections().get(actualBinding.getConnectionId()).getServerUrl();
       var projectKey = UrlUtils.urlEncode(actualBinding.getBinding().projectKey());
       var issueUrl = String.format("%s/project/issues?id=%s&issues=%s&open=%s", serverUrl, projectKey, issue.getKey(), issue.getKey());
-      codeActions.add(newQuickFix(diagnostic, title, SONARLINT_BROWSE_TAINT_VULNERABILITY, List.of(issueUrl)));
+      var newQuickFix = newQuickFix(diagnostic, title, SONARLINT_BROWSE_TAINT_VULNERABILITY, List.of(issueUrl));
+      codeActions.add(newQuickFix);
     });
   }
 

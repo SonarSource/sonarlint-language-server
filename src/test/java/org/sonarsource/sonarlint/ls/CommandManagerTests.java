@@ -189,6 +189,7 @@ class CommandManagerTests {
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsOnly(
+        "SonarLint: Mute this issue violating rule 'XYZ'",
         "SonarLint: Open description of rule 'XYZ'",
         "SonarLint: Deactivate rule 'XYZ'");
   }
@@ -223,6 +224,7 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
         "SonarLint: Fix the issue!",
+        "SonarLint: Mute this issue violating rule 'XYZ'",
         "SonarLint: Open description of rule 'XYZ'",
         "SonarLint: Deactivate rule 'XYZ'");
   }
@@ -260,6 +262,7 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
         "SonarLint: Fix the issue!",
+        "SonarLint: Mute this issue violating rule 'XYZ'",
         "SonarLint: Open description of rule 'XYZ'",
         "SonarLint: Deactivate rule 'XYZ'");
   }
@@ -350,6 +353,7 @@ class CommandManagerTests {
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsOnly(
+        "SonarLint: Mute this issue violating rule 'XYZ'",
         "SonarLint: Open description of rule 'XYZ'",
         "SonarLint: Deactivate rule 'XYZ'",
         "SonarLint: Show all locations for issue 'XYZ'");

@@ -295,8 +295,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var d = client.getDiagnostics(uri).get(0);
     var codeActionParams = new CodeActionParams(new TextDocumentIdentifier(uri), d.getRange(), new CodeActionContext(List.of(d)));
     var codeActions = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
-    assertThat(codeActions).hasSize(3);
-    var allLocationsAction = codeActions.get(1).getRight();
+    assertThat(codeActions).hasSize(4);
+    var allLocationsAction = codeActions.get(2).getRight();
     assertThat(allLocationsAction.getCommand().getCommand()).isEqualTo(ShowAllLocationsCommand.ID);
     assertThat(allLocationsAction.getCommand().getArguments()).hasSize(1);
   }
