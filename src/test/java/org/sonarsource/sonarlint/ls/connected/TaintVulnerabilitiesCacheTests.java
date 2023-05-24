@@ -20,6 +20,8 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
@@ -156,6 +158,24 @@ class TaintVulnerabilitiesCacheTests {
 
     assertThat(underTest.getTaintVulnerabilityByKey(issueKey)).hasValue(issue);
     assertThat(underTest.getTaintVulnerabilityByKey("otherKey")).isEmpty();
+  }
+
+  @Test
+  void testRemoveTaintIssue() throws Exception {
+    var uri = new URI("/");
+    var issue = mock(TaintIssue.class);
+    var issueKey = "key";
+    when(issue.getKey()).thenReturn(issueKey);
+    when(issue.getRuleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
+    when(issue.isResolved()).thenReturn(false);
+
+    underTest.getTaintVulnerabilitiesPerFile().put(uri,  new ArrayList<>(Arrays.asList(issue)));
+    assertThat(underTest.getTaintVulnerabilityByKey(issueKey)).hasValue(issue);
+
+    underTest.removeTaintIssue(uri.toString(), issueKey);
+    assertThat(underTest.getTaintVulnerabilityByKey(issueKey)).isEmpty();
+
+
   }
 
 }

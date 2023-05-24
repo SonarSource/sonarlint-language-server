@@ -68,6 +68,7 @@ import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -275,6 +276,9 @@ class CommandManagerTests {
     when(serverSettings.getServerUrl()).thenReturn("https://some.server.url");
     when(mockWorkspacesettings.getServerConnections()).thenReturn(Collections.singletonMap(connId, serverSettings));
     when(mockSettingsManager.getCurrentSettings()).thenReturn(mockWorkspacesettings);
+    var folderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
+    when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, taintSource, "ruleKey");
 
@@ -295,7 +299,8 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
       "SonarLint: Open description of rule 'ruleKey'",
       "SonarLint: Show all locations for taint vulnerability 'ruleKey'",
-      "SonarLint: Open taint vulnerability 'ruleKey' on 'connectionId'");
+      "SonarLint: Open taint vulnerability 'ruleKey' on 'connectionId'",
+      "SonarLint: Resolve this issue violating rule 'ruleKey'");
 
     assertThat(codeActions.get(0).getRight().getCommand().getArguments()).containsOnly(
       "ruleKey",
@@ -588,5 +593,40 @@ class CommandManagerTests {
 
     underTest.executeCommand(params, NOP_CANCEL_TOKEN);
     verify(mockTelemetry).addQuickFixAppliedForRule(fakeRule.getAsString());
+  }
+
+  @Test
+  void hasResloveIssueActionForBoundProject(){
+    var folderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
+    when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
+    var connId = "connectionId";
+    when(mockBinding.getConnectionId()).thenReturn(connId);
+    when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
+    var fileUri = URI.create(FILE_URI);
+
+    var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
+
+    var issue = mock(DelegatingIssue.class);
+    var versionedIssue = new VersionedIssue(issue, 1);
+    when(issue.getServerIssueKey()).thenReturn("qwerty");
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionedIssue));
+
+    var textEdit = mock(TextEdit.class);
+    when(textEdit.newText()).thenReturn("");
+    when(textEdit.range()).thenReturn(new TextRange(1, 0, 1, 1));
+    var edit = mock(ClientInputFileEdit.class);
+    when(edit.textEdits()).thenReturn(List.of(textEdit));
+    var target = mock(ClientInputFile.class);
+    when(target.uri()).thenReturn(fileUri);
+    when(edit.target()).thenReturn(target);
+
+    var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
+      new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
+
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle())
+      .containsExactly(
+        "SonarLint: Resolve this issue violating rule 'XYZ'",
+        "SonarLint: Open description of rule 'XYZ'");
   }
 }

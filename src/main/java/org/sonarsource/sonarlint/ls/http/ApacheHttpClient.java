@@ -183,6 +183,13 @@ public class ApacheHttpClient implements HttpClient {
   }
 
   @Override
+  public CompletableFuture<Response> postAsync(String url, String contentType, String body) {
+    var httpPost = SimpleRequestBuilder.post(url);
+    httpPost.setBody(body, ContentType.parse(contentType));
+    return executeAsync(httpPost);
+  }
+
+  @Override
   public Response delete(String url, String contentType, String body) {
     var httpDelete = SimpleRequestBuilder.delete(url);
     httpDelete.setBody(body, ContentType.parse(contentType));

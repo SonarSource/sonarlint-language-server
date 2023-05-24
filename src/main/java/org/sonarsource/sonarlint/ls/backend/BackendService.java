@@ -46,6 +46,8 @@ import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarQ
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckLocalDetectionSupportedParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckLocalDetectionSupportedResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.AddIssueCommentParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.ChangeIssueStatusParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionParams;
@@ -166,6 +168,14 @@ public class BackendService {
 
   public CompletableFuture<GetBindingSuggestionsResponse> getBindingSuggestion(GetBindingSuggestionParams params) {
     return initializedBackend().getBindingService().getBindingSuggestions(params);
+  }
+
+  public CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params){
+    return initializedBackend().getIssueService().changeStatus(params);
+  }
+
+  public CompletableFuture<Void> addIssueComment(AddIssueCommentParams params){
+    return initializedBackend().getIssueService().addComment(params);
   }
 
   public void notifyBackendOnBranchChanged(String folderUri, String newBranchName) {

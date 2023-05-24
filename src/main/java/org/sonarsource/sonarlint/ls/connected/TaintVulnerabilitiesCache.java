@@ -107,6 +107,15 @@ public class TaintVulnerabilitiesCache {
     taintVulnerabilitiesPerFile.put(fileUri, taintIssues);
   }
 
+  public void removeTaintIssue(String fileUriStr, String key) {
+    var fileUri = URI.create(fileUriStr);
+    var issues = taintVulnerabilitiesPerFile.get(fileUri);
+    if (issues != null) {
+      var issueToRemove = issues.stream().filter(taintIssue -> taintIssue.getKey().equals(key)).findFirst();
+      issueToRemove.ifPresent(issues::remove);
+    }
+  }
+
   public Set<URI> getAllFilesWithTaintIssues(){
     return taintVulnerabilitiesPerFile.keySet();
   }

@@ -180,9 +180,10 @@ public class DiagnosticPublisher {
       .map(DiagnosticPublisher::convert);
     var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostics(newUri);
 
-    p.setDiagnostics(Stream.concat(localDiagnostics, taintDiagnostics)
+    var diagnosticList = Stream.concat(localDiagnostics, taintDiagnostics)
       .sorted(DiagnosticPublisher.byLineNumber())
-      .collect(toList()));
+      .collect(toList());
+    p.setDiagnostics(diagnosticList);
     p.setUri(newUri.toString());
 
     return p;
