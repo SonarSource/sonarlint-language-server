@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.Diagnostic;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
+import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 
 public class IssuesCache {
@@ -86,6 +87,24 @@ public class IssuesCache {
     } else {
       issuesPerIdPerFileURI.remove(versionedOpenFile.getUri());
     }
+  }
+
+  public void removeIssueWithServerKey(String fileUriStr, String key) {
+    var fileUri = URI.create(fileUriStr);
+    var issues = issuesPerIdPerFileURI.get(fileUri);
+    if (issues != null) {
+      var first = issues.entrySet()
+        .stream()
+        .filter(issueEntry -> isDelegatingIssueWithKey(key, issueEntry))
+        .map(Map.Entry::getKey)
+        .findFirst();
+      first.ifPresent(issues::remove);
+    }
+  }
+
+  private static boolean isDelegatingIssueWithKey(String key, Map.Entry<String, VersionedIssue> issueEntry) {
+    return issueEntry.getValue().getIssue() instanceof DelegatingIssue
+      && (key.equals(((DelegatingIssue) issueEntry.getValue().getIssue()).getServerIssueKey()));
   }
 
   public Optional<VersionedIssue> getIssueForDiagnostic(URI fileUri, Diagnostic d) {

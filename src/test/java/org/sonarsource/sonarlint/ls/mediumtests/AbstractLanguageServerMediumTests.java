@@ -245,12 +245,6 @@ public abstract class AbstractLanguageServerMediumTests {
     verifyConfigurationChangeOnClient();
   }
 
-  @AfterEach
-  void cleanupTempDirs() throws Exception {
-    instanceTempDirs.forEach(tempDirPath -> FileUtils.deleteQuietly(tempDirPath.toFile()));
-    instanceTempDirs.clear();
-  }
-
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
     // do nothing by default
   }
@@ -273,6 +267,8 @@ public abstract class AbstractLanguageServerMediumTests {
     event.setRemoved(foldersToRemove.stream().map(WorkspaceFolder::new).collect(Collectors.toList()));
     changeWorkspaceFoldersParams.setEvent(event);
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(changeWorkspaceFoldersParams);
+    instanceTempDirs.forEach(tempDirPath -> FileUtils.deleteQuietly(tempDirPath.toFile()));
+    instanceTempDirs.clear();
   }
 
   protected static void assertLogContains(String msg) {
@@ -324,6 +320,7 @@ public abstract class AbstractLanguageServerMediumTests {
       diagnostics.clear();
       hotspots.clear();
       logs.clear();
+      shownMessages.clear();
       globalSettings = new HashMap<>();
       setDisableTelemetry(globalSettings, true);
       folderSettings.clear();

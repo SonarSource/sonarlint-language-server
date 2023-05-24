@@ -65,6 +65,10 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterEachCall
 
   @Override
   public void afterEach(ExtensionContext context) throws Exception {
+    stopServer();
+  }
+
+  public void stopServer() throws IOException {
     server.shutdown();
   }
 

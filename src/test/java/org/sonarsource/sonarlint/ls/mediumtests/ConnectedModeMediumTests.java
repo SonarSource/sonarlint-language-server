@@ -33,6 +33,8 @@ import org.apache.commons.io.FileUtils;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.ExecuteCommandParams;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.jetbrains.annotations.NotNull;
@@ -44,6 +46,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonar.api.utils.DateUtils;
 import org.sonar.scanner.protocol.Constants.Severity;
 import org.sonar.scanner.protocol.input.ScannerInput;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.AddIssueCommentParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.IssueStatus;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
@@ -581,6 +585,90 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     assertThat(result.isSupported()).isFalse();
     assertThat(result.getReason()).isEqualTo("The provided configuration scope does not exist: notBound");
+  }
+
+  @Test
+  void shouldChangeIssueStatus() {
+    var issueKey = "qwerty";
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/batch/issues?key=myProject%3AchangeIssueStatus.py&branch=master",
+      ScannerInput.ServerIssue.newBuilder()
+        .setKey(issueKey)
+        .setRuleRepository("python")
+        .setRuleKey("S1481")
+        .setType(RuleType.BUG.name())
+        .setMsg("Remove the unused local variable \"toto\".")
+        .setSeverity(Severity.INFO)
+        .setManualSeverity(true)
+        .setPath("changeIssueStatus.py")
+        .setLine(2)
+        .build());
+
+    mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
+
+    var fileUri = folder1BaseDir.resolve("changeIssueStatus.py").toUri().toString();
+    var content = "def foo():\n  toto = 0\n  plouf = 0\n";
+    didOpen(fileUri, "python", content);
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+        Diagnostic::getSeverity)
+      .containsExactlyInAnyOrder(
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Hint),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+
+    lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
+      IssueStatus.FALSE_POSITIVE, fileUri, false));
+
+    //Now we expect that one issue is resolved
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+        Diagnostic::getSeverity)
+      .containsExactlyInAnyOrder(
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+  }
+
+  @Test
+  void shouldNotChangeStatusWhenServerIsDown() throws IOException {
+    var fileUri = folder1BaseDir.resolve("changeIssueStatus.py").toUri().toString();
+    var issueKey = "qwerty";
+    var content = "def foo():\n  toto = 0\n  plouf = 0\n";
+    didOpen(fileUri, "python", content);
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri)).isNotEmpty());
+
+    mockWebServerExtension.stopServer();
+    lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
+      IssueStatus.FALSE_POSITIVE, fileUri, false));
+
+    awaitUntilAsserted(() -> assertThat(client.shownMessages).isNotEmpty());
+    assertThat(client.shownMessages)
+      .contains(new MessageParams(MessageType.Error, "Could not change status for the issue. Look at the SonarLint output for details."));
+  }
+
+  @Test
+  void shouldAddIssueComment() {
+    var fileUri = folder1BaseDir.resolve("changeIssueStatus.py").toUri().toString();
+    var content = "def foo():\n  toto = 0\n  plouf = 0\n";
+    didOpen(fileUri, "python", content);
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri)).isNotEmpty());
+
+    mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
+    lsProxy.addIssueComment(new AddIssueCommentParams(folder1BaseDir.toUri().toString(), "qwerty", "Meaningful and informative comment"));
+    awaitUntilAsserted(() -> assertThat(client.shownMessages).isNotEmpty());
+    assertThat(client.shownMessages).contains(new MessageParams(MessageType.Info, "New comment was added"));
+  }
+
+  @Test
+  void shouldNotAddIssueCommentWhenServerIsDown() throws IOException {
+    var fileUri = folder1BaseDir.resolve("changeIssueStatus.py").toUri().toString();
+    var content = "def foo():\n  toto = 0\n  plouf = 0\n";
+    didOpen(fileUri, "python", content);
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri)).isNotEmpty());
+
+    mockWebServerExtension.stopServer();
+    lsProxy.addIssueComment(new AddIssueCommentParams(folder1BaseDir.toUri().toString(), "qwerty", "Meaningful and informative comment"));
+    awaitUntilAsserted(() -> assertThat(client.shownMessages).isNotEmpty());
+    assertThat(client.shownMessages).contains(new MessageParams(MessageType.Error, "Could not add a new issue comment. Look at the SonarLint output for details."));
   }
 
   private void mockNoIssuesNoHotspotsForProject() {

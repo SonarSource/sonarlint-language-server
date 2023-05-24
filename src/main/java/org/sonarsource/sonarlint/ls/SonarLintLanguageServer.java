@@ -27,7 +27,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -91,6 +90,7 @@ import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFil
 import org.sonarsource.sonarlint.core.clientapi.backend.authentication.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.AddIssueCommentParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
@@ -733,7 +733,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   private void runScan(ScanFolderForHotspotsParams params) {
     var filesToAnalyze = params.getDocuments().stream()
-      .map(d -> new VersionedOpenFile(URI.create(d.getUri()), d.getLanguageId(), d.getVersion(), d.getText()))
+      .map(d -> new VersionedOpenFile(create(d.getUri()), d.getLanguageId(), d.getVersion(), d.getText()))
       .collect(Collectors.toList());
     analysisScheduler.scanForHotspotsInFiles(filesToAnalyze);
   }
@@ -752,6 +752,39 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<GetBindingSuggestionsResponse> getBindingSuggestion(GetBindingSuggestionParams params) {
     return backendServiceFacade.getBackendService().getBindingSuggestion(params);
+  }
+
+  @Override
+  public CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params) {
+    var coreParams = new org.sonarsource.sonarlint.core.clientapi.backend.issue.ChangeIssueStatusParams(
+      params.getConfigurationScopeId(), params.getIssueKey(), params.getNewStatus(), params.isTaintIssue());
+    return backendServiceFacade.getBackendService().changeIssueStatus(coreParams).thenAccept(nothing -> {
+      var key = params.getIssueKey();
+      if (params.isTaintIssue()) {
+        taintVulnerabilitiesCache.removeTaintIssue(params.getFileUri(), key);
+      } else {
+        issuesCache.removeIssueWithServerKey(params.getFileUri(), key);
+      }
+
+      diagnosticPublisher.publishDiagnostics(create(params.getFileUri()), false);
+      client.showMessage(new MessageParams(MessageType.Info, "Issue status was changed"));
+    }).exceptionally(t -> {
+      lsLogOutput.error("Error changing issue status", t);
+      client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the issue. Look at the SonarLint output for details."));
+      return null;
+    });
+  }
+
+  @Override
+  public CompletableFuture<Void> addIssueComment(AddIssueCommentParams params) {
+    return backendServiceFacade.getBackendService().addIssueComment(params)
+      .thenAccept(nothing -> client.showMessage(new MessageParams(MessageType.Info, "New comment was added")))
+      .exceptionally(t -> {
+        lsLogOutput.error("Error adding issue comment", t);
+        client.showMessage(new MessageParams(MessageType.Error, "Could not add a new issue comment. Look at the SonarLint output for " +
+          "details."));
+        return null;
+      });
   }
 
   @Override

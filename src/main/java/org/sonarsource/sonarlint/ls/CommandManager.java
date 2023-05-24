@@ -53,6 +53,7 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
+import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionResponse;
@@ -65,6 +66,7 @@ import org.sonarsource.sonarlint.core.serverapi.UrlUtils;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
+import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
@@ -99,7 +101,7 @@ public class CommandManager {
     SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS);
   // Client side
   static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
-
+  static final String RESOLVE_ISSUE = "SonarLint.ResolveIssue";
   static final String SONARLINT_ACTION_PREFIX = "SonarLint: ";
 
   private final SonarLintExtendedLanguageClient client;
@@ -147,6 +149,7 @@ public class CommandManager {
     CodeActionParams params, CancelChecker cancelToken) {
     var uri = create(params.getTextDocument().getUri());
     var binding = bindingManager.getBinding(uri);
+
     var ruleKey = diagnostic.getCode().getLeft();
     var isNotebookCellUri = openNotebooksCache.isKnownCellUri(uri);
     var ruleContextKey = "";
@@ -156,6 +159,7 @@ public class CommandManager {
     Optional<VersionedOpenNotebook> versionedOpenNotebook = isNotebookCellUri ?
       openNotebooksCache.getFile(openNotebooksCache.getNotebookUriFromCellUri(uri)) :
       Optional.empty();
+    var hasBinding = binding.isPresent();
     if (issueForDiagnostic.isPresent()) {
       var versionedIssue = issueForDiagnostic.get();
       ruleContextKey = versionedIssue.getIssue().getRuleDescriptionContextKey().orElse("");
@@ -171,13 +175,30 @@ public class CommandManager {
         newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, List.of(ruleKey)));
         codeActions.add(Either.forRight(newCodeAction));
       });
+
+      if (hasBinding && versionedIssue.getIssue() instanceof DelegatingIssue) {
+        var serverIssueKey = ((DelegatingIssue) versionedIssue.getIssue()).getServerIssueKey();
+        var resolveIssueAction = createResolveIssueCodeAction(diagnostic, ruleKey, serverIssueKey, uri, false);
+        codeActions.add(Either.forRight(resolveIssueAction));
+      }
     }
     addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey, ruleContextKey);
     issueForDiagnostic.ifPresent(versionedIssue -> addShowAllLocationsCodeAction(versionedIssue, codeActions, diagnostic, ruleKey, isNotebookCellUri));
-    if (binding.isEmpty()) {
+    if (!hasBinding) {
       var titleDeactivate = String.format("Deactivate rule '%s'", ruleKey);
       codeActions.add(newQuickFix(diagnostic, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, List.of(ruleKey)));
     }
+  }
+
+  @NotNull
+  private CodeAction createResolveIssueCodeAction(Diagnostic diagnostic, String ruleKey, String serverIssueKey,  URI fileUri, boolean isTaintIssue) {
+    var workspace = workspaceFoldersManager.findFolderForFile(fileUri).orElseThrow(() -> new IllegalStateException("No workspace found"));
+    var workspaceUri = workspace.getUri();
+    var resolveIssueAction = new CodeAction(String.format(SONARLINT_ACTION_PREFIX + "Resolve this issue violating rule '%s'", ruleKey));
+    resolveIssueAction.setKind(CodeActionKind.QuickFix);
+    resolveIssueAction.setDiagnostics(List.of(diagnostic));
+    resolveIssueAction.setCommand(new Command("Resolve this issue", RESOLVE_ISSUE, List.of(workspaceUri.toString(), serverIssueKey, fileUri, isTaintIssue)));
+    return resolveIssueAction;
   }
 
   private static void addShowAllLocationsCodeAction(IssuesCache.VersionedIssue versionedIssue,
@@ -201,11 +222,13 @@ public class CommandManager {
         var titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", ruleKey);
         codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(issue.getKey(), actualBinding.getConnectionId())));
       }
+      var issueKey = issue.getKey();
       var title = String.format("Open taint vulnerability '%s' on '%s'", ruleKey, actualBinding.getConnectionId());
       var serverUrl = settingsManager.getCurrentSettings().getServerConnections().get(actualBinding.getConnectionId()).getServerUrl();
       var projectKey = UrlUtils.urlEncode(actualBinding.getBinding().projectKey());
       var issueUrl = String.format("%s/project/issues?id=%s&issues=%s&open=%s", serverUrl, projectKey, issue.getKey(), issue.getKey());
       codeActions.add(newQuickFix(diagnostic, title, SONARLINT_BROWSE_TAINT_VULNERABILITY, List.of(issueUrl)));
+      codeActions.add(Either.forRight(createResolveIssueCodeAction(diagnostic, ruleKey, issueKey, uri, true)));
     });
   }
 

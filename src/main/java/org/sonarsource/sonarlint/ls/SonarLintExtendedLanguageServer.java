@@ -35,6 +35,8 @@ import org.eclipse.xtext.xbase.lib.Pure;
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.authentication.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.AddIssueCommentParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.IssueStatus;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
 
 public interface SonarLintExtendedLanguageServer extends LanguageServer {
@@ -375,6 +377,48 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/getBindingSuggestion")
   CompletableFuture<GetBindingSuggestionsResponse> getBindingSuggestion(GetBindingSuggestionParams params);
+
+  class ChangeIssueStatusParams {
+    private final String configurationScopeId;
+    private final String issueKey;
+    private final IssueStatus newStatus;
+    private final String fileUri;
+    private final boolean isTaintIssue;
+
+    public ChangeIssueStatusParams(String configurationScopeId, String issueKey, IssueStatus newStatus, String fileUri, boolean isTaintIssue) {
+      this.configurationScopeId = configurationScopeId;
+      this.issueKey = issueKey;
+      this.newStatus = newStatus;
+      this.fileUri = fileUri;
+      this.isTaintIssue = isTaintIssue;
+    }
+
+    public String getConfigurationScopeId() {
+      return configurationScopeId;
+    }
+
+    public String getIssueKey() {
+      return issueKey;
+    }
+
+    public IssueStatus getNewStatus() {
+      return newStatus;
+    }
+
+    public String getFileUri() {
+      return fileUri;
+    }
+
+    public boolean isTaintIssue() {
+      return isTaintIssue;
+    }
+  }
+
+  @JsonNotification("sonarlint/changeIssueStatus")
+  CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params);
+
+  @JsonNotification("sonarlint/addIssueComment")
+  CompletableFuture<Void> addIssueComment(AddIssueCommentParams params);
 
   class CheckLocalDetectionSupportedResponse {
     boolean isSupported;
