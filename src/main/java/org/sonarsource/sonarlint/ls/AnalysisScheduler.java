@@ -52,7 +52,6 @@ import static java.util.stream.Collectors.toSet;
 
 /**
  * Responsible to manage all analyses scheduling
- *
  */
 public class AnalysisScheduler implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
 
@@ -102,6 +101,10 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   }
 
   public void didChange(URI fileUri) {
+    eventMap.put(fileUri, System.currentTimeMillis());
+  }
+
+  public void didReceiveHotspotEvent(URI fileUri) {
     eventMap.put(fileUri, System.currentTimeMillis());
   }
 
@@ -174,11 +177,11 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     private final boolean shouldShowProgress;
 
     private AnalysisParams(
-        List<VersionedOpenFile> files,
-        boolean shouldFetchServerIssues,
-        boolean shouldKeepHotspotsOnly,
-        boolean shouldShowProgress
-      ) {
+      List<VersionedOpenFile> files,
+      boolean shouldFetchServerIssues,
+      boolean shouldKeepHotspotsOnly,
+      boolean shouldShowProgress
+    ) {
       this.files = List.copyOf(files);
       this.shouldFetchServerIssues = shouldFetchServerIssues;
       this.shouldKeepHotspotsOnly = shouldKeepHotspotsOnly;

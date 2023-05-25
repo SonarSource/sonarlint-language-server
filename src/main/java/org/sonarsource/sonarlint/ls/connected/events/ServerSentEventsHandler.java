@@ -19,10 +19,14 @@
  */
 package org.sonarsource.sonarlint.ls.connected.events;
 
+import java.net.URI;
+import java.util.Optional;
 import org.sonarsource.sonarlint.core.serverapi.push.IssueChangedEvent;
 import org.sonarsource.sonarlint.core.serverapi.push.ServerEvent;
+import org.sonarsource.sonarlint.core.serverapi.push.ServerHotspotEvent;
 import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityClosedEvent;
 import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
+import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.notifications.TaintVulnerabilityRaisedNotification;
@@ -37,14 +41,17 @@ public class ServerSentEventsHandler implements ServerSentEventsHandlerService {
   private final TaintVulnerabilityRaisedNotification taintVulnerabilityRaisedNotification;
   private final SettingsManager settingsManager;
   private final WorkspaceFoldersManager workspaceFoldersManager;
+  private final AnalysisScheduler analysisScheduler;
 
   public ServerSentEventsHandler(ProjectBindingManager projectBindingManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
-    TaintVulnerabilityRaisedNotification taintVulnerabilityRaisedNotification, SettingsManager settingsManager, WorkspaceFoldersManager workspaceFoldersManager) {
+    TaintVulnerabilityRaisedNotification taintVulnerabilityRaisedNotification, SettingsManager settingsManager,
+    WorkspaceFoldersManager workspaceFoldersManager, AnalysisScheduler analysisScheduler) {
     this.projectBindingManager = projectBindingManager;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.taintVulnerabilityRaisedNotification = taintVulnerabilityRaisedNotification;
     this.settingsManager = settingsManager;
     this.workspaceFoldersManager = workspaceFoldersManager;
+    this.analysisScheduler = analysisScheduler;
   }
 
   @Override
@@ -55,7 +62,15 @@ public class ServerSentEventsHandler implements ServerSentEventsHandlerService {
       event instanceof IssueChangedEvent) {
       taintVulnerabilitiesCache.getAllFilesWithTaintIssues()
         .forEach(projectBindingManager::updateTaintIssueCacheFromStorageForFile);
+    } else if (event instanceof ServerHotspotEvent) {
+      var fileUri = getFileUriFromEvent((ServerHotspotEvent) event);
+      fileUri.ifPresent(analysisScheduler::didReceiveHotspotEvent);
     }
+  }
+
+  private Optional<URI> getFileUriFromEvent(ServerHotspotEvent event) {
+    var serverPath = event.getFilePath();
+    return projectBindingManager.serverPathToFileUri(serverPath);
   }
 
   @Override
