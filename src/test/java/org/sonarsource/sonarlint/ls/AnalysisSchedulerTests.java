@@ -108,6 +108,19 @@ class AnalysisSchedulerTests {
   }
 
   @Test
+  void shouldScheduleAnalysisWithoutIssueRefreshOnHotspotEventReceived() {
+    var file = openFilesCache.didOpen(JS_FILE_URI, "javascript", "alert();", 1);
+    underTest.didReceiveHotspotEvent(file.getUri());
+
+    ArgumentCaptor<AnalysisTask> taskCaptor = ArgumentCaptor.forClass(AnalysisTask.class);
+    verify(taskExecutor, timeout(1000)).run(taskCaptor.capture());
+
+    AnalysisTask submittedTask = taskCaptor.getValue();
+    assertThat(submittedTask.getFilesToAnalyze()).containsExactly(file);
+    assertThat(submittedTask.shouldFetchServerIssues()).isFalse();
+  }
+
+  @Test
   void shouldBatchAnalysisOnChange() {
     var file1 = openFilesCache.didOpen(JS_FILE_URI, "javascript", "alert();", 1);
     var file2 = openFilesCache.didOpen(URI.create("file://foo2.js"), "javascript", "alert();", 1);

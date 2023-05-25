@@ -255,7 +255,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, openNotebooksCache);
     this.taintVulnerabilityRaisedNotification = new TaintVulnerabilityRaisedNotification(client, commandManager);
     this.serverSentEventsHandler = new ServerSentEventsHandler(bindingManager, taintVulnerabilitiesCache,
-      taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager);
+      taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager, analysisScheduler);
     bindingManager.setServerSentEventsHandler(serverSentEventsHandler);
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager, backendServiceFacade);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
