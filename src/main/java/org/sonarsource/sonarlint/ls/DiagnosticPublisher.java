@@ -23,10 +23,12 @@ import java.net.URI;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.stream.Stream;
+import javax.annotation.Nullable;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
+import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
@@ -98,9 +100,40 @@ public class DiagnosticPublisher {
     diagnostic.setCode(issue.getRuleKey());
     diagnostic.setMessage(message(issue, ignoreSecondaryLocations));
     setSource(issue, diagnostic);
-    diagnostic.setData(entryKey);
+    diagnostic.setData(getData(issue, entryKey));
 
     return diagnostic;
+  }
+
+  public static class DiagnosticData {
+    String entryKey;
+    @Nullable
+    String serverIssueKey;
+    @Nullable
+    HotspotReviewStatus status;
+
+    public void setEntryKey(String entryKey) {
+      this.entryKey = entryKey;
+    }
+
+    public void setServerIssueKey(@Nullable String serverIssueKey) {
+      this.serverIssueKey = serverIssueKey;
+    }
+
+    public void setStatus(@Nullable HotspotReviewStatus status) {
+      this.status = status;
+    }
+  }
+
+  private static DiagnosticData getData(Issue issue, String entryKey) {
+    var data = new DiagnosticData();
+    if (issue instanceof DelegatingIssue && issue.getType() == RuleType.SECURITY_HOTSPOT) {
+      var delegatedIssue = (DelegatingIssue) issue;
+      data.setStatus(delegatedIssue.getReviewStatus());
+      data.setServerIssueKey(delegatedIssue.getServerIssueKey());
+    }
+    data.setEntryKey(entryKey);
+    return data;
   }
 
   public static void setSource(Issue issue, Diagnostic diagnostic) {

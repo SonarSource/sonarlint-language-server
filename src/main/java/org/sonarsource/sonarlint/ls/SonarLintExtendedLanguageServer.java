@@ -399,4 +399,9 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonRequest("sonarlint/checkLocalDetectionSupported")
   CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(FolderUriParams params);
 
+
+  @JsonRequest("sonarlint/getHotspotDetails")
+  CompletableFuture<SonarLintExtendedLanguageClient.ShowRuleDescriptionParams> getHotspotDetails(
+    SonarLintExtendedLanguageServer.ShowHotspotRuleDescriptionParams getHotspotDetailsParams);
+
 }

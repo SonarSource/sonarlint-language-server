@@ -22,13 +22,13 @@ package org.sonarsource.sonarlint.ls;
 import com.google.gson.JsonPrimitive;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -55,8 +55,6 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.EffectiveRuleDetailsDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.EffectiveRuleParamDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleDescriptionTabDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleMonolithicDescriptionDto;
@@ -278,21 +276,8 @@ public class CommandManager {
   }
 
   private void openRuleDescription(String fileUri, String ruleKey, String ruleContextKey) {
-    var workspaceFolder = Optional.of(fileUri)
-      .map(URI::create)
-      .map(workspaceFoldersManager::findFolderForFile)
-      .filter(Optional::isPresent)
-      .map(w -> w.get().getUri().toString())
-      .orElse(null);
-    backendServiceFacade.getEffectiveRuleDetails(workspaceFolder, ruleKey, ruleContextKey)
-      .thenAccept(detailsResponse -> showRuleDescription(ruleKey, detailsResponse.details(),
-        Collections.emptyList(), ruleContextKey))
-      .exceptionally(e -> {
-        var message = "Can't show rule details for unknown rule with key: " + ruleKey;
-        client.showMessage(new MessageParams(MessageType.Error, message));
-        SonarLintLogger.get().error(message, e);
-        return null;
-      });
+    getShowRuleDescriptionParams(fileUri, ruleKey, ruleContextKey)
+      .thenAccept(client::showRuleDescription);
   }
 
   private void openStandaloneRuleDescription(String ruleKey) {
@@ -306,14 +291,29 @@ public class CommandManager {
       });
   }
 
-  private void showRuleDescription(String ruleKey, EffectiveRuleDetailsDto ruleDetails, Collection<EffectiveRuleParamDto> paramDetails, String ruleContextKey) {
-    var ruleName = ruleDetails.getName();
-    var htmlDescription = getHtmlDescription(ruleDetails.getDescription());
-    var htmlDescriptionTabs = getHtmlDescriptionTabs(ruleDetails.getDescription(), ruleContextKey);
-    var type = ruleDetails.getType();
-    var severity = ruleDetails.getSeverity();
-    var languageKey = ruleDetails.getLanguage().getLanguageKey();
-    client.showRuleDescription(new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, htmlDescriptionTabs, type, languageKey, severity, paramDetails));
+  public CompletableFuture<ShowRuleDescriptionParams> getShowRuleDescriptionParams(String fileUri, String ruleKey, String ruleContextKey) {
+    var workspaceFolder = Optional.of(fileUri)
+      .map(URI::create)
+      .map(workspaceFoldersManager::findFolderForFile)
+      .filter(Optional::isPresent)
+      .map(w -> w.get().getUri().toString())
+      .orElse(null);
+
+    return backendServiceFacade.getEffectiveRuleDetails(workspaceFolder, ruleKey, ruleContextKey)
+      .thenApply(detailsResponse -> {
+        var ruleName = detailsResponse.details().getName();
+        var htmlDescription = getHtmlDescription(detailsResponse.details().getDescription());
+        var htmlDescriptionTabs = getHtmlDescriptionTabs(detailsResponse.details().getDescription(), ruleContextKey);
+        var type = detailsResponse.details().getType();
+        var severity = detailsResponse.details().getSeverity();
+        var languageKey = detailsResponse.details().getLanguage().getLanguageKey();
+        return new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, htmlDescriptionTabs, type, languageKey, severity, Collections.emptyList());
+      }).exceptionally(e -> {
+        var message = "Can't show rule details for unknown rule with key: " + ruleKey;
+        client.showMessage(new MessageParams(MessageType.Error, message));
+        SonarLintLogger.get().error(message, e);
+        return null;
+      });
   }
 
   private void showStandaloneRuleDescription(String ruleKey, GetStandaloneRuleDescriptionResponse ruleDetails) {

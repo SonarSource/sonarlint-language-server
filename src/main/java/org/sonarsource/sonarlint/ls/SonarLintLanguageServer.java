@@ -761,4 +761,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .thenApply(response -> new CheckLocalDetectionSupportedResponse(response.isSupported(), response.getReason()))
       .exceptionally(exception -> new CheckLocalDetectionSupportedResponse(false, exception.getCause().getMessage()));
   }
+
+  @Override
+  public CompletableFuture<SonarLintExtendedLanguageClient.ShowRuleDescriptionParams> getHotspotDetails(ShowHotspotRuleDescriptionParams params) {
+    var fileUri = params.fileUri;
+    var ruleKey = params.ruleKey;
+    var issue = securityHotspotsCache.get(create(fileUri)).get(params.getHotspotId());
+    var ruleContextKey = Objects.isNull(issue) ? "" : issue.getIssue().getRuleDescriptionContextKey().orElse("");
+    return commandManager.getShowRuleDescriptionParams(fileUri, ruleKey, ruleContextKey);
+  }
 }
