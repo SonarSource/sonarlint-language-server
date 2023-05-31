@@ -26,6 +26,7 @@ import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
+import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.TextRange;
@@ -37,6 +38,7 @@ public class DelegatingIssue implements Issue {
   private final RuleType type;
   private final String serverIssueKey;
   private final IssueSeverity severity;
+  private final HotspotReviewStatus reviewStatus;
 
   DelegatingIssue(Trackable<Issue> trackable) {
     var userSeverity = trackable.getSeverity();
@@ -44,6 +46,7 @@ public class DelegatingIssue implements Issue {
     this.severity = userSeverity != null ? userSeverity : issue.getSeverity();
     this.type = trackable.getType();
     this.serverIssueKey = trackable.getServerIssueKey();
+    this.reviewStatus = trackable.getReviewStatus();
   }
 
   @Override
@@ -126,5 +129,9 @@ public class DelegatingIssue implements Issue {
   @Override
   public Optional<VulnerabilityProbability> getVulnerabilityProbability() {
     return issue.getVulnerabilityProbability();
+  }
+
+  public HotspotReviewStatus getReviewStatus() {
+    return reviewStatus;
   }
 }
