@@ -123,6 +123,10 @@ public class DiagnosticPublisher {
     public void setStatus(@Nullable HotspotReviewStatus status) {
       this.status = status;
     }
+
+    public String getEntryKey() {
+      return entryKey;
+    }
   }
 
   private static DiagnosticData getData(Issue issue, String entryKey) {

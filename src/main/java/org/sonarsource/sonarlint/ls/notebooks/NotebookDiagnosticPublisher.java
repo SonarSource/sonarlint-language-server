@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
+import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.IssuesCache;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -68,15 +69,15 @@ public class NotebookDiagnosticPublisher {
       .map(entry -> Map.entry(entry.getKey(), versionedOpenNotebook.toCellIssue(entry.getValue().getIssue())))
       .map(NotebookDiagnosticPublisher::convertCellIssue)
       .collect(groupingBy(diagnostic -> {
-        var localIssue = localIssues.get(diagnostic.getData().toString());
+        var localIssue = localIssues.get(((DiagnosticPublisher.DiagnosticData) diagnostic.getData()).getEntryKey());
         var cellUri = URI.create("");
-        if(localIssue != null && localIssue.getIssue() != null && localIssue.getIssue().getStartLine() != null){
+        if (localIssue != null && localIssue.getIssue() != null && localIssue.getIssue().getStartLine() != null) {
           // Better to not publish any diagnostics than to publish for wrong location
           cellUri = versionedOpenNotebook.getCellUri(localIssue.getIssue().getStartLine()).orElse(URI.create(""));
         }
 
         var cellsWithIssues = notebookCellsWithIssues.get(uri);
-        if(cellsWithIssues != null && !cellsWithIssues.isEmpty()) {
+        if (cellsWithIssues != null && !cellsWithIssues.isEmpty()) {
           cellsWithIssues.add(cellUri);
         } else {
           var cells = new ArrayList<URI>();
@@ -104,7 +105,7 @@ public class NotebookDiagnosticPublisher {
     var versionedOpenNotebook = openNotebooksCache.getFile(notebookUri);
     var cellsWithIssues = notebookCellsWithIssues.getOrDefault(notebookUri, List.of());
     versionedOpenNotebook.ifPresent(notebook -> notebook.getCellUris().forEach(cellUri -> {
-      if(cellsWithIssues != null && !cellsWithIssues.contains(URI.create(cellUri))){
+      if (cellsWithIssues != null && !cellsWithIssues.contains(URI.create(cellUri))) {
         removeCellDiagnostics(URI.create(cellUri));
       }
     }));

@@ -19,7 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonObject;
 import java.net.URI;
 import java.util.Collection;
 import java.util.HashMap;
@@ -47,6 +47,7 @@ public class IssuesCache {
 
   /**
    * Keep only the entries for the given set of files
+   *
    * @param openFilesUri the set of file URIs to keep
    * @return the set of file URIs that were removed
    */
@@ -90,8 +91,8 @@ public class IssuesCache {
   public Optional<VersionedIssue> getIssueForDiagnostic(URI fileUri, Diagnostic d) {
     var issuesForFile = get(fileUri);
     return Optional.ofNullable(d.getData())
-      .map(JsonPrimitive.class::cast)
-      .map(JsonPrimitive::getAsString)
+      .map(JsonObject.class::cast)
+      .map(jsonObject -> jsonObject.get("entryKey").getAsString())
       .map(issuesForFile::get)
       .filter(Objects::nonNull);
   }
