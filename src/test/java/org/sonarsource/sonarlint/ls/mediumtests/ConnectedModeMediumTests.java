@@ -19,7 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonObject;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -537,7 +537,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder)).hasSize(1));
 
     var diagnostic = client.getHotspots(uriInFolder).get(0);
-    var hotspotId = ((JsonPrimitive) diagnostic.getData()).getAsString();
+    var hotspotId = ((JsonObject) diagnostic.getData()).get("entryKey").getAsString();
     var ruleKey = diagnostic.getCode().getLeft();
     var params = new SonarLintExtendedLanguageServer.ShowHotspotRuleDescriptionParams(ruleKey, hotspotId);
     params.setFileUri(uriInFolder);
@@ -558,6 +558,20 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var future = lsProxy.showHotspotLocations(testParams);
 
     awaitUntilAsserted(() -> assertThat(future.isDone()).isTrue());
+  }
+
+  @Test
+  void shouldReturnHotspotDetails() {
+    var testParams = new SonarLintExtendedLanguageServer.ShowHotspotRuleDescriptionParams("python:S930", "hotspotKey");
+    testParams.setFileUri(folder1BaseDir.resolve("hotspot.py").toUri().toString());
+
+    var result = lsProxy.getHotspotDetails(testParams);
+
+    awaitUntilAsserted(() -> {
+      assertTrue(result.isDone());
+      assertThat(result.get().getLanguageKey()).isEqualTo("py");
+      assertThat(result.get().getName()).isEqualTo("The number and name of arguments passed to a function should match its parameters");
+    });
   }
 
 

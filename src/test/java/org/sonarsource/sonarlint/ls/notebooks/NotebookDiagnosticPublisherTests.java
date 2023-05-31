@@ -36,6 +36,7 @@ import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.IssuesCache;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 
@@ -52,11 +53,13 @@ class NotebookDiagnosticPublisherTests {
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   IssuesCache issuesCache = mock(IssuesCache.class);
   OpenNotebooksCache openNotebooksCache = mock(OpenNotebooksCache.class);
+
   @BeforeEach
   void setup() {
     notebookDiagnosticPublisher = new NotebookDiagnosticPublisher(client, issuesCache);
     notebookDiagnosticPublisher.setOpenNotebooksCache(openNotebooksCache);
   }
+
   @Test
   void shouldConvertCellIssue() {
     DelegatingCellIssue issue = mock(DelegatingCellIssue.class);
@@ -77,8 +80,8 @@ class NotebookDiagnosticPublisherTests {
     var diagnostic = convertCellIssue(new AbstractMap.SimpleImmutableEntry<>(issueKey, issue));
 
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
-    assertThat(diagnostic.getRange().getStart().getLine()).isEqualTo(textRange.getStartLine() -1);
-    assertThat(diagnostic.getData()).hasToString(issueKey);
+    assertThat(diagnostic.getRange().getStart().getLine()).isEqualTo(textRange.getStartLine() - 1);
+    assertThat(((DiagnosticPublisher.DiagnosticData) diagnostic.getData()).getEntryKey()).isEqualTo(issueKey);
   }
 
   @Test
@@ -103,7 +106,7 @@ class NotebookDiagnosticPublisherTests {
     cell1.setText("cell1 line1\ncell1 line2\n");
 
     var cell2 = new TextDocumentItem();
-    cell2.setUri(notebookUri+ "#cell2");
+    cell2.setUri(notebookUri + "#cell2");
     cell2.setText("cell2 line1\ncell2 line2\n");
     var fakeNotebook = VersionedOpenNotebook.create(notebookUri, 1, List.of(cell1, cell2), mock(NotebookDiagnosticPublisher.class));
 
@@ -129,7 +132,7 @@ class NotebookDiagnosticPublisherTests {
     cell1.setText("cell1 line1\ncell1 line2\n");
 
     var cell2 = new TextDocumentItem();
-    cell2.setUri(notebookUri+ "#cell2");
+    cell2.setUri(notebookUri + "#cell2");
     cell2.setText("cell2 line1\ncell2 line2\n");
     var fakeNotebook = VersionedOpenNotebook.create(notebookUri, 1, List.of(cell1, cell2), mock(NotebookDiagnosticPublisher.class));
 
