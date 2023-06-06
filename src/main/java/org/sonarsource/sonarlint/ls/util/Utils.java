@@ -107,12 +107,7 @@ public class Utils {
     return nbItems == 1 ? singular : plural;
   }
 
-  public String [] getStringArray(List<String> strings) {
-    return (String []) strings.toArray();
-  }
-
   public static Range convert(Issue issue) {
-    Pattern.compile("(?=a)b");
     if (issue.getStartLine() == null) {
       return new Range(new Position(0, 0), new Position(0, 0));
     }
