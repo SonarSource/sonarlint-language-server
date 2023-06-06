@@ -49,7 +49,7 @@ public class IssuesCache {
   /**
    * Keep only the entries for the given set of files
    *
-   * @param openFilesUri the set of file URIs to keep
+   * @param openFiles the set of file URIs to keep
    * @return the set of file URIs that were removed
    */
   public Set<URI> keepOnly(Collection<VersionedOpenFile> openFiles) {
@@ -100,6 +100,19 @@ public class IssuesCache {
         .findFirst();
       first.ifPresent(issues::remove);
     }
+  }
+
+  public Optional<DelegatingIssue> findIssueByKey(String fileUriStr, String key) {
+    var fileUri = URI.create(fileUriStr);
+    var issues = issuesPerIdPerFileURI.get(fileUri);
+    if (issues != null) {
+      var first = issues.entrySet()
+        .stream()
+        .filter(issueEntry -> isDelegatingIssueWithKey(key, issueEntry))
+        .findFirst();
+      return first.map(issue -> (DelegatingIssue) issue.getValue().getIssue());
+    }
+    return Optional.empty();
   }
 
   private static boolean isDelegatingIssueWithKey(String key, Map.Entry<String, VersionedIssue> issueEntry) {

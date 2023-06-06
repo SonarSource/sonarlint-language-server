@@ -23,6 +23,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonSyntaxException;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
@@ -39,6 +40,8 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
+import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
 import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
@@ -189,5 +192,14 @@ public class Utils {
       textRange.getEndLine(),
       textRange.getEndLineOffset(),
       textRange.getHash());
+  }
+
+  public static HotspotStatus hotspotStatusOfTitle(String title) {
+    return Arrays.stream(HotspotStatus.values()).filter(hotspotStatus -> hotspotStatus.getTitle().equals(title)).findFirst()
+      .orElseThrow(() -> new IllegalArgumentException("There is no such title of the hotspot status: " + title));
+  }
+
+  public static HotspotStatus hotspotStatusValueOfHotspotReviewStatus(HotspotReviewStatus reviewStatus) {
+    return HotspotStatus.valueOf(reviewStatus.name());
   }
 }

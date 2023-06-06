@@ -89,6 +89,8 @@ import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFil
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.authentication.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckStatusChangePermittedParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.issue.AddIssueCommentParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
@@ -138,6 +140,8 @@ import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DE
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
+import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusOfTitle;
+import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusValueOfHotspotReviewStatus;
 
 public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer, WorkspaceService, TextDocumentService, NotebookDocumentService {
 
@@ -802,5 +806,50 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var issue = securityHotspotsCache.get(create(fileUri)).get(params.getHotspotId());
     var ruleContextKey = Objects.isNull(issue) ? "" : issue.getIssue().getRuleDescriptionContextKey().orElse("");
     return commandManager.getShowRuleDescriptionParams(fileUri, ruleKey, ruleContextKey);
+  }
+
+  @Override
+  public CompletableFuture<Void> changeHotspotStatus(ChangeHotspotStatusParams params) {
+    var workspace = workspaceFoldersManager.findFolderForFile(create(params.getFileUri()))
+      .orElseThrow(() -> new IllegalStateException("No workspace found"));
+    var workspaceUri = workspace.getUri();
+    var coreParams = new org.sonarsource.sonarlint.core.clientapi.backend.hotspot.ChangeHotspotStatusParams(
+      workspaceUri.toString(), params.getHotspotKey(), hotspotStatusOfTitle(params.getNewStatus()));
+    return backendServiceFacade.getBackendService().changeHotspotStatus(coreParams).thenAccept(nothing -> {
+      var key = params.getHotspotKey();
+      securityHotspotsCache.removeIssueWithServerKey(params.getFileUri(), key);
+      diagnosticPublisher.publishDiagnostics(create(params.getFileUri()), true);
+      client.showMessage(new MessageParams(MessageType.Info, "Hotspot status was successfully changed"));
+    }).exceptionally(t -> {
+      lsLogOutput.error("Error changing hotspot status", t);
+      client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarLint output for details."));
+      return null;
+    });
+  }
+
+  @Override
+  public CompletableFuture<GetAllowedHotspotStatusesResponse> getAllowedHotspotStatuses(GetAllowedHotspotStatusesParams params) {
+    var folderUri = params.getFolderUri();
+    var bindingOptional = bindingManager.getBinding(create(folderUri));
+    if (bindingOptional.isEmpty()) {
+      return CompletableFuture.completedFuture(null);
+    }
+    var connectionId = bindingOptional.get().getConnectionId();
+    var checkStatusChangePermittedParams = new CheckStatusChangePermittedParams(connectionId, params.getHotspotKey());
+    return backendServiceFacade.getBackendService().getAllowedHotspotStatuses(checkStatusChangePermittedParams).thenApply(r -> {
+        var delegatingIssue = securityHotspotsCache.findIssueByKey(params.getFileUri(), params.getHotspotKey());
+        var reviewStatus = delegatingIssue.get().getReviewStatus();
+        var statuses = r.getAllowedStatuses().stream().filter(s -> s != hotspotStatusValueOfHotspotReviewStatus(reviewStatus))
+          .map(HotspotStatus::getTitle).collect(Collectors.toList());
+        return new GetAllowedHotspotStatusesResponse(
+          r.isPermitted(),
+          r.getNotPermittedReason(),
+          statuses);
+      }
+    ).exceptionally(t -> {
+      lsLogOutput.error("Error changing hotspot status", t);
+      client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarLint output for details."));
+      return null;
+    });
   }
 }
