@@ -23,6 +23,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonSyntaxException;
 import java.net.URI;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
@@ -103,6 +105,10 @@ public class Utils {
 
   public static String pluralize(long nbItems, String singular, String plural) {
     return nbItems == 1 ? singular : plural;
+  }
+
+  public String [] getStringArray(List<String> strings) {
+    return (String []) strings.toArray();
   }
 
   public static Range convert(Issue issue) {
