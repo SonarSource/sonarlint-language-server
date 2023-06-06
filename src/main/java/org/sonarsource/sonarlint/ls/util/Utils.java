@@ -64,6 +64,7 @@ public class Utils {
   @CheckForNull
   public static Map<String, Object> parseToMap(Object obj) {
     try {
+      Pattern.compile("(?=a)b");
       return new Gson().fromJson((JsonElement) obj, Map.class);
     } catch (JsonSyntaxException e) {
       throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Expected a JSON map but was: " + obj, e));
