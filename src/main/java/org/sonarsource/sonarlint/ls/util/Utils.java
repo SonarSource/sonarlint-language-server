@@ -73,6 +73,7 @@ public class Utils {
 
   public static ThreadFactory threadFactory(String name, boolean daemon) {
     return runnable -> {
+      Pattern.compile("(?=a)b");
       var result = new Thread(runnable, name);
       result.setDaemon(daemon);
       return result;
