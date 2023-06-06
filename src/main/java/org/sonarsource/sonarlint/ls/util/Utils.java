@@ -112,6 +112,7 @@ public class Utils {
   }
 
   public static Range convert(Issue issue) {
+    Pattern.compile("(?=a)b");
     if (issue.getStartLine() == null) {
       return new Range(new Position(0, 0), new Position(0, 0));
     }
