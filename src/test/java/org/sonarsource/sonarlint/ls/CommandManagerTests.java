@@ -596,7 +596,7 @@ class CommandManagerTests {
   }
 
   @Test
-  void hasResloveIssueActionForBoundProject(){
+  void hasResolveIssueActionForBoundProject(){
     var folderWrapper = mock(WorkspaceFolderWrapper.class);
     when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
     when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
@@ -627,6 +627,39 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
         "SonarLint: Resolve this issue violating rule 'XYZ'",
+        "SonarLint: Open description of rule 'XYZ'");
+  }
+
+  @Test
+  void doesNotHaveResolveIssueActionForBoundProjectForIssueWithoutKey(){
+    var folderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
+    when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
+    var connId = "connectionId";
+    when(mockBinding.getConnectionId()).thenReturn(connId);
+    when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
+    var fileUri = URI.create(FILE_URI);
+
+    var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
+
+    var issue = mock(DelegatingIssue.class);
+    var versionedIssue = new VersionedIssue(issue, 1);
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionedIssue));
+
+    var textEdit = mock(TextEdit.class);
+    when(textEdit.newText()).thenReturn("");
+    when(textEdit.range()).thenReturn(new TextRange(1, 0, 1, 1));
+    var edit = mock(ClientInputFileEdit.class);
+    when(edit.textEdits()).thenReturn(List.of(textEdit));
+    var target = mock(ClientInputFile.class);
+    when(target.uri()).thenReturn(fileUri);
+    when(edit.target()).thenReturn(target);
+
+    var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
+      new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
+
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle())
+      .containsExactly(
         "SonarLint: Open description of rule 'XYZ'");
   }
 }

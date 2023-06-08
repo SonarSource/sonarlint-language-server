@@ -176,8 +176,9 @@ public class CommandManager {
         codeActions.add(Either.forRight(newCodeAction));
       });
 
-      if (hasBinding && versionedIssue.getIssue() instanceof DelegatingIssue) {
-        var serverIssueKey = ((DelegatingIssue) versionedIssue.getIssue()).getServerIssueKey();
+      var isDelegatingIssue = versionedIssue.getIssue() instanceof DelegatingIssue;
+      var serverIssueKey = isDelegatingIssue ? ((DelegatingIssue) versionedIssue.getIssue()).getServerIssueKey() : null;
+      if (hasBinding && serverIssueKey != null) {
         var resolveIssueAction = createResolveIssueCodeAction(diagnostic, ruleKey, serverIssueKey, uri, false);
         codeActions.add(Either.forRight(resolveIssueAction));
       }
