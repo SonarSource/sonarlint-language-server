@@ -813,11 +813,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var workspace = workspaceFoldersManager.findFolderForFile(create(params.getFileUri()))
       .orElseThrow(() -> new IllegalStateException("No workspace found"));
     var workspaceUri = workspace.getUri();
+    var hotspotStatus = hotspotStatusOfTitle(params.getNewStatus());
     var coreParams = new org.sonarsource.sonarlint.core.clientapi.backend.hotspot.ChangeHotspotStatusParams(
-      workspaceUri.toString(), params.getHotspotKey(), hotspotStatusOfTitle(params.getNewStatus()));
+      workspaceUri.toString(), params.getHotspotKey(), hotspotStatus);
     return backendServiceFacade.getBackendService().changeHotspotStatus(coreParams).thenAccept(nothing -> {
       var key = params.getHotspotKey();
-      securityHotspotsCache.removeIssueWithServerKey(params.getFileUri(), key);
+      if (hotspotStatus != HotspotStatus.TO_REVIEW && hotspotStatus != HotspotStatus.ACKNOWLEDGED) {
+        securityHotspotsCache.removeIssueWithServerKey(params.getFileUri(), key);
+      }
       diagnosticPublisher.publishDiagnostics(create(params.getFileUri()), true);
       client.showMessage(new MessageParams(MessageType.Info, "Hotspot status was successfully changed"));
     }).exceptionally(t -> {

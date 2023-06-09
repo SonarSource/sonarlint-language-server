@@ -673,7 +673,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void change_hotspot_status() {
+  void change_hotspot_status_to_resolved() {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addProtobufResponseDelimited(
@@ -743,6 +743,82 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.changeHotspotStatus(new SonarLintExtendedLanguageServer.ChangeHotspotStatusParams(hotspotKey, HotspotStatus.SAFE.getTitle(), uriInFolder));
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder)).isEmpty());
+  }
+
+  @Test
+  void change_hotspot_status_to_acknowledged() {
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
+      Issues.IssuesPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
+      Issues.IssuesPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
+      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
+      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/hotspots/search.protobuf?projectKey=myProject&files=hotspot.py&branch=master&ps=500&p=1",
+      Hotspots.SearchWsResponse.newBuilder().build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/rules/show.protobuf?key=python:S1313",
+      Rules.ShowResponse.newBuilder()
+        .setRule(Rules.Rule.newBuilder()
+          .setSeverity("MINOR")
+          .setType(Common.RuleType.SECURITY_HOTSPOT)
+          .setLang(Language.PYTHON.getLanguageKey())
+          .build())
+        .build());
+    var hotspotKey = "myhotspotkey";
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(System.currentTimeMillis()).build(),
+      Hotspots.HotspotLite.newBuilder()
+        .setKey(hotspotKey)
+        .setFilePath("hotspot.py")
+        .setCreationDate(System.currentTimeMillis())
+        .setStatus("TO_REVIEW")
+        .setVulnerabilityProbability("LOW")
+        .setTextRange(Hotspots.TextRange.newBuilder()
+          .setStartLine(1)
+          .setStartLineOffset(13)
+          .setEndLine(1)
+          .setEndLineOffset(26)
+          .setHash(Utils.hash("'12.34.56.78'"))
+          .build()
+        )
+        .setRuleKey(PYTHON_S1313)
+        .build()
+    );
+
+
+    var uriInFolder = folder1BaseDir.resolve("hotspot.py").toUri().toString();
+    didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
+
+    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(0, 13, 0, 26, PYTHON_S1313, "remote", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Information)));
+
+
+    lsProxy.changeHotspotStatus(new SonarLintExtendedLanguageServer.ChangeHotspotStatusParams(hotspotKey, HotspotStatus.ACKNOWLEDGED.getTitle(), uriInFolder));
+
+    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(0, 13, 0, 26, PYTHON_S1313, "remote", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Information)));
   }
 
   @Test
