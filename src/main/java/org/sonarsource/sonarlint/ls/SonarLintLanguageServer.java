@@ -820,6 +820,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var key = params.getHotspotKey();
       if (hotspotStatus != HotspotStatus.TO_REVIEW && hotspotStatus != HotspotStatus.ACKNOWLEDGED) {
         securityHotspotsCache.removeIssueWithServerKey(params.getFileUri(), key);
+      } else {
+        securityHotspotsCache.updateIssueStatus(params.getFileUri(), key, hotspotStatus);
       }
       diagnosticPublisher.publishDiagnostics(create(params.getFileUri()), true);
       client.showMessage(new MessageParams(MessageType.Info, "Hotspot status was successfully changed"));
@@ -840,8 +842,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var connectionId = bindingOptional.get().getConnectionId();
     var checkStatusChangePermittedParams = new CheckStatusChangePermittedParams(connectionId, params.getHotspotKey());
     return backendServiceFacade.getBackendService().getAllowedHotspotStatuses(checkStatusChangePermittedParams).thenApply(r -> {
-        var delegatingIssue = securityHotspotsCache.findIssueByKey(params.getFileUri(), params.getHotspotKey());
-        var reviewStatus = delegatingIssue.get().getReviewStatus();
+        var delegatingIssue = (DelegatingIssue) securityHotspotsCache
+          .findIssueWithId(params.getFileUri(), params.getHotspotKey()).get().getValue().getIssue();
+        var reviewStatus = delegatingIssue.getReviewStatus();
         var statuses = r.getAllowedStatuses().stream().filter(s -> s != hotspotStatusValueOfHotspotReviewStatus(reviewStatus))
           .map(HotspotStatus::getTitle).collect(Collectors.toList());
         return new GetAllowedHotspotStatusesResponse(

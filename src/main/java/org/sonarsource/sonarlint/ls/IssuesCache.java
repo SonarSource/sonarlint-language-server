@@ -33,8 +33,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.Diagnostic;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
+import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
+
+import static org.sonarsource.sonarlint.ls.util.Utils.hotspotReviewStatusValueOfHotspotStatus;
 
 public class IssuesCache {
 
@@ -102,17 +105,30 @@ public class IssuesCache {
     }
   }
 
-  public Optional<DelegatingIssue> findIssueByKey(String fileUriStr, String key) {
+  public Optional<Map.Entry<String, VersionedIssue>> findIssueWithId(String fileUriStr, String key) {
     var fileUri = URI.create(fileUriStr);
     var issues = issuesPerIdPerFileURI.get(fileUri);
     if (issues != null) {
-      var first = issues.entrySet()
+      return issues.entrySet()
         .stream()
         .filter(issueEntry -> isDelegatingIssueWithKey(key, issueEntry))
         .findFirst();
-      return first.map(issue -> (DelegatingIssue) issue.getValue().getIssue());
     }
     return Optional.empty();
+  }
+
+  public void updateIssueStatus(String fileUriStr, String key, HotspotStatus newStatus) {
+    var issueWithId = findIssueWithId(fileUriStr, key);
+    if (issueWithId.isPresent()) {
+      var versionedIssue = issueWithId.get().getValue();
+      var delegatingIssue = (DelegatingIssue) versionedIssue.getIssue();
+      var clonedDelegatingIssue = delegatingIssue.cloneWithNewStatus(hotspotReviewStatusValueOfHotspotStatus(newStatus));
+      var clonedVersionedIssue = new VersionedIssue(clonedDelegatingIssue, versionedIssue.documentVersion);
+      var issuesByKey = issuesPerIdPerFileURI.get(URI.create(fileUriStr));
+      if (issuesByKey != null) {
+        issuesByKey.put(issueWithId.get().getKey(), clonedVersionedIssue);
+      }
+    }
   }
 
   private static boolean isDelegatingIssueWithKey(String key, Map.Entry<String, VersionedIssue> issueEntry) {

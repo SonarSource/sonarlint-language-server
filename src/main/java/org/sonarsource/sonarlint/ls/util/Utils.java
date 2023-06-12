@@ -202,4 +202,8 @@ public class Utils {
   public static HotspotStatus hotspotStatusValueOfHotspotReviewStatus(HotspotReviewStatus reviewStatus) {
     return HotspotStatus.valueOf(reviewStatus.name());
   }
+
+  public static HotspotReviewStatus hotspotReviewStatusValueOfHotspotStatus(HotspotStatus status) {
+    return HotspotReviewStatus.valueOf(status.name());
+  }
 }

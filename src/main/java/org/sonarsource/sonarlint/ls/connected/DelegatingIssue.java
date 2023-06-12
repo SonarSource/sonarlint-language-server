@@ -134,4 +134,16 @@ public class DelegatingIssue implements Issue {
   public HotspotReviewStatus getReviewStatus() {
     return reviewStatus;
   }
+
+  private DelegatingIssue(Issue issue, RuleType type, String serverIssueKey, IssueSeverity severity, HotspotReviewStatus reviewStatus) {
+    this.issue = issue;
+    this.type = type;
+    this.serverIssueKey = serverIssueKey;
+    this.severity = severity;
+    this.reviewStatus = reviewStatus;
+  }
+
+  public DelegatingIssue cloneWithNewStatus(HotspotReviewStatus newStatus) {
+    return new DelegatingIssue(this.issue, this.type, this.serverIssueKey, this.severity, newStatus);
+  }
 }
