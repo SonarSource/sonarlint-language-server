@@ -123,7 +123,7 @@ public class WorkspaceFoldersManager {
       LOG.debug("Folder {} added", addedWrapper);
     }
     executor.submit(() -> {
-      var optionalProjectBindingWrapper = bindingManager.getBinding(create(added.getUri()));
+      var optionalProjectBindingWrapper = getBindingProvider().apply(added);
       backendServiceFacade.addFolder(added, optionalProjectBindingWrapper);
     });
     return addedWrapper;

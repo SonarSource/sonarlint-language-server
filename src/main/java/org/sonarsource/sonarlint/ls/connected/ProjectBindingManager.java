@@ -98,9 +98,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private Function<URI, Optional<String>> branchNameForFolderSupplier;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final DiagnosticPublisher diagnosticPublisher;
-  private BackendServiceFacade backendServiceFacade;
+  private final BackendServiceFacade backendServiceFacade;
   private ServerSentEventsHandlerService serverSentEventsHandler;
-  private OpenNotebooksCache openNotebooksCache;
+  private final OpenNotebooksCache openNotebooksCache;
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
     LanguageClientLogOutput globalLogOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher,
@@ -217,13 +217,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     }
     var engine = engineOpt.get();
     var projectKey = requireNonNull(settings.getProjectKey());
-    engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, null);
-    engine.sync(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), Set.of(projectKey), null);
     Supplier<String> branchProvider = () -> resolveBranchNameForFolder(folderRoot.toUri(), engine, projectKey);
-    var currentBranchName = branchProvider.get();
-    engine.syncServerIssues(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, currentBranchName, null);
-    engine.syncServerTaintIssues(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, currentBranchName, null);
-    engine.syncServerHotspots(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, currentBranchName, null);
+    syncAtStartup(engine, endpointParamsAndHttpClient, projectKey, branchProvider);
 
     var ideFilePaths = FileUtils.allRelativePathsForFilesInTree(folderRoot);
     var projectBinding = engine.calculatePathPrefixes(projectKey, ideFilePaths);
@@ -232,6 +227,20 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       folderRoot);
     var issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, endpointParamsAndHttpClient, projectBinding, branchProvider);
     return new ProjectBindingWrapper(connectionId, projectBinding, engine, issueTrackerWrapper);
+  }
+
+  private static void syncAtStartup(ConnectedSonarLintEngine engine, EndpointParamsAndHttpClient endpointParamsAndHttpClient, String projectKey,
+    Supplier<String> branchProvider) {
+    try {
+      engine.updateProject(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, null);
+      engine.sync(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), Set.of(projectKey), null);
+      var currentBranchName = branchProvider.get();
+      engine.syncServerIssues(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, currentBranchName, null);
+      engine.syncServerTaintIssues(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, currentBranchName, null);
+      engine.syncServerHotspots(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), projectKey, currentBranchName, null);
+    } catch(IllegalStateException exceptionDuringSync) {
+      LOG.warn("Exception happened during initial sync with project " + projectKey, exceptionDuringSync);
+    }
   }
 
   @CheckForNull
