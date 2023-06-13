@@ -40,6 +40,7 @@ class ServerMainTests {
   public void prepare() {
     underTest = new ServerMain();
     cmd = new CommandLine(underTest);
+    cmd.setColorScheme(CommandLine.Help.defaultColorScheme(CommandLine.Help.Ansi.OFF));
 
     cmdOutput = new StringWriter();
     cmd.setOut(new PrintWriter(cmdOutput));
