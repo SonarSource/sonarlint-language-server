@@ -20,13 +20,20 @@
 package org.sonarsource.sonarlint.ls.util;
 
 import java.net.URI;
+import org.assertj.core.api.AssertionsForClassTypes;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
 import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.sonarsource.sonarlint.ls.util.Utils.hotspotReviewStatusValueOfHotspotStatus;
+import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusOfTitle;
+import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusValueOfHotspotReviewStatus;
 
 class UtilsTests {
 
@@ -65,5 +72,27 @@ class UtilsTests {
     assertThat(Utils.hotspotSeverity(VulnerabilityProbability.LOW)).isEqualTo(DiagnosticSeverity.Information);
   }
 
+  @Test
+  void valueOfTitleTest() {
+    AssertionsForClassTypes.assertThat(hotspotStatusOfTitle("To Review")).isEqualTo(HotspotStatus.TO_REVIEW);
+    AssertionsForClassTypes.assertThat(hotspotStatusOfTitle("Safe")).isEqualTo(HotspotStatus.SAFE);
+    AssertionsForClassTypes.assertThat(hotspotStatusOfTitle("Fixed")).isEqualTo(HotspotStatus.FIXED);
+    AssertionsForClassTypes.assertThat(hotspotStatusOfTitle("Acknowledged")).isEqualTo(HotspotStatus.ACKNOWLEDGED);
+    var thrown = assertThrows(IllegalArgumentException.class, ()-> hotspotStatusOfTitle("Unknown"));
+    AssertionsForClassTypes.assertThat(thrown).hasMessage("There is no such hotspot status: Unknown");
+  }
 
+  @Test
+  void valueOfHotspotReviewStatusTest() {
+    for (HotspotReviewStatus value : HotspotReviewStatus.values()) {
+      AssertionsForClassTypes.assertThat(hotspotStatusValueOfHotspotReviewStatus(value)).isEqualTo(HotspotStatus.valueOf(value.name()));
+    }
+  }
+
+  @Test
+  void valueOfHotspotStatusTest() {
+    for (HotspotStatus value : HotspotStatus.values()) {
+      AssertionsForClassTypes.assertThat(hotspotReviewStatusValueOfHotspotStatus(value)).isEqualTo(HotspotReviewStatus.valueOf(value.name()));
+    }
+  }
 }

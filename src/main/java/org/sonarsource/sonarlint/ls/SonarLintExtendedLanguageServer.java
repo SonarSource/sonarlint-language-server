@@ -448,4 +448,85 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   CompletableFuture<SonarLintExtendedLanguageClient.ShowRuleDescriptionParams> getHotspotDetails(
     SonarLintExtendedLanguageServer.ShowHotspotRuleDescriptionParams getHotspotDetailsParams);
 
+  class ChangeHotspotStatusParams {
+
+    private final String hotspotKey;
+    private final String newStatus;
+    private final String fileUri;
+
+    public ChangeHotspotStatusParams(String hotspotKey, String newStatus, String fileUri) {
+      this.hotspotKey = hotspotKey;
+      this.newStatus = newStatus;
+      this.fileUri = fileUri;
+    }
+
+    public String getHotspotKey() {
+      return hotspotKey;
+    }
+
+    public String getNewStatus() {
+      return newStatus;
+    }
+
+    public String getFileUri() {
+      return fileUri;
+    }
+
+  }
+
+  @JsonNotification("sonarlint/changeHotspotStatus")
+  CompletableFuture<Void> changeHotspotStatus(ChangeHotspotStatusParams params);
+
+  class GetAllowedHotspotStatusesParams {
+    private final String hotspotKey;
+    private final String folderUri;
+    private final String fileUri;
+
+    public GetAllowedHotspotStatusesParams(String hotspotKey, String folderUri, String fileUri) {
+      this.hotspotKey = hotspotKey;
+      this.folderUri = folderUri;
+      this.fileUri = fileUri;
+    }
+
+    public String getHotspotKey() {
+      return hotspotKey;
+    }
+
+    public String getFolderUri() {
+      return folderUri;
+    }
+
+    public String getFileUri() {
+      return fileUri;
+    }
+  }
+
+  @JsonRequest("sonarlint/getAllowedHotspotStatuses")
+  CompletableFuture<GetAllowedHotspotStatusesResponse> getAllowedHotspotStatuses(GetAllowedHotspotStatusesParams params);
+
+  class GetAllowedHotspotStatusesResponse {
+    private final boolean permitted;
+    private final String notPermittedReason;
+    private final List<String> allowedStatuses;
+
+    public GetAllowedHotspotStatusesResponse(boolean permitted, @Nullable String notPermittedReason, List<String> allowedStatuses) {
+      this.permitted = permitted;
+      this.notPermittedReason = notPermittedReason;
+      this.allowedStatuses = allowedStatuses;
+    }
+
+    public boolean isPermitted() {
+      return this.permitted;
+    }
+
+    @CheckForNull
+    public String getNotPermittedReason() {
+      return this.notPermittedReason;
+    }
+
+    public List<String> getAllowedStatuses() {
+      return this.allowedStatuses;
+    }
+  }
+
 }
