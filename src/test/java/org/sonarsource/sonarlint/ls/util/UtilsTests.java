@@ -79,7 +79,7 @@ class UtilsTests {
     AssertionsForClassTypes.assertThat(hotspotStatusOfTitle("Fixed")).isEqualTo(HotspotStatus.FIXED);
     AssertionsForClassTypes.assertThat(hotspotStatusOfTitle("Acknowledged")).isEqualTo(HotspotStatus.ACKNOWLEDGED);
     var thrown = assertThrows(IllegalArgumentException.class, ()-> hotspotStatusOfTitle("Unknown"));
-    AssertionsForClassTypes.assertThat(thrown).hasMessage("There is no such title of the hotspot status: Unknown");
+    AssertionsForClassTypes.assertThat(thrown).hasMessage("There is no such hotspot status: Unknown");
   }
 
   @Test

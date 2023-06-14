@@ -196,7 +196,7 @@ public class Utils {
 
   public static HotspotStatus hotspotStatusOfTitle(String title) {
     return Arrays.stream(HotspotStatus.values()).filter(hotspotStatus -> hotspotStatus.getTitle().equals(title)).findFirst()
-      .orElseThrow(() -> new IllegalArgumentException("There is no such title of the hotspot status: " + title));
+      .orElseThrow(() -> new IllegalArgumentException("There is no such hotspot status: " + title));
   }
 
   public static HotspotStatus hotspotStatusValueOfHotspotReviewStatus(HotspotReviewStatus reviewStatus) {

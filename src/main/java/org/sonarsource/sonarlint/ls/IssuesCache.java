@@ -98,42 +98,42 @@ public class IssuesCache {
     if (issues != null) {
       var first = issues.entrySet()
         .stream()
-        .filter(issueEntry -> isDelegatingIssueWithKey(key, issueEntry))
+        .filter(issueEntry -> isDelegatingIssueWithServerIssueKey(key, issueEntry))
         .map(Map.Entry::getKey)
         .findFirst();
       first.ifPresent(issues::remove);
     }
   }
 
-  public Optional<Map.Entry<String, VersionedIssue>> findIssueWithId(String fileUriStr, String key) {
+  public Optional<Map.Entry<String, VersionedIssue>> findIssuePerId(String fileUriStr, String serverIssueKey) {
     var fileUri = URI.create(fileUriStr);
     var issues = issuesPerIdPerFileURI.get(fileUri);
     if (issues != null) {
       return issues.entrySet()
         .stream()
-        .filter(issueEntry -> isDelegatingIssueWithKey(key, issueEntry))
+        .filter(issueEntry -> isDelegatingIssueWithServerIssueKey(serverIssueKey, issueEntry))
         .findFirst();
     }
     return Optional.empty();
   }
 
-  public void updateIssueStatus(String fileUriStr, String key, HotspotStatus newStatus) {
-    var issueWithId = findIssueWithId(fileUriStr, key);
-    if (issueWithId.isPresent()) {
-      var versionedIssue = issueWithId.get().getValue();
+  public void updateIssueStatus(String fileUriStr, String serverIssueKey, HotspotStatus newStatus) {
+    var issuePerId = findIssuePerId(fileUriStr, serverIssueKey);
+    if (issuePerId.isPresent()) {
+      var versionedIssue = issuePerId.get().getValue();
       var delegatingIssue = (DelegatingIssue) versionedIssue.getIssue();
       var clonedDelegatingIssue = delegatingIssue.cloneWithNewStatus(hotspotReviewStatusValueOfHotspotStatus(newStatus));
       var clonedVersionedIssue = new VersionedIssue(clonedDelegatingIssue, versionedIssue.documentVersion);
       var issuesByKey = issuesPerIdPerFileURI.get(URI.create(fileUriStr));
       if (issuesByKey != null) {
-        issuesByKey.put(issueWithId.get().getKey(), clonedVersionedIssue);
+        issuesByKey.put(issuePerId.get().getKey(), clonedVersionedIssue);
       }
     }
   }
 
-  private static boolean isDelegatingIssueWithKey(String key, Map.Entry<String, VersionedIssue> issueEntry) {
+  private static boolean isDelegatingIssueWithServerIssueKey(String serverIssueKey, Map.Entry<String, VersionedIssue> issueEntry) {
     return issueEntry.getValue().getIssue() instanceof DelegatingIssue
-      && (key.equals(((DelegatingIssue) issueEntry.getValue().getIssue()).getServerIssueKey()));
+      && (serverIssueKey.equals(((DelegatingIssue) issueEntry.getValue().getIssue()).getServerIssueKey()));
   }
 
   public Optional<VersionedIssue> getIssueForDiagnostic(URI fileUri, Diagnostic d) {
