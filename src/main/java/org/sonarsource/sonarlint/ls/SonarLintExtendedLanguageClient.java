@@ -86,6 +86,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/showNotificationForFirstSecretsIssue")
   void showFirstSecretDetectionNotification();
 
+  @JsonNotification("sonarlint/showNotificationForFirstCobolIssue")
+  void showFirstCobolIssueDetectedNotification();
+
   class ShowRuleDescriptionParams {
 
     private static final String TAINT_RULE_REPO_SUFFIX = "security";

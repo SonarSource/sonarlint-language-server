@@ -28,7 +28,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
-import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
@@ -91,7 +90,7 @@ class DiagnosticPublisherTests {
 
   @Test
   void showFirstSecretDetectedNotificationOnlyOnce() {
-    underTest.initialize(false);
+    underTest.initialize(false, false);
 
     var uri = initWithOneSecretIssue();
 
@@ -108,7 +107,7 @@ class DiagnosticPublisherTests {
 
   @Test
   void dontShowFirstSecretDetectedNotificationIfAlreadyShown() {
-    underTest.initialize(true);
+    underTest.initialize(true, false);
 
     var uri = initWithOneSecretIssue();
 
@@ -117,9 +116,53 @@ class DiagnosticPublisherTests {
     verify(languageClient, never()).showFirstSecretDetectionNotification();
   }
 
+  @Test
+  void showFirstCobolIssueDetectedNotificationOnlyOnce() {
+    underTest.initialize(false, false);
+
+    var uri = initWithOneCobolIssue();
+
+    underTest.publishDiagnostics(uri, false);
+
+    verify(languageClient, times(1)).showFirstCobolIssueDetectedNotification();
+
+    reset(languageClient);
+
+    underTest.publishDiagnostics(uri, false);
+
+    verify(languageClient, never()).showFirstCobolIssueDetectedNotification();
+  }
+
+  @Test
+  void dontShowFirstCobolIssueDetectedNotificationIfAlreadyShown() {
+    underTest.initialize(true, true);
+
+    var uri = initWithOneCobolIssue();
+
+    underTest.publishDiagnostics(uri, false);
+
+    verify(languageClient, never()).showFirstCobolIssueDetectedNotification();
+  }
+
+
   private URI initWithOneSecretIssue() {
     var issue = mock(Issue.class);
     when(issue.getRuleKey()).thenReturn("secrets:123");
+    when(issue.getSeverity()).thenReturn(IssueSeverity.MAJOR);
+    when(issue.getMessage()).thenReturn("Boo");
+
+    var uri = URI.create("file://foo");
+
+    VersionedOpenFile versionedOpenFile = new VersionedOpenFile(uri, null, 1, null);
+    issuesCache.analysisStarted(versionedOpenFile);
+    issuesCache.reportIssue(versionedOpenFile, issue);
+    issuesCache.analysisSucceeded(versionedOpenFile);
+    return uri;
+  }
+
+  private URI initWithOneCobolIssue() {
+    var issue = mock(Issue.class);
+    when(issue.getRuleKey()).thenReturn("cobol:S3643");
     when(issue.getSeverity()).thenReturn(IssueSeverity.MAJOR);
     when(issue.getMessage()).thenReturn("Boo");
 

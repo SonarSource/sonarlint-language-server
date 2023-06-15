@@ -459,6 +459,10 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
+    public void showFirstCobolIssueDetectedNotification() {
+    }
+
+    @Override
     public CompletableFuture<GetJavaConfigResponse> getJavaConfig(String fileUri) {
       return CompletableFutures.computeAsync(cancelToken -> {
         return javaConfigs.get(fileUri);
