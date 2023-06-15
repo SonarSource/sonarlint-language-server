@@ -310,6 +310,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var clientVersion = clientInfo.map(ci -> ci.getVersion()).orElse("Unknown");
       var ideVersion = appName + " " + clientVersion;
       var firstSecretDetected = (boolean) options.getOrDefault("firstSecretDetected", false);
+      var firstCobolIssueDetected = (boolean) options.getOrDefault("firstCobolIssueDetected", false);
       httpClientProvider.initialize(productName, productVersion);
       var platform = (String) options.get("platform");
       var architecture = (String) options.get("architecture");
@@ -318,7 +319,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
       lsLogOutput.initialize(showVerboseLogs);
       analysisScheduler.initialize();
-      diagnosticPublisher.initialize(firstSecretDetected);
+      diagnosticPublisher.initialize(firstSecretDetected, firstCobolIssueDetected);
 
       requestsHandlerServer.initialize(clientVersion, workspaceName);
       telemetry.initialize(productKey, telemetryStorage, productName, productVersion, ideVersion, platform, architecture, additionalAttributes);
