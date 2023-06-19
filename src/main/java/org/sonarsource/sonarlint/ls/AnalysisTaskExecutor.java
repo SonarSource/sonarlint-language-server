@@ -512,7 +512,7 @@ public class AnalysisTaskExecutor {
     return analyzeWithTiming(() -> engine.analyze(configuration, accumulatorIssueListener, new LanguageClientLogOutput(lsLogOutput, true), progressMonitor),
       engine.getPluginDetails(),
       () -> filesToAnalyze.forEach((fileUri, openFile) -> {
-        var issues = issuesPerFiles.computeIfAbsent(fileUri, uri -> List.of());
+        var issues = issuesPerFiles.getOrDefault(fileUri, List.of());
         var filePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(baseDir, fileUri));
         serverIssueTracker.matchAndTrack(filePath, issues, issueListener, task.shouldFetchServerIssues());
       }));
