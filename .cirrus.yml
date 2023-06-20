@@ -75,7 +75,7 @@ qa_linux_task:
     folder: ${CIRRUS_WORKING_DIR}/.m2/repository
   qa_script:
     - source cirrus-env QA
-    - regular_mvn_build_deploy_analyze -Dcommercial
+    - PULL_REQUEST_SHA=$GIT_SHA1 regular_mvn_build_deploy_analyze -Dcommercial
   cleanup_before_cache_script: cleanup_maven_repository
   on_failure:
     junit_artifacts:
