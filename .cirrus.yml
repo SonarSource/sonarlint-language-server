@@ -42,8 +42,6 @@ ec2_instance: &WINVM_DEFINITION
   type: t3.xlarge
 
 build_task:
-  name: "Build and stage to repox"
-  alias: build
   <<: *ONLY_IF
   eks_container:
     <<: *CONTAINER_DEFINITION
@@ -61,9 +59,7 @@ build_task:
     - regular_mvn_build_deploy_analyze -Dmaven.test.skip=true -Dsonar.skip=true
   cleanup_before_cache_script: cleanup_maven_repository
 
-test_linux_task:
-  name: "Run unit tests on Linux with Java 11 and SonarQube analysis on Next"
-  alias: test_linux
+qa_linux_task:
   depends_on:
     - build
   <<: *ONLY_IF
@@ -73,7 +69,7 @@ test_linux_task:
     DEPLOY_PULL_REQUEST: false
   maven_cache:
     folder: ${CIRRUS_WORKING_DIR}/.m2/repository
-  test_script:
+  qa_script:
     - source cirrus-env QA
     - regular_mvn_build_deploy_analyze -Dcommercial
   cleanup_before_cache_script: cleanup_maven_repository
@@ -82,9 +78,7 @@ test_linux_task:
       path: '**/target/surefire-reports/TEST-*.xml'
       format: junit
 
-test_windows_task:
-  name: "Run unit tests on Windows with Java 17"
-  alias: test_windows
+qa_windows_task:
   depends_on:
     - build
   <<: *ONLY_IF
@@ -92,7 +86,7 @@ test_windows_task:
     <<: *WINVM_DEFINITION
   maven_cache:
     folder: ${CIRRUS_WORKING_DIR}/.m2/repository
-  test_script:
+  qa_script:
     - source cirrus-env QA
     - source set_maven_build_version $BUILD_NUMBER
     - mvn -B -e -V verify -Dcommercial
@@ -103,8 +97,6 @@ test_windows_task:
       format: junit
 
 mend_scan_task:
-  name: "Mend scan"
-  alias: mend_scan
   depends_on:
     - build
   <<: *ONLY_IF_WITH_NIGHTLY
@@ -129,12 +121,10 @@ mend_scan_task:
       path: "whitesource/**/*"
 
 promote_task:
-  name: "Promotion"
-  alias: "promote"
   depends_on:
     - build
-    - test_linux
-    - test_windows
+    - qa_linux
+    - qa_windows
     - mend_scan
   <<: *ONLY_IF
   <<: *ONLY_PR_AND_MAINTAINED_BRANCHES
