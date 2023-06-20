@@ -408,6 +408,11 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
+    public CompletableFuture<Boolean> askSslCertificateConfirmation(SslCertificateConfirmationParams params) {
+      return null;
+    }
+
+    @Override
     public void suggestBinding(SuggestBindingParams binding) {
       this.suggestedBindings = binding;
       suggestBindingLatch.countDown();

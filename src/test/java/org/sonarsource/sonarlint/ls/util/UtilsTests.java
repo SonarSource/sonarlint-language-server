@@ -95,4 +95,19 @@ class UtilsTests {
       AssertionsForClassTypes.assertThat(hotspotReviewStatusValueOfHotspotStatus(value)).isEqualTo(HotspotReviewStatus.valueOf(value.name()));
     }
   }
+
+  @Test
+  void formatSha256Fingerprint() {
+    var fingerprint = Utils.formatSha256Fingerprint("B74DC3375CF9B45554DA74D2A76D8373CD943DDE588D497053851C244BCA68E5");
+
+    assertThat(fingerprint).isEqualTo("B7 4D C3 37 5C F9 B4 55 54 DA 74 D2 A7 6D 83 73\n" +
+      "CD 94 3D DE 58 8D 49 70 53 85 1C 24 4B CA 68 E5");
+  }
+
+  @Test
+  void formatSha1Fingerprint() {
+    var fingerprint = Utils.formatSha1Fingerprint("E589B41477E239FA147B91456041525B73E80337");
+
+    assertThat(fingerprint).isEqualTo("E5 89 B4 14 77 E2 39 FA 14 7B 91 45 60 41 52 5B 73 E8 03 37");
+  }
 }

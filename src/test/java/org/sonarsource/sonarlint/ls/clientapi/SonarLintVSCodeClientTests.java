@@ -23,7 +23,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -36,6 +38,8 @@ import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScope
 import org.sonarsource.sonarlint.core.clientapi.client.host.GetHostInfoResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.clientapi.client.hotspot.ShowHotspotParams;
+import org.sonarsource.sonarlint.core.clientapi.client.http.CheckServerTrustedParams;
+import org.sonarsource.sonarlint.core.clientapi.client.http.X509CertificateDto;
 import org.sonarsource.sonarlint.core.clientapi.client.message.ShowMessageParams;
 import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressParams;
 import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
@@ -68,6 +72,42 @@ class SonarLintVSCodeClientTests {
 
   RequestsHandlerServer server = mock(RequestsHandlerServer.class);
   ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
+
+  private static final String PEM = "subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH\n" +
+    "issuer=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH\n" +
+    "-----BEGIN CERTIFICATE-----\n" +
+    "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\n" +
+    "-----END CERTIFICATE-----";
 
   @BeforeEach
   public void setup() {
@@ -237,5 +277,44 @@ class SonarLintVSCodeClientTests {
 
     verify(server).showHotspotHandleNoBinding(assistBindingParams);
     assertThat(future).isNotCompleted();
+  }
+
+  @Test
+  void checkServerTrusted() throws ExecutionException, InterruptedException {
+    var params = new CheckServerTrustedParams(List.of(new X509CertificateDto(PEM)), "authType");
+    when(client.askSslCertificateConfirmation(any())).thenReturn(CompletableFuture.completedFuture(true));
+
+    var response = underTest.checkServerTrusted(params).get();
+
+    var branchCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.SslCertificateConfirmationParams.class);
+    verify(client).askSslCertificateConfirmation(branchCaptor.capture());
+    var capturedValue = branchCaptor.getValue();
+    Assertions.assertThat(capturedValue.getIssuedBy()).isEqualTo("CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH");
+    Assertions.assertThat(capturedValue.getIssuedTo()).isEqualTo("CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH");
+    Assertions.assertThat(capturedValue.getSha1Fingerprint()).isEqualTo("E9 7B 2D 15 32 3F CA 0D 9B 6A 25 C3 2A 11 73 1C 96 8B FC 73");
+    Assertions.assertThat(capturedValue.getSha256Fingerprint()).isEqualTo("35 A0 22 CB CD 8D 57 55 F8 83 B3 CE 63 2A 42 A1\n" +
+      "22 81 83 33 BF 2F 9A E7 E9 D7 81 F0 82 2C AD 58");
+
+    assertThat(response.isTrusted()).isTrue();
+  }
+
+  @Test
+  void checkServerTrustedMalformedCert() throws ExecutionException, InterruptedException {
+    var params = new CheckServerTrustedParams(List.of(new X509CertificateDto("malformed")), "authType");
+    when(client.askSslCertificateConfirmation(any())).thenReturn(CompletableFuture.completedFuture(true));
+
+    var response = underTest.checkServerTrusted(params).get();
+
+    var branchCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.SslCertificateConfirmationParams.class);
+    verify(client).askSslCertificateConfirmation(branchCaptor.capture());
+    var capturedValue = branchCaptor.getValue();
+    Assertions.assertThat(capturedValue.getIssuedBy()).isEmpty();
+    Assertions.assertThat(capturedValue.getIssuedTo()).isEmpty();
+    Assertions.assertThat(capturedValue.getValidFrom()).isEmpty();
+    Assertions.assertThat(capturedValue.getValidTo()).isEmpty();
+    Assertions.assertThat(capturedValue.getSha1Fingerprint()).isEmpty();
+    Assertions.assertThat(capturedValue.getSha256Fingerprint()).isEmpty();
+
+    assertThat(response.isTrusted()).isTrue();
   }
 }

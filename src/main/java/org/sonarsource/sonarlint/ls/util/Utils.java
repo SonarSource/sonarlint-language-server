@@ -24,6 +24,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonSyntaxException;
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
@@ -206,4 +207,28 @@ public class Utils {
   public static HotspotReviewStatus hotspotReviewStatusValueOfHotspotStatus(HotspotStatus status) {
     return HotspotReviewStatus.valueOf(status.name());
   }
+
+  public static String formatSha256Fingerprint(String decodedFingerprint) {
+    var split = toUpperCaseAndSplitInPairs(decodedFingerprint);
+    var sb = new StringBuilder();
+    for (var i = 0; i < split.length; i++) {
+      sb.append(split[i]);
+      if (i == split.length / 2 - 1) {
+        sb.append("\n");
+      } else if (i < split.length - 1) {
+        sb.append(" ");
+      }
+    }
+    return sb.toString();
+  }
+
+  public static String formatSha1Fingerprint(String decodedFingerprint) {
+    var split = toUpperCaseAndSplitInPairs(decodedFingerprint);
+    return String.join(" ", split);
+  }
+
+  private static String[] toUpperCaseAndSplitInPairs(String str) {
+    return str.toUpperCase(Locale.ROOT).split("(?<=\\G.{2})");
+  }
+
 }

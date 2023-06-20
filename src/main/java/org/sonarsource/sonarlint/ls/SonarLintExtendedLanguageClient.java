@@ -593,4 +593,64 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
   @JsonNotification("sonarlint/readyForTests")
   void readyForTests();
+
+  class SslCertificateConfirmationParams {
+
+    @Expose
+    private final String issuedTo;
+    @Expose
+    private final String issuedBy;
+    @Expose
+    private final String validFrom;
+    @Expose
+    private final String validTo;
+    @Expose
+    private final String sha1Fingerprint;
+    @Expose
+    private final String sha256Fingerprint;
+    @Expose
+    private final String truststorePath;
+
+    public SslCertificateConfirmationParams(String issuedTo, String issuedBy, String validFrom, String validTo,
+      String sha1Fingerprint, String sha256Fingerprint, String truststorePath) {
+      this.issuedTo = issuedTo;
+      this.issuedBy = issuedBy;
+      this.validFrom = validFrom;
+      this.validTo = validTo;
+      this.sha1Fingerprint = sha1Fingerprint;
+      this.sha256Fingerprint = sha256Fingerprint;
+      this.truststorePath = truststorePath;
+    }
+
+    public String getIssuedTo() {
+      return issuedTo;
+    }
+
+    public String getIssuedBy() {
+      return issuedBy;
+    }
+
+    public String getValidFrom() {
+      return validFrom;
+    }
+
+    public String getValidTo() {
+      return validTo;
+    }
+
+    public String getSha1Fingerprint() {
+      return sha1Fingerprint;
+    }
+
+    public String getSha256Fingerprint() {
+      return sha256Fingerprint;
+    }
+
+    public String getTruststorePath() {
+      return truststorePath;
+    }
+  }
+
+  @JsonRequest("sonarlint/askSslCertificateConfirmation")
+  CompletableFuture<Boolean> askSslCertificateConfirmation(SslCertificateConfirmationParams params);
 }
