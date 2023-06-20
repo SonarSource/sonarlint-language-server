@@ -54,7 +54,6 @@ import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
@@ -90,10 +89,9 @@ class ProjectBindingManagerTests {
   private static final ProjectBinding FAKE_BINDING2 = new ProjectBinding(PROJECT_KEY2, "sqPrefix2", "idePrefix2");
   private static final String CONNECTION_ID = "myServer";
   private static final String SERVER_ID2 = "myServer2";
-  private static final ApacheHttpClientProvider httpClientProvider = mock(ApacheHttpClientProvider.class);
-  private static final ServerConnectionSettings GLOBAL_SETTINGS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, true, httpClientProvider);
-  private static final ServerConnectionSettings GLOBAL_SETTINGS_DIFFERENT_SERVER_ID = new ServerConnectionSettings(SERVER_ID2, "http://foo2", "token2", null, true,
-    httpClientProvider);
+  private static BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
+  private static final ServerConnectionSettings GLOBAL_SETTINGS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, true);
+  private static final ServerConnectionSettings GLOBAL_SETTINGS_DIFFERENT_SERVER_ID = new ServerConnectionSettings(SERVER_ID2, "http://foo2", "token2", null, true);
   private static final WorkspaceFolderSettings UNBOUND_SETTINGS = new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null, null);
   private static final WorkspaceFolderSettings BOUND_SETTINGS = new WorkspaceFolderSettings(CONNECTION_ID, PROJECT_KEY, Collections.emptyMap(), null, null);
   private static final WorkspaceFolderSettings BOUND_SETTINGS2 = new WorkspaceFolderSettings(SERVER_ID2, PROJECT_KEY2, Collections.emptyMap(), null, null);
@@ -123,7 +121,6 @@ class ProjectBindingManagerTests {
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   private final DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
   private final ServerSentEventsHandlerService serverSentEventsHandlerService = mock(ServerSentEventsHandlerService.class);
-  private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   private final OpenNotebooksCache openNotebooksCache = mock(OpenNotebooksCache.class);
 
   @BeforeEach
@@ -263,7 +260,7 @@ class ProjectBindingManagerTests {
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(new WorkspaceFolderSettings("sonarcloud", PROJECT_KEY, Collections.emptyMap(), null, null));
 
     mockFileInABoundWorkspaceFolder();
-    servers.put("sonarcloud", new ServerConnectionSettings("sonarcloud", "https://sonarcloud.io", "token", null, true, httpClientProvider));
+    servers.put("sonarcloud", new ServerConnectionSettings("sonarcloud", "https://sonarcloud.io", "token", null, true));
 
     when(fakeEngine.calculatePathPrefixes(eq(PROJECT_KEY), any())).thenReturn(FAKE_BINDING);
 
@@ -538,18 +535,6 @@ class ProjectBindingManagerTests {
 
     verify(fakeEngine).updateProject(any(), any(), eq(PROJECT_KEY), any());
     verify(fakeEngine).sync(any(), any(), eq(Set.of(PROJECT_KEY)), any());
-  }
-
-  @Test
-  void should_get_server_settings_for_unknown_url() {
-    assertThat(underTest.getServerConnectionSettingsForUrl("https://unknown.url")).isEmpty();
-  }
-
-  @Test
-  void should_get_server_settings_for_known_url() {
-    mockFileInABoundWorkspaceFolder();
-    assertThat(underTest.getServerConnectionSettingsForUrl(GLOBAL_SETTINGS.getServerUrl() + "/"))
-      .hasValueSatisfying(s -> assertThat(s.getEndpointParams().getBaseUrl()).isEqualTo(GLOBAL_SETTINGS.getServerUrl()));
   }
 
   @Test

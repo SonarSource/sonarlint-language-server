@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.ListAllStandaloneRulesDefinitionsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleDefinitionDto;
 import org.sonarsource.sonarlint.core.commons.RuleKey;
@@ -35,7 +34,6 @@ import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
-import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
@@ -46,7 +44,6 @@ class TelemetryClientAttributesProviderImplTests {
 
   private TelemetryClientAttributesProviderImpl underTest;
   private WorkspaceSettings workspaceSettings;
-  private StandaloneSonarLintEngine standaloneSonarLintEngine;
   private Map<String, Object> additionalAttributes;
   private BackendServiceFacade backendServiceFacade;
 
@@ -57,14 +54,11 @@ class TelemetryClientAttributesProviderImplTests {
     when(nodeJsRuntime.nodeVersion()).thenReturn("nodeVersion");
     var settingsManager = mock(SettingsManager.class);
     workspaceSettings = mock(WorkspaceSettings.class);
-    var standaloneEngineManager = mock(StandaloneEngineManager.class);
-    standaloneSonarLintEngine = mock(StandaloneSonarLintEngine.class);
-    when(standaloneEngineManager.getOrCreateStandaloneEngine()).thenReturn(standaloneSonarLintEngine);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     when(workspaceSettings.getExcludedRules()).thenReturn(Collections.emptyList());
     when(workspaceSettings.getIncludedRules()).thenReturn(Collections.emptyList());
     additionalAttributes = new HashMap<>();
-    underTest = new TelemetryClientAttributesProviderImpl(settingsManager, mock(ProjectBindingManager.class), nodeJsRuntime, standaloneEngineManager, additionalAttributes, backendServiceFacade);
+    underTest = new TelemetryClientAttributesProviderImpl(settingsManager, mock(ProjectBindingManager.class), nodeJsRuntime, additionalAttributes, backendServiceFacade);
   }
 
   @Test

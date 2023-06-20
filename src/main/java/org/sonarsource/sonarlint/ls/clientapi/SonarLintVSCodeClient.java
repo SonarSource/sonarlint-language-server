@@ -20,36 +20,34 @@
 package org.sonarsource.sonarlint.ls.clientapi;
 
 import java.util.concurrent.CompletableFuture;
-import org.jetbrains.annotations.Nullable;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintClient;
 import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
+import org.sonarsource.sonarlint.core.clientapi.client.connection.GetCredentialsParams;
+import org.sonarsource.sonarlint.core.clientapi.client.connection.GetCredentialsResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.progress.ReportProgressParams;
 import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressParams;
 import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
 import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
-import org.sonarsource.sonarlint.core.commons.http.HttpClient;
+import org.sonarsource.sonarlint.core.clientapi.common.TokenDto;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 public class SonarLintVSCodeClient implements SonarLintClient {
 
   private final SonarLintExtendedLanguageClient client;
   private SettingsManager settingsManager;
-  private final ApacheHttpClientProvider httpClientProvider;
   private SmartNotifications smartNotifications;
   private final RequestsHandlerServer server;
   private ProjectBindingManager bindingManager;
 
-  public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, ApacheHttpClientProvider httpClientProvider, RequestsHandlerServer server) {
+  public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, RequestsHandlerServer server) {
     this.client = client;
-    this.httpClientProvider = httpClientProvider;
     this.server = server;
   }
 
@@ -63,21 +61,6 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   @Override
   public CompletableFuture<FindFileByNamesInScopeResponse> findFileByNamesInScope(FindFileByNamesInScopeParams params) {
     return client.findFileByNamesInFolder(new SonarLintExtendedLanguageClient.FindFileByNamesInFolder(params.getConfigScopeId(), params.getFilenames()));
-  }
-
-  @Nullable
-  @Override
-  public HttpClient getHttpClient(String connectionId) {
-    var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
-    if (connectionSettings == null) return null;
-    var token = connectionSettings.getToken();
-    return httpClientProvider.withToken(token);
-  }
-
-  @Nullable
-  @Override
-  public HttpClient getHttpClientNoAuth(String s) {
-    return httpClientProvider.anonymous();
   }
 
   @Override
@@ -137,6 +120,14 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   @Override
   public void didSynchronizeConfigurationScopes(DidSynchronizeConfigurationScopeParams didSynchronizeConfigurationScopeParams) {
     bindingManager.updateAllTaintIssues();
+  }
+
+  @Override
+  public CompletableFuture<GetCredentialsResponse> getCredentials(GetCredentialsParams params) {
+    var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(params.getConnectionId());
+    if (connectionSettings == null) return null;
+    var token = connectionSettings.getToken();
+    return CompletableFuture.completedFuture(new GetCredentialsResponse(new TokenDto(token)));
   }
 
   public void setSettingsManager(SettingsManager settingsManager) {

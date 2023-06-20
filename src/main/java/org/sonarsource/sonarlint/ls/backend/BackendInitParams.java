@@ -41,6 +41,7 @@ public class BackendInitParams {
   private List<SonarCloudConnectionConfigurationDto> sonarCloudConnections;
   private String sonarlintUserHome;
   private Map<String, StandaloneRuleConfigDto> standaloneRuleConfigByKey;
+  private String userAgent;
 
   public String getTelemetryProductKey() {
     return telemetryProductKey;
@@ -128,5 +129,13 @@ public class BackendInitParams {
 
   public Map<String, StandaloneRuleConfigDto> getStandaloneRuleConfigByKey() {
     return this.standaloneRuleConfigByKey;
+  }
+
+  public String getUserAgent() {
+    return userAgent;
+  }
+
+  public void setUserAgent(String userAgent) {
+    this.userAgent = userAgent;
   }
 }

@@ -31,8 +31,6 @@ import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
 import org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.authentication.HelpGenerateUserTokenParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.authentication.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.branch.DidChangeActiveSonarProjectBranchParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
@@ -40,9 +38,13 @@ import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.DidUpdate
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidAddConfigurationScopesParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidRemoveConfigurationScopeParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.DidUpdateConnectionsParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarCloudConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarQubeConnectionConfigurationDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.ChangeHotspotStatusParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckLocalDetectionSupportedParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckLocalDetectionSupportedResponse;
@@ -58,6 +60,7 @@ import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleD
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.ListAllStandaloneRulesDefinitionsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.UpdateStandaloneRulesConfigurationParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
+import org.sonarsource.sonarlint.core.http.HttpClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
@@ -195,6 +198,19 @@ public class BackendService {
   }
 
   public CompletableFuture<HelpGenerateUserTokenResponse> helpGenerateUserToken(HelpGenerateUserTokenParams params) {
-    return initializedBackend().getAuthenticationHelperService().helpGenerateUserToken(params);
+    return initializedBackend().getConnectionService().helpGenerateUserToken(params);
+  }
+
+  public HttpClient getHttpClientNoAuth() {
+    return initializedBackend().getHttpClientNoAuth();
+  }
+
+  public HttpClient getHttpClient(String connectionId) {
+    var sonarLintBackend = initializedBackend();
+    return sonarLintBackend.getHttpClient(connectionId);
+  }
+
+  public CompletableFuture<ValidateConnectionResponse> validateConnection(ValidateConnectionParams params) {
+    return initializedBackend().getConnectionService().validateConnection(params);
   }
 }

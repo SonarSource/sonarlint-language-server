@@ -27,22 +27,24 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.http.HttpClient;
 import org.sonarsource.sonarlint.core.issuetracking.CachingIssueTracker;
 import org.sonarsource.sonarlint.core.issuetracking.InMemoryIssueTrackerCache;
 import org.sonarsource.sonarlint.core.issuetracking.IssueTrackerCache;
 import org.sonarsource.sonarlint.core.issuetracking.Trackable;
+import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.core.tracking.IssueTrackable;
-import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static java.util.function.Predicate.not;
 
 public class ServerIssueTrackerWrapper {
 
   private final ConnectedSonarLintEngine engine;
-  private final ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient;
+  private final EndpointParams endpointParams;
   private final ProjectBinding projectBinding;
   private final Supplier<String> getReferenceBranchNameForFolder;
+  private final HttpClient httpClient;
 
   private final IssueTrackerCache<Issue> issueTrackerCache;
   private final IssueTrackerCache<Issue> hotspotsTrackerCache;
@@ -50,12 +52,13 @@ public class ServerIssueTrackerWrapper {
   private final CachingIssueTracker cachingHotspotsTracker;
   private final org.sonarsource.sonarlint.core.tracking.ServerIssueTracker tracker;
 
-  ServerIssueTrackerWrapper(ConnectedSonarLintEngine engine, ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient,
-    ProjectBinding projectBinding, Supplier<String> getReferenceBranchNameForFolder) {
+  ServerIssueTrackerWrapper(ConnectedSonarLintEngine engine, EndpointParams endpointParams,
+    ProjectBinding projectBinding, Supplier<String> getReferenceBranchNameForFolder, HttpClient httpClient) {
     this.engine = engine;
-    this.endpointParamsAndHttpClient = endpointParamsAndHttpClient;
+    this.endpointParams = endpointParams;
     this.projectBinding = projectBinding;
     this.getReferenceBranchNameForFolder = getReferenceBranchNameForFolder;
+    this.httpClient = httpClient;
 
     this.issueTrackerCache = new InMemoryIssueTrackerCache();
     this.hotspotsTrackerCache = new InMemoryIssueTrackerCache();
@@ -73,7 +76,7 @@ public class ServerIssueTrackerWrapper {
     cachingIssueTracker.matchAndTrackAsNew(filePath, toIssueTrackables(issues));
     cachingHotspotsTracker.matchAndTrackAsNew(filePath, toHotspotTrackables(issues));
     if (shouldFetchServerIssues) {
-      tracker.update(endpointParamsAndHttpClient.getEndpointParams(), endpointParamsAndHttpClient.getHttpClient(), engine, projectBinding,
+      tracker.update(endpointParams, httpClient, engine, projectBinding,
         Collections.singleton(filePath), getReferenceBranchNameForFolder.get());
     } else {
       tracker.update(engine, projectBinding, getReferenceBranchNameForFolder.get(), Collections.singleton(filePath));

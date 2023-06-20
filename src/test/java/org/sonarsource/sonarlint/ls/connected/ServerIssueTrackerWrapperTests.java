@@ -34,9 +34,12 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.http.HttpClient;
+import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.core.serverconnection.issues.LineLevelServerIssue;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerIssue;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -175,7 +178,10 @@ class ServerIssueTrackerWrapperTests {
     var projectKey = "project1";
     var projectBinding = new ProjectBinding(projectKey, "", "");
     Supplier<String> branchSupplier = () -> "branchName";
-    return new ServerIssueTrackerWrapper(engine, new ServerConnectionSettings.EndpointParamsAndHttpClient(null, null), projectBinding, branchSupplier);
+    BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
+    var httpClient = mock(HttpClient.class);
+    when(backendServiceFacade.getHttpClient(any())).thenReturn(httpClient);
+    return new ServerIssueTrackerWrapper(engine, new EndpointParams("https://sonarcloud.io", true, "known"), projectBinding, branchSupplier, httpClient);
   }
 
   private ServerIssueTrackerWrapper newTracker(Path baseDir) {

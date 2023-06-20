@@ -43,7 +43,6 @@ import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.util.Utils;
 import testutils.ImmediateExecutorService;
 import testutils.SonarLintLogTester;
@@ -142,7 +141,7 @@ class SettingsManagerTests {
     var backend = mock(BackendService.class);
     when(backendFacade.getInitParams()).thenReturn(new BackendInitParams());
     when(backendFacade.getBackendService()).thenReturn(backend);
-    underTest = new SettingsManager(client, foldersManager, mock(ApacheHttpClientProvider.class), new ImmediateExecutorService(), backendFacade);
+    underTest = new SettingsManager(client, foldersManager, new ImmediateExecutorService(), backendFacade);
     underTest.setBindingManager(bindingManager);
     underTest = spy(underTest);
   }
