@@ -42,6 +42,8 @@ ec2_instance: &WINVM_DEFINITION
   type: t3.xlarge
 
 build_task:
+  name: "Build and stage to repox"
+  alias: build
   <<: *ONLY_IF
   eks_container:
     <<: *CONTAINER_DEFINITION
@@ -121,6 +123,8 @@ mend_scan_task:
       path: "whitesource/**/*"
 
 promote_task:
+  name: "Promotion"
+  alias: "promote"
   depends_on:
     - build
     - qa_linux
