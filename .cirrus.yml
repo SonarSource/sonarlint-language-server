@@ -130,6 +130,7 @@ mend_scan_task:
 
 promote_task:
   name: "Promotion"
+  alias: "promote"
   depends_on:
     - build
     - test_linux
