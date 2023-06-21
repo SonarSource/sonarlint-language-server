@@ -125,7 +125,7 @@ mend_scan_task:
   cleanup_before_cache_script: cleanup_maven_repository
   allow_failures: "true"
   always:
-    mend_artifacts:
+    ws_scan_artifacts:
       path: "whitesource/**/*"
 
 promote_task:
