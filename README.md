@@ -2,7 +2,7 @@ SonarLint Language Server
 =========================
 SonarLint language server (used by SonarLint VSCode)
 
-[![Build Status](https://dev.azure.com/sonarsource/DotNetTeam%20Project/_apis/build/status/sonarlint/SonarLint%20Language%20Server?branchName=master)](https://dev.azure.com/sonarsource/DotNetTeam%20Project/_build/latest?definitionId=66&branchName=master)
+[![Build Status](https://api.cirrus-ci.com/github/SonarSource/sonarlint-language-server.svg?branch=master)](https://cirrus-ci.com/github/SonarSource/sonarlint-language-server)
 [![Quality Gate Status](https://next.sonarqube.com/sonarqube/api/project_badges/measure?project=org.sonarsource.sonarlint.ls%3Asonarlint-language-server&metric=alert_status)](https://next.sonarqube.com/sonarqube/dashboard?id=org.sonarsource.sonarlint.ls%3Asonarlint-language-server)
 
 Have Question or Feedback?
@@ -22,7 +22,7 @@ Please be aware that we are not actively looking for feature contributions. The 
 
 With that in mind, if you would like to submit a code contribution, please create a pull request for this repository. Please explain your motives to contribute this change: what problem you are trying to fix, what improvement you are trying to make.
 
-Make sure that you follow our [code style](https://github.com/SonarSource/sonar-developer-toolset#code-style) and all tests are passing (Azure pipeline is executed for each pull request).
+Make sure that you follow our [code style](https://github.com/SonarSource/sonar-developer-toolset#code-style) and all tests are passing (CirrusCI is executed for each pull request).
 
 Building
 --------

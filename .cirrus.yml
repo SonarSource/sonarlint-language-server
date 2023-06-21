@@ -1,0 +1,152 @@
+env:
+  CIRRUS_CLONE_DEPTH: "1"
+  CIRRUS_SHELL: bash
+
+  ARTIFACTORY_URL: VAULT[development/kv/data/repox data.url]
+  ARTIFACTORY_PRIVATE_USERNAME: vault-${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-private-reader
+  ARTIFACTORY_PRIVATE_PASSWORD: VAULT[development/artifactory/token/${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-private-reader access_token]
+  BURGR_URL: VAULT[development/kv/data/burgr data.url]
+  BURGR_USERNAME: VAULT[development/kv/data/burgr data.cirrus_username]
+  BURGR_PASSWORD: VAULT[development/kv/data/burgr data.cirrus_password]
+  SONAR_HOST_URL: VAULT[development/kv/data/next data.url]
+  SONAR_TOKEN: VAULT[development/kv/data/next data.token]
+
+auto_cancellation: $CIRRUS_BRANCH != 'master'
+
+only_if_base: &ONLY_IF
+  only_if: $CIRRUS_USER_COLLABORATOR == 'true' && $CIRRUS_TAG == ""
+
+only_if_with_nightly: &ONLY_IF_WITH_NIGHTLY
+  only_if: ($CIRRUS_USER_COLLABORATOR == 'true' || $CIRRUS_CRON == 'nightly-mend-scan') && $CIRRUS_TAG == ""
+
+only_pr_and_maintained_branches: &ONLY_PR_AND_MAINTAINED_BRANCHES
+  only_if: $CIRRUS_PR != "" || $CIRRUS_BRANCH == 'master' || $CIRRUS_BRANCH =~ "branch-.*" || $CIRRUS_BRANCH =~ "dogfood-on-.*"
+
+only_main_branches: &ONLY_MAIN_BRANCHES
+  only_if: $CIRRUS_BRANCH == "master" || $CIRRUS_BRANCH =~ "branch-.*"
+
+eks_container: &CONTAINER_DEFINITION
+  image: ${CIRRUS_AWS_ACCOUNT}.dkr.ecr.eu-central-1.amazonaws.com/base:j11-latest
+  region: eu-central-1
+  cluster_name: ${CIRRUS_CLUSTER_NAME}
+  namespace: default
+  cpu: 4
+  memory: 2G
+
+ec2_instance: &WINVM_DEFINITION
+  experimental: true
+  image: base-windows-jdk17-v*
+  platform: windows
+  region: eu-central-1
+  subnet_id: ${CIRRUS_AWS_SUBNET}
+  type: t3.xlarge
+
+build_task:
+  # name: "Build and stage to repox"
+  # alias: build
+  <<: *ONLY_IF
+  eks_container:
+    <<: *CONTAINER_DEFINITION
+  env:
+    ARTIFACTORY_DEPLOY_REPO: sonarsource-public-qa
+    ARTIFACTORY_DEPLOY_USERNAME: vault-${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-qa-deployer
+    ARTIFACTORY_DEPLOY_PASSWORD: VAULT[development/artifactory/token/${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-qa-deployer access_token]
+    SIGN_KEY: VAULT[development/kv/data/sign data.key]
+    PGP_PASSPHRASE: VAULT[development/kv/data/sign data.passphrase]
+    DEPLOY_PULL_REQUEST: true
+  maven_cache:
+    folder: ${CIRRUS_WORKING_DIR}/.m2/repository
+  build_script:
+    - source cirrus-env BUILD-PRIVATE
+    - regular_mvn_build_deploy_analyze -Dmaven.test.skip=true -Dsonar.skip=true
+  cleanup_before_cache_script: cleanup_maven_repository
+
+qa_linux_task:
+  # name: "Run unit tests on Linux with Java 11 and SonarQube analysis on Next"
+  # alias: qa_linux
+  depends_on:
+    - build
+  <<: *ONLY_IF
+  eks_container:
+    <<: *CONTAINER_DEFINITION
+  env:
+    DEPLOY_PULL_REQUEST: false
+  maven_cache:
+    folder: ${CIRRUS_WORKING_DIR}/.m2/repository
+  qa_script:
+    - source cirrus-env QA
+    - PULL_REQUEST_SHA=$GIT_SHA1 regular_mvn_build_deploy_analyze -Dcommercial
+  cleanup_before_cache_script: cleanup_maven_repository
+  on_failure:
+    junit_artifacts:
+      path: '**/target/surefire-reports/TEST-*.xml'
+      format: junit
+
+qa_windows_task:
+  # name: "Run unit tests on Windows with Java 17"
+  # alias: qa_windows
+  depends_on:
+    - build
+  <<: *ONLY_IF
+  ec2_instance:
+    <<: *WINVM_DEFINITION
+  maven_cache:
+    folder: ${CIRRUS_WORKING_DIR}/.m2/repository
+  qa_script:
+    - source cirrus-env QA
+    - source set_maven_build_version $BUILD_NUMBER
+    - mvn -B -e -V verify -Dcommercial
+  cleanup_before_cache_script: cleanup_maven_repository
+  on_failure:
+    junit_artifacts:
+      path: '**/target/surefire-reports/TEST-*.xml'
+      format: junit
+
+mend_scan_task:
+  # name: "Mend scan"
+  # alias: mend_scan
+  depends_on:
+    - build
+  <<: *ONLY_IF_WITH_NIGHTLY
+  <<: *ONLY_MAIN_BRANCHES
+  eks_container:
+    <<: *CONTAINER_DEFINITION
+    cpu: 4
+    memory: 2G
+  env:
+    WS_APIKEY: VAULT[development/kv/data/mend data.apikey]
+  maven_cache:
+    folder: ${CIRRUS_WORKING_DIR}/.m2/repository
+  mend_script:
+    - if [[ $CIRRUS_CRON == 'nightly-mend-scan' ]]; then source cirrus-env BUILD-PRIVATE; else source cirrus-env QA; fi
+    - source set_maven_build_version $BUILD_NUMBER
+    - mvn clean install -DskipTests
+    - source ws_scan.sh
+  cleanup_before_cache_script: cleanup_maven_repository
+  allow_failures: "true"
+  always:
+    mend_artifacts:
+      path: "whitesource/**/*"
+
+promote_task:
+  depends_on:
+    - build
+    - qa_linux
+    - qa_windows
+    - mend_scan
+  <<: *ONLY_IF
+  <<: *ONLY_PR_AND_MAINTAINED_BRANCHES
+  eks_container:
+    <<: *CONTAINER_DEFINITION
+    cpu: 0.5
+    memory: 500M
+  env:
+    GCF_ACCESS_TOKEN: VAULT[development/kv/data/promote data.token]
+    PROMOTE_URL: VAULT[development/kv/data/promote data.url]
+    GITHUB_TOKEN: VAULT[development/github/token/${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-promotion token]
+    # artifacts which will have downloadable links in burgr
+    ARTIFACTS: org.sonarsource.sonarlint.ls:sonarlint-language-server:jar
+  maven_cache:
+    folder: ${CIRRUS_WORKING_DIR}/.m2/repository
+  promote_script: cirrus_promote_maven
+  cleanup_before_cache_script: cleanup_maven_repository
