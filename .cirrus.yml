@@ -75,7 +75,7 @@ qa_linux_task:
     folder: ${CIRRUS_WORKING_DIR}/.m2/repository
   qa_script:
     - source cirrus-env QA
-    - PULL_REQUEST_SHA=$GIT_SHA1 regular_mvn_build_deploy_analyze -Dcommercial
+    - PULL_REQUEST_SHA=$GIT_SHA1 regular_mvn_build_deploy_analyze verify -P-deploy-sonarsource,-release,-sign -Dcommercial -Dmaven.install.skip=true -Dmaven.deploy.skip=true
   cleanup_before_cache_script: cleanup_maven_repository
   on_failure:
     junit_artifacts:
@@ -95,7 +95,7 @@ qa_windows_task:
   qa_script:
     - source cirrus-env QA
     - source set_maven_build_version $BUILD_NUMBER
-    - mvn -B -e -V verify -Dcommercial
+    - mvn -B -e -V verify -Dcommercial -Dmaven.test.redirectTestOutputToFile=false
   cleanup_before_cache_script: cleanup_maven_repository
   on_failure:
     junit_artifacts:
