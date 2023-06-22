@@ -33,12 +33,18 @@ import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -58,6 +64,27 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
       "productVersion", "0.1"), new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
   }
 
+  @AfterAll
+  public static void resetAnalysisTimer() {
+    AnalysisScheduler.resetAnalysisTimerMs();
+  }
+
+  @BeforeEach
+  void setVerboseLogs() {
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
+    client.readyForTestsLatch = new CountDownLatch(1);
+  }
+
+  @Override
+  protected void verifyConfigurationChangeOnClient() {
+    try {
+      assertTrue(client.readyForTestsLatch.await(15, SECONDS));
+    } catch (InterruptedException e) {
+      fail(e);
+    }
+  }
+
   @Override
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
     setTestFilePattern(getFolderSettings(folder1BaseDir.toUri().toString()), "**/*Test.py");
@@ -66,7 +93,6 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   @Test
   void analysisShouldUseFolderSettings() throws Exception {
-    setShowVerboseLogs(client.globalSettings, true);
     // In folder settings, the test pattern is **/*Test.py while in global config we put **/*.py
     setTestFilePattern(client.globalSettings, "**/*.py");
     notifyConfigurationChangeOnClient();
@@ -95,9 +121,6 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   @Test
   void shouldBatchAnalysisFromTheSameFolder() {
-    setShowVerboseLogs(client.globalSettings, true);
-    notifyConfigurationChangeOnClient();
-
     var file1InFolder = folder1BaseDir.resolve("file1.py").toUri().toString();
     var file2InFolder = folder1BaseDir.resolve("file2.py").toUri().toString();
 
@@ -110,6 +133,9 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
         "[Info] Found 0 issues"));
 
     client.logs.clear();
+
+    // Deliberately slow down analysis timer to make sure that analyses triggered by change events are batched
+    AnalysisScheduler.setAnalysisTimerMs(5_000);
 
     // two consecutive changes should be batched
     lsProxy.getTextDocumentService()
@@ -129,9 +155,6 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   @Test
   void shouldNotBatchAnalysisFromDifferentFolders() throws Exception {
-    setShowVerboseLogs(client.globalSettings, true);
-    notifyConfigurationChangeOnClient();
-
     // Simulate opening of a second workspace folder
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(
       new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folder2BaseDir.toUri().toString(), "My Folder 2")), List.of())));

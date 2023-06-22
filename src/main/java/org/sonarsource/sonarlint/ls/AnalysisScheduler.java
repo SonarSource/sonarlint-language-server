@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -57,7 +58,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
 
   private static final CompletableFuture<Void> COMPLETED_FUTURE = CompletableFuture.completedFuture(null);
   private static final int DEFAULT_TIMER_MS = 2000;
-  private static final int QUEUE_POLLING_PERIOD_MS = 200;
+  private static final int DEFAULT_QUEUE_POLLING_PERIOD_MS = DEFAULT_TIMER_MS / 10;
 
   static final String SONARLINT_SOURCE = "sonarlint";
   public static final String SONARQUBE_TAINT_SOURCE = "Latest SonarQube Analysis";
@@ -78,14 +79,11 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   private final AnalysisTaskExecutor analysisTaskExecutor;
 
   private final ExecutorService asyncExecutor;
+  private static int analysisTimerMs = DEFAULT_TIMER_MS;
+  private static int queuePollingPeriodMs = DEFAULT_QUEUE_POLLING_PERIOD_MS;
 
   public AnalysisScheduler(LanguageClientLogger lsLogOutput, WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
     OpenNotebooksCache openNotebooksCache, AnalysisTaskExecutor analysisTaskExecutor) {
-    this(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor, DEFAULT_TIMER_MS);
-  }
-
-  AnalysisScheduler(LanguageClientLogger lsLogOutput, WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
-    OpenNotebooksCache openNotebooksCache, AnalysisTaskExecutor analysisTaskExecutor, int defaultTimerMs) {
     this.lsLogOutput = lsLogOutput;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.bindingManager = bindingManager;
@@ -93,7 +91,19 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     this.openNotebooksCache = openNotebooksCache;
     this.analysisTaskExecutor = analysisTaskExecutor;
     this.asyncExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Analysis Scheduler", false));
-    this.watcher = new EventWatcher(defaultTimerMs);
+    this.watcher = new EventWatcher();
+  }
+
+  @VisibleForTesting
+  public static void setAnalysisTimerMs(int analysisTimerMs) {
+    AnalysisScheduler.analysisTimerMs = analysisTimerMs;
+    AnalysisScheduler.queuePollingPeriodMs = analysisTimerMs / 10;
+  }
+
+  @VisibleForTesting
+  public static void resetAnalysisTimerMs() {
+    AnalysisScheduler.analysisTimerMs = DEFAULT_TIMER_MS;
+    AnalysisScheduler.queuePollingPeriodMs = DEFAULT_TIMER_MS / 10;
   }
 
   public void didOpen(VersionedOpenFile file) {
@@ -111,10 +121,8 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   private class EventWatcher extends Thread {
     private Future<?> onChangeCurrentTask = COMPLETED_FUTURE;
     private boolean stop = false;
-    private final int defaultTimerMs;
 
-    EventWatcher(int defaultTimerMs) {
-      this.defaultTimerMs = defaultTimerMs;
+    EventWatcher() {
       this.setDaemon(true);
       this.setName("sonarlint-auto-trigger");
     }
@@ -130,7 +138,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
       while (!stop) {
         checkTimers();
         try {
-          Thread.sleep(QUEUE_POLLING_PERIOD_MS);
+          Thread.sleep(AnalysisScheduler.queuePollingPeriodMs);
         } catch (InterruptedException e) {
           // continue until stop flag is set
         }
@@ -144,7 +152,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
       var filesToTrigger = new ArrayList<VersionedOpenFile>();
       while (it.hasNext()) {
         var e = it.next();
-        if (e.getValue() + defaultTimerMs < now) {
+        if (e.getValue() + analysisTimerMs < now) {
           openFilesCache.getFile(e.getKey()).ifPresent(filesToTrigger::add);
           openNotebooksCache.getFile(e.getKey()).ifPresent(notebook -> filesToTrigger.add(notebook.asVersionedOpenFile()));
         }
