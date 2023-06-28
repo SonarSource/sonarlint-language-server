@@ -100,6 +100,7 @@ public class WebsocketClientEndpoint {
    * @param message
    */
   public void sendMessage(String message) {
+    System.out.println("supermessage");
     this.userSession.getAsyncRemote().sendText(message);
   }
 

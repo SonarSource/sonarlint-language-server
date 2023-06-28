@@ -19,12 +19,17 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import com.google.gson.Gson;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
+import org.apache.hc.client5.http.classic.HttpClient;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
@@ -48,6 +53,7 @@ import static org.sonarsource.sonarlint.ls.util.Utils.severity;
 
 public class DiagnosticPublisher {
 
+  private Gson gson = new Gson();
   static final String SONARLINT_SOURCE = "sonarlint";
   static final String REMOTE_SOURCE = "remote";
 
@@ -99,16 +105,18 @@ public class DiagnosticPublisher {
   }
 
   public void processIssue(IssueParams message) throws URISyntaxException, InterruptedException {
-    final WebsocketClientEndpoint clientEndPoint = new WebsocketClientEndpoint(new URI("ws://localhost:8080/sonarlint-socket"));
+    var client = java.net.http.HttpClient.newHttpClient();
 
-    // add listener
-    clientEndPoint.addMessageHandler(message1 -> System.out.println(message1));
+    var request = HttpRequest.newBuilder()
+      .uri(URI.create("http://localhost:8080/issues"))
+      .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(message)))
+      .build();
 
-    // send message to websocket
-    clientEndPoint.sendMessage("{'message':'" + message + "'}");
-
-    // wait 5 seconds for messages from websocket
-    Thread.sleep(1000);
+    try {
+      client.send(request, HttpResponse.BodyHandlers.ofString());
+    } catch (IOException e) {
+      System.out.println("grosbug");
+    }
   }
 
   static Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
