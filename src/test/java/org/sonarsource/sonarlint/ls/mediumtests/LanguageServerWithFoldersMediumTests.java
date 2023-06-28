@@ -137,20 +137,24 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     // Deliberately slow down analysis timer to make sure that analyses triggered by change events are batched
     AnalysisScheduler.setAnalysisTimerMs(5_000);
 
-    // two consecutive changes should be batched
-    lsProxy.getTextDocumentService()
-      .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1InFolder, 2),
-        List.of(new TextDocumentContentChangeEvent("def foo():\n  toto = 0\n  plouf = 0\n"))));
-    lsProxy.getTextDocumentService()
-      .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder, 2),
-        List.of(new TextDocumentContentChangeEvent("def foo():\n  toto2 = 0\n  plouf2 = 0\n"))));
+    try {
+      // two consecutive changes should be batched
+      lsProxy.getTextDocumentService()
+        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1InFolder, 2),
+          List.of(new TextDocumentContentChangeEvent("def foo():\n  toto = 0\n  plouf = 0\n"))));
+      lsProxy.getTextDocumentService()
+        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder, 2),
+          List.of(new TextDocumentContentChangeEvent("def foo():\n  toto2 = 0\n  plouf2 = 0\n"))));
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestamp())
-      .containsSubsequence(
-        "[Debug] Queuing analysis of 2 files",
-        "[Info] Analyzing 2 files...",
-        "[Info] Found 4 issues"));
+      awaitUntilAsserted(() -> assertThat(client.logs)
+        .extracting(withoutTimestamp())
+        .containsSubsequence(
+          "[Debug] Queuing analysis of 2 files",
+          "[Info] Analyzing 2 files...",
+          "[Info] Found 4 issues"));
+    } finally {
+      AnalysisScheduler.resetAnalysisTimerMs();
+    }
   }
 
   @Test
