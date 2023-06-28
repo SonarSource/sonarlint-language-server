@@ -30,6 +30,7 @@ import java.net.Socket;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -140,6 +141,7 @@ import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.util.ExitingInputStream;
 import org.sonarsource.sonarlint.ls.util.Utils;
+import org.sonarsource.sonarlint.ls.watcher.WatchDir;
 
 import static java.net.URI.create;
 import static java.util.Optional.ofNullable;
@@ -276,14 +278,16 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.shutdownLatch = new CountDownLatch(1);
     launcher.startListening();
     bootstrapInitialization();
-    // mock file open
-    var uri = "file:///Users/kirill.knize/IdeaProjects/java-demo-1/src/main/java/devoxx/vulnerability/t.js";
-    didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "js", 1, "var i = 0;")));
+    try {
+      new WatchDir(Paths.get("/home/nicolas.quinquenel/Repositories/innovation-days/issues-directory"), true, analysisScheduler).processEvents();
+    } catch (IOException e) {
+      System.out.println("WWWWW");
+    }
   }
 
   private void bootstrapInitialization() {
     var params = new InitializeParams();
-    params.setWorkspaceFolders(List.of(new WorkspaceFolder("file:///Users/kirill.knize/IdeaProjects/java-demo-1", "java-demo-1")));
+    params.setWorkspaceFolders(List.of(new WorkspaceFolder("file:///home/nicolas.quinquenel/Repositories/innovation-days/issues-directory", "issues-directory")));
     params.setTrace("MESSAGES");
     params.setClientInfo(new ClientInfo("Standalone SonarLint", "1.0.0"));
     var capabilities = new ClientCapabilities();

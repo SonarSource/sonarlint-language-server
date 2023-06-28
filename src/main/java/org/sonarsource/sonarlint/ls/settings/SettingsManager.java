@@ -130,7 +130,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       emptyMap(),
       true,
       true,
-      "/usr/local/bin/node");
+      "/home/nicolas.quinquenel/.nvm/versions/node/v18.13.0/bin/node");
   }
 
   public Map<String, StandaloneRuleConfigDto> getStandaloneRuleConfigByKey() {

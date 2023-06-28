@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -37,6 +38,8 @@ import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.util.Utils;
+import org.sonarsource.sonarlint.ls.watcher.IssueParams;
+import org.sonarsource.sonarlint.ls.watcher.WebsocketClientEndpoint;
 
 import static java.util.stream.Collectors.toList;
 import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralizedSuffix;
@@ -79,9 +82,33 @@ public class DiagnosticPublisher {
       return;
     }
     if (!onlyHotspots) {
-      client.publishDiagnostics(createPublishDiagnosticsParams(f));
+      var diagnostics = createPublishDiagnosticsParams(f);
+      client.publishDiagnostics(diagnostics);
+
+      if (!diagnostics.getDiagnostics().isEmpty()) {
+        try {
+          processIssue(new IssueParams(diagnostics.getDiagnostics().get(0).getMessage()));
+        } catch (URISyntaxException e) {
+          System.out.println("bugbug");
+        } catch (InterruptedException e) {
+          System.out.println("bugbug");
+        }
+      }
     }
     client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
+  }
+
+  public void processIssue(IssueParams message) throws URISyntaxException, InterruptedException {
+    final WebsocketClientEndpoint clientEndPoint = new WebsocketClientEndpoint(new URI("ws://localhost:8080/sonarlint-socket"));
+
+    // add listener
+    clientEndPoint.addMessageHandler(message1 -> System.out.println(message1));
+
+    // send message to websocket
+    clientEndPoint.sendMessage("{'message':'" + message + "'}");
+
+    // wait 5 seconds for messages from websocket
+    Thread.sleep(1000);
   }
 
   static Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {

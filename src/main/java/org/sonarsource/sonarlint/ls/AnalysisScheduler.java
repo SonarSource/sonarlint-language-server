@@ -188,11 +188,11 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
       this.shouldShowProgress = shouldShowProgress;
     }
 
-    static AnalysisParams newAnalysisParams(List<VersionedOpenFile> files) {
+    public static AnalysisParams newAnalysisParams(List<VersionedOpenFile> files) {
       return new AnalysisParams(files, false, false, false);
     }
 
-    AnalysisParams withFetchServerIssues() {
+    public AnalysisParams withFetchServerIssues() {
       return new AnalysisParams(files, true, shouldKeepHotspotsOnly, shouldShowProgress);
     }
 
@@ -208,7 +208,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   /**
    * Handle analysis asynchronously to not block client events for too long
    */
-  Future<?> analyzeAsync(AnalysisParams params) {
+  public Future<?> analyzeAsync(AnalysisParams params) {
     var trueFileUris = params.files.stream().filter(f -> {
       if (!Utils.uriHasFileScheme(f.getUri())) {
         lsLogOutput.warn(format("URI '%s' is not in local filesystem, analysis not supported", f.getUri()));
