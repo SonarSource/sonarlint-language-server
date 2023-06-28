@@ -57,6 +57,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.sonarsource.sonarlint.ls.StandaloneSettings.NODE_PATH;
 import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 
 public class SettingsManager implements WorkspaceFolderLifecycleListener {
@@ -130,7 +131,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       emptyMap(),
       true,
       true,
-      "/home/nicolas.quinquenel/.nvm/versions/node/v18.13.0/bin/node");
+      NODE_PATH);
   }
 
   public Map<String, StandaloneRuleConfigDto> getStandaloneRuleConfigByKey() {

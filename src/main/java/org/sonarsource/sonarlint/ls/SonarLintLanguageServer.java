@@ -149,6 +149,9 @@ import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DE
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
+import static org.sonarsource.sonarlint.ls.StandaloneSettings.WATCH_DIR_PATH;
+import static org.sonarsource.sonarlint.ls.StandaloneSettings.WORKSPACE_FOLDER_NAME;
+import static org.sonarsource.sonarlint.ls.StandaloneSettings.WORKSPACE_FOLDER_URI;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusOfTitle;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusValueOfHotspotReviewStatus;
 
@@ -279,7 +282,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     launcher.startListening();
     bootstrapInitialization();
     try {
-      new WatchDir(Paths.get("/home/nicolas.quinquenel/Repositories/innovation-days/issues-directory"), true, analysisScheduler).processEvents();
+      new WatchDir(Paths.get(WATCH_DIR_PATH), true, analysisScheduler).processEvents();
     } catch (IOException e) {
       System.out.println("WWWWW");
     }
@@ -287,7 +290,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   private void bootstrapInitialization() {
     var params = new InitializeParams();
-    params.setWorkspaceFolders(List.of(new WorkspaceFolder("file:///home/nicolas.quinquenel/Repositories/innovation-days/issues-directory", "issues-directory")));
+    params.setWorkspaceFolders(List.of(new WorkspaceFolder(WORKSPACE_FOLDER_URI, WORKSPACE_FOLDER_NAME)));
     params.setTrace("MESSAGES");
     params.setClientInfo(new ClientInfo("Standalone SonarLint", "1.0.0"));
     var capabilities = new ClientCapabilities();
