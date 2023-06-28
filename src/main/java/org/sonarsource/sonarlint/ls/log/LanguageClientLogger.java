@@ -75,6 +75,7 @@ public class LanguageClientLogger implements WorkspaceSettingsChangeListener {
     if ((!isFromAnalysis || showAnalyzerLogs) && (showVerboseLogs || !isDebugOrTrace)) {
       client.logMessage(new MessageParams(MessageType.Log, prefix(prefix, formattedMessage)));
     }
+    System.out.println(MessageType.Log + " " + prefix(prefix, formattedMessage));
   }
 
   @Override

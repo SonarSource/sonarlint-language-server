@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.folders;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -81,15 +82,7 @@ public class WorkspaceFolderWrapper {
    * Get non null settings, waiting for them to be initialized
    */
   public WorkspaceFolderSettings getSettings() {
-    try {
-      if (initLatch.await(1, TimeUnit.MINUTES)) {
-        return settings;
-      }
-    } catch (InterruptedException e) {
-      LOG.debug("Interrupted!", e);
-      Thread.currentThread().interrupt();
-    }
-    throw new IllegalStateException("Unable to get settings in time");
+    return new WorkspaceFolderSettings(null, null, new HashMap<>(), null, null);
   }
 
   @CheckForNull

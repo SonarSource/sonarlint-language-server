@@ -139,21 +139,6 @@ public class AnalysisTaskExecutor {
   private void analyze(AnalysisTask task) {
     var filesToAnalyze = task.getFilesToAnalyze().stream().collect(Collectors.toMap(VersionedOpenFile::getUri, identity()));
 
-    if (!task.shouldKeepHotspotsOnly()) {
-      //
-      // If the task is a "scan for hotspots", submitted files are already checked for SCM ignore status on client side
-      //
-      var scmIgnored = filesToAnalyze.keySet().stream()
-        .filter(this::scmIgnored)
-        .collect(toSet());
-
-      scmIgnored.forEach(f -> {
-        lsLogOutput.debug(format("Skip analysis for SCM ignored file: '%s'", f));
-        clearIssueCacheAndPublishEmptyDiagnostics(f);
-        filesToAnalyze.remove(f);
-      });
-    }
-
     var filesToAnalyzePerFolder = filesToAnalyze.entrySet().stream()
       .collect(groupingBy(entry -> workspaceFoldersManager.findFolderForFile(entry.getKey()), mapping(Entry::getValue, toMap(VersionedOpenFile::getUri, identity()))));
     filesToAnalyzePerFolder.forEach((folder, filesToAnalyzeInFolder) -> analyze(task, folder, filesToAnalyzeInFolder));

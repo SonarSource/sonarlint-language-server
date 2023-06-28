@@ -53,6 +53,8 @@ import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.Arrays.stream;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
@@ -120,14 +122,15 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
    * Get workspace level settings, waiting for them to be initialized
    */
   public WorkspaceSettings getCurrentSettings() {
-    try {
-      if (initLatch.await(1, TimeUnit.MINUTES)) {
-        return currentSettings;
-      }
-    } catch (InterruptedException e) {
-      interrupted(e);
-    }
-    throw new IllegalStateException("Unable to get settings in time");
+    return new WorkspaceSettings(
+      false,
+      new HashMap<>(),
+      emptyList(),
+      emptyList(),
+      emptyMap(),
+      true,
+      true,
+      "/usr/local/bin/node");
   }
 
   public Map<String, StandaloneRuleConfigDto> getStandaloneRuleConfigByKey() {
@@ -143,14 +146,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
    * Get default workspace folder level settings, waiting for them to be initialized
    */
   public WorkspaceFolderSettings getCurrentDefaultFolderSettings() {
-    try {
-      if (initLatch.await(1, TimeUnit.MINUTES)) {
-        return currentDefaultSettings;
-      }
-    } catch (InterruptedException e) {
-      interrupted(e);
-    }
-    throw new IllegalStateException("Unable to get settings in time");
+    return new WorkspaceFolderSettings(null, null, new HashMap<>(), null, null);
   }
 
   public void didChangeConfiguration() {
@@ -306,7 +302,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static void parseDeprecatedServerEntries(Map<String, Object> connectedModeMap, Map<String, ServerConnectionSettings> serverConnections,
     ApacheHttpClientProvider httpClientProvider) {
     @SuppressWarnings("unchecked")
-    var deprecatedServersEntries = (List<Map<String, Object>>) connectedModeMap.getOrDefault("servers", Collections.emptyList());
+    var deprecatedServersEntries = (List<Map<String, Object>>) connectedModeMap.getOrDefault("servers", emptyList());
     deprecatedServersEntries.forEach(m -> {
       if (checkRequiredAttribute(m, "server", SERVER_ID, SERVER_URL, TOKEN)) {
         var connectionId = (String) m.get(SERVER_ID);
@@ -322,7 +318,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private void parseSonarQubeConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections,
     ApacheHttpClientProvider httpClientProvider) {
     @SuppressWarnings("unchecked")
-    var sonarqubeEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarqube", Collections.emptyList());
+    var sonarqubeEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarqube", emptyList());
     sonarqubeEntries.forEach(m -> {
       if (checkRequiredAttribute(m, "SonarQube server", SERVER_URL)) {
         var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
@@ -338,7 +334,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections,
     ApacheHttpClientProvider httpClientProvider) {
     @SuppressWarnings("unchecked")
-    var sonarcloudEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
+    var sonarcloudEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarcloud", emptyList());
     sonarcloudEntries.forEach(m -> {
 
       if (checkRequiredAttribute(m, "SonarCloud", ORGANIZATION_KEY)) {

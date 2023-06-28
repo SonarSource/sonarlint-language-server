@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -44,9 +45,12 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.eclipse.lsp4j.ClientCapabilities;
+import org.eclipse.lsp4j.ClientInfo;
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Command;
+import org.eclipse.lsp4j.DiagnosticWorkspaceCapabilities;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidChangeNotebookDocumentParams;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
@@ -70,9 +74,12 @@ import org.eclipse.lsp4j.NotebookSelectorCell;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.SetTraceParams;
+import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.TextDocumentSyncOptions;
 import org.eclipse.lsp4j.WorkDoneProgressCancelParams;
+import org.eclipse.lsp4j.WorkspaceClientCapabilities;
+import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersOptions;
 import org.eclipse.lsp4j.WorkspaceServerCapabilities;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
@@ -268,6 +275,25 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.taintIssuesUpdater = new TaintIssuesUpdater(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, settingsManager, diagnosticPublisher);
     this.shutdownLatch = new CountDownLatch(1);
     launcher.startListening();
+    bootstrapInitialization();
+    // mock file open
+    var uri = "file:///Users/kirill.knize/IdeaProjects/java-demo-1/src/main/java/devoxx/vulnerability/t.js";
+    didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "js", 1, "var i = 0;")));
+  }
+
+  private void bootstrapInitialization() {
+    var params = new InitializeParams();
+    params.setWorkspaceFolders(List.of(new WorkspaceFolder("file:///Users/kirill.knize/IdeaProjects/java-demo-1", "java-demo-1")));
+    params.setTrace("MESSAGES");
+    params.setClientInfo(new ClientInfo("Standalone SonarLint", "1.0.0"));
+    var capabilities = new ClientCapabilities();
+    var workspaceCapabilities = new WorkspaceClientCapabilities();
+    var diagnosticWorkspaceCapabilities = new DiagnosticWorkspaceCapabilities();
+    diagnosticWorkspaceCapabilities.setRefreshSupport(true);
+    workspaceCapabilities.setDiagnostics(diagnosticWorkspaceCapabilities);
+    capabilities.setWorkspace(workspaceCapabilities);
+    params.setCapabilities(capabilities);
+    initialize(params);
   }
 
   static SonarLintLanguageServer bySocket(int port, Collection<Path> analyzers) throws IOException {
@@ -448,14 +474,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     if (openNotebooksCache.isNotebook(uri)) {
       return;
     }
-    client.isOpenInEditor(uri.toString()).thenAccept(isOpen -> {
-      if (Boolean.TRUE.equals(isOpen)) {
-        var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
-        analysisScheduler.didOpen(file);
-      } else {
-        SonarLintLogger.get().debug("Skipping analysis for preview of file {}", uri);
-      }
-    });
+    var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
+    analysisScheduler.didOpen(file);
   }
 
   @Override
