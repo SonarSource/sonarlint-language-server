@@ -24,22 +24,27 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidClasspathUpdateParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidJavaServerModeChangeParams;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.commons.lang3.StringUtils.appendIfMissing;
 import static org.apache.commons.lang3.StringUtils.removeEnd;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -63,11 +68,24 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       "productVersion", "0.1"));
   }
 
-  @Test
-  void analyseJavaFilesAsNonJavaIfNoClasspath() throws Exception {
+  @BeforeEach
+  void setVerboseLogs() {
+    client.readyForTestsLatch = new CountDownLatch(1);
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
+  }
 
+  @Override
+  protected void verifyConfigurationChangeOnClient() {
+    try {
+      assertTrue(client.readyForTestsLatch.await(15, SECONDS));
+    } catch (InterruptedException e) {
+      fail(e);
+    }
+  }
+
+  @Test
+  void analyseJavaFilesAsNonJavaIfNoClasspath() throws Exception {
     var uri = getUri("skipJavaIfNoClasspath.java");
 
     client.javaConfigs.put(uri, null);
@@ -89,9 +107,6 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleJavaFileReuseCachedClasspath() throws Exception {
-    setShowVerboseLogs(client.globalSettings, true);
-    notifyConfigurationChangeOnClient();
-
     var uri = getUri("analyzeSimpleJavaFileOnOpen.java");
 
     var javaConfigResponse = new GetJavaConfigResponse();
@@ -170,7 +185,6 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     var currentJdkHome = javaHome.endsWith("jre") ? javaHome.getParent() : javaHome;
     var isModular = Files.exists(currentJdkHome.resolve("lib/jrt-fs.jar"));
 
-    setShowVerboseLogs(client.globalSettings, true);
     setShowAnalyzerLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
 
@@ -224,9 +238,6 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void testClassPathUpdateEvictCacheAndTriggersNewAnalysis(@TempDir Path projectRoot) throws Exception {
-    setShowVerboseLogs(client.globalSettings, true);
-    notifyConfigurationChangeOnClient();
-
     var uri = getUri("testClassPathUpdate.java");
 
     var projectRootUri = projectRoot.toUri().toString();
@@ -269,9 +280,6 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void testJavaServerModeUpdateToStandardTriggersNewAnalysis() throws Exception {
-    setShowVerboseLogs(client.globalSettings, true);
-    notifyConfigurationChangeOnClient();
-
     var uri = getUri("testJavaServerModeUpdate.java");
 
     // Simulate null Java config response due to serverMode=LightWeight
@@ -312,9 +320,6 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldBatchAnalysisFromTheSameModule() throws Exception {
-    setShowVerboseLogs(client.globalSettings, true);
-    notifyConfigurationChangeOnClient();
-
     var file1module1 = getUri("Foo1.java");
     var file2module1 = getUri("Foo2.java");
     var nonJavaFilemodule1 = getUri("Another.py");
@@ -361,9 +366,6 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldNotBatchAnalysisFromDifferentModules() throws Exception {
-    setShowVerboseLogs(client.globalSettings, true);
-    notifyConfigurationChangeOnClient();
-
     var file1module1 = getUri("file1.java");
     var file2module2 = getUri("file2.java");
 
