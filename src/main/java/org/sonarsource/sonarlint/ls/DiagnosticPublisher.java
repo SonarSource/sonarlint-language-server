@@ -109,6 +109,7 @@ public class DiagnosticPublisher {
 
     var request = HttpRequest.newBuilder()
       .uri(URI.create("http://localhost:8080/issues"))
+      .header("Content-type", "application/json")
       .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(message)))
       .build();
 
