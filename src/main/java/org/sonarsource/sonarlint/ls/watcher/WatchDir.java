@@ -51,8 +51,12 @@ package org.sonarsource.sonarlint.ls.watcher;
  */
 
 import com.google.common.base.Charsets;
+import com.google.gson.Gson;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
@@ -63,6 +67,7 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +86,7 @@ import static java.nio.file.StandardWatchEventKinds.OVERFLOW;
 
 public class WatchDir {
 
+  private Gson gson = new Gson();
   private final AnalysisScheduler analysisScheduler;
   private final WatchService watcher;
   private final Map<WatchKey,Path> keys;
@@ -185,8 +191,17 @@ public class WatchDir {
 
         if (child.toString().endsWith(".js")) {
           System.out.println("Analyzing " + child);
-          var openFile = new VersionedOpenFile(child.toUri(), "js", 0, com.google.common.io.Files.asCharSource(new File(child.toUri()), StandardCharsets.UTF_8).read());
-          analysisScheduler.analyzeAsync(AnalysisScheduler.AnalysisParams.newAnalysisParams(List.of(openFile)).withFetchServerIssues());
+
+          if (event.kind().name().equals("ENTRY_DELETE")) {
+            try {
+              processIssue(Map.of(child.toString().substring(child.toString().indexOf("/") + 1), Collections.emptyList()));
+            } catch (InterruptedException e) {
+              System.out.println("crazybug");
+            }
+          } else {
+            var openFile = new VersionedOpenFile(child.toUri(), "js", 0, com.google.common.io.Files.asCharSource(new File(child.toUri()), StandardCharsets.UTF_8).read());
+            analysisScheduler.analyzeAsync(AnalysisScheduler.AnalysisParams.newAnalysisParams(List.of(openFile)).withFetchServerIssues());
+          }
         }
 
         // if directory is created, and watching recursively, then
@@ -212,6 +227,22 @@ public class WatchDir {
           break;
         }
       }
+    }
+  }
+
+  public void processIssue(Map<String, List<IssueParams>> messages) throws InterruptedException {
+    var httpClient = java.net.http.HttpClient.newHttpClient();
+
+    var request = HttpRequest.newBuilder()
+      .uri(URI.create("http://localhost:8080/issues"))
+      .header("Content-type", "application/json")
+      .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(messages)))
+      .build();
+
+    try {
+      httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    } catch (IOException e) {
+      System.out.println("grosbug");
     }
   }
 
