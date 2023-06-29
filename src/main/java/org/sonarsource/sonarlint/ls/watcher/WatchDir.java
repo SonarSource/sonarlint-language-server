@@ -61,6 +61,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
@@ -151,6 +152,20 @@ public class WatchDir {
       System.out.println("Done.");
     } else {
       register(dir);
+    }
+
+    try (var files = Files.find(dir, 999, (p, bfa) -> bfa.isRegularFile())) {
+      files.forEach(file -> {
+        try {
+          var language = getLanguageByFileName(EnginesFactory.getStandaloneLanguages(), file.toString());
+          if (language != null) {
+            var openFile = new VersionedOpenFile(file.toUri(), language.getLanguageKey(), 0, com.google.common.io.Files.asCharSource(new File(file.toUri()), StandardCharsets.UTF_8).read());
+            analysisScheduler.analyzeAsync(AnalysisScheduler.AnalysisParams.newAnalysisParams(List.of(openFile)).withFetchServerIssues());
+          }
+         } catch (IOException e) {
+          System.out.println("bug_scanning_files_opening");
+        }
+      });
     }
 
     // enable trace after initial registration
