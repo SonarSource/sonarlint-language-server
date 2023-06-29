@@ -19,31 +19,18 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-public class StandaloneSettings {
-  // KIRILL
-  //  public static final String NODE_PATH = "/usr/local/bin/node";
-  // NICOLAS
-  public static final String NODE_PATH = "/home/nicolas.quinquenel/.nvm/versions/node/v18.13.0/bin/node";
-  private final String watchDirPath;
-  private final String workspaceFolderUri;
+import org.junit.jupiter.api.Test;
 
-  public StandaloneSettings(String workspaceFolderPath) {
-    this.watchDirPath = workspaceFolderPath;
-    this.workspaceFolderUri = "file://" + workspaceFolderPath;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+
+public class StandaloneSettingsTests {
+
+  @Test
+  void settingsTest(){
+    var settings = new StandaloneSettings("/home/user/folder");
+
+    assertThat(settings.getWorkspaceFolderName()).isEqualTo("folder");
+    assertThat(settings.getWorkspaceFolderUri()).isEqualTo("file:///home/user/folder");
+    assertThat(settings.getWatchDirPath()).isEqualTo("/home/user/folder");
   }
-
-  public String getWatchDirPath() {
-    return watchDirPath;
-  }
-
-  public String getWorkspaceFolderUri() {
-    return workspaceFolderUri;
-  }
-
-  public String getWorkspaceFolderName() {
-    return getWatchDirPath().substring(getWatchDirPath().lastIndexOf("/") + 1);
-  }
-
-
-
 }

@@ -149,9 +149,6 @@ import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DE
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
-import static org.sonarsource.sonarlint.ls.StandaloneSettings.WATCH_DIR_PATH;
-import static org.sonarsource.sonarlint.ls.StandaloneSettings.WORKSPACE_FOLDER_NAME;
-import static org.sonarsource.sonarlint.ls.StandaloneSettings.WORKSPACE_FOLDER_URI;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusOfTitle;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusValueOfHotspotReviewStatus;
 
@@ -202,8 +199,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final BackendServiceFacade backendServiceFacade;
   private final Collection<Path> analyzers;
   private final CountDownLatch shutdownLatch;
+  private final StandaloneSettings standaloneSettings;
 
-  SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers) {
+  SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream,
+    Collection<Path> analyzers, String workspacePath) {
+    standaloneSettings = new StandaloneSettings(workspacePath);
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
     var input = new ExitingInputStream(inputStream, this);
     var launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
@@ -282,7 +282,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     launcher.startListening();
     bootstrapInitialization();
     try {
-      new WatchDir(Paths.get(WATCH_DIR_PATH), true, analysisScheduler).processEvents();
+      new WatchDir(Paths.get(standaloneSettings.getWatchDirPath()), true, analysisScheduler).processEvents();
     } catch (IOException e) {
       System.out.println("WWWWW");
     }
@@ -290,7 +290,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   private void bootstrapInitialization() {
     var params = new InitializeParams();
-    params.setWorkspaceFolders(List.of(new WorkspaceFolder(WORKSPACE_FOLDER_URI, WORKSPACE_FOLDER_NAME)));
+    params.setWorkspaceFolders(List.of(new WorkspaceFolder(standaloneSettings.getWorkspaceFolderUri(), standaloneSettings.getWorkspaceFolderName())));
     params.setTrace("MESSAGES");
     params.setClientInfo(new ClientInfo("Standalone SonarLint", "1.0.0"));
     var capabilities = new ClientCapabilities();
@@ -305,11 +305,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   static SonarLintLanguageServer bySocket(int port, Collection<Path> analyzers) throws IOException {
     var socket = new Socket("localhost", port);
-    return new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers);
+    return new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers, "");
   }
 
-  static SonarLintLanguageServer byStdio(List<Path> analyzers) {
-    return new SonarLintLanguageServer(System.in, System.out, analyzers);
+  static SonarLintLanguageServer byStdio(List<Path> analyzers, String workspacePath) {
+    return new SonarLintLanguageServer(System.in, System.out, analyzers, workspacePath);
   }
 
   @Override

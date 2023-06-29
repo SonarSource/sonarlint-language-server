@@ -46,6 +46,9 @@ public class ServerMain implements Callable<Integer> {
   @Option(names = "-stdio", description = "The actual transport channel will be stdio")
   private boolean useStdio;
 
+  @Option(names = "-workspace", description = "Lol")
+  private String workspacePath;
+
   @Option(names = "-analyzers", arity = "1..*", description = "A list of paths to the analyzer JARs that should be used to analyze the code.")
   private List<Path> analyzers = new ArrayList<>();
 
@@ -65,7 +68,7 @@ public class ServerMain implements Callable<Integer> {
 
     SonarLintLanguageServer server;
     if (useStdio) {
-      server = SonarLintLanguageServer.byStdio(analyzers);
+      server = SonarLintLanguageServer.byStdio(analyzers, workspacePath);
     } else {
       int actualJsonRpcPort = jsonRpcPort.orElse(deprecatedJsonRpcPort);
       server = SonarLintLanguageServer.bySocket(actualJsonRpcPort, analyzers);
