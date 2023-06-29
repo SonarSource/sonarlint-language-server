@@ -21,12 +21,13 @@ package org.sonarsource.sonarlint.ls.watcher;
 
 public class IssueParams {
 
+	private String fileName;
 	private String message;
-
 	private String severity;
 	private String code;
 
-	public IssueParams(String message, String severity, String code) {
+	public IssueParams(String fileName, String message, String severity, String code) {
+		this.fileName = fileName;
 		this.message = message;
 		this.severity = severity;
 		this.code = code;
@@ -54,6 +55,14 @@ public class IssueParams {
 
 	public void setCode(String code) {
 		this.code = code;
+	}
+
+	public String getFileName() {
+		return fileName;
+	}
+
+	public void setFileName(String fileName) {
+		this.fileName = fileName;
 	}
 
 }

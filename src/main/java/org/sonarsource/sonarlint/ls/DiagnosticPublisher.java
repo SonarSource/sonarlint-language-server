@@ -92,8 +92,9 @@ public class DiagnosticPublisher {
 
       if (!diagnostics.getDiagnostics().isEmpty()) {
         try {
+          var file = diagnostics.getUri().substring(diagnostics.getUri().lastIndexOf("/") + 1);
           var listIssues = diagnostics.getDiagnostics().stream()
-              .map(diag -> new IssueParams(diag.getMessage(), diag.getSeverity().name(), diag.getCode().getLeft()))
+              .map(diag -> new IssueParams(file, diag.getMessage(), diag.getSeverity().name(), diag.getCode().getLeft()))
                 .collect(toList());
           processIssue(listIssues);
         } catch (InterruptedException e) {
