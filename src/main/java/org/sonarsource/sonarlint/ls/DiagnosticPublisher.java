@@ -26,10 +26,10 @@ import java.net.URISyntaxException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
-import org.apache.hc.client5.http.classic.HttpClient;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
@@ -44,7 +44,6 @@ import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.util.Utils;
 import org.sonarsource.sonarlint.ls.watcher.IssueParams;
-import org.sonarsource.sonarlint.ls.watcher.WebsocketClientEndpoint;
 
 import static java.util.stream.Collectors.toList;
 import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralizedSuffix;
@@ -93,9 +92,10 @@ public class DiagnosticPublisher {
 
       if (!diagnostics.getDiagnostics().isEmpty()) {
         try {
-          processIssue(new IssueParams(diagnostics.getDiagnostics().get(0).getMessage()));
-        } catch (URISyntaxException e) {
-          System.out.println("bugbug");
+          var listIssues = diagnostics.getDiagnostics().stream()
+              .map(diag -> new IssueParams(diag.getMessage(), diag.getSeverity().name(), diag.getCode().getLeft()))
+                .collect(toList());
+          processIssue(listIssues);
         } catch (InterruptedException e) {
           System.out.println("bugbug");
         }
@@ -104,17 +104,17 @@ public class DiagnosticPublisher {
     client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
   }
 
-  public void processIssue(IssueParams message) throws URISyntaxException, InterruptedException {
-    var client = java.net.http.HttpClient.newHttpClient();
+  public void processIssue(List<IssueParams> messages) throws InterruptedException {
+    var httpClient = java.net.http.HttpClient.newHttpClient();
 
     var request = HttpRequest.newBuilder()
       .uri(URI.create("http://localhost:8080/issues"))
       .header("Content-type", "application/json")
-      .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(message)))
+      .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(messages)))
       .build();
 
     try {
-      client.send(request, HttpResponse.BodyHandlers.ofString());
+      httpClient.send(request, HttpResponse.BodyHandlers.ofString());
     } catch (IOException e) {
       System.out.println("grosbug");
     }
