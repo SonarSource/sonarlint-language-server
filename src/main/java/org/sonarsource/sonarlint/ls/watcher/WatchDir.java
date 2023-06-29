@@ -194,7 +194,7 @@ public class WatchDir {
 
           if (event.kind().name().equals("ENTRY_DELETE")) {
             try {
-              processIssue(Map.of(child.toString().substring(child.toString().indexOf("/") + 1), Collections.emptyList()));
+              processIssue(Map.of(child.toString().substring(child.toString().lastIndexOf("/") + 1), Collections.emptyList()));
             } catch (InterruptedException e) {
               System.out.println("crazybug");
             }
