@@ -290,6 +290,10 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     analyzeAsync(AnalysisParams.newAnalysisParams(files).withOnlyHotspots().withProgress());
   }
 
+  public void scanFiles(List<VersionedOpenFile> files) {
+    analyzeAsync(AnalysisParams.newAnalysisParams(files));
+  }
+
   private void analyzeAllUnboundOpenFiles() {
     var openedUnboundFileUris = openFilesCache.getAll().stream()
       .filter(f -> bindingManager.getBinding(f.getUri()).isEmpty())

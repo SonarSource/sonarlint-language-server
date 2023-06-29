@@ -50,7 +50,6 @@ package org.sonarsource.sonarlint.ls.watcher;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import com.google.common.base.Charsets;
 import com.google.gson.Gson;
 import java.io.File;
 import java.io.IOException;
@@ -67,11 +66,16 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import org.jetbrains.annotations.NotNull;
+import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
+import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 
 import static java.nio.file.LinkOption.NOFOLLOW_LINKS;
@@ -188,10 +192,10 @@ public class WatchDir {
 
         // print out event
         System.out.format("%s: %s\n", event.kind().name(), child);
+        var language = getLanguageByFileName(EnginesFactory.getStandaloneLanguages(), child.toString());
+        System.out.println("Analyzing " + child);
 
-        if (child.toString().endsWith(".js")) {
-          System.out.println("Analyzing " + child);
-
+        if (language != null) {
           if (event.kind().name().equals("ENTRY_DELETE")) {
             try {
               processIssue(Map.of(child.toString().substring(child.toString().lastIndexOf("/") + 1), Collections.emptyList()));
@@ -199,10 +203,11 @@ public class WatchDir {
               System.out.println("crazybug");
             }
           } else {
-            var openFile = new VersionedOpenFile(child.toUri(), "js", 0, com.google.common.io.Files.asCharSource(new File(child.toUri()), StandardCharsets.UTF_8).read());
+            var openFile = new VersionedOpenFile(child.toUri(), language.getLanguageKey(), 0, com.google.common.io.Files.asCharSource(new File(child.toUri()), StandardCharsets.UTF_8).read());
             analysisScheduler.analyzeAsync(AnalysisScheduler.AnalysisParams.newAnalysisParams(List.of(openFile)).withFetchServerIssues());
           }
         }
+
 
         // if directory is created, and watching recursively, then
         // register it and its sub-directories
@@ -249,5 +254,17 @@ public class WatchDir {
   static void usage() {
     System.err.println("usage: java WatchDir [-r] dir");
     System.exit(-1);
+  }
+
+  private static Language getLanguageByFileName(Set<Language> enabledLanguages, String fileName) {
+    for (Language language : enabledLanguages) {
+      String[] extensions;
+      extensions = language.getDefaultFileSuffixes();
+
+      for (String suffix : extensions) {
+        if (fileName.endsWith(suffix)) return language;
+      }
+    }
+    return null;
   }
 }
