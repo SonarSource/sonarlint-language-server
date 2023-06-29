@@ -25,6 +25,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +70,8 @@ public class DiagnosticPublisher {
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final OpenNotebooksCache openNotebooksCache;
 
-  public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache, IssuesCache hotspotsCache,
+  public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
+    IssuesCache issuesCache, IssuesCache hotspotsCache,
     OpenNotebooksCache openNotebooksCache) {
     this.client = client;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
@@ -90,22 +93,24 @@ public class DiagnosticPublisher {
       var diagnostics = createPublishDiagnosticsParams(f);
       client.publishDiagnostics(diagnostics);
 
-      if (!diagnostics.getDiagnostics().isEmpty()) {
-        try {
-          var file = diagnostics.getUri().substring(diagnostics.getUri().lastIndexOf("/") + 1);
+      try {
+        var file = diagnostics.getUri().substring(diagnostics.getUri().lastIndexOf("/") + 1);
+        if (!diagnostics.getDiagnostics().isEmpty()) {
           var listIssues = diagnostics.getDiagnostics().stream()
-              .map(diag -> new IssueParams(file, diag.getMessage(), diag.getSeverity().name(), diag.getCode().getLeft()))
-                .collect(toList());
-          processIssue(listIssues);
-        } catch (InterruptedException e) {
-          System.out.println("bugbug");
+            .map(diag -> new IssueParams(file, diag.getMessage(), diag.getSeverity().name(), diag.getCode().getLeft()))
+            .collect(toList());
+          processIssue(Map.of(file, listIssues));
+        } else {
+          processIssue(Map.of(file, Collections.emptyList()));
         }
+      } catch (InterruptedException e) {
+        System.out.println("bugbug");
       }
     }
     client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
   }
 
-  public void processIssue(List<IssueParams> messages) throws InterruptedException {
+  public void processIssue(Map<String, List<IssueParams>> messages) throws InterruptedException {
     var httpClient = java.net.http.HttpClient.newHttpClient();
 
     var request = HttpRequest.newBuilder()
