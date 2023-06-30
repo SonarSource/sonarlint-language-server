@@ -13,11 +13,13 @@ env:
 
 auto_cancellation: $CIRRUS_BRANCH != 'master'
 
-only_if_base: &ONLY_IF
-  only_if: $CIRRUS_USER_COLLABORATOR == 'true' && $CIRRUS_TAG == ""
+only_if_except_nightly: &ONLY_IF_EXCEPT_NIGHTLY
+  only_if: $CIRRUS_USER_COLLABORATOR == 'true' && $CIRRUS_TAG == "" && $CIRRUS_BUILD_SOURCE != "cron"
+  skip: "changesIncludeOnly('README.md')"
 
-only_if_with_nightly: &ONLY_IF_WITH_NIGHTLY
-  only_if: ($CIRRUS_USER_COLLABORATOR == 'true' || $CIRRUS_CRON == 'nightly-mend-scan') && $CIRRUS_TAG == ""
+only_if_with_nightly: &ONLY_IF
+  only_if: $CIRRUS_USER_COLLABORATOR == 'true' && $CIRRUS_TAG == ""
+  skip: "changesIncludeOnly('README.md')"
 
 only_pr_and_maintained_branches: &ONLY_PR_AND_MAINTAINED_BRANCHES
   only_if: $CIRRUS_PR != "" || $CIRRUS_BRANCH == 'master' || $CIRRUS_BRANCH =~ "branch-.*" || $CIRRUS_BRANCH =~ "dogfood-on-.*"
@@ -44,7 +46,7 @@ ec2_instance: &WINVM_DEFINITION
 build_task:
   # name: "Build and stage to repox"
   # alias: build
-  <<: *ONLY_IF
+  <<: *ONLY_IF_EXCEPT_NIGHTLY
   eks_container:
     <<: *CONTAINER_DEFINITION
   env:
@@ -66,7 +68,7 @@ qa_linux_task:
   # alias: qa_linux
   depends_on:
     - build
-  <<: *ONLY_IF
+  <<: *ONLY_IF_EXCEPT_NIGHTLY
   eks_container:
     <<: *CONTAINER_DEFINITION
   env:
@@ -87,7 +89,7 @@ qa_windows_task:
   # alias: qa_windows
   depends_on:
     - build
-  <<: *ONLY_IF
+  <<: *ONLY_IF_EXCEPT_NIGHTLY
   ec2_instance:
     <<: *WINVM_DEFINITION
   maven_cache:
@@ -107,7 +109,7 @@ mend_scan_task:
   # alias: mend_scan
   depends_on:
     - build
-  <<: *ONLY_IF_WITH_NIGHTLY
+  <<: *ONLY_IF
   <<: *ONLY_MAIN_BRANCHES
   eks_container:
     <<: *CONTAINER_DEFINITION
@@ -115,7 +117,6 @@ mend_scan_task:
     memory: 2G
   env:
     WS_APIKEY: VAULT[development/kv/data/mend data.apikey]
-    WS_PRODUCTNAME: SonarLint/LanguageServer
   maven_cache:
     folder: ${CIRRUS_WORKING_DIR}/.m2/repository
   mend_script:
@@ -135,7 +136,7 @@ promote_task:
     - qa_linux
     - qa_windows
     - mend_scan
-  <<: *ONLY_IF
+  <<: *ONLY_IF_EXCEPT_NIGHTLY
   <<: *ONLY_PR_AND_MAINTAINED_BRANCHES
   eks_container:
     <<: *CONTAINER_DEFINITION
