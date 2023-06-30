@@ -83,10 +83,6 @@ public class TaintIssuesUpdater {
     var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(bindingWrapper.getConnectionId());
     var serverConfiguration = connectionSettings.getServerConfiguration();
 
-    // sync taints
-    engine.syncServerTaintIssues(serverConfiguration.getEndpointParams(),
-      serverConfiguration.getHttpClient(), binding.projectKey(), branchName, null);
-
     // download taints
     var sqFilePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(Paths.get(folderUri), fileUri));
     engine.downloadAllServerTaintIssuesForFile(serverConfiguration.getEndpointParams(),
