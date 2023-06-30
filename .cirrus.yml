@@ -43,6 +43,12 @@ ec2_instance: &WINVM_DEFINITION
   subnet_id: ${CIRRUS_AWS_SUBNET}
   type: t3.xlarge
 
+maven_cache: &MAVEN_CACHE
+  maven_cache:
+    folder: ${CIRRUS_WORKING_DIR}/.m2/repository
+    fingerprint_script:
+      - cat pom.xml
+
 build_task:
   # name: "Build and stage to repox"
   # alias: build
@@ -56,8 +62,7 @@ build_task:
     SIGN_KEY: VAULT[development/kv/data/sign data.key]
     PGP_PASSPHRASE: VAULT[development/kv/data/sign data.passphrase]
     DEPLOY_PULL_REQUEST: true
-  maven_cache:
-    folder: ${CIRRUS_WORKING_DIR}/.m2/repository
+  <<: *MAVEN_CACHE
   build_script:
     - source cirrus-env BUILD-PRIVATE
     - regular_mvn_build_deploy_analyze -Dmaven.test.skip=true -Dsonar.skip=true
@@ -73,8 +78,7 @@ qa_linux_task:
     <<: *CONTAINER_DEFINITION
   env:
     DEPLOY_PULL_REQUEST: false
-  maven_cache:
-    folder: ${CIRRUS_WORKING_DIR}/.m2/repository
+  <<: *MAVEN_CACHE
   qa_script:
     - source cirrus-env QA
     - PULL_REQUEST_SHA=$GIT_SHA1 regular_mvn_build_deploy_analyze verify -P-deploy-sonarsource,-release,-sign -Dcommercial -Dmaven.install.skip=true -Dmaven.deploy.skip=true
@@ -92,8 +96,7 @@ qa_windows_task:
   <<: *ONLY_IF_EXCEPT_NIGHTLY
   ec2_instance:
     <<: *WINVM_DEFINITION
-  maven_cache:
-    folder: ${CIRRUS_WORKING_DIR}/.m2/repository
+  <<: *MAVEN_CACHE
   qa_script:
     - source cirrus-env QA
     - source set_maven_build_version $BUILD_NUMBER
@@ -117,8 +120,7 @@ mend_scan_task:
     memory: 2G
   env:
     WS_APIKEY: VAULT[development/kv/data/mend data.apikey]
-  maven_cache:
-    folder: ${CIRRUS_WORKING_DIR}/.m2/repository
+  <<: *MAVEN_CACHE
   mend_script:
     - if [[ $CIRRUS_CRON == 'nightly-mend-scan' ]]; then source cirrus-env BUILD-PRIVATE; else source cirrus-env QA; fi
     - source set_maven_build_version $BUILD_NUMBER
@@ -148,7 +150,6 @@ promote_task:
     GITHUB_TOKEN: VAULT[development/github/token/${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-promotion token]
     # artifacts which will have downloadable links in burgr
     ARTIFACTS: org.sonarsource.sonarlint.ls:sonarlint-language-server:jar
-  maven_cache:
-    folder: ${CIRRUS_WORKING_DIR}/.m2/repository
+  <<: *MAVEN_CACHE
   promote_script: cirrus_promote_maven
   cleanup_before_cache_script: cleanup_maven_repository
