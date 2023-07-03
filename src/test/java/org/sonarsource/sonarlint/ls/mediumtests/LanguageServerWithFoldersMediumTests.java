@@ -33,12 +33,9 @@ import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,11 +59,6 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
       "productVersion", "0.1"), new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
-  }
-
-  @AfterAll
-  public static void resetAnalysisTimer() {
-    AnalysisScheduler.resetAnalysisTimerMs();
   }
 
   @BeforeEach
@@ -134,27 +126,20 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
     client.logs.clear();
 
-    // Deliberately slow down analysis timer to make sure that analyses triggered by change events are batched
-    AnalysisScheduler.setAnalysisTimerMs(5_000);
+    // two consecutive changes should be batched
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1InFolder, 2),
+        List.of(new TextDocumentContentChangeEvent("def foo():\n  toto = 0\n  plouf = 0\n"))));
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder, 2),
+        List.of(new TextDocumentContentChangeEvent("def foo():\n  toto2 = 0\n  plouf2 = 0\n"))));
 
-    try {
-      // two consecutive changes should be batched
-      lsProxy.getTextDocumentService()
-        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file1InFolder, 2),
-          List.of(new TextDocumentContentChangeEvent("def foo():\n  toto = 0\n  plouf = 0\n"))));
-      lsProxy.getTextDocumentService()
-        .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder, 2),
-          List.of(new TextDocumentContentChangeEvent("def foo():\n  toto2 = 0\n  plouf2 = 0\n"))));
-
-      awaitUntilAsserted(() -> assertThat(client.logs)
-        .extracting(withoutTimestamp())
-        .containsSubsequence(
-          "[Debug] Queuing analysis of 2 files",
-          "[Info] Analyzing 2 files...",
-          "[Info] Found 4 issues"));
-    } finally {
-      AnalysisScheduler.resetAnalysisTimerMs();
-    }
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .containsSubsequence(
+        "[Debug] Queuing analysis of 2 files",
+        "[Info] Analyzing 2 files...",
+        "[Info] Found 4 issues"));
   }
 
   @Test
