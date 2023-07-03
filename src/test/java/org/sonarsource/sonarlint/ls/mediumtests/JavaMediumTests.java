@@ -32,6 +32,7 @@ import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
@@ -287,16 +288,16 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     didOpen(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
 
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains(
+        "[Debug] Analysis of Java file '" + uri + "' may not show all issues because SonarLint was unable to query project configuration (classpath, source level, ...)"));
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
         tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Information),
         tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestamp())
-      .contains(
-        "[Debug] Analysis of Java file '" + uri + "' may not show all issues because SonarLint was unable to query project configuration (classpath, source level, ...)"));
 
     // Prepare config response
     var javaConfigResponse = new GetJavaConfigResponse();
