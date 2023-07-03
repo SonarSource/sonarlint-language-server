@@ -63,8 +63,7 @@ class AnalysisSchedulerTests {
     openFilesCache = new OpenFilesCache(lsLogOutput);
     openNotebooksCache = new OpenNotebooksCache(lsLogOutput, mock(NotebookDiagnosticPublisher.class));
     underTest = new AnalysisScheduler(lsLogOutput, mock(WorkspaceFoldersManager.class), mock(ProjectBindingManager.class), openFilesCache,
-      openNotebooksCache, taskExecutor);
-    AnalysisScheduler.setAnalysisTimerMs(200);
+      openNotebooksCache, taskExecutor, 200);
 
     underTest.initialize();
   }
@@ -72,7 +71,6 @@ class AnalysisSchedulerTests {
   @AfterEach
   public void stop() {
     underTest.shutdown();
-    AnalysisScheduler.resetAnalysisTimerMs();
   }
 
   @Test

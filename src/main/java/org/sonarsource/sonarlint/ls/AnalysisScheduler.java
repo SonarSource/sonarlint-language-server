@@ -22,14 +22,15 @@ package org.sonarsource.sonarlint.ls;
 import com.google.common.annotations.VisibleForTesting;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -58,7 +59,6 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
 
   private static final CompletableFuture<Void> COMPLETED_FUTURE = CompletableFuture.completedFuture(null);
   private static final int DEFAULT_TIMER_MS = 2000;
-  private static final int DEFAULT_QUEUE_POLLING_PERIOD_MS = DEFAULT_TIMER_MS / 10;
 
   static final String SONARLINT_SOURCE = "sonarlint";
   public static final String SONARQUBE_TAINT_SOURCE = "Latest SonarQube Analysis";
@@ -69,8 +69,10 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
 
   private final OpenFilesCache openFilesCache;
   private final OpenNotebooksCache openNotebooksCache;
-  // entries in this map mean that the file is "dirty"
-  private final Map<URI, Long> eventMap = new ConcurrentHashMap<>();
+
+  // entries in this set mean that the file is "dirty"
+  private final Set<URI> events = new HashSet<>();
+  private final AtomicLong oldestEvent = new AtomicLong(Long.MAX_VALUE);
 
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final ProjectBindingManager bindingManager;
@@ -79,11 +81,15 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   private final AnalysisTaskExecutor analysisTaskExecutor;
 
   private final ExecutorService asyncExecutor;
-  private static int analysisTimerMs = DEFAULT_TIMER_MS;
-  private static int queuePollingPeriodMs = DEFAULT_QUEUE_POLLING_PERIOD_MS;
 
   public AnalysisScheduler(LanguageClientLogger lsLogOutput, WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
     OpenNotebooksCache openNotebooksCache, AnalysisTaskExecutor analysisTaskExecutor) {
+    this(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor, DEFAULT_TIMER_MS);
+  }
+
+  @VisibleForTesting
+  AnalysisScheduler(LanguageClientLogger lsLogOutput, WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
+    OpenNotebooksCache openNotebooksCache, AnalysisTaskExecutor analysisTaskExecutor, long analysisTimerMs) {
     this.lsLogOutput = lsLogOutput;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.bindingManager = bindingManager;
@@ -91,19 +97,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     this.openNotebooksCache = openNotebooksCache;
     this.analysisTaskExecutor = analysisTaskExecutor;
     this.asyncExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Analysis Scheduler", false));
-    this.watcher = new EventWatcher();
-  }
-
-  @VisibleForTesting
-  public static void setAnalysisTimerMs(int analysisTimerMs) {
-    AnalysisScheduler.analysisTimerMs = analysisTimerMs;
-    AnalysisScheduler.queuePollingPeriodMs = analysisTimerMs / 10;
-  }
-
-  @VisibleForTesting
-  public static void resetAnalysisTimerMs() {
-    AnalysisScheduler.analysisTimerMs = DEFAULT_TIMER_MS;
-    AnalysisScheduler.queuePollingPeriodMs = DEFAULT_TIMER_MS / 10;
+    this.watcher = new EventWatcher(analysisTimerMs);
   }
 
   public void didOpen(VersionedOpenFile file) {
@@ -111,18 +105,25 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   }
 
   public void didChange(URI fileUri) {
-    eventMap.put(fileUri, System.currentTimeMillis());
+    recordEvent(fileUri);
   }
 
   public void didReceiveHotspotEvent(URI fileUri) {
-    eventMap.put(fileUri, System.currentTimeMillis());
+    recordEvent(fileUri);
+  }
+
+  private void recordEvent(URI fileUri) {
+    oldestEvent.compareAndSet(Long.MAX_VALUE, System.currentTimeMillis());
+    events.add(fileUri);
   }
 
   private class EventWatcher extends Thread {
     private Future<?> onChangeCurrentTask = COMPLETED_FUTURE;
     private boolean stop = false;
+    private final long analysisTimerMs;
 
-    EventWatcher() {
+    EventWatcher(long analysisTimerMs) {
+      this.analysisTimerMs = analysisTimerMs;
       this.setDaemon(true);
       this.setName("sonarlint-auto-trigger");
     }
@@ -138,7 +139,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
       while (!stop) {
         checkTimers();
         try {
-          Thread.sleep(AnalysisScheduler.queuePollingPeriodMs);
+          Thread.sleep(this.analysisTimerMs / 10);
         } catch (InterruptedException e) {
           // continue until stop flag is set
         }
@@ -146,18 +147,19 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     }
 
     private void checkTimers() {
-      var now = System.currentTimeMillis();
-
-      var it = eventMap.entrySet().iterator();
-      var filesToTrigger = new ArrayList<VersionedOpenFile>();
-      while (it.hasNext()) {
-        var e = it.next();
-        if (e.getValue() + analysisTimerMs < now) {
-          openFilesCache.getFile(e.getKey()).ifPresent(filesToTrigger::add);
-          openNotebooksCache.getFile(e.getKey()).ifPresent(notebook -> filesToTrigger.add(notebook.asVersionedOpenFile()));
+      long now = System.currentTimeMillis();
+      long oldestEventTimeMs = oldestEvent.get();
+      if(now > oldestEventTimeMs + analysisTimerMs && !events.isEmpty()) {
+        var it = events.iterator();
+        var filesToTrigger = new ArrayList<VersionedOpenFile>();
+        while (it.hasNext()) {
+          var e = it.next();
+          openFilesCache.getFile(e).ifPresent(filesToTrigger::add);
+          openNotebooksCache.getFile(e).ifPresent(notebook -> filesToTrigger.add(notebook.asVersionedOpenFile()));
         }
+        triggerFiles(filesToTrigger);
+        oldestEvent.set(Long.MAX_VALUE);
       }
-      triggerFiles(filesToTrigger);
     }
 
     private void triggerFiles(List<VersionedOpenFile> filesToTrigger) {
@@ -168,14 +170,14 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
           // Wait for the next loop of EventWatcher to recheck if task has been successfully cancelled and then trigger the analysis
           return;
         }
-        filesToTrigger.forEach(f -> eventMap.remove(f.getUri()));
+        filesToTrigger.forEach(f -> events.remove(f.getUri()));
         onChangeCurrentTask = analyzeAsync(AnalysisParams.newAnalysisParams(filesToTrigger));
       }
     }
   }
 
   public void didClose(URI fileUri) {
-    eventMap.remove(fileUri);
+    events.remove(fileUri);
   }
 
   public static class AnalysisParams {
@@ -245,7 +247,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
 
   public void shutdown() {
     watcher.stopWatcher();
-    eventMap.clear();
+    events.clear();
     Utils.shutdownAndAwait(asyncExecutor, true);
   }
 
