@@ -674,6 +674,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void change_hotspot_status_to_resolved() {
+    var analyzedFileName = "hotspot_resolved.py";
+
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addProtobufResponseDelimited(
@@ -697,7 +699,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setQueryTimestamp(CURRENT_TIME)
         .build());
     mockWebServerExtension.addProtobufResponse(
-      "/api/hotspots/search.protobuf?projectKey=myProject&files=hotspot.py&branch=master&ps=500&p=1",
+      "/api/hotspots/search.protobuf?projectKey=myProject&files=" + analyzedFileName + "&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
     mockWebServerExtension.addProtobufResponse(
       "/api/rules/show.protobuf?key=python:S1313",
@@ -714,7 +716,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(System.currentTimeMillis()).build(),
       Hotspots.HotspotLite.newBuilder()
         .setKey(hotspotKey)
-        .setFilePath("hotspot.py")
+        .setFilePath(analyzedFileName)
         .setCreationDate(System.currentTimeMillis())
         .setStatus("TO_REVIEW")
         .setVulnerabilityProbability("LOW")
@@ -731,7 +733,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     );
 
 
-    var uriInFolder = folder1BaseDir.resolve("hotspot.py").toUri().toString();
+    var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
@@ -747,6 +749,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void change_hotspot_status_to_acknowledged() {
+    var analyzedFileName = "hotspot_acknowledged.py";
+
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addProtobufResponseDelimited(
@@ -770,7 +774,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setQueryTimestamp(CURRENT_TIME)
         .build());
     mockWebServerExtension.addProtobufResponse(
-      "/api/hotspots/search.protobuf?projectKey=myProject&files=hotspot.py&branch=master&ps=500&p=1",
+      "/api/hotspots/search.protobuf?projectKey=myProject&files="+ analyzedFileName + "&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
     mockWebServerExtension.addProtobufResponse(
       "/api/rules/show.protobuf?key=python:S1313",
@@ -787,7 +791,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(System.currentTimeMillis()).build(),
       Hotspots.HotspotLite.newBuilder()
         .setKey(hotspotKey)
-        .setFilePath("hotspot.py")
+        .setFilePath(analyzedFileName)
         .setCreationDate(System.currentTimeMillis())
         .setStatus("TO_REVIEW")
         .setVulnerabilityProbability("LOW")
@@ -804,7 +808,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     );
 
 
-    var uriInFolder = folder1BaseDir.resolve("hotspot.py").toUri().toString();
+    var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
@@ -820,6 +824,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void change_hotspot_status_permission_check() throws ExecutionException, InterruptedException {
+    var analyzedFileName = "hotspot_permissions.py";
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addProtobufResponseDelimited(
@@ -843,7 +848,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setQueryTimestamp(CURRENT_TIME)
         .build());
     mockWebServerExtension.addProtobufResponse(
-      "/api/hotspots/search.protobuf?projectKey=myProject&files=hotspot.py&branch=master&ps=500&p=1",
+      "/api/hotspots/search.protobuf?projectKey=myProject&files=" + analyzedFileName + "&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
     mockWebServerExtension.addProtobufResponse(
       "/api/rules/show.protobuf?key=python:S1313",
@@ -874,7 +879,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(System.currentTimeMillis()).build(),
       Hotspots.HotspotLite.newBuilder()
         .setKey(hotspotKey)
-        .setFilePath("hotspot.py")
+        .setFilePath(analyzedFileName)
         .setCreationDate(System.currentTimeMillis())
         .setStatus("TO_REVIEW")
         .setVulnerabilityProbability("LOW")
@@ -891,7 +896,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     );
 
 
-    var uriInFolder = folder1BaseDir.resolve("hotspot.py").toUri().toString();
+    var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
