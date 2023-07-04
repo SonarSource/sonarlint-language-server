@@ -74,21 +74,21 @@ public class LSProgressMonitor implements ClientProgressMonitor, ProgressFacade 
 
   @Override
   public void executeNonCancelableSection(Runnable nonCancelable) {
-    disableCancelation();
+    disableCancellation();
     try {
       nonCancelable.run();
     } finally {
-      enableCancelation();
+      enableCancellation();
     }
   }
 
-  void enableCancelation() {
+  void enableCancellation() {
     var progressReport = prepareProgressReport();
     progressReport.setCancellable(true);
     client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressReport)));
   }
 
-  void disableCancelation() {
+  void disableCancellation() {
     var progressReport = prepareProgressReport();
     progressReport.setCancellable(false);
     client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressReport)));
