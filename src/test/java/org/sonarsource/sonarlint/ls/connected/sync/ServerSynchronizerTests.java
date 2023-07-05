@@ -59,7 +59,6 @@ import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
@@ -91,10 +90,10 @@ class ServerSynchronizerTests {
   private static final ProjectBinding FAKE_BINDING2 = new ProjectBinding(PROJECT_KEY2, "sqPrefix2", "idePrefix2");
   private static final String CONNECTION_ID = "myServer";
   private static final String CONNECTION_ID2 = "myServer2";
-  private static final ApacheHttpClientProvider httpClientProvider = mock(ApacheHttpClientProvider.class);
-  private static final ServerConnectionSettings GLOBAL_SETTINGS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, true, httpClientProvider);
-  private static final ServerConnectionSettings GLOBAL_SETTINGS_DIFFERENT_SERVER_ID = new ServerConnectionSettings(CONNECTION_ID2, "http://foo2", "token2", null, true,
-    httpClientProvider);
+  private static final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
+  private static final ServerConnectionSettings GLOBAL_SETTINGS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, true);
+  private static final ServerConnectionSettings GLOBAL_SETTINGS_DIFFERENT_SERVER_ID = new ServerConnectionSettings(CONNECTION_ID2, "http://foo2", "token2", null, true
+  );
   private static final WorkspaceFolderSettings UNBOUND_SETTINGS = new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null, null);
   private static final WorkspaceFolderSettings BOUND_SETTINGS = new WorkspaceFolderSettings(CONNECTION_ID, PROJECT_KEY, Collections.emptyMap(), null, null);
   private static final WorkspaceFolderSettings BOUND_SETTINGS2 = new WorkspaceFolderSettings(CONNECTION_ID2, PROJECT_KEY2, Collections.emptyMap(), null, null);
@@ -126,7 +125,6 @@ class ServerSynchronizerTests {
   private TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private DiagnosticPublisher diagnosticPublisher;
   private ServerSentEventsHandlerService serverSentEventsHandler = mock(ServerSentEventsHandlerService.class);
-  private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
 
   @BeforeEach
   public void prepare() throws IOException, ExecutionException, InterruptedException {
@@ -162,7 +160,7 @@ class ServerSynchronizerTests {
       taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, mock(OpenNotebooksCache.class));
     syncTimer = mock(Timer.class);
     var syncTaskCaptor = ArgumentCaptor.forClass(TimerTask.class);
-    underTest = new ServerSynchronizer(client, new ProgressManager(client), bindingManager, analysisManager, syncTimer);
+    underTest = new ServerSynchronizer(client, new ProgressManager(client), bindingManager, analysisManager, syncTimer, backendServiceFacade);
     verify(syncTimer).scheduleAtFixedRate(syncTaskCaptor.capture(), anyLong(), anyLong());
     syncTask = syncTaskCaptor.getValue();
     bindingManager.setAnalysisManager(analysisManager);
@@ -310,7 +308,7 @@ class ServerSynchronizerTests {
     when(folderSettings.getConnectionId()).thenReturn(connectionId);
     when(folderSettings.getProjectKey()).thenReturn(projectKey);
     when(settingsManager.getCurrentSettings()).thenReturn(settings);
-    var serverConnectionSettings = new ServerConnectionSettings("serverId", "serverUrl", "token", "organizationKey", true, httpClientProvider);
+    var serverConnectionSettings = new ServerConnectionSettings("serverId", "serverUrl", "token", "organizationKey", true);
     when(settings.getServerConnections()).thenReturn(Map.of(connectionId, serverConnectionSettings));
     when(enginesFactory.createConnectedEngine(connectionId, serverConnectionSettings)).thenReturn(fakeEngine);
     when(settingsManager.getCurrentSettings()).thenReturn(settings);

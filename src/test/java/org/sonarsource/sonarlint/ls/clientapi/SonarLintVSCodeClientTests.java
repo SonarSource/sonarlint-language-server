@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,16 +37,14 @@ import org.sonarsource.sonarlint.core.clientapi.client.host.GetHostInfoResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.clientapi.client.hotspot.ShowHotspotParams;
 import org.sonarsource.sonarlint.core.clientapi.client.message.ShowMessageParams;
-import org.sonarsource.sonarlint.core.clientapi.client.progress.ReportProgressParams;
 import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressParams;
 import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
 import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -64,7 +61,6 @@ import static org.mockito.Mockito.when;
 class SonarLintVSCodeClientTests {
 
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
-  ApacheHttpClientProvider httpClientProvider = mock(ApacheHttpClientProvider.class);
 
   SettingsManager settingsManager = mock(SettingsManager.class);
   SmartNotifications smartNotifications = mock(SmartNotifications.class);
@@ -75,7 +71,7 @@ class SonarLintVSCodeClientTests {
 
   @BeforeEach
   public void setup() {
-    underTest = new SonarLintVSCodeClient(client, httpClientProvider, server);
+    underTest = new SonarLintVSCodeClient(client, server);
     underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);
     underTest.setBindingManager(bindingManager);
@@ -89,33 +85,6 @@ class SonarLintVSCodeClientTests {
 
     verify(client).browseTo(params.getUrl());
   }
-
-  @Test
-  void shouldReturnNullHttpClientForNonExistingConnection() {
-    var settingsManager = mock(SettingsManager.class);
-    underTest.setSettingsManager(settingsManager);
-    var workspaceSettings = mock(WorkspaceSettings.class);
-    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
-    when(workspaceSettings.getServerConnections()).thenReturn(Collections.emptyMap());
-
-    assertThat(underTest.getHttpClient("nonExistingConnection")).isNull();
-  }
-
-  @Test
-  void shouldReturnHttpClientForExistingConnection() {
-    var settingsManager = mock(SettingsManager.class);
-    underTest.setSettingsManager(settingsManager);
-    var workspaceSettings = mock(WorkspaceSettings.class);
-    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
-    var serverConnectionSettings = mock(ServerConnectionSettings.class);
-    when(serverConnectionSettings.getToken()).thenReturn("token");
-    when(workspaceSettings.getServerConnections()).thenReturn(Map.of("existingConnection", serverConnectionSettings));
-    var httpClient = mock(ApacheHttpClient.class);
-    when(httpClientProvider.withToken("token")).thenReturn(httpClient);
-
-    assertThat(underTest.getHttpClient("existingConnection")).isEqualTo(httpClient);
-  }
-
 
   @Test
   void shouldCallClientToFindFile() {
@@ -144,7 +113,7 @@ class SonarLintVSCodeClientTests {
   @Test
   void shouldHandleShowSmartNotificationWhenConnectionExists() {
     var workspaceSettings = mock(WorkspaceSettings.class);
-    var client = mock(ApacheHttpClientProvider.class);
+    var backendServiceFacade = mock(BackendServiceFacade.class);
     var showSmartNotificationParams = mock(ShowSmartNotificationParams.class);
     when(showSmartNotificationParams.getConnectionId()).thenReturn("testId");
     var serverConnections = Map.of("testId",
@@ -152,8 +121,8 @@ class SonarLintVSCodeClientTests {
         "http://localhost:9000",
         "abcdefg",
         null,
-        false,
-        client));
+        false
+      ));
     when(workspaceSettings.getServerConnections()).thenReturn(serverConnections);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     underTest.showSmartNotification(showSmartNotificationParams);
@@ -164,7 +133,7 @@ class SonarLintVSCodeClientTests {
   @Test
   void shouldHandleShowSmartNotificationWhenConnectionExistsForSonarCloud() {
     var workspaceSettings = mock(WorkspaceSettings.class);
-    var client = mock(ApacheHttpClientProvider.class);
+    var backendServiceFacade = mock(BackendServiceFacade.class);
     var showSmartNotificationParams = mock(ShowSmartNotificationParams.class);
     when(showSmartNotificationParams.getConnectionId()).thenReturn("testId");
     var serverConnections = Map.of("testId",
@@ -172,8 +141,8 @@ class SonarLintVSCodeClientTests {
         "https://sonarcloud.io",
         "abcdefg",
         "test-org",
-        false,
-        client));
+        false
+      ));
     when(workspaceSettings.getServerConnections()).thenReturn(serverConnections);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     underTest.showSmartNotification(showSmartNotificationParams);

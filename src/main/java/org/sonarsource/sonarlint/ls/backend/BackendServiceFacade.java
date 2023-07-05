@@ -31,11 +31,13 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
 import org.sonarsource.sonarlint.core.clientapi.backend.HostInfoDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.authentication.HelpGenerateUserTokenParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.authentication.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidAddConfigurationScopesParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckLocalDetectionSupportedParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckLocalDetectionSupportedResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsParams;
@@ -45,6 +47,7 @@ import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleD
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.ListAllStandaloneRulesDefinitionsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.StandaloneRuleConfigDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.UpdateStandaloneRulesConfigurationParams;
+import org.sonarsource.sonarlint.core.http.HttpClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -115,7 +118,8 @@ public class BackendServiceFacade {
       initParams.getStandaloneRuleConfigByKey(),
       true,
       true,
-      true
+      true,
+      initParams.getUserAgent()
     );
   }
 
@@ -177,5 +181,17 @@ public class BackendServiceFacade {
 
   public void notifyBackendOnBranchChanged(String folderUri, String newBranchName) {
     backend.notifyBackendOnBranchChanged(folderUri, newBranchName);
+  }
+
+  public HttpClient getHttpClientNoAuth() {
+    return backend.getHttpClientNoAuth();
+  }
+
+  public HttpClient getHttpClient(String connectionId) {
+    return backend.getHttpClient(connectionId);
+  }
+
+  public CompletableFuture<ValidateConnectionResponse> validateConnection(ValidateConnectionParams params) {
+    return backend.validateConnection(params);
   }
 }

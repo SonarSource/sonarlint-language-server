@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -43,21 +44,24 @@ public class TaintIssuesUpdater {
   private final SettingsManager settingsManager;
   private final DiagnosticPublisher diagnosticPublisher;
   private final ExecutorService asyncExecutor;
+  private final BackendServiceFacade backendServiceFacade;
 
   public TaintIssuesUpdater(ProjectBindingManager bindingManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
-    WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, DiagnosticPublisher diagnosticPublisher) {
+    WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, DiagnosticPublisher diagnosticPublisher,
+    BackendServiceFacade backendServiceFacade) {
     this(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, settingsManager, diagnosticPublisher,
-      Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Analysis Scheduler", false)));
+      Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Analysis Scheduler", false)), backendServiceFacade);
   }
 
   TaintIssuesUpdater(ProjectBindingManager bindingManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache, WorkspaceFoldersManager workspaceFoldersManager,
-    SettingsManager settingsManager, DiagnosticPublisher diagnosticPublisher, ExecutorService asyncExecutor) {
+    SettingsManager settingsManager, DiagnosticPublisher diagnosticPublisher, ExecutorService asyncExecutor, BackendServiceFacade backendServiceFacade) {
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
     this.diagnosticPublisher = diagnosticPublisher;
     this.asyncExecutor = asyncExecutor;
+    this.backendServiceFacade = backendServiceFacade;
   }
 
   public void updateTaintIssuesAsync(URI fileUri) {
@@ -80,14 +84,14 @@ public class TaintIssuesUpdater {
     var binding = bindingWrapper.getBinding();
     var engine = bindingWrapper.getEngine();
     var branchName = bindingManager.resolveBranchNameForFolder(folderUri, engine, binding.projectKey());
-    var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(bindingWrapper.getConnectionId());
-    var serverConfiguration = connectionSettings.getServerConfiguration();
+    var connectionId = bindingWrapper.getConnectionId();
+    var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
+    var endpointParams = connectionSettings.getEndpointParams();
+    var httpClient = backendServiceFacade.getHttpClient(connectionId);
 
     // download taints
     var sqFilePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(Paths.get(folderUri), fileUri));
-    engine.downloadAllServerTaintIssuesForFile(serverConfiguration.getEndpointParams(),
-      serverConfiguration.getHttpClient(), binding,
-      sqFilePath, branchName, null);
+    engine.downloadAllServerTaintIssuesForFile(endpointParams, httpClient, binding, sqFilePath, branchName, null);
     var serverIssues = engine.getServerTaintIssues(binding, branchName, sqFilePath);
 
     // reload cache
@@ -95,7 +99,7 @@ public class TaintIssuesUpdater {
     long foundVulnerabilities = taintVulnerabilitiesCache.getAsDiagnostics(fileUri).count();
     if (foundVulnerabilities > 0) {
       LOG.info(format("Fetched %s %s from %s", foundVulnerabilities,
-        pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), bindingWrapper.getConnectionId()));
+        pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), connectionId));
     }
     diagnosticPublisher.publishDiagnostics(fileUri, false);
   }

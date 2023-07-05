@@ -39,11 +39,9 @@ import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
 import org.sonarsource.sonarlint.ls.NodeJsRuntime;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
-import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
@@ -51,12 +49,9 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private final Supplier<ScheduledExecutorService> executorFactory;
-  private final ApacheHttpClientProvider httpClientProvider;
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
   private final NodeJsRuntime nodeJsRuntime;
-  private final StandaloneEngineManager standaloneEngineManager;
-
   private TelemetryManager telemetry;
 
   ScheduledFuture<?> scheduledFuture;
@@ -64,21 +59,19 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   private Map<String, Object> additionalAttributes;
   private final BackendServiceFacade backendServiceFacade;
 
-  public SonarLintTelemetry(ApacheHttpClientProvider httpClientProvider, SettingsManager settingsManager, ProjectBindingManager bindingManager, NodeJsRuntime nodeJsRuntime,
-    StandaloneEngineManager standaloneEngineManager, BackendServiceFacade backendServiceFacade) {
-    this(() -> Executors.newScheduledThreadPool(1, Utils.threadFactory("SonarLint Telemetry", false)), httpClientProvider, settingsManager, bindingManager, nodeJsRuntime,
-      standaloneEngineManager, backendServiceFacade);
+  public SonarLintTelemetry(SettingsManager settingsManager, ProjectBindingManager bindingManager, NodeJsRuntime nodeJsRuntime,
+    BackendServiceFacade backendServiceFacade) {
+    this(() -> Executors.newScheduledThreadPool(1, Utils.threadFactory("SonarLint Telemetry", false)), settingsManager, bindingManager, nodeJsRuntime,
+      backendServiceFacade);
   }
 
-  public SonarLintTelemetry(Supplier<ScheduledExecutorService> executorFactory, ApacheHttpClientProvider httpClientProvider, SettingsManager settingsManager,
+  public SonarLintTelemetry(Supplier<ScheduledExecutorService> executorFactory, SettingsManager settingsManager,
     ProjectBindingManager bindingManager,
-    NodeJsRuntime nodeJsRuntime, StandaloneEngineManager standaloneEngineManager, BackendServiceFacade backendServiceFacade) {
+    NodeJsRuntime nodeJsRuntime, BackendServiceFacade backendServiceFacade) {
     this.executorFactory = executorFactory;
-    this.httpClientProvider = httpClientProvider;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
     this.nodeJsRuntime = nodeJsRuntime;
-    this.standaloneEngineManager = standaloneEngineManager;
     this.backendServiceFacade = backendServiceFacade;
   }
 
@@ -120,7 +113,8 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
       LOG.debug("Telemetry disabled by system property");
       return;
     }
-    var client = new TelemetryHttpClient(productName, productVersion, ideVersion, platform, architecture, httpClientProvider.anonymous());
+
+    var client = new TelemetryHttpClient(productName, productVersion, ideVersion, platform, architecture, backendServiceFacade.getHttpClientNoAuth());
     this.telemetry = newTelemetryManager(storagePath, client);
     try {
       this.scheduler = executorFactory.get();
@@ -145,7 +139,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
   TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client) {
     return new TelemetryManager(path, client,
-      new TelemetryClientAttributesProviderImpl(settingsManager, bindingManager, nodeJsRuntime, standaloneEngineManager, additionalAttributes, backendServiceFacade));
+      new TelemetryClientAttributesProviderImpl(settingsManager, bindingManager, nodeJsRuntime, additionalAttributes, backendServiceFacade));
   }
 
   void upload() {

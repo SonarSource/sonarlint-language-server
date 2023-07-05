@@ -21,18 +21,17 @@ package org.sonarsource.sonarlint.ls.settings;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectionValidator;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.common.TransientSonarCloudConnectionDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.common.TransientSonarQubeConnectionDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionParams;
+import org.sonarsource.sonarlint.core.clientapi.common.TokenDto;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
-import org.sonarsource.sonarlint.core.serverapi.ServerApiHelper;
-import org.sonarsource.sonarlint.core.serverapi.system.ValidationResult;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 
 @Immutable
 public class ServerConnectionSettings {
@@ -46,21 +45,29 @@ public class ServerConnectionSettings {
 
   @Nullable
   private final String organizationKey;
-  private final EndpointParamsAndHttpClient serverConfiguration;
+  private final EndpointParams endpointParams;
+  private final ValidateConnectionParams validateConnectionParams;
 
   public ServerConnectionSettings(String connectionId, String serverUrl, String token, @Nullable String organizationKey,
-    boolean disableNotifications, ApacheHttpClientProvider httpClientProvider) {
+    boolean disableNotifications) {
     this.connectionId = connectionId;
     this.serverUrl = serverUrl;
     this.token = token;
     this.organizationKey = organizationKey;
     this.disableNotifications = disableNotifications;
-    this.serverConfiguration = createServerConfiguration(httpClientProvider);
+    this.endpointParams = createEndpointParams();
+    this.validateConnectionParams = createValidateConnectionParams();
   }
 
-  private EndpointParamsAndHttpClient createServerConfiguration(ApacheHttpClientProvider httpClientProvider) {
-    var endpointParams = new EndpointParams(getServerUrl(), isSonarCloudAlias(), getOrganizationKey());
-    return new EndpointParamsAndHttpClient(endpointParams, httpClientProvider.withToken(getToken()));
+  private EndpointParams createEndpointParams() {
+    return new EndpointParams(getServerUrl(), isSonarCloudAlias(), getOrganizationKey());
+  }
+
+  private ValidateConnectionParams createValidateConnectionParams() {
+    Either<TransientSonarQubeConnectionDto, TransientSonarCloudConnectionDto> connectionDto = isSonarCloudAlias() ?
+      Either.forRight(new TransientSonarCloudConnectionDto(getOrganizationKey(), Either.forLeft(new TokenDto(getToken())))) :
+      Either.forLeft(new TransientSonarQubeConnectionDto(getServerUrl(), Either.forLeft(new TokenDto(getToken()))));
+    return new ValidateConnectionParams(connectionDto);
   }
 
   String getConnectionId() {
@@ -92,8 +99,12 @@ public class ServerConnectionSettings {
     return disableNotifications;
   }
 
-  public EndpointParamsAndHttpClient getServerConfiguration() {
-    return serverConfiguration;
+  public EndpointParams getEndpointParams() {
+    return endpointParams;
+  }
+
+  public ValidateConnectionParams getValidateConnectionParams() {
+    return validateConnectionParams;
   }
 
   @Override
@@ -119,28 +130,6 @@ public class ServerConnectionSettings {
 
   @Override
   public String toString() {
-    return new ReflectionToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).setExcludeFieldNames("serverConfiguration").toString();
-  }
-
-  public static class EndpointParamsAndHttpClient {
-    private final EndpointParams endpointParams;
-    private final ApacheHttpClient httpClient;
-
-    public EndpointParamsAndHttpClient(EndpointParams endpointParams, ApacheHttpClient httpClient) {
-      this.endpointParams = endpointParams;
-      this.httpClient = httpClient;
-    }
-
-    public EndpointParams getEndpointParams() {
-      return endpointParams;
-    }
-
-    public ApacheHttpClient getHttpClient() {
-      return httpClient;
-    }
-
-    public CompletableFuture<ValidationResult> validateConnection() {
-      return new ConnectionValidator(new ServerApiHelper(this.endpointParams, this.httpClient)).validateConnection();
-    }
+    return new ReflectionToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).setExcludeFieldNames("endpointParams", "validateConnectionParams").toString();
   }
 }

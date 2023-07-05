@@ -37,9 +37,9 @@ import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClient;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -74,11 +74,11 @@ class TaintIssuesUpdaterTests {
   private final DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
   private final SettingsManager settingsManager = mock(SettingsManager.class);
   private final ServerConnectionSettings serverConnectionSettings = mock(ServerConnectionSettings.class);
-  private final ServerConnectionSettings.EndpointParamsAndHttpClient endpointParamsAndHttpClient = mock(ServerConnectionSettings.EndpointParamsAndHttpClient.class);
   private final ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
+  private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   private final Map<String, ServerConnectionSettings> SERVER_CONNECTIONS = Map.of(CONNECTION_ID, serverConnectionSettings);
   private final ImmediateExecutorService executorService = new ImmediateExecutorService();
-  private final TaintIssuesUpdater underTest = new TaintIssuesUpdater(bindingManager, new TaintVulnerabilitiesCache(), workspaceFoldersManager, settingsManager, diagnosticPublisher, executorService);
+  private final TaintIssuesUpdater underTest = new TaintIssuesUpdater(bindingManager, new TaintVulnerabilitiesCache(), workspaceFoldersManager, settingsManager, diagnosticPublisher, executorService, backendServiceFacade);
 
   @BeforeEach
   void init() {
@@ -93,9 +93,7 @@ class TaintIssuesUpdaterTests {
     when(binding.projectKey()).thenReturn(PROJECT_KEY);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     when(workspaceSettings.getServerConnections()).thenReturn(SERVER_CONNECTIONS);
-    when(serverConnectionSettings.getServerConfiguration()).thenReturn(endpointParamsAndHttpClient);
-    when(endpointParamsAndHttpClient.getEndpointParams()).thenReturn(mock(EndpointParams.class));
-    when(endpointParamsAndHttpClient.getHttpClient()).thenReturn(mock(ApacheHttpClient.class));
+    when(serverConnectionSettings.getEndpointParams()).thenReturn(mock(EndpointParams.class));
   }
 
   @Test

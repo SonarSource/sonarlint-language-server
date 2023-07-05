@@ -33,12 +33,12 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBranches;
+import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
-import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import testutils.ImmediateExecutorService;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -135,7 +135,7 @@ class WorkspaceFolderBranchManagerTests {
     createAndCheckoutBranch(gitProjectBasedir, "branchName");
     var folderUri = gitProjectBasedir.toUri();
     var bindingWrapper = mock(ProjectBindingWrapper.class);
-    when(bindingManager.getServerConfigurationFor("connectionId")).thenReturn(mock(ServerConnectionSettings.EndpointParamsAndHttpClient.class));
+    when(bindingManager.getEndpointParamsFor("connectionId")).thenReturn(mock(EndpointParams.class));
     when(bindingManager.getBindingAndRepublishTaints(folderUri)).thenReturn(Optional.of(bindingWrapper));
     var engine = mock(ConnectedSonarLintEngine.class);
     when(bindingWrapper.getEngine()).thenReturn(engine);

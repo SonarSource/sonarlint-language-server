@@ -63,7 +63,6 @@ import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.connected.notifications.TaintVulnerabilityRaisedNotification;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.http.ApacheHttpClientProvider;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -97,10 +96,10 @@ class ServerSentEventsTests {
   private TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
   private static final String CONNECTION_ID = "myServer";
-  private static final ApacheHttpClientProvider httpClientProvider = mock(ApacheHttpClientProvider.class);
-  private static final ServerConnectionSettings GLOBAL_SETTINGS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, false, httpClientProvider);
-  private static final ServerConnectionSettings GLOBAL_SETTINGS_DISABLED_NOTIFICATIONS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, true, httpClientProvider);
-  private static final ServerConnectionSettings GLOBAL_SETTINGS_SONARCLOUD = new ServerConnectionSettings(CONNECTION_ID, "https://sonarcloud.io", "token", "test-org", true, httpClientProvider);
+  private static final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
+  private static final ServerConnectionSettings GLOBAL_SETTINGS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, false);
+  private static final ServerConnectionSettings GLOBAL_SETTINGS_DISABLED_NOTIFICATIONS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, true);
+  private static final ServerConnectionSettings GLOBAL_SETTINGS_SONARCLOUD = new ServerConnectionSettings(CONNECTION_ID, "https://sonarcloud.io", "token", "test-org", true);
   private static final String FILE_PHP = "fileInAWorkspaceFolderPath.php";
   private static final String PROJECT_KEY = "myProject";
   private static final String BRANCH_NAME = "main";
@@ -118,7 +117,6 @@ class ServerSentEventsTests {
   ProjectBindingManager projectBindingManager;
   TaintVulnerabilityRaisedNotification taintVulnerabilityRaisedNotification = mock(TaintVulnerabilityRaisedNotification.class);
   WorkspaceFoldersManager workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
-  private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   AnalysisScheduler analysisScheduler = mock(AnalysisScheduler.class);
 
   @BeforeEach
