@@ -19,7 +19,12 @@
  */
 package org.sonarsource.sonarlint.ls.clientapi;
 
+import java.security.cert.CertificateEncodingException;
+import java.security.cert.X509Certificate;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import nl.altindag.ssl.util.CertificateUtils;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintClient;
 import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
@@ -27,16 +32,22 @@ import org.sonarsource.sonarlint.core.clientapi.client.connection.GetCredentials
 import org.sonarsource.sonarlint.core.clientapi.client.connection.GetCredentialsResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
+import org.sonarsource.sonarlint.core.clientapi.client.http.CheckServerTrustedParams;
+import org.sonarsource.sonarlint.core.clientapi.client.http.CheckServerTrustedResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.progress.ReportProgressParams;
 import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressParams;
 import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
 import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
 import org.sonarsource.sonarlint.core.clientapi.common.TokenDto;
+import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 public class SonarLintVSCodeClient implements SonarLintClient {
 
@@ -129,6 +140,35 @@ public class SonarLintVSCodeClient implements SonarLintClient {
     var token = connectionSettings.getToken();
     return CompletableFuture.completedFuture(new GetCredentialsResponse(new TokenDto(token)));
   }
+
+  @Override
+  public CompletableFuture<CheckServerTrustedResponse> checkServerTrusted(CheckServerTrustedParams params) {
+    var certs = CertificateUtils.parsePemCertificate(params.getChain().get(0).getPem());
+    var sha1fingerprint = "";
+    var sha256fingerprint = "";
+    X509Certificate untrustedCert = null;
+    try {
+      untrustedCert = (X509Certificate) certs.get(0);
+      sha1fingerprint = Utils.formatSha1Fingerprint(DigestUtils.sha1Hex(untrustedCert.getEncoded()));
+      sha256fingerprint = Utils.formatSha256Fingerprint(DigestUtils.sha256Hex(untrustedCert.getEncoded()));
+    } catch (CertificateEncodingException | IndexOutOfBoundsException e) {
+      SonarLintLogger.get().error("Certificate encoding is malformed, SHA fingerprints will not be displayed", e);
+    }
+    var actualSonarLintUserHome = Optional.ofNullable(EnginesFactory.sonarLintUserHomeOverride).orElse(SonarLintUserHome.get());
+    var confirmationParams = new SonarLintExtendedLanguageClient.SslCertificateConfirmationParams(
+      untrustedCert == null ? "" : untrustedCert.getSubjectX500Principal().getName(),
+      untrustedCert == null ? "" : untrustedCert.getIssuerX500Principal().getName(),
+      untrustedCert == null ? "" : untrustedCert.getNotAfter().toString(),
+      untrustedCert == null ? "" : untrustedCert.getNotBefore().toString(),
+      sha1fingerprint,
+      sha256fingerprint,
+      actualSonarLintUserHome.toString()
+    );
+
+    return client.askSslCertificateConfirmation(confirmationParams).thenApply(CheckServerTrustedResponse::new);
+  }
+
+
 
   public void setSettingsManager(SettingsManager settingsManager) {
     this.settingsManager = settingsManager;
