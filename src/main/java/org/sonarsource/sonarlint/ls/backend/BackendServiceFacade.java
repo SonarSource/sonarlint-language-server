@@ -51,6 +51,7 @@ import org.sonarsource.sonarlint.core.http.HttpClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
 public class BackendServiceFacade {
 
@@ -60,6 +61,8 @@ public class BackendServiceFacade {
   private final BackendInitParams initParams;
   private final ConfigurationScopeDto rootConfigurationScope;
   private SettingsManager settingsManager;
+  private SonarLintTelemetry telemetry;
+  private TelemetryInitParams telemetryInitParams;
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
   public BackendServiceFacade(SonarLintBackend backend) {
@@ -177,6 +180,15 @@ public class BackendServiceFacade {
 
   public void initialize(Map<String, ServerConnectionSettings> serverConnections) {
     initOnce(serverConnections);
+    telemetry.initialize(
+      telemetryInitParams.getProductKey(),
+      telemetryInitParams.getTelemetryStorage(),
+      telemetryInitParams.getProductName(),
+      telemetryInitParams.getProductVersion(),
+      telemetryInitParams.getIdeVersion(),
+      telemetryInitParams.getPlatform(),
+      telemetryInitParams.getArchitecture(),
+      telemetryInitParams.getAdditionalAttributes());
   }
 
   public void notifyBackendOnBranchChanged(String folderUri, String newBranchName) {
@@ -193,5 +205,13 @@ public class BackendServiceFacade {
 
   public CompletableFuture<ValidateConnectionResponse> validateConnection(ValidateConnectionParams params) {
     return backend.validateConnection(params);
+  }
+
+  public void setTelemetry(SonarLintTelemetry telemetry) {
+    this.telemetry = telemetry;
+  }
+
+  public void setTelemetryInitParams(TelemetryInitParams telemetryInitParams) {
+    this.telemetryInitParams = telemetryInitParams;
   }
 }

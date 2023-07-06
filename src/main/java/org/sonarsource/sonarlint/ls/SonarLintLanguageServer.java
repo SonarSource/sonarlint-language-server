@@ -100,6 +100,7 @@ import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.backend.TelemetryInitParams;
 import org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -234,6 +235,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     vsCodeClient.setBindingManager(bindingManager);
     this.settingsManager.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(settingsManager, bindingManager, nodeJsRuntime, backendServiceFacade);
+    backendServiceFacade.setTelemetry(telemetry);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);
@@ -320,7 +322,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       diagnosticPublisher.initialize(firstSecretDetected, firstCobolIssueDetected);
 
       requestsHandlerServer.initialize(clientVersion, workspaceName);
-      telemetry.initialize(productKey, telemetryStorage, productName, productVersion, ideVersion, platform, architecture, additionalAttributes);
+      backendServiceFacade.setTelemetryInitParams(new TelemetryInitParams(productKey, telemetryStorage,
+        productName, productVersion, ideVersion, platform, architecture, additionalAttributes));
 
       var c = new ServerCapabilities();
       c.setTextDocumentSync(getTextDocumentSyncOptions());
