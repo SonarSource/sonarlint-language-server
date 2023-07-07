@@ -95,10 +95,14 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     return telemetry != null && telemetry.isEnabled();
   }
 
-  public void initialize(@Nullable String productKey, @Nullable String telemetryStorage, String productName, String productVersion, String ideVersion,
-    String platform, String architecture, Map<String, Object> additionalAttributes) {
-    var storagePath = getStoragePath(productKey, telemetryStorage);
-    init(storagePath, productName, productVersion, ideVersion, platform, architecture, additionalAttributes);
+  public void initialize(TelemetryInitParams telemetryInitParams) {
+    var storagePath = getStoragePath(telemetryInitParams.getProductKey(), telemetryInitParams.getTelemetryStorage());
+    init(storagePath, telemetryInitParams.getProductName(),
+      telemetryInitParams.getProductVersion(),
+      telemetryInitParams.getIdeVersion(),
+      telemetryInitParams.getPlatform(),
+      telemetryInitParams.getArchitecture(),
+      telemetryInitParams.getAdditionalAttributes());
   }
 
   // Visible for testing

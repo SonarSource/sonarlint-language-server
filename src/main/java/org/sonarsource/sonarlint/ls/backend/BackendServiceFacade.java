@@ -52,6 +52,7 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
+import org.sonarsource.sonarlint.ls.telemetry.TelemetryInitParams;
 
 public class BackendServiceFacade {
 
@@ -180,15 +181,7 @@ public class BackendServiceFacade {
 
   public void initialize(Map<String, ServerConnectionSettings> serverConnections) {
     initOnce(serverConnections);
-    telemetry.initialize(
-      telemetryInitParams.getProductKey(),
-      telemetryInitParams.getTelemetryStorage(),
-      telemetryInitParams.getProductName(),
-      telemetryInitParams.getProductVersion(),
-      telemetryInitParams.getIdeVersion(),
-      telemetryInitParams.getPlatform(),
-      telemetryInitParams.getArchitecture(),
-      telemetryInitParams.getAdditionalAttributes());
+    telemetry.initialize(telemetryInitParams);
   }
 
   public void notifyBackendOnBranchChanged(String folderUri, String newBranchName) {
