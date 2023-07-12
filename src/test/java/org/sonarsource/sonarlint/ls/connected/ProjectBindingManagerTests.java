@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -41,10 +42,14 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.client.api.connected.ProjectBranches;
+import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
 import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
+import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
@@ -110,6 +115,7 @@ class ProjectBindingManagerTests {
   private Path fileInAWorkspaceFolderPath2;
   private Path fileNotInAWorkspaceFolderPath;
   ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache;
+  ConcurrentMap<String, Optional<ConnectedSonarLintEngine>> connectedEngineCacheByConnectionId;
   private ProjectBindingManager underTest;
   private final SettingsManager settingsManager = mock(SettingsManager.class);
   private final WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
@@ -149,12 +155,13 @@ class ProjectBindingManagerTests {
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token"));
 
     folderBindingCache = new ConcurrentHashMap<>();
+    connectedEngineCacheByConnectionId = new ConcurrentHashMap<>();
     TaintVulnerabilitiesCache taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
 
     when(openNotebooksCache.getFile(any(URI.class))).thenReturn(Optional.empty());
 
     underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, folderBindingCache, null,
-      taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, openNotebooksCache);
+      connectedEngineCacheByConnectionId, taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, openNotebooksCache);
     underTest.setAnalysisManager(analysisManager);
     underTest.setServerSentEventsHandler(serverSentEventsHandlerService);
     underTest.setBranchResolver(uri -> Optional.of("main"));
@@ -650,6 +657,36 @@ class ProjectBindingManagerTests {
     assertThatThrownBy(() -> underTest.getRemoteProjects(CONNECTION_ID))
       .isInstanceOf(IllegalStateException.class)
       .hasMessage("Failed to fetch list of projects from '" + CONNECTION_ID + "'");
+  }
+
+  @Test
+  void should_update_taint_issue_cache_from_storage() {
+    var serverPath = fileInAWorkspaceFolderPath.toUri().toString();
+    var fileUri = fileInAWorkspaceFolderPath.toUri();
+    var folderUri = workspaceFolderPath.toUri();
+    var projectBindingWrapperMock = mock(ProjectBindingWrapper.class);
+    var projectBinding = mock(ProjectBinding.class);
+    var connectedEngine = mock(ConnectedSonarLintEngine.class);
+    when(projectBindingWrapperMock.getBinding()).thenReturn(projectBinding);
+    when(projectBindingWrapperMock.getConnectionId()).thenReturn("connectionId");
+    when(projectBindingWrapperMock.getEngine()).thenReturn(connectedEngine);
+
+    when(connectedEngine.getServerBranches(any())).thenReturn(new ProjectBranches(Set.of("main", "feature"), "main"));
+    when(connectedEngine.getAllServerTaintIssues(any(), any())).thenReturn(List.of(
+      new ServerTaintIssue("taint1", false, "ruleKey1",
+        "message", fileUri.getRawPath(), Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY,
+        new TextRangeWithHash(1, 1, 1, 1, ""),
+        null, null, null)));
+
+    when((projectBinding.serverPathToIdePath(fileUri.getRawPath()))).thenReturn(Optional.of(FILE_PHP));
+    folderBindingCache.put(folderUri, Optional.of(projectBindingWrapperMock));
+    connectedEngineCacheByConnectionId.put("connectionId", Optional.of(connectedEngine));
+    var workspaceFolderWrapper = new WorkspaceFolderWrapper(folderUri, new WorkspaceFolder(folderUri.toString(), "sample-folder"));
+    when(foldersManager.findFolderForFile(fileUri)).thenReturn(Optional.of(workspaceFolderWrapper));
+
+    underTest.getBindingAndRepublishTaints(fileUri);
+
+    verify(diagnosticPublisher).publishDiagnostics(URI.create(serverPath), false);
   }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {

@@ -93,7 +93,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache;
   private final LanguageClientLogOutput globalLogOutput;
   private final ConcurrentMap<URI, Optional<ProjectBindingWrapper>> fileBindingCache = new ConcurrentHashMap<>();
-  private final ConcurrentMap<String, Optional<ConnectedSonarLintEngine>> connectedEngineCacheByConnectionId = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, Optional<ConnectedSonarLintEngine>> connectedEngineCacheByConnectionId;
   private final SonarLintExtendedLanguageClient client;
   private final EnginesFactory enginesFactory;
   private AnalysisScheduler analysisManager;
@@ -107,13 +107,15 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
     LanguageClientLogOutput globalLogOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher,
     BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache) {
-    this(enginesFactory, foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput, taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade,
+    this(enginesFactory, foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput, new ConcurrentHashMap<>(),
+      taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade,
       openNotebooksCache);
   }
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
     ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput,
-    TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher, BackendServiceFacade backendServiceFacade,
+    ConcurrentMap<String, Optional<ConnectedSonarLintEngine>> connectedEngineCacheByConnectionId, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
+    DiagnosticPublisher diagnosticPublisher, BackendServiceFacade backendServiceFacade,
     OpenNotebooksCache openNotebooksCache) {
     this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
@@ -121,6 +123,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     this.client = client;
     this.folderBindingCache = folderBindingCache;
     this.globalLogOutput = globalLogOutput;
+    this.connectedEngineCacheByConnectionId = connectedEngineCacheByConnectionId;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.diagnosticPublisher = diagnosticPublisher;
     this.backendServiceFacade = backendServiceFacade;
@@ -242,7 +245,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       engine.syncServerIssues(endpointParams, httpClient, projectKey, currentBranchName, null);
       engine.syncServerTaintIssues(endpointParams, httpClient, projectKey, currentBranchName, null);
       engine.syncServerHotspots(endpointParams, httpClient, projectKey, currentBranchName, null);
-    } catch(IllegalStateException exceptionDuringSync) {
+    } catch (IllegalStateException exceptionDuringSync) {
       LOG.warn("Exception happened during initial sync with project " + projectKey, exceptionDuringSync);
     }
   }
@@ -255,7 +258,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   @CheckForNull
-  public ValidateConnectionParams getValidateConnectionParamsFor(@Nullable String connectionId){
+  public ValidateConnectionParams getValidateConnectionParamsFor(@Nullable String connectionId) {
     return Optional.ofNullable(getServerConnectionSettingsFor(connectionId))
       .map(ServerConnectionSettings::getValidateConnectionParams)
       .orElse(null);
@@ -529,7 +532,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   private void updateTaintIssueCacheFromStorageForServerPath(String filePathFromEvent) {
-    LOG.debug("Re-publishing taint vulnerabilities for '{}'", filePathFromEvent);
+    LOG.debug("Re-publishing taint vulnerabilities for \"{}\"", filePathFromEvent);
     serverPathToFileUri(filePathFromEvent).ifPresent(this::updateTaintIssueCacheFromStorageForFile);
   }
 

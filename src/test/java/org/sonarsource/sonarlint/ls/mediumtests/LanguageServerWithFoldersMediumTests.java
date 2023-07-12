@@ -172,8 +172,8 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
         "[Info] Found 2 issues")
       // We don't know the order of analysis for the 2 files, so we can't have a single assertion
       .contains(
-        "[Info] Analyzing file '" + file1InFolder1 + "'...",
-        "[Info] Analyzing file '" + file2InFolder2 + "'..."));
+        "[Info] Analyzing file \"" + file1InFolder1 + "\"...",
+        "[Info] Analyzing file \"" + file2InFolder2 + "\"..."));
   }
 
   @Test

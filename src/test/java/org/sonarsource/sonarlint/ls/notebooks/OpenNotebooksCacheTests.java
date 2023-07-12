@@ -24,55 +24,55 @@ import java.util.List;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.ls.mediumtests.AbstractLanguageServerMediumTests;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-class OpenNotebooksCacheTests {
-    @Test
-    void shouldStoreAndRemoveOpenedNotebook() {
-      var notebookUri = URI.create("file:///some/notebook.ipynb");
+class OpenNotebooksCacheTests extends AbstractLanguageServerMediumTests {
+  @Test
+  void shouldStoreAndRemoveOpenedNotebook() {
+    var notebookUri = URI.create("file:///some/notebook.ipynb");
 
-      var cell1 = new TextDocumentItem();
-      cell1.setUri(notebookUri + "#cell1");
-      cell1.setText("cell1 line1\ncell1 line2\n");
+    var cell1 = new TextDocumentItem();
+    cell1.setUri(notebookUri + "#cell1");
+    cell1.setText("cell1 line1\ncell1 line2\n");
 
-      var cell2 = new TextDocumentItem();
-      cell2.setUri(notebookUri+ "#cell2");
-      cell2.setText("cell2 line1\ncell2 line2\n");
-      var fakeNotebook = VersionedOpenNotebook.create(notebookUri, 1, List.of(cell1, cell2), mock(NotebookDiagnosticPublisher.class));
+    var cell2 = new TextDocumentItem();
+    cell2.setUri(notebookUri + "#cell2");
+    cell2.setText("cell2 line1\ncell2 line2\n");
+    var fakeNotebook = VersionedOpenNotebook.create(notebookUri, 1, List.of(cell1, cell2), mock(NotebookDiagnosticPublisher.class));
 
-      var underTest = new OpenNotebooksCache(mock(LanguageClientLogger.class), mock(NotebookDiagnosticPublisher.class));
-      underTest.didOpen(notebookUri, 1, List.of(cell1, cell2));
+    var underTest = new OpenNotebooksCache(mock(LanguageClientLogger.class), mock(NotebookDiagnosticPublisher.class));
+    underTest.didOpen(notebookUri, 1, List.of(cell1, cell2));
 
-      var storedNotebook = underTest.getFile(notebookUri);
-      assertThat(storedNotebook.get().getContent()).isEqualTo(fakeNotebook.getContent());
-      assertThat(underTest.getAll()).hasSize(1);
+    var storedNotebook = underTest.getFile(notebookUri);
+    assertThat(storedNotebook.get().getContent()).isEqualTo(fakeNotebook.getContent());
+    assertThat(underTest.getAll()).hasSize(1);
 
-      underTest.didClose(notebookUri);
-      assertThat(underTest.getAll()).isEmpty();
-    }
+    underTest.didClose(notebookUri);
+    assertThat(underTest.getAll()).isEmpty();
+  }
 
-    @Test
-    void shouldReturnNullWhenGetNotebookUriFromCellUriAndNotebookIsNotOpen() {
-      var notebookUri = URI.create("file:///some/notebook.ipynb");
+  @Test
+  void shouldReturnNullWhenGetNotebookUriFromCellUriAndNotebookIsNotOpen() {
+    var notebookUri = URI.create("file:///some/notebook.ipynb");
 
-      var cell1 = new TextDocumentItem();
-      cell1.setUri(notebookUri + "#cell1");
-      cell1.setText("cell1 line1\ncell1 line2\n");
+    var cell1 = new TextDocumentItem();
+    cell1.setUri(notebookUri + "#cell1");
+    cell1.setText("cell1 line1\ncell1 line2\n");
 
-      var cell2 = new TextDocumentItem();
-      cell2.setUri(notebookUri+ "#cell2");
-      cell2.setText("cell2 line1\ncell2 line2\n");
-      var fakeNotebook = VersionedOpenNotebook.create(notebookUri, 1, List.of(cell1, cell2), mock(NotebookDiagnosticPublisher.class));
+    var cell2 = new TextDocumentItem();
+    cell2.setUri(notebookUri + "#cell2");
+    cell2.setText("cell2 line1\ncell2 line2\n");
+    var fakeNotebook = VersionedOpenNotebook.create(notebookUri, 1, List.of(cell1, cell2), mock(NotebookDiagnosticPublisher.class));
 
-      var underTest = new OpenNotebooksCache(mock(LanguageClientLogger.class), mock(NotebookDiagnosticPublisher.class));
-      underTest.didOpen(notebookUri, 1, List.of(cell1, cell2));
+    var underTest = new OpenNotebooksCache(mock(LanguageClientLogger.class), mock(NotebookDiagnosticPublisher.class));
+    underTest.didOpen(notebookUri, 1, List.of(cell1, cell2));
 
-      var cellUri = URI.create("vscode-notebook-cell:/Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb#W2sZmlsZQ%3D%3D");
-      var expectedNotebookUri = URI.create("file:///Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb");
-      assertThat(underTest.getNotebookUriFromCellUri(cellUri)).isNull();
-    }
+    var cellUri = URI.create("vscode-notebook-cell:/Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb#W2sZmlsZQ%3D%3D");
+    assertThat(underTest.getNotebookUriFromCellUri(cellUri)).isNull();
+  }
 
   @Test
   void shouldGetNotebookUriFromCellUri() {
@@ -83,7 +83,7 @@ class OpenNotebooksCacheTests {
     cell1.setText("cell1 line1\ncell1 line2\n");
 
     var cell2 = new TextDocumentItem();
-    cell2.setUri(notebookUri+ "#cell2");
+    cell2.setUri(notebookUri + "#cell2");
     cell2.setText("cell2 line1\ncell2 line2\n");
     var fakeNotebook = VersionedOpenNotebook.create(notebookUri, 1, List.of(cell1, cell2), mock(NotebookDiagnosticPublisher.class));
 
@@ -103,7 +103,7 @@ class OpenNotebooksCacheTests {
     cell1.setText("cell1 line1\ncell1 line2\n");
 
     var cell2 = new TextDocumentItem();
-    cell2.setUri(notebookUri+ "#cell2");
+    cell2.setUri(notebookUri + "#cell2");
     cell2.setText("cell2 line1\ncell2 line2\n");
     var fakeNotebook = VersionedOpenNotebook.create(notebookUri, 1, List.of(cell1, cell2), mock(NotebookDiagnosticPublisher.class));
 

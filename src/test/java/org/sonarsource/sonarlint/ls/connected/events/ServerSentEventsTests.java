@@ -87,6 +87,7 @@ class ServerSentEventsTests {
   private Path workspaceFolderPath;
   private Path fileInAWorkspaceFolderPath;
   ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache;
+  ConcurrentMap<String, Optional<ConnectedSonarLintEngine>> connectedEngineCacheByConnectionId;
   private ServerSentEventsHandlerService underTest;
   private final SettingsManager settingsManager = mock(SettingsManager.class);
   private final WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
@@ -129,10 +130,11 @@ class ServerSentEventsTests {
     when(fakeEngine.getServerBranches(any(String.class))).thenReturn(new ProjectBranches(Set.of(BRANCH_NAME), BRANCH_NAME));
 
     folderBindingCache = new ConcurrentHashMap<>();
+    connectedEngineCacheByConnectionId = new ConcurrentHashMap<>();
     taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
 
     projectBindingManager = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, folderBindingCache,
-      null, taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, mock(OpenNotebooksCache.class));
+      null, connectedEngineCacheByConnectionId, taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, mock(OpenNotebooksCache.class));
     projectBindingManager.setBranchResolver(uri -> Optional.of(BRANCH_NAME));
 
     underTest = new ServerSentEventsHandler(projectBindingManager, taintVulnerabilitiesCache, taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager, analysisScheduler);
