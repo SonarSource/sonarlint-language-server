@@ -149,7 +149,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     private void checkTimers() {
       long now = System.currentTimeMillis();
       long oldestEventTimeMs = oldestEvent.get();
-      if(now > oldestEventTimeMs + analysisTimerMs && !events.isEmpty()) {
+      if (now > oldestEventTimeMs + analysisTimerMs && !events.isEmpty()) {
         var it = events.iterator();
         var filesToTrigger = new ArrayList<VersionedOpenFile>();
         while (it.hasNext()) {
@@ -231,7 +231,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     }
     if (trueFileUris.size() == 1) {
       VersionedOpenFile openFile = trueFileUris.iterator().next();
-      lsLogOutput.debug(format("Queuing analysis of file '%s' (version %d)", openFile.getUri(), openFile.getVersion()));
+      lsLogOutput.debug(format("Queuing analysis of file \"%s\" (version %d)", openFile.getUri(), openFile.getVersion()));
     } else {
       lsLogOutput.debug(format("Queuing analysis of %d files", trueFileUris.size()));
     }

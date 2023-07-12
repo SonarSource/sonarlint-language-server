@@ -59,6 +59,7 @@ import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
+import org.eclipse.lsp4j.DidChangeNotebookDocumentParams;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
 import org.eclipse.lsp4j.DidCloseNotebookDocumentParams;
@@ -70,6 +71,7 @@ import org.eclipse.lsp4j.InitializedParams;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.NotebookDocument;
+import org.eclipse.lsp4j.NotebookDocumentChangeEvent;
 import org.eclipse.lsp4j.NotebookDocumentClientCapabilities;
 import org.eclipse.lsp4j.NotebookDocumentIdentifier;
 import org.eclipse.lsp4j.NotebookDocumentSyncClientCapabilities;
@@ -79,6 +81,7 @@ import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
+import org.eclipse.lsp4j.VersionedNotebookDocumentIdentifier;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.WindowClientCapabilities;
 import org.eclipse.lsp4j.WorkspaceFolder;
@@ -606,6 +609,12 @@ public abstract class AbstractLanguageServerMediumTests {
     var docId = new VersionedTextDocumentIdentifier(uri, 1);
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(docId, List.of(new TextDocumentContentChangeEvent(content))));
+  }
+
+  protected void didChangeNotebook(String uri, String content) {
+    var docId = new VersionedNotebookDocumentIdentifier(1, uri);
+    lsProxy.getNotebookDocumentService()
+      .didChange(new DidChangeNotebookDocumentParams(docId, new NotebookDocumentChangeEvent()));
   }
 
   protected void didOpen(String uri, String languageId, String content) {

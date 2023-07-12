@@ -148,7 +148,7 @@ public class AnalysisTaskExecutor {
         .collect(toSet());
 
       scmIgnored.forEach(f -> {
-        lsLogOutput.debug(format("Skip analysis for SCM ignored file: '%s'", f));
+        lsLogOutput.debug(format("Skip analysis for SCM ignored file: \"%s\"", f));
         clearIssueCacheAndPublishEmptyDiagnostics(f);
         filesToAnalyze.remove(f);
       });
@@ -264,7 +264,7 @@ public class AnalysisTaskExecutor {
     javaFiles.forEach((uri, openFile) -> {
       var javaConfigOpt = javaConfigCache.getOrFetch(uri);
       if (javaConfigOpt.isEmpty()) {
-        lsLogOutput.debug(format("Analysis of Java file '%s' may not show all issues because SonarLint" +
+        lsLogOutput.debug(format("Analysis of Java file \"%s\" may not show all issues because SonarLint" +
           " was unable to query project configuration (classpath, source level, ...)", uri));
         clearIssueCacheAndPublishEmptyDiagnostics(uri);
       } else {
@@ -293,7 +293,7 @@ public class AnalysisTaskExecutor {
         uri -> FileUtils.getFileRelativePath(Paths.get(baseDirUri), uri),
         uri -> fileTypeClassifier.isTest(settings, uri, filesToAnalyze.get(uri).isJava(), () -> javaConfigCache.getOrFetch(uri)));
       excludedByServerConfiguration.forEach(f -> {
-        lsLogOutput.debug(format("Skip analysis of file '%s' excluded by server configuration", f));
+        lsLogOutput.debug(format("Skip analysis of file \"%s\" excluded by server configuration", f));
         nonExcludedFiles.remove(f);
         clearIssueCacheAndPublishEmptyDiagnostics(f);
       });
@@ -301,7 +301,8 @@ public class AnalysisTaskExecutor {
 
     if (!nonExcludedFiles.isEmpty()) {
       if (task.shouldShowProgress()) {
-        progressManager.doWithProgress(String.format("SonarLint scanning %d files for hotspots", task.getFilesToAnalyze().size()), null, () -> {},
+        progressManager.doWithProgress(String.format("SonarLint scanning %d files for hotspots", task.getFilesToAnalyze().size()), null, () -> {
+          },
           progressFacade -> analyzeSingleModuleNonExcluded(task, settings, binding, nonExcludedFiles, baseDirUri, javaConfigs, progressFacade));
       } else {
         analyzeSingleModuleNonExcluded(task, settings, binding, nonExcludedFiles, baseDirUri, javaConfigs, null);
@@ -326,7 +327,7 @@ public class AnalysisTaskExecutor {
     Map<URI, VersionedOpenFile> filesToAnalyze, URI baseDirUri, Map<URI, GetJavaConfigResponse> javaConfigs, @Nullable ProgressFacade progressFacade) {
     checkCanceled(task, progressFacade);
     if (filesToAnalyze.size() == 1) {
-      lsLogOutput.info(format("Analyzing file '%s'...", filesToAnalyze.keySet().iterator().next()));
+      lsLogOutput.info(format("Analyzing file \"%s\"...", filesToAnalyze.keySet().iterator().next()));
     } else {
       lsLogOutput.info(format("Analyzing %d files...", filesToAnalyze.size()));
     }
@@ -538,7 +539,7 @@ public class AnalysisTaskExecutor {
   }
 
   /**
-   * @param analyze Analysis callback
+   * @param analyze          Analysis callback
    * @param postAnalysisTask Code that will be run after the analysis, but still counted in the total analysis duration.
    */
   private static AnalysisResultsWrapper analyzeWithTiming(Supplier<AnalysisResults> analyze, Collection<PluginDetails> allPlugins, Runnable postAnalysisTask) {

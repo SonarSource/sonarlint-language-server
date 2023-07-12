@@ -48,7 +48,7 @@ public class OpenFilesCache {
 
   public void didChange(URI fileUri, String fileContent, int version) {
     if (!openFilesPerFileURI.containsKey(fileUri)) {
-      lsLogOutput.warn(format("Illegal state. File '%s' is reported changed but we missed the open notification", fileUri));
+      lsLogOutput.warn(format("Illegal state. File \"%s\" is reported changed but we missed the open notification", fileUri));
     }
     openFilesPerFileURI.computeIfPresent(fileUri, (uri, previous) -> new VersionedOpenFile(uri, previous.getLanguageId(), version, fileContent));
   }

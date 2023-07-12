@@ -248,7 +248,7 @@ class AnalysisSchedulerTests {
 
     var file = openFilesCache.didOpen(JS_FILE_URI, "javascript", "alert(1);", 1);
     underTest.didOpen(file);
-    verify(lsLogOutput, timeout(1000)).debug("Queuing analysis of file '" + JS_FILE_URI + "' (version 1)");
+    verify(lsLogOutput, timeout(1000)).debug("Queuing analysis of file \"" + JS_FILE_URI + "\" (version 1)");
     verify(taskExecutor, timeout(1000)).run(any());
 
     reset(taskExecutor);
@@ -256,7 +256,7 @@ class AnalysisSchedulerTests {
     openFilesCache.didChange(JS_FILE_URI, "alert(2);", 2);
     underTest.didChange(file.getUri());
 
-    verify(lsLogOutput, timeout(1000)).debug("Queuing analysis of file '" + JS_FILE_URI + "' (version 2)");
+    verify(lsLogOutput, timeout(1000)).debug("Queuing analysis of file \"" + JS_FILE_URI + "\" (version 2)");
 
     // Analysis of version 2 is stuck in the executor service queue because analysis of version 1 is still running
     verify(taskExecutor, timeout(1000).times(0)).run(any());
@@ -267,7 +267,7 @@ class AnalysisSchedulerTests {
     underTest.didChange(file.getUri());
 
     verify(lsLogOutput, timeout(1000).times(1)).debug("Attempt to cancel previous analysis...");
-    verify(lsLogOutput, timeout(1000)).debug("Queuing analysis of file '" + JS_FILE_URI + "' (version 3)");
+    verify(lsLogOutput, timeout(1000)).debug("Queuing analysis of file \"" + JS_FILE_URI + "\" (version 3)");
     verifyNoMoreInteractions(lsLogOutput);
 
     analysisTaskShouldStop.set(true);
