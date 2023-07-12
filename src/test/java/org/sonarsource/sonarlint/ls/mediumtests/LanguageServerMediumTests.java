@@ -477,11 +477,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
-      .contains("[Debug] Queuing analysis of file '" + uri + "' (version 3)"));
+      .contains("[Debug] Queuing analysis of file \"" + uri + "\" (version 3)"));
 
     assertThat(client.logs)
       .extracting(withoutTimestamp())
-      .doesNotContain("[Debug] Queuing analysis of file '" + uri + "' (version 2)");
+      .doesNotContain("[Debug] Queuing analysis of file \"" + uri + "\" (version 2)");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -525,7 +525,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(uri, "python", "# Nothing to see here\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs).extracting(withoutTimestamp())
-      .contains("[Debug] Skip analysis for SCM ignored file: '" + uri + "'"));
+      .contains("[Debug] Skip analysis for SCM ignored file: \"" + uri + "\""));
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
@@ -724,7 +724,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestamp())
       .containsExactly(
-        "[Info] Analyzing file '" + uri + "'...",
+        "[Info] Analyzing file \"" + uri + "\"...",
         "[Info] Found 1 issue"));
   }
 
@@ -742,8 +742,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestamp())
       .containsSubsequence(
-        "[Debug] Queuing analysis of file '" + uri + "' (version 1)",
-        "[Info] Analyzing file '" + uri + "'...",
+        "[Debug] Queuing analysis of file \"" + uri + "\" (version 1)",
+        "[Info] Analyzing file \"" + uri + "\"...",
         "[Info] Found 1 issue"));
   }
 
@@ -761,7 +761,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestamp())
       .contains(
-        "[Info] Analyzing file '" + uri + "'...",
+        "[Info] Analyzing file \"" + uri + "\"...",
         "[Info] Index files",
         "[Info] 1 file indexed",
         "[Info] 1 source file to be analyzed",
@@ -783,7 +783,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestamp())
       .contains(
-        "[Info] Analyzing file '" + uri + "'...",
+        "[Info] Analyzing file \"" + uri + "\"...",
         "[Info] Index files",
         "[Debug] Language of file \"" + uri + "\" is set to \"Python\"",
         "[Info] 1 file indexed",

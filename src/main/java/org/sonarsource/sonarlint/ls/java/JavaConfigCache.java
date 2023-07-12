@@ -97,7 +97,7 @@ public class JavaConfigCache {
         javaConfigPerFileURI.put(fileUri, configOpt);
         openFile.map(VersionedOpenFile::isJava)
           .filter(Boolean::booleanValue)
-          .ifPresent(isJava -> lsLogOutput.debug("Cached Java config for file '" + fileUri + "'"));
+          .ifPresent(isJava -> lsLogOutput.debug("Cached Java config for file \"" + fileUri + "\""));
         return configOpt;
       });
   }
@@ -142,12 +142,12 @@ public class JavaConfigCache {
 
   private String computeClasspathSkipNonExisting(List<Path> jdkClassesRoots, GetJavaConfigResponse testConfig) {
     return Stream.concat(
-      jdkClassesRoots.stream().map(Path::toAbsolutePath).map(Path::toString),
-      Stream.of(testConfig.getClasspath()))
+        jdkClassesRoots.stream().map(Path::toAbsolutePath).map(Path::toString),
+        Stream.of(testConfig.getClasspath()))
       .filter(path -> {
         boolean exists = new File(path).exists();
         if (!exists) {
-          lsLogOutput.debug(format("Classpath '%s' from configuration does not exist, skipped", path));
+          lsLogOutput.debug(format("Classpath \"%s\" from configuration does not exist, skipped", path));
         }
         return exists;
       })
@@ -160,13 +160,13 @@ public class JavaConfigCache {
 
   public void didClasspathUpdate(URI projectUri) {
     // Clear cached value to force refetch during next analysis
-    for (var it = javaConfigPerFileURI.entrySet().iterator(); it.hasNext();) {
+    for (var it = javaConfigPerFileURI.entrySet().iterator(); it.hasNext(); ) {
       var entry = it.next();
       var cachedResponseOpt = entry.getValue();
       // If we have cached an empty result, still clear the value on classpath update to force next analysis to re-attempt fetch
       if (cachedResponseOpt.isEmpty() || sameProject(projectUri, cachedResponseOpt.get())) {
         it.remove();
-        lsLogOutput.debug("Evicted Java config cache for file '" + entry.getKey() + "'");
+        lsLogOutput.debug("Evicted Java config cache for file \"" + entry.getKey() + "\"");
       }
     }
   }

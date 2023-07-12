@@ -73,7 +73,7 @@ public class OpenNotebooksCache {
 
   public void didChange(URI fileUri, int version, NotebookDocumentChangeEvent changeEvent) {
     if (!openNotebooksPerFileURI.containsKey(fileUri)) {
-      lsLogOutput.warn(format("Illegal state. File '%s' is reported changed but we missed the open notification", fileUri));
+      lsLogOutput.warn(format("Illegal state. File \"%s\" is reported changed but we missed the open notification", fileUri));
     } else {
       var openNotebook = openNotebooksPerFileURI.get(fileUri);
       openNotebook.didChange(version, changeEvent);

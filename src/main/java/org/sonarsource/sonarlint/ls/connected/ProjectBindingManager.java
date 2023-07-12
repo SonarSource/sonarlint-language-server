@@ -241,7 +241,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       engine.syncServerIssues(endpointParams, httpClient, projectKey, currentBranchName, null);
       engine.syncServerTaintIssues(endpointParams, httpClient, projectKey, currentBranchName, null);
       engine.syncServerHotspots(endpointParams, httpClient, projectKey, currentBranchName, null);
-    } catch(IllegalStateException exceptionDuringSync) {
+    } catch (IllegalStateException exceptionDuringSync) {
       LOG.warn("Exception happened during initial sync with project " + projectKey, exceptionDuringSync);
     }
   }
@@ -254,7 +254,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   @CheckForNull
-  public ValidateConnectionParams getValidateConnectionParamsFor(@Nullable String connectionId){
+  public ValidateConnectionParams getValidateConnectionParamsFor(@Nullable String connectionId) {
     return Optional.ofNullable(getServerConnectionSettingsFor(connectionId))
       .map(ServerConnectionSettings::getValidateConnectionParams)
       .orElse(null);
@@ -369,7 +369,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private void unbindFolder(WorkspaceFolderWrapper folder) {
     folderBindingCache.put(folder.getUri(), Optional.empty());
-    LOG.debug("Workspace '{}' unbound", folder);
+    LOG.debug("Workspace \"{}\" unbound", folder);
     stopUnusedEngines();
     analysisManager.analyzeAllOpenFilesInFolder(folder);
     var bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
@@ -528,7 +528,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   private void updateTaintIssueCacheFromStorageForServerPath(String filePathFromEvent) {
-    LOG.debug("Re-publishing taint vulnerabilities for '{}'", filePathFromEvent);
+    LOG.debug("Re-publishing taint vulnerabilities for \"{}\"", filePathFromEvent);
     serverPathToFileUri(filePathFromEvent).ifPresent(this::updateTaintIssueCacheFromStorageForFile);
   }
 

@@ -32,7 +32,6 @@ import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
@@ -103,7 +102,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
       .contains(
-        "[Debug] Analysis of Java file '" + uri + "' may not show all issues because SonarLint was unable to query project configuration (classpath, source level, ...)"));
+        "[Debug] Analysis of Java file \"" + uri + "\" may not show all issues because SonarLint was unable to query project configuration (classpath, source level, ...)"));
   }
 
   @Test
@@ -114,7 +113,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
-    javaConfigResponse.setClasspath(new String[] {"/does/not/exist"});
+    javaConfigResponse.setClasspath(new String[]{"/does/not/exist"});
     client.javaConfigs.put(uri, javaConfigResponse);
 
     didOpen(uri, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
@@ -126,8 +125,8 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
         tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Information),
         tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
 
-    var ignoredMsg = "[Debug] Classpath '/does/not/exist' from configuration does not exist, skipped";
-    var cacheMsg = "[Debug] Cached Java config for file '" + uri + "'";
+    var ignoredMsg = "[Debug] Classpath \"/does/not/exist\" from configuration does not exist, skipped";
+    var cacheMsg = "[Debug] Cached Java config for file \"" + uri + "\"";
     assertThat(client.logs)
       .extracting(withoutTimestamp())
       .containsAll(List.of(ignoredMsg, cacheMsg));
@@ -225,7 +224,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(true);
-    javaConfigResponse.setClasspath(new String[] {Paths.get(this.getClass().getResource("/junit-4.12.jar").toURI()).toAbsolutePath().toString()});
+    javaConfigResponse.setClasspath(new String[]{Paths.get(this.getClass().getResource("/junit-4.12.jar").toURI()).toAbsolutePath().toString()});
     client.javaConfigs.put(uri, javaConfigResponse);
 
     didOpen(uri, "java",
@@ -265,7 +264,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     client.logs.clear();
 
     // Update classpath
-    javaConfigResponse.setClasspath(new String[] {Paths.get(this.getClass().getResource("/junit-4.12.jar").toURI()).toAbsolutePath().toString()});
+    javaConfigResponse.setClasspath(new String[]{Paths.get(this.getClass().getResource("/junit-4.12.jar").toURI()).toAbsolutePath().toString()});
     lsProxy.didClasspathUpdate(new DidClasspathUpdateParams(projectRootUri2));
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
@@ -276,7 +275,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.logs)
       .extracting(withoutTimestamp())
       .contains(
-        "[Debug] Evicted Java config cache for file '" + uri + "'");
+        "[Debug] Evicted Java config cache for file \"" + uri + "\"");
   }
 
   @Test
@@ -291,7 +290,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
       .contains(
-        "[Debug] Analysis of Java file '" + uri + "' may not show all issues because SonarLint was unable to query project configuration (classpath, source level, ...)"));
+        "[Debug] Analysis of Java file \"" + uri + "\" may not show all issues because SonarLint was unable to query project configuration (classpath, source level, ...)"));
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
@@ -411,7 +410,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
         "[Info] Found 3 issues")
       // We don't know the order of analysis for the 2 files, so we can't have a single assertion
       .contains(
-        "[Info] Analyzing file '" + file1module1 + "'...",
-        "[Info] Analyzing file '" + file2module2 + "'..."));
+        "[Info] Analyzing file \"" + file1module1 + "\"...",
+        "[Info] Analyzing file \"" + file2module2 + "\"..."));
   }
 }
