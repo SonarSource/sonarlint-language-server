@@ -228,7 +228,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     LOG.debug("Resolved binding {} for folder {}",
       ToStringBuilder.reflectionToString(projectBinding, ToStringStyle.SHORT_PREFIX_STYLE),
       folderRoot);
-    var issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, endpointParams, projectBinding, branchProvider, httpClient);
+    var issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, endpointParams, projectBinding, branchProvider, httpClient,
+      backendServiceFacade, foldersManager);
     return new ProjectBindingWrapper(connectionId, projectBinding, engine, issueTrackerWrapper);
   }
 

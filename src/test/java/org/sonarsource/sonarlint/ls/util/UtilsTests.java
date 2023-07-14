@@ -20,22 +20,37 @@
 package org.sonarsource.sonarlint.ls.util;
 
 import java.net.URI;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import org.assertj.core.api.AssertionsForClassTypes;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
 import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
+import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
+import org.sonarsource.sonarlint.ls.IssuesCache;
+import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
+import org.sonarsource.sonarlint.ls.notebooks.DelegatingCellIssue;
+import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotReviewStatusValueOfHotspotStatus;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusOfTitle;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusValueOfHotspotReviewStatus;
+import static org.sonarsource.sonarlint.ls.util.Utils.isDelegatingIssueWithServerIssueKey;
 
 class UtilsTests {
+
+  @RegisterExtension
+  SonarLintLogTester logTester = new SonarLintLogTester();
 
   @ParameterizedTest
   @CsvSource({
@@ -109,5 +124,47 @@ class UtilsTests {
     var fingerprint = Utils.formatSha1Fingerprint("E589B41477E239FA147B91456041525B73E80337");
 
     assertThat(fingerprint).isEqualTo("E5 89 B4 14 77 E2 39 FA 14 7B 91 45 60 41 52 5B 73 E8 03 37");
+  }
+
+  @Test
+  void shouldSafelyGetFailingFuture() {
+    var future = CompletableFuture.runAsync(() -> {
+      throw new UnsupportedOperationException("Error while computing future", new Throwable());
+    });
+    var futureResult = Utils.safelyGetCompletableFuture(future);
+    assertThat(futureResult).isEmpty();
+    assertThat(logTester.logs(ClientLogOutput.Level.WARN)).contains("Future computation completed with an exception");
+  }
+
+  @Test
+  void shouldSafelyGetInterruptedFuture() throws Exception {
+    var future = mock(CompletableFuture.class);
+    when(future.get()).thenThrow(new InterruptedException());
+    var futureResult = Utils.safelyGetCompletableFuture(future);
+    assertThat(futureResult).isEmpty();
+    assertThat(logTester.logs(ClientLogOutput.Level.DEBUG)).contains("Interrupted!");
+  }
+
+  @Test
+  void shouldSafelyGetFuture() {
+    var future = CompletableFuture.completedFuture(42);
+    var futureResult = Utils.safelyGetCompletableFuture(future);
+    assertThat(futureResult).hasValue(42);
+  }
+
+  @Test
+  void isDelegatingIssueWithServerIssueKeyTest() {
+    var delegatingIssueWithServerKey = mock(DelegatingIssue.class);
+    when(delegatingIssueWithServerKey.getServerIssueKey()).thenReturn("serverIssueKey");
+    var delegatingIssueWithoutServerKey = mock(DelegatingIssue.class);
+    var delegatingCellIssue = mock(DelegatingCellIssue.class);
+
+    var delegatingIssueWithServerKeyResult = isDelegatingIssueWithServerIssueKey("serverIssueKey", Map.entry("", new IssuesCache.VersionedIssue(delegatingIssueWithServerKey, 1)));
+    var delegatingIssueWithoutServerKeyResult = isDelegatingIssueWithServerIssueKey("serverIssueKey", Map.entry("", new IssuesCache.VersionedIssue(delegatingIssueWithoutServerKey, 1)));
+    var delegatingCellIssueResult = isDelegatingIssueWithServerIssueKey("serverIssueKey", Map.entry("", new IssuesCache.VersionedIssue(delegatingIssueWithoutServerKey, 1)));
+
+    assertThat(delegatingIssueWithServerKeyResult).isTrue();
+    assertThat(delegatingIssueWithoutServerKeyResult).isFalse();
+    assertThat(delegatingCellIssueResult).isFalse();
   }
 }

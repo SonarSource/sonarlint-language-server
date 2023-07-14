@@ -41,6 +41,10 @@ import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckLocalDetect
 import org.sonarsource.sonarlint.core.clientapi.backend.initialize.ClientInfoDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.initialize.FeatureFlagsDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.initialize.InitializeParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenAllIssuesForFileParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenIssueResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionParams;
@@ -48,6 +52,8 @@ import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleD
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.ListAllStandaloneRulesDefinitionsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.StandaloneRuleConfigDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.UpdateStandaloneRulesConfigurationParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.tracking.TrackWithServerIssuesParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.tracking.TrackWithServerIssuesResponse;
 import org.sonarsource.sonarlint.core.http.HttpClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
@@ -181,6 +187,18 @@ public class BackendServiceFacade {
 
   public void notifyBackendOnBranchChanged(String folderUri, String newBranchName) {
     backend.notifyBackendOnBranchChanged(folderUri, newBranchName);
+  }
+
+  public CompletableFuture<TrackWithServerIssuesResponse> matchIssues(TrackWithServerIssuesParams params) {
+    return backend.matchIssues(params);
+  }
+
+  public CompletableFuture<CheckStatusChangePermittedResponse> checkChangeIssueStatusPermitted(CheckStatusChangePermittedParams params) {
+    return backend.checkChangeIssueStatusPermitted(params);
+  }
+
+  public CompletableFuture<ReopenIssueResponse> reopenAllIssuesForFile(ReopenAllIssuesForFileParams params) {
+    return backend.reopenAllIssuesForFile(params);
   }
 
   public HttpClient getHttpClientNoAuth() {

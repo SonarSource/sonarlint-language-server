@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.Charset;
@@ -73,7 +72,7 @@ public class AnalysisClientInputFile implements ClientInputFile {
   }
 
   @Override
-  public String contents() throws IOException {
+  public String contents() {
     return content;
   }
 

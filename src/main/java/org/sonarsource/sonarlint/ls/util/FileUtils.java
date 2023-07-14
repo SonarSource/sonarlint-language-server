@@ -34,8 +34,11 @@ import java.nio.file.attribute.DosFileAttributes;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import javax.annotation.Nullable;
+import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 
 public class FileUtils {
@@ -152,6 +155,28 @@ public class FileUtils {
       LOG.debug("Unable to relativize " + uri + " to " + baseDir);
       return path.toString();
     }
+  }
+
+  public static String getTextRangeContentOfFile(List<String> contentLines, @Nullable TextRange textRange) {
+    if (textRange == null) return null;
+    var startLine = textRange.getStartLine() - 1;
+    var endLine = textRange.getEndLine() - 1;
+    if (startLine == endLine) {
+      var startLineContent = contentLines.get(startLine);
+      var endLineOffset = Math.min(textRange.getEndLineOffset(), startLineContent.length());
+      return startLineContent.substring(textRange.getStartLineOffset(), endLineOffset);
+    }
+
+    var contentBuilder = new StringBuilder();
+    contentBuilder.append(contentLines.get(startLine).substring(textRange.getStartLineOffset()))
+      .append(System.lineSeparator());
+    for (int i = startLine + 1; i < endLine; i++) {
+      contentBuilder.append(contentLines.get(i)).append(System.lineSeparator());
+    }
+    var endLineContent = contentLines.get(endLine);
+    var endLineOffset = Math.min(textRange.getEndLineOffset(), endLineContent.length());
+    contentBuilder.append(endLineContent, 0, endLineOffset);
+    return contentBuilder.toString();
   }
 
   /**

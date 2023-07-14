@@ -35,8 +35,8 @@ import org.eclipse.xtext.xbase.lib.Pure;
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.AddIssueCommentParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.issue.IssueStatus;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenIssueResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
 
 public interface SonarLintExtendedLanguageServer extends LanguageServer {
@@ -360,36 +360,39 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonNotification("sonarlint/forgetFolderHotspots")
   CompletableFuture<Void> forgetFolderHotspots();
 
-  class FolderUriParams {
-    private final String folderUri;
+  class UriParams {
+    private final String uri;
 
-    public FolderUriParams(String folderUri) {
-      this.folderUri = folderUri;
+    public UriParams(String uri) {
+      this.uri = uri;
     }
 
-    public String getFolderUri() {
-      return folderUri;
+    public String getUri() {
+      return uri;
     }
   }
 
   @JsonRequest("sonarlint/listSupportedFilePatterns")
-  CompletableFuture<GetSupportedFilePatternsResponse> getFilePatternsForAnalysis(FolderUriParams params);
+  CompletableFuture<GetSupportedFilePatternsResponse> getFilePatternsForAnalysis(UriParams params);
 
   @JsonRequest("sonarlint/getBindingSuggestion")
   CompletableFuture<GetBindingSuggestionsResponse> getBindingSuggestion(GetBindingSuggestionParams params);
 
   class ChangeIssueStatusParams {
     private final String configurationScopeId;
-    private final String issueKey;
+    private final String issueId;
     private final IssueStatus newStatus;
     private final String fileUri;
+    private final String comment;
     private final boolean isTaintIssue;
 
-    public ChangeIssueStatusParams(String configurationScopeId, String issueKey, IssueStatus newStatus, String fileUri, boolean isTaintIssue) {
+    public ChangeIssueStatusParams(String configurationScopeId, @Nullable String issueId, IssueStatus newStatus, String fileUri,
+      @Nullable  String comment, boolean isTaintIssue) {
       this.configurationScopeId = configurationScopeId;
-      this.issueKey = issueKey;
+      this.issueId = issueId;
       this.newStatus = newStatus;
       this.fileUri = fileUri;
+      this.comment = comment;
       this.isTaintIssue = isTaintIssue;
     }
 
@@ -397,8 +400,9 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
       return configurationScopeId;
     }
 
-    public String getIssueKey() {
-      return issueKey;
+    @CheckForNull
+    public String getIssueId() {
+      return issueId;
     }
 
     public IssueStatus getNewStatus() {
@@ -409,6 +413,10 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
       return fileUri;
     }
 
+    public String getComment() {
+      return comment;
+    }
+
     public boolean isTaintIssue() {
       return isTaintIssue;
     }
@@ -416,9 +424,6 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/changeIssueStatus")
   CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params);
-
-  @JsonNotification("sonarlint/addIssueComment")
-  CompletableFuture<Void> addIssueComment(AddIssueCommentParams params);
 
   class CheckLocalDetectionSupportedResponse {
     boolean isSupported;
@@ -441,7 +446,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   }
 
   @JsonRequest("sonarlint/checkLocalDetectionSupported")
-  CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(FolderUriParams params);
+  CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(UriParams params);
 
 
   @JsonRequest("sonarlint/getHotspotDetails")
@@ -526,6 +531,33 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
     public List<String> getAllowedStatuses() {
       return this.allowedStatuses;
+    }
+  }
+
+  @JsonNotification("sonarlint/reopenResolvedLocalIssues")
+  CompletableFuture<ReopenIssueResponse> reopenResolvedLocalIssues(ReopenAllIssuesForFileParams params);
+
+  class ReopenAllIssuesForFileParams {
+    private final String relativePath;
+    private final String fileUri;
+    private final String configurationScopeId;
+
+    public ReopenAllIssuesForFileParams(String relativePath, String fileUri, String configurationScopeId) {
+      this.relativePath = relativePath;
+      this.fileUri = fileUri;
+      this.configurationScopeId = configurationScopeId;
+    }
+
+    public String getRelativePath() {
+      return relativePath;
+    }
+
+    public String getFileUri() {
+      return fileUri;
+    }
+
+    public String getConfigurationScopeId() {
+      return configurationScopeId;
     }
   }
 
