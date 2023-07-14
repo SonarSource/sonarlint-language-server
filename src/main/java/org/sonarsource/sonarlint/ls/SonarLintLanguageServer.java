@@ -41,9 +41,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Command;
@@ -93,6 +95,7 @@ import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckStatusChang
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.issue.AddIssueCommentParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenIssueResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
@@ -406,9 +409,19 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       // Do last
       .forEach(this::invokeQuietly);
 
+    // necessary to let all shutdown jobs to finish
+    waitBeforeExit();
     shutdownLatch.countDown();
 
     return CompletableFuture.completedFuture(null);
+  }
+
+  private void waitBeforeExit() {
+    try {
+      threadPool.awaitTermination(5, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 
   public void waitForShutDown() throws InterruptedException {
@@ -757,8 +770,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<GetSupportedFilePatternsResponse> getFilePatternsForAnalysis(FolderUriParams params) {
-    return backendServiceFacade.getBackendService().getFilePatternsForAnalysis(new GetSupportedFilePatternsParams(params.getFolderUri()));
+  public CompletableFuture<GetSupportedFilePatternsResponse> getFilePatternsForAnalysis(UriParams params) {
+    return backendServiceFacade.getBackendService().getFilePatternsForAnalysis(new GetSupportedFilePatternsParams(params.getUri()));
   }
 
   @Override
@@ -769,9 +782,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params) {
     var coreParams = new org.sonarsource.sonarlint.core.clientapi.backend.issue.ChangeIssueStatusParams(
-      params.getConfigurationScopeId(), params.getIssueKey(), params.getNewStatus(), params.isTaintIssue());
+      params.getConfigurationScopeId(), params.getIssueId(), params.getNewStatus(), params.isTaintIssue());
     return backendServiceFacade.getBackendService().changeIssueStatus(coreParams).thenAccept(nothing -> {
-      var key = params.getIssueKey();
+      var key = params.getIssueId();
       if (params.isTaintIssue()) {
         taintVulnerabilitiesCache.removeTaintIssue(params.getFileUri(), key);
       } else {
@@ -784,12 +797,15 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       lsLogOutput.error("Error changing issue status", t);
       client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the issue. Look at the SonarLint output for details."));
       return null;
+    }).thenAccept(unused -> {
+      if (!StringUtils.isEmpty(params.getComment())) {
+        addIssueComment(new AddIssueCommentParams(params.getConfigurationScopeId(), params.getIssueId(), params.getComment()));
+      }
     });
   }
 
-  @Override
-  public CompletableFuture<Void> addIssueComment(AddIssueCommentParams params) {
-    return backendServiceFacade.getBackendService().addIssueComment(params)
+  private void addIssueComment(AddIssueCommentParams params) {
+    backendServiceFacade.getBackendService().addIssueComment(params)
       .thenAccept(nothing -> client.showMessage(new MessageParams(MessageType.Info, "New comment was added")))
       .exceptionally(t -> {
         lsLogOutput.error("Error adding issue comment", t);
@@ -800,8 +816,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(FolderUriParams params) {
-    var folderUri = params.getFolderUri();
+  public CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(UriParams params) {
+    var folderUri = params.getUri();
     return backendServiceFacade.checkLocalDetectionSupported(folderUri)
       .thenApply(response -> new CheckLocalDetectionSupportedResponse(response.isSupported(), response.getReason()))
       .exceptionally(exception -> new CheckLocalDetectionSupportedResponse(false, exception.getCause().getMessage()));
@@ -863,6 +879,24 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     ).exceptionally(t -> {
       lsLogOutput.error("Error changing hotspot status", t);
       client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarLint output for details."));
+      return null;
+    });
+  }
+
+  @Override
+  public CompletableFuture<ReopenIssueResponse> reopenResolvedLocalIssues(ReopenAllIssuesForFileParams params) {
+    var reopenAllIssuesParams = new org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenAllIssuesForFileParams(params.getConfigurationScopeId(), params.getRelativePath());
+    return backendServiceFacade.reopenAllIssuesForFile(reopenAllIssuesParams).thenApply(r -> {
+      if (r.isIssueReopened()) {
+        analysisScheduler.didChange(create(params.getFileUri()));
+        client.showMessage(new MessageParams(MessageType.Info, "Reopened local issues for " + params.getRelativePath()));
+      } else {
+        client.showMessage(new MessageParams(MessageType.Info, "There are no resolved issues in file " + params.getRelativePath()));
+      }
+      return r;
+    }).exceptionally(e -> {
+      lsLogOutput.error("Error while reopening resolved local issues", e);
+      client.showMessage(new MessageParams(MessageType.Error, "Could not reopen resolved local issues. Look at the SonarLint output for details."));
       return null;
     });
   }

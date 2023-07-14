@@ -26,6 +26,9 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -49,6 +52,8 @@ import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
+import org.sonarsource.sonarlint.ls.IssuesCache;
+import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 
 public class Utils {
 
@@ -231,4 +236,19 @@ public class Utils {
     return str.toUpperCase(Locale.ROOT).split("(?<=\\G.{2})");
   }
 
+  public static <T> Optional<T> safelyGetCompletableFuture(CompletableFuture<T> future) {
+    try {
+      return Optional.of(future.get());
+    } catch (InterruptedException e) {
+      interrupted(e);
+    } catch (ExecutionException e) {
+      LOG.warn("Future computation completed with an exception", e);
+    }
+    return Optional.empty();
+  }
+
+  public static boolean isDelegatingIssueWithServerIssueKey(String serverIssueKey, Map.Entry<String, IssuesCache.VersionedIssue> issueEntry) {
+    return issueEntry.getValue().getIssue() instanceof DelegatingIssue
+      && (serverIssueKey.equals(((DelegatingIssue) issueEntry.getValue().getIssue()).getServerIssueKey()));
+  }
 }

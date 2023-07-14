@@ -53,12 +53,16 @@ import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBro
 import org.sonarsource.sonarlint.core.clientapi.backend.initialize.InitializeParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.issue.AddIssueCommentParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.issue.ChangeIssueStatusParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenAllIssuesForFileParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenIssueResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.ListAllStandaloneRulesDefinitionsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.UpdateStandaloneRulesConfigurationParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.tracking.TrackWithServerIssuesParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.tracking.TrackWithServerIssuesResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.http.HttpClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
@@ -199,6 +203,19 @@ public class BackendService {
 
   public CompletableFuture<HelpGenerateUserTokenResponse> helpGenerateUserToken(HelpGenerateUserTokenParams params) {
     return initializedBackend().getConnectionService().helpGenerateUserToken(params);
+  }
+
+  public CompletableFuture<TrackWithServerIssuesResponse> matchIssues(TrackWithServerIssuesParams params) {
+    return initializedBackend().getIssueTrackingService().trackWithServerIssues(params);
+  }
+
+  public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedResponse>
+  checkChangeIssueStatusPermitted(org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedParams params) {
+    return initializedBackend().getIssueService().checkStatusChangePermitted(params);
+  }
+
+  public CompletableFuture<ReopenIssueResponse> reopenAllIssuesForFile(ReopenAllIssuesForFileParams params) {
+    return initializedBackend().getIssueService().reopenAllIssuesForFile(params);
   }
 
   public HttpClient getHttpClientNoAuth() {

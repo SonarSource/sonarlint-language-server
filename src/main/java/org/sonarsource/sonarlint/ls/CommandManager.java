@@ -56,6 +56,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleDescriptionTabDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleMonolithicDescriptionDto;
@@ -68,6 +69,7 @@ import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
@@ -75,6 +77,7 @@ import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.net.URI.create;
 import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARCLOUD_TAINT_SOURCE;
@@ -176,11 +179,10 @@ public class CommandManager {
         codeActions.add(Either.forRight(newCodeAction));
       });
 
-      var isDelegatingIssue = versionedIssue.getIssue() instanceof DelegatingIssue;
-      var serverIssueKey = isDelegatingIssue ? ((DelegatingIssue) versionedIssue.getIssue()).getServerIssueKey() : null;
-      if (hasBinding && serverIssueKey != null) {
-        var resolveIssueAction = createResolveIssueCodeAction(diagnostic, ruleKey, serverIssueKey, uri, false);
-        codeActions.add(Either.forRight(resolveIssueAction));
+      if (hasBinding) {
+        var projectBindingWrapper = binding.get();
+        var resolveIssueCodeAction = createResolveIssueCodeAction(diagnostic, uri, projectBindingWrapper, ruleKey, versionedIssue);
+        resolveIssueCodeAction.ifPresent(ca -> codeActions.add(Either.forRight(ca)));
       }
     }
     addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey, ruleContextKey);
@@ -191,14 +193,33 @@ public class CommandManager {
     }
   }
 
+  private Optional<CodeAction> createResolveIssueCodeAction(Diagnostic diagnostic, URI uri, ProjectBindingWrapper binding, String ruleKey,
+    IssuesCache.VersionedIssue versionedIssue) {
+    var isDelegatingIssue = versionedIssue.getIssue() instanceof DelegatingIssue;
+    var delegatingIssue = isDelegatingIssue ? ((DelegatingIssue) versionedIssue.getIssue()) : null;
+    if (delegatingIssue != null && delegatingIssue.getIssueId() != null) {
+      var issueId = delegatingIssue.getIssueId();
+      var serverIssueKey = delegatingIssue.getServerIssueKey();
+      var key = serverIssueKey == null ? issueId.toString() : serverIssueKey;
+      var changeStatusPermittedResponse =
+        Utils.safelyGetCompletableFuture(backendServiceFacade.checkChangeIssueStatusPermitted(
+          new CheckStatusChangePermittedParams(binding.getConnectionId(), key)
+        ));
+      if (changeStatusPermittedResponse.isPresent() && changeStatusPermittedResponse.get().isPermitted()) {
+        return Optional.of(createResolveIssueCodeAction(diagnostic, ruleKey, key, uri, false));
+      }
+    }
+    return Optional.empty();
+  }
+
   @NotNull
-  private CodeAction createResolveIssueCodeAction(Diagnostic diagnostic, String ruleKey, String serverIssueKey,  URI fileUri, boolean isTaintIssue) {
+  private CodeAction createResolveIssueCodeAction(Diagnostic diagnostic, String ruleKey, String issueId,  URI fileUri, boolean isTaintIssue) {
     var workspace = workspaceFoldersManager.findFolderForFile(fileUri).orElseThrow(() -> new IllegalStateException("No workspace found"));
     var workspaceUri = workspace.getUri();
     var resolveIssueAction = new CodeAction(String.format(SONARLINT_ACTION_PREFIX + "Resolve issue violating rule '%s' as...", ruleKey));
-    resolveIssueAction.setKind(CodeActionKind.QuickFix);
+    resolveIssueAction.setKind(CodeActionKind.Empty);
     resolveIssueAction.setDiagnostics(List.of(diagnostic));
-    resolveIssueAction.setCommand(new Command("Resolve this issue", RESOLVE_ISSUE, List.of(workspaceUri.toString(), serverIssueKey, fileUri, isTaintIssue)));
+    resolveIssueAction.setCommand(new Command("Resolve this issue", RESOLVE_ISSUE, List.of(workspaceUri.toString(), issueId, fileUri, isTaintIssue)));
     return resolveIssueAction;
   }
 
