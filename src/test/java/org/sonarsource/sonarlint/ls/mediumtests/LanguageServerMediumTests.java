@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.mediumtests;
 
 import com.google.gson.JsonPrimitive;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -402,6 +403,26 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Information)));
+  }
+
+  @Test
+  void cleanUpDiagnosticsOnFileClose() throws IOException {
+    var uri = getUri("foo.html");
+
+    didOpen(uri, "html", "<html><body></body></html>");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactlyInAnyOrder(
+        tuple(0, 0, 0, 6, "Web:DoctypePresenceCheck", "sonarlint", "Insert a <!DOCTYPE> declaration to before this <html> tag.",
+          DiagnosticSeverity.Warning),
+        tuple(0, 0, 0, 6, "Web:S5254", "sonarlint", "Add \"lang\" and/or \"xml:lang\" attributes to this \"<html>\" element",
+          DiagnosticSeverity.Warning),
+        tuple(0, 0, 0, 26, "Web:PageWithoutTitleCheck", "sonarlint", "Add a <title> tag to this page.", DiagnosticSeverity.Warning)));
+
+    didClose(uri);
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri)).isEmpty());
   }
 
   @Test

@@ -100,7 +100,6 @@ import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.telemetry.TelemetryInitParams;
 import org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -131,6 +130,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListen
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
+import org.sonarsource.sonarlint.ls.telemetry.TelemetryInitParams;
 import org.sonarsource.sonarlint.ls.util.ExitingInputStream;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
@@ -473,6 +473,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     openFilesCache.didClose(uri);
     javaConfigCache.didClose(uri);
     scmIgnoredCache.didClose(uri);
+    issuesCache.clear(uri);
+    securityHotspotsCache.clear(uri);
+    diagnosticPublisher.publishDiagnostics(uri, false);
   }
 
   @Override
