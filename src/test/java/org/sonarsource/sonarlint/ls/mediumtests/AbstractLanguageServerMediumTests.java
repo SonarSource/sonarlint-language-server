@@ -618,6 +618,12 @@ public abstract class AbstractLanguageServerMediumTests {
     toBeClosed.add(uri);
   }
 
+  protected void didClose(String uri) {
+    lsProxy.getTextDocumentService()
+      .didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
+    toBeClosed.remove(uri);
+  }
+
   protected void didOpenNotebook(String uri, String... cellContents) {
     var notebookDocument = new NotebookDocument();
     notebookDocument.setUri(uri);
