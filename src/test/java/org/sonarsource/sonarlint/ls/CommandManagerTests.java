@@ -300,7 +300,7 @@ class CommandManagerTests {
       "SonarLint: Open description of rule 'ruleKey'",
       "SonarLint: Show all locations for taint vulnerability 'ruleKey'",
       "SonarLint: Open taint vulnerability 'ruleKey' on 'connectionId'",
-      "SonarLint: Resolve this issue violating rule 'ruleKey'");
+      "SonarLint: Resolve issue violating rule 'ruleKey' as...");
 
     assertThat(codeActions.get(0).getRight().getCommand().getArguments()).containsOnly(
       "ruleKey",
@@ -626,7 +626,7 @@ class CommandManagerTests {
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
-        "SonarLint: Resolve this issue violating rule 'XYZ'",
+        "SonarLint: Resolve issue violating rule 'XYZ' as...",
         "SonarLint: Open description of rule 'XYZ'");
   }
 
