@@ -35,11 +35,11 @@ import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingPara
 import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeParams;
-import org.sonarsource.sonarlint.core.clientapi.client.host.GetHostInfoResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.clientapi.client.hotspot.ShowHotspotParams;
 import org.sonarsource.sonarlint.core.clientapi.client.http.CheckServerTrustedParams;
 import org.sonarsource.sonarlint.core.clientapi.client.http.X509CertificateDto;
+import org.sonarsource.sonarlint.core.clientapi.client.info.GetClientInfoResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.message.ShowMessageParams;
 import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressParams;
 import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
@@ -153,7 +153,6 @@ class SonarLintVSCodeClientTests {
   @Test
   void shouldHandleShowSmartNotificationWhenConnectionExists() {
     var workspaceSettings = mock(WorkspaceSettings.class);
-    var backendServiceFacade = mock(BackendServiceFacade.class);
     var showSmartNotificationParams = mock(ShowSmartNotificationParams.class);
     when(showSmartNotificationParams.getConnectionId()).thenReturn("testId");
     var serverConnections = Map.of("testId",
@@ -173,7 +172,6 @@ class SonarLintVSCodeClientTests {
   @Test
   void shouldHandleShowSmartNotificationWhenConnectionExistsForSonarCloud() {
     var workspaceSettings = mock(WorkspaceSettings.class);
-    var backendServiceFacade = mock(BackendServiceFacade.class);
     var showSmartNotificationParams = mock(ShowSmartNotificationParams.class);
     when(showSmartNotificationParams.getConnectionId()).thenReturn("testId");
     var serverConnections = Map.of("testId",
@@ -234,15 +232,15 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void shouldCallServerOnGetHostInfo() {
-    underTest.getHostInfo();
+    underTest.getClientInfo();
     verify(server).getHostInfo();
   }
 
   @Test
   void shouldGetHostInfo() throws ExecutionException, InterruptedException {
     var desc = "This is Test";
-    when(server.getHostInfo()).thenReturn(new GetHostInfoResponse("This is Test"));
-    var result = underTest.getHostInfo().get();
+    when(server.getHostInfo()).thenReturn(new GetClientInfoResponse("This is Test"));
+    var result = underTest.getClientInfo().get();
     assertThat(result.getDescription()).isEqualTo(desc);
   }
 
