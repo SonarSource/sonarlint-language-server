@@ -369,7 +369,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private void unbindFolder(WorkspaceFolderWrapper folder) {
     folderBindingCache.put(folder.getUri(), Optional.empty());
-    LOG.debug("Workspace \"{}\" unbound", folder);
+    LOG.debug("Workspace '{}' unbound", folder);
     stopUnusedEngines();
     analysisManager.analyzeAllOpenFilesInFolder(folder);
     var bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
