@@ -8,8 +8,6 @@ env:
   BURGR_URL: VAULT[development/kv/data/burgr data.url]
   BURGR_USERNAME: VAULT[development/kv/data/burgr data.cirrus_username]
   BURGR_PASSWORD: VAULT[development/kv/data/burgr data.cirrus_password]
-  SONAR_HOST_URL: VAULT[development/kv/data/next data.url]
-  SONAR_TOKEN: VAULT[development/kv/data/next data.token]
 
 auto_cancellation: $CIRRUS_BRANCH != $CIRRUS_DEFAULT_BRANCH
 
@@ -64,11 +62,13 @@ build_task:
     ARTIFACTORY_DEPLOY_PASSWORD: VAULT[development/artifactory/token/${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-qa-deployer access_token]
     SIGN_KEY: VAULT[development/kv/data/sign data.key]
     PGP_PASSPHRASE: VAULT[development/kv/data/sign data.passphrase]
+    SONAR_HOST_URL: VAULT[development/kv/data/next data.url]
+    SONAR_TOKEN: VAULT[development/kv/data/next data.token]
     DEPLOY_PULL_REQUEST: true
   <<: *MAVEN_CACHE
   build_script:
-    - source cirrus-env BUILD-PRIVATE
-    - regular_mvn_build_deploy_analyze -Dmaven.test.skip=true -Dsonar.skip=true
+    - source cirrus-env BUILD
+    - regular_mvn_build_deploy_analyze -Dsonar.analysisCache.enabled=true
   cleanup_before_cache_script: cleanup_maven_repository
 
 qa_linux_task:
