@@ -29,8 +29,6 @@ import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
-import org.sonarsource.sonarlint.core.clientapi.backend.HostInfoDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.InitializeParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidAddConfigurationScopesParams;
@@ -40,6 +38,9 @@ import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.Vali
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckLocalDetectionSupportedParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckLocalDetectionSupportedResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.initialize.ClientInfoDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.initialize.FeatureFlagsDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.initialize.InitializeParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionParams;
@@ -106,24 +107,18 @@ public class BackendServiceFacade {
 
   private static InitializeParams toInitParams(BackendInitParams initParams) {
     return new InitializeParams(
-      new HostInfoDto("Visual Studio Code"),
-      initParams.getTelemetryProductKey(),
+      new ClientInfoDto("Visual Studio Code", initParams.getTelemetryProductKey(), initParams.getUserAgent()),
+      new FeatureFlagsDto(true, true, true, true, initParams.isEnableSecurityHotspots()),
       initParams.getStorageRoot(),
       null,
       initParams.getEmbeddedPluginPaths(),
       initParams.getConnectedModeEmbeddedPluginPathsByKey(),
       initParams.getEnabledLanguagesInStandaloneMode(),
       initParams.getExtraEnabledLanguagesInConnectedMode(),
-      initParams.isEnableSecurityHotspots(),
       initParams.getSonarQubeConnections(),
       initParams.getSonarCloudConnections(),
       initParams.getSonarlintUserHome(),
-      true,
-      initParams.getStandaloneRuleConfigByKey(),
-      true,
-      true,
-      true,
-      initParams.getUserAgent()
+      initParams.getStandaloneRuleConfigByKey()
     );
   }
 

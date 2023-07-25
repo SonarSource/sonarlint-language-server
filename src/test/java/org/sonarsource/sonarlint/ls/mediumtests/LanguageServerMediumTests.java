@@ -785,7 +785,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .contains(
         "[Info] Analyzing file '" + uri + "'...",
         "[Info] Index files",
-        "[Debug] Language of file '" + uri + "' is set to 'Python'",
+        "[Debug] Language of file \"" + uri + "\" is set to \"Python\"",
         "[Info] 1 file indexed",
         "[Debug] Execute Sensor: Python Sensor",
         "[Info] Found 1 issue"));
