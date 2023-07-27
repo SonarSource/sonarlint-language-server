@@ -652,6 +652,27 @@ class ProjectBindingManagerTests {
       .hasMessage("Failed to fetch list of projects from '" + CONNECTION_ID + "'");
   }
 
+  @Test
+  void should_update_taint_issue_cache_from_storage() {
+    var serverPath = "file:///Users/user/project/src/test/resources/sample-folder/Test.java";
+    var fileUri = URI.create(serverPath);
+    var folderUri = URI.create("file:///Users/user/project/src/test/resources/sample-folder");
+    var projectBindingWrapperMock = mock(ProjectBindingWrapper.class);
+    var projectBinding = mock(ProjectBinding.class);
+    var connectedEngine = mock(ConnectedSonarLintEngine.class);
+    when(projectBindingWrapperMock.getBinding()).thenReturn(projectBinding);
+    when(projectBindingWrapperMock.getEngine()).thenReturn(connectedEngine);
+    when(connectedEngine.getServerBranches(any())).thenReturn(new ProjectBranches(Set.of("main", "feature"), "main"));
+    when((projectBinding.serverPathToIdePath(serverPath))).thenReturn(Optional.of(serverPath));
+    folderBindingCache.put(folderUri, Optional.of(projectBindingWrapperMock));
+    var workspaceFolderWrapper = new WorkspaceFolderWrapper(folderUri, new WorkspaceFolder(folderUri.toString(), "sample-folder"));
+    when(foldersManager.findFolderForFile(fileUri)).thenReturn(Optional.of(workspaceFolderWrapper));
+
+    underTest.updateTaintIssueCacheFromStorageForFile(fileUri);
+
+    verify(diagnosticPublisher).publishDiagnostics(URI.create(serverPath), false);
+  }
+
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {
     var folder = mockFileInAFolder();
     folder.setSettings(BOUND_SETTINGS);

@@ -19,14 +19,20 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
+import java.net.URI;
 import java.util.Map;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
+import org.eclipse.lsp4j.TextDocumentItem;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.mock;
 
 class NotebookMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -61,4 +67,24 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
+  @Test
+  void shouldLogIllegalStateErrorWhenDidChangeReceivedAndNotebookIsNotOpen() {
+    var notebookUri = URI.create("file:///some/notebook.ipynb");
+
+    var cell1 = new TextDocumentItem();
+    cell1.setUri(notebookUri + "#cell1");
+    cell1.setText("cell1 line1\ncell1 line2\n");
+
+    var cell2 = new TextDocumentItem();
+    cell2.setUri(notebookUri + "#cell2");
+    cell2.setText("cell2 line1\ncell2 line2\n");
+
+    setShowVerboseLogs(client.globalSettings, true);
+    var logger = mock(LanguageClientLogger.class);
+    doCallRealMethod().when(logger).warn(any());
+
+    didChange(notebookUri.toString(), "newContent");
+
+    awaitUntilAsserted(() -> assertLogContains("Illegal state. File \"file:///some/notebook.ipynb\" is reported changed but we missed the open notification"));
+  }
 }
