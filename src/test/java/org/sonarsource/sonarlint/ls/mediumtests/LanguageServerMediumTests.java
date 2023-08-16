@@ -60,6 +60,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
+import org.sonarsource.sonarlint.core.commons.CleanCodeAttribute;
+import org.sonarsource.sonarlint.core.commons.CleanCodeAttributeCategory;
+import org.sonarsource.sonarlint.core.commons.ImpactSeverity;
+import org.sonarsource.sonarlint.core.commons.SoftwareQuality;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -81,6 +85,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   private static final String TOKEN = "token";
   private static final String PYTHON_S1481 = "python:S1481";
   private static final String PYTHON_S139 = "python:S139";
+  private static final String JAVA_S2095 = "java:S2095";
   private static final String GO_S1862 = "go:S1862";
   private static final String GO_S108 = "go:S108";
   @RegisterExtension
@@ -583,6 +588,18 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.ruleDesc.getSeverity()).isEqualTo("CRITICAL");
     assertThat(client.ruleDesc.getParameters()).isEmpty();
     assertThat(client.ruleDesc.getHtmlDescriptionTabs()).isEmpty();
+  }
+
+  @Test
+  void test_clean_code_taxonomy_fields_are_present() throws Exception {
+    client.showRuleDescriptionLatch = new CountDownLatch(1);
+    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", List.of(JAVA_S2095))).get();
+    assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
+
+    assertThat(client.ruleDesc.getKey()).isEqualTo(JAVA_S2095);
+    assertThat(client.ruleDesc.getCleanCodeAttribute()).isEqualTo(CleanCodeAttribute.COMPLETE.getIssueLabel());
+    assertThat(client.ruleDesc.getCleanCodeAttributeCategory()).isEqualTo(CleanCodeAttributeCategory.INTENTIONAL.getIssueLabel());
+    assertThat(client.ruleDesc.getImpacts()).containsExactly(Map.entry(SoftwareQuality.RELIABILITY.getDisplayLabel(), ImpactSeverity.HIGH.getDisplayLabel()));
   }
 
   @Test

@@ -24,11 +24,11 @@
 
   <properties>
     <jdk.min.version>11</jdk.min.version>
-    <sonarlint.core.version>9.2.0.74353</sonarlint.core.version>
+    <sonarlint.core.version>9.2.0.74403</sonarlint.core.version>
     <!-- Version used by Xodus -->
     <kotlin.version>1.6.10</kotlin.version>
     <!-- analyzers used for tests -->
-    <sonar.java.version>7.18.0.31443</sonar.java.version>
+    <sonar.java.version>7.24.0.32044</sonar.java.version>
     <sonar.javascript.version>10.1.0.21143</sonar.javascript.version>
     <sonar.php.version>3.28.0.9490</sonar.php.version>
     <sonar.python.version>4.2.0.11487</sonar.python.version>

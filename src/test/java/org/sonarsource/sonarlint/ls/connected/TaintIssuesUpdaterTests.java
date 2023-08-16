@@ -109,8 +109,8 @@ class TaintIssuesUpdaterTests {
 
   @Test
   void should_log_number_of_downloaded_taints() {
-    var taint1 = new ServerTaintIssue("taint1", false, "ruleKey1", "message", "filePath", Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY, new TextRangeWithHash(1, 1, 1, 1, ""), null);
-    var taint2 = new ServerTaintIssue("taint2", false, "ruleKey2", "message", "filePath", Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY, new TextRangeWithHash(1, 1, 1, 1, ""), null);
+    var taint1 = new ServerTaintIssue("taint1", false, "ruleKey1", "message", "filePath", Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY, new TextRangeWithHash(1, 1, 1, 1, ""), null,null, null);
+    var taint2 = new ServerTaintIssue("taint2", false, "ruleKey2", "message", "filePath", Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY, new TextRangeWithHash(1, 1, 1, 1, ""), null,null, null);
     when(engine.getServerTaintIssues(any(), any(), anyString())).thenReturn(List.of(taint1, taint2));
 
     underTest.updateTaintIssuesAsync(FILE_URI);

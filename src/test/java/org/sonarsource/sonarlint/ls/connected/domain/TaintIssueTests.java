@@ -24,12 +24,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.sonarsource.sonarlint.core.commons.CleanCodeAttribute;
+import org.sonarsource.sonarlint.core.commons.ImpactSeverity;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.commons.SoftwareQuality;
 import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
 import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
@@ -91,7 +95,8 @@ class TaintIssueTests {
   void shouldConvertServerTaintIssuesToTaintIssues() {
     ServerTaintIssue serverTaintIssue = new ServerTaintIssue(ISSUE_KEY1, false, RULE_KEY, MAIN_LOCATION1.getMessage(),
       fileInAWorkspaceFolderPath.toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE,
-      textRangeWithHashFromTextRange(MAIN_LOCATION1.getTextRange()), "java_se");
+      textRangeWithHashFromTextRange(MAIN_LOCATION1.getTextRange()), "java_se" , CleanCodeAttribute.TRUSTWORTHY,
+      Map.of(SoftwareQuality.SECURITY, ImpactSeverity.LOW));
     serverTaintIssue.setFlows(List.of(FLOW1));
 
     TaintIssue taintIssue = TaintIssue.from(serverTaintIssue, SONARCLOUD_TAINT_SOURCE);
@@ -108,6 +113,8 @@ class TaintIssueTests {
       assertEquals(serverTaintIssue.getFlows(), taintIssue.getFlows());
       assertEquals(serverTaintIssue.getTextRange(), taintIssue.getTextRange());
       assertEquals(serverTaintIssue.getRuleDescriptionContextKey(), taintIssue.getRuleDescriptionContextKey());
+      assertEquals(serverTaintIssue.getCleanCodeAttribute(), taintIssue.getCleanCodeAttribute());
+      assertEquals(serverTaintIssue.getImpacts(), taintIssue.getImpacts());
       assertEquals(SONARCLOUD_TAINT_SOURCE, taintIssue.getSource());
     });
 
@@ -116,11 +123,13 @@ class TaintIssueTests {
   @Test
   void shouldConvertListOfServerTaintIssuesToListOfTaintIssues() {
     ServerTaintIssue serverTaintIssue1 = new ServerTaintIssue(ISSUE_KEY1, false, RULE_KEY, MAIN_LOCATION1.getMessage(),
-      fileInAWorkspaceFolderPath.toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION1.getTextRange()), null);
+      fileInAWorkspaceFolderPath.toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION1.getTextRange()), null,
+      CleanCodeAttribute.TRUSTWORTHY,  Map.of(SoftwareQuality.SECURITY, ImpactSeverity.LOW));
     serverTaintIssue1.setFlows(List.of(FLOW1));
 
     ServerTaintIssue serverTaintIssue2 = new ServerTaintIssue(ISSUE_KEY2, false, RULE_KEY2, MAIN_LOCATION1.getMessage(),
-      fileInAWorkspaceFolderPath.toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION2.getTextRange()), null);
+      fileInAWorkspaceFolderPath.toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION2.getTextRange()), null,
+      CleanCodeAttribute.TESTED,   Map.of(SoftwareQuality.MAINTAINABILITY, ImpactSeverity.LOW));
     serverTaintIssue1.setFlows(List.of(FLOW2));
 
     List<TaintIssue> taintIssues = TaintIssue.from(List.of(serverTaintIssue1, serverTaintIssue2), false);
@@ -141,6 +150,8 @@ class TaintIssueTests {
       assertEquals(serverTaintIssue1.getType(), taintIssue1.getType());
       assertEquals(serverTaintIssue1.getFlows(), taintIssue1.getFlows());
       assertEquals(serverTaintIssue1.getTextRange(), taintIssue1.getTextRange());
+      assertEquals(serverTaintIssue1.getCleanCodeAttribute(), taintIssue1.getCleanCodeAttribute());
+      assertEquals(serverTaintIssue1.getImpacts(), taintIssue1.getImpacts());
       assertEquals(SONARQUBE_TAINT_SOURCE, taintIssue1.getSource());
     });
 
@@ -155,6 +166,8 @@ class TaintIssueTests {
       assertEquals(serverTaintIssue2.getType(), taintIssue2.getType());
       assertEquals(serverTaintIssue2.getFlows(), taintIssue2.getFlows());
       assertEquals(serverTaintIssue2.getTextRange(), taintIssue2.getTextRange());
+      assertEquals(serverTaintIssue2.getCleanCodeAttribute(), taintIssue2.getCleanCodeAttribute());
+      assertEquals(serverTaintIssue2.getImpacts(), taintIssue2.getImpacts());
       assertEquals(SONARQUBE_TAINT_SOURCE, taintIssue2.getSource());
     });
   }
