@@ -224,7 +224,6 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
         cleanCodeAttribute, cleanCodeAttributeCategory, impacts);
       result = 31 * result + Arrays.hashCode(htmlDescriptionTabs);
       result = 31 * result + Arrays.hashCode(parameters);
-      result = 31 * result + impacts.hashCode();
       return result;
     }
   }
