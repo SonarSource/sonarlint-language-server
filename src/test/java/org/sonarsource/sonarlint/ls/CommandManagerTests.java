@@ -389,6 +389,7 @@ class CommandManagerTests {
     when(details.getKey()).thenReturn(FAKE_RULE_KEY);
     when(details.getLanguage()).thenReturn(Language.JS);
     when(details.getCleanCodeAttribute()).thenReturn(Optional.of(CleanCodeAttribute.COMPLETE));
+    when(details.getDefaultImpacts()).thenReturn(Map.of(SoftwareQuality.SECURITY, ImpactSeverity.MEDIUM));
     var desc = mock(RuleMonolithicDescriptionDto.class);
     when(desc.getHtmlContent()).thenReturn("Desc");
     when(details.getDescription()).thenReturn(Either.forLeft(desc));
@@ -400,7 +401,7 @@ class CommandManagerTests {
     verify(mockClient).showRuleDescription(new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc",
       new SonarLintExtendedLanguageClient.RuleDescriptionTab[0], RuleType.BUG, Language.JS.getLanguageKey(),
       IssueSeverity.BLOCKER, Collections.emptyList(), CleanCodeAttribute.COMPLETE.getIssueLabel(),
-      CleanCodeAttributeCategory.INTENTIONAL.getIssueLabel(), Collections.emptyMap())
+      CleanCodeAttributeCategory.INTENTIONAL.getIssueLabel(), Map.of(SoftwareQuality.SECURITY.getDisplayLabel(), ImpactSeverity.MEDIUM.getDisplayLabel()))
     );
   }
 
