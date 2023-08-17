@@ -21,6 +21,8 @@ package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
 import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
@@ -45,6 +47,7 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 class AnalysisSchedulerTests {
 
@@ -55,15 +58,20 @@ class AnalysisSchedulerTests {
   private OpenFilesCache openFilesCache;
   private OpenNotebooksCache openNotebooksCache;
   private LanguageClientLogger lsLogOutput;
+  private SonarLintExtendedLanguageClient client;
 
   @BeforeEach
   public void init() {
     lsLogOutput = mock(LanguageClientLogger.class);
     taskExecutor = mock(AnalysisTaskExecutor.class);
+    client = mock(SonarLintExtendedLanguageClient.class);
+    when(client.filterOutExcludedFiles(any()))
+      .thenReturn(CompletableFuture.completedFuture(
+        new SonarLintExtendedLanguageClient.FileUrisResult(List.of("file://Foo1.java", "file://Foo2.java"))));
     openFilesCache = new OpenFilesCache(lsLogOutput);
     openNotebooksCache = new OpenNotebooksCache(lsLogOutput, mock(NotebookDiagnosticPublisher.class));
     underTest = new AnalysisScheduler(lsLogOutput, mock(WorkspaceFoldersManager.class), mock(ProjectBindingManager.class), openFilesCache,
-      openNotebooksCache, taskExecutor, 200);
+      openNotebooksCache, taskExecutor, 200, client);
 
     underTest.initialize();
   }

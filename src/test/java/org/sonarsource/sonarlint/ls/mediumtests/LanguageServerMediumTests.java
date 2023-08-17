@@ -246,17 +246,18 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void doNotAnalyzePythonFileOnPreview() throws Exception {
+    // doesn't propagate to logger state and log is skipped
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
 
     var uri = getUri("analyzeSimplePythonFileOnOpen.py");
 
-    client.isOpenInEditor = false;
+    client.shouldAnalyseFile = false;
     didOpen(uri, "python", "def foo():\n  print 'toto'\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
-      .contains("[Debug] Skipping analysis for preview of file " + uri));
+      .contains("[Info] reason " + uri));
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
