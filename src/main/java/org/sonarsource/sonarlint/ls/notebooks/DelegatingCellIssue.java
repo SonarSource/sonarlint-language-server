@@ -63,7 +63,7 @@ public class DelegatingCellIssue implements Issue {
   }
 
   @Override
-  public CleanCodeAttribute getCleanCodeAttribute() {
+  public Optional<CleanCodeAttribute> getCleanCodeAttribute() {
     return issue.getCleanCodeAttribute();
   }
 

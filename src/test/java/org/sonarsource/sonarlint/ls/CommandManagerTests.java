@@ -37,7 +37,6 @@ import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
-import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
@@ -477,10 +476,9 @@ class CommandManagerTests {
         return RuleType.SECURITY_HOTSPOT;
       }
 
-      @Nullable
       @Override
-      public CleanCodeAttribute getCleanCodeAttribute() {
-        return null;
+      public Optional<CleanCodeAttribute> getCleanCodeAttribute() {
+        return Optional.empty();
       }
 
       @Nullable
