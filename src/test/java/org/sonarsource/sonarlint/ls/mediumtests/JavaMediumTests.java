@@ -141,7 +141,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       .containsExactlyInAnyOrder(
         tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
         tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Information),
-        tuple(3, 2, 3, 12, "java:S106", "sonarlint", "Replace this use of System.out or System.err by a logger.", DiagnosticSeverity.Warning)));
+        tuple(3, 2, 3, 12, "java:S106", "sonarlint", "Replace this use of System.out by a logger.", DiagnosticSeverity.Warning)));
 
     assertThat(client.logs).extracting(withoutTimestamp()).doesNotContain(cacheMsg);
   }
