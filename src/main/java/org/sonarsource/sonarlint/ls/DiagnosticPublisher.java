@@ -53,7 +53,6 @@ public class DiagnosticPublisher {
 
   private final SonarLintExtendedLanguageClient client;
   private boolean firstSecretIssueDetected;
-  private boolean firstCobolIssueDetected;
 
   private final IssuesCache issuesCache;
   private final IssuesCache hotspotsCache;
@@ -69,9 +68,8 @@ public class DiagnosticPublisher {
     this.openNotebooksCache = openNotebooksCache;
   }
 
-  public void initialize(boolean firstSecretDetected, boolean firstCobolIssueDetected) {
+  public void initialize(boolean firstSecretDetected) {
     this.firstSecretIssueDetected = firstSecretDetected;
-    this.firstCobolIssueDetected = firstCobolIssueDetected;
   }
 
   public void publishDiagnostics(URI f, boolean onlyHotspots) {
@@ -175,11 +173,6 @@ public class DiagnosticPublisher {
     if (!firstSecretIssueDetected && localIssues.values().stream().anyMatch(v -> v.getIssue().getRuleKey().startsWith(Language.SECRETS.getLanguageKey()))) {
       client.showFirstSecretDetectionNotification();
       firstSecretIssueDetected = true;
-    }
-
-    if (!firstCobolIssueDetected && localIssues.values().stream().anyMatch(v -> v.getIssue().getRuleKey().startsWith(Language.COBOL.getLanguageKey()))) {
-      client.showFirstCobolIssueDetectedNotification();
-      firstCobolIssueDetected = true;
     }
 
     var localDiagnostics = localIssues.entrySet()

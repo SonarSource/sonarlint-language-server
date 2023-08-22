@@ -90,7 +90,7 @@ class DiagnosticPublisherTests {
 
   @Test
   void showFirstSecretDetectedNotificationOnlyOnce() {
-    underTest.initialize(false, false);
+    underTest.initialize(false);
 
     var uri = initWithOneSecretIssue();
 
@@ -107,7 +107,7 @@ class DiagnosticPublisherTests {
 
   @Test
   void dontShowFirstSecretDetectedNotificationIfAlreadyShown() {
-    underTest.initialize(true, false);
+    underTest.initialize(true);
 
     var uri = initWithOneSecretIssue();
 
@@ -115,35 +115,6 @@ class DiagnosticPublisherTests {
 
     verify(languageClient, never()).showFirstSecretDetectionNotification();
   }
-
-  @Test
-  void showFirstCobolIssueDetectedNotificationOnlyOnce() {
-    underTest.initialize(false, false);
-
-    var uri = initWithOneCobolIssue();
-
-    underTest.publishDiagnostics(uri, false);
-
-    verify(languageClient, times(1)).showFirstCobolIssueDetectedNotification();
-
-    reset(languageClient);
-
-    underTest.publishDiagnostics(uri, false);
-
-    verify(languageClient, never()).showFirstCobolIssueDetectedNotification();
-  }
-
-  @Test
-  void dontShowFirstCobolIssueDetectedNotificationIfAlreadyShown() {
-    underTest.initialize(true, true);
-
-    var uri = initWithOneCobolIssue();
-
-    underTest.publishDiagnostics(uri, false);
-
-    verify(languageClient, never()).showFirstCobolIssueDetectedNotification();
-  }
-
 
   private URI initWithOneSecretIssue() {
     var issue = mock(Issue.class);
