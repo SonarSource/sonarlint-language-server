@@ -37,7 +37,6 @@ import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
-import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,9 +60,13 @@ import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleDescriptionTab
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleMonolithicDescriptionDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleNonContextualSectionDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleSplitDescriptionDto;
+import org.sonarsource.sonarlint.core.commons.CleanCodeAttribute;
+import org.sonarsource.sonarlint.core.commons.CleanCodeAttributeCategory;
+import org.sonarsource.sonarlint.core.commons.ImpactSeverity;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.commons.SoftwareQuality;
 import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
@@ -384,6 +387,8 @@ class CommandManagerTests {
     when(details.getParams()).thenReturn(emptyList());
     when(details.getKey()).thenReturn(FAKE_RULE_KEY);
     when(details.getLanguage()).thenReturn(Language.JS);
+    when(details.getCleanCodeAttribute()).thenReturn(Optional.of(CleanCodeAttribute.COMPLETE));
+    when(details.getDefaultImpacts()).thenReturn(Map.of(SoftwareQuality.SECURITY, ImpactSeverity.MEDIUM));
     var desc = mock(RuleMonolithicDescriptionDto.class);
     when(desc.getHtmlContent()).thenReturn("Desc");
     when(details.getDescription()).thenReturn(Either.forLeft(desc));
@@ -393,7 +398,10 @@ class CommandManagerTests {
       NOP_CANCEL_TOKEN);
 
     verify(mockClient).showRuleDescription(new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc",
-      new SonarLintExtendedLanguageClient.RuleDescriptionTab[0], RuleType.BUG, Language.JS.getLanguageKey(), IssueSeverity.BLOCKER, Collections.emptyList()));
+      new SonarLintExtendedLanguageClient.RuleDescriptionTab[0], RuleType.BUG, Language.JS.getLanguageKey(),
+      IssueSeverity.BLOCKER, Collections.emptyList(), CleanCodeAttribute.COMPLETE.getIssueLabel(),
+      CleanCodeAttributeCategory.INTENTIONAL.getIssueLabel(), Map.of(SoftwareQuality.SECURITY.getDisplayLabel(), ImpactSeverity.MEDIUM.getDisplayLabel()))
+    );
   }
 
   @Test
@@ -469,6 +477,17 @@ class CommandManagerTests {
       }
 
       @Override
+      public Optional<CleanCodeAttribute> getCleanCodeAttribute() {
+        return Optional.empty();
+      }
+
+      @Nullable
+      @Override
+      public Map<SoftwareQuality, ImpactSeverity> getImpacts() {
+        return null;
+      }
+
+      @Override
       public String getRuleKey() {
         return "";
       }
@@ -505,7 +524,7 @@ class CommandManagerTests {
   @Test
   void getHtmlDescriptionTabsMonolithicShouldReturnNoTabs() {
     var monolithicDesc = new RuleMonolithicDescriptionDto("monolithicHtmlContent");
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, Either.forLeft(monolithicDesc), emptyList(), null);
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null, Either.forLeft(monolithicDesc), emptyList(), null);
 
     assertThat(CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription(), "")).isEmpty();
   }
@@ -517,7 +536,7 @@ class CommandManagerTests {
     var tab1 = new RuleDescriptionTabDto("title1", Either.forLeft(section1));
     var tab2 = new RuleDescriptionTabDto("title2", Either.forLeft(section2));
     var splitDesc = new RuleSplitDescriptionDto("introHtmlContent", List.of(tab1, tab2));
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, Either.forRight(splitDesc), emptyList(), null);
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,Either.forRight(splitDesc), emptyList(), null);
 
     var descriptionTabs = CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription(), "");
 
@@ -544,7 +563,7 @@ class CommandManagerTests {
     var tab1 = new RuleDescriptionTabDto("title1", Either.forRight(sectionDto1));
     var tab2 = new RuleDescriptionTabDto("title2", Either.forRight(sectionDto2));
     var splitDesc = new RuleSplitDescriptionDto("introHtmlContent", List.of(tab1, tab2));
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, Either.forRight(splitDesc), emptyList(), null);
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null, Either.forRight(splitDesc), emptyList(), null);
 
     var descriptionTabs = CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription(), "java");
 
@@ -571,7 +590,7 @@ class CommandManagerTests {
   @Test
   void getHtmlDescriptionMonolithic() {
     var monolithicDesc = new RuleMonolithicDescriptionDto("monolithicHtmlContent");
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, Either.forLeft(monolithicDesc), emptyList(), null);
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,Either.forLeft(monolithicDesc), emptyList(), null);
 
     assertThat(CommandManager.getHtmlDescription(ruleDetails.getDescription())).isEqualTo("monolithicHtmlContent");
   }
@@ -581,7 +600,7 @@ class CommandManagerTests {
     var section1 = new RuleNonContextualSectionDto(null);
     var tab1 = new RuleDescriptionTabDto(null, Either.forLeft(section1));
     var splitDesc = new RuleSplitDescriptionDto("splitHtmlContent", List.of(tab1));
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, Either.forRight(splitDesc), emptyList(), null);
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,Either.forRight(splitDesc), emptyList(), null);
 
 
     assertThat(CommandManager.getHtmlDescription(ruleDetails.getDescription())).isEqualTo("splitHtmlContent");

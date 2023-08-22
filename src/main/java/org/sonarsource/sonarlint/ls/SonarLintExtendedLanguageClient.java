@@ -110,9 +110,16 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     private final boolean isTaint;
     @Expose
     private final RuleParameter[] parameters;
+    @Expose
+    private final String cleanCodeAttribute;
+    @Expose
+    private final String cleanCodeAttributeCategory;
+    @Expose
+    private final Map<String, String> impacts;
 
     public ShowRuleDescriptionParams(String ruleKey, String ruleName, String htmlDescription, RuleDescriptionTab[] htmlDescriptionTabs,
-      RuleType type, String languageKey, IssueSeverity severity, Collection<EffectiveRuleParamDto> params) {
+      RuleType type, String languageKey, IssueSeverity severity, Collection<EffectiveRuleParamDto> params, String cleanCodeAttribute,
+      String cleanCodeAttributeCategory, Map<String, String> impacts) {
       this.key = ruleKey;
       this.name = ruleName;
       this.htmlDescription = htmlDescription;
@@ -122,10 +129,14 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       this.severity = severity.toString();
       this.isTaint = ruleKey.contains(TAINT_RULE_REPO_SUFFIX) && type == RuleType.VULNERABILITY;
       this.parameters = params.stream().map(p -> new RuleParameter(p.getName(), p.getDescription(), p.getDefaultValue())).toArray(RuleParameter[]::new);
+      this.cleanCodeAttribute = cleanCodeAttribute;
+      this.cleanCodeAttributeCategory = cleanCodeAttributeCategory;
+      this.impacts = impacts;
     }
 
     public ShowRuleDescriptionParams(String ruleKey, String ruleName, String htmlDescription, RuleDescriptionTab[] htmlDescriptionTabs,
-      RuleType type, String languageKey, IssueSeverity severity, Map<String, RuleParamDefinitionDto> params) {
+      RuleType type, String languageKey, IssueSeverity severity, Map<String, RuleParamDefinitionDto> params, String cleanCodeAttribute,
+      String cleanCodeAttributeCategory, Map<String, String> impacts) {
       this.key = ruleKey;
       this.name = ruleName;
       this.htmlDescription = htmlDescription;
@@ -136,6 +147,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       this.isTaint = ruleKey.contains(TAINT_RULE_REPO_SUFFIX) && type == RuleType.VULNERABILITY;
       this.parameters = params.values().stream().map(ruleParamDefinitionDto -> new RuleParameter(ruleParamDefinitionDto.getName(), ruleParamDefinitionDto.getDescription(),
         ruleParamDefinitionDto.getDefaultValue())).toArray(RuleParameter[]::new);
+      this.cleanCodeAttributeCategory = cleanCodeAttributeCategory;
+      this.cleanCodeAttribute = cleanCodeAttribute;
+      this.impacts = impacts;
     }
 
     public String getKey() {
@@ -174,6 +188,18 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       return htmlDescriptionTabs;
     }
 
+    public String getCleanCodeAttribute() {
+      return cleanCodeAttribute;
+    }
+
+    public String getCleanCodeAttributeCategory() {
+      return cleanCodeAttributeCategory;
+    }
+
+    public Map<String, String> getImpacts() {
+      return impacts;
+    }
+
     @Override
     public boolean equals(Object o) {
       if (this == o) return true;
@@ -184,6 +210,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
         && Objects.equals(name, that.name)
         && Objects.equals(htmlDescription, that.htmlDescription)
         && Objects.equals(languageKey, that.languageKey)
+        && Objects.equals(cleanCodeAttribute, that.cleanCodeAttribute)
+        && Objects.equals(cleanCodeAttributeCategory, that.cleanCodeAttributeCategory)
+        && Objects.equals(impacts, that.impacts)
         && Arrays.equals(htmlDescriptionTabs, that.htmlDescriptionTabs)
         && Objects.equals(type, that.type) && Objects.equals(severity, that.severity)
         && Arrays.equals(parameters, that.parameters);
@@ -191,7 +220,8 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
     @Override
     public int hashCode() {
-      int result = Objects.hash(key, name, htmlDescription, type, severity, isTaint, languageKey);
+      int result = Objects.hash(key, name, htmlDescription, type, severity, isTaint, languageKey,
+        cleanCodeAttribute, cleanCodeAttributeCategory, impacts);
       result = 31 * result + Arrays.hashCode(htmlDescriptionTabs);
       result = 31 * result + Arrays.hashCode(parameters);
       return result;

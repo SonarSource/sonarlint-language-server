@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionKind;
 import org.eclipse.lsp4j.CodeActionParams;
@@ -57,10 +58,13 @@ import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
 import org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.AbstractRuleDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleDescriptionTabDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleMonolithicDescriptionDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleParamDefinitionDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleSplitDescriptionDto;
+import org.sonarsource.sonarlint.core.commons.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.UrlUtils;
@@ -346,13 +350,9 @@ public class CommandManager {
 
     return backendServiceFacade.getEffectiveRuleDetails(workspaceFolder, ruleKey, ruleContextKey)
       .thenApply(detailsResponse -> {
-        var ruleName = detailsResponse.details().getName();
-        var htmlDescription = getHtmlDescription(detailsResponse.details().getDescription());
-        var htmlDescriptionTabs = getHtmlDescriptionTabs(detailsResponse.details().getDescription(), ruleContextKey);
-        var type = detailsResponse.details().getType();
-        var severity = detailsResponse.details().getSeverity();
-        var languageKey = detailsResponse.details().getLanguage().getLanguageKey();
-        return new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, htmlDescriptionTabs, type, languageKey, severity, Collections.emptyList());
+        var ruleDetailsDto = detailsResponse.details();
+        return createShowRuleDescriptionParams(ruleDetailsDto, Collections.emptyMap(), ruleDetailsDto.getDescription(), ruleKey,
+          ruleContextKey);
       }).exceptionally(e -> {
         var message = "Can't show rule details for unknown rule with key: " + ruleKey;
         client.showMessage(new MessageParams(MessageType.Error, message));
@@ -362,14 +362,37 @@ public class CommandManager {
   }
 
   private void showStandaloneRuleDescription(String ruleKey, GetStandaloneRuleDescriptionResponse ruleDetails) {
-    var ruleName = ruleDetails.getRuleDefinition().getName();
-    var htmlDescription = getHtmlDescription(ruleDetails.getDescription());
-    var htmlDescriptionTabs = getHtmlDescriptionTabs(ruleDetails.getDescription(), "");
-    var type = ruleDetails.getRuleDefinition().getType();
-    var severity = ruleDetails.getRuleDefinition().getDefaultSeverity();
-    var languageKey = ruleDetails.getRuleDefinition().getLanguage().getLanguageKey();
-    var paramDetails = ruleDetails.getRuleDefinition().getParamsByKey();
-    client.showRuleDescription(new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, htmlDescriptionTabs, type, languageKey, severity, paramDetails));
+    var ruleDefinition = ruleDetails.getRuleDefinition();
+    var paramDetails = ruleDefinition.getParamsByKey();
+    var showRuleDescriptionParams = createShowRuleDescriptionParams(ruleDefinition, paramDetails, ruleDetails.getDescription(), ruleKey,
+      "");
+    client.showRuleDescription(showRuleDescriptionParams);
+  }
+
+  private static ShowRuleDescriptionParams createShowRuleDescriptionParams(AbstractRuleDto ruleDetailsDto,
+    Map<String, RuleParamDefinitionDto> params, Either<RuleMonolithicDescriptionDto, RuleSplitDescriptionDto> description,
+    String ruleKey, String ruleContextKey) {
+    var ruleName = ruleDetailsDto.getName();
+    var type = ruleDetailsDto.getType();
+    var severity = ruleDetailsDto.getSeverity();
+    var languageKey = ruleDetailsDto.getLanguage().getLanguageKey();
+    var cleanCodeAttributeAndCategory = getCleanCodeAttributeAndCategory(ruleDetailsDto.getCleanCodeAttribute().orElse(null));
+    var cleanCodeAttributeParam = cleanCodeAttributeAndCategory.getLeft();
+    var cleanCodeAttributeCategoryParam = cleanCodeAttributeAndCategory.getRight();
+    var impacts = ruleDetailsDto.getDefaultImpacts().entrySet().stream()
+      .collect(Collectors.toMap(entry -> entry.getKey().getDisplayLabel(), entry -> entry.getValue().getDisplayLabel()));
+    var htmlDescription = getHtmlDescription(description);
+    var htmlDescriptionTabs = getHtmlDescriptionTabs(description, ruleContextKey);
+    return new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, htmlDescriptionTabs, type, languageKey, severity, params,
+      cleanCodeAttributeParam, cleanCodeAttributeCategoryParam, impacts);
+  }
+
+  private static ImmutablePair<String, String> getCleanCodeAttributeAndCategory(@Nullable CleanCodeAttribute cleanCodeAttribute) {
+    if (cleanCodeAttribute != null) {
+      var attributeCategory = cleanCodeAttribute.getAttributeCategory();
+      return new ImmutablePair<>(cleanCodeAttribute.getIssueLabel(), attributeCategory.getIssueLabel());
+    }
+    return new ImmutablePair<>("", "");
   }
 
   public void executeCommand(ExecuteCommandParams params, CancelChecker cancelToken) {
