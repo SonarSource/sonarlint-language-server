@@ -1025,6 +1025,33 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "**/*.tf");
   }
 
+
+  @Test
+  void shouldRespectAnalysisExcludes() {
+    var fileName = "analyseOpenFileIgnoringExcludes.py";
+    var fileUri = temp.resolve(fileName).toUri().toString();
+    client.shouldAnalyseFile = false;
+
+    didOpen(fileUri, "py", "def foo():\n  toto = 0\n");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri)).isEmpty());
+  }
+
+  @Test
+  void analyseOpenFileIgnoringExcludes() {
+    var fileName = "analyseOpenFileIgnoringExcludes.py";
+    var fileUri = temp.resolve(fileName).toUri().toString();
+
+    lsProxy.analyseOpenFileIgnoringExcludes(new SonarLintExtendedLanguageServer.AnalyseOpenFileIgnoringExcludesParams(
+      new TextDocumentItem(fileUri, "py", 1, "def foo():\n  toto = 0\n")));
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+        Diagnostic::getSeverity)
+      .containsExactlyInAnyOrder(
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Information)));
+  }
+
   @Override
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
     addSonarQubeConnection(client.globalSettings, CONNECTION_ID, mockWebServerExtension.url("/"), TOKEN);
