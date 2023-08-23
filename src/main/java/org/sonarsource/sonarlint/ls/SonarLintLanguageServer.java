@@ -72,6 +72,7 @@ import org.eclipse.lsp4j.NotebookSelectorCell;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.SetTraceParams;
+import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.TextDocumentSyncOptions;
 import org.eclipse.lsp4j.WorkDoneProgressCancelParams;
@@ -923,4 +924,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       return null;
     });
   }
+
+  @Override
+  public CompletableFuture<ReopenIssueResponse> analyseOpenFileIgnoringExcludes(AnalyseOpenFileIgnoringExcludesParams params) {
+    var document = params.getDocument();
+    var file = openFilesCache.didOpen(create(document.getUri()), document.getLanguageId(), document.getText(), document.getVersion());
+    analysisScheduler.didOpen(file);
+    return CompletableFuture.completedFuture(null);
+  }
+
 }

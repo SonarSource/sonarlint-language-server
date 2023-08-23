@@ -605,4 +605,19 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
   }
 
+  class AnalyseOpenFileIgnoringExcludesParams {
+    TextDocumentItem document;
+
+    public AnalyseOpenFileIgnoringExcludesParams(TextDocumentItem document) {
+      this.document = document;
+    }
+
+    public TextDocumentItem getDocument() {
+      return document;
+    }
+  }
+
+  @JsonNotification("sonarlint/analyseOpenFileIgnoringExcludes")
+  CompletableFuture<ReopenIssueResponse> analyseOpenFileIgnoringExcludes(AnalyseOpenFileIgnoringExcludesParams params);
+
 }
