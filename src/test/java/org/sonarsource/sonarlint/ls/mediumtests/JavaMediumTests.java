@@ -68,11 +68,10 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       "productVersion", "0.1"));
   }
 
-  @BeforeEach
-  void setVerboseLogs() {
+  @Override
+  protected void setupGlobalSettings(Map<String, Object> globalSettings) {
     client.readyForTestsLatch = new CountDownLatch(1);
     setShowVerboseLogs(client.globalSettings, true);
-    notifyConfigurationChangeOnClient();
   }
 
   @Override
