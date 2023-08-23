@@ -39,6 +39,7 @@ import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidAddConfi
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidRemoveConfigurationScopeParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.DidChangeCredentialsParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.DidUpdateConnectionsParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarCloudConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarQubeConnectionConfigurationDto;
@@ -107,6 +108,11 @@ public class BackendService {
     var sqConnections = extractSonarQubeConnections(connections);
     var params = new DidUpdateConnectionsParams(sqConnections, scConnections);
     initializedBackend().getConnectionService().didUpdateConnections(params);
+  }
+
+  public void didChangeCredentials(String connectionId) {
+    var params = new DidChangeCredentialsParams(connectionId);
+    initializedBackend().getConnectionService().didChangeCredentials(params);
   }
 
   public static List<SonarQubeConnectionConfigurationDto> extractSonarQubeConnections(Map<String, ServerConnectionSettings> connections) {
@@ -180,19 +186,19 @@ public class BackendService {
     return initializedBackend().getBindingService().getBindingSuggestions(params);
   }
 
-  public CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params){
+  public CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params) {
     return initializedBackend().getIssueService().changeStatus(params);
   }
 
-  public CompletableFuture<Void> addIssueComment(AddIssueCommentParams params){
+  public CompletableFuture<Void> addIssueComment(AddIssueCommentParams params) {
     return initializedBackend().getIssueService().addComment(params);
   }
 
-  public CompletableFuture<Void> changeHotspotStatus(ChangeHotspotStatusParams params){
+  public CompletableFuture<Void> changeHotspotStatus(ChangeHotspotStatusParams params) {
     return initializedBackend().getHotspotService().changeStatus(params);
   }
 
-  public CompletableFuture<CheckStatusChangePermittedResponse> getAllowedHotspotStatuses(CheckStatusChangePermittedParams params){
+  public CompletableFuture<CheckStatusChangePermittedResponse> getAllowedHotspotStatuses(CheckStatusChangePermittedParams params) {
     return initializedBackend().getHotspotService().checkStatusChangePermitted(params);
   }
 
