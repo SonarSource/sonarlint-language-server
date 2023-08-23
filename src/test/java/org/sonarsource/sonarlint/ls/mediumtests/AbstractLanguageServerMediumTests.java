@@ -239,10 +239,15 @@ public abstract class AbstractLanguageServerMediumTests {
     toBeClosed.clear();
     notebooksToBeClosed.clear();
 
+    setupGlobalSettings(client.globalSettings);
     setUpFolderSettings(client.folderSettings);
 
     notifyConfigurationChangeOnClient();
     verifyConfigurationChangeOnClient();
+  }
+
+  protected void setupGlobalSettings(Map<String, Object> globalSettings) {
+    // do nothing by default
   }
 
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
