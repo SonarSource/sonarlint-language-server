@@ -897,11 +897,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldUpdateConfigurationOnTokenChange() {
-    lsProxy.onTokenUpdate();
+    lsProxy.onTokenUpdate(new SonarLintExtendedLanguageServer.OnTokenUpdateNotificationParams("connectionId"));
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
-      .contains("[Info] Updating configuration on token change."));
+      .contains("[Info] Updating credentials on token change."));
     client.logs.clear();
   }
 

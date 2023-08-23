@@ -623,9 +623,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public void onTokenUpdate() {
-    SonarLintLogger.get().info("Updating configuration on token change.");
-    didChangeConfiguration(new DidChangeConfigurationParams());
+  public void onTokenUpdate(OnTokenUpdateNotificationParams onTokenUpdateNotificationParams) {
+    SonarLintLogger.get().info("Updating credentials on token change.");
+    backendServiceFacade.didChangeCredentials(onTokenUpdateNotificationParams.getConnectionId());
   }
 
   @Override

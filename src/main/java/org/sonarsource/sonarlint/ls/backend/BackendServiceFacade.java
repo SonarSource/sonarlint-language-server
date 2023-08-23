@@ -100,6 +100,10 @@ public class BackendServiceFacade {
     backend.didChangeConnections(connections);
   }
 
+  public void didChangeCredentials(String connectionId) {
+    backend.didChangeCredentials(connectionId);
+  }
+
   private void initOnce(Map<String, ServerConnectionSettings> connections) {
     if (initialized.getAndSet(true)) return;
     var sqConnections = BackendService.extractSonarQubeConnections(connections);

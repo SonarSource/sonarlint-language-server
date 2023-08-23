@@ -190,8 +190,20 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonNotification("sonarlint/didLocalBranchNameChange")
   void didLocalBranchNameChange(DidLocalBranchNameChangeParams params);
 
+  class OnTokenUpdateNotificationParams {
+    private String connectionId;
+
+    public OnTokenUpdateNotificationParams(String connectionId) {
+      this.connectionId = connectionId;
+    }
+
+    public String getConnectionId() {
+      return connectionId;
+    }
+  }
+
   @JsonNotification("sonarlint/onTokenUpdate")
-  void onTokenUpdate();
+  void onTokenUpdate(OnTokenUpdateNotificationParams onTokenUpdateNotificationParams);
 
   class GetRemoteProjectsNamesParams {
     private String connectionId;
@@ -387,7 +399,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     private final boolean isTaintIssue;
 
     public ChangeIssueStatusParams(String configurationScopeId, @Nullable String issueId, IssueStatus newStatus, String fileUri,
-      @Nullable  String comment, boolean isTaintIssue) {
+      @Nullable String comment, boolean isTaintIssue) {
       this.configurationScopeId = configurationScopeId;
       this.issueId = issueId;
       this.newStatus = newStatus;
