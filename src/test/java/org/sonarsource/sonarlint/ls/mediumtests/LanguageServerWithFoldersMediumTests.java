@@ -61,11 +61,9 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
       "productVersion", "0.1"), new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
   }
 
-  @BeforeEach
-  void setVerboseLogs() {
+  @Override
+  protected void setupGlobalSettings(Map<String, Object> globalSettings) {
     setShowVerboseLogs(client.globalSettings, true);
-    notifyConfigurationChangeOnClient();
-    client.readyForTestsLatch = new CountDownLatch(1);
   }
 
   @Override
