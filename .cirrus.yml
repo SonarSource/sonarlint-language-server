@@ -44,7 +44,7 @@ ec2_instance: &WINVM_DEFINITION
   platform: windows
   region: eu-central-1
   subnet_id: ${CIRRUS_AWS_SUBNET}
-  type: t3.xlarge
+  type: t3.large
 
 maven_cache: &MAVEN_CACHE
   maven_cache:
