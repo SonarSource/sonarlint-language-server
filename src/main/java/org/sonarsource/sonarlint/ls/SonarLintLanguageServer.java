@@ -91,6 +91,7 @@ import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFil
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckStatusChangePermittedParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
@@ -143,6 +144,8 @@ import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DE
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
+import static org.sonarsource.sonarlint.ls.util.Utils.getConnectionNameFromConnectionCheckParams;
+import static org.sonarsource.sonarlint.ls.util.Utils.getValidateConnectionParamsForNewConnection;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusOfTitle;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusValueOfHotspotReviewStatus;
 
@@ -605,15 +608,20 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public CompletableFuture<ConnectionCheckResult> checkConnection(ConnectionCheckParams params) {
-    String connectionId = params.getConnectionId();
-    SonarLintLogger.get().debug("Received refresh request for {}", connectionId);
-    var validateConnectionParams = bindingManager.getValidateConnectionParamsFor(connectionId);
+    var connectionName = getConnectionNameFromConnectionCheckParams(params);
+    SonarLintLogger.get().debug("Received a validate connectionName request for {}", connectionName);
+    var validateConnectionParams = getValidateConnectionParams(params);
     if (validateConnectionParams != null) {
       return backendServiceFacade.validateConnection(validateConnectionParams)
-        .thenApply(validationResult -> validationResult.isSuccess() ? success(connectionId) : failure(connectionId,
-          validationResult.getMessage()));
+        .thenApply(validationResult -> validationResult.isSuccess() ? success(connectionName)
+          : failure(connectionName, validationResult.getMessage()));
     }
-    return CompletableFuture.completedFuture(failure(connectionId, String.format("Connection '%s' is unknown", connectionId)));
+    return CompletableFuture.completedFuture(failure(connectionName, String.format("Connection '%s' is unknown", connectionName)));
+  }
+
+  private ValidateConnectionParams getValidateConnectionParams(ConnectionCheckParams params) {
+    var connectionId = params.getConnectionId();
+    return connectionId != null ? bindingManager.getValidateConnectionParamsFor(connectionId) : getValidateConnectionParamsForNewConnection(params);
   }
 
   @Override

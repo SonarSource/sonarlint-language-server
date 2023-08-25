@@ -875,6 +875,18 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  void testCheckNewSqConnection() throws ExecutionException, InterruptedException {
+    var serverUrl = mockWebServerExtension.url("/");
+    SonarLintExtendedLanguageServer.ConnectionCheckParams testParams = new SonarLintExtendedLanguageServer.ConnectionCheckParams(TOKEN, null, serverUrl);
+    CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> result = lsProxy.checkConnection(testParams);
+
+    SonarLintExtendedLanguageClient.ConnectionCheckResult actual = result.get();
+    assertThat(actual).isNotNull();
+    assertThat(actual.getConnectionId()).isEqualTo(serverUrl);
+    assertThat(actual.isSuccess()).isTrue();
+  }
+
+  @Test
   void testCheckConnectionWithKnownConnection() throws ExecutionException, InterruptedException {
     SonarLintExtendedLanguageServer.ConnectionCheckParams testParams = new SonarLintExtendedLanguageServer.ConnectionCheckParams(CONNECTION_ID);
     CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> result = lsProxy.checkConnection(testParams);

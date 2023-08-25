@@ -48,12 +48,44 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> checkConnection(ConnectionCheckParams connectionId);
 
   class ConnectionCheckParams {
+    @Nullable
     private String connectionId;
+
+    @Nullable
+    private String token;
+
+    @Nullable
+    private String organization;
+
+    @Nullable
+    private String serverUrl;
 
     public ConnectionCheckParams(String connectionId) {
       this.connectionId = connectionId;
     }
 
+    public ConnectionCheckParams(String token, String organization, String serverUrl) {
+      this.token = token;
+      this.serverUrl = serverUrl;
+      this.organization = organization;
+    }
+
+    @Nullable
+    public String getToken() {
+      return token;
+    }
+
+    @Nullable
+    public String getOrganization() {
+      return organization;
+    }
+
+    @Nullable
+    public String getServerUrl() {
+      return serverUrl;
+    }
+
+    @Nullable
     public String getConnectionId() {
       return connectionId;
     }

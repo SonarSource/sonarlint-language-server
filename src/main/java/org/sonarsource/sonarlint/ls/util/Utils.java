@@ -41,10 +41,17 @@ import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
+import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.common.TransientSonarCloudConnectionDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.common.TransientSonarQubeConnectionDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.clientapi.common.TokenDto;
+import org.sonarsource.sonarlint.core.clientapi.common.UsernamePasswordDto;
 import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
@@ -53,6 +60,7 @@ import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.IssuesCache;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 
 public class Utils {
@@ -198,6 +206,20 @@ public class Utils {
       textRange.getEndLine(),
       textRange.getEndLineOffset(),
       textRange.getHash());
+  }
+
+  @NotNull
+  public static ValidateConnectionParams getValidateConnectionParamsForNewConnection(SonarLintExtendedLanguageServer.ConnectionCheckParams params) {
+    Either<TokenDto, UsernamePasswordDto> credentials = Either.forLeft(new TokenDto(params.getToken()));
+    return params.getOrganization() != null ? new ValidateConnectionParams(
+      new TransientSonarCloudConnectionDto(params.getOrganization(), credentials)
+    ) : new ValidateConnectionParams(new TransientSonarQubeConnectionDto(params.getServerUrl(), credentials));
+  }
+
+  @NotNull
+  public static String getConnectionNameFromConnectionCheckParams(SonarLintExtendedLanguageServer.ConnectionCheckParams params) {
+    var connectionName = params.getServerUrl() == null ? params.getOrganization() : params.getServerUrl();
+    return params.getConnectionId() == null ? connectionName : params.getConnectionId();
   }
 
   public static HotspotStatus hotspotStatusOfTitle(String title) {

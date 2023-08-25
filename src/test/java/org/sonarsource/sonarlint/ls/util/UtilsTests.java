@@ -28,20 +28,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
 import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.ls.IssuesCache;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.ConnectionCheckParams;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.notebooks.DelegatingCellIssue;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.sonarsource.sonarlint.ls.util.Utils.getValidateConnectionParamsForNewConnection;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotReviewStatusValueOfHotspotStatus;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusOfTitle;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusValueOfHotspotReviewStatus;
@@ -166,5 +168,45 @@ class UtilsTests {
     assertThat(delegatingIssueWithServerKeyResult).isTrue();
     assertThat(delegatingIssueWithoutServerKeyResult).isFalse();
     assertThat(delegatingCellIssueResult).isFalse();
+  }
+
+  @Test
+  void getValidateConnectionParamsForNewSonarCloudConnection(){
+    var myScOrganization = "my SC organization";
+    var token = "token";
+    var validateConnectionParams =
+      getValidateConnectionParamsForNewConnection(new ConnectionCheckParams(token, myScOrganization, null));
+
+    var transientConnection = validateConnectionParams.getTransientConnection();
+    assertTrue(transientConnection.isRight());
+    assertThat(transientConnection.getRight().getOrganization()).isEqualTo(myScOrganization);
+    assertTrue(transientConnection.getRight().getCredentials().isLeft());
+    assertThat(transientConnection.getRight().getCredentials().getLeft().getToken()).isEqualTo(token);
+  }
+
+  @Test
+  void getValidateConnectionParamsForNewSonarQubeConnection(){
+    var token = "token";
+    var serverUrl = "http://localhost:8080";
+    var validateConnectionParams =
+      getValidateConnectionParamsForNewConnection(new ConnectionCheckParams("token", null, serverUrl));
+
+    var transientConnection = validateConnectionParams.getTransientConnection();
+    assertTrue(transientConnection.isLeft());
+    assertThat(transientConnection.getLeft().getServerUrl()).isEqualTo(serverUrl);
+    assertTrue(transientConnection.getLeft().getCredentials().isLeft());
+    assertThat(transientConnection.getLeft().getCredentials().getLeft().getToken()).isEqualTo(token);
+  }
+
+  @Test
+  void getConnectionNameFromConnectionCheckParams() {
+    var token = "token";
+    var serverUrl = "http://localhost:8080";
+    var myScOrganization = "my SC organization";
+    var connectionId = "my connectionId";
+
+    assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(token, myScOrganization, null))).isEqualTo(myScOrganization);
+    assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(token, null, serverUrl))).isEqualTo(serverUrl);
+    assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(connectionId))).isEqualTo(connectionId);
   }
 }
