@@ -84,7 +84,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     boolean shouldBeAnalysed;
     String reason;
 
-    public ShouldAnalyseFileCheckResult(boolean shouldBeAnalysed, String reason) {
+    public ShouldAnalyseFileCheckResult(boolean shouldBeAnalysed, @Nullable String reason) {
       this.shouldBeAnalysed = shouldBeAnalysed;
       this.reason = reason;
     }

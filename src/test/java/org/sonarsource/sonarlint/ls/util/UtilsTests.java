@@ -51,6 +51,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.util.Utils.getValidateConnectionParamsForNewConnection;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotReviewStatusValueOfHotspotStatus;
@@ -249,5 +250,20 @@ class UtilsTests {
     assertThat(analysisPerformed.get()).isFalse();
     verify(logger, timeout(1000)).info(logCaptor.capture());
     assertThat(logCaptor.getValue()).isEqualTo("reason uri");
+  }
+
+  @Test
+  void shouldNotLogReasonIfNotProvidedWhenRunAnalysis() {
+    SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
+    LanguageClientLogger logger = mock(LanguageClientLogger.class);
+    when(client.shouldAnalyseFile(any()))
+      .thenReturn(CompletableFuture.completedFuture(
+        new SonarLintExtendedLanguageClient.ShouldAnalyseFileCheckResult(false, null)));
+    var analysisPerformed = new AtomicBoolean(false);
+
+    runIfAnalysisNeeded("uri", client, logger, () -> analysisPerformed.set(true));
+
+    assertThat(analysisPerformed.get()).isFalse();
+    verifyNoInteractions(logger);
   }
 }
