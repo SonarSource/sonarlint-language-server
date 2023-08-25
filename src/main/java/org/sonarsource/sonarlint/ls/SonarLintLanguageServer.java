@@ -149,6 +149,7 @@ import static org.sonarsource.sonarlint.ls.util.Utils.getConnectionNameFromConne
 import static org.sonarsource.sonarlint.ls.util.Utils.getValidateConnectionParamsForNewConnection;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusOfTitle;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusValueOfHotspotReviewStatus;
+import static org.sonarsource.sonarlint.ls.util.Utils.runIfAnalysisNeeded;
 
 public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer, WorkspaceService, TextDocumentService, NotebookDocumentService {
 
@@ -464,30 +465,17 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     if (openNotebooksCache.isNotebook(uri)) {
       return;
     }
-    runIfAnalysisNeeded(uri.toString(), client, () -> {
+    runIfAnalysisNeeded(uri.toString(), client, lsLogOutput, () -> {
       var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
       analysisScheduler.didOpen(file);
       taintIssuesUpdater.updateTaintIssuesAsync(uri);
     });
   }
 
-  void runIfAnalysisNeeded(String uri, SonarLintExtendedLanguageClient client, Runnable analyse) {
-    client.shouldAnalyseFile(new UriParams(uri)).thenAccept(checkResult -> {
-      if (Boolean.TRUE.equals(checkResult.shouldBeAnalysed)) {
-        analyse.run();
-      } else {
-        var reason = checkResult.getReason();
-        if (reason != null) {
-          lsLogOutput.info(reason + " " + uri);
-        }
-      }
-    });
-  }
-
   @Override
   public void didChange(DidChangeTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
-    runIfAnalysisNeeded(params.getTextDocument().getUri(), client, () -> {
+    runIfAnalysisNeeded(params.getTextDocument().getUri(), client, lsLogOutput, () -> {
       openFilesCache.didChange(uri, params.getContentChanges().get(0).getText(), params.getTextDocument().getVersion());
       analysisScheduler.didChange(uri);
     });
@@ -563,7 +551,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didOpen(DidOpenNotebookDocumentParams params) {
     var notebookUri = create(params.getNotebookDocument().getUri());
-    runIfAnalysisNeeded(params.getNotebookDocument().getUri(), client, () -> {
+    runIfAnalysisNeeded(params.getNotebookDocument().getUri(), client, lsLogOutput, () -> {
       if (openFilesCache.getFile(notebookUri).isPresent()) {
         openFilesCache.didClose(notebookUri);
       }
@@ -575,7 +563,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didChange(DidChangeNotebookDocumentParams params) {
-    runIfAnalysisNeeded(params.getNotebookDocument().getUri(), client, () -> {
+    runIfAnalysisNeeded(params.getNotebookDocument().getUri(), client, lsLogOutput, () -> {
       openNotebooksCache.didChange(create(params.getNotebookDocument().getUri()), params.getNotebookDocument().getVersion(), params.getChange());
       analysisScheduler.didChange(create(params.getNotebookDocument().getUri()));
     });
