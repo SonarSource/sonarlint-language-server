@@ -35,7 +35,7 @@ import org.eclipse.xtext.xbase.lib.Pure;
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.IssueStatus;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.ResolutionStatus;
 import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenIssueResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
 
@@ -425,12 +425,12 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   class ChangeIssueStatusParams {
     private final String configurationScopeId;
     private final String issueId;
-    private final IssueStatus newStatus;
+    private final ResolutionStatus newStatus;
     private final String fileUri;
     private final String comment;
     private final boolean isTaintIssue;
 
-    public ChangeIssueStatusParams(String configurationScopeId, @Nullable String issueId, IssueStatus newStatus, String fileUri,
+    public ChangeIssueStatusParams(String configurationScopeId, @Nullable String issueId, ResolutionStatus newStatus, String fileUri,
       @Nullable String comment, boolean isTaintIssue) {
       this.configurationScopeId = configurationScopeId;
       this.issueId = issueId;
@@ -449,7 +449,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
       return issueId;
     }
 
-    public IssueStatus getNewStatus() {
+    public ResolutionStatus getNewStatus() {
       return newStatus;
     }
 
