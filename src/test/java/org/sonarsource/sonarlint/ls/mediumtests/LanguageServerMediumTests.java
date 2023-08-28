@@ -1043,7 +1043,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var fileUri = temp.resolve(fileName).toUri().toString();
 
     lsProxy.analyseOpenFileIgnoringExcludes(new SonarLintExtendedLanguageServer.AnalyseOpenFileIgnoringExcludesParams(
-      new TextDocumentItem(fileUri, "py", 1, "def foo():\n  toto = 0\n")));
+      new TextDocumentItem(fileUri, "py", 1, "def foo():\n  toto = 0\n"), null, null, Collections.emptyList()));
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,

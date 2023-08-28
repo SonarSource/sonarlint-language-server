@@ -127,6 +127,7 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -913,10 +914,20 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<ReopenIssueResponse> analyseOpenFileIgnoringExcludes(AnalyseOpenFileIgnoringExcludesParams params) {
-    var document = params.getDocument();
-    var file = openFilesCache.didOpen(create(document.getUri()), document.getLanguageId(), document.getText(), document.getVersion());
-    analysisScheduler.didOpen(file);
+  public CompletableFuture<Void> analyseOpenFileIgnoringExcludes(AnalyseOpenFileIgnoringExcludesParams params) {
+    var notebookUri = params.getNotebookUri();
+    if (notebookUri != null) {
+      var version = params.getNotebookVersion();
+      var notebookFile = VersionedOpenNotebook.create(
+        create(notebookUri), version,
+        params.getNotebookCells(), notebookDiagnosticPublisher);
+      var versionedOpenFile = notebookFile.asVersionedOpenFile();
+      analysisScheduler.didOpen(versionedOpenFile);
+    } else {
+      var document = params.getTextDocument();
+      var file = openFilesCache.didOpen(create(document.getUri()), document.getLanguageId(), document.getText(), document.getVersion());
+      analysisScheduler.didOpen(file);
+    }
     return CompletableFuture.completedFuture(null);
   }
 
