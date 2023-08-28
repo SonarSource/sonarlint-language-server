@@ -47,7 +47,7 @@ import org.sonar.api.utils.DateUtils;
 import org.sonar.scanner.protocol.Constants.Severity;
 import org.sonar.scanner.protocol.input.ScannerInput;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.IssueStatus;
+import org.sonarsource.sonarlint.core.clientapi.backend.issue.ResolutionStatus;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
@@ -647,7 +647,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
 
     lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
-      IssueStatus.FALSE_POSITIVE, fileUri, "clever comment", false));
+      ResolutionStatus.FALSE_POSITIVE, fileUri, "clever comment", false));
 
     //Now we expect that one issue is resolved
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
@@ -684,7 +684,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri)).isNotEmpty());
     mockWebServerExtension.stopServer();
     lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
-      IssueStatus.FALSE_POSITIVE, fileUri, "comment", false));
+      ResolutionStatus.FALSE_POSITIVE, fileUri, "comment", false));
 
     awaitUntilAsserted(() -> assertThat(client.shownMessages).isNotEmpty());
     assertThat(client.shownMessages)
@@ -1005,7 +1005,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var issueKey = ((JsonObject) diagnostics.stream().filter(it -> it.getMessage().equals("Remove the unused local variable \"plouf\"."))
       .findFirst().get().getData()).get("entryKey").getAsString();
     lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
-      IssueStatus.FALSE_POSITIVE, fileUri, "", false));
+      ResolutionStatus.FALSE_POSITIVE, fileUri, "", false));
 
     //Now we expect that one issue is resolved
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
