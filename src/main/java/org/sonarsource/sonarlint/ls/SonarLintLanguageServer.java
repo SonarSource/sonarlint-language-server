@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -915,13 +916,15 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public CompletableFuture<Void> analyseOpenFileIgnoringExcludes(AnalyseOpenFileIgnoringExcludesParams params) {
-    var notebookUri = params.getNotebookUri();
-    if (notebookUri != null) {
+    var notebookUriStr = params.getNotebookUri();
+    if (notebookUriStr != null) {
       var version = params.getNotebookVersion();
+      var notebookUri = create(notebookUriStr);
       var notebookFile = VersionedOpenNotebook.create(
-        create(notebookUri), version,
+        notebookUri, version,
         params.getNotebookCells(), notebookDiagnosticPublisher);
       var versionedOpenFile = notebookFile.asVersionedOpenFile();
+      openNotebooksCache.didOpen(notebookUri, version, params.getNotebookCells());
       analysisScheduler.didOpen(versionedOpenFile);
     } else {
       var document = params.getTextDocument();
