@@ -99,7 +99,7 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
       null, fileUri, 0,
       List.of(new TextDocumentItem(fileUri + "#1", "python", 1, "def foo():\n  print 'toto'\n"))));
 
-    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri + "#1"))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
