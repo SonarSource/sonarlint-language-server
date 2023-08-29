@@ -249,7 +249,7 @@ class UtilsTests {
 
     assertThat(analysisPerformed.get()).isFalse();
     verify(logger, timeout(1000)).info(logCaptor.capture());
-    assertThat(logCaptor.getValue()).isEqualTo("reason uri");
+    assertThat(logCaptor.getValue()).isEqualTo("reason \"uri\"");
   }
 
   @Test

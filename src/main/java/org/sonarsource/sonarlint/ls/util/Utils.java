@@ -284,7 +284,7 @@ public class Utils {
       } else {
         var reason = checkResult.getReason();
         if (reason != null) {
-          lsLogOutput.info(reason + " " + uri);
+          lsLogOutput.info(reason + " \"" + uri + "\"");
         }
       }
     });
