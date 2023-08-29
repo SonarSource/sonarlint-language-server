@@ -246,7 +246,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void doNotAnalyzePythonFileOnPreview() throws Exception {
-    // doesn't propagate to logger state and log is skipped
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
 
@@ -257,7 +256,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
-      .contains("[Info] reason " + uri));
+      .contains("[Info] reason \"" + uri + "\""));
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
