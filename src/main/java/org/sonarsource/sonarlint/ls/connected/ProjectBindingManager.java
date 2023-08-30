@@ -245,7 +245,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       engine.syncServerIssues(endpointParams, httpClient, projectKey, currentBranchName, null);
       engine.syncServerTaintIssues(endpointParams, httpClient, projectKey, currentBranchName, null);
       engine.syncServerHotspots(endpointParams, httpClient, projectKey, currentBranchName, null);
-    } catch (IllegalStateException exceptionDuringSync) {
+    } catch (Exception exceptionDuringSync) {
       LOG.warn("Exception happened during initial sync with project " + projectKey, exceptionDuringSync);
     }
   }
