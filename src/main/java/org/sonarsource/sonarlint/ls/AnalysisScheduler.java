@@ -79,17 +79,18 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   private final EventWatcher watcher;
   private final LanguageClientLogger lsLogOutput;
   private final AnalysisTaskExecutor analysisTaskExecutor;
+  private final SonarLintExtendedLanguageClient client;
 
   private final ExecutorService asyncExecutor;
 
   public AnalysisScheduler(LanguageClientLogger lsLogOutput, WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
-    OpenNotebooksCache openNotebooksCache, AnalysisTaskExecutor analysisTaskExecutor) {
-    this(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor, DEFAULT_TIMER_MS);
+    OpenNotebooksCache openNotebooksCache, AnalysisTaskExecutor analysisTaskExecutor, SonarLintExtendedLanguageClient client) {
+    this(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor, DEFAULT_TIMER_MS, client);
   }
 
   @VisibleForTesting
   AnalysisScheduler(LanguageClientLogger lsLogOutput, WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
-    OpenNotebooksCache openNotebooksCache, AnalysisTaskExecutor analysisTaskExecutor, long analysisTimerMs) {
+    OpenNotebooksCache openNotebooksCache, AnalysisTaskExecutor analysisTaskExecutor, long analysisTimerMs, SonarLintExtendedLanguageClient client) {
     this.lsLogOutput = lsLogOutput;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.bindingManager = bindingManager;
@@ -98,6 +99,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     this.analysisTaskExecutor = analysisTaskExecutor;
     this.asyncExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Analysis Scheduler", false));
     this.watcher = new EventWatcher(analysisTimerMs);
+    this.client = client;
   }
 
   public void didOpen(VersionedOpenFile file) {
@@ -255,7 +257,19 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     var openedFileUrisInFolder = openFilesCache.getAll().stream()
       .filter(f -> belongToFolder(folder, f.getUri()))
       .collect(Collectors.toList());
-    analyzeAsync(AnalysisParams.newAnalysisParams(openedFileUrisInFolder));
+    analyseNotIgnoredFiles(openedFileUrisInFolder);
+  }
+
+  private void analyseNotIgnoredFiles(List<VersionedOpenFile> files) {
+    var uriStrings = files.stream().map(it -> it.getUri().toString()).collect(toList());
+    var fileUrisParams = new SonarLintExtendedLanguageClient.FileUrisParams(uriStrings);
+    client.filterOutExcludedFiles(fileUrisParams)
+      .thenAccept(notIgnoredFileUris -> {
+        var notIgnoredFiles = files
+          .stream().filter(it -> notIgnoredFileUris.getFileUris().contains(it.getUri().toString()))
+          .collect(toList());
+        analyzeAsync(AnalysisParams.newAnalysisParams(notIgnoredFiles));
+      });
   }
 
   private boolean belongToFolder(WorkspaceFolderWrapper folder, URI fileUri) {
@@ -293,7 +307,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
       .filter(VersionedOpenFile::isCOrCpp)
       .filter(f -> belongToFolder(folder, f.getUri()))
       .collect(Collectors.toList());
-    analyzeAsync(AnalysisParams.newAnalysisParams(openedCorCppFileUrisInFolder));
+    analyseNotIgnoredFiles(openedCorCppFileUrisInFolder);
   }
 
   public void scanForHotspotsInFiles(List<VersionedOpenFile> files) {
@@ -304,21 +318,21 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     var openedUnboundFileUris = openFilesCache.getAll().stream()
       .filter(f -> bindingManager.getBinding(f.getUri()).isEmpty())
       .collect(Collectors.toList());
-    analyzeAsync(AnalysisParams.newAnalysisParams(openedUnboundFileUris));
+    analyseNotIgnoredFiles(openedUnboundFileUris);
   }
 
   private void analyzeAllOpenNotebooks() {
     var openNotebookUris = openNotebooksCache.getAll().stream()
       .map(VersionedOpenNotebook::asVersionedOpenFile)
       .collect(Collectors.toList());
-    analyzeAsync(AnalysisParams.newAnalysisParams(openNotebookUris));
+    analyseNotIgnoredFiles(openNotebookUris);
   }
 
   private void analyzeAllOpenJavaFiles() {
     var openedJavaFileUris = openFilesCache.getAll().stream()
       .filter(VersionedOpenFile::isJava)
       .collect(toList());
-    analyzeAsync(AnalysisParams.newAnalysisParams(openedJavaFileUris));
+    analyseNotIgnoredFiles(openedJavaFileUris);
   }
 
   public void didClasspathUpdate() {

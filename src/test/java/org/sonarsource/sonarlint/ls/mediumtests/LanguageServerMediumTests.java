@@ -251,12 +251,12 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     var uri = getUri("analyzeSimplePythonFileOnOpen.py");
 
-    client.isOpenInEditor = false;
+    client.shouldAnalyseFile = false;
     didOpen(uri, "python", "def foo():\n  print 'toto'\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
-      .contains("[Debug] Skipping analysis for preview of file " + uri));
+      .contains("[Info] reason \"" + uri + "\""));
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
@@ -1022,6 +1022,33 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "**/*.yaml",
       "**/*.go",
       "**/*.tf");
+  }
+
+
+  @Test
+  void shouldRespectAnalysisExcludes() {
+    var fileName = "analyseOpenFileIgnoringExcludes.py";
+    var fileUri = temp.resolve(fileName).toUri().toString();
+    client.shouldAnalyseFile = false;
+
+    didOpen(fileUri, "py", "def foo():\n  toto = 0\n");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri)).isEmpty());
+  }
+
+  @Test
+  void analyseOpenFileIgnoringExcludes() {
+    var fileName = "analyseOpenFileIgnoringExcludes.py";
+    var fileUri = temp.resolve(fileName).toUri().toString();
+
+    lsProxy.analyseOpenFileIgnoringExcludes(new SonarLintExtendedLanguageServer.AnalyseOpenFileIgnoringExcludesParams(
+      new TextDocumentItem(fileUri, "py", 1, "def foo():\n  toto = 0\n"), null, null, Collections.emptyList()));
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+        Diagnostic::getSeverity)
+      .containsExactlyInAnyOrder(
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Information)));
   }
 
   @Override

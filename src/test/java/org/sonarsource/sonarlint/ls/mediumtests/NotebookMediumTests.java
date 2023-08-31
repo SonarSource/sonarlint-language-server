@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
+import java.util.List;
 import java.net.URI;
 import java.util.Map;
 import org.eclipse.lsp4j.Diagnostic;
@@ -26,6 +27,7 @@ import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,6 +49,11 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
     ));
   }
 
+  @Override
+  protected void setupGlobalSettings(Map<String, Object> globalSettings) {
+    setShowVerboseLogs(globalSettings, true);
+  }
+
   @Test
   void analyzeNotebookOnOpen() throws Exception {
     var uri = getUri("analyzeNotebookOnOpen.ipynb");
@@ -57,13 +64,19 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
       // Second cell has an issue
       "def foo():\n  print 'toto'\n"
     );
-    didOpen(uri, "ignored", "ignored");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri + "#2"))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
         tuple(1, 2, 1, 7, "ipython:PrintStatementUsage", "sonarlint", "Replace print statement by built-in function.", DiagnosticSeverity.Warning)));
     assertThat(client.getDiagnostics(uri + "#1")).isEmpty();
+    assertThat(client.getDiagnostics(uri)).isEmpty();
+
+    didOpen(uri, "ignored", "ignored");
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains(
+        String.format("[Debug] Skipping text document analysis of notebook \"%s\"", uri)));
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
@@ -86,5 +99,21 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
     didChangeNotebook(notebookUri.toString(), "newContent");
 
     awaitUntilAsserted(() -> assertLogContains("Illegal state. File \"file:///some/notebook.ipynb\" is reported changed but we missed the open notification"));
+  }
+
+  @Test
+  void analyseOpenNotebookIgnoringExcludes() {
+    var fileName = "analyseOpenNotebookIgnoringExcludes.ipynb";
+    var fileUri = temp.resolve(fileName).toUri().toString();
+
+    lsProxy.analyseOpenFileIgnoringExcludes(new SonarLintExtendedLanguageServer.AnalyseOpenFileIgnoringExcludesParams(
+      null, fileUri, 0,
+      List.of(new TextDocumentItem(fileUri + "#1", "python", 1, "def foo():\n  print 'toto'\n"))));
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri + "#1"))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+        Diagnostic::getSeverity)
+      .containsExactlyInAnyOrder(
+        tuple(1, 2, 1, 7, "ipython:PrintStatementUsage", "sonarlint", "Replace print statement by built-in function.", DiagnosticSeverity.Warning)));
   }
 }

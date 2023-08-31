@@ -605,4 +605,42 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
   }
 
+  class AnalyseOpenFileIgnoringExcludesParams {
+    private final TextDocumentItem textDocument;
+    private final String notebookUri;
+    private final Integer notebookVersion;
+    private final List<TextDocumentItem> notebookCells;
+
+    public AnalyseOpenFileIgnoringExcludesParams(@Nullable TextDocumentItem textDocument,
+      @Nullable String notebookUri, @Nullable Integer notebookVersion, @Nullable List<TextDocumentItem> notebookCells) {
+      this.textDocument = textDocument;
+      this.notebookUri = notebookUri;
+      this.notebookVersion = notebookVersion;
+      this.notebookCells = notebookCells;
+    }
+
+    @CheckForNull
+    public TextDocumentItem getTextDocument() {
+      return textDocument;
+    }
+
+    @CheckForNull
+    public String getNotebookUri() {
+      return notebookUri;
+    }
+
+    @CheckForNull
+    public Integer getNotebookVersion() {
+      return notebookVersion;
+    }
+
+    @CheckForNull
+    public List<TextDocumentItem> getNotebookCells() {
+      return notebookCells;
+    }
+  }
+
+  @JsonNotification("sonarlint/analyseOpenFileIgnoringExcludes")
+  CompletableFuture<Void> analyseOpenFileIgnoringExcludes(AnalyseOpenFileIgnoringExcludesParams params);
+
 }

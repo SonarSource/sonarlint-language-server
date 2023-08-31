@@ -318,7 +318,7 @@ public abstract class AbstractLanguageServerMediumTests {
     SuggestBindingParams suggestedBindings;
     ShowRuleDescriptionParams ruleDesc;
     boolean isIgnoredByScm = false;
-    boolean isOpenInEditor = true;
+    boolean shouldAnalyseFile = true;
     final AtomicInteger needCompilationDatabaseCalls = new AtomicInteger();
     final Set<String> openedLinks = new HashSet<>();
 
@@ -337,7 +337,7 @@ public abstract class AbstractLanguageServerMediumTests {
       suggestBindingLatch = new CountDownLatch(0);
       readyForTestsLatch = new CountDownLatch(0);
       needCompilationDatabaseCalls.set(0);
-      isOpenInEditor = true;
+      shouldAnalyseFile = true;
     }
 
     @Override
@@ -463,8 +463,14 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public CompletableFuture<Boolean> isOpenInEditor(String fileUri) {
-      return CompletableFutures.computeAsync(cancelToken -> isOpenInEditor);
+    public CompletableFuture<ShouldAnalyseFileCheckResult> shouldAnalyseFile(SonarLintExtendedLanguageServer.UriParams fileUri) {
+      return CompletableFutures.computeAsync(cancelToken -> new ShouldAnalyseFileCheckResult(shouldAnalyseFile, "reason"));
+
+    }
+
+    @Override
+    public CompletableFuture<FileUrisResult> filterOutExcludedFiles(FileUrisParams params) {
+      return CompletableFutures.computeAsync(cancelToken -> new FileUrisResult(params.getFileUris()));
     }
 
     @Override

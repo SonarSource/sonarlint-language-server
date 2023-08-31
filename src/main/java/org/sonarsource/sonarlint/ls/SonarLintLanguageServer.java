@@ -127,6 +127,7 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -138,6 +139,7 @@ import org.sonarsource.sonarlint.ls.telemetry.TelemetryInitParams;
 import org.sonarsource.sonarlint.ls.util.ExitingInputStream;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
+import static java.lang.String.format;
 import static java.net.URI.create;
 import static java.util.Optional.ofNullable;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND;
@@ -254,7 +256,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
       fileTypeClassifier, issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, telemetry, skippedPluginsNotifier, standaloneEngineManager, diagnosticPublisher,
       client, openNotebooksCache, notebookDiagnosticPublisher, progressManager);
-    this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor);
+    this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor, client);
     this.workspaceFoldersManager.addListener(moduleEventsProcessor);
     bindingManager.setAnalysisManager(analysisScheduler);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) analysisScheduler);
@@ -461,24 +463,23 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public void didOpen(DidOpenTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
     if (openNotebooksCache.isNotebook(uri)) {
+      lsLogOutput.debug(String.format("Skipping text document analysis of notebook \"%s\"", uri));
       return;
     }
-    client.isOpenInEditor(uri.toString()).thenAccept(isOpen -> {
-      if (Boolean.TRUE.equals(isOpen)) {
-        var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
-        analysisScheduler.didOpen(file);
-        taintIssuesUpdater.updateTaintIssuesAsync(uri);
-      } else {
-        SonarLintLogger.get().debug("Skipping analysis for preview of file {}", uri);
-      }
+    runIfAnalysisNeeded(uri.toString(), () -> {
+      var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
+      analysisScheduler.didOpen(file);
+      taintIssuesUpdater.updateTaintIssuesAsync(uri);
     });
   }
 
   @Override
   public void didChange(DidChangeTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
-    openFilesCache.didChange(uri, params.getContentChanges().get(0).getText(), params.getTextDocument().getVersion());
-    analysisScheduler.didChange(uri);
+    runIfAnalysisNeeded(params.getTextDocument().getUri(), () -> {
+      openFilesCache.didChange(uri, params.getContentChanges().get(0).getText(), params.getTextDocument().getVersion());
+      analysisScheduler.didChange(uri);
+    });
   }
 
   @Override
@@ -551,24 +552,28 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didOpen(DidOpenNotebookDocumentParams params) {
     var notebookUri = create(params.getNotebookDocument().getUri());
-    if (openFilesCache.getFile(notebookUri).isPresent()) {
-      openFilesCache.didClose(notebookUri);
-    }
-    var notebookFile =
-      openNotebooksCache.didOpen(notebookUri, params.getNotebookDocument().getVersion(), params.getCellTextDocuments());
-    analysisScheduler.didOpen(notebookFile.asVersionedOpenFile());
+    runIfAnalysisNeeded(params.getNotebookDocument().getUri(), () -> {
+      if (openFilesCache.getFile(notebookUri).isPresent()) {
+        openFilesCache.didClose(notebookUri);
+      }
+      var notebookFile =
+        openNotebooksCache.didOpen(notebookUri, params.getNotebookDocument().getVersion(), params.getCellTextDocuments());
+      analysisScheduler.didOpen(notebookFile.asVersionedOpenFile());
+    });
   }
 
   @Override
   public void didChange(DidChangeNotebookDocumentParams params) {
-    openNotebooksCache.didChange(create(params.getNotebookDocument().getUri()), params.getNotebookDocument().getVersion(), params.getChange());
-    analysisScheduler.didChange(create(params.getNotebookDocument().getUri()));
+    runIfAnalysisNeeded(params.getNotebookDocument().getUri(), () -> {
+      openNotebooksCache.didChange(create(params.getNotebookDocument().getUri()), params.getNotebookDocument().getVersion(), params.getChange());
+      analysisScheduler.didChange(create(params.getNotebookDocument().getUri()));
+    });
+
   }
 
   @Override
   public void didSave(DidSaveNotebookDocumentParams params) {
-    lsLogOutput.info("didSave Jupyter Document");
-    // TODO
+    // Nothin to do
   }
 
   @Override
@@ -616,7 +621,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         .thenApply(validationResult -> validationResult.isSuccess() ? success(connectionName)
           : failure(connectionName, validationResult.getMessage()));
     }
-    return CompletableFuture.completedFuture(failure(connectionName, String.format("Connection '%s' is unknown", connectionName)));
+    return CompletableFuture.completedFuture(failure(connectionName, format("Connection '%s' is unknown", connectionName)));
   }
 
   private ValidateConnectionParams getValidateConnectionParams(ConnectionCheckParams params) {
@@ -723,7 +728,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     analyzers.stream().filter(it -> it.toString().endsWith("sonar" + pluginName + ".jar")).findFirst()
       .ifPresentOrElse(
         pluginPath -> plugins.put(language.getPluginKey(), pluginPath),
-        () -> lsLogOutput.warn(String.format("Embedded plugin not found: %s", language.getLabel()))
+        () -> lsLogOutput.warn(format("Embedded plugin not found: %s", language.getLabel()))
       );
   }
 
@@ -905,6 +910,39 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       lsLogOutput.error("Error while reopening resolved local issues", e);
       client.showMessage(new MessageParams(MessageType.Error, "Could not reopen resolved local issues. Look at the SonarLint output for details."));
       return null;
+    });
+  }
+
+  @Override
+  public CompletableFuture<Void> analyseOpenFileIgnoringExcludes(AnalyseOpenFileIgnoringExcludesParams params) {
+    var notebookUriStr = params.getNotebookUri();
+    if (notebookUriStr != null) {
+      var version = params.getNotebookVersion();
+      var notebookUri = create(notebookUriStr);
+      Objects.requireNonNull(version);
+      var cells = Objects.requireNonNull(params.getNotebookCells());
+      var notebookFile = VersionedOpenNotebook.create(
+        notebookUri, version,
+        cells, notebookDiagnosticPublisher);
+      var versionedOpenFile = notebookFile.asVersionedOpenFile();
+      openNotebooksCache.didOpen(notebookUri, version, cells);
+      analysisScheduler.didOpen(versionedOpenFile);
+    } else {
+      var document = Objects.requireNonNull(params.getTextDocument());
+      var file = openFilesCache.didOpen(create(document.getUri()), document.getLanguageId(), document.getText(), document.getVersion());
+      analysisScheduler.didOpen(file);
+    }
+    return CompletableFuture.completedFuture(null);
+  }
+
+  private void runIfAnalysisNeeded(String uri, Runnable analyse) {
+    client.shouldAnalyseFile(new SonarLintExtendedLanguageServer.UriParams(uri)).thenAccept(checkResult -> {
+      if (Boolean.TRUE.equals(checkResult.isShouldBeAnalysed())) {
+        analyse.run();
+      } else {
+        var reason = Objects.requireNonNull(checkResult.getReason());
+        lsLogOutput.info(reason + " \"" + uri + "\"");
+      }
     });
   }
 }

@@ -80,8 +80,54 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonRequest("sonarlint/isIgnoredByScm")
   CompletableFuture<Boolean> isIgnoredByScm(String fileUri);
 
-  @JsonRequest("sonarlint/isOpenInEditor")
-  CompletableFuture<Boolean> isOpenInEditor(String fileUri);
+  class ShouldAnalyseFileCheckResult {
+    boolean shouldBeAnalysed;
+    String reason;
+
+    public ShouldAnalyseFileCheckResult(boolean shouldBeAnalysed, @Nullable String reason) {
+      this.shouldBeAnalysed = shouldBeAnalysed;
+      this.reason = reason;
+    }
+
+    public boolean isShouldBeAnalysed() {
+      return shouldBeAnalysed;
+    }
+
+    @CheckForNull
+    public String getReason() {
+      return reason;
+    }
+  }
+
+  @JsonRequest("sonarlint/shouldAnalyseFile")
+  CompletableFuture<ShouldAnalyseFileCheckResult> shouldAnalyseFile(SonarLintExtendedLanguageServer.UriParams fileUri);
+
+  class FileUrisParams {
+    Collection<String> fileUris;
+
+    public FileUrisParams(Collection<String> fileUris) {
+      this.fileUris = fileUris;
+    }
+
+    public Collection<String> getFileUris() {
+      return fileUris;
+    }
+  }
+
+  class FileUrisResult {
+    Collection<String> fileUris;
+
+    public FileUrisResult(Collection<String> fileUris) {
+      this.fileUris = fileUris;
+    }
+
+    public Collection<String> getFileUris() {
+      return fileUris;
+    }
+  }
+
+  @JsonRequest("sonarlint/filterOutExcludedFiles")
+  CompletableFuture<FileUrisResult> filterOutExcludedFiles(FileUrisParams params);
 
   @JsonNotification("sonarlint/showNotificationForFirstSecretsIssue")
   void showFirstSecretDetectionNotification();
