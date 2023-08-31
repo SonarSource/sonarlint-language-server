@@ -22,43 +22,32 @@ package org.sonarsource.sonarlint.ls.util;
 import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.assertj.core.api.AssertionsForClassTypes;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
 import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.ls.IssuesCache;
-import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.ConnectionCheckParams;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.DelegatingCellIssue;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.timeout;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.util.Utils.getValidateConnectionParamsForNewConnection;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotReviewStatusValueOfHotspotStatus;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusOfTitle;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusValueOfHotspotReviewStatus;
 import static org.sonarsource.sonarlint.ls.util.Utils.isDelegatingIssueWithServerIssueKey;
-import static org.sonarsource.sonarlint.ls.util.Utils.runIfAnalysisNeeded;
 
 class UtilsTests {
 
@@ -219,51 +208,5 @@ class UtilsTests {
     assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(token, myScOrganization, null))).isEqualTo(myScOrganization);
     assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(token, null, serverUrl))).isEqualTo(serverUrl);
     assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(connectionId))).isEqualTo(connectionId);
-  }
-
-  @Test
-  void shouldRunAnalysisIfGetTrueFromClient() {
-    SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
-    LanguageClientLogger logger = mock(LanguageClientLogger.class);
-    when(client.shouldAnalyseFile(any()))
-      .thenReturn(CompletableFuture.completedFuture(
-        new SonarLintExtendedLanguageClient.ShouldAnalyseFileCheckResult(true, "reason")));
-    var analysisPerformed = new AtomicBoolean(false);
-
-    runIfAnalysisNeeded("uri", client, logger, () -> analysisPerformed.set(true));
-
-    assertThat(analysisPerformed.get()).isTrue();
-  }
-
-  @Test
-  void shouldNotRunAnalysisIfGetFalseFromClient() {
-    SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
-    LanguageClientLogger logger = mock(LanguageClientLogger.class);
-    ArgumentCaptor<String> logCaptor = ArgumentCaptor.forClass(String.class);
-    when(client.shouldAnalyseFile(any()))
-      .thenReturn(CompletableFuture.completedFuture(
-        new SonarLintExtendedLanguageClient.ShouldAnalyseFileCheckResult(false, "reason")));
-    var analysisPerformed = new AtomicBoolean(false);
-
-    runIfAnalysisNeeded("uri", client, logger, () -> analysisPerformed.set(true));
-
-    assertThat(analysisPerformed.get()).isFalse();
-    verify(logger, timeout(1000)).info(logCaptor.capture());
-    assertThat(logCaptor.getValue()).isEqualTo("reason \"uri\"");
-  }
-
-  @Test
-  void shouldNotLogReasonIfNotProvidedWhenRunAnalysis() {
-    SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
-    LanguageClientLogger logger = mock(LanguageClientLogger.class);
-    when(client.shouldAnalyseFile(any()))
-      .thenReturn(CompletableFuture.completedFuture(
-        new SonarLintExtendedLanguageClient.ShouldAnalyseFileCheckResult(false, null)));
-    var analysisPerformed = new AtomicBoolean(false);
-
-    runIfAnalysisNeeded("uri", client, logger, () -> analysisPerformed.set(true));
-
-    assertThat(analysisPerformed.get()).isFalse();
-    verifyNoInteractions(logger);
   }
 }

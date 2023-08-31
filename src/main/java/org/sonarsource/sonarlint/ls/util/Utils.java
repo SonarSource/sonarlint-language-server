@@ -60,10 +60,8 @@ import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.IssuesCache;
-import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 public class Utils {
 
@@ -274,19 +272,5 @@ public class Utils {
   public static boolean isDelegatingIssueWithServerIssueKey(String serverIssueKey, Map.Entry<String, IssuesCache.VersionedIssue> issueEntry) {
     return issueEntry.getValue().getIssue() instanceof DelegatingIssue
       && (serverIssueKey.equals(((DelegatingIssue) issueEntry.getValue().getIssue()).getServerIssueKey()));
-  }
-
-  public static void runIfAnalysisNeeded(String uri, SonarLintExtendedLanguageClient client,
-    LanguageClientLogger lsLogOutput, Runnable analyse) {
-    client.shouldAnalyseFile(new SonarLintExtendedLanguageServer.UriParams(uri)).thenAccept(checkResult -> {
-      if (Boolean.TRUE.equals(checkResult.isShouldBeAnalysed())) {
-        analyse.run();
-      } else {
-        var reason = checkResult.getReason();
-        if (reason != null) {
-          lsLogOutput.info(reason + " \"" + uri + "\"");
-        }
-      }
-    });
   }
 }

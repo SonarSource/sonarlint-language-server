@@ -49,6 +49,11 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
     ));
   }
 
+  @Override
+  protected void setupGlobalSettings(Map<String, Object> globalSettings) {
+    setShowVerboseLogs(globalSettings, true);
+  }
+
   @Test
   void analyzeNotebookOnOpen() throws Exception {
     var uri = getUri("analyzeNotebookOnOpen.ipynb");
@@ -59,13 +64,19 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
       // Second cell has an issue
       "def foo():\n  print 'toto'\n"
     );
-    didOpen(uri, "ignored", "ignored");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri + "#2"))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
         tuple(1, 2, 1, 7, "ipython:PrintStatementUsage", "sonarlint", "Replace print statement by built-in function.", DiagnosticSeverity.Warning)));
     assertThat(client.getDiagnostics(uri + "#1")).isEmpty();
+    assertThat(client.getDiagnostics(uri)).isEmpty();
+
+    didOpen(uri, "ignored", "ignored");
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains(
+        String.format("[Debug] Skipping text document analysis of notebook \"%s\"", uri)));
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
