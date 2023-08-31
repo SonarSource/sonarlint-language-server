@@ -919,14 +919,16 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     if (notebookUriStr != null) {
       var version = params.getNotebookVersion();
       var notebookUri = create(notebookUriStr);
+      Objects.requireNonNull(version);
+      var cells = Objects.requireNonNull(params.getNotebookCells());
       var notebookFile = VersionedOpenNotebook.create(
         notebookUri, version,
-        params.getNotebookCells(), notebookDiagnosticPublisher);
+        cells, notebookDiagnosticPublisher);
       var versionedOpenFile = notebookFile.asVersionedOpenFile();
-      openNotebooksCache.didOpen(notebookUri, version, params.getNotebookCells());
+      openNotebooksCache.didOpen(notebookUri, version, cells);
       analysisScheduler.didOpen(versionedOpenFile);
     } else {
-      var document = params.getTextDocument();
+      var document = Objects.requireNonNull(params.getTextDocument());
       var file = openFilesCache.didOpen(create(document.getUri()), document.getLanguageId(), document.getText(), document.getVersion());
       analysisScheduler.didOpen(file);
     }
