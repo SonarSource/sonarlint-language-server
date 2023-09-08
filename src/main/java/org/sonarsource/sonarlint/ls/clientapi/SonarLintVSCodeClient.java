@@ -87,9 +87,9 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   }
 
   @Override
-  public void showSoonUnsupportedMessage(ShowSoonUnsupportedMessageParams coreCarams) {
+  public void showSoonUnsupportedMessage(ShowSoonUnsupportedMessageParams coreParams) {
     var clientParams = new SonarLintExtendedLanguageClient.ShowSoonUnsupportedVersionMessageParams(
-      coreCarams.getDoNotShowAgainId(), coreCarams.getText()
+      coreParams.getDoNotShowAgainId(), coreParams.getText()
     );
     client.showSoonUnsupportedVersionMessage(clientParams);
   }
