@@ -118,7 +118,7 @@ public class BackendServiceFacade {
   private static InitializeParams toInitParams(BackendInitParams initParams) {
     return new InitializeParams(
       new ClientInfoDto("Visual Studio Code", initParams.getTelemetryProductKey(), initParams.getUserAgent()),
-      new FeatureFlagsDto(true, true, true, true, initParams.isEnableSecurityHotspots()),
+      new FeatureFlagsDto(true, true, true, true, initParams.isEnableSecurityHotspots(), false),
       initParams.getStorageRoot(),
       null,
       initParams.getEmbeddedPluginPaths(),

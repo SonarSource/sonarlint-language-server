@@ -726,4 +726,27 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
   @JsonRequest("sonarlint/askSslCertificateConfirmation")
   CompletableFuture<Boolean> askSslCertificateConfirmation(SslCertificateConfirmationParams params);
+
+  class ShowSoonUnsupportedVersionMessageParams {
+
+    public ShowSoonUnsupportedVersionMessageParams(String doNotShowAgainId, String text) {
+      this.doNotShowAgainId = doNotShowAgainId;
+      this.text = text;
+    }
+
+    @Expose
+    private final String doNotShowAgainId;
+    @Expose
+    private final String text;
+
+    public String getDoNotShowAgainId() {
+      return doNotShowAgainId;
+    }
+
+    public String getText() {
+      return text;
+    }
+  }
+  @JsonNotification("sonarlint/showSoonUnsupportedVersionMessage")
+  void showSoonUnsupportedVersionMessage(ShowSoonUnsupportedVersionMessageParams messageParams);
 }

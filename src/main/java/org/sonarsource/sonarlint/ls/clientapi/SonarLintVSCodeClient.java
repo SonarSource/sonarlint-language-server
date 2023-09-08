@@ -35,6 +35,7 @@ import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScope
 import org.sonarsource.sonarlint.core.clientapi.client.http.CheckServerTrustedParams;
 import org.sonarsource.sonarlint.core.clientapi.client.http.CheckServerTrustedResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.info.GetClientInfoResponse;
+import org.sonarsource.sonarlint.core.clientapi.client.message.ShowSoonUnsupportedMessageParams;
 import org.sonarsource.sonarlint.core.clientapi.client.progress.ReportProgressParams;
 import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressParams;
 import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
@@ -83,6 +84,14 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   @Override
   public void showMessage(org.sonarsource.sonarlint.core.clientapi.client.message.ShowMessageParams params) {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void showSoonUnsupportedMessage(ShowSoonUnsupportedMessageParams coreCarams) {
+    var clientParams = new SonarLintExtendedLanguageClient.ShowSoonUnsupportedVersionMessageParams(
+      coreCarams.getDoNotShowAgainId(), coreCarams.getText()
+    );
+    client.showSoonUnsupportedVersionMessage(clientParams);
   }
 
   @Override

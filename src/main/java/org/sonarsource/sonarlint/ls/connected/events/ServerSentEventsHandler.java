@@ -21,8 +21,8 @@ package org.sonarsource.sonarlint.ls.connected.events;
 
 import java.net.URI;
 import java.util.Optional;
+import org.sonarsource.sonarlint.core.commons.push.ServerEvent;
 import org.sonarsource.sonarlint.core.serverapi.push.IssueChangedEvent;
-import org.sonarsource.sonarlint.core.serverapi.push.ServerEvent;
 import org.sonarsource.sonarlint.core.serverapi.push.ServerHotspotEvent;
 import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityClosedEvent;
 import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
