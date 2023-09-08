@@ -421,6 +421,10 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
+    public void showSoonUnsupportedVersionMessage(ShowSoonUnsupportedVersionMessageParams messageParams) {
+    }
+
+    @Override
     public void suggestBinding(SuggestBindingParams binding) {
       this.suggestedBindings = binding;
       suggestBindingLatch.countDown();

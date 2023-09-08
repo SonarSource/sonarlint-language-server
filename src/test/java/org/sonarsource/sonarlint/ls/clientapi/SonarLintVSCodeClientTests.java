@@ -41,6 +41,7 @@ import org.sonarsource.sonarlint.core.clientapi.client.http.CheckServerTrustedPa
 import org.sonarsource.sonarlint.core.clientapi.client.http.X509CertificateDto;
 import org.sonarsource.sonarlint.core.clientapi.client.info.GetClientInfoResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.message.ShowMessageParams;
+import org.sonarsource.sonarlint.core.clientapi.client.message.ShowSoonUnsupportedMessageParams;
 import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressParams;
 import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
 import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
@@ -59,6 +60,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 class SonarLintVSCodeClientTests {
@@ -293,6 +295,20 @@ class SonarLintVSCodeClientTests {
       "22 81 83 33 BF 2F 9A E7 E9 D7 81 F0 82 2C AD 58");
 
     assertThat(response.isTrusted()).isTrue();
+  }
+
+  @Test
+  void testShowSoonUnsupportedVersion(){
+    var doNotShowAgainId = "sonarlint.unsupported.myConnection.8.9.9.id";
+    var message = "SQ will be unsupported soon";
+    var coreParams = new ShowSoonUnsupportedMessageParams(doNotShowAgainId, "configId", message);
+    var branchCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.ShowSoonUnsupportedVersionMessageParams.class);
+
+    underTest.showSoonUnsupportedMessage(coreParams);
+    verify(client).showSoonUnsupportedVersionMessage(branchCaptor.capture());
+    verifyNoMoreInteractions(client);
+    assertThat(branchCaptor.getValue().getDoNotShowAgainId()).isEqualTo(doNotShowAgainId);
+    assertThat(branchCaptor.getValue().getText()).isEqualTo(message);
   }
 
   @Test
