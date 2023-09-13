@@ -56,6 +56,8 @@ import org.sonarsource.sonarlint.core.clientapi.backend.issue.AddIssueCommentPar
 import org.sonarsource.sonarlint.core.clientapi.backend.issue.ChangeIssueStatusParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenAllIssuesForFileParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenIssueResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.newcode.GetNewCodeDefinitionParams;
+import org.sonarsource.sonarlint.core.clientapi.backend.newcode.GetNewCodeDefinitionResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionParams;
@@ -235,5 +237,9 @@ public class BackendService {
 
   public CompletableFuture<ValidateConnectionResponse> validateConnection(ValidateConnectionParams params) {
     return initializedBackend().getConnectionService().validateConnection(params);
+  }
+
+  public CompletableFuture<GetNewCodeDefinitionResponse> getNewCodeDefinition(String configScopeId) {
+    return backend.getNewCodeService().getNewCodeDefinition(new GetNewCodeDefinitionParams(configScopeId));
   }
 }

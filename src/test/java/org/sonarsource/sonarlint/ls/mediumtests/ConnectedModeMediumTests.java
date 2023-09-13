@@ -986,6 +986,14 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
   }
 
+  @Test
+  void shouldGetNewCodeDefinition() throws ExecutionException, InterruptedException {
+    var newCodeDefinition = lsProxy.getNewCodeDefinition(new SonarLintExtendedLanguageServer.UriParams(folder1BaseDir.toUri().toString())).get();
+
+    assertThat(newCodeDefinition.isSupported()).isFalse();
+    assertThat(newCodeDefinition.getNewCodeDefinitionOrMessage()).isEqualTo("No new code definition found for " + folder1BaseDir.toUri());
+  }
+
   private void assertLocalIssuesStatusChanged(String fileUri) {
     mockWebServerExtension.addResponse("/api/issues/anticipated_transitions?projectKey=myProject", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
