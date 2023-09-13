@@ -99,6 +99,7 @@ import org.sonarsource.sonarlint.core.clientapi.backend.issue.AddIssueCommentPar
 import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenIssueResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.commons.Language;
+import org.sonarsource.sonarlint.core.commons.NewCodeDefinition;
 import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
@@ -934,6 +935,24 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       analysisScheduler.didOpen(file);
     }
     return CompletableFuture.completedFuture(null);
+  }
+
+  @Override
+  public CompletableFuture<GetNewCodeDefinitionLsResponse> getNewCodeDefinition(UriParams params) {
+    var folderUri = params.getUri();
+    var bindingOptional = bindingManager.getBinding(create(folderUri));
+    if (bindingOptional.isEmpty()) {
+      // TODO notify there's no binding so we are in the standalone mode
+      return CompletableFuture.completedFuture(new GetNewCodeDefinitionLsResponse("No new code definition in standalone mode", false));
+    }
+    return backendServiceFacade.getBackendService().getNewCodeDefinition(folderUri)
+      .handle((response, e) -> {
+        if (e != null) {
+          return new GetNewCodeDefinitionLsResponse(e.getMessage(), false);
+        }
+        var newCodeDefinition = response.getNewCodeDefinition();
+        return new GetNewCodeDefinitionLsResponse(newCodeDefinition.toString(), true);
+      });
   }
 
   private void runIfAnalysisNeeded(String uri, Runnable analyse) {

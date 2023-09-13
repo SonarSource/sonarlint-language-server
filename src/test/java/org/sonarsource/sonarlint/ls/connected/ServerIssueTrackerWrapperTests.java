@@ -330,7 +330,7 @@ class ServerIssueTrackerWrapperTests {
 
   @NotNull
   private static ServerMatchedIssueDto createServerMatchedIssueDto(boolean isResolved) {
-    return new ServerMatchedIssueDto(UUID.randomUUID(), "serverKey", 1L, isResolved, IssueSeverity.BLOCKER, RuleType.BUG);
+    return new ServerMatchedIssueDto(UUID.randomUUID(), "serverKey", 1L, isResolved, IssueSeverity.BLOCKER, RuleType.BUG, true);
   }
 
   @NotNull
