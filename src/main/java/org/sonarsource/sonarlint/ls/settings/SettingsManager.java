@@ -24,11 +24,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -45,7 +43,6 @@ import org.sonarsource.sonarlint.core.clientapi.backend.rules.StandaloneRuleConf
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
@@ -93,7 +90,6 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private final ExecutorService executor;
   private final List<WorkspaceSettingsChangeListener> globalListeners = new ArrayList<>();
   private final List<WorkspaceFolderSettingsChangeListener> folderListeners = new ArrayList<>();
-  private ProjectBindingManager bindingManager;
   private final BackendServiceFacade backendServiceFacade;
 
   public SettingsManager(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager foldersManager,
@@ -107,10 +103,6 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     this.foldersManager = foldersManager;
     this.executor = executor;
     this.backendServiceFacade = backendServiceFacade;
-  }
-
-  public void setBindingManager(ProjectBindingManager bindingManager) {
-    this.bindingManager = bindingManager;
   }
 
   /**
@@ -168,13 +160,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
           backendServiceFacade.updateStandaloneRulesConfiguration(getStandaloneRuleConfigByKey());
         }
 
-        var previousProjectKeysByConnectionId = getProjectKeysByConnectionId();
         foldersManager.getAll().forEach(f -> updateWorkspaceFolderSettings(f, true));
-        var currentProjectKeysByConnectionId = getProjectKeysByConnectionId();
         notifyListeners(newWorkspaceSettings, oldWorkspaceSettings, newDefaultFolderSettings, oldDefaultFolderSettings);
-
-        resubscribeForServerEvents(oldWorkspaceSettings, newWorkspaceSettings, previousProjectKeysByConnectionId, currentProjectKeysByConnectionId);
-
       } catch (InterruptedException e) {
         interrupted(e);
       } catch (Exception e) {
@@ -183,40 +170,6 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         client.readyForTests();
       }
     });
-  }
-
-
-  private Map<String, Set<String>> getProjectKeysByConnectionId() {
-    return foldersManager.getAll()
-      .stream().map(WorkspaceFolderWrapper::getRawSettings)
-      .filter(Objects::nonNull)
-      .filter(s -> Objects.nonNull(s.getConnectionId()))
-      .filter(s -> Objects.nonNull(s.getProjectKey()))
-      .collect(Collectors.groupingBy(WorkspaceFolderSettings::getConnectionId,
-        Collectors.mapping(WorkspaceFolderSettings::getProjectKey, Collectors.toSet())));
-  }
-
-  private void resubscribeForServerEvents(@Nullable WorkspaceSettings previousWorkspaceSettings, WorkspaceSettings currentWorkspaceSettings,
-    Map<String, Set<String>> previousProjectKeysByConnectionId, Map<String, Set<String>> currentProjectKeysByConnectionId) {
-    var impactedConnectionsIds = new HashSet<String>();
-    currentProjectKeysByConnectionId.forEach((connectionId, projectKeys) -> {
-      if (!previousProjectKeysByConnectionId.containsKey(connectionId) || !previousProjectKeysByConnectionId.get(connectionId).equals(projectKeys)) {
-        impactedConnectionsIds.add(connectionId);
-      }
-    });
-    currentWorkspaceSettings.getServerConnections().forEach((connectionId, settings) -> {
-      var token = getTokenFromClient(settings.getServerUrl());
-      if (previousWorkspaceSettings == null
-        || !previousWorkspaceSettings.getServerConnections().containsKey(connectionId)
-        || !previousWorkspaceSettings.getServerConnections().get(connectionId).getServerUrl().equals(settings.getServerUrl())
-        || (token != null && !token.equals(previousWorkspaceSettings.getServerConnections().get(connectionId).getToken()))) {
-        impactedConnectionsIds.add(connectionId);
-      }
-    });
-    var projectBindingManager = bindingManager;
-    for (String impactedConnectionsId : impactedConnectionsIds) {
-      projectBindingManager.subscribeForServerEvents(impactedConnectionsId);
-    }
   }
 
   private void notifyListeners(WorkspaceSettings newWorkspaceSettings, WorkspaceSettings oldWorkspaceSettings, WorkspaceFolderSettings newDefaultFolderSettings,

@@ -106,10 +106,10 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.3\", \"id\": \"xzy\"}");
     mockWebServerExtension.addProtobufResponse("/api/components/search.protobuf?qualifiers=TRK&ps=500&p=1",
       Components.SearchWsResponse.newBuilder()
-      .addComponents(Components.Component.newBuilder().setKey(PROJECT_KEY1).setName(PROJECT_NAME1).build())
-      .addComponents(Components.Component.newBuilder().setKey(PROJECT_KEY2).setName(PROJECT_NAME2).build())
-      .setPaging(Common.Paging.newBuilder().setTotal(2).build())
-      .build());
+        .addComponents(Components.Component.newBuilder().setKey(PROJECT_KEY1).setName(PROJECT_NAME1).build())
+        .addComponents(Components.Component.newBuilder().setKey(PROJECT_KEY2).setName(PROJECT_NAME2).build())
+        .setPaging(Common.Paging.newBuilder().setTotal(2).build())
+        .build());
     mockWebServerExtension.addProtobufResponse("/api/components/tree.protobuf?qualifiers=FIL,UTS&component=myProject&ps=500&p=1",
       Components.TreeWsResponse.newBuilder().build());
     mockWebServerExtension.addStringResponse("/api/plugins/installed",
@@ -121,12 +121,12 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Rules.SearchResponse.newBuilder().build());
     mockWebServerExtension.addProtobufResponse("/api/qualityprofiles/search.protobuf?project=myProject",
       Qualityprofiles.SearchWsResponse.newBuilder()
-      .addProfiles(Qualityprofiles.SearchWsResponse.QualityProfile.newBuilder()
-        .setKey(QPROFILE_KEY)
-        .setLanguage("py")
-        .setRulesUpdatedAt("2022-03-14T11:13:26+0000")
-        .build())
-      .build());
+        .addProfiles(Qualityprofiles.SearchWsResponse.QualityProfile.newBuilder()
+          .setKey(QPROFILE_KEY)
+          .setLanguage("py")
+          .setRulesUpdatedAt("2022-03-14T11:13:26+0000")
+          .build())
+        .build());
     Rules.Actives.Builder activeBuilder = Rules.Actives.newBuilder();
     activeBuilder.putActives(PYTHON_S1481,
       Rules.ActiveList.newBuilder().addActiveList(Rules.Active.newBuilder().setSeverity("BLOCKER")).build());

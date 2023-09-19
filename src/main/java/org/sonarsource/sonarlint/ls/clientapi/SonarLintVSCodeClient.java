@@ -30,6 +30,7 @@ import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.connection.GetCredentialsParams;
 import org.sonarsource.sonarlint.core.clientapi.client.connection.GetCredentialsResponse;
+import org.sonarsource.sonarlint.core.clientapi.client.event.DidReceiveServerEventParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.http.CheckServerTrustedParams;
@@ -47,6 +48,7 @@ import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
+import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.util.Utils;
@@ -58,6 +60,7 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   private SmartNotifications smartNotifications;
   private final RequestsHandlerServer server;
   private ProjectBindingManager bindingManager;
+  private ServerSentEventsHandlerService serverSentEventsHandlerService;
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, RequestsHandlerServer server) {
     this.client = client;
@@ -178,8 +181,6 @@ public class SonarLintVSCodeClient implements SonarLintClient {
     return client.askSslCertificateConfirmation(confirmationParams).thenApply(CheckServerTrustedResponse::new);
   }
 
-
-
   public void setSettingsManager(SettingsManager settingsManager) {
     this.settingsManager = settingsManager;
   }
@@ -188,8 +189,16 @@ public class SonarLintVSCodeClient implements SonarLintClient {
     this.bindingManager = bindingManager;
   }
 
-
   public void setSmartNotifications(SmartNotifications smartNotifications) {
     this.smartNotifications = smartNotifications;
+  }
+
+  @Override
+  public void didReceiveServerEvent(DidReceiveServerEventParams params) {
+    serverSentEventsHandlerService.handleEvents(params.getServerEvent());
+  }
+
+  public void setServerSentEventsHandlerService(ServerSentEventsHandlerService serverSentEventsHandlerService) {
+    this.serverSentEventsHandlerService = serverSentEventsHandlerService;
   }
 }

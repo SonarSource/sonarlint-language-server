@@ -56,7 +56,6 @@ import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
@@ -74,7 +73,6 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -126,7 +124,6 @@ class ProjectBindingManagerTests {
   private final AnalysisScheduler analysisManager = mock(AnalysisScheduler.class);
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   private final DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
-  private final ServerSentEventsHandlerService serverSentEventsHandlerService = mock(ServerSentEventsHandlerService.class);
   private final OpenNotebooksCache openNotebooksCache = mock(OpenNotebooksCache.class);
 
   @BeforeEach
@@ -163,7 +160,6 @@ class ProjectBindingManagerTests {
     underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, folderBindingCache, null,
       connectedEngineCacheByConnectionId, taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, openNotebooksCache);
     underTest.setAnalysisManager(analysisManager);
-    underTest.setServerSentEventsHandler(serverSentEventsHandlerService);
     underTest.setBranchResolver(uri -> Optional.of("main"));
   }
 
@@ -569,28 +565,6 @@ class ProjectBindingManagerTests {
   }
 
   @Test
-  void should_subscribe_for_server_events_when_starting_engine() {
-    var folder = mockFileInABoundWorkspaceFolder();
-    when(foldersManager.getAll()).thenReturn(List.of(folder));
-
-    underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
-
-    verify(fakeEngine).subscribeForEvents(any(), isNull(), eq(Set.of(PROJECT_KEY)), any(), isNull());
-  }
-
-  @Test
-  void should_subscribe_for_server_events_when_folders_change() {
-    var folder = mockFileInABoundWorkspaceFolder();
-    // create engine
-    underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
-    when(foldersManager.getAll()).thenReturn(List.of(folder));
-
-    underTest.subscribeForServerEvents(List.of(folder), List.of());
-
-    verify(fakeEngine).subscribeForEvents(any(), isNull(), eq(Set.of(PROJECT_KEY)), any(), isNull());
-  }
-
-  @Test
   void should_get_all_projects_for_a_connection() {
     var key1 = "key1";
     var key2 = "key2";
@@ -634,13 +608,6 @@ class ProjectBindingManagerTests {
       key1, name1,
       key2, name2
     ));
-  }
-
-  @Test
-  void should_not_subscribe_for_server_events_if_no_config() {
-    underTest.subscribeForServerEvents(CONNECTION_ID);
-
-    verify(fakeEngine, times(0)).subscribeForEvents(any(), isNull(), eq(Set.of(PROJECT_KEY)), any(), isNull());
   }
 
   @Test
