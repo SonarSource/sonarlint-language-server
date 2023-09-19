@@ -56,7 +56,6 @@ import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
-import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -124,7 +123,6 @@ class ServerSynchronizerTests {
   private Runnable syncTask;
   private TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private DiagnosticPublisher diagnosticPublisher;
-  private ServerSentEventsHandlerService serverSentEventsHandler = mock(ServerSentEventsHandlerService.class);
 
   @BeforeEach
   public void prepare() throws IOException, ExecutionException, InterruptedException {
@@ -165,7 +163,6 @@ class ServerSynchronizerTests {
     syncTask = syncTaskCaptor.getValue();
     bindingManager.setAnalysisManager(analysisManager);
     bindingManager.setBranchResolver(uri -> Optional.of("master"));
-    bindingManager.setServerSentEventsHandler(serverSentEventsHandler);
   }
 
   private static WorkspaceSettings newWorkspaceSettingsWithServers(Map<String, ServerConnectionSettings> servers) {

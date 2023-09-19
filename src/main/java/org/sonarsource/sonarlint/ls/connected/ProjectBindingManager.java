@@ -25,7 +25,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -61,7 +60,6 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
-import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -101,7 +99,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final DiagnosticPublisher diagnosticPublisher;
   private final BackendServiceFacade backendServiceFacade;
-  private ServerSentEventsHandlerService serverSentEventsHandler;
   private final OpenNotebooksCache openNotebooksCache;
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
@@ -128,11 +125,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     this.diagnosticPublisher = diagnosticPublisher;
     this.backendServiceFacade = backendServiceFacade;
     this.openNotebooksCache = openNotebooksCache;
-  }
-
-  // Can't use constructor injection because of cyclic dependency
-  public void setServerSentEventsHandler(ServerSentEventsHandlerService serverSentEventsHandlerService) {
-    this.serverSentEventsHandler = serverSentEventsHandlerService;
   }
 
   // Can't use constructor injection because of cyclic dependency
@@ -293,7 +285,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       LOG.error("Error starting connected SonarLint engine for '" + connectionId + "'", e);
       return null;
     }
-    subscribeForServerEvents(connectionId, engine);
     return engine;
   }
 
@@ -379,38 +370,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
     var params = new DidUpdateBindingParams(folder.getUri().toString(), bindingConfigurationDto);
     backendServiceFacade.getBackendService().updateBinding(params);
-  }
-
-
-  public void subscribeForServerEvents(String connectionId) {
-    var engine = getStartedConnectedEngine(connectionId);
-    engine.ifPresent(e -> subscribeForServerEvents(connectionId, e));
-  }
-
-  private void subscribeForServerEvents(String connectionId, ConnectedSonarLintEngine engine) {
-    var endpointParams = getEndpointParamsFor(connectionId);
-    if (endpointParams != null) {
-      engine.subscribeForEvents(endpointParams, backendServiceFacade.getHttpClient(connectionId),
-        getProjectKeysBoundTo(connectionId), serverSentEventsHandler::handleEvents, globalLogOutput);
-    }
-  }
-
-  public void subscribeForServerEvents(List<WorkspaceFolderWrapper> added, List<WorkspaceFolderWrapper> removed) {
-    var impactedConnectionsIds = added.stream().map(this::getBinding)
-      .filter(Optional::isPresent).map(Optional::get).map(ProjectBindingWrapper::getConnectionId).collect(Collectors.toCollection(HashSet::new));
-    impactedConnectionsIds.addAll(removed.stream().map(this::getBinding)
-      .filter(Optional::isPresent).map(Optional::get).map(ProjectBindingWrapper::getConnectionId).collect(Collectors.toSet()));
-    impactedConnectionsIds.forEach(this::subscribeForServerEvents);
-  }
-
-  private Set<String> getProjectKeysBoundTo(String connectionId) {
-    Set<String> projectKeys = new HashSet<>();
-    forEachBoundFolder((folder, settings) -> {
-      if (folder != null && connectionId.equals(folder.getSettings().getConnectionId())) {
-        projectKeys.add(folder.getSettings().getProjectKey());
-      }
-    });
-    return projectKeys;
   }
 
   private void stopUnusedEngines() {

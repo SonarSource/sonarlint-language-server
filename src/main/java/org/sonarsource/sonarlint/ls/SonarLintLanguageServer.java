@@ -241,7 +241,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, globalLogOutput,
       taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, openNotebooksCache);
     vsCodeClient.setBindingManager(bindingManager);
-    this.settingsManager.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(settingsManager, bindingManager, nodeJsRuntime, backendServiceFacade);
     backendServiceFacade.setTelemetry(telemetry);
     this.settingsManager.addListener(telemetry);
@@ -267,7 +266,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.taintVulnerabilityRaisedNotification = new TaintVulnerabilityRaisedNotification(client, commandManager);
     this.serverSentEventsHandler = new ServerSentEventsHandler(bindingManager, taintVulnerabilitiesCache,
       taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager, analysisScheduler);
-    bindingManager.setServerSentEventsHandler(serverSentEventsHandler);
+    vsCodeClient.setServerSentEventsHandlerService(serverSentEventsHandler);
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager, backendServiceFacade);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
     this.workspaceFoldersManager.addListener(this.branchManager);

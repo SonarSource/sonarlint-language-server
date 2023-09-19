@@ -96,7 +96,6 @@ public class WorkspaceFoldersManager {
       listeners.forEach(l -> l.added(addedWrapper));
     }
     executor.submit(() -> {
-      bindingManager.subscribeForServerEvents(addedFolderWrappers, removedFolderWrappers);
       backendServiceFacade.addFolders(event.getAdded(), getBindingProvider());
       event.getRemoved().forEach(removed -> removeFolderFromBackend(removed.getUri()));
     });
