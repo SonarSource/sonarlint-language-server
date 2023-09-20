@@ -26,7 +26,6 @@ import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.TextDocumentItem;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
@@ -39,7 +38,6 @@ import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGene
 import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenIssueResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.issue.ResolutionStatus;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
-import org.sonarsource.sonarlint.core.commons.NewCodeDefinition;
 
 public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
@@ -650,27 +648,5 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/analyseOpenFileIgnoringExcludes")
   CompletableFuture<Void> analyseOpenFileIgnoringExcludes(AnalyseOpenFileIgnoringExcludesParams params);
-
-  class GetNewCodeDefinitionLsResponse {
-
-    String  newCodeDefinitionOrMessage;
-    boolean isSupported;
-
-    public GetNewCodeDefinitionLsResponse(String newCodeDefinitionOrMessage, boolean isSupported) {
-      this.newCodeDefinitionOrMessage = newCodeDefinitionOrMessage;
-      this.isSupported = isSupported;
-    }
-
-    public String getNewCodeDefinitionOrMessage() {
-      return newCodeDefinitionOrMessage;
-    }
-
-    public boolean isSupported() {
-      return isSupported;
-    }
-  }
-
-  @JsonRequest("sonarlint/getNewCodeDefinition")
-  CompletableFuture<GetNewCodeDefinitionLsResponse> getNewCodeDefinition(UriParams params);
 
 }

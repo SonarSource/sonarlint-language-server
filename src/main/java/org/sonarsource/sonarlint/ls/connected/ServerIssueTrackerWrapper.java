@@ -35,7 +35,7 @@ import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.clientapi.backend.tracking.ClientTrackedIssueDto;
+import org.sonarsource.sonarlint.core.clientapi.backend.tracking.ClientTrackedFindingDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.tracking.LineWithHashDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.tracking.LocalOnlyIssueDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.tracking.ServerMatchedIssueDto;
@@ -134,10 +134,10 @@ public class ServerIssueTrackerWrapper {
         if (either.isLeft()) {
           var serverIssue = either.getLeft();
           var issueSeverity = serverIssue.getOverriddenSeverity() == null ? issue.getSeverity() : serverIssue.getOverriddenSeverity();
-          return new DelegatingIssue(issue, serverIssue.getId(), serverIssue.isResolved(), issueSeverity, serverIssue.getServerKey());
+          return new DelegatingIssue(issue, serverIssue.getId(), serverIssue.isResolved(), issueSeverity, serverIssue.getServerKey(), serverIssue.isOnNewCode());
         } else {
           var localIssue = either.getRight();
-          return new DelegatingIssue(issue, localIssue.getId(), localIssue.getResolutionStatus() != null);
+          return new DelegatingIssue(issue, localIssue.getId(), localIssue.getResolutionStatus() != null, true);
         }
       })
       .filter(not(DelegatingIssue::isResolved))
@@ -146,7 +146,7 @@ public class ServerIssueTrackerWrapper {
 
 
   @NotNull
-  private static Map<String, List<ClientTrackedIssueDto>> getClientTrackedIssuesByServerRelativePath(String filePath, Collection<Trackable> issueTrackables) {
+  private static Map<String, List<ClientTrackedFindingDto>> getClientTrackedIssuesByServerRelativePath(String filePath, Collection<Trackable> issueTrackables) {
     var clientTrackedIssueDtos = issueTrackables.stream().map(ServerIssueTrackerWrapper::createClientTrackedIssueDto).collect(Collectors.toList());
     return Map.of(filePath, clientTrackedIssueDtos);
   }
@@ -166,8 +166,8 @@ public class ServerIssueTrackerWrapper {
   }
 
   @NotNull
-  private static ClientTrackedIssueDto createClientTrackedIssueDto(Trackable<Issue> issue) {
-    return new ClientTrackedIssueDto(null, issue.getServerIssueKey(), createTextRangeWithHashDto(issue), createLineWithHashDto(issue), issue.getRuleKey(), issue.getMessage());
+  private static ClientTrackedFindingDto createClientTrackedIssueDto(Trackable<Issue> issue) {
+    return new ClientTrackedFindingDto(null, issue.getServerIssueKey(), createTextRangeWithHashDto(issue), createLineWithHashDto(issue), issue.getRuleKey(), issue.getMessage());
   }
 
   @CheckForNull

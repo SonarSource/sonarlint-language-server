@@ -46,6 +46,7 @@ import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
@@ -61,6 +62,7 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   private final RequestsHandlerServer server;
   private ProjectBindingManager bindingManager;
   private ServerSentEventsHandlerService serverSentEventsHandlerService;
+  private BackendServiceFacade backendServiceFacade;
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, RequestsHandlerServer server) {
     this.client = client;
@@ -144,6 +146,8 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   @Override
   public void didSynchronizeConfigurationScopes(DidSynchronizeConfigurationScopeParams didSynchronizeConfigurationScopeParams) {
     bindingManager.updateAllTaintIssues();
+    didSynchronizeConfigurationScopeParams.getConfigurationScopeIds()
+      .forEach(this::getNewCodeDefinitionAndSubmitToClient);
   }
 
   @Override
@@ -200,5 +204,21 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   public void setServerSentEventsHandlerService(ServerSentEventsHandlerService serverSentEventsHandlerService) {
     this.serverSentEventsHandlerService = serverSentEventsHandlerService;
+  }
+
+  public void setBackendServiceFacade(BackendServiceFacade backendServiceFacade) {
+    this.backendServiceFacade = backendServiceFacade;
+  }
+
+  private void getNewCodeDefinitionAndSubmitToClient(String folderUri) {
+    backendServiceFacade.getBackendService().getNewCodeDefinition(folderUri)
+      .handle((response, e) -> {
+        if (e != null) {
+          return new SonarLintExtendedLanguageClient.GetNewCodeDefinitionLsParams(folderUri, e.getMessage(), false);
+        }
+        var newCodeDefinition = response.getNewCodeDefinition();
+        return new SonarLintExtendedLanguageClient.GetNewCodeDefinitionLsParams(folderUri, newCodeDefinition.toString(), true);
+      })
+      .thenAccept(client::submitNewCodeDefinition);
   }
 }

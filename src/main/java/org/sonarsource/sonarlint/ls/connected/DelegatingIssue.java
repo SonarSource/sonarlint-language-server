@@ -47,6 +47,7 @@ public class DelegatingIssue implements Issue {
   private final Issue issue;
   private final RuleType type;
   private final HotspotReviewStatus reviewStatus;
+  private boolean isNewOnCode;
 
   DelegatingIssue(Trackable<Issue> trackable) {
     var userSeverity = trackable.getSeverity();
@@ -55,20 +56,23 @@ public class DelegatingIssue implements Issue {
     this.type = trackable.getType();
     this.serverIssueKey = trackable.getServerIssueKey();
     this.reviewStatus = trackable.getReviewStatus();
+    this.isNewOnCode = true;
   }
 
-  DelegatingIssue(Trackable<Issue> trackable, UUID issueId, boolean resolved) {
+  DelegatingIssue(Trackable<Issue> trackable, UUID issueId, boolean resolved, boolean isNewOnCode) {
     this(trackable);
     this.issueId = issueId;
     this.resolved = resolved;
+    this.isNewOnCode = isNewOnCode;
   }
 
-  DelegatingIssue(Trackable<Issue> trackable, UUID issueId, boolean resolved, IssueSeverity overriddenSeverity, String serverIssueKey) {
+  DelegatingIssue(Trackable<Issue> trackable, UUID issueId, boolean resolved, IssueSeverity overriddenSeverity, String serverIssueKey, boolean isNewOnCode) {
     this(trackable);
     this.issueId = issueId;
     this.resolved = resolved;
     this.severity = overriddenSeverity;
     this.serverIssueKey = serverIssueKey;
+    this.isNewOnCode = isNewOnCode;
   }
 
   @Override
@@ -173,6 +177,10 @@ public class DelegatingIssue implements Issue {
 
   public boolean isResolved() {
     return resolved;
+  }
+
+  public boolean isNewOnCode() {
+    return isNewOnCode;
   }
 
   private DelegatingIssue(Issue issue, RuleType type, String serverIssueKey, IssueSeverity severity, HotspotReviewStatus reviewStatus) {
