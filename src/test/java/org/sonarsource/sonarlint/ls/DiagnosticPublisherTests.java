@@ -83,9 +83,9 @@ class DiagnosticPublisherTests {
     when(issue.getSeverity()).thenReturn(IssueSeverity.MAJOR);
     assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.MINOR);
-    assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Information);
+    assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.INFO);
-    assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
+    assertThat(convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
   }
 
   @Test

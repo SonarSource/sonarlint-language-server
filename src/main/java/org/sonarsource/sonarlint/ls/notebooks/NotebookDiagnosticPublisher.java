@@ -34,7 +34,6 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 
 import static java.util.stream.Collectors.groupingBy;
 import static org.sonarsource.sonarlint.ls.DiagnosticPublisher.prepareDiagnostic;
-import static org.sonarsource.sonarlint.ls.util.Utils.severity;
 
 public class NotebookDiagnosticPublisher {
   private final SonarLintExtendedLanguageClient client;
@@ -54,9 +53,7 @@ public class NotebookDiagnosticPublisher {
 
   static Diagnostic convertCellIssue(Map.Entry<String, DelegatingCellIssue> entry) {
     var issue = entry.getValue();
-    var severity = severity(issue.getSeverity());
-
-    return prepareDiagnostic(severity, issue, entry.getKey(), true);
+    return prepareDiagnostic(issue, entry.getKey(), true);
   }
 
   public void publishNotebookDiagnostics(URI uri, VersionedOpenNotebook versionedOpenNotebook) {

@@ -31,7 +31,6 @@ import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.RuleType;
-import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -40,8 +39,6 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.stream.Collectors.toList;
 import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralizedSuffix;
-import static org.sonarsource.sonarlint.ls.util.Utils.hotspotSeverity;
-import static org.sonarsource.sonarlint.ls.util.Utils.severity;
 
 public class DiagnosticPublisher {
 
@@ -84,17 +81,13 @@ public class DiagnosticPublisher {
 
   static Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
     var issue = entry.getValue().getIssue();
-    var severity =
-      issue.getType() == RuleType.SECURITY_HOTSPOT ?
-        hotspotSeverity(issue.getVulnerabilityProbability().orElse(VulnerabilityProbability.MEDIUM)) : severity(issue.getSeverity());
-
-    return prepareDiagnostic(severity, issue, entry.getKey(), false);
+    return prepareDiagnostic(issue, entry.getKey(), false);
   }
 
-  public static Diagnostic prepareDiagnostic(DiagnosticSeverity severity, Issue issue, String entryKey, boolean ignoreSecondaryLocations) {
+  public static Diagnostic prepareDiagnostic(Issue issue, String entryKey, boolean ignoreSecondaryLocations) {
     var diagnostic = new Diagnostic();
 
-    setSeverity(severity, diagnostic, issue);
+    setSeverity(diagnostic, issue);
     var range = Utils.convert(issue);
     diagnostic.setRange(range);
     diagnostic.setCode(issue.getRuleKey());
@@ -105,12 +98,12 @@ public class DiagnosticPublisher {
     return diagnostic;
   }
 
-  static void setSeverity(DiagnosticSeverity severity, Diagnostic diagnostic, Issue issue) {
+  static void setSeverity(Diagnostic diagnostic, Issue issue) {
     if (issue instanceof DelegatingIssue) {
-      var newCodeSeverity = ((DelegatingIssue) issue).isNewOnCode() ? DiagnosticSeverity.Warning : DiagnosticSeverity.Hint;
+      var newCodeSeverity = ((DelegatingIssue) issue).isOnNewCode() ? DiagnosticSeverity.Warning : DiagnosticSeverity.Hint;
       diagnostic.setSeverity(newCodeSeverity);
     } else {
-      diagnostic.setSeverity(severity);
+      diagnostic.setSeverity(DiagnosticSeverity.Warning);
     }
   }
 

@@ -63,6 +63,7 @@ class TaintVulnerabilitiesCacheTests {
     when(issue.getKey()).thenReturn("issueKey");
     when(issue.getFlows()).thenReturn(List.of(flow));
     when(issue.getSource()).thenReturn(taintSource);
+    when(issue.isOnNewCode()).thenReturn(true);
 
     var diagnostic = convert(issue).get();
 
