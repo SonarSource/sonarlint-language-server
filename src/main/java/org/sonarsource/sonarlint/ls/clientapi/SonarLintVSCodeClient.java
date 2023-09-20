@@ -181,6 +181,11 @@ public class SonarLintVSCodeClient implements SonarLintClient {
     return client.askSslCertificateConfirmation(confirmationParams).thenApply(CheckServerTrustedResponse::new);
   }
 
+  @Override
+  public void didReceiveServerEvent(DidReceiveServerEventParams params) {
+    serverSentEventsHandlerService.handleEvents(params.getServerEvent());
+  }
+
   public void setSettingsManager(SettingsManager settingsManager) {
     this.settingsManager = settingsManager;
   }
@@ -191,11 +196,6 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   public void setSmartNotifications(SmartNotifications smartNotifications) {
     this.smartNotifications = smartNotifications;
-  }
-
-  @Override
-  public void didReceiveServerEvent(DidReceiveServerEventParams params) {
-    serverSentEventsHandlerService.handleEvents(params.getServerEvent());
   }
 
   public void setServerSentEventsHandlerService(ServerSentEventsHandlerService serverSentEventsHandlerService) {
