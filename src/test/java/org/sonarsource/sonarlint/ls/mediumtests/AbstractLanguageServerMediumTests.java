@@ -321,8 +321,8 @@ public abstract class AbstractLanguageServerMediumTests {
     boolean shouldAnalyseFile = true;
     final AtomicInteger needCompilationDatabaseCalls = new AtomicInteger();
     final Set<String> openedLinks = new HashSet<>();
-
     final Set<MessageParams> shownMessages = new HashSet<>();
+    final Map<String, NewCodeDefinitionDto> newCodeDefinitionCache = new HashMap<>();
 
     void clear() {
       diagnostics.clear();
@@ -422,6 +422,12 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void showSoonUnsupportedVersionMessage(ShowSoonUnsupportedVersionMessageParams messageParams) {
+    }
+
+    @Override
+    public void submitNewCodeDefinition(GetNewCodeDefinitionLsParams params) {
+      newCodeDefinitionCache.put(params.getFolderUri(),
+        new NewCodeDefinitionDto(params.getNewCodeDefinitionOrMessage(), params.isSupported()));
     }
 
     @Override
@@ -713,5 +719,23 @@ public abstract class AbstractLanguageServerMediumTests {
     var newTempDir = Files.createTempDirectory(null);
     staticTempDirs.add(newTempDir);
     return newTempDir;
+  }
+
+  static class NewCodeDefinitionDto {
+    String  newCodeDefinitionOrMessage;
+    boolean isSupported;
+
+    public NewCodeDefinitionDto(String newCodeDefinitionOrMessage, boolean isSupported) {
+      this.newCodeDefinitionOrMessage = newCodeDefinitionOrMessage;
+      this.isSupported = isSupported;
+    }
+
+    public String getNewCodeDefinitionOrMessage() {
+      return newCodeDefinitionOrMessage;
+    }
+
+    public boolean isSupported() {
+      return isSupported;
+    }
   }
 }

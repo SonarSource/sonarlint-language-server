@@ -156,6 +156,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .setType(Common.BranchType.BRANCH)
           .build())
         .build());
+
   }
 
   @NotNull
@@ -203,7 +204,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         Diagnostic::getSeverity)
       .containsExactly(
         tuple(0, 13, 0, 26, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
-          DiagnosticSeverity.Information)));
+          DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -269,7 +270,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         Diagnostic::getSeverity)
       .containsExactly(
         tuple(0, 13, 0, 26, PYTHON_S1313, "remote", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
-          DiagnosticSeverity.Information)));
+          DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -309,7 +310,28 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .build());
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(System.currentTimeMillis()).build(),
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
+      Hotspots.HotspotLite.newBuilder()
+        .setKey("myhotspotkey")
+        .setFilePath("hotspot.py")
+        .setCreationDate(System.currentTimeMillis())
+        .setStatus("TO_REVIEW")
+        .setVulnerabilityProbability("LOW")
+        .setTextRange(Hotspots.TextRange.newBuilder()
+          .setStartLine(1)
+          .setStartLineOffset(13)
+          .setEndLine(1)
+          .setEndLineOffset(26)
+          .setHash(Utils.hash("'12.34.56.78'"))
+          .build()
+        )
+        .setRuleKey(PYTHON_S1313)
+        .build()
+    );
+
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
       Hotspots.HotspotLite.newBuilder()
         .setKey("myhotspotkey")
         .setFilePath("hotspot.py")
@@ -336,7 +358,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         Diagnostic::getSeverity)
       .containsExactly(
         tuple(0, 13, 0, 26, PYTHON_S1313, "remote", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
-          DiagnosticSeverity.Information)));
+          DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -368,7 +390,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           Diagnostic::getSeverity)
         .containsExactly(
           tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
-            DiagnosticSeverity.Information));
+            DiagnosticSeverity.Warning));
       assertThat(client.getDiagnostics(uri1InFolder)).isEmpty();
 
       assertThat(client.getHotspots(uri2InFolder))
@@ -376,7 +398,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           Diagnostic::getSeverity)
         .containsExactly(
           tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"23.45.67.89\" is safe here.",
-            DiagnosticSeverity.Information));
+            DiagnosticSeverity.Warning));
       assertThat(client.getDiagnostics(uri2InFolder)).isEmpty();
     });
 
@@ -392,7 +414,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           Diagnostic::getSeverity)
         .containsExactly(
           tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
-            DiagnosticSeverity.Information));
+            DiagnosticSeverity.Warning));
 
       // File 2 is not open, cleaning hotspots
       assertThat(client.getHotspots(uri2InFolder)).isEmpty();
@@ -449,7 +471,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Hint),
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
   }
 
@@ -643,7 +665,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Hint),
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
 
     lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
@@ -732,7 +754,27 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var hotspotKey = "myhotspotkey";
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(System.currentTimeMillis()).build(),
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
+      Hotspots.HotspotLite.newBuilder()
+        .setKey(hotspotKey)
+        .setFilePath(analyzedFileName)
+        .setCreationDate(System.currentTimeMillis())
+        .setStatus("TO_REVIEW")
+        .setVulnerabilityProbability("LOW")
+        .setTextRange(Hotspots.TextRange.newBuilder()
+          .setStartLine(1)
+          .setStartLineOffset(13)
+          .setEndLine(1)
+          .setEndLineOffset(26)
+          .setHash(Utils.hash("'12.34.56.78'"))
+          .build()
+        )
+        .setRuleKey(PYTHON_S1313)
+        .build()
+    );
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
       Hotspots.HotspotLite.newBuilder()
         .setKey(hotspotKey)
         .setFilePath(analyzedFileName)
@@ -758,7 +800,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(0, 13, 0, 26, PYTHON_S1313, "remote", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Information)));
+        tuple(0, 13, 0, 26, PYTHON_S1313, "remote", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Warning)));
     assertThat(client.getHotspots(uriInFolder).get(0).getData().toString()).contains("\"status\":0");
 
     lsProxy.changeHotspotStatus(new SonarLintExtendedLanguageServer.ChangeHotspotStatusParams(hotspotKey, HotspotStatus.SAFE.getTitle(), uriInFolder));
@@ -807,7 +849,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var hotspotKey = "myhotspotkey";
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(System.currentTimeMillis()).build(),
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
       Hotspots.HotspotLite.newBuilder()
         .setKey(hotspotKey)
         .setFilePath(analyzedFileName)
@@ -833,7 +875,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(0, 13, 0, 26, PYTHON_S1313, "remote", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Information)));
+        tuple(0, 13, 0, 26, PYTHON_S1313, "remote", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Warning)));
     assertThat(client.getHotspots(uriInFolder).get(0).getData().toString()).contains("\"status\":0");
 
     lsProxy.changeHotspotStatus(new SonarLintExtendedLanguageServer.ChangeHotspotStatusParams(hotspotKey, HotspotStatus.ACKNOWLEDGED.getTitle(), uriInFolder));
@@ -895,7 +937,27 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     );
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(System.currentTimeMillis()).build(),
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
+      Hotspots.HotspotLite.newBuilder()
+        .setKey(hotspotKey)
+        .setFilePath(analyzedFileName)
+        .setCreationDate(System.currentTimeMillis())
+        .setStatus("TO_REVIEW")
+        .setVulnerabilityProbability("LOW")
+        .setTextRange(Hotspots.TextRange.newBuilder()
+          .setStartLine(1)
+          .setStartLineOffset(13)
+          .setEndLine(1)
+          .setEndLineOffset(26)
+          .setHash(Utils.hash("'12.34.56.78'"))
+          .build()
+        )
+        .setRuleKey(PYTHON_S1313)
+        .build()
+    );
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
       Hotspots.HotspotLite.newBuilder()
         .setKey(hotspotKey)
         .setFilePath(analyzedFileName)
@@ -921,7 +983,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(0, 13, 0, 26, PYTHON_S1313, "remote", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Information)));
+        tuple(0, 13, 0, 26, PYTHON_S1313, "remote", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Warning)));
 
 
     var response = lsProxy.getAllowedHotspotStatuses(
@@ -984,14 +1046,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
-  }
-
-  @Test
-  void shouldGetNewCodeDefinition() throws ExecutionException, InterruptedException {
-    var newCodeDefinition = lsProxy.getNewCodeDefinition(new SonarLintExtendedLanguageServer.UriParams(folder1BaseDir.toUri().toString())).get();
-
-    assertThat(newCodeDefinition.isSupported()).isFalse();
-    assertThat(newCodeDefinition.getNewCodeDefinitionOrMessage()).isEqualTo("No new code definition found for " + folder1BaseDir.toUri());
   }
 
   private void assertLocalIssuesStatusChanged(String fileUri) {

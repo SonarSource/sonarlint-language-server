@@ -94,7 +94,7 @@ public class DiagnosticPublisher {
   public static Diagnostic prepareDiagnostic(DiagnosticSeverity severity, Issue issue, String entryKey, boolean ignoreSecondaryLocations) {
     var diagnostic = new Diagnostic();
 
-    diagnostic.setSeverity(severity);
+    setSeverity(severity, diagnostic, issue);
     var range = Utils.convert(issue);
     diagnostic.setRange(range);
     diagnostic.setCode(issue.getRuleKey());
@@ -103,6 +103,15 @@ public class DiagnosticPublisher {
     diagnostic.setData(getData(issue, entryKey));
 
     return diagnostic;
+  }
+
+  static void setSeverity(DiagnosticSeverity severity, Diagnostic diagnostic, Issue issue) {
+    if (issue instanceof DelegatingIssue) {
+      var newCodeSeverity = ((DelegatingIssue) issue).isNewOnCode() ? DiagnosticSeverity.Warning : DiagnosticSeverity.Hint;
+      diagnostic.setSeverity(newCodeSeverity);
+    } else {
+      diagnostic.setSeverity(severity);
+    }
   }
 
   public static class DiagnosticData {
