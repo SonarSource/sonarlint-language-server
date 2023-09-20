@@ -23,14 +23,12 @@ import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.assertj.core.api.AssertionsForClassTypes;
-import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
-import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.ls.IssuesCache;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.ConnectionCheckParams;
@@ -80,13 +78,6 @@ class UtilsTests {
   void uriHasFileSchemeTest() {
     assertThat(Utils.uriHasFileScheme(URI.create("file:///path"))).isTrue();
     assertThat(Utils.uriHasFileScheme(URI.create("notfile:///path"))).isFalse();
-  }
-
-  @Test
-  void shouldCorrectlyMapHotspotSeverity() {
-    assertThat(Utils.hotspotSeverity(VulnerabilityProbability.HIGH)).isEqualTo(DiagnosticSeverity.Error);
-    assertThat(Utils.hotspotSeverity(VulnerabilityProbability.MEDIUM)).isEqualTo(DiagnosticSeverity.Warning);
-    assertThat(Utils.hotspotSeverity(VulnerabilityProbability.LOW)).isEqualTo(DiagnosticSeverity.Information);
   }
 
   @Test

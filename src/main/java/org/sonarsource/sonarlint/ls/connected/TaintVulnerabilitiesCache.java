@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.util.Utils;
@@ -79,7 +80,7 @@ public class TaintVulnerabilitiesCache {
     if (issue.getTextRange() != null) {
       var range = Utils.convert(issue);
       var diagnostic = new Diagnostic();
-      var severity = Utils.severity(issue.getSeverity());
+      var severity = issue.isOnNewCode() ? DiagnosticSeverity.Warning : DiagnosticSeverity.Hint;
 
       diagnostic.setSeverity(severity);
       diagnostic.setRange(range);

@@ -37,7 +37,6 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.eclipse.lsp4j.Diagnostic;
-import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
@@ -53,9 +52,7 @@ import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.clientapi.common.TokenDto;
 import org.sonarsource.sonarlint.core.clientapi.common.UsernamePasswordDto;
 import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
-import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
-import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
 import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
@@ -159,32 +156,6 @@ public class Utils {
 
   public static boolean locationMatches(ServerTaintIssue i, Diagnostic d) {
     return convert(i).equals(d.getRange());
-  }
-
-  public static DiagnosticSeverity severity(IssueSeverity severity) {
-    switch (severity) {
-      case BLOCKER:
-      case CRITICAL:
-      case MAJOR:
-        return DiagnosticSeverity.Warning;
-      case MINOR:
-        return DiagnosticSeverity.Information;
-      case INFO:
-      default:
-        return DiagnosticSeverity.Hint;
-    }
-  }
-
-  public static DiagnosticSeverity hotspotSeverity(VulnerabilityProbability vulnerabilityProbability) {
-    switch (vulnerabilityProbability) {
-      case HIGH:
-        return DiagnosticSeverity.Error;
-      case LOW:
-        return DiagnosticSeverity.Information;
-      case MEDIUM:
-      default:
-        return DiagnosticSeverity.Warning;
-    }
   }
 
   public static String buildMessageWithPluralizedSuffix(@Nullable String issueMessage, long nbItems, String itemName) {
