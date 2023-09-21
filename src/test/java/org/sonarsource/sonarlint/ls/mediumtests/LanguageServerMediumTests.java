@@ -909,7 +909,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldUpdateConfigurationOnTokenChange() {
-    lsProxy.onTokenUpdate(new SonarLintExtendedLanguageServer.OnTokenUpdateNotificationParams("connectionId"));
+    lsProxy.onTokenUpdate(new SonarLintExtendedLanguageServer.OnTokenUpdateNotificationParams("connectionId", "123456"));
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
