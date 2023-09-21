@@ -402,24 +402,26 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   @Override
   public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
-    if (oldValue == null) {
-      return;
-    }
     newValue.getServerConnections().forEach((id, value) -> {
-      var oldConnection = oldValue.getServerConnections().get(id);
-      if (oldConnection != null && !oldConnection.equals(value)) {
-        // Settings of the connection have been changed. Remove all cached bindings and force close the engine
-        clearCachesAndStopEngine(id);
-      }
-      if (oldConnection == null || !oldConnection.equals(value)) {
-        // New connection or changed settings. Validate connection
-        validateConnection(id);
+      if (oldValue == null) {
+        // initial sync
+        this.validateConnection(id);
+      } else {
+        var oldConnection = oldValue.getServerConnections().get(id);
+        if (oldConnection != null && !oldConnection.equals(value)) {
+          // Settings of the connection have been changed. Remove all cached bindings and force close the engine
+          clearCachesAndStopEngine(id);
+        }
+        if (oldConnection == null || !oldConnection.equals(value)) {
+          // New connection or changed settings. Validate connection
+          validateConnection(id);
+        }
       }
     });
     stopUnusedEngines();
   }
 
-  void validateConnection(String id) {
+  public void validateConnection(String id) {
     Optional.ofNullable(getValidateConnectionParamsFor(id))
       .map(backendServiceFacade::validateConnection)
       .ifPresent(validationFuture -> validationFuture.thenAccept(validationResult -> {

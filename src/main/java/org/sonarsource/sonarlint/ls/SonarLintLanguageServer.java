@@ -638,6 +638,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public void onTokenUpdate(OnTokenUpdateNotificationParams onTokenUpdateNotificationParams) {
     SonarLintLogger.get().info("Updating credentials on token change.");
     backendServiceFacade.didChangeCredentials(onTokenUpdateNotificationParams.getConnectionId());
+    var updatedConnection = settingsManager.getCurrentSettings().getServerConnections().get(onTokenUpdateNotificationParams.getConnectionId());
+    updatedConnection.setToken(onTokenUpdateNotificationParams.getToken());
+    bindingManager.validateConnection(onTokenUpdateNotificationParams.getConnectionId());
   }
 
   @Override

@@ -223,10 +223,16 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   void didLocalBranchNameChange(DidLocalBranchNameChangeParams params);
 
   class OnTokenUpdateNotificationParams {
-    private String connectionId;
+    private final String connectionId;
+    private final String token;
 
-    public OnTokenUpdateNotificationParams(String connectionId) {
+    public OnTokenUpdateNotificationParams(String connectionId, String token) {
       this.connectionId = connectionId;
+      this.token = token;
+    }
+
+    public String getToken() {
+      return token;
     }
 
     public String getConnectionId() {

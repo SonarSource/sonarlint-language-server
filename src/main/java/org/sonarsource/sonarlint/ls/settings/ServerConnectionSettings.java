@@ -40,13 +40,13 @@ public class ServerConnectionSettings {
 
   private final String connectionId;
   private final String serverUrl;
-  private final String token;
+  private String token;
   private final boolean disableNotifications;
 
   @Nullable
   private final String organizationKey;
   private final EndpointParams endpointParams;
-  private final ValidateConnectionParams validateConnectionParams;
+  private ValidateConnectionParams validateConnectionParams;
 
   public ServerConnectionSettings(String connectionId, String serverUrl, String token, @Nullable String organizationKey,
     boolean disableNotifications) {
@@ -105,6 +105,11 @@ public class ServerConnectionSettings {
 
   public ValidateConnectionParams getValidateConnectionParams() {
     return validateConnectionParams;
+  }
+
+  public void setToken(String token) {
+    this.token = token;
+    this.validateConnectionParams = createValidateConnectionParams();
   }
 
   @Override
