@@ -110,7 +110,8 @@ public class BackendServiceFacade {
     var scConnections = BackendService.extractSonarCloudConnections(connections);
     initParams.setSonarQubeConnections(sqConnections);
     initParams.setSonarCloudConnections(scConnections);
-    initParams.setStandaloneRuleConfigByKey(this.settingsManager.getStandaloneRuleConfigByKey());
+    initParams.setStandaloneRuleConfigByKey(settingsManager.getStandaloneRuleConfigByKey());
+    initParams.setFocusOnNewCode(settingsManager.getCurrentSettings().isCleanAsYouCode());
     backend.initialize(toInitParams(initParams));
     backend.addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(rootConfigurationScope)));
   }
@@ -128,7 +129,8 @@ public class BackendServiceFacade {
       initParams.getSonarQubeConnections(),
       initParams.getSonarCloudConnections(),
       initParams.getSonarlintUserHome(),
-      initParams.getStandaloneRuleConfigByKey()
+      initParams.getStandaloneRuleConfigByKey(),
+      initParams.isFocusOnNewCode()
     );
   }
 

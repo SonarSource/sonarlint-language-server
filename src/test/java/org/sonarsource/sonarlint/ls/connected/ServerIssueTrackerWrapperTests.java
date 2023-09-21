@@ -54,6 +54,8 @@ import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.folders.InFolderClientInputFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -257,13 +259,17 @@ class ServerIssueTrackerWrapperTests {
     var backendServiceFacade = mock(BackendServiceFacade.class);
     var workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
     var workspaceFolderWrapper = mock(WorkspaceFolderWrapper.class);
+    var settingsManager = mock(SettingsManager.class);
+    var workspaceSettings = mock(WorkspaceSettings.class);
     var httpClient = mock(HttpClient.class);
     when(backendServiceFacade.getHttpClient(any())).thenReturn(httpClient);
     when(backendServiceFacade.matchIssues(any())).thenReturn(trackIssuesResponse);
     when(workspaceFolderWrapper.getUri()).thenReturn(URI.create("dummy"));
     when(workspaceFoldersManager.findFolderForFile(any())).thenReturn(Optional.of(workspaceFolderWrapper));
+    when(workspaceSettings.isCleanAsYouCode()).thenReturn(true);
+    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     return new ServerIssueTrackerWrapper(engine, new EndpointParams("https://sonarcloud.io", true, "known"), projectBinding,
-      branchSupplier, httpClient, backendServiceFacade, workspaceFoldersManager);
+      branchSupplier, httpClient, backendServiceFacade, workspaceFoldersManager, settingsManager);
   }
 
   // create uniquely identifiable issue

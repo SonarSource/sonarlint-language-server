@@ -242,4 +242,8 @@ public class BackendService {
   public CompletableFuture<GetNewCodeDefinitionResponse> getNewCodeDefinition(String configScopeId) {
     return backend.getNewCodeService().getNewCodeDefinition(new GetNewCodeDefinitionParams(configScopeId));
   }
+
+  public void toggleCleanAsYouCode() {
+    backend.getNewCodeService().didToggleFocus();
+  }
 }

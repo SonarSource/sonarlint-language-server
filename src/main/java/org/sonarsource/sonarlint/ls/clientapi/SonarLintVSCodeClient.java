@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import nl.altindag.ssl.util.CertificateUtils;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.jetbrains.annotations.Nullable;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintClient;
 import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
@@ -52,9 +53,11 @@ import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
-public class SonarLintVSCodeClient implements SonarLintClient {
+public class SonarLintVSCodeClient implements SonarLintClient, WorkspaceSettingsChangeListener {
 
   private final SonarLintExtendedLanguageClient client;
   private SettingsManager settingsManager;
@@ -192,6 +195,7 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   public void setSettingsManager(SettingsManager settingsManager) {
     this.settingsManager = settingsManager;
+    this.settingsManager.addListener(this);
   }
 
   public void setBindingManager(ProjectBindingManager bindingManager) {
@@ -214,11 +218,17 @@ public class SonarLintVSCodeClient implements SonarLintClient {
     backendServiceFacade.getBackendService().getNewCodeDefinition(folderUri)
       .handle((response, e) -> {
         if (e != null) {
-          return new SonarLintExtendedLanguageClient.GetNewCodeDefinitionLsParams(folderUri, e.getMessage(), false);
+          return new SonarLintExtendedLanguageClient.GetNewCodeDefinitionLsParams(folderUri, response.getDescription(), false);
         }
-        var newCodeDefinition = response.getNewCodeDefinition();
-        return new SonarLintExtendedLanguageClient.GetNewCodeDefinitionLsParams(folderUri, newCodeDefinition.toString(), true);
+        return new SonarLintExtendedLanguageClient.GetNewCodeDefinitionLsParams(folderUri, response.getDescription(), response.isSupported());
       })
       .thenAccept(client::submitNewCodeDefinition);
+  }
+
+  @Override
+  public void onChange(@Nullable WorkspaceSettings oldValue, WorkspaceSettings newValue) {
+    if (oldValue != null && oldValue.isCleanAsYouCode() != newValue.isCleanAsYouCode()) {
+      backendServiceFacade.getBackendService().toggleCleanAsYouCode();
+    }
   }
 }
