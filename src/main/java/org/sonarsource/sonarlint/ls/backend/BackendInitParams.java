@@ -42,6 +42,7 @@ public class BackendInitParams {
   private String sonarlintUserHome;
   private Map<String, StandaloneRuleConfigDto> standaloneRuleConfigByKey;
   private String userAgent;
+  private boolean isFocusOnNewCode;
 
   public String getTelemetryProductKey() {
     return telemetryProductKey;
@@ -129,6 +130,14 @@ public class BackendInitParams {
 
   public Map<String, StandaloneRuleConfigDto> getStandaloneRuleConfigByKey() {
     return this.standaloneRuleConfigByKey;
+  }
+
+  public boolean isFocusOnNewCode() {
+    return isFocusOnNewCode;
+  }
+
+  public void setFocusOnNewCode(boolean focusOnNewCode) {
+    isFocusOnNewCode = focusOnNewCode;
   }
 
   public String getUserAgent() {

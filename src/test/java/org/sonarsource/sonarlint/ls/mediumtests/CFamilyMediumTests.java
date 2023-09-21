@@ -38,7 +38,6 @@ import org.junit.jupiter.api.io.TempDir;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.tuple;
-import static org.eclipse.lsp4j.DiagnosticSeverity.Information;
 import static org.eclipse.lsp4j.DiagnosticSeverity.Warning;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
