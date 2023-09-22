@@ -656,7 +656,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var responseError = new ResponseError(ResponseErrorCode.InternalError, "Could not get remote project names", failed);
       return CompletableFuture.failedFuture(new ResponseErrorException(responseError));
     }
-
   }
 
   @Override

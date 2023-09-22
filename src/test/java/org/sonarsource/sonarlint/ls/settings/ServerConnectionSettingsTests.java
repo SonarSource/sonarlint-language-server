@@ -35,6 +35,14 @@ class ServerConnectionSettingsTests {
   }
 
   @Test
+  void testSetters() {
+    var oldSetting = new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false);
+    oldSetting.setToken("newToken");
+    var compareTo = new ServerConnectionSettings("serverId", "serverUrl", "newToken", "myOrg", false);
+    assertThat(oldSetting).hasSameHashCodeAs(compareTo);
+  }
+
+  @Test
   void testEquals() {
     assertThat(WITH_ORG)
       .isEqualTo(WITH_ORG)
