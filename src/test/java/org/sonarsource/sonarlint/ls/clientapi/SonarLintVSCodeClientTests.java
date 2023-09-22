@@ -34,6 +34,7 @@ import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams;
+import org.sonarsource.sonarlint.core.clientapi.client.event.DidReceiveServerEventParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeParams;
 import org.sonarsource.sonarlint.core.clientapi.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.clientapi.client.hotspot.ShowHotspotParams;
@@ -45,9 +46,13 @@ import org.sonarsource.sonarlint.core.clientapi.client.message.ShowSoonUnsupport
 import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressParams;
 import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
 import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
+import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.serverapi.push.IssueChangedEvent;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
+import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -70,9 +75,9 @@ class SonarLintVSCodeClientTests {
   SettingsManager settingsManager = mock(SettingsManager.class);
   SmartNotifications smartNotifications = mock(SmartNotifications.class);
   SonarLintVSCodeClient underTest;
-
   RequestsHandlerServer server = mock(RequestsHandlerServer.class);
   ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
+  ServerSentEventsHandlerService serverSentEventsHandlerService = mock(ServerSentEventsHandlerService.class);
 
   private static final String PEM = "subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH\n" +
     "issuer=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH\n" +
@@ -116,6 +121,7 @@ class SonarLintVSCodeClientTests {
     underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);
     underTest.setBindingManager(bindingManager);
+    underTest.setServerSentEventsHandlerService(serverSentEventsHandlerService);
   }
 
   @Test
@@ -209,9 +215,9 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void shouldUpdateAllTaintIssuesForDidSynchronizeConfigurationScopes() {
-      underTest.didSynchronizeConfigurationScopes(mock(DidSynchronizeConfigurationScopeParams.class));
+    underTest.didSynchronizeConfigurationScopes(mock(DidSynchronizeConfigurationScopeParams.class));
 
-      verify(bindingManager).updateAllTaintIssues();
+    verify(bindingManager).updateAllTaintIssues();
   }
 
   @Test
@@ -298,7 +304,7 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void testShowSoonUnsupportedVersion(){
+  void testShowSoonUnsupportedVersion() {
     var doNotShowAgainId = "sonarlint.unsupported.myConnection.8.9.9.id";
     var message = "SQ will be unsupported soon";
     var coreParams = new ShowSoonUnsupportedMessageParams(doNotShowAgainId, "configId", message);
@@ -329,5 +335,14 @@ class SonarLintVSCodeClientTests {
     Assertions.assertThat(capturedValue.getSha256Fingerprint()).isEmpty();
 
     assertThat(response.isTrusted()).isTrue();
+  }
+
+  @Test
+  void shouldForwardServerSentEvent() {
+    var serverEvent = new IssueChangedEvent("projectKey", List.of("issueKey"), IssueSeverity.MAJOR, RuleType.BUG, false);
+    var params = new DidReceiveServerEventParams("connectionId", serverEvent);
+    underTest.didReceiveServerEvent(params);
+
+    verify(serverSentEventsHandlerService).handleEvents(serverEvent);
   }
 }
