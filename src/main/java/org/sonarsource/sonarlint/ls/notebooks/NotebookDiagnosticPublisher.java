@@ -53,7 +53,7 @@ public class NotebookDiagnosticPublisher {
 
   static Diagnostic convertCellIssue(Map.Entry<String, DelegatingCellIssue> entry) {
     var issue = entry.getValue();
-    return prepareDiagnostic(issue, entry.getKey(), true);
+    return prepareDiagnostic(issue, entry.getKey(), true, false);
   }
 
   public void publishNotebookDiagnostics(URI uri, VersionedOpenNotebook versionedOpenNotebook) {

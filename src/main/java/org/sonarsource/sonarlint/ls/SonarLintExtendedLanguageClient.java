@@ -750,13 +750,13 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/showSoonUnsupportedVersionMessage")
   void showSoonUnsupportedVersionMessage(ShowSoonUnsupportedVersionMessageParams messageParams);
 
-  class GetNewCodeDefinitionLsParams {
+  class SubmitNewCodeDefinitionParams {
 
     String folderUri;
-    String  newCodeDefinitionOrMessage;
+    String newCodeDefinitionOrMessage;
     boolean isSupported;
 
-    public GetNewCodeDefinitionLsParams(String folderUri, String newCodeDefinitionOrMessage, boolean isSupported) {
+    public SubmitNewCodeDefinitionParams(String folderUri, String newCodeDefinitionOrMessage, boolean isSupported) {
       this.folderUri = folderUri;
       this.newCodeDefinitionOrMessage = newCodeDefinitionOrMessage;
       this.isSupported = isSupported;
@@ -776,5 +776,5 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   }
 
   @JsonNotification("sonarlint/submitNewCodeDefinition")
-  void submitNewCodeDefinition(GetNewCodeDefinitionLsParams params);
+  void submitNewCodeDefinition(SubmitNewCodeDefinitionParams params);
 }

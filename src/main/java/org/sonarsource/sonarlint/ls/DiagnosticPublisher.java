@@ -56,6 +56,8 @@ public class DiagnosticPublisher {
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final OpenNotebooksCache openNotebooksCache;
 
+  private boolean cleanAsYouCode;
+
   public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache, IssuesCache hotspotsCache,
     OpenNotebooksCache openNotebooksCache) {
     this.client = client;
@@ -63,6 +65,7 @@ public class DiagnosticPublisher {
     this.issuesCache = issuesCache;
     this.hotspotsCache = hotspotsCache;
     this.openNotebooksCache = openNotebooksCache;
+    this.cleanAsYouCode = false;
   }
 
   public void initialize(boolean firstSecretDetected) {
@@ -79,15 +82,20 @@ public class DiagnosticPublisher {
     client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
   }
 
-  static Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
+  Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
     var issue = entry.getValue().getIssue();
-    return prepareDiagnostic(issue, entry.getKey(), false);
+    return prepareDiagnostic(issue, entry.getKey(), false, cleanAsYouCode);
   }
 
-  public static Diagnostic prepareDiagnostic(Issue issue, String entryKey, boolean ignoreSecondaryLocations) {
+
+  public void setCleanAsYouCode(boolean cleanAsYouCode) {
+    this.cleanAsYouCode = cleanAsYouCode;
+  }
+
+  public static Diagnostic prepareDiagnostic(Issue issue, String entryKey, boolean ignoreSecondaryLocations, boolean cleanAsYouCode) {
     var diagnostic = new Diagnostic();
 
-    setSeverity(diagnostic, issue);
+    setSeverity(diagnostic, issue, cleanAsYouCode);
     var range = Utils.convert(issue);
     diagnostic.setRange(range);
     diagnostic.setCode(issue.getRuleKey());
@@ -98,8 +106,8 @@ public class DiagnosticPublisher {
     return diagnostic;
   }
 
-  static void setSeverity(Diagnostic diagnostic, Issue issue) {
-    if (issue instanceof DelegatingIssue) {
+  static void setSeverity(Diagnostic diagnostic, Issue issue, boolean cleanAsYouCode) {
+    if (cleanAsYouCode && issue instanceof DelegatingIssue) {
       var newCodeSeverity = ((DelegatingIssue) issue).isOnNewCode() ? DiagnosticSeverity.Warning : DiagnosticSeverity.Hint;
       diagnostic.setSeverity(newCodeSeverity);
     } else {
@@ -108,12 +116,13 @@ public class DiagnosticPublisher {
   }
 
   public static class DiagnosticData {
+
     String entryKey;
+
     @Nullable
     String serverIssueKey;
     @Nullable
     HotspotReviewStatus status;
-
     public void setEntryKey(String entryKey) {
       this.entryKey = entryKey;
     }
@@ -129,8 +138,8 @@ public class DiagnosticPublisher {
     public String getEntryKey() {
       return entryKey;
     }
-  }
 
+  }
   private static DiagnosticData getData(Issue issue, String entryKey) {
     var data = new DiagnosticData();
     if (issue instanceof DelegatingIssue && issue.getType() == RuleType.SECURITY_HOTSPOT) {
@@ -179,7 +188,7 @@ public class DiagnosticPublisher {
 
     var localDiagnostics = localIssues.entrySet()
       .stream()
-      .map(DiagnosticPublisher::convert);
+      .map(this::convert);
     var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostics(newUri);
 
     var diagnosticList = Stream.concat(localDiagnostics, taintDiagnostics)
@@ -196,7 +205,7 @@ public class DiagnosticPublisher {
 
     p.setDiagnostics(hotspotsCache.get(newUri).entrySet()
       .stream()
-      .map(DiagnosticPublisher::convert)
+      .map(this::convert)
       .sorted(DiagnosticPublisher.byLineNumber())
       .collect(toList()));
     p.setUri(newUri.toString());

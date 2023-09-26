@@ -269,7 +269,7 @@ class ServerIssueTrackerWrapperTests {
     when(workspaceSettings.isCleanAsYouCode()).thenReturn(true);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     return new ServerIssueTrackerWrapper(engine, new EndpointParams("https://sonarcloud.io", true, "known"), projectBinding,
-      branchSupplier, httpClient, backendServiceFacade, workspaceFoldersManager, settingsManager);
+      branchSupplier, httpClient, backendServiceFacade, workspaceFoldersManager);
   }
 
   // create uniquely identifiable issue
