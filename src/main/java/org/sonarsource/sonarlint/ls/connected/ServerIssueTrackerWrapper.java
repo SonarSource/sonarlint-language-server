@@ -53,7 +53,6 @@ import org.sonarsource.sonarlint.core.tracking.IssueTrackable;
 import org.sonarsource.sonarlint.ls.AnalysisClientInputFile;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.function.Predicate.not;
@@ -74,11 +73,10 @@ public class ServerIssueTrackerWrapper {
   private final CachingIssueTracker cachingIssueTracker;
   private final CachingIssueTracker cachingHotspotsTracker;
   private final org.sonarsource.sonarlint.core.tracking.ServerIssueTracker tracker;
-  private final SettingsManager settingsManager;
 
   ServerIssueTrackerWrapper(ConnectedSonarLintEngine engine, EndpointParams endpointParams,
     ProjectBinding projectBinding, Supplier<String> getReferenceBranchNameForFolder, HttpClient httpClient,
-    BackendServiceFacade backend, WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager) {
+    BackendServiceFacade backend, WorkspaceFoldersManager workspaceFoldersManager) {
     this.engine = engine;
     this.endpointParams = endpointParams;
     this.projectBinding = projectBinding;
@@ -91,7 +89,6 @@ public class ServerIssueTrackerWrapper {
     this.cachingIssueTracker = new CachingIssueTracker(issueTrackerCache);
     this.cachingHotspotsTracker = new CachingIssueTracker(hotspotsTrackerCache);
     this.tracker = new org.sonarsource.sonarlint.core.tracking.ServerIssueTracker(cachingHotspotsTracker);
-    this.settingsManager = settingsManager;
   }
 
   public void matchAndTrack(String filePath, Collection<Issue> issues, IssueListener issueListener, boolean shouldFetchServerIssues) {
@@ -124,21 +121,20 @@ public class ServerIssueTrackerWrapper {
     var trackWithServerIssuesResponse = Utils.safelyGetCompletableFuture(backend.matchIssues(
       new TrackWithServerIssuesParams(workspaceFolderUri.toString(), issuesByFilepath, shouldFetchServerIssues)
     ));
-    var cleanAsYouCode = settingsManager.getCurrentSettings().isCleanAsYouCode();
     trackWithServerIssuesResponse.ifPresentOrElse(
-      r -> matchAndTrackIssues(filePath, issueListener, issueTrackables, r.getIssuesByServerRelativePath(), cleanAsYouCode),
+      r -> matchAndTrackIssues(filePath, issueListener, issueTrackables, r.getIssuesByServerRelativePath()),
       () -> issueTrackables.stream().map(DelegatingIssue::new).forEach(issueListener::handle)
     );
   }
 
   private static void matchAndTrackIssues(String filePath, IssueListener issueListener, Collection<Trackable> currentTrackables, Map<String,
-    List<Either<ServerMatchedIssueDto, LocalOnlyIssueDto>>> issuesByServerRelativePath, boolean cleanAsYouCode) {
+    List<Either<ServerMatchedIssueDto, LocalOnlyIssueDto>>> issuesByServerRelativePath) {
     var eitherList = issuesByServerRelativePath.getOrDefault(filePath, Collections.emptyList());
     Streams.zip(currentTrackables.stream(), eitherList.stream(), (issue, either) -> {
         if (either.isLeft()) {
           var serverIssue = either.getLeft();
           var issueSeverity = serverIssue.getOverriddenSeverity() == null ? issue.getSeverity() : serverIssue.getOverriddenSeverity();
-          return new DelegatingIssue(issue, serverIssue.getId(), serverIssue.isResolved(), issueSeverity, serverIssue.getServerKey(), !cleanAsYouCode || serverIssue.isOnNewCode());
+          return new DelegatingIssue(issue, serverIssue.getId(), serverIssue.isResolved(), issueSeverity, serverIssue.getServerKey(), serverIssue.isOnNewCode());
         } else {
           var localIssue = either.getRight();
           return new DelegatingIssue(issue, localIssue.getId(), localIssue.getResolutionStatus() != null, true);

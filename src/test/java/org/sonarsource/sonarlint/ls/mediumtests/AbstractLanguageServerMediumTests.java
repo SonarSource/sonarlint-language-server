@@ -425,7 +425,7 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public void submitNewCodeDefinition(GetNewCodeDefinitionLsParams params) {
+    public void submitNewCodeDefinition(SubmitNewCodeDefinitionParams params) {
       newCodeDefinitionCache.put(params.getFolderUri(),
         new NewCodeDefinitionDto(params.getNewCodeDefinitionOrMessage(), params.isSupported()));
     }

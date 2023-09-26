@@ -195,6 +195,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ServerSentEventsHandlerService serverSentEventsHandler;
   private final TaintVulnerabilityRaisedNotification taintVulnerabilityRaisedNotification;
   private final BackendServiceFacade backendServiceFacade;
+  private final CleanAsYouCodeManager cleanAsYouCodeManager;
   private final Collection<Path> analyzers;
   private final CountDownLatch shutdownLatch;
 
@@ -274,6 +275,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.workspaceFoldersManager.setBindingManager(bindingManager);
     this.taintIssuesUpdater = new TaintIssuesUpdater(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, settingsManager,
       diagnosticPublisher, backendServiceFacade);
+    this.cleanAsYouCodeManager = new CleanAsYouCodeManager(diagnosticPublisher, openFilesCache, backendServiceFacade);
+    this.settingsManager.addListener(this.cleanAsYouCodeManager);
     this.shutdownLatch = new CountDownLatch(1);
     launcher.startListening();
   }
