@@ -19,30 +19,61 @@
  */
 package org.sonarsource.sonarlint.ls.commands;
 
+import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.analysis.api.IssueLocation;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
+import org.sonarsource.sonarlint.core.clientapi.client.issue.ShowIssueParams;
+import org.sonarsource.sonarlint.core.clientapi.common.FlowDto;
+import org.sonarsource.sonarlint.core.clientapi.common.LocationDto;
+import org.sonarsource.sonarlint.core.clientapi.common.TextRangeDto;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.LocalCodeFile;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class ShowAllLocationsCommandTests {
+  @TempDir
+  Path basedir;
+  private Path workspaceFolderPath;
+  private Path fileInAWorkspaceFolderPath;
+  ProjectBindingManager projectBindingManager = mock(ProjectBindingManager.class);
+  private final String FILE_PYTHON = "myFile.py";
+
+  @BeforeEach
+  public void prepare() throws IOException, ExecutionException, InterruptedException {
+    workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
+    Files.createDirectories(workspaceFolderPath);
+    fileInAWorkspaceFolderPath = workspaceFolderPath.resolve(FILE_PYTHON);
+    Files.createFile(fileInAWorkspaceFolderPath);
+    Files.write(fileInAWorkspaceFolderPath, ("print('1234')\n" +
+      "print('aa')\n" +
+      "print('b')\n").getBytes(StandardCharsets.UTF_8));
+  }
 
   @Test
   void shouldBuildCommandParamsFromIssue() {
@@ -69,7 +100,7 @@ class ShowAllLocationsCommandTests {
     when(flow2.locations()).thenReturn(locations2);
     var flows = List.of(flow1, flow2);
     when(issue.flows()).thenReturn(flows);
-    when(issue.getTextRange()).thenReturn(new TextRange(1,2,3,4));
+    when(issue.getTextRange()).thenReturn(new TextRange(1, 2, 3, 4));
 
     var params = ShowAllLocationsCommand.params(issue);
     assertThat(params).extracting(
@@ -77,12 +108,12 @@ class ShowAllLocationsCommandTests {
       "message",
       "severity",
       "ruleKey"
-      ).containsExactly(
-        fileUri,
-        "message",
-        "BLOCKER",
-        "ruleKey"
-      );
+    ).containsExactly(
+      fileUri,
+      "message",
+      "BLOCKER",
+      "ruleKey"
+    );
     assertThat(params.getFlows()).hasSize(2);
     assertThat(params.getFlows().get(0).getLocations()).hasSize(2);
     assertThat(params.getFlows().get(1).getLocations()).hasSize(1);
@@ -92,6 +123,43 @@ class ShowAllLocationsCommandTests {
     assertThat(params.getTextRange().getStartLineOffset()).isEqualTo(2);
     assertThat(params.getTextRange().getEndLine()).isEqualTo(3);
     assertThat(params.getTextRange().getEndLineOffset()).isEqualTo(4);
+    assertThat(params.getCodeMatches()).isFalse();
+  }
+
+  @Test
+  void shouldBuildCommandParamsFromShowIssueParams() {
+    var textRangeDto = new TextRangeDto(1, 0, 1, 13);
+    var showIssueParams = new ShowIssueParams(textRangeDto, "connectionId", "rule:S1234",
+      "issueKey", "/src/java/main/myFile.py", "this is wrong",
+      "29.09.2023", "print('1234')", false, List.of());
+
+    when(projectBindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath())).thenReturn(Optional.of(fileInAWorkspaceFolderPath.toUri()));
+
+    var result = new ShowAllLocationsCommand.Param(showIssueParams, projectBindingManager, "connectionId");
+
+    assertTrue(result.getCodeMatches());
+  }
+
+  @Test
+  void shouldBuildCommandParamsFromShowIssueParamsWithFlows() {
+    var textRangeDto1 = new TextRangeDto(1, 0, 1, 13);
+    var textRangeDto2 = new TextRangeDto(2, 0, 2, 11);
+    var textRangeDto3 = new TextRangeDto(3, 0, 3, 10);
+    var location1 = new LocationDto(textRangeDto2, "nope", "/src/java/main/myFile.py", "print('b')");
+    var location2 = new LocationDto(textRangeDto3, "nope", "/src/java/main/myFile.py", "print('b')");
+    var flow = new FlowDto(List.of(location1, location2));
+
+    var showIssueParams = new ShowIssueParams(textRangeDto1, "connectionId", "rule:S1234",
+      "issueKey", "/src/java/main/myFile.py", "this is wrong", "29.09.2023",
+      "print('1234')", false, List.of(flow));
+
+    when(projectBindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath())).thenReturn(Optional.of(fileInAWorkspaceFolderPath.toUri()));
+
+    var result = new ShowAllLocationsCommand.Param(showIssueParams, projectBindingManager, "connectionId");
+
+    assertTrue(result.getCodeMatches());
+    assertFalse(result.getFlows().get(0).getLocations().get(0).getCodeMatches());
+    assertTrue(result.getFlows().get(0).getLocations().get(1).getCodeMatches());
   }
 
   @Test

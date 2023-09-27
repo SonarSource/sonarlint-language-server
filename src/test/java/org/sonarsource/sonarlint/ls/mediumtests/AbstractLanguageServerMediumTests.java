@@ -315,6 +315,7 @@ public abstract class AbstractLanguageServerMediumTests {
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
     CountDownLatch suggestBindingLatch = new CountDownLatch(0);
     CountDownLatch readyForTestsLatch = new CountDownLatch(0);
+    ShowAllLocationsCommand.Param showIssueParams;
     SuggestBindingParams suggestedBindings;
     ShowRuleDescriptionParams ruleDesc;
     boolean isIgnoredByScm = false;
@@ -461,6 +462,11 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void showHotspot(HotspotDetailsDto h) {
+    }
+
+    @Override
+    public void showIssue(ShowAllLocationsCommand.Param issue) {
+      this.showIssueParams = issue;
     }
 
     @Override
@@ -722,7 +728,7 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   static class NewCodeDefinitionDto {
-    String  newCodeDefinitionOrMessage;
+    String newCodeDefinitionOrMessage;
     boolean isSupported;
 
     public NewCodeDefinitionDto(String newCodeDefinitionOrMessage, boolean isSupported) {

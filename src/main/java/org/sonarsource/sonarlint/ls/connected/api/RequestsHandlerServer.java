@@ -46,9 +46,9 @@ public class RequestsHandlerServer {
     return new GetClientInfoResponse(this.clientVersion + " - " + this.workspaceName);
   }
 
-  public void showHotspotHandleUnknownServer(String url) {
+  public void showIssueOrHotspotHandleUnknownServer(String url) {
     var params = new ShowMessageRequestParams();
-    params.setMessage("To display Security Hotspots, you need to configure a connection to SonarQube (" + url + ") in the settings");
+    params.setMessage("To display findings, you need to configure a connection to SonarQube (" + url + ") in the settings");
     params.setType(MessageType.Error);
     var createConnectionAction = new MessageActionItem("Create Connection");
     params.setActions(List.of(createConnectionAction));
@@ -60,11 +60,11 @@ public class RequestsHandlerServer {
       });
   }
 
-  public void showHotspotHandleNoBinding(AssistBindingParams assistBindingParams) {
+  public void showHotspotOrIssueHandleNoBinding(AssistBindingParams assistBindingParams) {
     var connectionId = assistBindingParams.getConnectionId();
     var projectKey = assistBindingParams.getProjectKey();
     var messageRequestParams = new ShowMessageRequestParams();
-    messageRequestParams.setMessage("To display Security Hotspots, you need to configure a project binding to '"
+    messageRequestParams.setMessage("To display findings, you need to configure a project binding to '"
       + projectKey + "' on connection (" + connectionId + ")");
     messageRequestParams.setType(MessageType.Error);
     var configureBindingAction = new MessageActionItem("Configure Binding");

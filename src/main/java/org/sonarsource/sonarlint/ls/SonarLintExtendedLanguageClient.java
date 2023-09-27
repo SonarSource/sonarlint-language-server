@@ -74,6 +74,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/showHotspot")
   void showHotspot(HotspotDetailsDto hotspot);
 
+  @JsonNotification("sonarlint/showIssue")
+  void showIssue(ShowAllLocationsCommand.Param showIssueParams);
+
   @JsonNotification("sonarlint/showIssueOrHotspot")
   void showIssueOrHotspot(ShowAllLocationsCommand.Param params);
 
@@ -747,6 +750,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       return text;
     }
   }
+
   @JsonNotification("sonarlint/showSoonUnsupportedVersionMessage")
   void showSoonUnsupportedVersionMessage(ShowSoonUnsupportedVersionMessageParams messageParams);
 

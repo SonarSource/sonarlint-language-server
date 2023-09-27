@@ -19,16 +19,26 @@
  */
 package org.sonarsource.sonarlint.ls.clientapi;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingSuggestionDto;
 import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
@@ -41,16 +51,22 @@ import org.sonarsource.sonarlint.core.clientapi.client.hotspot.ShowHotspotParams
 import org.sonarsource.sonarlint.core.clientapi.client.http.CheckServerTrustedParams;
 import org.sonarsource.sonarlint.core.clientapi.client.http.X509CertificateDto;
 import org.sonarsource.sonarlint.core.clientapi.client.info.GetClientInfoResponse;
+import org.sonarsource.sonarlint.core.clientapi.client.issue.ShowIssueParams;
 import org.sonarsource.sonarlint.core.clientapi.client.message.ShowMessageParams;
 import org.sonarsource.sonarlint.core.clientapi.client.message.ShowSoonUnsupportedMessageParams;
 import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressParams;
 import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
 import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
+import org.sonarsource.sonarlint.core.clientapi.common.TextRangeDto;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.serverapi.push.IssueChangedEvent;
+import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.connected.ServerIssueTrackerWrapper;
 import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
@@ -59,6 +75,7 @@ import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -68,16 +85,25 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class SonarLintVSCodeClientTests {
-
+  @TempDir
+  Path basedir;
+  private Path workspaceFolderPath;
+  private Path fileInAWorkspaceFolderPath;
+  private final String FILE_PYTHON = "myFile.py";
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
-
   SettingsManager settingsManager = mock(SettingsManager.class);
   SmartNotifications smartNotifications = mock(SmartNotifications.class);
   SonarLintVSCodeClient underTest;
   RequestsHandlerServer server = mock(RequestsHandlerServer.class);
   ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
   ServerSentEventsHandlerService serverSentEventsHandlerService = mock(ServerSentEventsHandlerService.class);
+  @Captor
+  ArgumentCaptor<ShowAllLocationsCommand.Param> paramCaptor;
+  ProjectBinding binding = mock(ProjectBinding.class);
+  ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
+  ServerIssueTrackerWrapper serverIssueTrackerWrapper = mock(ServerIssueTrackerWrapper.class);
 
   private static final String PEM = "subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH\n" +
     "issuer=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH\n" +
@@ -116,12 +142,19 @@ class SonarLintVSCodeClientTests {
     "-----END CERTIFICATE-----";
 
   @BeforeEach
-  public void setup() {
+  public void setup() throws IOException {
     underTest = new SonarLintVSCodeClient(client, server);
     underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);
     underTest.setBindingManager(bindingManager);
     underTest.setServerSentEventsHandlerService(serverSentEventsHandlerService);
+    workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
+    Files.createDirectories(workspaceFolderPath);
+    fileInAWorkspaceFolderPath = workspaceFolderPath.resolve(FILE_PYTHON);
+    Files.createFile(fileInAWorkspaceFolderPath);
+    Files.write(fileInAWorkspaceFolderPath, ("print('1234')\n" +
+      "print('aa')\n" +
+      "print('b')\n").getBytes(StandardCharsets.UTF_8));
   }
 
   @Test
@@ -271,7 +304,7 @@ class SonarLintVSCodeClientTests {
   void assistCreateConnectionShouldCallServerMethod() {
     var assistCreatingConnectionParams = new AssistCreatingConnectionParams("http://localhost:9000");
     var future = underTest.assistCreatingConnection(assistCreatingConnectionParams);
-    verify(server).showHotspotHandleUnknownServer(assistCreatingConnectionParams.getServerUrl());
+    verify(server).showIssueOrHotspotHandleUnknownServer(assistCreatingConnectionParams.getServerUrl());
     assertThat(future).isNotCompleted();
   }
 
@@ -280,7 +313,7 @@ class SonarLintVSCodeClientTests {
     var assistBindingParams = new AssistBindingParams("connectionId", "projectKey");
     var future = underTest.assistBinding(assistBindingParams);
 
-    verify(server).showHotspotHandleNoBinding(assistBindingParams);
+    verify(server).showHotspotOrIssueHandleNoBinding(assistBindingParams);
     assertThat(future).isNotCompleted();
   }
 
@@ -344,5 +377,44 @@ class SonarLintVSCodeClientTests {
     underTest.didReceiveServerEvent(params);
 
     verify(serverSentEventsHandlerService).handleEvents(serverEvent);
+  }
+
+  @Test
+  void shouldForwardOpenIssueRequest() {
+    var textRangeDto = new TextRangeDto(1, 2, 3, 4);
+    var showIssueParams = new ShowIssueParams(textRangeDto, "connectionId", "rule:S1234",
+      "issueKey", FILE_PYTHON, "this is wrong", "29.09.2023", "print('ddd')", false, List.of());
+    var fileUri = fileInAWorkspaceFolderPath.toUri();
+
+    when(bindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath()))
+      .thenReturn(Optional.of(fileUri));
+    when(bindingManager.getBinding(fileUri))
+      .thenReturn(Optional.of(new ProjectBindingWrapper("connectionId", binding, engine, serverIssueTrackerWrapper)));
+
+    underTest.showIssue(showIssueParams);
+    verify(client).showIssue(paramCaptor.capture());
+
+    var showAllLocationParams = paramCaptor.getValue();
+
+    assertEquals(showIssueParams.getFlows().size(), showAllLocationParams.getFlows().size());
+    assertEquals("", showAllLocationParams.getSeverity());
+    assertEquals(showIssueParams.getMessage(), showAllLocationParams.getMessage());
+    assertEquals(showIssueParams.getRuleKey(), showAllLocationParams.getRuleKey());
+  }
+
+  @Test
+  void shouldNotForwardOpenIssueRequestWhenBindingDoesNotExist() {
+    var textRangeDto = new TextRangeDto(1, 2, 3, 4);
+    var showIssueParams = new ShowIssueParams(textRangeDto, "connectionId", "rule:S1234",
+      "issueKey", FILE_PYTHON, "this is wrong", "29.09.2023", "print('ddd')", false, List.of());
+    var fileUri = fileInAWorkspaceFolderPath.toUri();
+
+    when(bindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath()))
+      .thenReturn(Optional.of(fileUri));
+    when(bindingManager.getBinding(fileUri))
+      .thenReturn(Optional.empty());
+
+    underTest.showIssue(showIssueParams);
+    verify(client, never()).showIssue(any(ShowAllLocationsCommand.Param.class));
   }
 }
