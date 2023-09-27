@@ -66,7 +66,7 @@ class RequestsHandlerServerTests {
   void shouldDisplayNotificationAndStartCreatingConnectionWhenShowHotspotWithUnknownServer() {
     underTest.initialize(clientVersion, workspaceName);
     var serverUrl = "http://localhost:9000";
-    var expectedMessage = "To display Security Hotspots, you need to configure a connection to SonarQube (" + serverUrl + ") in the settings";
+    var expectedMessage = "To display findings, you need to configure a connection to SonarQube (" + serverUrl + ") in the settings";
     var expectedType = MessageType.Error;
     var expectedActions = List.of(new MessageActionItem("Create Connection"));
 
@@ -77,7 +77,7 @@ class RequestsHandlerServerTests {
 
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(expectedActions.get(0)));
 
-    underTest.showHotspotHandleUnknownServer(serverUrl);
+    underTest.showIssueOrHotspotHandleUnknownServer(serverUrl);
 
     verify(client).showMessageRequest(expectedParams);
     verify(client).assistCreatingConnection(any(SonarLintExtendedLanguageClient.CreateConnectionParams.class));
@@ -87,7 +87,7 @@ class RequestsHandlerServerTests {
   void shouldDisplayNotificationWhenShowHotspotWithUnknownServer() {
     underTest.initialize(clientVersion, workspaceName);
     var serverUrl = "http://localhost:9000";
-    var expectedMessage = "To display Security Hotspots, you need to configure a connection to SonarQube (" + serverUrl + ") in the settings";
+    var expectedMessage = "To display findings, you need to configure a connection to SonarQube (" + serverUrl + ") in the settings";
     var expectedType = MessageType.Error;
     var expectedActions = List.of(new MessageActionItem("Create Connection"));
 
@@ -98,7 +98,7 @@ class RequestsHandlerServerTests {
 
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(null));
 
-    underTest.showHotspotHandleUnknownServer(serverUrl);
+    underTest.showIssueOrHotspotHandleUnknownServer(serverUrl);
 
     verify(client).showMessageRequest(expectedParams);
     verify(client, never()).assistCreatingConnection(any(SonarLintExtendedLanguageClient.CreateConnectionParams.class));
@@ -118,7 +118,7 @@ class RequestsHandlerServerTests {
     underTest.initialize(clientVersion, workspaceName);
     var connectionId = "test";
     var projectKey = "sonarlint-language-server";
-    var expectedMessage = "To display Security Hotspots, you need to configure a project binding to '"
+    var expectedMessage = "To display findings, you need to configure a project binding to '"
       + projectKey + "' on connection (" + connectionId + ")";
     var expectedType = MessageType.Error;
     var expectedActions = List.of(new MessageActionItem("Configure Binding"));
@@ -131,7 +131,7 @@ class RequestsHandlerServerTests {
 
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(expectedActions.get(0)));
 
-    underTest.showHotspotHandleNoBinding(assistBindingParams);
+    underTest.showHotspotOrIssueHandleNoBinding(assistBindingParams);
 
     verify(client).showMessageRequest(expectedParams);
     verify(client).assistBinding(assistBindingParams);
@@ -142,7 +142,7 @@ class RequestsHandlerServerTests {
     underTest.initialize(clientVersion, workspaceName);
     var connectionId = "test";
     var projectKey = "sonarlint-language-server";
-    var expectedMessage = "To display Security Hotspots, you need to configure a project binding to '"
+    var expectedMessage = "To display findings, you need to configure a project binding to '"
       + projectKey + "' on connection (" + connectionId + ")";
     var expectedType = MessageType.Error;
     var expectedActions = List.of(new MessageActionItem("Configure Binding"));
@@ -155,7 +155,7 @@ class RequestsHandlerServerTests {
 
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(null));
 
-    underTest.showHotspotHandleNoBinding(assistBindingParams);
+    underTest.showHotspotOrIssueHandleNoBinding(assistBindingParams);
 
     verify(client).showMessageRequest(expectedParams);
     verify(client, never()).assistCreatingConnection(any(SonarLintExtendedLanguageClient.CreateConnectionParams.class));

@@ -39,3 +39,4 @@ Desktop.ini
 scripts/patches/*.sh
 scripts/patches/*license*.txt
 
+.vscode/settings.json

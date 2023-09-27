@@ -102,7 +102,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "productVersion", "0.1",
       "showVerboseLogs", false,
       "additionalAttributes", Map.of("extra", "value")));
-
   }
 
   @BeforeEach

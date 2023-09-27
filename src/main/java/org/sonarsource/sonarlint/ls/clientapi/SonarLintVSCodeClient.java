@@ -36,6 +36,7 @@ import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScope
 import org.sonarsource.sonarlint.core.clientapi.client.http.CheckServerTrustedParams;
 import org.sonarsource.sonarlint.core.clientapi.client.http.CheckServerTrustedResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.info.GetClientInfoResponse;
+import org.sonarsource.sonarlint.core.clientapi.client.issue.ShowIssueParams;
 import org.sonarsource.sonarlint.core.clientapi.client.message.ShowSoonUnsupportedMessageParams;
 import org.sonarsource.sonarlint.core.clientapi.client.progress.ReportProgressParams;
 import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressParams;
@@ -47,7 +48,9 @@ import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
@@ -119,16 +122,26 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   }
 
   @Override
+  public void showIssue(ShowIssueParams showIssueParams) {
+    var maybeFileUri = bindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath());
+    Optional<ProjectBindingWrapper> maybeBinding = Optional.empty();
+    if (maybeFileUri.isPresent()) {
+      maybeBinding = bindingManager.getBinding(maybeFileUri.get());
+    }
+    maybeBinding.ifPresent(projectBindingWrapper -> client.showIssue(new ShowAllLocationsCommand.Param(showIssueParams, bindingManager, projectBindingWrapper.getConnectionId())));
+  }
+
+  @Override
   public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionResponse>
   assistCreatingConnection(org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams params) {
-    server.showHotspotHandleUnknownServer(params.getServerUrl());
+    server.showIssueOrHotspotHandleUnknownServer(params.getServerUrl());
     return CompletableFuture.failedFuture(new UnsupportedOperationException());
   }
 
   @Override
   public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingResponse>
   assistBinding(org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams params) {
-    server.showHotspotHandleNoBinding(params);
+    server.showHotspotOrIssueHandleNoBinding(params);
     return CompletableFuture.failedFuture(new UnsupportedOperationException());
   }
 
