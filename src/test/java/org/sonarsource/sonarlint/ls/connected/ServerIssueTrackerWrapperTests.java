@@ -33,6 +33,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
@@ -197,6 +198,18 @@ class ServerIssueTrackerWrapperTests {
   }
 
   @Test
+  void should_convert_file_level_issues_to_trackables(){
+    var issue = mockIssue(RuleType.BUG, IssueSeverity.BLOCKER, null);
+
+    var trackables = ServerIssueTrackerWrapper.toIssueTrackables(List.of(issue));
+
+    assertThat(trackables).hasSize(1);
+    var trackableIssue = trackables.stream().findFirst().get();
+    assertThat(trackableIssue.getLine()).isNull();
+    assertThat(trackableIssue.getLineHash()).isNull();
+  }
+
+  @Test
   void createLineWithHashDtoTest() {
     var trackable = mock(Trackable.class);
     when(trackable.getLine()).thenReturn(1);
@@ -296,7 +309,7 @@ class ServerIssueTrackerWrapperTests {
     return issue;
   }
 
-  private Issue mockIssue(RuleType type, IssueSeverity severity, int startLine) {
+  private Issue mockIssue(RuleType type, IssueSeverity severity, @Nullable Integer startLine) {
     var issue = mockIssue(type, severity);
     when(issue.getStartLine()).thenReturn(startLine);
     return issue;

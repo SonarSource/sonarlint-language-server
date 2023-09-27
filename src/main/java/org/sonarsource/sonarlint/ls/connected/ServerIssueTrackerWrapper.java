@@ -195,7 +195,7 @@ public class ServerIssueTrackerWrapper {
           var textRange = issue.getTextRange();
           var textRangeContent = getTextRangeContentOfFile(fileLines, textRange);
           var startLine = issue.getStartLine();
-          var lineContent = fileLines.get(startLine - 1);
+          var lineContent = startLine != null ? fileLines.get(startLine - 1) : null;
           return new IssueTrackable(issue, textRangeContent, lineContent);
         }
         return null;
