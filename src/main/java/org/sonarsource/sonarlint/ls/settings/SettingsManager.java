@@ -73,7 +73,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static final String SHOW_VERBOSE_LOGS = "showVerboseLogs";
   private static final String PATH_TO_NODE_EXECUTABLE = "pathToNodeExecutable";
   private static final String PATH_TO_COMPILE_COMMANDS = "pathToCompileCommands";
-  private static final String CLEAN_AS_YOU_CODE = "cleanAsYouCode";
+  private static final String FOCUS_ON_NEW_CODE = "focusOnNewCode";
 
   private static final String WORKSPACE_FOLDER_VARIABLE = "${workspaceFolder}";
 
@@ -231,7 +231,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private WorkspaceSettings parseSettings(Map<String, Object> params) {
     var disableTelemetry = (Boolean) params.getOrDefault(DISABLE_TELEMETRY, false);
     var pathToNodeExecutable = (String) params.get(PATH_TO_NODE_EXECUTABLE);
-    var cleanAsYouCode = (Boolean) params.getOrDefault(CLEAN_AS_YOU_CODE, false);
+    var focusOnNewCode = (Boolean) params.getOrDefault(FOCUS_ON_NEW_CODE, false);
     var serverConnections = parseServerConnections(params);
     @SuppressWarnings("unchecked")
     var rulesConfiguration = RulesConfiguration.parse(((Map<String, Object>) params.getOrDefault(RULES, Collections.emptyMap())));
@@ -240,7 +240,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     var showAnalyzerLogs = (Boolean) consoleParams.getOrDefault(SHOW_ANALYZER_LOGS, false);
     var showVerboseLogs = (Boolean) consoleParams.getOrDefault(SHOW_VERBOSE_LOGS, false);
     return new WorkspaceSettings(disableTelemetry, serverConnections, rulesConfiguration.excludedRules(), rulesConfiguration.includedRules(), rulesConfiguration.ruleParameters(),
-      showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable, cleanAsYouCode);
+      showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable, focusOnNewCode);
   }
 
   private Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params) {

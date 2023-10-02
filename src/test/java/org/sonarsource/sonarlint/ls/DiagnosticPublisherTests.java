@@ -131,6 +131,12 @@ class DiagnosticPublisherTests {
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
     DiagnosticPublisher.setSeverity(diagnostic, delegatingCellIssue, false);
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingCellIssue, true);
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+
+    when(delegatingIssue.isOnNewCode()).thenReturn(true);
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingCellIssue, true);
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
   }
 
   private URI initWithOneSecretIssue() {

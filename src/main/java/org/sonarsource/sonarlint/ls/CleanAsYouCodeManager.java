@@ -39,8 +39,8 @@ public class CleanAsYouCodeManager implements WorkspaceSettingsChangeListener {
 
   @Override
   public void onChange(@Nullable WorkspaceSettings oldValue, WorkspaceSettings newValue) {
-    diagnosticPublisher.setCleanAsYouCode(newValue.isCleanAsYouCode());
-    if (oldValue != null && oldValue.isCleanAsYouCode() != newValue.isCleanAsYouCode()) {
+    diagnosticPublisher.setFocusOnNewCode(newValue.isFocusOnNewCode());
+    if (oldValue != null && oldValue.isFocusOnNewCode() != newValue.isFocusOnNewCode()) {
       backendServiceFacade.getBackendService().toggleCleanAsYouCode();
       openFilesCache.getAll().forEach(f -> diagnosticPublisher.publishDiagnostics(f.getUri(), false));
     }
