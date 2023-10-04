@@ -116,7 +116,12 @@ class WorkspaceSettingsTests {
         List.of(RULE_KEY_1),
         List.of(RULE_KEY_2),
         Map.of(RULE_KEY_2, Map.of("param1", "value1")),
-        false, false, "other/path/to/node", false));
+        false, false, "other/path/to/node", false))
+      .isNotEqualTo(new WorkspaceSettings(false,
+        Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true)),
+        List.of(new RuleKey("repo1", "rule1")),
+        List.of(new RuleKey("repo2", "rule2")),
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", true));
   }
 
   @Test
