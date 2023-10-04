@@ -92,6 +92,10 @@ public class DiagnosticPublisher {
     this.focusOnNewCode = focusOnNewCode;
   }
 
+  public boolean isFocusOnNewCode() {
+    return focusOnNewCode;
+  }
+
   public static Diagnostic prepareDiagnostic(Issue issue, String entryKey, boolean ignoreSecondaryLocations, boolean focusOnNewCode) {
     var diagnostic = new Diagnostic();
 
@@ -189,7 +193,7 @@ public class DiagnosticPublisher {
     var localDiagnostics = localIssues.entrySet()
       .stream()
       .map(this::convert);
-    var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostics(newUri);
+    var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostics(newUri, focusOnNewCode);
 
     var diagnosticList = Stream.concat(localDiagnostics, taintDiagnostics)
       .sorted(DiagnosticPublisher.byLineNumber())

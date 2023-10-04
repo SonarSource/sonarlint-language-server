@@ -96,7 +96,7 @@ public class TaintIssuesUpdater {
 
     // reload cache
     taintVulnerabilitiesCache.reload(fileUri, TaintIssue.from(serverIssues, connectionSettings.isSonarCloudAlias()));
-    long foundVulnerabilities = taintVulnerabilitiesCache.getAsDiagnostics(fileUri).count();
+    long foundVulnerabilities = taintVulnerabilitiesCache.getAsDiagnostics(fileUri, diagnosticPublisher.isFocusOnNewCode()).count();
     if (foundVulnerabilities > 0) {
       LOG.info(format("Fetched %s %s from %s", foundVulnerabilities,
         pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), connectionId));

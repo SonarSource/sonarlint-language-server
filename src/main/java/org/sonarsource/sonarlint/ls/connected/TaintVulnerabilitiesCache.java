@@ -70,17 +70,17 @@ public class TaintVulnerabilitiesCache {
       .findFirst();
   }
 
-  public Stream<Diagnostic> getAsDiagnostics(URI fileUri) {
+  public Stream<Diagnostic> getAsDiagnostics(URI fileUri, boolean focusOnNewCode) {
     return taintVulnerabilitiesPerFile.getOrDefault(fileUri, emptyList())
       .stream()
-      .flatMap(i -> TaintVulnerabilitiesCache.convert(i).stream());
+      .flatMap(i -> TaintVulnerabilitiesCache.convert(i, focusOnNewCode).stream());
   }
 
-  static Optional<Diagnostic> convert(TaintIssue issue) {
+  static Optional<Diagnostic> convert(TaintIssue issue, boolean focusOnNewCode) {
     if (issue.getTextRange() != null) {
       var range = Utils.convert(issue);
       var diagnostic = new Diagnostic();
-      var severity = issue.isOnNewCode() ? DiagnosticSeverity.Warning : DiagnosticSeverity.Hint;
+      var severity = focusOnNewCode && !issue.isOnNewCode() ? DiagnosticSeverity.Hint : DiagnosticSeverity.Warning;
 
       diagnostic.setSeverity(severity);
       diagnostic.setRange(range);

@@ -65,7 +65,7 @@ class TaintVulnerabilitiesCacheTests {
     when(issue.getSource()).thenReturn(taintSource);
     when(issue.isOnNewCode()).thenReturn(true);
 
-    var diagnostic = convert(issue).get();
+    var diagnostic = convert(issue, false).get();
 
     assertThat(diagnostic.getMessage()).isEqualTo("message [+2 locations]");
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
@@ -113,7 +113,7 @@ class TaintVulnerabilitiesCacheTests {
 
     underTest.reload(uri, List.of(taint, resolvedTaint));
 
-    assertThat(underTest.getAsDiagnostics(uri)).hasSize(2);
+    assertThat(underTest.getAsDiagnostics(uri, false)).hasSize(2);
   }
 
   @Test

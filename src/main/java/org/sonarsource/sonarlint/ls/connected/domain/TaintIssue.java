@@ -38,9 +38,10 @@ public class TaintIssue extends ServerTaintIssue {
   public TaintIssue(String key, boolean resolved, String ruleKey, String message, String filePath,
     Instant creationDate, IssueSeverity severity, RuleType type, @Nullable TextRangeWithHash textRange,
      List<Flow> flows, @Nullable String ruleDescriptionContextKey, String source, @Nullable CleanCodeAttribute cleanCodeAttribute,
-    Map<SoftwareQuality, ImpactSeverity> impacts) {
+    Map<SoftwareQuality, ImpactSeverity> impacts, boolean isOnNewCode) {
     super(key, resolved, ruleKey, message, filePath, creationDate, severity, type, textRange, ruleDescriptionContextKey, cleanCodeAttribute, impacts);
     this.setFlows(flows);
+    this.setIsOnNewCode(isOnNewCode);
     this.source = source;
   }
 
@@ -56,7 +57,8 @@ public class TaintIssue extends ServerTaintIssue {
     return new TaintIssue(serverTaintIssue.getKey(), serverTaintIssue.isResolved(), serverTaintIssue.getRuleKey(),
       serverTaintIssue.getMessage(), serverTaintIssue.getFilePath(), serverTaintIssue.getCreationDate(), serverTaintIssue.getSeverity(),
       serverTaintIssue.getType(), serverTaintIssue.getTextRange(), serverTaintIssue.getFlows(),
-      serverTaintIssue.getRuleDescriptionContextKey(), source, serverTaintIssue.getCleanCodeAttribute().orElse(null), serverTaintIssue.getImpacts());
+      serverTaintIssue.getRuleDescriptionContextKey(), source, serverTaintIssue.getCleanCodeAttribute().orElse(null),
+      serverTaintIssue.getImpacts(), serverTaintIssue.isOnNewCode());
   }
 
   public static List<TaintIssue> from(List<ServerTaintIssue> serverTaintIssues, boolean isSonarCloudAlias) {
