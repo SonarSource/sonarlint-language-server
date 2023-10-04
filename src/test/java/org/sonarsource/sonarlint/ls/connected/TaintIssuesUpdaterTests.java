@@ -103,6 +103,7 @@ class TaintIssuesUpdaterTests {
     verify(engine).downloadAllServerTaintIssuesForFile(any(), any(), any(), anyString(), eq(BRANCH_NAME), isNull());
     verify(engine).getServerTaintIssues(any(), eq(BRANCH_NAME), anyString());
     verify(diagnosticPublisher).publishDiagnostics(FILE_URI, false);
+    verify(diagnosticPublisher).isFocusOnNewCode();
     verifyNoMoreInteractions(diagnosticPublisher);
     verifyNoMoreInteractions(engine);
   }

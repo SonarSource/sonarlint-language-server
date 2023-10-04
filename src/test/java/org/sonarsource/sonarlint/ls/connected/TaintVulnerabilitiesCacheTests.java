@@ -23,6 +23,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.Position;
@@ -30,7 +31,8 @@ import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
@@ -49,8 +51,8 @@ class TaintVulnerabilitiesCacheTests {
   private final TaintVulnerabilitiesCache underTest = new TaintVulnerabilitiesCache();
 
   @ParameterizedTest
-  @ValueSource(strings = {SONARCLOUD_TAINT_SOURCE, SONARQUBE_TAINT_SOURCE})
-  void testIssueConversion(String taintSource) {
+  @MethodSource("testIssueConversionParameters")
+  void testIssueConversion(String taintSource, boolean isOnNewCode, boolean focusOnNewCode, DiagnosticSeverity expectedSeverity) {
     var issue = mock(TaintIssue.class);
     var flow = mock(ServerTaintIssue.Flow.class);
     var loc1 = mock(ServerTaintIssue.ServerIssueLocation.class);
@@ -63,15 +65,24 @@ class TaintVulnerabilitiesCacheTests {
     when(issue.getKey()).thenReturn("issueKey");
     when(issue.getFlows()).thenReturn(List.of(flow));
     when(issue.getSource()).thenReturn(taintSource);
-    when(issue.isOnNewCode()).thenReturn(true);
+    when(issue.isOnNewCode()).thenReturn(isOnNewCode);
 
-    var diagnostic = convert(issue).get();
+    var diagnostic = convert(issue, focusOnNewCode).get();
 
     assertThat(diagnostic.getMessage()).isEqualTo("message [+2 locations]");
-    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(diagnostic.getSeverity()).isEqualTo(expectedSeverity);
     assertThat(diagnostic.getSource()).isEqualTo(taintSource);
     assertThat(diagnostic.getCode().getLeft()).isEqualTo("ruleKey");
     assertThat(diagnostic.getData()).isEqualTo("issueKey");
+  }
+
+  @Test
+  void testIssueConversionNoTextRange() {
+    var issue = mock(TaintIssue.class);
+
+    var diagnosticOptional = convert(issue, false);
+
+    assertThat(diagnosticOptional).isEmpty();
   }
 
   @Test
@@ -113,7 +124,7 @@ class TaintVulnerabilitiesCacheTests {
 
     underTest.reload(uri, List.of(taint, resolvedTaint));
 
-    assertThat(underTest.getAsDiagnostics(uri)).hasSize(2);
+    assertThat(underTest.getAsDiagnostics(uri, false)).hasSize(2);
   }
 
   @Test
@@ -179,4 +190,17 @@ class TaintVulnerabilitiesCacheTests {
 
   }
 
+  private static Stream<Arguments> testIssueConversionParameters() {
+    return Stream.of(
+      Arguments.of(SONARCLOUD_TAINT_SOURCE, true, true, DiagnosticSeverity.Warning),
+      Arguments.of(SONARCLOUD_TAINT_SOURCE, true, false, DiagnosticSeverity.Warning),
+      Arguments.of(SONARCLOUD_TAINT_SOURCE, false, true, DiagnosticSeverity.Hint),
+      Arguments.of(SONARCLOUD_TAINT_SOURCE, false, false, DiagnosticSeverity.Warning),
+
+      Arguments.of(SONARQUBE_TAINT_SOURCE, true, true, DiagnosticSeverity.Warning),
+      Arguments.of(SONARQUBE_TAINT_SOURCE, true, false, DiagnosticSeverity.Warning),
+      Arguments.of(SONARQUBE_TAINT_SOURCE, false, true, DiagnosticSeverity.Hint),
+      Arguments.of(SONARQUBE_TAINT_SOURCE, false, false, DiagnosticSeverity.Warning)
+    );
+  }
 }
