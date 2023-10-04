@@ -111,7 +111,7 @@ public class BackendServiceFacade {
     initParams.setSonarQubeConnections(sqConnections);
     initParams.setSonarCloudConnections(scConnections);
     initParams.setStandaloneRuleConfigByKey(settingsManager.getStandaloneRuleConfigByKey());
-    initParams.setFocusOnNewCode(settingsManager.getCurrentSettings().isCleanAsYouCode());
+    initParams.setFocusOnNewCode(settingsManager.getCurrentSettings().isFocusOnNewCode());
     backend.initialize(toInitParams(initParams));
     backend.addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(rootConfigurationScope)));
   }

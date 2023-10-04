@@ -279,7 +279,7 @@ class ServerIssueTrackerWrapperTests {
     when(backendServiceFacade.matchIssues(any())).thenReturn(trackIssuesResponse);
     when(workspaceFolderWrapper.getUri()).thenReturn(URI.create("dummy"));
     when(workspaceFoldersManager.findFolderForFile(any())).thenReturn(Optional.of(workspaceFolderWrapper));
-    when(workspaceSettings.isCleanAsYouCode()).thenReturn(true);
+    when(workspaceSettings.isFocusOnNewCode()).thenReturn(true);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     return new ServerIssueTrackerWrapper(engine, new EndpointParams("https://sonarcloud.io", true, "known"), projectBinding,
       branchSupplier, httpClient, backendServiceFacade, workspaceFoldersManager);

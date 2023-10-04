@@ -56,7 +56,7 @@ public class DiagnosticPublisher {
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final OpenNotebooksCache openNotebooksCache;
 
-  private boolean cleanAsYouCode;
+  private boolean focusOnNewCode;
 
   public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache, IssuesCache hotspotsCache,
     OpenNotebooksCache openNotebooksCache) {
@@ -65,7 +65,7 @@ public class DiagnosticPublisher {
     this.issuesCache = issuesCache;
     this.hotspotsCache = hotspotsCache;
     this.openNotebooksCache = openNotebooksCache;
-    this.cleanAsYouCode = false;
+    this.focusOnNewCode = false;
   }
 
   public void initialize(boolean firstSecretDetected) {
@@ -84,18 +84,18 @@ public class DiagnosticPublisher {
 
   Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
     var issue = entry.getValue().getIssue();
-    return prepareDiagnostic(issue, entry.getKey(), false, cleanAsYouCode);
+    return prepareDiagnostic(issue, entry.getKey(), false, focusOnNewCode);
   }
 
 
-  public void setCleanAsYouCode(boolean cleanAsYouCode) {
-    this.cleanAsYouCode = cleanAsYouCode;
+  public void setFocusOnNewCode(boolean focusOnNewCode) {
+    this.focusOnNewCode = focusOnNewCode;
   }
 
-  public static Diagnostic prepareDiagnostic(Issue issue, String entryKey, boolean ignoreSecondaryLocations, boolean cleanAsYouCode) {
+  public static Diagnostic prepareDiagnostic(Issue issue, String entryKey, boolean ignoreSecondaryLocations, boolean focusOnNewCode) {
     var diagnostic = new Diagnostic();
 
-    setSeverity(diagnostic, issue, cleanAsYouCode);
+    setSeverity(diagnostic, issue, focusOnNewCode);
     var range = Utils.convert(issue);
     diagnostic.setRange(range);
     diagnostic.setCode(issue.getRuleKey());
@@ -106,8 +106,8 @@ public class DiagnosticPublisher {
     return diagnostic;
   }
 
-  static void setSeverity(Diagnostic diagnostic, Issue issue, boolean cleanAsYouCode) {
-    if (cleanAsYouCode && issue instanceof DelegatingIssue) {
+  static void setSeverity(Diagnostic diagnostic, Issue issue, boolean focusOnNewCode) {
+    if (focusOnNewCode && issue instanceof DelegatingIssue) {
       var newCodeSeverity = ((DelegatingIssue) issue).isOnNewCode() ? DiagnosticSeverity.Warning : DiagnosticSeverity.Hint;
       diagnostic.setSeverity(newCodeSeverity);
     } else {

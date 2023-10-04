@@ -42,11 +42,11 @@ public class WorkspaceSettings {
   private final boolean showAnalyzerLogs;
   private final boolean showVerboseLogs;
   private final String pathToNodeExecutable;
-  private final boolean cleanAsYouCode;
+  private final boolean focusOnNewCode;
 
   public WorkspaceSettings(boolean disableTelemetry, Map<String, ServerConnectionSettings> connections,
     Collection<RuleKey> excludedRules, Collection<RuleKey> includedRules, Map<RuleKey, Map<String, String>> ruleParameters,
-    boolean showAnalyzerLogs, boolean showVerboseLogs, String pathToNodeExecutable, boolean cleanAsYouCode) {
+    boolean showAnalyzerLogs, boolean showVerboseLogs, String pathToNodeExecutable, boolean focusOnNewCode) {
     this.disableTelemetry = disableTelemetry;
     this.connections = connections;
     this.excludedRules = excludedRules;
@@ -55,7 +55,7 @@ public class WorkspaceSettings {
     this.showAnalyzerLogs = showAnalyzerLogs;
     this.showVerboseLogs = showVerboseLogs;
     this.pathToNodeExecutable = pathToNodeExecutable;
-    this.cleanAsYouCode = cleanAsYouCode;
+    this.focusOnNewCode = focusOnNewCode;
   }
 
   public boolean isDisableTelemetry() {
@@ -94,13 +94,13 @@ public class WorkspaceSettings {
     return pathToNodeExecutable;
   }
 
-  public boolean isCleanAsYouCode() {
-    return cleanAsYouCode;
+  public boolean isFocusOnNewCode() {
+    return focusOnNewCode;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(disableTelemetry, cleanAsYouCode, connections, excludedRules, includedRules, showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable);
+    return Objects.hash(disableTelemetry, focusOnNewCode, connections, excludedRules, includedRules, showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable);
   }
 
   @Override
@@ -115,7 +115,7 @@ public class WorkspaceSettings {
       return false;
     }
     var other = (WorkspaceSettings) obj;
-    return disableTelemetry == other.disableTelemetry && cleanAsYouCode == other.cleanAsYouCode && Objects.equals(connections, other.connections)
+    return disableTelemetry == other.disableTelemetry && focusOnNewCode == other.focusOnNewCode && Objects.equals(connections, other.connections)
       && Objects.equals(excludedRules, other.excludedRules)
       && Objects.equals(includedRules, other.includedRules) && Objects.equals(ruleParameters, other.ruleParameters)
       && Objects.equals(showAnalyzerLogs, other.showAnalyzerLogs) && Objects.equals(showVerboseLogs, other.showVerboseLogs)

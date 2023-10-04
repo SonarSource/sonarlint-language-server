@@ -116,13 +116,18 @@ class WorkspaceSettingsTests {
         List.of(RULE_KEY_1),
         List.of(RULE_KEY_2),
         Map.of(RULE_KEY_2, Map.of("param1", "value1")),
-        false, false, "other/path/to/node", false));
+        false, false, "other/path/to/node", false))
+      .isNotEqualTo(new WorkspaceSettings(false,
+        Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true)),
+        List.of(new RuleKey("repo1", "rule1")),
+        List.of(new RuleKey("repo2", "rule2")),
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", true));
   }
 
   @Test
   void testToString() {
     assertThat(SETTINGS).hasToString(
-      "WorkspaceSettings[cleanAsYouCode=false,connections={serverId=ServerConnectionSettings[connectionId=serverId,disableNotifications=true,organizationKey=myOrg,serverUrl=serverUrl,token=token]},disableTelemetry=false,excludedRules=[repo1:rule1],includedRules=[repo2:rule2],pathToNodeExecutable=path/to/node,ruleParameters={repo2:rule2={param1=value1}},showAnalyzerLogs=false,showVerboseLogs=false]");
+      "WorkspaceSettings[connections={serverId=ServerConnectionSettings[connectionId=serverId,disableNotifications=true,organizationKey=myOrg,serverUrl=serverUrl,token=token]},disableTelemetry=false,excludedRules=[repo1:rule1],focusOnNewCode=false,includedRules=[repo2:rule2],pathToNodeExecutable=path/to/node,ruleParameters={repo2:rule2={param1=value1}},showAnalyzerLogs=false,showVerboseLogs=false]");
   }
 
 }
