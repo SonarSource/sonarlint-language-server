@@ -84,7 +84,7 @@ qa_linux_task:
   <<: *MAVEN_CACHE
   qa_script:
     - source cirrus-env QA
-    - PULL_REQUEST_SHA=$GIT_SHA1 regular_mvn_build_deploy_analyze verify -P-deploy-sonarsource,-release,-sign -Dcommercial -Dmaven.install.skip=true -Dmaven.deploy.skip=true
+    - PULL_REQUEST_SHA=$GIT_SHA1 regular_mvn_build_deploy_analyze -P-deploy-sonarsource,-release,-sign -Dcommercial -Dmaven.install.skip=true -Dmaven.deploy.skip=true
   cleanup_before_cache_script: cleanup_maven_repository
   on_failure:
     junit_artifacts:
