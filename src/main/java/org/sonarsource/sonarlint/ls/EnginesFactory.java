@@ -51,6 +51,7 @@ public class EnginesFactory {
     Language.CPP,
     Language.C,
     Language.CLOUDFORMATION,
+    Language.CS,
     Language.CSS,
     Language.DOCKER,
     Language.GO,
@@ -101,6 +102,7 @@ public class EnginesFactory {
         .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
         .addPlugins(standaloneAnalyzers.toArray(Path[]::new))
         .setModulesProvider(modulesProvider)
+        .setExtraProperties(Map.of("sonar.cs.internal.omnisharpNet6Location", "/Users/sophio.japharidze/Documents/Sonar/sonarlint-omnisharp/its/target/omnisharp-net6"))
         .setLogOutput(logOutput)
         .build();
 
@@ -136,6 +138,7 @@ public class EnginesFactory {
       .enableHotspots()
       .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
       .setModulesProvider(modulesProvider)
+      .setExtraProperties(Map.of("sonar.cs.internal.omnisharpNet6Location", "/Users/sophio.japharidze/Documents/Sonar/sonarlint-omnisharp/its/target/omnisharp-net6"))
       .setLogOutput(logOutput);
 
     embeddedPluginsToPath.forEach(builder::useEmbeddedPlugin);
