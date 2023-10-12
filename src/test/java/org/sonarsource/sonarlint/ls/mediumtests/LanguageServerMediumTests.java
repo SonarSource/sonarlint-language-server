@@ -23,6 +23,7 @@ import com.google.gson.JsonPrimitive;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
@@ -93,15 +94,21 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   public static final String CLOUDFORMATION_S6273 = "cloudformation:S6273";
   public static final String DOCKER_S6476 = "docker:S6476";
   public static final String TERRAFORM_S6273 = "terraform:S6273";
+  private static Path omnisharpDir;
 
   @BeforeAll
   static void initialize() throws Exception {
+    omnisharpDir = makeStaticTempDir();
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
       "productVersion", "0.1",
       "showVerboseLogs", false,
-      "additionalAttributes", Map.of("extra", "value")));
+      "additionalAttributes", Map.of(
+        "extra", "value",
+        "omnisharpDirectory", omnisharpDir.toString()
+      )
+    ));
   }
 
   @BeforeEach

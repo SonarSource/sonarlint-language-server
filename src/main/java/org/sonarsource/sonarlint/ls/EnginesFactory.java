@@ -159,9 +159,15 @@ public class EnginesFactory {
 
   @NotNull
   private Map<String, String> getExtraProperties() {
-    return Map.of("sonar.cs.internal.omnisharpNet6Location", Path.of(omnisharpDirectory, "net6").toString(),
-      "sonar.cs.internal.omnisharpWinLocation", Path.of(omnisharpDirectory, "net472").toString(),
-      "sonar.cs.internal.omnisharpMonoLocation", Path.of(omnisharpDirectory, "mono").toString());
+    if (omnisharpDirectory == null) {
+      return Map.of();
+    } else {
+      return Map.of(
+        "sonar.cs.internal.omnisharpNet6Location", Path.of(omnisharpDirectory, "net6").toString(),
+        "sonar.cs.internal.omnisharpWinLocation", Path.of(omnisharpDirectory, "net472").toString(),
+        "sonar.cs.internal.omnisharpMonoLocation", Path.of(omnisharpDirectory, "mono").toString()
+      );
+    }
   }
 
   ConnectedSonarLintEngine newConnectedEngine(ConnectedGlobalConfiguration configuration) {
