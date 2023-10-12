@@ -974,7 +974,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void getFilePatternsForAnalysis() throws ExecutionException, InterruptedException {
     var result = lsProxy.getFilePatternsForAnalysis(new SonarLintExtendedLanguageServer.UriParams("notBound")).get();
 
-    assertThat(result.getPatterns()).hasSize(46);
+    assertThat(result.getPatterns()).hasSize(47);
     assertThat(result.getPatterns()).containsExactlyInAnyOrder("**/*.c",
       "**/*.h",
       "**/*.cc",
@@ -986,6 +986,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "**/*.hxx",
       "**/*.h++",
       "**/*.ipp",
+      "**/*.cs",
       "**/*.css",
       "**/*.less",
       "**/*.scss",

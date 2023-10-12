@@ -334,6 +334,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       requestsHandlerServer.initialize(clientVersion, workspaceName);
       backendServiceFacade.setTelemetryInitParams(new TelemetryInitParams(productKey, telemetryStorage,
         productName, productVersion, ideVersion, platform, architecture, additionalAttributes));
+      enginesFactory.setOmnisharpDirectory((String) additionalAttributes.get("omnisharpDirectory"));
 
       var c = new ServerCapabilities();
       c.setTextDocumentSync(getTextDocumentSyncOptions());

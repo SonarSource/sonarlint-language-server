@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.ConnectedSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.StandaloneSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
@@ -47,6 +48,9 @@ public class EnginesFactory {
   private final LanguageClientLogOutput logOutput;
   private final Collection<Path> standaloneAnalyzers;
   private final Map<String, Path> embeddedPluginsToPath;
+  private String omnisharpDirectory;
+
+
   private static final Language[] STANDALONE_LANGUAGES = {
     Language.CPP,
     Language.C,
@@ -88,6 +92,10 @@ public class EnginesFactory {
     this.modulesProvider = modulesProvider;
   }
 
+  public void setOmnisharpDirectory(String omnisharpDirectory) {
+    this.omnisharpDirectory = omnisharpDirectory;
+  }
+
   public StandaloneSonarLintEngine createStandaloneEngine() {
     if (shutdown.get().equals(true)) {
       throw new IllegalStateException("Language server is shutting down, won't create engine");
@@ -102,7 +110,7 @@ public class EnginesFactory {
         .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
         .addPlugins(standaloneAnalyzers.toArray(Path[]::new))
         .setModulesProvider(modulesProvider)
-        .setExtraProperties(Map.of("sonar.cs.internal.omnisharpNet6Location", "/Users/sophio.japharidze/Documents/Sonar/sonarlint-omnisharp/its/target/omnisharp-net6"))
+        .setExtraProperties(getExtraProperties())
         .setLogOutput(logOutput)
         .build();
 
@@ -138,7 +146,7 @@ public class EnginesFactory {
       .enableHotspots()
       .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
       .setModulesProvider(modulesProvider)
-      .setExtraProperties(Map.of("sonar.cs.internal.omnisharpNet6Location", "/Users/sophio.japharidze/Documents/Sonar/sonarlint-omnisharp/its/target/omnisharp-net6"))
+      .setExtraProperties(getExtraProperties())
       .setLogOutput(logOutput);
 
     embeddedPluginsToPath.forEach(builder::useEmbeddedPlugin);
@@ -147,6 +155,13 @@ public class EnginesFactory {
 
     LOG.debug("SonarLint engine started for connection '{}'", connectionId);
     return engine;
+  }
+
+  @NotNull
+  private Map<String, String> getExtraProperties() {
+    return Map.of("sonar.cs.internal.omnisharpNet6Location", Path.of(omnisharpDirectory, "net6").toString(),
+      "sonar.cs.internal.omnisharpWinLocation", Path.of(omnisharpDirectory, "net472").toString(),
+      "sonar.cs.internal.omnisharpMonoLocation", Path.of(omnisharpDirectory, "mono").toString());
   }
 
   ConnectedSonarLintEngine newConnectedEngine(ConnectedGlobalConfiguration configuration) {
