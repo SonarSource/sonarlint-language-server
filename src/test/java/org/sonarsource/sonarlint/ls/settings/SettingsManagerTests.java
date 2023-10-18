@@ -158,7 +158,7 @@ class SettingsManagerTests {
   }
 
   private void mockConfigurationRequest(@Nullable URI uri, String json) {
-    doReturn(CompletableFuture.supplyAsync(() -> fromJsonString(json))).when(underTest).requestSonarLintConfigurationAsync(uri);
+    doReturn(CompletableFuture.supplyAsync(() -> fromJsonString(json))).when(underTest).requestSonarLintAndOmnisharpConfigurationAsync(uri);
   }
 
   @Test

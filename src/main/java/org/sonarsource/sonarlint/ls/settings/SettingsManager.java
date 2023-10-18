@@ -19,7 +19,10 @@
  */
 package org.sonarsource.sonarlint.ls.settings;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import java.net.URI;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -64,6 +67,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static final String TOKEN = "token";
   private static final String CONNECTION_ID = "connectionId";
   private static final String SONARLINT_CONFIGURATION_NAMESPACE = "sonarlint";
+  private static final String DOTNET_DEFAULT_SOLUTION_PATH = "dotnet.defaultSolution";
+  private static final String OMNISHARP_USE_MODERN_NET = "omnisharp.useModernNet";
+  private static final String OMNISHARP_LOAD_PROJECT_ON_DEMAND = "omnisharp.enableMsBuildLoadProjectsOnDemand";
+  private static final String OMNISHARP_PROJECT_LOAD_TIMEOUT = "omnisharp.projectLoadTimeout";
   private static final String DISABLE_TELEMETRY = "disableTelemetry";
   private static final String RULES = "rules";
   private static final String TEST_FILE_PATTERN = "testFilePattern";
@@ -146,7 +153,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   public void didChangeConfiguration() {
     executor.execute(() -> {
       try {
-        var workspaceSettingsMap = requestSonarLintConfigurationAsync(null).get(1, TimeUnit.MINUTES);
+        var workspaceSettingsMap = requestSonarLintAndOmnisharpConfigurationAsync(null).get(1, TimeUnit.MINUTES);
         var newWorkspaceSettings = parseSettings(workspaceSettingsMap);
         var oldWorkspaceSettings = currentSettings;
         this.currentSettings = newWorkspaceSettings;
@@ -186,19 +193,20 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   }
 
   // Visible for testing
-  CompletableFuture<Map<String, Object>> requestSonarLintConfigurationAsync(@Nullable URI uri) {
+  CompletableFuture<Map<String, Object>> requestSonarLintAndOmnisharpConfigurationAsync(@Nullable URI uri) {
     if (uri != null) {
       LOG.debug("Fetching configuration for folder '{}'", uri);
     } else {
       LOG.debug("Fetching global configuration");
     }
     var params = new ConfigurationParams();
-    var configurationItem = new ConfigurationItem();
-    configurationItem.setSection(SONARLINT_CONFIGURATION_NAMESPACE);
-    if (uri != null) {
-      configurationItem.setScopeUri(uri.toString());
-    }
-    params.setItems(List.of(configurationItem));
+    var sonarLintConfigurationItem = getConfigurationItem(SONARLINT_CONFIGURATION_NAMESPACE, uri);
+    var defaultSolutionItem = getConfigurationItem(DOTNET_DEFAULT_SOLUTION_PATH, uri);
+    var modernDotnetItem = getConfigurationItem(OMNISHARP_USE_MODERN_NET, uri);
+    var loadProjectsOnDemandItem = getConfigurationItem(OMNISHARP_LOAD_PROJECT_ON_DEMAND, uri);
+    var projectLoadTimeoutItem = getConfigurationItem(OMNISHARP_PROJECT_LOAD_TIMEOUT, uri);
+
+    params.setItems(List.of(sonarLintConfigurationItem, defaultSolutionItem, modernDotnetItem, loadProjectsOnDemandItem, projectLoadTimeoutItem));
     return client.configuration(params)
       .handle((r, t) -> {
         if (t != null) {
@@ -206,12 +214,42 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         }
         return r;
       })
-      .thenApply(response -> response != null ? Utils.parseToMap(response.get(0)) : Collections.emptyMap());
+      .thenApply(response -> {
+        if (response != null) {
+          var settingsMap = Utils.parseToMap(response.get(0));
+          if (settingsMap != null) {
+            var analyzerProperties = (Map<String, String>) settingsMap.get(ANALYZER_PROPERTIES);
+            var solutionPath = new Gson().fromJson((JsonElement) response.get(1), String.class);
+            if (!solutionPath.isEmpty() && uri != null) {
+              // uri: file:///Users/me/Documents/Sonar/roslyn
+              // solutionPath: Roslyn.sln
+              // we want: file:///Users//sophio/Documents/Sonar/roslyn/Roslyn.sln
+              analyzerProperties.put("sonar.cs.internal.solutionPath", Path.of(uri).resolve(solutionPath).toAbsolutePath().toString());
+            }
+            analyzerProperties.put("sonar.cs.internal.useNet6", new Gson().fromJson((JsonElement) response.get(2), String.class));
+            analyzerProperties.put("sonar.cs.internal.loadProjectOnDemand", new Gson().fromJson((JsonElement) response.get(3), String.class));
+            analyzerProperties.put("sonar.cs.internal.loadProjectsTimeout", new Gson().fromJson((JsonElement) response.get(4), String.class));
+            settingsMap.put(ANALYZER_PROPERTIES, analyzerProperties);
+
+            return settingsMap;
+          }
+        }
+        return Collections.emptyMap();
+      });
+  }
+
+  private static ConfigurationItem getConfigurationItem(String section, @Nullable URI uri) {
+    var configItem = new ConfigurationItem();
+    configItem.setSection(section);
+    if (uri != null) {
+      configItem.setScopeUri(uri.toString());
+    }
+    return configItem;
   }
 
   private void updateWorkspaceFolderSettings(WorkspaceFolderWrapper f, boolean notifyOnChange) {
     try {
-      var folderSettingsMap = requestSonarLintConfigurationAsync(f.getUri()).get();
+      var folderSettingsMap = requestSonarLintAndOmnisharpConfigurationAsync(f.getUri()).get();
       var newSettings = parseFolderSettings(folderSettingsMap, f.getUri());
       var old = f.getRawSettings();
       if (!Objects.equals(old, newSettings)) {
