@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.settings;
 
+import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import java.net.URI;
@@ -66,11 +67,11 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static final String SERVER_ID = "serverId";
   private static final String TOKEN = "token";
   private static final String CONNECTION_ID = "connectionId";
-  private static final String SONARLINT_CONFIGURATION_NAMESPACE = "sonarlint";
-  private static final String DOTNET_DEFAULT_SOLUTION_PATH = "dotnet.defaultSolution";
-  private static final String OMNISHARP_USE_MODERN_NET = "omnisharp.useModernNet";
-  private static final String OMNISHARP_LOAD_PROJECT_ON_DEMAND = "omnisharp.enableMsBuildLoadProjectsOnDemand";
-  private static final String OMNISHARP_PROJECT_LOAD_TIMEOUT = "omnisharp.projectLoadTimeout";
+  public static final String SONARLINT_CONFIGURATION_NAMESPACE = "sonarlint";
+  public static final String DOTNET_DEFAULT_SOLUTION_PATH = "dotnet.defaultSolution";
+  public static final String OMNISHARP_USE_MODERN_NET = "omnisharp.useModernNet";
+  public static final String OMNISHARP_LOAD_PROJECT_ON_DEMAND = "omnisharp.enableMsBuildLoadProjectsOnDemand";
+  public static final String OMNISHARP_PROJECT_LOAD_TIMEOUT = "omnisharp.projectLoadTimeout";
   private static final String DISABLE_TELEMETRY = "disableTelemetry";
   private static final String RULES = "rules";
   private static final String TEST_FILE_PATTERN = "testFilePattern";
@@ -218,24 +219,39 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         if (response != null) {
           var settingsMap = Utils.parseToMap(response.get(0));
           if (settingsMap != null) {
-            var analyzerProperties = (Map<String, String>) settingsMap.get(ANALYZER_PROPERTIES);
-            var solutionPath = new Gson().fromJson((JsonElement) response.get(1), String.class);
-            if (!solutionPath.isEmpty() && uri != null) {
-              // uri: file:///Users/me/Documents/Sonar/roslyn
-              // solutionPath: Roslyn.sln
-              // we want: file:///Users//sophio/Documents/Sonar/roslyn/Roslyn.sln
-              analyzerProperties.put("sonar.cs.internal.solutionPath", Path.of(uri).resolve(solutionPath).toAbsolutePath().toString());
-            }
-            analyzerProperties.put("sonar.cs.internal.useNet6", new Gson().fromJson((JsonElement) response.get(2), String.class));
-            analyzerProperties.put("sonar.cs.internal.loadProjectOnDemand", new Gson().fromJson((JsonElement) response.get(3), String.class));
-            analyzerProperties.put("sonar.cs.internal.loadProjectsTimeout", new Gson().fromJson((JsonElement) response.get(4), String.class));
-            settingsMap.put(ANALYZER_PROPERTIES, analyzerProperties);
-
-            return settingsMap;
+            return updateAnalyzerProperties(uri, response, settingsMap);
           }
         }
         return Collections.emptyMap();
       });
+  }
+
+  private static Map<String, Object> updateAnalyzerProperties(@org.jetbrains.annotations.Nullable URI workspaceUri, List<Object> response, Map<String, Object> settingsMap) {
+    var analyzerProperties = (Map<String, String>) settingsMap.getOrDefault(ANALYZER_PROPERTIES, Maps.newHashMap());
+    var solutionRelativePath = tryGetSetting(response, 1, "");
+    if (!solutionRelativePath.isEmpty() && workspaceUri != null) {
+      // uri: file:///Users/me/Documents/Sonar/roslyn
+      // solutionPath: Roslyn.sln
+      // we want: file:///Users//sophio/Documents/Sonar/roslyn/Roslyn.sln
+      analyzerProperties.put("sonar.cs.internal.solutionPath", Path.of(workspaceUri).resolve(solutionRelativePath).toAbsolutePath().toString());
+    }
+    analyzerProperties.put("sonar.cs.internal.useNet6", tryGetSetting(response, 2, "true"));
+    analyzerProperties.put("sonar.cs.internal.loadProjectOnDemand", tryGetSetting(response, 3, "false"));
+    analyzerProperties.put("sonar.cs.internal.loadProjectsTimeout", tryGetSetting(response, 4, "60"));
+    settingsMap.put(ANALYZER_PROPERTIES, analyzerProperties);
+
+    return settingsMap;
+  }
+
+  private static String tryGetSetting(List<Object> response, int index, String defaultValue) {
+    if (response.size() > index && response.get(index) != null) {
+      try {
+        return new Gson().fromJson((JsonElement) response.get(index), String.class);
+      } catch (Exception e) {
+        return defaultValue;
+      }
+    }
+    return defaultValue;
   }
 
   private static ConfigurationItem getConfigurationItem(String section, @Nullable URI uri) {

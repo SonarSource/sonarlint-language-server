@@ -368,7 +368,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     notifyConfigurationChangeOnClient();
 
     assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern={**/*Test*}]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern={**/*Test*}]");
 
     var jsContent = "function foo() {\n  let toto = 0;\n}";
     var fooTestUri = getUri("fooTest.js");
@@ -384,7 +384,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
     assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern={**/*MyTest*}]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern={**/*MyTest*}]");
 
     didChange(fooTestUri, jsContent);
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fooTestUri)).hasSize(1));
@@ -708,7 +708,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       awaitLatch(client.settingsLatch);
 
       assertLogContains(
-        "Workspace folder 'WorkspaceFolder[name=Added,uri=file:///added_uri]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern=another pattern]");
+        "Workspace folder 'WorkspaceFolder[name=Added,uri=file:///added_uri]' configuration updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern=another pattern]");
     } finally {
       lsProxy.getWorkspaceService()
         .didChangeWorkspaceFolders(
@@ -1030,7 +1030,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "**/*.go",
       "**/*.tf");
   }
-
 
   @Test
   void shouldRespectAnalysisExcludes() {
