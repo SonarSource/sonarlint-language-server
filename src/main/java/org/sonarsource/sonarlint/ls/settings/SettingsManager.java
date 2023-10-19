@@ -246,7 +246,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static String tryGetSetting(List<Object> response, int index, String defaultValue) {
     if (response.size() > index && response.get(index) != null) {
       try {
-        return new Gson().fromJson((JsonElement) response.get(index), String.class);
+        var maybeSetting = new Gson().fromJson((JsonElement) response.get(index), String.class);
+        return maybeSetting == null ? defaultValue : maybeSetting;
       } catch (Exception e) {
         return defaultValue;
       }
