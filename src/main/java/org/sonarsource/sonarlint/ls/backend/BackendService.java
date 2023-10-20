@@ -26,56 +26,59 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import org.eclipse.lsp4j.WorkspaceFolder;
-import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
-import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.branch.DidChangeActiveSonarProjectBranchParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.DidUpdateBindingParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidAddConfigurationScopesParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidRemoveConfigurationScopeParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.DidChangeCredentialsParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.DidUpdateConnectionsParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarCloudConnectionConfigurationDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarQubeConnectionConfigurationDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.ChangeHotspotStatusParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckLocalDetectionSupportedParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckLocalDetectionSupportedResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckStatusChangePermittedParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckStatusChangePermittedResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.initialize.InitializeParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.AddIssueCommentParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.ChangeIssueStatusParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenAllIssuesForFileParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenIssueResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.newcode.GetNewCodeDefinitionParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.newcode.GetNewCodeDefinitionResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.ListAllStandaloneRulesDefinitionsResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.UpdateStandaloneRulesConfigurationParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.tracking.TrackWithServerIssuesParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.tracking.TrackWithServerIssuesResponse;
-import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.http.HttpClient;
+import org.sonarsource.sonarlint.core.rpc.impl.SonarLintRpcServerImpl;
+import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.branch.DidVcsRepositoryChangeParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpdateBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.ConfigurationScopeDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.DidAddConfigurationScopesParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.DidRemoveConfigurationScopeParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpGenerateUserTokenParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpGenerateUserTokenResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.DidChangeCredentialsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.DidUpdateConnectionsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarCloudConnectionConfigurationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarQubeConnectionConfigurationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.ChangeHotspotStatusParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.CheckLocalDetectionSupportedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.CheckLocalDetectionSupportedResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.CheckStatusChangePermittedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.CheckStatusChangePermittedResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.InitializeParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ChangeIssueStatusParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.newcode.GetNewCodeDefinitionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.newcode.GetNewCodeDefinitionResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetEffectiveRuleDetailsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetEffectiveRuleDetailsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetStandaloneRuleDescriptionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetStandaloneRuleDescriptionResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ListAllStandaloneRulesDefinitionsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.UpdateStandaloneRulesConfigurationParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.GetStatusResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TrackWithServerIssuesParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TrackWithServerIssuesResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 public class BackendService {
 
-  private final SonarLintBackend backend;
+  private final SonarLintRpcServer backend;
   private final CountDownLatch initializeLatch = new CountDownLatch(1);
 
-  public BackendService(SonarLintBackend backend) {
+  public BackendService(SonarLintRpcServer backend) {
     this.backend = backend;
   }
 
@@ -90,7 +93,7 @@ public class BackendService {
     }
   }
 
-  private SonarLintBackend initializedBackend() {
+  private SonarLintRpcServer initializedBackend() {
     try {
       initializeLatch.await();
     } catch (InterruptedException e) {
@@ -159,8 +162,8 @@ public class BackendService {
     return initializedBackend().getHotspotService().checkLocalDetectionSupported(params);
   }
 
-  public void shutdown() {
-    backend.shutdown();
+  public CompletableFuture<Void> shutdown() {
+    return backend.shutdown();
   }
 
   public CompletableFuture<GetEffectiveRuleDetailsResponse> getRuleDetails(GetEffectiveRuleDetailsParams params) {
@@ -203,9 +206,12 @@ public class BackendService {
     return initializedBackend().getHotspotService().checkStatusChangePermitted(params);
   }
 
-  public void notifyBackendOnBranchChanged(String folderUri, String newBranchName) {
-    var params = new DidChangeActiveSonarProjectBranchParams(folderUri, newBranchName);
-    initializedBackend().getSonarProjectBranchService().didChangeActiveSonarProjectBranch(params);
+  public void notifyBackendOnVscChange(String folderUri) {
+    // TODO
+    // client is not notifying the backend about branch change, it wait for request to recompute branch from the backend
+    // also client should notify backend about generic VSC event and let backend decide if branch should be recomputed
+    initializedBackend().getSonarProjectBranchService()
+      .didVcsRepositoryChange(new DidVcsRepositoryChangeParams(folderUri));
   }
 
   public CompletableFuture<HelpGenerateUserTokenResponse> helpGenerateUserToken(HelpGenerateUserTokenParams params) {
@@ -216,22 +222,17 @@ public class BackendService {
     return initializedBackend().getIssueTrackingService().trackWithServerIssues(params);
   }
 
-  public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedResponse>
-  checkChangeIssueStatusPermitted(org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedParams params) {
+  public CompletableFuture<org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedResponse>
+  checkChangeIssueStatusPermitted(org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedParams params) {
     return initializedBackend().getIssueService().checkStatusChangePermitted(params);
   }
 
-  public CompletableFuture<ReopenIssueResponse> reopenAllIssuesForFile(ReopenAllIssuesForFileParams params) {
+  public CompletableFuture<ReopenAllIssuesForFileResponse> reopenAllIssuesForFile(ReopenAllIssuesForFileParams params) {
     return initializedBackend().getIssueService().reopenAllIssuesForFile(params);
   }
 
-  public HttpClient getHttpClientNoAuth() {
-    return initializedBackend().getHttpClientNoAuth();
-  }
-
   public HttpClient getHttpClient(String connectionId) {
-    var sonarLintBackend = initializedBackend();
-    return sonarLintBackend.getHttpClient(connectionId);
+    return ((SonarLintRpcServerImpl) initializedBackend()).getHttpClient(connectionId);
   }
 
   public CompletableFuture<ValidateConnectionResponse> validateConnection(ValidateConnectionParams params) {
@@ -239,10 +240,26 @@ public class BackendService {
   }
 
   public CompletableFuture<GetNewCodeDefinitionResponse> getNewCodeDefinition(String configScopeId) {
-    return backend.getNewCodeService().getNewCodeDefinition(new GetNewCodeDefinitionParams(configScopeId));
+    return initializedBackend().getNewCodeService().getNewCodeDefinition(new GetNewCodeDefinitionParams(configScopeId));
   }
 
   public void toggleCleanAsYouCode() {
-    backend.getNewCodeService().didToggleFocus();
+    initializedBackend().getNewCodeService().didToggleFocus();
+  }
+
+  public CompletableFuture<GetStatusResponse> getTelemetryStatus() {
+    return initializedBackend().getTelemetryService().getStatus();
+  }
+
+  public void enableTelemetry() {
+    initializedBackend().getTelemetryService().enableTelemetry();
+  }
+
+  public void disableTelemetry() {
+    initializedBackend().getTelemetryService().disableTelemetry();
+  }
+
+  public TelemetryRpcService getTelemetryService() {
+    return initializedBackend().getTelemetryService();
   }
 }

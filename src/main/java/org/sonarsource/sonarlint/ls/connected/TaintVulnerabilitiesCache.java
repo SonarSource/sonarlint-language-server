@@ -56,7 +56,7 @@ public class TaintVulnerabilitiesCache {
   }
 
   private static boolean hasSameKey(Diagnostic d, TaintIssue i) {
-    return d.getData() != null && d.getData().equals(i.getKey());
+    return d.getData() != null && d.getData().equals(i.getRuleKey());
   }
 
   private static boolean hasSameRuleKeyAndLocation(Diagnostic d, TaintIssue i) {
@@ -66,7 +66,7 @@ public class TaintVulnerabilitiesCache {
   public Optional<TaintIssue> getTaintVulnerabilityByKey(String issueId) {
     return taintVulnerabilitiesPerFile.values().stream()
       .flatMap(List::stream)
-      .filter(i -> issueId.equals(i.getKey()))
+      .filter(i -> issueId.equals(i.getRuleKey()))
       .findFirst();
   }
 
@@ -80,14 +80,15 @@ public class TaintVulnerabilitiesCache {
     if (issue.getTextRange() != null) {
       var range = Utils.convert(issue);
       var diagnostic = new Diagnostic();
-      var severity = focusOnNewCode && !issue.isOnNewCode() ? DiagnosticSeverity.Hint : DiagnosticSeverity.Warning;
+      // TODO is on new code removed
+      var severity = focusOnNewCode ? DiagnosticSeverity.Hint : DiagnosticSeverity.Warning;
 
       diagnostic.setSeverity(severity);
       diagnostic.setRange(range);
       diagnostic.setCode(issue.getRuleKey());
       diagnostic.setMessage(message(issue));
       diagnostic.setSource(issue.getSource());
-      diagnostic.setData(issue.getKey());
+      diagnostic.setData(issue.getRuleKey());
 
       return Optional.of(diagnostic);
     }
@@ -112,7 +113,7 @@ public class TaintVulnerabilitiesCache {
     var fileUri = URI.create(fileUriStr);
     var issues = taintVulnerabilitiesPerFile.get(fileUri);
     if (issues != null) {
-      var issueToRemove = issues.stream().filter(taintIssue -> taintIssue.getKey().equals(key)).findFirst();
+      var issueToRemove = issues.stream().filter(taintIssue -> taintIssue.getRuleKey().equals(key)).findFirst();
       issueToRemove.ifPresent(issues::remove);
     }
   }

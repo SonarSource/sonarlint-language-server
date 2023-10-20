@@ -175,7 +175,6 @@ public class ServerSynchronizer {
   private static void syncIssuesForBranch(ConnectedSonarLintEngine engine, EndpointParams endpointParams, String projectKey,
     String branchName, HttpClient httpClient, @Nullable ClientProgressMonitor progressMonitor) {
     engine.syncServerIssues(endpointParams, httpClient, projectKey, branchName, progressMonitor);
-    engine.syncServerTaintIssues(endpointParams, httpClient, projectKey, branchName, progressMonitor);
     engine.syncServerHotspots(endpointParams, httpClient, projectKey, branchName, progressMonitor);
   }
 

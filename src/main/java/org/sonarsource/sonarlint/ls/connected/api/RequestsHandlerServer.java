@@ -24,8 +24,8 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
-import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
-import org.sonarsource.sonarlint.core.clientapi.client.info.GetClientInfoResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.info.GetClientLiveInfoResponse;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 
 public class RequestsHandlerServer {
@@ -42,8 +42,8 @@ public class RequestsHandlerServer {
     this.workspaceName = workspaceName == null ? "(no open folder)" : workspaceName;
   }
 
-  public GetClientInfoResponse getHostInfo() {
-    return new GetClientInfoResponse(this.clientVersion + " - " + this.workspaceName);
+  public GetClientLiveInfoResponse getHostInfo() {
+    return new GetClientLiveInfoResponse(this.clientVersion + " - " + this.workspaceName);
   }
 
   public void showIssueOrHotspotHandleUnknownServer(String url) {

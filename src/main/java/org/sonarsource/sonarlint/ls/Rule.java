@@ -19,10 +19,10 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import com.google.gson.annotations.Expose;
-import com.google.gson.annotations.SerializedName;
+import org.sonarsource.sonarlint.shaded.com.google.gson.annotations.Expose;
+import org.sonarsource.sonarlint.shaded.com.google.gson.annotations.SerializedName;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneRuleDetails;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleDefinitionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleDefinitionDto;
 
 public class Rule {
 

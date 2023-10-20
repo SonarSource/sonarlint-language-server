@@ -19,32 +19,80 @@
  */
 package org.sonarsource.sonarlint.ls.clientapi;
 
+import java.net.URI;
+import java.net.URL;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 import nl.altindag.ssl.util.CertificateUtils;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.sonarsource.sonarlint.core.clientapi.SonarLintClient;
-import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
-import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
-import org.sonarsource.sonarlint.core.clientapi.client.connection.GetCredentialsParams;
-import org.sonarsource.sonarlint.core.clientapi.client.connection.GetCredentialsResponse;
-import org.sonarsource.sonarlint.core.clientapi.client.event.DidReceiveServerEventParams;
-import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeParams;
-import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
-import org.sonarsource.sonarlint.core.clientapi.client.http.CheckServerTrustedParams;
-import org.sonarsource.sonarlint.core.clientapi.client.http.CheckServerTrustedResponse;
-import org.sonarsource.sonarlint.core.clientapi.client.info.GetClientInfoResponse;
-import org.sonarsource.sonarlint.core.clientapi.client.issue.ShowIssueParams;
-import org.sonarsource.sonarlint.core.clientapi.client.message.ShowSoonUnsupportedMessageParams;
-import org.sonarsource.sonarlint.core.clientapi.client.progress.ReportProgressParams;
-import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressParams;
-import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
-import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
-import org.sonarsource.sonarlint.core.clientapi.common.TokenDto;
+import org.eclipse.lsp4j.LogTraceParams;
+import org.eclipse.lsp4j.jsonrpc.CancelChecker;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.jetbrains.annotations.Nullable;
+import org.sonarsource.sonarlint.core.commons.RuleKey;
 import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.core.rpc.client.ConfigScopeNotFoundException;
+import org.sonarsource.sonarlint.core.rpc.client.ConnectionNotFoundException;
+import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
+import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcClient;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleDefinitionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.OpenUrlInBrowserParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.branch.DidChangeMatchedSonarProjectBranchParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.branch.MatchSonarProjectBranchParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.branch.MatchSonarProjectBranchResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetCredentialsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetCredentialsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.event.DidReceiveServerHotspotEvent;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.fs.FindFileByNamesInScopeParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.fs.FindFileByNamesInScopeResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.fs.FoundFileDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.fs.ListAllFilePathsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.fs.ListAllFilePathsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.ShowHotspotParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.http.CheckServerTrustedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.http.CheckServerTrustedResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.http.GetProxyPasswordAuthenticationParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.http.GetProxyPasswordAuthenticationResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.http.ProxyDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.http.SelectProxiesParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.http.SelectProxiesResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.http.X509CertificateDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.info.GetClientLiveInfoResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueDetailsDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.ShowIssueParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.message.ShowMessageParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.message.ShowSoonUnsupportedMessageParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidUpdatePluginsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.progress.ReportProgressParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.progress.StartProgressParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.smartnotification.ShowSmartNotificationParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.sync.DidSynchronizeConfigurationScopeParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.taint.vulnerability.DidChangeTaintVulnerabilitiesParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.TelemetryLiveAttributesResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TokenDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.UsernamePasswordDto;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
+import org.sonarsource.sonarlint.ls.NodeJsRuntime;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
@@ -53,11 +101,12 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
-public class SonarLintVSCodeClient implements SonarLintClient {
+public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   private final SonarLintExtendedLanguageClient client;
   private SettingsManager settingsManager;
@@ -67,6 +116,8 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   private ProjectBindingManager bindingManager;
   private ServerSentEventsHandlerService serverSentEventsHandlerService;
   private BackendServiceFacade backendServiceFacade;
+  private WorkspaceFolderBranchManager branchManager;
+  private NodeJsRuntime nodeJsRuntime;
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, RequestsHandlerServer server,
     LanguageClientLogOutput logOutput) {
@@ -76,25 +127,37 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   }
 
   @Override
-  public void suggestBinding(SuggestBindingParams params) {
-    if (!params.getSuggestions().isEmpty()) {
-      client.suggestBinding(params);
+  public void suggestBinding(Map<String, List<BindingSuggestionDto>> suggestionsByConfigScope) {
+    if (!suggestionsByConfigScope.isEmpty()) {
+      client.suggestBinding(new SuggestBindingParams(suggestionsByConfigScope));
     }
   }
 
   @Override
-  public CompletableFuture<FindFileByNamesInScopeResponse> findFileByNamesInScope(FindFileByNamesInScopeParams params) {
-    return client.findFileByNamesInFolder(new SonarLintExtendedLanguageClient.FindFileByNamesInFolder(params.getConfigScopeId(), params.getFilenames()));
+  public List<FoundFileDto> findFileByNamesInScope(String configScopeId, List<String> filenames, CancelChecker cancelChecker) {
+    try {
+      return client.findFileByNamesInFolder(new SonarLintExtendedLanguageClient.FindFileByNamesInFolder(configScopeId, filenames)).get().getFoundFiles();
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    } catch (ExecutionException e) {
+      throw new RuntimeException(e);
+    }
+  }
+  @Override
+  public void openUrlInBrowser(URL url) {
+    client.browseTo(url.toString());
   }
 
-  @Override
-  public void openUrlInBrowser(OpenUrlInBrowserParams params) {
-    client.browseTo(params.getUrl());
-  }
 
   @Override
-  public void showMessage(org.sonarsource.sonarlint.core.clientapi.client.message.ShowMessageParams params) {
+  public void showMessage(MessageType type, String text) {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void log(LogParams params) {
+    // TODO log to sonarlint output
+    client.logTrace(new LogTraceParams());
   }
 
   @Override
@@ -115,43 +178,42 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   }
 
   @Override
-  public CompletableFuture<GetClientInfoResponse> getClientInfo() {
-    return CompletableFuture.completedFuture(server.getHostInfo());
+  public String getClientLiveDescription() {
+    return server.getHostInfo().getDescription();
   }
 
   @Override
-  public void showHotspot(org.sonarsource.sonarlint.core.clientapi.client.hotspot.ShowHotspotParams params) {
-    client.showHotspot(params.getHotspotDetails());
+  public void showHotspot(String configurationScopeId, HotspotDetailsDto hotspotDetails) {
+    client.showHotspot(hotspotDetails);
   }
 
   @Override
-  public void showIssue(ShowIssueParams showIssueParams) {
-    var maybeFileUri = bindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath());
+  public void showIssue(String configurationScopeId, IssueDetailsDto issueDetails) {
+    var maybeFileUri = bindingManager.serverPathToFileUri(configurationScopeId);
     Optional<ProjectBindingWrapper> maybeBinding = Optional.empty();
     if (maybeFileUri.isPresent()) {
       maybeBinding = bindingManager.getBinding(maybeFileUri.get());
     }
-    maybeBinding.ifPresent(projectBindingWrapper -> client.showIssue(new ShowAllLocationsCommand.Param(showIssueParams, bindingManager, projectBindingWrapper.getConnectionId())));
+    maybeBinding.ifPresent(projectBindingWrapper ->
+      client.showIssue(new ShowAllLocationsCommand.Param(new ShowIssueParams(configurationScopeId, issueDetails),
+        bindingManager, projectBindingWrapper.getConnectionId())));
   }
 
   @Override
-  public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionResponse>
-  assistCreatingConnection(org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams params) {
+  public AssistCreatingConnectionResponse assistCreatingConnection(AssistCreatingConnectionParams params, CancelChecker cancelChecker) throws CancellationException {
     server.showIssueOrHotspotHandleUnknownServer(params.getServerUrl());
-    return CompletableFuture.failedFuture(new UnsupportedOperationException());
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingResponse>
-  assistBinding(org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams params) {
+  public AssistBindingResponse assistBinding(AssistBindingParams params, CancelChecker cancelChecker) throws CancellationException {
     server.showHotspotOrIssueHandleNoBinding(params);
-    return CompletableFuture.failedFuture(new UnsupportedOperationException());
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public CompletableFuture<Void> startProgress(StartProgressParams startProgressParams) {
+  public void startProgress(StartProgressParams startProgressParams) {
     // no-op
-    return CompletableFuture.completedFuture(null);
   }
 
   @Override
@@ -166,17 +228,69 @@ public class SonarLintVSCodeClient implements SonarLintClient {
       .forEach(this::getNewCodeDefinitionAndSubmitToClient);
   }
 
+  @Nullable
   @Override
-  public CompletableFuture<GetCredentialsResponse> getCredentials(GetCredentialsParams params) {
-    var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(params.getConnectionId());
+  public Either<TokenDto, UsernamePasswordDto> getCredentials(String connectionId) {
+    var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
     if (connectionSettings == null) return null;
     var token = connectionSettings.getToken();
-    return CompletableFuture.completedFuture(new GetCredentialsResponse(new TokenDto(token)));
+    return Either.forLeft(new TokenDto(token));
   }
 
   @Override
-  public CompletableFuture<CheckServerTrustedResponse> checkServerTrusted(CheckServerTrustedParams params) {
-    var certs = CertificateUtils.parsePemCertificate(params.getChain().get(0).getPem());
+  public TelemetryLiveAttributesResponse getTelemetryLiveAttributes() {
+    return new TelemetryLiveAttributesResponse(
+      bindingManager.usesConnectedMode(), bindingManager.usesSonarCloud(),
+      nodeJsRuntime.nodeVersion(),
+      bindingManager.smartNotificationsDisabled(), getNonDefaultEnabledRules(),
+      getDefaultDisabledRules(), backendServiceFacade.getTelemetryInitParams().getAdditionalAttributes()
+    );
+  }
+
+
+  public List<String> getNonDefaultEnabledRules() {
+    var enabled = settingsManager.getCurrentSettings().getIncludedRules()
+      .stream().map(RuleKey::toString).collect(Collectors.toList());
+    if (!enabled.isEmpty()) {
+      enabled.removeAll(getDefaultEnabledRules());
+    }
+    return enabled;
+  }
+
+  private List<String> getDefaultEnabledRules() {
+    return backendServiceFacade.listAllStandaloneRulesDefinitions().thenApply(response ->
+        response.getRulesByKey()
+          .values()
+          .stream()
+          .filter(RuleDefinitionDto::isActiveByDefault)
+          .map(RuleDefinitionDto::getKey)
+          .collect(Collectors.toList()))
+      .join();
+  }
+
+  public List<String> getDefaultDisabledRules() {
+    var disabled = settingsManager.getCurrentSettings().getExcludedRules()
+      .stream().map(RuleKey::toString).collect(Collectors.toList());
+    if (!disabled.isEmpty()) {
+      var defaultEnabledRules = getDefaultEnabledRules();
+      disabled.removeIf(r -> !defaultEnabledRules.contains(r));
+    }
+    return disabled;
+  }
+
+  @Override
+  public List<ProxyDto> selectProxies(URI uri) {
+    return List.of();
+  }
+
+  @Override
+  public GetProxyPasswordAuthenticationResponse getProxyPasswordAuthentication(String host, int port, String protocol, String prompt, String scheme, URL targetHost) {
+    return new GetProxyPasswordAuthenticationResponse(null, null);
+  }
+
+  @Override
+  public boolean checkServerTrusted(List<X509CertificateDto> chain, String authType) {
+    var certs = CertificateUtils.parsePemCertificate(chain.get(0).getPem());
     var sha1fingerprint = "";
     var sha256fingerprint = "";
     X509Certificate untrustedCert = null;
@@ -198,12 +312,55 @@ public class SonarLintVSCodeClient implements SonarLintClient {
       actualSonarLintUserHome.toString()
     );
 
-    return client.askSslCertificateConfirmation(confirmationParams).thenApply(CheckServerTrustedResponse::new);
+    try {
+      return client.askSslCertificateConfirmation(confirmationParams).get();
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    } catch (ExecutionException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  //  @Override
+//  public void didReceiveServerTaintVulnerabilityRaisedEvent(DidReceiveServerTaintVulnerabilityRaisedEvent event) {
+//    serverSentEventsHandlerService.handleTaintVulnerabilityRaisedEvent(event);
+//  }
+//
+//  @Override
+//  public void didReceiveServerTaintVulnerabilityChangedOrClosedEvent(DidReceiveServerTaintVulnerabilityChangedOrClosedEvent event) {
+//    serverSentEventsHandlerService.updateTaintCache();
+//  }
+
+  @Override
+  public void didReceiveServerHotspotEvent(DidReceiveServerHotspotEvent event) {
+    serverSentEventsHandlerService.handleHotspotEvent(event);
+  }
+
+
+  @Nullable
+  @Override
+  public String matchSonarProjectBranch(String configurationScopeId, String mainBranchName, Set<String> allBranchesNames, CancelChecker cancelChecker) {
+    return branchManager.matchSonarProjectBranch(configurationScopeId, mainBranchName, allBranchesNames, cancelChecker);
   }
 
   @Override
-  public void didReceiveServerEvent(DidReceiveServerEventParams params) {
-    serverSentEventsHandlerService.handleEvents(params.getServerEvent());
+  public void didChangeMatchedSonarProjectBranch(String configScopeId, String newMatchedBranchName) {
+
+  }
+
+  @Override
+  public void didUpdatePlugins(String connectionId) {
+
+  }
+  @Override
+  public List<String> listAllFilePaths(String configurationScopeId) throws ConfigScopeNotFoundException {
+    return List.of();
+  }
+
+  @Override
+  public void didChangeTaintVulnerabilities(String configurationScopeId, Set<UUID> closedTaintVulnerabilityIds,
+    List<TaintVulnerabilityDto> addedTaintVulnerabilities, List<TaintVulnerabilityDto> updatedTaintVulnerabilities) {
+
   }
 
   public void setSettingsManager(SettingsManager settingsManager) {
@@ -237,4 +394,19 @@ public class SonarLintVSCodeClient implements SonarLintClient {
       .thenAccept(client::submitNewCodeDefinition);
   }
 
+  public void setBranchManager(WorkspaceFolderBranchManager branchManager) {
+    this.branchManager = branchManager;
+  }
+
+  public WorkspaceFolderBranchManager getBranchManager() {
+    return branchManager;
+  }
+
+  public void setNodeJsRuntime(NodeJsRuntime nodeJsRuntime) {
+    this.nodeJsRuntime = nodeJsRuntime;
+  }
+
+  public NodeJsRuntime getNodeJsRuntime() {
+    return nodeJsRuntime;
+  }
 }

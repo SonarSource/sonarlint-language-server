@@ -24,12 +24,17 @@ import java.net.URISyntaxException;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.lsp4j.jsonrpc.CancelChecker;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.branch.GitUtils;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.branch.MatchSonarProjectBranchParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.branch.MatchSonarProjectBranchResponse;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -63,38 +68,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
   @Override
   public void added(WorkspaceFolderWrapper added) {
     var folderUri = added.getUri();
-    client.getBranchNameForFolder(folderUri.toString())
-      .thenAccept(branchName -> didBranchNameChange(folderUri, branchName));
-  }
-
-  public void didBranchNameChange(URI folderUri, @Nullable String branchName) {
-    if (branchName != null) {
-      logOutput.debug("Folder %s is now on branch %s.", folderUri, branchName);
-    } else {
-      logOutput.debug("Folder %s is now on an unknown branch.", folderUri);
-      return;
-    }
-    executorService.submit(() -> {
-      Optional<ProjectBindingWrapper> bindingOptional = bindingManager.getBindingAndRepublishTaints(folderUri);
-      String electedBranchName = null;
-      if (bindingOptional.isPresent()) {
-        ProjectBindingWrapper binding = bindingOptional.get();
-        var serverBranches = binding.getEngine().getServerBranches(binding.getBinding().projectKey());
-        var serverBranchNames = serverBranches.getBranchNames();
-        var repo = GitUtils.getRepositoryForDir(Paths.get(folderUri));
-        if (repo != null) {
-          try (repo) {
-            electedBranchName = GitUtils.electBestMatchingServerBranchForCurrentHead(repo, serverBranchNames, serverBranches.getMainBranchName());
-          }
-        }
-        if (electedBranchName == null) {
-          electedBranchName = serverBranches.getMainBranchName();
-        }
-        backendServiceFacade.notifyBackendOnBranchChanged(folderUri.toString(), electedBranchName);
-      }
-      client.setReferenceBranchNameForFolder(SonarLintExtendedLanguageClient.ReferenceBranchForFolder.of(folderUri.toString(), electedBranchName));
-      referenceBranchNameByFolderUri.put(folderUri, Optional.ofNullable(electedBranchName));
-    });
+    backendServiceFacade.notifyBackendOnVscChange(folderUri.toString());
   }
 
   /**
@@ -116,5 +90,19 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
 
   public void shutdown() {
     Utils.shutdownAndAwait(executorService, true);
+  }
+
+  public String matchSonarProjectBranch(String folderUri, String mainBranchName, Set<String> allBranchesNames, CancelChecker cancelChecker) {
+    var repo = GitUtils.getRepositoryForDir(Paths.get(folderUri));
+    String electedBranchName = null;
+    if (repo != null) {
+      try (repo) {
+        electedBranchName = GitUtils.electBestMatchingServerBranchForCurrentHead(repo, allBranchesNames, mainBranchName);
+      }
+    }
+    if (electedBranchName == null) {
+      electedBranchName = mainBranchName;
+    }
+    return electedBranchName;
   }
 }

@@ -19,7 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import com.google.gson.JsonPrimitive;
+import org.sonarsource.sonarlint.shaded.com.google.gson.JsonPrimitive;
 import java.net.URI;
 import java.time.Instant;
 import java.util.Collections;
@@ -52,15 +52,6 @@ import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.EffectiveRuleDetailsDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleContextualSectionDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleContextualSectionWithDefaultContextKeyDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleDescriptionTabDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleMonolithicDescriptionDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleNonContextualSectionDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleSplitDescriptionDto;
 import org.sonarsource.sonarlint.core.commons.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.commons.CleanCodeAttributeCategory;
 import org.sonarsource.sonarlint.core.commons.ImpactSeverity;
@@ -70,6 +61,17 @@ import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.SoftwareQuality;
 import org.sonarsource.sonarlint.core.commons.TextRange;
 import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.CleanCodeAttributeDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRuleDetailsDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetEffectiveRuleDetailsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ImpactDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleContextualSectionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleContextualSectionWithDefaultContextKeyDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleDescriptionTabDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleMonolithicDescriptionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleNonContextualSectionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleSplitDescriptionDto;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
@@ -299,7 +301,7 @@ class CommandManagerTests {
     when(issue.getFlows()).thenReturn(List.of(flow));
     var location = mock(ServerTaintIssue.ServerIssueLocation.class);
     when(flow.locations()).thenReturn(List.of(location));
-    when(issue.getKey()).thenReturn("SomeIssueKey");
+    when(issue.getRuleKey()).thenReturn("SomeIssueKey");
     when(issue.getRuleDescriptionContextKey()).thenReturn("servlet");
     when(mockTaintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
@@ -386,13 +388,17 @@ class CommandManagerTests {
     when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
     var details = mock(EffectiveRuleDetailsDto.class);
     when(details.getName()).thenReturn("Name");
-    when(details.getType()).thenReturn(RuleType.BUG);
-    when(details.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(details.getType()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType.BUG);
+    when(details.getSeverity()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity.BLOCKER);
     when(details.getParams()).thenReturn(emptyList());
     when(details.getKey()).thenReturn(FAKE_RULE_KEY);
-    when(details.getLanguage()).thenReturn(Language.JS);
-    when(details.getCleanCodeAttribute()).thenReturn(Optional.of(CleanCodeAttribute.COMPLETE));
-    when(details.getDefaultImpacts()).thenReturn(Map.of(SoftwareQuality.SECURITY, ImpactSeverity.MEDIUM));
+    when(details.getLanguage()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.Language.JS);
+    when(details.getCleanCodeAttributeDetails()).thenReturn(
+      new CleanCodeAttributeDto(org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute.COMPLETE, "complete",
+        org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory.INTENTIONAL, "intentional"));
+    when(details.getDefaultImpacts()).thenReturn(
+      List.of(new ImpactDto(org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality.SECURITY, "security", org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity.HIGH, "high"),
+        new ImpactDto(org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality.SECURITY, "security", org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity.MEDIUM, "high")));
     var desc = mock(RuleMonolithicDescriptionDto.class);
     when(desc.getHtmlContent()).thenReturn("Desc");
     when(details.getDescription()).thenReturn(Either.forLeft(desc));
@@ -403,8 +409,8 @@ class CommandManagerTests {
 
     verify(mockClient).showRuleDescription(new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc",
       new SonarLintExtendedLanguageClient.RuleDescriptionTab[0], RuleType.BUG, Language.JS.getLanguageKey(),
-      IssueSeverity.BLOCKER, Collections.emptyList(), CleanCodeAttribute.COMPLETE.getIssueLabel(),
-      CleanCodeAttributeCategory.INTENTIONAL.getIssueLabel(), Map.of(SoftwareQuality.SECURITY.getDisplayLabel(), ImpactSeverity.MEDIUM.getDisplayLabel()))
+      IssueSeverity.BLOCKER, Collections.emptyList(), CleanCodeAttribute.COMPLETE.getLabel(),
+      CleanCodeAttributeCategory.INTENTIONAL.getLabel(), Map.of(SoftwareQuality.SECURITY.getLabel(), ImpactSeverity.MEDIUM.getLabel()))
     );
   }
 

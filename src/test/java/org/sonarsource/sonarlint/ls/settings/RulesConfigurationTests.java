@@ -19,7 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.settings;
 
-import com.google.gson.Gson;
+import org.sonarsource.sonarlint.shaded.com.google.gson.Gson;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 

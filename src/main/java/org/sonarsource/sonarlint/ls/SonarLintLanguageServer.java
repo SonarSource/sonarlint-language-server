@@ -20,7 +20,9 @@
 package org.sonarsource.sonarlint.ls;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.gson.JsonPrimitive;
+import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
+import org.sonarsource.sonarlint.shaded.com.google.gson.JsonPrimitive;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -87,20 +89,22 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.NotebookDocumentService;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
-import org.sonarsource.sonarlint.core.SonarLintBackendImpl;
-import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckStatusChangePermittedParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.AddIssueCommentParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenIssueResponse;
-import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
-import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.core.rpc.impl.SonarLintRpcServerImpl;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpGenerateUserTokenResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.CheckStatusChangePermittedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
+
+import org.sonarsource.sonarlint.core.rules.RuleDetailsAdapter;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -196,6 +200,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers) {
     this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
+
     var input = new ExitingInputStream(inputStream, this);
     var launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
       .setLocalService(this)
@@ -221,13 +226,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.progressManager = new ProgressManager(client, globalLogOutput);
     this.requestsHandlerServer = new RequestsHandlerServer(client);
     var vsCodeClient = new SonarLintVSCodeClient(client, requestsHandlerServer, globalLogOutput);
-    this.backendServiceFacade = new BackendServiceFacade(new SonarLintBackendImpl(vsCodeClient));
+    this.backendServiceFacade = new BackendServiceFacade(vsCodeClient);
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
     this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, globalLogOutput);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, backendServiceFacade, globalLogOutput);
     vsCodeClient.setSettingsManager(settingsManager);
     backendServiceFacade.setSettingsManager(settingsManager);
-    var nodeJsRuntime = new NodeJsRuntime(settingsManager);
+    var nodeJsRuntime = new NodeJsRuntime(settingsManager, globalLogOutput);
     var fileTypeClassifier = new FileTypeClassifier(globalLogOutput);
     javaConfigCache = new JavaConfigCache(client, openFilesCache, globalLogOutput);
     this.enginesFactory = new EnginesFactory(analyzers, getEmbeddedPluginsToPath(), globalLogOutput, nodeJsRuntime,
@@ -237,7 +242,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, globalLogOutput,
       taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, openNotebooksCache);
     vsCodeClient.setBindingManager(bindingManager);
-    this.telemetry = new SonarLintTelemetry(settingsManager, bindingManager, nodeJsRuntime, backendServiceFacade, globalLogOutput);
+    vsCodeClient.setNodeJsRuntime(nodeJsRuntime);
+    this.telemetry = new SonarLintTelemetry(backendServiceFacade, globalLogOutput);
     backendServiceFacade.setTelemetry(telemetry);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
@@ -264,6 +270,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager, analysisScheduler);
     vsCodeClient.setServerSentEventsHandlerService(serverSentEventsHandler);
     this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager, backendServiceFacade, globalLogOutput);
+    vsCodeClient.setBranchManager(branchManager);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
     this.workspaceFoldersManager.addListener(this.branchManager);
     this.workspaceFoldersManager.setBindingManager(bindingManager);
@@ -398,7 +405,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         enginesFactory::shutdown,
         analysisScheduler::shutdown,
         branchManager::shutdown,
-        telemetry::stop,
         settingsManager::shutdown,
         workspaceFoldersManager::shutdown,
         moduleEventsProcessor::shutdown,
@@ -604,7 +610,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didLocalBranchNameChange(DidLocalBranchNameChangeParams event) {
-    branchManager.didBranchNameChange(create(event.getFolderUri()), event.getBranchName());
+    backendServiceFacade.notifyBackendOnVscChange(event.getFolderUri());
   }
 
   @Override
@@ -731,8 +737,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private void addPluginPathOrWarn(String pluginName, Language language, Map<String, Path> plugins) {
     analyzers.stream().filter(it -> it.toString().endsWith("sonar" + pluginName + ".jar")).findFirst()
       .ifPresentOrElse(
-        pluginPath -> plugins.put(language.getPluginKey(), pluginPath),
-        () -> lsLogOutput.warn(format("Embedded plugin not found: %s", language.getLabel()))
+        pluginPath -> plugins.put(org.sonarsource.sonarlint.core.commons.Language.valueOf(language.name()).getPluginKey(), pluginPath),
+        () -> lsLogOutput.warn(format("Embedded plugin not found: %s", org.sonarsource.sonarlint.core.commons.Language.valueOf(language.name()).getLabel()))
       );
   }
 
@@ -746,8 +752,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     params.setEmbeddedPluginPaths(new HashSet<>(analyzers));
     params.setConnectedModeEmbeddedPluginPathsByKey(getEmbeddedPluginsToPath());
     params.setEnableSecurityHotspots(true);
-    params.setEnabledLanguagesInStandaloneMode(EnginesFactory.getStandaloneLanguages());
-    params.setExtraEnabledLanguagesInConnectedMode(EnginesFactory.getConnectedLanguages());
+
+    params.setEnabledLanguagesInStandaloneMode(EnginesFactory.getStandaloneLanguages().stream()
+      .map(l -> Language.valueOf(l.name())).collect(Collectors.toSet()));
+    params.setExtraEnabledLanguagesInConnectedMode(EnginesFactory.getConnectedLanguages().stream()
+      .map(l -> Language.valueOf(l.name())).collect(Collectors.toSet()));
     params.setUserAgent(userAgent);
   }
 
@@ -797,7 +806,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params) {
-    var coreParams = new org.sonarsource.sonarlint.core.clientapi.backend.issue.ChangeIssueStatusParams(
+    var coreParams = new org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ChangeIssueStatusParams(
       params.getConfigurationScopeId(), params.getIssueId(), params.getNewStatus(), params.isTaintIssue());
     return backendServiceFacade.getBackendService().changeIssueStatus(coreParams).thenAccept(nothing -> {
       var key = params.getIssueId();
@@ -854,7 +863,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .orElseThrow(() -> new IllegalStateException("No workspace found"));
     var workspaceUri = workspace.getUri();
     var hotspotStatus = hotspotStatusOfTitle(params.getNewStatus());
-    var coreParams = new org.sonarsource.sonarlint.core.clientapi.backend.hotspot.ChangeHotspotStatusParams(
+    var coreParams = new org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.ChangeHotspotStatusParams(
       workspaceUri.toString(), params.getHotspotKey(), hotspotStatus);
     return backendServiceFacade.getBackendService().changeHotspotStatus(coreParams).thenAccept(nothing -> {
       var key = params.getHotspotKey();
@@ -886,7 +895,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
           .findIssuePerId(params.getFileUri(), params.getHotspotKey()).get().getValue().issue();
         var reviewStatus = delegatingIssue.getReviewStatus();
         var statuses = r.getAllowedStatuses().stream().filter(s -> s != hotspotStatusValueOfHotspotReviewStatus(reviewStatus))
-          .map(HotspotStatus::getTitle).toList();
+          .map(Enum::name).toList();
         return new GetAllowedHotspotStatusesResponse(
           r.isPermitted(),
           r.getNotPermittedReason(),
@@ -900,10 +909,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<ReopenIssueResponse> reopenResolvedLocalIssues(ReopenAllIssuesForFileParams params) {
-    var reopenAllIssuesParams = new org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenAllIssuesForFileParams(params.getConfigurationScopeId(), params.getRelativePath());
+  public CompletableFuture<ReopenAllIssuesForFileResponse> reopenResolvedLocalIssues(ReopenAllIssuesForFileParams params) {
+    var reopenAllIssuesParams = new org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileParams(params.getConfigurationScopeId(), params.getRelativePath());
     return backendServiceFacade.reopenAllIssuesForFile(reopenAllIssuesParams).thenApply(r -> {
-      if (r.isIssueReopened()) {
+      if (r.isSuccess()) {
         analysisScheduler.didChange(create(params.getFileUri()));
         client.showMessage(new MessageParams(MessageType.Info, "Reopened local issues for " + params.getRelativePath()));
       } else {

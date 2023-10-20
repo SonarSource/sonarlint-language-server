@@ -19,7 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import com.google.gson.JsonPrimitive;
+import org.sonarsource.sonarlint.shaded.com.google.gson.JsonPrimitive;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -60,11 +60,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.commons.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.commons.CleanCodeAttributeCategory;
 import org.sonarsource.sonarlint.core.commons.ImpactSeverity;
 import org.sonarsource.sonarlint.core.commons.SoftwareQuality;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -105,6 +105,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "productName", "SLCORE tests",
       "productVersion", "0.1",
       "showVerboseLogs", false,
+      "productKey", "productKey",
       "additionalAttributes", Map.of(
         "extra", "value",
         "omnisharpDirectory", omnisharpDir.toString()
@@ -658,9 +659,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
 
     assertThat(client.ruleDesc.getKey()).isEqualTo(JAVA_S2095);
-    assertThat(client.ruleDesc.getCleanCodeAttribute()).isEqualTo(CleanCodeAttribute.COMPLETE.getIssueLabel());
-    assertThat(client.ruleDesc.getCleanCodeAttributeCategory()).isEqualTo(CleanCodeAttributeCategory.INTENTIONAL.getIssueLabel());
-    assertThat(client.ruleDesc.getImpacts()).containsExactly(Map.entry(SoftwareQuality.RELIABILITY.getDisplayLabel(), ImpactSeverity.HIGH.getDisplayLabel()));
+    assertThat(client.ruleDesc.getCleanCodeAttribute()).isEqualTo(CleanCodeAttribute.COMPLETE.getLabel());
+    assertThat(client.ruleDesc.getCleanCodeAttributeCategory()).isEqualTo(CleanCodeAttributeCategory.INTENTIONAL.getLabel());
+    assertThat(client.ruleDesc.getImpacts()).containsExactly(Map.entry(SoftwareQuality.RELIABILITY.getLabel(), ImpactSeverity.HIGH.getLabel()));
   }
 
   @Test

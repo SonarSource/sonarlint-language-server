@@ -32,10 +32,10 @@ import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.IssueLocation;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.clientapi.client.issue.ShowIssueParams;
-import org.sonarsource.sonarlint.core.clientapi.common.FlowDto;
-import org.sonarsource.sonarlint.core.clientapi.common.LocationDto;
 import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.ShowIssueParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.FlowDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.LocationDto;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.LocalCodeFile;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -72,17 +72,17 @@ public final class ShowAllLocationsCommand {
     }
 
     public Param(ShowIssueParams showIssueParams, ProjectBindingManager projectBindingManager, String connectionId) {
-      this.fileUri = projectBindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath()).orElse(null);
-      this.message = showIssueParams.getMessage();
+      this.fileUri = projectBindingManager.serverPathToFileUri(showIssueParams.getConfigurationScopeId()).orElse(null);
+      this.message = showIssueParams.getIssueDetails().getMessage();
       this.severity = "";
-      this.ruleKey = showIssueParams.getRuleKey();
-      this.flows = showIssueParams.getFlows().stream().map(flowDto -> new Flow(flowDto, projectBindingManager)).toList();
-      this.textRange = new TextRange(showIssueParams.getTextRange().getStartLine(),
-        showIssueParams.getTextRange().getStartLineOffset(),
-        showIssueParams.getTextRange().getEndLine(),
-        showIssueParams.getTextRange().getEndLineOffset());
+      this.ruleKey = showIssueParams.getIssueDetails().getRuleKey();
+      this.flows = showIssueParams.getIssueDetails().getFlows().stream().map(flowDto -> new Flow(flowDto, projectBindingManager)).toList();
+      this.textRange = new TextRange(showIssueParams.getIssueDetails().getTextRange().getStartLine(),
+        showIssueParams.getIssueDetails().getTextRange().getStartLineOffset(),
+        showIssueParams.getIssueDetails().getTextRange().getEndLine(),
+        showIssueParams.getIssueDetails().getTextRange().getEndLineOffset());
       this.connectionId = connectionId;
-      this.creationDate = showIssueParams.getCreationDate();
+      this.creationDate = showIssueParams.getIssueDetails().getCreationDate();
       if (this.fileUri != null) {
         try {
           String localCode;
@@ -95,7 +95,7 @@ public final class ShowAllLocationsCommand {
           if (localCode == null) {
             this.codeMatches = false;
           } else {
-            this.codeMatches = showIssueParams.getCodeSnippet().equals(localCode);
+            this.codeMatches = showIssueParams.getIssueDetails().getCodeSnippet().equals(localCode);
           }
         } catch (Exception e) {
           // not a valid range

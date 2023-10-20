@@ -19,7 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import com.google.gson.JsonObject;
+import org.sonarsource.sonarlint.shaded.com.google.gson.JsonObject;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -52,10 +52,10 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonar.api.utils.DateUtils;
 import org.sonar.scanner.protocol.Constants.Severity;
 import org.sonar.scanner.protocol.input.ScannerInput;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.ResolutionStatus;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ResolutionStatus;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Components;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Hotspots;
@@ -103,7 +103,9 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
-      "productVersion", "0.1"), new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
+      "productVersion", "0.1",
+      "productKey", "productKey"),
+      new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
 
   }
 
@@ -798,7 +800,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         tuple(0, 13, 0, 26, PYTHON_S1313, "remote", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Warning)));
     assertThat(client.getHotspots(uriInFolder).get(0).getData().toString()).contains("\"status\":0");
 
-    lsProxy.changeHotspotStatus(new SonarLintExtendedLanguageServer.ChangeHotspotStatusParams(hotspotKey, HotspotStatus.SAFE.getTitle(), uriInFolder));
+    lsProxy.changeHotspotStatus(new SonarLintExtendedLanguageServer.ChangeHotspotStatusParams(hotspotKey, HotspotStatus.SAFE.name(), uriInFolder));
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder)).isEmpty());
   }
@@ -854,7 +856,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         tuple(0, 13, 0, 26, PYTHON_S1313, "remote", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Warning)));
     assertThat(client.getHotspots(uriInFolder).get(0).getData().toString()).contains("\"status\":0");
 
-    lsProxy.changeHotspotStatus(new SonarLintExtendedLanguageServer.ChangeHotspotStatusParams(hotspotKey, HotspotStatus.ACKNOWLEDGED.getTitle(), uriInFolder));
+    lsProxy.changeHotspotStatus(new SonarLintExtendedLanguageServer.ChangeHotspotStatusParams(hotspotKey, HotspotStatus.ACKNOWLEDGED.name(), uriInFolder));
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder).get(0).getData().toString()).contains("\"status\":3"));
   }

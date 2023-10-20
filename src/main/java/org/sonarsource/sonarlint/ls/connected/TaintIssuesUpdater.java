@@ -92,11 +92,11 @@ public class TaintIssuesUpdater {
 
     // download taints
     var sqFilePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(Paths.get(folderUri), fileUri, logOutput));
-    engine.downloadAllServerTaintIssuesForFile(endpointParams, httpClient, binding, sqFilePath, branchName, null);
-    var serverIssues = engine.getServerTaintIssues(binding, branchName, sqFilePath, false);
+//    engine.downloadAllServerTaintIssuesForFile(endpointParams, httpClient, binding, sqFilePath, branchName, null);
+//    var serverIssues = engine.getServerTaintIssues(binding, branchName, sqFilePath, false);
 
     // reload cache
-    taintVulnerabilitiesCache.reload(fileUri, TaintIssue.from(serverIssues, connectionSettings.isSonarCloudAlias()));
+    //taintVulnerabilitiesCache.reload(fileUri, TaintIssue.from(serverIssues, connectionSettings.isSonarCloudAlias()));
     long foundVulnerabilities = taintVulnerabilitiesCache.getAsDiagnostics(fileUri, diagnosticPublisher.isFocusOnNewCode()).count();
     if (foundVulnerabilities > 0) {
       logOutput.info(format("Fetched %s %s from %s", foundVulnerabilities,

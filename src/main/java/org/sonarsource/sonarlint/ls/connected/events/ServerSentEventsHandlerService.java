@@ -19,9 +19,10 @@
  */
 package org.sonarsource.sonarlint.ls.connected.events;
 
-import org.sonarsource.sonarlint.core.commons.push.ServerEvent;
+
+import org.sonarsource.sonarlint.core.rpc.protocol.client.event.DidReceiveServerHotspotEvent;
 
 public interface ServerSentEventsHandlerService {
-  void handleEvents(ServerEvent event);
-  void handleTaintVulnerabilityRaisedEvent(ServerEvent event);
+  void updateTaintCache();
+  void handleHotspotEvent(DidReceiveServerHotspotEvent event);
 }

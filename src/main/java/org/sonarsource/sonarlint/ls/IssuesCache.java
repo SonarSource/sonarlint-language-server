@@ -19,7 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import com.google.gson.JsonObject;
+import org.sonarsource.sonarlint.shaded.com.google.gson.JsonObject;
 import java.net.URI;
 import java.util.Collection;
 import java.util.HashMap;
@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.Diagnostic;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 

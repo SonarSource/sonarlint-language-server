@@ -29,23 +29,21 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 import javax.annotation.CheckForNull;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.clientapi.backend.tracking.ClientTrackedFindingDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.tracking.LineWithHashDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.tracking.LocalOnlyIssueDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.tracking.ServerMatchedIssueDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.tracking.TextRangeWithHashDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.tracking.TrackWithServerIssuesParams;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.http.HttpClient;
 import org.sonarsource.sonarlint.core.issuetracking.CachingIssueTracker;
 import org.sonarsource.sonarlint.core.issuetracking.InMemoryIssueTrackerCache;
 import org.sonarsource.sonarlint.core.issuetracking.IssueTrackerCache;
 import org.sonarsource.sonarlint.core.issuetracking.Trackable;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ClientTrackedFindingDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.LineWithHashDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TrackWithServerIssuesParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TrackWithServerIssuesResponse;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.core.tracking.IssueTrackable;
@@ -64,7 +62,6 @@ public class ServerIssueTrackerWrapper {
   private final EndpointParams endpointParams;
   private final ProjectBinding projectBinding;
   private final Supplier<String> getReferenceBranchNameForFolder;
-  private final HttpClient httpClient;
   private final BackendServiceFacade backend;
   private final LanguageClientLogOutput logOutput;
   private final WorkspaceFoldersManager workspaceFoldersManager;
@@ -76,13 +73,12 @@ public class ServerIssueTrackerWrapper {
   private final org.sonarsource.sonarlint.core.tracking.ServerIssueTracker tracker;
 
   ServerIssueTrackerWrapper(ConnectedSonarLintEngine engine, EndpointParams endpointParams,
-    ProjectBinding projectBinding, Supplier<String> getReferenceBranchNameForFolder, HttpClient httpClient,
+    ProjectBinding projectBinding, Supplier<String> getReferenceBranchNameForFolder,
     BackendServiceFacade backend, WorkspaceFoldersManager workspaceFoldersManager, LanguageClientLogOutput logOutput) {
     this.engine = engine;
     this.endpointParams = endpointParams;
     this.projectBinding = projectBinding;
     this.getReferenceBranchNameForFolder = getReferenceBranchNameForFolder;
-    this.httpClient = httpClient;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.backend = backend;
     this.logOutput = logOutput;
@@ -104,8 +100,7 @@ public class ServerIssueTrackerWrapper {
     cachingHotspotsTracker.matchAndTrackAsNew(filePath, toHotspotTrackables(issues));
 
     if (shouldFetchServerIssues) {
-      tracker.update(endpointParams, httpClient, engine, projectBinding,
-        Collections.singleton(filePath), getReferenceBranchNameForFolder.get());
+      tracker.update(engine, projectBinding, getReferenceBranchNameForFolder.get(), Collections.singleton(filePath));
     } else {
       tracker.update(engine, projectBinding, getReferenceBranchNameForFolder.get(), Collections.singleton(filePath));
     }
@@ -124,19 +119,22 @@ public class ServerIssueTrackerWrapper {
       new TrackWithServerIssuesParams(workspaceFolderUri.toString(), issuesByFilepath, shouldFetchServerIssues)
     ), logOutput);
     trackWithServerIssuesResponse.ifPresentOrElse(
+      // TODO migrate to new DTO
       r -> matchAndTrackIssues(filePath, issueListener, issueTrackables, r.getIssuesByServerRelativePath()),
       () -> issueTrackables.stream().map(DelegatingIssue::new).forEach(issueListener::handle)
     );
   }
 
-  private static void matchAndTrackIssues(String filePath, IssueListener issueListener, Collection<Trackable> currentTrackables, Map<String,
-    List<Either<ServerMatchedIssueDto, LocalOnlyIssueDto>>> issuesByServerRelativePath) {
+  private static void matchAndTrackIssues(String filePath, IssueListener issueListener, Collection<Trackable> currentTrackables,
+    Map<String, List<TrackWithServerIssuesResponse.ServerOrLocalIssueDto>> issuesByServerRelativePath) {
+    //
     var eitherList = issuesByServerRelativePath.getOrDefault(filePath, Collections.emptyList());
     Streams.zip(currentTrackables.stream(), eitherList.stream(), (issue, either) -> {
         if (either.isLeft()) {
           var serverIssue = either.getLeft();
           var issueSeverity = serverIssue.getOverriddenSeverity() == null ? issue.getSeverity() : serverIssue.getOverriddenSeverity();
-          return new DelegatingIssue(issue, serverIssue.getId(), serverIssue.isResolved(), issueSeverity, serverIssue.getServerKey(), serverIssue.isOnNewCode());
+          return new DelegatingIssue(issue, serverIssue.getId(), serverIssue.isResolved(),
+            org.sonarsource.sonarlint.core.commons.IssueSeverity.valueOf(issueSeverity.name()), serverIssue.getServerKey(), serverIssue.isOnNewCode());
         } else {
           var localIssue = either.getRight();
           return new DelegatingIssue(issue, localIssue.getId(), localIssue.getResolutionStatus() != null, true);

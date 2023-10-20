@@ -57,15 +57,18 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.AbstractRuleDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleDescriptionTabDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleMonolithicDescriptionDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleParamDefinitionDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleSplitDescriptionDto;
-import org.sonarsource.sonarlint.core.commons.CleanCodeAttribute;
+import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.AbstractRuleDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.CleanCodeAttributeDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetStandaloneRuleDescriptionResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ImpactDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleDescriptionTabDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleMonolithicDescriptionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleParamDefinitionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleSplitDescriptionDto;
 import org.sonarsource.sonarlint.core.serverapi.UrlUtils;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -247,7 +250,7 @@ public class CommandManager {
     var ruleContextKey = taintVulnerability.isPresent() ? Objects.toString(taintVulnerability.get().getRuleDescriptionContextKey(), "") : "";
     addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey, ruleContextKey);
     taintVulnerability.ifPresent(issue -> {
-      var issueKey = issue.getKey();
+      var issueKey = issue.getRuleKey();
       if (!issue.getFlows().isEmpty()) {
         var titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", ruleKey);
         codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(issueKey, actualBinding.getConnectionId())));
@@ -314,7 +317,8 @@ public class CommandManager {
       return backendServiceFacade.listAllStandaloneRulesDefinitions()
         .thenApply(response -> {
           response.getRulesByKey().forEach((ruleKey, ruleDefinition) -> {
-            var languageName = ruleDefinition.getLanguage().getLabel();
+            var language = Language.valueOf(ruleDefinition.getLanguage().name());
+            var languageName = language.getLabel();
             result.computeIfAbsent(languageName, k -> new ArrayList<>()).add(Rule.of(ruleDefinition));
           });
           return result;
@@ -376,24 +380,26 @@ public class CommandManager {
     Map<String, RuleParamDefinitionDto> params, Either<RuleMonolithicDescriptionDto, RuleSplitDescriptionDto> description,
     String ruleKey, String ruleContextKey) {
     var ruleName = ruleDetailsDto.getName();
-    var type = ruleDetailsDto.getType();
-    var severity = ruleDetailsDto.getSeverity();
-    var languageKey = ruleDetailsDto.getLanguage().getLanguageKey();
-    var cleanCodeAttributeAndCategory = getCleanCodeAttributeAndCategory(ruleDetailsDto.getCleanCodeAttribute().orElse(null));
+    var type = org.sonarsource.sonarlint.core.commons.RuleType.valueOf(ruleDetailsDto.getType().name());
+    var severity = org.sonarsource.sonarlint.core.commons.IssueSeverity.valueOf(ruleDetailsDto.getSeverity().name());
+    var language = Language.valueOf(ruleDetailsDto.getLanguage().name());
+    var languageKey = language.getLanguageKey();
+    var cleanCodeAttributeAndCategory = getCleanCodeAttributeAndCategory(ruleDetailsDto.getCleanCodeAttributeDetails());
     var cleanCodeAttributeParam = cleanCodeAttributeAndCategory.getLeft();
     var cleanCodeAttributeCategoryParam = cleanCodeAttributeAndCategory.getRight();
-    var impacts = ruleDetailsDto.getDefaultImpacts().entrySet().stream()
-      .collect(Collectors.toMap(entry -> entry.getKey().getDisplayLabel(), entry -> entry.getValue().getDisplayLabel()));
+    var impacts = ruleDetailsDto.getDefaultImpacts().stream()
+      .collect(Collectors.toMap(ImpactDto::getSoftwareQualityLabel, ImpactDto::getImpactSeverityLabel));
     var htmlDescription = getHtmlDescription(description);
     var htmlDescriptionTabs = getHtmlDescriptionTabs(description, ruleContextKey);
     return new ShowRuleDescriptionParams(ruleKey, ruleName, htmlDescription, htmlDescriptionTabs, type, languageKey, severity, params,
       cleanCodeAttributeParam, cleanCodeAttributeCategoryParam, impacts);
   }
 
-  private static ImmutablePair<String, String> getCleanCodeAttributeAndCategory(@Nullable CleanCodeAttribute cleanCodeAttribute) {
+  private static ImmutablePair<String, String> getCleanCodeAttributeAndCategory(@Nullable CleanCodeAttributeDto cleanCodeAttribute) {
     if (cleanCodeAttribute != null) {
-      var attributeCategory = cleanCodeAttribute.getAttributeCategory();
-      return new ImmutablePair<>(cleanCodeAttribute.getIssueLabel(), attributeCategory.getIssueLabel());
+      var attributeCategory = cleanCodeAttribute.getCleanCodeAttributeCategory();
+      return new ImmutablePair<>(cleanCodeAttribute.getCleanCodeAttributeLabel(),
+        org.sonarsource.sonarlint.core.commons.CleanCodeAttributeCategory.valueOf(attributeCategory.name()).getLabel());
     }
     return new ImmutablePair<>("", "");
   }

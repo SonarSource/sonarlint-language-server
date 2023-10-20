@@ -22,6 +22,8 @@ package org.sonarsource.sonarlint.ls.connected.domain;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jetbrains.annotations.Nullable;
 import org.sonarsource.sonarlint.core.commons.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.commons.ImpactSeverity;
@@ -38,9 +40,9 @@ public class TaintIssue extends ServerTaintIssue {
     Instant creationDate, IssueSeverity severity, RuleType type, @Nullable TextRangeWithHash textRange,
      List<Flow> flows, @Nullable String ruleDescriptionContextKey, String source, @Nullable CleanCodeAttribute cleanCodeAttribute,
     Map<SoftwareQuality, ImpactSeverity> impacts, boolean isOnNewCode) {
-    super(key, resolved, ruleKey, message, filePath, creationDate, severity, type, textRange, ruleDescriptionContextKey, cleanCodeAttribute, impacts);
+    super(UUID.randomUUID(), key, resolved, ruleKey, message, filePath, creationDate, severity, type, textRange, ruleDescriptionContextKey, cleanCodeAttribute, impacts);
     this.setFlows(flows);
-    this.setIsOnNewCode(isOnNewCode);
+//    this.setIsOnNewCode(isOnNewCode);
     this.source = source;
   }
 
@@ -53,11 +55,11 @@ public class TaintIssue extends ServerTaintIssue {
   }
 
   public static TaintIssue from(ServerTaintIssue serverTaintIssue, String source) {
-    return new TaintIssue(serverTaintIssue.getKey(), serverTaintIssue.isResolved(), serverTaintIssue.getRuleKey(),
+    return new TaintIssue(serverTaintIssue.getRuleKey(), serverTaintIssue.isResolved(), serverTaintIssue.getRuleKey(),
       serverTaintIssue.getMessage(), serverTaintIssue.getFilePath(), serverTaintIssue.getCreationDate(), serverTaintIssue.getSeverity(),
       serverTaintIssue.getType(), serverTaintIssue.getTextRange(), serverTaintIssue.getFlows(),
       serverTaintIssue.getRuleDescriptionContextKey(), source, serverTaintIssue.getCleanCodeAttribute().orElse(null),
-      serverTaintIssue.getImpacts(), serverTaintIssue.isOnNewCode());
+      serverTaintIssue.getImpacts(), true);
   }
 
   public static List<TaintIssue> from(List<ServerTaintIssue> serverTaintIssues, boolean isSonarCloudAlias) {

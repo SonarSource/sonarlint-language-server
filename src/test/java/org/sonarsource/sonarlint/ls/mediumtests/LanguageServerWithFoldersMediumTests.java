@@ -57,7 +57,9 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
-      "productVersion", "0.1"), new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
+      "productVersion", "0.1",
+      "productKey", "productKey"),
+      new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
   }
 
   @Override

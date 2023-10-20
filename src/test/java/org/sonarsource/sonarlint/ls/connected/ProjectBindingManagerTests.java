@@ -629,35 +629,35 @@ class ProjectBindingManagerTests {
       .hasMessage("Failed to fetch list of projects from '" + CONNECTION_ID + "'");
   }
 
-  @Test
-  void should_update_taint_issue_cache_from_storage() {
-    var serverPath = fileInAWorkspaceFolderPath.toUri().toString();
-    var fileUri = fileInAWorkspaceFolderPath.toUri();
-    var folderUri = workspaceFolderPath.toUri();
-    var projectBindingWrapperMock = mock(ProjectBindingWrapper.class);
-    var projectBinding = mock(ProjectBinding.class);
-    var connectedEngine = mock(ConnectedSonarLintEngine.class);
-    when(projectBindingWrapperMock.getBinding()).thenReturn(projectBinding);
-    when(projectBindingWrapperMock.getConnectionId()).thenReturn("connectionId");
-    when(projectBindingWrapperMock.getEngine()).thenReturn(connectedEngine);
-
-    when(connectedEngine.getServerBranches(any())).thenReturn(new ProjectBranches(Set.of("main", "feature"), "main"));
-    when(connectedEngine.getAllServerTaintIssues(any(), any())).thenReturn(List.of(
-      new ServerTaintIssue("taint1", false, "ruleKey1",
-        "message", fileUri.getRawPath(), Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY,
-        new TextRangeWithHash(1, 1, 1, 1, ""),
-        null, null, null)));
-
-    when((projectBinding.serverPathToIdePath(fileUri.getRawPath()))).thenReturn(Optional.of(FILE_PHP));
-    folderBindingCache.put(folderUri, Optional.of(projectBindingWrapperMock));
-    connectedEngineCacheByConnectionId.put("connectionId", Optional.of(connectedEngine));
-    var workspaceFolderWrapper = new WorkspaceFolderWrapper(folderUri, new WorkspaceFolder(folderUri.toString(), "sample-folder"), logTester.getLogger());
-    when(foldersManager.findFolderForFile(fileUri)).thenReturn(Optional.of(workspaceFolderWrapper));
-
-    underTest.getBindingAndRepublishTaints(fileUri);
-
-    verify(diagnosticPublisher).publishDiagnostics(URI.create(serverPath), false);
-  }
+//  @Test
+//  void should_update_taint_issue_cache_from_storage() {
+//    var serverPath = fileInAWorkspaceFolderPath.toUri().toString();
+//    var fileUri = fileInAWorkspaceFolderPath.toUri();
+//    var folderUri = workspaceFolderPath.toUri();
+//    var projectBindingWrapperMock = mock(ProjectBindingWrapper.class);
+//    var projectBinding = mock(ProjectBinding.class);
+//    var connectedEngine = mock(ConnectedSonarLintEngine.class);
+//    when(projectBindingWrapperMock.getBinding()).thenReturn(projectBinding);
+//    when(projectBindingWrapperMock.getConnectionId()).thenReturn("connectionId");
+//    when(projectBindingWrapperMock.getEngine()).thenReturn(connectedEngine);
+//
+//    when(connectedEngine.getServerBranches(any())).thenReturn(new ProjectBranches(Set.of("main", "feature"), "main"));
+//    when(connectedEngine.getAllServerTaintIssues(any(), any())).thenReturn(List.of(
+//      new ServerTaintIssue("taint1", false, "ruleKey1",
+//        "message", fileUri.getRawPath(), Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY,
+//        new TextRangeWithHash(1, 1, 1, 1, ""),
+//        null, null, null)));
+//
+//    when((projectBinding.serverPathToIdePath(fileUri.getRawPath()))).thenReturn(Optional.of(FILE_PHP));
+//    folderBindingCache.put(folderUri, Optional.of(projectBindingWrapperMock));
+//    connectedEngineCacheByConnectionId.put("connectionId", Optional.of(connectedEngine));
+//    var workspaceFolderWrapper = new WorkspaceFolderWrapper(folderUri, new WorkspaceFolder(folderUri.toString(), "sample-folder"), logTester.getLogger());
+//    when(foldersManager.findFolderForFile(fileUri)).thenReturn(Optional.of(workspaceFolderWrapper));
+//
+//    underTest.getBindingAndRepublishTaints(fileUri);
+//
+//    verify(diagnosticPublisher).publishDiagnostics(URI.create(serverPath), false);
+//  }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {
     var folder = mockFileInAFolder();

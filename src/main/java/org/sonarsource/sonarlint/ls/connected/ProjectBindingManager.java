@@ -42,11 +42,11 @@ import javax.annotation.Nullable;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.DidUpdateBindingParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionParams;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.core.http.HttpClient;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpdateBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionParams;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
 import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
@@ -211,15 +211,14 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var engine = engineOpt.get();
     var projectKey = requireNonNull(settings.getProjectKey());
     Supplier<String> branchProvider = () -> resolveBranchNameForFolder(folderRoot.toUri(), engine, projectKey);
-    var httpClient = backendServiceFacade.getHttpClient(connectionId);
-    syncAtStartup(engine, endpointParams, projectKey, branchProvider, httpClient, globalLogOutput);
+
 
     var ideFilePaths = FileUtils.allRelativePathsForFilesInTree(folderRoot, globalLogOutput);
     var projectBinding = engine.calculatePathPrefixes(projectKey, ideFilePaths);
     globalLogOutput.debug("Resolved binding %s for folder %s",
       ToStringBuilder.reflectionToString(projectBinding, ToStringStyle.SHORT_PREFIX_STYLE),
       folderRoot);
-    var issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, endpointParams, projectBinding, branchProvider, httpClient,
+    var issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, endpointParams, projectBinding, branchProvider,
       backendServiceFacade, foldersManager, globalLogOutput);
     return new ProjectBindingWrapper(connectionId, projectBinding, engine, issueTrackerWrapper);
   }
@@ -231,7 +230,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       engine.sync(endpointParams, httpClient, Set.of(projectKey), null);
       var currentBranchName = branchProvider.get();
       engine.syncServerIssues(endpointParams, httpClient, projectKey, currentBranchName, null);
-      engine.syncServerTaintIssues(endpointParams, httpClient, projectKey, currentBranchName, null);
       engine.syncServerHotspots(endpointParams, httpClient, projectKey, currentBranchName, null);
     } catch (Exception exceptionDuringSync) {
       globalLogOutput.warn("Exception happened during initial sync with project " + projectKey, exceptionDuringSync);
@@ -480,11 +478,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private void updateAllTaintIssuesForOneFolder(@Nullable WorkspaceFolderWrapper folder, ProjectBinding binding, String connectionId) {
     getStartedConnectedEngine(connectionId).ifPresent(engine -> {
       var branchName = resolveBranchNameForFolder(folder == null ? null : folder.getUri(), engine, binding.projectKey());
-      engine.getAllServerTaintIssues(binding, branchName)
-        .stream()
-        .map(ServerTaintIssue::getFilePath)
-        .distinct()
-        .forEach(this::updateTaintIssueCacheFromStorageForServerPath);
+
     });
   }
 
@@ -505,10 +499,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         var folder = foldersManager.findFolderForFile(fileUri);
         var folderUri = folder.isPresent() ? folder.get().getUri() : URI.create("");
         var branchName = this.resolveBranchNameForFolder(folderUri, engine, bindingWrapper.getBinding().projectKey());
-        var serverTaintIssues = engine.getServerTaintIssues(bindingWrapper.getBinding(), branchName, filePath, false);
+        // TODO do we need to include resolved?
         var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(bindingWrapper.getConnectionId());
         var isSonarCloud = connectionSettings != null && connectionSettings.isSonarCloudAlias();
-        taintVulnerabilitiesCache.reload(fileUri, TaintIssue.from(serverTaintIssues, isSonarCloud));
         diagnosticPublisher.publishDiagnostics(fileUri, false);
       }
     }

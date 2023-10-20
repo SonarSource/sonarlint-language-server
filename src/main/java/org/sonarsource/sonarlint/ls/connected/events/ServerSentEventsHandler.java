@@ -21,11 +21,7 @@ package org.sonarsource.sonarlint.ls.connected.events;
 
 import java.net.URI;
 import java.util.Optional;
-import org.sonarsource.sonarlint.core.commons.push.ServerEvent;
-import org.sonarsource.sonarlint.core.serverapi.push.IssueChangedEvent;
-import org.sonarsource.sonarlint.core.serverapi.push.ServerHotspotEvent;
-import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityClosedEvent;
-import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.event.DidReceiveServerHotspotEvent;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -54,47 +50,41 @@ public class ServerSentEventsHandler implements ServerSentEventsHandlerService {
     this.analysisScheduler = analysisScheduler;
   }
 
-  @Override
-  public void handleEvents(ServerEvent event) {
-    if (event instanceof TaintVulnerabilityRaisedEvent) {
-      handleTaintVulnerabilityRaisedEvent(event);
-    } else if (event instanceof TaintVulnerabilityClosedEvent ||
-      event instanceof IssueChangedEvent) {
-      taintVulnerabilitiesCache.getAllFilesWithTaintIssues()
-        .forEach(projectBindingManager::updateTaintIssueCacheFromStorageForFile);
-    } else if (event instanceof ServerHotspotEvent serverHotspotEvent) {
-      var fileUri = getFileUriFromEvent(serverHotspotEvent);
-      fileUri.ifPresent(analysisScheduler::didReceiveHotspotEvent);
-    }
+  public void handleHotspotEvent(DidReceiveServerHotspotEvent event) {
+    var fileUri = getFileUriFromEvent(event.getServerFilePath());
+    fileUri.ifPresent(analysisScheduler::didReceiveHotspotEvent);
   }
 
-  private Optional<URI> getFileUriFromEvent(ServerHotspotEvent event) {
-    var serverPath = event.getFilePath();
+  public void updateTaintCache() {
+    taintVulnerabilitiesCache.getAllFilesWithTaintIssues()
+      .forEach(projectBindingManager::updateTaintIssueCacheFromStorageForFile);
+  }
+
+  private Optional<URI> getFileUriFromEvent(String serverPath) {
     return projectBindingManager.serverPathToFileUri(serverPath);
   }
 
-  @Override
-  public void handleTaintVulnerabilityRaisedEvent(ServerEvent event) {
-    var taintVulnerabilityRaisedEvent = (TaintVulnerabilityRaisedEvent) event;
-    var filePathFromEvent = taintVulnerabilityRaisedEvent.getMainLocation().getFilePath();
-    var localFileUri = projectBindingManager.serverPathToFileUri(filePathFromEvent);
-    var connectionId = DEFAULT_CONNECTION_ID;
-    var currentBranch = "";
-    if (localFileUri.isPresent()) {
-      projectBindingManager.updateTaintIssueCacheFromStorageForFile(localFileUri.get());
-      var bindingWrapper = projectBindingManager.getBinding(localFileUri.get());
-      if (bindingWrapper.isPresent()) {
-        var binding = bindingWrapper.get();
-        connectionId = binding.getConnectionId();
-        var folderUri = workspaceFoldersManager.findFolderForFile(localFileUri.get());
-        if (folderUri.isPresent()) {
-          currentBranch = projectBindingManager.resolveBranchNameForFolder(folderUri.get().getUri(), binding.getEngine(), taintVulnerabilityRaisedEvent.getProjectKey());
-        }
-      }
-    }
-    var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
-    if (connectionSettings != null && !connectionSettings.isSmartNotificationsDisabled() && currentBranch.equals(taintVulnerabilityRaisedEvent.getBranchName())) {
-      taintVulnerabilityRaisedNotification.showTaintVulnerabilityNotification(taintVulnerabilityRaisedEvent, connectionId, connectionSettings.isSonarCloudAlias());
-    }
-  }
+//  @Override
+//  public void handleTaintVulnerabilityRaisedEvent(DidReceiveServerTaintVulnerabilityRaisedEvent event) {
+//    var filePathFromEvent = event.getFilePath();
+//    var localFileUri = projectBindingManager.serverPathToFileUri(filePathFromEvent);
+//    var connectionId = DEFAULT_CONNECTION_ID;
+//    var currentBranch = "";
+//    if (localFileUri.isPresent()) {
+//      projectBindingManager.updateTaintIssueCacheFromStorageForFile(localFileUri.get());
+//      var bindingWrapper = projectBindingManager.getBinding(localFileUri.get());
+//      if (bindingWrapper.isPresent()) {
+//        var binding = bindingWrapper.get();
+//        connectionId = binding.getConnectionId();
+//        var folderUri = workspaceFoldersManager.findFolderForFile(localFileUri.get());
+//        if (folderUri.isPresent()) {
+//          currentBranch = projectBindingManager.resolveBranchNameForFolder(folderUri.get().getUri(), binding.getEngine(), event.getSonarProjectKey());
+//        }
+//      }
+//    }
+//    var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
+//    if (connectionSettings != null && !connectionSettings.isSmartNotificationsDisabled() && currentBranch.equals(event.getBranchName())) {
+//      taintVulnerabilityRaisedNotification.showTaintVulnerabilityNotification(event, connectionId, connectionSettings.isSonarCloudAlias());
+//    }
+//  }
 }

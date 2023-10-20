@@ -45,7 +45,8 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
       "productName", "SLCORE notebook tests",
       "productVersion", "0.1",
       "showVerboseLogs", false,
-      "enableNotebooks", true
+      "enableNotebooks", true,
+      "productKey", "productKey"
     ));
   }
 
