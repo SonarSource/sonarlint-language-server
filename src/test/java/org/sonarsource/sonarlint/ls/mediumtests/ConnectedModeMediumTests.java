@@ -77,7 +77,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private static final String PYTHON_S1481 = "python:S1481";
   private static final String PYTHON_S1313 = "python:S1313";
   private static final String PROJECT_KEY = "myProject";
-  public static final String LANGUAGES_LIST = "apex,c,cpp,css,cobol,web,java,js,php,plsql,py,secrets,ts,xml,yaml,go,cloudformation,docker,kubernetes,terraform";
+  public static final String LANGUAGES_LIST = "apex,c,cpp,cs,css,cobol,web,java,js,php,plsql,py,secrets,ts,xml,yaml,go,cloudformation,docker,kubernetes,terraform";
 
   @RegisterExtension
   private final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();

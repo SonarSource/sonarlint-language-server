@@ -27,10 +27,8 @@ import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
-import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
@@ -55,6 +53,7 @@ class EnginesFactoryTests {
     assertThat(EnginesFactory.getStandaloneLanguages()).containsExactlyInAnyOrder(
       Language.C,
       Language.CLOUDFORMATION,
+      Language.CS,
       Language.CSS,
       Language.CPP,
       Language.DOCKER,

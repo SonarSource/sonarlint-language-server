@@ -23,6 +23,7 @@ import com.google.gson.JsonPrimitive;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
@@ -93,15 +94,21 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   public static final String CLOUDFORMATION_S6273 = "cloudformation:S6273";
   public static final String DOCKER_S6476 = "docker:S6476";
   public static final String TERRAFORM_S6273 = "terraform:S6273";
+  private static Path omnisharpDir;
 
   @BeforeAll
   static void initialize() throws Exception {
+    omnisharpDir = makeStaticTempDir();
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
       "productVersion", "0.1",
       "showVerboseLogs", false,
-      "additionalAttributes", Map.of("extra", "value")));
+      "additionalAttributes", Map.of(
+        "extra", "value",
+        "omnisharpDirectory", omnisharpDir.toString()
+      )
+    ));
   }
 
   @BeforeEach
@@ -361,7 +368,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     notifyConfigurationChangeOnClient();
 
     assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern={**/*Test*}]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern={**/*Test*}]");
 
     var jsContent = "function foo() {\n  let toto = 0;\n}";
     var fooTestUri = getUri("fooTest.js");
@@ -377,7 +384,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
     assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern={**/*MyTest*}]");
+      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern={**/*MyTest*}]");
 
     didChange(fooTestUri, jsContent);
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fooTestUri)).hasSize(1));
@@ -701,7 +708,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       awaitLatch(client.settingsLatch);
 
       assertLogContains(
-        "Workspace folder 'WorkspaceFolder[name=Added,uri=file:///added_uri]' configuration updated: WorkspaceFolderSettings[analyzerProperties={},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern=another pattern]");
+        "Workspace folder 'WorkspaceFolder[name=Added,uri=file:///added_uri]' configuration updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern=another pattern]");
     } finally {
       lsProxy.getWorkspaceService()
         .didChangeWorkspaceFolders(
@@ -974,7 +981,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void getFilePatternsForAnalysis() throws ExecutionException, InterruptedException {
     var result = lsProxy.getFilePatternsForAnalysis(new SonarLintExtendedLanguageServer.UriParams("notBound")).get();
 
-    assertThat(result.getPatterns()).hasSize(46);
+    assertThat(result.getPatterns()).hasSize(47);
     assertThat(result.getPatterns()).containsExactlyInAnyOrder("**/*.c",
       "**/*.h",
       "**/*.cc",
@@ -986,6 +993,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "**/*.hxx",
       "**/*.h++",
       "**/*.ipp",
+      "**/*.cs",
       "**/*.css",
       "**/*.less",
       "**/*.scss",
@@ -1022,7 +1030,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "**/*.go",
       "**/*.tf");
   }
-
 
   @Test
   void shouldRespectAnalysisExcludes() {
