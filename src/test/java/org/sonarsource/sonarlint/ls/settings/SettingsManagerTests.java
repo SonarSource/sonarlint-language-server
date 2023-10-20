@@ -21,9 +21,11 @@ package org.sonarsource.sonarlint.ls.settings;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
 import java.io.File;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -55,6 +57,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.ANALYZER_PROPERTIES;
 
 class SettingsManagerTests {
 
@@ -656,6 +659,26 @@ class SettingsManagerTests {
   @Test
   void shouldReturnDefaultConnectionIdIfNull() {
     assertThat(SettingsManager.connectionIdOrDefault(null)).isEqualTo(SettingsManager.DEFAULT_CONNECTION_ID);
+  }
+
+  @Test
+  void shouldUpdateAnalyzerProperties() {
+    var workspaceUri = URI.create("file:///User/user/documents/project");
+    List<Object> response = List.of("{\"disableTelemetry\": false,\"focusOnNewCode\": true}",
+      new JsonPrimitive("Roslyn.sln"),
+      new JsonPrimitive("true"),
+      new JsonPrimitive("false"),
+      new JsonPrimitive("600"));
+    Map<String, Object> settingsMap = new HashMap<>(Map.of("disableTelemetry", false, "focusOnNewCode", true));
+
+    var result = SettingsManager.updateAnalyzerProperties(workspaceUri, response, settingsMap);
+
+    assertThat(result).containsKey(ANALYZER_PROPERTIES);
+    var analyzerProperties = (Map<String, String>) result.get(ANALYZER_PROPERTIES);
+    assertThat(analyzerProperties).contains(entry("sonar.cs.internal.useNet6", "true"),
+      entry("sonar.cs.internal.loadProjectOnDemand", "false"),
+      entry("sonar.cs.internal.loadProjectsTimeout", "600"));
+    assertThat(analyzerProperties.get("sonar.cs.internal.solutionPath")).endsWith("Roslyn.sln");
   }
 
   private static Map<String, Object> fromJsonString(String json) {

@@ -75,7 +75,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static final String DISABLE_TELEMETRY = "disableTelemetry";
   private static final String RULES = "rules";
   private static final String TEST_FILE_PATTERN = "testFilePattern";
-  private static final String ANALYZER_PROPERTIES = "analyzerProperties";
+  static final String ANALYZER_PROPERTIES = "analyzerProperties";
   private static final String OUTPUT = "output";
   private static final String SHOW_ANALYZER_LOGS = "showAnalyzerLogs";
   private static final String SHOW_VERBOSE_LOGS = "showVerboseLogs";
@@ -226,13 +226,13 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       });
   }
 
-  private static Map<String, Object> updateAnalyzerProperties(@org.jetbrains.annotations.Nullable URI workspaceUri, List<Object> response, Map<String, Object> settingsMap) {
+  static Map<String, Object> updateAnalyzerProperties(@org.jetbrains.annotations.Nullable URI workspaceUri, List<Object> response, Map<String, Object> settingsMap) {
     var analyzerProperties = (Map<String, String>) settingsMap.getOrDefault(ANALYZER_PROPERTIES, Maps.newHashMap());
     var solutionRelativePath = tryGetSetting(response, 1, "");
     if (!solutionRelativePath.isEmpty() && workspaceUri != null) {
       // uri: file:///Users/me/Documents/Sonar/roslyn
       // solutionPath: Roslyn.sln
-      // we want: file:///Users//sophio/Documents/Sonar/roslyn/Roslyn.sln
+      // we want: /Users/me/Documents/Sonar/roslyn/Roslyn.sln
       analyzerProperties.put("sonar.cs.internal.solutionPath", Path.of(workspaceUri).resolve(solutionRelativePath).toAbsolutePath().toString());
     }
     analyzerProperties.put("sonar.cs.internal.useNet6", tryGetSetting(response, 2, "true"));
