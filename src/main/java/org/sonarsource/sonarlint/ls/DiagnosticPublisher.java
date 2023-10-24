@@ -104,8 +104,8 @@ public class DiagnosticPublisher {
     diagnostic.setRange(range);
     diagnostic.setCode(issue.getRuleKey());
     diagnostic.setMessage(message(issue, ignoreSecondaryLocations));
-    setSource(issue, diagnostic);
-    diagnostic.setData(getData(issue, entryKey));
+    setSource(diagnostic, issue);
+    setData(diagnostic, issue, entryKey);
 
     return diagnostic;
   }
@@ -144,18 +144,7 @@ public class DiagnosticPublisher {
     }
 
   }
-  private static DiagnosticData getData(Issue issue, String entryKey) {
-    var data = new DiagnosticData();
-    if (issue instanceof DelegatingIssue && issue.getType() == RuleType.SECURITY_HOTSPOT) {
-      var delegatedIssue = (DelegatingIssue) issue;
-      data.setStatus(delegatedIssue.getReviewStatus());
-      data.setServerIssueKey(delegatedIssue.getServerIssueKey());
-    }
-    data.setEntryKey(entryKey);
-    return data;
-  }
-
-  public static void setSource(Issue issue, Diagnostic diagnostic) {
+  public static void setSource(Diagnostic diagnostic, Issue issue) {
     if (issue instanceof DelegatingIssue) {
       var delegatedIssue = (DelegatingIssue) issue;
       var isKnown = delegatedIssue.getServerIssueKey() != null;
@@ -164,6 +153,17 @@ public class DiagnosticPublisher {
     } else {
       diagnostic.setSource(SONARLINT_SOURCE);
     }
+  }
+
+  private static void setData(Diagnostic diagnostic, Issue issue, String entryKey) {
+    var data = new DiagnosticData();
+    if (issue instanceof DelegatingIssue) {
+      var delegatedIssue = (DelegatingIssue) issue;
+      data.setStatus(delegatedIssue.getReviewStatus());
+      data.setServerIssueKey(delegatedIssue.getServerIssueKey());
+    }
+    data.setEntryKey(entryKey);
+    diagnostic.setData(data);
   }
 
   public static String message(Issue issue, boolean ignoreSecondaryLocations) {
