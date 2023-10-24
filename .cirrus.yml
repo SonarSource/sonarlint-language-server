@@ -31,7 +31,7 @@ only_main_branches: &ONLY_MAIN_BRANCHES
   only_if: $CIRRUS_USER_COLLABORATOR == 'true' && $CIRRUS_TAG == "" && ($CIRRUS_BRANCH == $CIRRUS_DEFAULT_BRANCH || $CIRRUS_BRANCH =~ "branch-.*")
 
 eks_container: &CONTAINER_DEFINITION
-  image: ${CIRRUS_AWS_ACCOUNT}.dkr.ecr.eu-central-1.amazonaws.com/base:j11-latest
+  image: ${CIRRUS_AWS_ACCOUNT}.dkr.ecr.eu-central-1.amazonaws.com/base:j17-latest
   region: eu-central-1
   cluster_name: ${CIRRUS_CLUSTER_NAME}
   namespace: default
@@ -72,7 +72,7 @@ build_task:
   cleanup_before_cache_script: cleanup_maven_repository
 
 qa_linux_task:
-  # name: "Run unit tests on Linux with Java 11 and SonarQube analysis on Next"
+  # name: "Run unit tests on Linux with Java 17 and SonarQube analysis on Next"
   # alias: qa_linux
   depends_on:
     - build
