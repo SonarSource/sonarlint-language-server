@@ -30,13 +30,19 @@ import java.util.concurrent.ExecutionException;
 import mockwebserver3.MockResponse;
 import okio.Buffer;
 import org.apache.commons.io.FileUtils;
+import org.eclipse.lsp4j.CodeAction;
+import org.eclipse.lsp4j.CodeActionContext;
+import org.eclipse.lsp4j.CodeActionParams;
+import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.WorkspaceFolder;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -447,7 +453,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void analysisConnected_matching_server_issues() {
+  void analysisConnected_matching_server_issues() throws Exception {
     mockWebServerExtension.addProtobufResponseDelimited(
       "/batch/issues?key=myProject%3AinFolder.py&branch=master",
       ScannerInput.ServerIssue.newBuilder()
@@ -461,8 +467,18 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setPath("inFolder.py")
         .setLine(2)
         .build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/issues/search.protobuf?issues=xyz&additionalFields=transitions&ps=1&p=1",
+      Issues.SearchWsResponse.newBuilder()
+        .addIssues(Issues.Issue.newBuilder()
+          .setKey("xyz")
+          .setTransitions(Issues.Transitions.newBuilder()
+            .addAllTransitions(List.of("wontfix", "falsepositive"))
+            .build())
+          .build())
+        .build());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString()
-      , "some/branch/name"));
+      , "master"));
 
     var uriInFolder = folder1BaseDir.resolve("inFolder.py").toUri().toString();
     didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
@@ -473,6 +489,19 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+
+    var firstDiagnostic = client.getDiagnostics(uriInFolder).get(0);
+    var codeActionParams = new CodeActionParams();
+    codeActionParams.setTextDocument(new TextDocumentIdentifier(uriInFolder));
+    codeActionParams.setRange(firstDiagnostic.getRange());
+    codeActionParams.setContext(new CodeActionContext(List.of(firstDiagnostic)));
+
+    var codeActions = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
+    assertThat(codeActions).hasSize(2)
+      .extracting(Either::getRight)
+      .extracting(CodeAction::getCommand)
+      .extracting(Command::getCommand)
+      .containsExactlyInAnyOrder("SonarLint.ResolveIssue", "SonarLint.OpenRuleDescCodeAction");
   }
 
   @Test
