@@ -85,11 +85,22 @@ public final class ShowAllLocationsCommand {
       this.connectionId = connectionId;
       this.creationDate = showIssueParams.getCreationDate();
       if (this.fileUri != null) {
-        var localCode = LocalCodeFile.from(this.fileUri).codeAt(this.textRange);
-        if (localCode == null) {
+        try {
+          String localCode;
+          if (this.textRange.getStartLine() == 0 || this.textRange.getEndLine() == 0) {
+            // this is a file-level issue
+            localCode = LocalCodeFile.from(this.fileUri).content();
+          } else {
+            localCode = LocalCodeFile.from(this.fileUri).codeAt(this.textRange);
+          }
+          if (localCode == null) {
+            this.codeMatches = false;
+          } else {
+            this.codeMatches = showIssueParams.getCodeSnippet().equals(localCode);
+          }
+        } catch (Exception e) {
+          // not a valid range
           this.codeMatches = false;
-        } else {
-          this.codeMatches = showIssueParams.getCodeSnippet().equals(localCode);
         }
       }
     }

@@ -150,7 +150,7 @@ class ServerSentEventsTests {
 
     ServerTaintIssue existingIssue = new ServerTaintIssue(ISSUE_KEY1, false, RULE_KEY, MAIN_LOCATION.getMessage(),
       fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()), null, null, null);
-    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP))).thenReturn(List.of(existingIssue));
+    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP), eq(false))).thenReturn(List.of(existingIssue));
     when(settingsManager.getCurrentSettings()).thenReturn(newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS_SONARCLOUD)));
 
     assertThat(taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().get(fileInAWorkspaceFolderPath.toUri())).isNull();
@@ -182,7 +182,7 @@ class ServerSentEventsTests {
       fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()), null, null, null);
     issuesList.add(newIssue);
 
-    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP))).thenReturn(issuesList);
+    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP), eq(false))).thenReturn(issuesList);
     when(settingsManager.getCurrentSettings()).thenReturn(newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS)));
 
     // Event for new issue is received
@@ -209,7 +209,7 @@ class ServerSentEventsTests {
     taintVulnerabilitiesCache.reload(fileInAWorkspaceFolderPath.toUri(), TaintIssue.from(issuesList, false));
     assertThat(taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().get(fileInAWorkspaceFolderPath.toUri())).hasSize(1);
 
-    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP))).thenReturn(new ArrayList<>());
+    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP), eq(false))).thenReturn(new ArrayList<>());
     when(settingsManager.getCurrentSettings()).thenReturn(newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS)));
 
     TaintVulnerabilityClosedEvent fakeEvent = new TaintVulnerabilityClosedEvent(PROJECT_KEY, ISSUE_KEY1);
@@ -248,7 +248,7 @@ class ServerSentEventsTests {
     IssueChangedEvent fakeEvent = new IssueChangedEvent(PROJECT_KEY, List.of(ISSUE_KEY1), NEW_ISSUE_SEVERITY, NEW_RULE_TYPE, null);
     existingIssue.setSeverity(NEW_ISSUE_SEVERITY);
     existingIssue.setType(NEW_RULE_TYPE);
-    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP))).thenReturn(issuesList);
+    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP), eq(false))).thenReturn(issuesList);
     when(settingsManager.getCurrentSettings()).thenReturn(newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS)));
     underTest.handleEvents(fakeEvent);
 
@@ -278,7 +278,7 @@ class ServerSentEventsTests {
 
     IssueChangedEvent fakeEvent = new IssueChangedEvent(PROJECT_KEY, List.of(ISSUE_KEY1), null, null, true);
     existingIssue.setResolved(fakeEvent.getResolved());
-    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP))).thenReturn(issuesList);
+    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP), eq(false))).thenReturn(issuesList);
     when(settingsManager.getCurrentSettings()).thenReturn(newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS_SONARCLOUD)));
     underTest.handleEvents(fakeEvent);
 
@@ -311,7 +311,7 @@ class ServerSentEventsTests {
       fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()), null, null, null);
     issuesList.add(newIssue);
 
-    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP))).thenReturn(issuesList);
+    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP), eq(false))).thenReturn(issuesList);
     when(settingsManager.getCurrentSettings()).thenReturn(newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS)));
     when(workspaceFoldersManager.findFolderForFile(any(URI.class))).thenReturn(Optional.of(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(), new WorkspaceFolder(workspaceFolderPath.toString()))));
 
@@ -332,7 +332,7 @@ class ServerSentEventsTests {
       fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()), null, null, null);
     issuesList.add(newIssue);
 
-    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP))).thenReturn(issuesList);
+    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(BRANCH_NAME), eq(FILE_PHP), eq(false))).thenReturn(issuesList);
     when(settingsManager.getCurrentSettings()).thenReturn(newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS_DISABLED_NOTIFICATIONS)));
     when(workspaceFoldersManager.findFolderForFile(any(URI.class))).thenReturn(Optional.of(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(), new WorkspaceFolder(workspaceFolderPath.toString()))));
 
@@ -353,7 +353,7 @@ class ServerSentEventsTests {
       fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()), null, null, null);
     issuesList.add(newIssue);
 
-    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(CURRENT_BRANCH_NAME), eq(FILE_PHP))).thenReturn(issuesList);
+    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(CURRENT_BRANCH_NAME), eq(FILE_PHP), eq(false))).thenReturn(issuesList);
     when(settingsManager.getCurrentSettings()).thenReturn(newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS_DISABLED_NOTIFICATIONS)));
     when(workspaceFoldersManager.findFolderForFile(any(URI.class))).thenReturn(Optional.of(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(), new WorkspaceFolder(workspaceFolderPath.toString()))));
 
@@ -374,7 +374,7 @@ class ServerSentEventsTests {
       fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()), null, null, null);
     issuesList.add(newIssue);
 
-    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(CURRENT_BRANCH_NAME), eq(FILE_PHP))).thenReturn(issuesList);
+    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(CURRENT_BRANCH_NAME), eq(FILE_PHP), eq(false))).thenReturn(issuesList);
     when(settingsManager.getCurrentSettings()).thenReturn(newWorkspaceSettingsWithServers(Collections.emptyMap()));
     when(workspaceFoldersManager.findFolderForFile(any(URI.class))).thenReturn(Optional.of(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(), new WorkspaceFolder(workspaceFolderPath.toString()))));
 
@@ -398,7 +398,7 @@ class ServerSentEventsTests {
       fileInAWorkspaceFolderPath.toUri().toString(), CREATION_DATE, ISSUE_SEVERITY, RULE_TYPE, textRangeWithHashFromTextRange(MAIN_LOCATION.getTextRange()), null, null, null);
     issuesList.add(newIssue);
 
-    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(CURRENT_BRANCH_NAME), eq(FILE_PHP))).thenReturn(issuesList);
+    when(fakeEngine.getServerTaintIssues(any(ProjectBinding.class), eq(CURRENT_BRANCH_NAME), eq(FILE_PHP), eq(false))).thenReturn(issuesList);
     when(settingsManager.getCurrentSettings()).thenReturn(newWorkspaceSettingsWithServers(Collections.emptyMap()));
     when(workspaceFoldersManager.findFolderForFile(any(URI.class))).thenReturn(Optional.of(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(), new WorkspaceFolder(workspaceFolderPath.toString()))));
 

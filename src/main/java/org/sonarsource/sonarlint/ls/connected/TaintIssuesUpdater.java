@@ -92,7 +92,7 @@ public class TaintIssuesUpdater {
     // download taints
     var sqFilePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(Paths.get(folderUri), fileUri));
     engine.downloadAllServerTaintIssuesForFile(endpointParams, httpClient, binding, sqFilePath, branchName, null);
-    var serverIssues = engine.getServerTaintIssues(binding, branchName, sqFilePath);
+    var serverIssues = engine.getServerTaintIssues(binding, branchName, sqFilePath, false);
 
     // reload cache
     taintVulnerabilitiesCache.reload(fileUri, TaintIssue.from(serverIssues, connectionSettings.isSonarCloudAlias()));

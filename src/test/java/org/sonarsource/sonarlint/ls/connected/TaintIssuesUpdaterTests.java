@@ -101,7 +101,7 @@ class TaintIssuesUpdaterTests {
     underTest.updateTaintIssuesAsync(FILE_URI);
 
     verify(engine).downloadAllServerTaintIssuesForFile(any(), any(), any(), anyString(), eq(BRANCH_NAME), isNull());
-    verify(engine).getServerTaintIssues(any(), eq(BRANCH_NAME), anyString());
+    verify(engine).getServerTaintIssues(any(), eq(BRANCH_NAME), anyString(), eq(false));
     verify(diagnosticPublisher).publishDiagnostics(FILE_URI, false);
     verify(diagnosticPublisher).isFocusOnNewCode();
     verifyNoMoreInteractions(diagnosticPublisher);
@@ -110,9 +110,9 @@ class TaintIssuesUpdaterTests {
 
   @Test
   void should_log_number_of_downloaded_taints() {
-    var taint1 = new ServerTaintIssue("taint1", false, "ruleKey1", "message", "filePath", Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY, new TextRangeWithHash(1, 1, 1, 1, ""), null,null, null);
-    var taint2 = new ServerTaintIssue("taint2", false, "ruleKey2", "message", "filePath", Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY, new TextRangeWithHash(1, 1, 1, 1, ""), null,null, null);
-    when(engine.getServerTaintIssues(any(), any(), anyString())).thenReturn(List.of(taint1, taint2));
+    var taint1 = new ServerTaintIssue("taint1", false, "ruleKey1", "message", "filePath", Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY, new TextRangeWithHash(1, 1, 1, 1, ""), null, null, null);
+    var taint2 = new ServerTaintIssue("taint2", false, "ruleKey2", "message", "filePath", Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY, new TextRangeWithHash(1, 1, 1, 1, ""), null, null, null);
+    when(engine.getServerTaintIssues(any(), any(), anyString(), eq(false))).thenReturn(List.of(taint1, taint2));
 
     underTest.updateTaintIssuesAsync(FILE_URI);
 
