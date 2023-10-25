@@ -21,7 +21,6 @@ package org.sonarsource.sonarlint.ls.commands;
 
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -70,9 +69,10 @@ class ShowAllLocationsCommandTests {
     Files.createDirectories(workspaceFolderPath);
     fileInAWorkspaceFolderPath = workspaceFolderPath.resolve(FILE_PYTHON);
     Files.createFile(fileInAWorkspaceFolderPath);
-    Files.write(fileInAWorkspaceFolderPath, ("print('1234')\n" +
-      "print('aa')\n" +
-      "print('b')\n").getBytes(StandardCharsets.UTF_8));
+    Files.writeString(fileInAWorkspaceFolderPath, """
+      print('1234')
+      print('aa')
+      print('b')""");
   }
 
   @Test
@@ -138,6 +138,37 @@ class ShowAllLocationsCommandTests {
     var result = new ShowAllLocationsCommand.Param(showIssueParams, projectBindingManager, "connectionId");
 
     assertTrue(result.getCodeMatches());
+  }
+
+  @Test
+  void shouldBuildCommandParamsFromShowIssueParamsForFileLevelIssue() {
+    var textRangeDto = new TextRangeDto(0, 0, 0, 0);
+    var showIssueParams = new ShowIssueParams(textRangeDto, "connectionId", "rule:S1234",
+      "issueKey", "/src/java/main/myFile.py", "this is wrong",
+      "29.09.2023", """
+      print('1234')
+      print('aa')
+      print('b')""", false, List.of());
+
+    when(projectBindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath())).thenReturn(Optional.of(fileInAWorkspaceFolderPath.toUri()));
+
+    var result = new ShowAllLocationsCommand.Param(showIssueParams, projectBindingManager, "connectionId");
+
+    assertTrue(result.getCodeMatches());
+  }
+
+  @Test
+  void shouldBuildCommandParamsFromShowIssueParamsForInvalidTextRange() {
+    var textRangeDto = new TextRangeDto(-1, 0, -2, 0);
+    var showIssueParams = new ShowIssueParams(textRangeDto, "connectionId", "rule:S1234",
+      "issueKey", "/src/java/main/myFile.py", "this is wrong",
+      "29.09.2023", "print('1234')", false, List.of());
+
+    when(projectBindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath())).thenReturn(Optional.of(fileInAWorkspaceFolderPath.toUri()));
+
+    var result = new ShowAllLocationsCommand.Param(showIssueParams, projectBindingManager, "connectionId");
+
+    assertFalse(result.getCodeMatches());
   }
 
   @Test

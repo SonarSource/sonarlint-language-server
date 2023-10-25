@@ -40,14 +40,16 @@ public class LocalCodeFile {
       try {
         // TODO Find the right character set to use?
         this.lines = Files.readAllLines(localFile.toPath(), StandardCharsets.UTF_8);
-      } catch(IOException ioe) {
+      } catch (IOException ioe) {
         this.lines = Collections.emptyList();
       }
     }
   }
 
   public String content() {
-    return String.join("\n", lines);
+    return String.join("\n", lines)
+      // strip ZWNBSP
+      .replace("\ufeff", "");
   }
 
   @CheckForNull
@@ -67,7 +69,7 @@ public class LocalCodeFile {
         var startOffset = range.getStartLineOffset();
         do {
           var currentLine = lines.get(lineIndex);
-          if(lineIndex == maxLine) {
+          if (lineIndex == maxLine) {
             var endOffset = Math.min(currentLine.length(), range.getEndLineOffset());
             snippet.append(currentLine.substring(startOffset, endOffset));
           } else {
@@ -75,7 +77,7 @@ public class LocalCodeFile {
             startOffset = 0;
           }
           lineIndex += 1;
-        } while(lineIndex <= maxLine);
+        } while (lineIndex <= maxLine);
         return snippet.toString();
       }
     }
