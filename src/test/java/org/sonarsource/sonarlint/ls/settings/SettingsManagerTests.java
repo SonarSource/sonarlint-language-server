@@ -681,6 +681,19 @@ class SettingsManagerTests {
     assertThat(analyzerProperties.get("sonar.cs.internal.solutionPath")).endsWith("Roslyn.sln");
   }
 
+  @Test
+  void shouldIgnoreRazorFiles() {
+    var workspaceUri = URI.create("file:///User/user/documents/project");
+    List<Object> response = List.of("{\"disableTelemetry\": false,\"focusOnNewCode\": true, \"analyzerProperties\":{\"sonar.cs.file.suffixes\":\".cs\",\".razor\"}");
+    Map<String, Object> settingsMap = new HashMap<>(Map.of("disableTelemetry", false, "focusOnNewCode", true, "analyzerProperties", new HashMap<>(Map.of("sonar.cs.file.suffixes", ".cs,.razor"))));
+
+    var result = SettingsManager.updateAnalyzerProperties(workspaceUri, response, settingsMap);
+
+    assertThat(result).containsKey(ANALYZER_PROPERTIES);
+    var analyzerProperties = (Map<String, String>) result.get(ANALYZER_PROPERTIES);
+    assertThat(analyzerProperties).contains(entry("sonar.cs.file.suffixes", ".cs"));
+  }
+
   private static Map<String, Object> fromJsonString(String json) {
     return Utils.parseToMap(new Gson().fromJson(json, JsonElement.class));
   }

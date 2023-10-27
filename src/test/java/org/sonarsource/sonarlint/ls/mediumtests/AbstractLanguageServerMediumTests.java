@@ -167,7 +167,8 @@ public abstract class AbstractLanguageServerMediumTests {
     var py = fullPathToJar("sonarpython");
     var text = fullPathToJar("sonartext");
     var xml = fullPathToJar("sonarxml");
-    String[] languageServerArgs = new String[]{"-port", "" + port, "-analyzers", go, java, js, php, py, html, xml, text, iac};
+    var omnisharp = fullPathToJar("sonarlintomnisharp");
+    String[] languageServerArgs = new String[]{"-port", "" + port, "-analyzers", go, java, js, php, py, html, xml, text, iac, omnisharp};
     if (COMMERCIAL_ENABLED) {
       var cfamily = fullPathToJar("cfamily");
       languageServerArgs = ArrayUtils.add(languageServerArgs, cfamily);

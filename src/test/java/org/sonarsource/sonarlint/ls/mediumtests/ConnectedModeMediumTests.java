@@ -121,7 +121,11 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     mockWebServerExtension.addStringResponse("/api/plugins/installed",
       "{\"plugins\":[{\"key\": \"python\", \"hash\": \"ignored\", \"filename\": \"sonarpython.jar\", \"sonarLintSupported\": true}]}");
     mockWebServerExtension.addResponse("/api/plugins/download?plugin=python", new MockResponse().setBody(safeGetSonarPython()));
-    mockWebServerExtension.addProtobufResponse("/api/settings/values.protobuf?component=myProject", Settings.Values.newBuilder().build());
+    mockWebServerExtension.addProtobufResponse("/api/settings/values.protobuf?component=myProject", Settings.ValuesWsResponse.newBuilder()
+      .addSettings(Settings.Setting.newBuilder()
+        .setKey("sonar.cs.file.suffixes")
+        .setValue(".cs,.razor"))
+      .build());
     mockWebServerExtension.addProtobufResponse("/api/rules/search.protobuf?repositories=roslyn.sonaranalyzer.security.cs,javasecurity," +
         "jssecurity,phpsecurity,pythonsecurity,tssecurity&f=repo&s=key&ps=500&p=1",
       Rules.SearchResponse.newBuilder().build());
@@ -1075,6 +1079,15 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+  }
+
+  @Test
+  void shouldIgnoreRazorFile() {
+    var uriInFolder = folder1BaseDir.resolve("shouldIgnore.razor").toUri().toString();
+    didOpen(uriInFolder, "csharp", "@using System");
+
+    awaitUntilAsserted(() -> assertLogContains("Found 0 issues"));
+    assertLogContains("'OmniSharp' skipped because there is no related files in the current project");
   }
 
   private void assertLocalIssuesStatusChanged(String fileUri) {
