@@ -86,6 +86,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static final String WORKSPACE_FOLDER_VARIABLE = "${workspaceFolder}";
 
   private static final SonarLintLogger LOG = SonarLintLogger.get();
+  public static final String SONAR_CS_FILE_SUFFIXES = "sonar.cs.file.suffixes";
 
   private final SonarLintExtendedLanguageClient client;
   private final WorkspaceFoldersManager foldersManager;
@@ -228,6 +229,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   static Map<String, Object> updateAnalyzerProperties(@org.jetbrains.annotations.Nullable URI workspaceUri, List<Object> response, Map<String, Object> settingsMap) {
     var analyzerProperties = (Map<String, String>) settingsMap.getOrDefault(ANALYZER_PROPERTIES, Maps.newHashMap());
+    forceIgnoreRazorFiles(analyzerProperties);
     var solutionRelativePath = tryGetSetting(response, 1, "");
     if (!solutionRelativePath.isEmpty() && workspaceUri != null) {
       // uri: file:///Users/me/Documents/Sonar/roslyn
@@ -241,6 +243,21 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     settingsMap.put(ANALYZER_PROPERTIES, analyzerProperties);
 
     return settingsMap;
+  }
+
+  private static void forceIgnoreRazorFiles(Map<String, String> analyzerProperties) {
+    if (analyzerProperties.containsKey(SONAR_CS_FILE_SUFFIXES)) {
+      var currentSetting = analyzerProperties.get(SONAR_CS_FILE_SUFFIXES);
+      if (currentSetting.contains(".razor")) {
+        var suffixes = currentSetting.split(",");
+        var newSetting = stream(suffixes)
+          .filter(suffix -> !suffix.equals(".razor"))
+          .collect(Collectors.joining(","));
+        analyzerProperties.put(SONAR_CS_FILE_SUFFIXES, newSetting);
+      }
+    } else {
+      analyzerProperties.put(SONAR_CS_FILE_SUFFIXES, ".cs");
+    }
   }
 
   private static String tryGetSetting(List<Object> response, int index, String defaultValue) {

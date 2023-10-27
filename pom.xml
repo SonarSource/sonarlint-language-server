@@ -37,6 +37,7 @@
     <sonar.text.version>2.0.1.611</sonar.text.version>
     <sonar.go.version>1.12.0.4259</sonar.go.version>
     <sonar.iac.version>1.16.0.3845</sonar.iac.version>
+    <sonarlint.omnisharp.version>1.13.0.76953</sonarlint.omnisharp.version>
     <gitRepositoryName>sonarlint-language-server</gitRepositoryName>
     <!-- Release: enable publication to Bintray -->
     <artifactsToPublish>${project.groupId}:${project.artifactId}:jar</artifactsToPublish>
@@ -257,6 +258,15 @@
                   <overWrite>false</overWrite>
                   <outputDirectory>${project.build.directory}/plugins</outputDirectory>
                   <destFileName>sonariac.jar</destFileName>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>org.sonarsource.sonarlint.omnisharp</groupId>
+                  <artifactId>sonarlint-omnisharp-plugin</artifactId>
+                  <version>${sonarlint.omnisharp.version}</version>
+                  <type>jar</type>
+                  <overWrite>false</overWrite>
+                  <outputDirectory>${project.build.directory}/plugins</outputDirectory>
+                  <destFileName>sonarlintomnisharp.jar</destFileName>
                 </artifactItem>
               </artifactItems>
             </configuration>
