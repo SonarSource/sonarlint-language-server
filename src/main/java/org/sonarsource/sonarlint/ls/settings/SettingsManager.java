@@ -387,7 +387,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   }
 
   private static boolean checkRequiredAttribute(Map<String, Object> map, String label, String... requiredAttributes) {
-    var missing = stream(requiredAttributes).filter(att -> isBlank((String) map.get(att))).collect(Collectors.toList());
+    var missing = stream(requiredAttributes).filter(att -> isBlank((String) map.get(att))).toList();
     if (!missing.isEmpty()) {
       LOG.error("Incomplete {} connection configuration. Required parameters must not be blank: {}.", label, String.join(",", missing));
       return false;

@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.jetbrains.annotations.NotNull;
@@ -147,7 +146,7 @@ public class ServerIssueTrackerWrapper {
 
   @NotNull
   private static Map<String, List<ClientTrackedFindingDto>> getClientTrackedIssuesByServerRelativePath(String filePath, Collection<Trackable> issueTrackables) {
-    var clientTrackedIssueDtos = issueTrackables.stream().map(ServerIssueTrackerWrapper::createClientTrackedIssueDto).collect(Collectors.toList());
+    var clientTrackedIssueDtos = issueTrackables.stream().map(ServerIssueTrackerWrapper::createClientTrackedIssueDto).toList();
     return Map.of(filePath, clientTrackedIssueDtos);
   }
 
@@ -189,9 +188,9 @@ public class ServerIssueTrackerWrapper {
     return issues.stream()
       .filter(it -> it.getType() != RuleType.SECURITY_HOTSPOT)
       .map(issue -> {
-        var inputFile = issue.getInputFile() instanceof AnalysisClientInputFile ? ((AnalysisClientInputFile) issue.getInputFile()) : null;
+        var inputFile = issue.getInputFile() instanceof AnalysisClientInputFile actualInputFile ? actualInputFile : null;
         if (inputFile != null) {
-          var fileLines = inputFile.contents().lines().collect(Collectors.toList());
+          var fileLines = inputFile.contents().lines().toList();
           var textRange = issue.getTextRange();
           var textRangeContent = getTextRangeContentOfFile(fileLines, textRange);
           var startLine = issue.getStartLine();
@@ -201,12 +200,13 @@ public class ServerIssueTrackerWrapper {
         return null;
       })
       .filter(Objects::nonNull)
-      .collect(Collectors.toList());
+      .map(Trackable.class::cast)
+      .toList();
   }
 
 
   private static Collection<Trackable> toHotspotTrackables(Collection<Issue> issues) {
     return issues.stream().filter(it -> it.getType() == RuleType.SECURITY_HOTSPOT)
-      .map(IssueTrackable::new).collect(Collectors.toList());
+      .map(IssueTrackable::new).map(Trackable.class::cast).toList();
   }
 }

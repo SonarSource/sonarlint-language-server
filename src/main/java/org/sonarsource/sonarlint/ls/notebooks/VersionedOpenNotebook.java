@@ -143,10 +143,10 @@ public class VersionedOpenNotebook {
             var newTextRange = fileTextRangeToCellTextRange(textEdit.range().getStartLine(), textEdit.range().getStartLineOffset(),
               textEdit.range().getEndLine(), textEdit.range().getEndLineOffset(), virtualFileLineToCellLine);
             return new TextEdit(newTextRange, textEdit.newText());
-          }).collect(Collectors.toList());
+          }).toList();
           var clientInputFile = new InFolderClientInputFile(textEditCellUri.get(), "", false);
           return new ClientInputFileEdit(clientInputFile, newTextEdits);
-        }).collect(Collectors.toList());
+        }).toList();
         var convertedQuickFix = new QuickFix(newFileEdits, quickFix.message());
         convertedQuickFixes.add(convertedQuickFix);
       }

@@ -77,8 +77,8 @@ public class IssuesCache {
 
   private static String getIssueId(Issue issue) {
     String issueId = null;
-    if (issue instanceof DelegatingIssue) {
-      var issueUuid = ((DelegatingIssue) issue).getIssueId();
+    if (issue instanceof DelegatingIssue delegatingIssue) {
+      var issueUuid = delegatingIssue.getIssueId();
       issueId = issueUuid != null ? issueUuid.toString() : null;
     }
     if (issueId == null) {
@@ -120,8 +120,8 @@ public class IssuesCache {
   }
 
   private static boolean isLocalIssueWithKey(String key, VersionedIssue versionedIssue) {
-    return versionedIssue.getIssue() instanceof DelegatingIssue
-      && (key.equals(((DelegatingIssue) versionedIssue.getIssue()).getIssueId().toString()));
+    return versionedIssue.issue() instanceof DelegatingIssue delegatingIssue
+      && (key.equals(delegatingIssue.getIssueId().toString()));
   }
 
   public Optional<Map.Entry<String, VersionedIssue>> findIssuePerId(String fileUriStr, String serverIssueKey) {
@@ -140,7 +140,7 @@ public class IssuesCache {
     var issuePerId = findIssuePerId(fileUriStr, serverIssueKey);
     if (issuePerId.isPresent()) {
       var versionedIssue = issuePerId.get().getValue();
-      var delegatingIssue = (DelegatingIssue) versionedIssue.getIssue();
+      var delegatingIssue = (DelegatingIssue) versionedIssue.issue();
       var clonedDelegatingIssue = delegatingIssue.cloneWithNewStatus(hotspotReviewStatusValueOfHotspotStatus(newStatus));
       var clonedVersionedIssue = new VersionedIssue(clonedDelegatingIssue, versionedIssue.documentVersion);
       var issuesByKey = issuesPerIdPerFileURI.get(URI.create(fileUriStr));
@@ -159,23 +159,7 @@ public class IssuesCache {
       .filter(Objects::nonNull);
   }
 
-  public static class VersionedIssue {
-    private final Issue issue;
-    private final int documentVersion;
-
-    public VersionedIssue(Issue issue, int documentVersion) {
-      this.issue = issue;
-      this.documentVersion = documentVersion;
-    }
-
-    public Issue getIssue() {
-      return issue;
-    }
-
-    public int getDocumentVersion() {
-      return documentVersion;
-    }
-  }
+  public record VersionedIssue(Issue issue, int documentVersion) {}
 
   public Map<String, VersionedIssue> get(URI fileUri) {
     return inProgressAnalysisIssuesPerIdPerFileURI.getOrDefault(fileUri, issuesPerIdPerFileURI.getOrDefault(fileUri, Map.of()));

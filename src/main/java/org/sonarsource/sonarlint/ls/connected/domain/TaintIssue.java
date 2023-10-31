@@ -22,7 +22,6 @@ package org.sonarsource.sonarlint.ls.connected.domain;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.jetbrains.annotations.Nullable;
 import org.sonarsource.sonarlint.core.commons.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.commons.ImpactSeverity;
@@ -66,6 +65,6 @@ public class TaintIssue extends ServerTaintIssue {
     return serverTaintIssues
       .stream()
       .map(serverTaintIssue -> TaintIssue.from(serverTaintIssue, source))
-      .collect(Collectors.toList());
+      .toList();
   }
 }
