@@ -37,7 +37,6 @@ import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
-import static java.util.stream.Collectors.toList;
 import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralizedSuffix;
 
 public class DiagnosticPublisher {
@@ -83,7 +82,7 @@ public class DiagnosticPublisher {
   }
 
   Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
-    var issue = entry.getValue().getIssue();
+    var issue = entry.getValue().issue();
     return prepareDiagnostic(issue, entry.getKey(), false, focusOnNewCode);
   }
 
@@ -111,8 +110,8 @@ public class DiagnosticPublisher {
   }
 
   static void setSeverity(Diagnostic diagnostic, Issue issue, boolean focusOnNewCode) {
-    if (focusOnNewCode && issue instanceof DelegatingIssue) {
-      var newCodeSeverity = ((DelegatingIssue) issue).isOnNewCode() ? DiagnosticSeverity.Warning : DiagnosticSeverity.Hint;
+    if (focusOnNewCode && issue instanceof DelegatingIssue delegatingIssue) {
+      var newCodeSeverity = delegatingIssue.isOnNewCode() ? DiagnosticSeverity.Warning : DiagnosticSeverity.Hint;
       diagnostic.setSeverity(newCodeSeverity);
     } else {
       diagnostic.setSeverity(DiagnosticSeverity.Warning);
@@ -145,8 +144,7 @@ public class DiagnosticPublisher {
 
   }
   public static void setSource(Diagnostic diagnostic, Issue issue) {
-    if (issue instanceof DelegatingIssue) {
-      var delegatedIssue = (DelegatingIssue) issue;
+    if (issue instanceof DelegatingIssue delegatedIssue) {
       var isKnown = delegatedIssue.getServerIssueKey() != null;
       var isHotspot = delegatedIssue.getType() == RuleType.SECURITY_HOTSPOT;
       diagnostic.setSource(isKnown && isHotspot ? REMOTE_SOURCE : SONARLINT_SOURCE);
@@ -157,8 +155,7 @@ public class DiagnosticPublisher {
 
   private static void setData(Diagnostic diagnostic, Issue issue, String entryKey) {
     var data = new DiagnosticData();
-    if (issue instanceof DelegatingIssue) {
-      var delegatedIssue = (DelegatingIssue) issue;
+    if (issue instanceof DelegatingIssue delegatedIssue) {
       data.setStatus(delegatedIssue.getReviewStatus());
       data.setServerIssueKey(delegatedIssue.getServerIssueKey());
     }
@@ -185,7 +182,7 @@ public class DiagnosticPublisher {
 
     Map<String, VersionedIssue> localIssues = issuesCache.get(newUri);
 
-    if (!firstSecretIssueDetected && localIssues.values().stream().anyMatch(v -> v.getIssue().getRuleKey().startsWith(Language.SECRETS.getLanguageKey()))) {
+    if (!firstSecretIssueDetected && localIssues.values().stream().anyMatch(v -> v.issue().getRuleKey().startsWith(Language.SECRETS.getLanguageKey()))) {
       client.showFirstSecretDetectionNotification();
       firstSecretIssueDetected = true;
     }
@@ -197,7 +194,7 @@ public class DiagnosticPublisher {
 
     var diagnosticList = Stream.concat(localDiagnostics, taintDiagnostics)
       .sorted(DiagnosticPublisher.byLineNumber())
-      .collect(toList());
+      .toList();
     p.setDiagnostics(diagnosticList);
     p.setUri(newUri.toString());
 
@@ -211,7 +208,7 @@ public class DiagnosticPublisher {
       .stream()
       .map(this::convert)
       .sorted(DiagnosticPublisher.byLineNumber())
-      .collect(toList()));
+      .toList());
     p.setUri(newUri.toString());
 
     return p;

@@ -241,7 +241,7 @@ public class Utils {
   }
 
   public static boolean isDelegatingIssueWithServerIssueKey(String serverIssueKey, Map.Entry<String, IssuesCache.VersionedIssue> issueEntry) {
-    return issueEntry.getValue().getIssue() instanceof DelegatingIssue
-      && (serverIssueKey.equals(((DelegatingIssue) issueEntry.getValue().getIssue()).getServerIssueKey()));
+    return issueEntry.getValue().issue() instanceof DelegatingIssue delegatingIssue
+      && (serverIssueKey.equals(delegatingIssue.getServerIssueKey()));
   }
 }

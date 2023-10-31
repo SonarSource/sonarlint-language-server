@@ -97,31 +97,19 @@ public class AnalysisClientInputFile implements ClientInputFile {
       return null;
     }
     // See https://microsoft.github.io/language-server-protocol/specification#textDocumentItem
-    switch (clientLanguageId) {
-      case "javascript":
-      case "javascriptreact":
-      case "vue":
-      case "vue component":
-      case "babel es6 javascript":
-        return Language.JS;
-      case "python":
-        return Language.PYTHON;
-      case "typescript":
-      case "typescriptreact":
-        return Language.TS;
-      case "html":
-        return Language.HTML;
-      case "oraclesql":
-        return Language.PLSQL;
-      case "apex":
-      case "apex-anon":
+    return switch (clientLanguageId) {
+      case "javascript", "javascriptreact", "vue", "vue component", "babel es6 javascript" -> Language.JS;
+      case "python" -> Language.PYTHON;
+      case "typescript", "typescriptreact" -> Language.TS;
+      case "html" -> Language.HTML;
+      case "oraclesql" -> Language.PLSQL;
+      case "apex", "apex-anon" ->
         // See https://github.com/forcedotcom/salesforcedx-vscode/blob/5e4b7715d1cb3d1ee2780780ed63f70f58e93b20/packages/salesforcedx-vscode-apex/package.json#L273
-        return Language.APEX;
-      case "yaml":
-        return Language.YAML;
-      default:
+        Language.APEX;
+      case "yaml" -> Language.YAML;
+      default ->
         // Other supported languages map to the same key as the one used in SonarQube/SonarCloud
-        return Language.forKey(clientLanguageId).orElse(null);
-    }
+        Language.forKey(clientLanguageId).orElse(null);
+    };
   }
 }

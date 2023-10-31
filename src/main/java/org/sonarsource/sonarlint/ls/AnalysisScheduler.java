@@ -31,7 +31,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -49,7 +48,6 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 /**
@@ -256,18 +254,18 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   public void analyzeAllOpenFilesInFolder(@Nullable WorkspaceFolderWrapper folder) {
     var openedFileUrisInFolder = openFilesCache.getAll().stream()
       .filter(f -> belongToFolder(folder, f.getUri()))
-      .collect(Collectors.toList());
+      .toList();
     analyseNotIgnoredFiles(openedFileUrisInFolder);
   }
 
   private void analyseNotIgnoredFiles(List<VersionedOpenFile> files) {
-    var uriStrings = files.stream().map(it -> it.getUri().toString()).collect(toList());
+    var uriStrings = files.stream().map(it -> it.getUri().toString()).toList();
     var fileUrisParams = new SonarLintExtendedLanguageClient.FileUrisParams(uriStrings);
     client.filterOutExcludedFiles(fileUrisParams)
       .thenAccept(notIgnoredFileUris -> {
         var notIgnoredFiles = files
           .stream().filter(it -> notIgnoredFileUris.getFileUris().contains(it.getUri().toString()))
-          .collect(toList());
+          .toList();
         analyzeAsync(AnalysisParams.newAnalysisParams(notIgnoredFiles));
       });
   }
@@ -306,7 +304,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     var openedCorCppFileUrisInFolder = openFilesCache.getAll().stream()
       .filter(VersionedOpenFile::isCOrCpp)
       .filter(f -> belongToFolder(folder, f.getUri()))
-      .collect(Collectors.toList());
+      .toList();
     analyseNotIgnoredFiles(openedCorCppFileUrisInFolder);
   }
 
@@ -317,21 +315,21 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   private void analyzeAllUnboundOpenFiles() {
     var openedUnboundFileUris = openFilesCache.getAll().stream()
       .filter(f -> bindingManager.getBinding(f.getUri()).isEmpty())
-      .collect(Collectors.toList());
+      .toList();
     analyseNotIgnoredFiles(openedUnboundFileUris);
   }
 
   private void analyzeAllOpenNotebooks() {
     var openNotebookUris = openNotebooksCache.getAll().stream()
       .map(VersionedOpenNotebook::asVersionedOpenFile)
-      .collect(Collectors.toList());
+      .toList();
     analyseNotIgnoredFiles(openNotebookUris);
   }
 
   private void analyzeAllOpenJavaFiles() {
     var openedJavaFileUris = openFilesCache.getAll().stream()
       .filter(VersionedOpenFile::isJava)
-      .collect(toList());
+      .toList();
     analyseNotIgnoredFiles(openedJavaFileUris);
   }
 

@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
@@ -66,7 +65,7 @@ public final class ShowAllLocationsCommand {
       this.message = issue.getMessage();
       this.severity = issue.getSeverity().toString();
       this.ruleKey = issue.getRuleKey();
-      this.flows = issue.flows().stream().map(Flow::new).collect(Collectors.toList());
+      this.flows = issue.flows().stream().map(Flow::new).toList();
       this.textRange = issue.getTextRange();
       this.connectionId = null;
       this.creationDate = null;
@@ -77,7 +76,7 @@ public final class ShowAllLocationsCommand {
       this.message = showIssueParams.getMessage();
       this.severity = "";
       this.ruleKey = showIssueParams.getRuleKey();
-      this.flows = showIssueParams.getFlows().stream().map(flowDto -> new Flow(flowDto, projectBindingManager)).collect(Collectors.toList());
+      this.flows = showIssueParams.getFlows().stream().map(flowDto -> new Flow(flowDto, projectBindingManager)).toList();
       this.textRange = new TextRange(showIssueParams.getTextRange().getStartLine(),
         showIssueParams.getTextRange().getStartLineOffset(),
         showIssueParams.getTextRange().getEndLine(),
@@ -110,7 +109,7 @@ public final class ShowAllLocationsCommand {
       this.message = issue.getMessage();
       this.severity = issue.getSeverity().toString();
       this.ruleKey = issue.getRuleKey();
-      this.flows = issue.getFlows().stream().map(f -> new Flow(f, pathResolver, localFileCache)).collect(Collectors.toList());
+      this.flows = issue.getFlows().stream().map(f -> new Flow(f, pathResolver, localFileCache)).toList();
       this.textRange = issue.getTextRange();
       this.connectionId = connectionId;
       this.creationDate = DateTimeFormatter.ISO_DATE_TIME.format(issue.getCreationDate().atOffset(ZoneOffset.UTC));
@@ -159,15 +158,15 @@ public final class ShowAllLocationsCommand {
     private final List<Location> locations;
 
     private Flow(org.sonarsource.sonarlint.core.analysis.api.Flow flow) {
-      this.locations = flow.locations().stream().map(Location::new).collect(Collectors.toList());
+      this.locations = flow.locations().stream().map(Location::new).toList();
     }
 
     private Flow(FlowDto flow, ProjectBindingManager projectBindingManager) {
-      this.locations = flow.getLocations().stream().map(locationDto -> new Location(locationDto, new HashMap<>(), projectBindingManager)).collect(Collectors.toList());
+      this.locations = flow.getLocations().stream().map(locationDto -> new Location(locationDto, new HashMap<>(), projectBindingManager)).toList();
     }
 
     private Flow(ServerTaintIssue.Flow flow, Function<String, Optional<URI>> pathResolver, Map<URI, LocalCodeFile> localFileCache) {
-      this.locations = flow.locations().stream().map(l -> new Location(l, pathResolver, localFileCache)).collect(Collectors.toList());
+      this.locations = flow.locations().stream().map(l -> new Location(l, pathResolver, localFileCache)).toList();
     }
 
     public List<Location> getLocations() {

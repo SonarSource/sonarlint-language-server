@@ -62,8 +62,8 @@ public class ServerSentEventsHandler implements ServerSentEventsHandlerService {
       event instanceof IssueChangedEvent) {
       taintVulnerabilitiesCache.getAllFilesWithTaintIssues()
         .forEach(projectBindingManager::updateTaintIssueCacheFromStorageForFile);
-    } else if (event instanceof ServerHotspotEvent) {
-      var fileUri = getFileUriFromEvent((ServerHotspotEvent) event);
+    } else if (event instanceof ServerHotspotEvent serverHotspotEvent) {
+      var fileUri = getFileUriFromEvent(serverHotspotEvent);
       fileUri.ifPresent(analysisScheduler::didReceiveHotspotEvent);
     }
   }

@@ -33,7 +33,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
@@ -141,7 +140,7 @@ public class WorkspaceFoldersManager {
       .filter(wfRoot -> isAncestor(wfRoot, uri))
       // Sort by path descending length to prefer the deepest one in case of multiple nested workspace folders
       .sorted(Comparator.<URI>comparingInt(wfRoot -> wfRoot.getPath().length()).reversed())
-      .collect(Collectors.toList());
+      .toList();
     if (folderUriCandidates.isEmpty()) {
       return Optional.empty();
     }

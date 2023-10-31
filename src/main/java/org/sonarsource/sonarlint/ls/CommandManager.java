@@ -169,16 +169,16 @@ public class CommandManager {
     var hasBinding = binding.isPresent();
     if (issueForDiagnostic.isPresent()) {
       var versionedIssue = issueForDiagnostic.get();
-      ruleContextKey = versionedIssue.getIssue().getRuleDescriptionContextKey().orElse("");
+      ruleContextKey = versionedIssue.issue().getRuleDescriptionContextKey().orElse("");
       var quickFixes = isNotebookCellUri && versionedOpenNotebook.isPresent() ?
-        versionedOpenNotebook.get().toCellIssue(versionedIssue.getIssue()).quickFixes() :
-        versionedIssue.getIssue().quickFixes();
+        versionedOpenNotebook.get().toCellIssue(versionedIssue.issue()).quickFixes() :
+        versionedIssue.issue().quickFixes();
       cancelToken.checkCanceled();
       quickFixes.forEach(fix -> {
         var newCodeAction = new CodeAction(SONARLINT_ACTION_PREFIX + fix.message());
         newCodeAction.setKind(CodeActionKind.QuickFix);
         newCodeAction.setDiagnostics(List.of(diagnostic));
-        newCodeAction.setEdit(newWorkspaceEdit(fix, versionedIssue.getDocumentVersion()));
+        newCodeAction.setEdit(newWorkspaceEdit(fix, versionedIssue.documentVersion()));
         newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, List.of(ruleKey)));
         codeActions.add(Either.forRight(newCodeAction));
       });
@@ -199,8 +199,8 @@ public class CommandManager {
 
   private Optional<CodeAction> createResolveIssueCodeAction(Diagnostic diagnostic, URI uri, ProjectBindingWrapper binding, String ruleKey,
     IssuesCache.VersionedIssue versionedIssue) {
-    var isDelegatingIssue = versionedIssue.getIssue() instanceof DelegatingIssue;
-    var delegatingIssue = isDelegatingIssue ? ((DelegatingIssue) versionedIssue.getIssue()) : null;
+    var isDelegatingIssue = versionedIssue.issue() instanceof DelegatingIssue;
+    var delegatingIssue = isDelegatingIssue ? ((DelegatingIssue) versionedIssue.issue()) : null;
     if (delegatingIssue != null && delegatingIssue.getIssueId() != null) {
       var issueId = delegatingIssue.getIssueId();
       var serverIssueKey = delegatingIssue.getServerIssueKey();
@@ -229,9 +229,9 @@ public class CommandManager {
 
   private static void addShowAllLocationsCodeAction(IssuesCache.VersionedIssue versionedIssue,
     List<Either<Command, CodeAction>> codeActions, Diagnostic diagnostic, String ruleKey, boolean isNotebook) {
-    if (!versionedIssue.getIssue().flows().isEmpty() && !isNotebook) {
+    if (!versionedIssue.issue().flows().isEmpty() && !isNotebook) {
       var titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
-      codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(versionedIssue.getIssue()))));
+      codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(versionedIssue.issue()))));
     }
   }
 
@@ -460,7 +460,7 @@ public class CommandManager {
       SonarLintLogger.get().error("Hotspot is not found during showing flows");
       return;
     }
-    var hotspot = issue.getIssue();
+    var hotspot = issue.issue();
     client.showIssueOrHotspot(ShowAllLocationsCommand.params(hotspot));
   }
 
