@@ -83,7 +83,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private static final String PYTHON_S1481 = "python:S1481";
   private static final String PYTHON_S1313 = "python:S1313";
   private static final String PROJECT_KEY = "myProject";
-  public static final String LANGUAGES_LIST = "apex,c,cpp,cs,css,cobol,web,java,js,php,plsql,py,secrets,ts,xml,yaml,go,cloudformation,docker,kubernetes,terraform,azureresourcemanager";
+  public static final String LANGUAGES_LIST = "apex,c,cpp,cs,css,cobol,web,java,js,php,plsql,py,secrets,ts,xml,yaml,json,go,cloudformation,docker,kubernetes,terraform,azureresourcemanager";
 
   @RegisterExtension
   private final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
@@ -286,26 +286,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void analysisConnected_find_tracked_hotspot_after_sq_10_1() {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Issues.IssuesPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
-      Issues.IssuesPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
+    mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=myProject&files=hotspot.py&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
@@ -752,26 +733,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Issues.IssuesPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
-      Issues.IssuesPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
+    mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=myProject&files=" + analyzedFileName + "&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
@@ -847,26 +809,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Issues.IssuesPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
-      Issues.IssuesPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
+    mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=myProject&files=" + analyzedFileName + "&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
@@ -921,26 +864,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var analyzedFileName = "hotspot_permissions.py";
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Issues.IssuesPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
-      Issues.IssuesPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
+    mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=myProject&files=" + analyzedFileName + "&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
@@ -1025,6 +949,29 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(response.isPermitted()).isTrue();
     assertThat(response.getNotPermittedReason()).isNull();
     assertThat(response.getAllowedStatuses()).containsExactly("Acknowledged", "Fixed", "Safe");
+  }
+
+  private void mockNoIssueAndNoTaintInIncrementalSync() {
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
+      Issues.IssuesPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
+      Issues.IssuesPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
+      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
+      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
   }
 
   private void mockNoIssuesNoHotspotsForProject() {

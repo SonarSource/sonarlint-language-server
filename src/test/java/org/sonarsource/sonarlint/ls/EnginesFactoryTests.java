@@ -63,6 +63,7 @@ class EnginesFactoryTests {
       Language.IPYTHON,
       Language.JAVA,
       Language.JS,
+      Language.JSON,
       Language.KUBERNETES,
       Language.PHP,
       Language.PYTHON,
