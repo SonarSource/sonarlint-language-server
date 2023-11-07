@@ -51,6 +51,7 @@ class EnginesFactoryTests {
   @Test
   void get_standalone_languages() {
     assertThat(EnginesFactory.getStandaloneLanguages()).containsExactlyInAnyOrder(
+      Language.AZURERESOURCEMANAGER,
       Language.C,
       Language.CLOUDFORMATION,
       Language.CS,
