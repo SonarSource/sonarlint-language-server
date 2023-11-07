@@ -52,6 +52,7 @@ public class EnginesFactory {
 
 
   private static final Language[] STANDALONE_LANGUAGES = {
+    Language.AZURERESOURCEMANAGER,
     Language.CPP,
     Language.C,
     Language.CLOUDFORMATION,
@@ -63,6 +64,7 @@ public class EnginesFactory {
     Language.IPYTHON,
     Language.JAVA,
     Language.JS,
+    Language.JSON,
     Language.KUBERNETES,
     Language.PHP,
     Language.PYTHON,

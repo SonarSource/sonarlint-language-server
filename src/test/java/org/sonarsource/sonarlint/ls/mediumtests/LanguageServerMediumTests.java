@@ -94,6 +94,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   public static final String CLOUDFORMATION_S6273 = "cloudformation:S6273";
   public static final String DOCKER_S6476 = "docker:S6476";
   public static final String TERRAFORM_S6273 = "terraform:S6273";
+  public static final String ARM_S4423 = "azureresourcemanager:S4423";
   private static Path omnisharpDir;
 
   @BeforeAll
@@ -236,6 +237,60 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .containsExactly(
         tuple(4, 4, 4, 28, TERRAFORM_S6273, "sonarlint",
           "Rename tag key \"anycompany:cost-center\" to match the regular expression \"^([A-Z][A-Za-z]*:)*([A-Z][A-Za-z]*)$\".", DiagnosticSeverity.Warning)));
+  }
+
+  @Test
+  void analyzeSimpleBicepFileOnOpen() throws Exception {
+    setRulesConfig(client.globalSettings, ARM_S4423, "on");
+    notifyConfigurationChangeOnClient();
+
+    var uri = getUri("sampleBicep.bicep");
+
+    didOpen(uri, "bicep", """
+      resource mysqlDbServer 'Microsoft.DBforMySQL/servers@2017-12-01' = {
+        name: 'example'
+        properties: {
+          minimalTlsVersion: 'TLS1_0'
+        }
+      }
+      """);
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(3, 4, 3, 31, ARM_S4423, "sonarlint",
+          "Change this code to disable support of older TLS versions.", DiagnosticSeverity.Warning)));
+  }
+
+  @Test
+  void analyzeSimpleArmJsonFileOnOpen() throws Exception {
+    setRulesConfig(client.globalSettings, ARM_S4423, "on");
+    notifyConfigurationChangeOnClient();
+
+    var uri = getUri("sampleArm.json");
+
+    didOpen(uri, "json", """
+      {
+        "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+        "contentVersion": "1.0.0.0",
+        "resources": [
+          {
+            "type": "Microsoft.DBforMySQL/servers",
+            "apiVersion": "2017-12-01",
+            "name": "Raise an issue: older TLS versions shouldn't be allowed",
+            "properties": {
+              "minimalTlsVersion": "TLS1_0"
+            }
+          }
+        ]
+      }
+      """);
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(9, 8, 9, 37, ARM_S4423, "sonarlint",
+          "Change this code to disable support of older TLS versions.", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -660,7 +715,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void testListAllRules() {
     var result = lsProxy.listAllRules().join();
     String[] commercialLanguages = new String[]{"C", "C++"};
-    String[] freeLanguages = new String[]{"CSS", "C#", "CloudFormation", "Docker", "Go", "HTML", "IPython Notebooks", "Java",
+    String[] freeLanguages = new String[]{"AzureResourceManager", "CSS", "C#", "CloudFormation", "Docker", "Go", "HTML", "IPython Notebooks", "Java",
       "JavaScript", "Kubernetes", "PHP", "Python", "Secrets", "Terraform", "TypeScript", "XML"};
     if (COMMERCIAL_ENABLED) {
       awaitUntilAsserted(() -> assertThat(result).containsOnlyKeys(ArrayUtils.addAll(commercialLanguages, freeLanguages)));
@@ -981,7 +1036,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void getFilePatternsForAnalysis() throws ExecutionException, InterruptedException {
     var result = lsProxy.getFilePatternsForAnalysis(new SonarLintExtendedLanguageServer.UriParams("notBound")).get();
 
-    assertThat(result.getPatterns()).hasSize(47);
     assertThat(result.getPatterns()).containsExactlyInAnyOrder("**/*.c",
       "**/*.h",
       "**/*.cc",
@@ -1028,7 +1082,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "**/*.yml",
       "**/*.yaml",
       "**/*.go",
-      "**/*.tf");
+      "**/*.tf",
+      "**/*.bicep",
+      "**/*.json");
   }
 
   @Test
