@@ -98,11 +98,21 @@ public class NotebookDiagnosticPublisher {
     client.publishDiagnostics(p);
   }
 
-  public void cleanupDiagnostics(URI notebookUri) {
+  public void cleanupDiagnosticsForCellsWithoutIssues(URI notebookUri) {
     var versionedOpenNotebook = openNotebooksCache.getFile(notebookUri);
     var cellsWithIssues = notebookCellsWithIssues.getOrDefault(notebookUri, List.of());
     versionedOpenNotebook.ifPresent(notebook -> notebook.getCellUris().forEach(cellUri -> {
       if (cellsWithIssues != null && !cellsWithIssues.contains(URI.create(cellUri))) {
+        removeCellDiagnostics(URI.create(cellUri));
+      }
+    }));
+  }
+
+  public void removeAllExistingDiagnosticsForNotebook(URI notebookUri) {
+    var versionedOpenNotebook = openNotebooksCache.getFile(notebookUri);
+    var cellsWithIssues = notebookCellsWithIssues.getOrDefault(notebookUri, List.of());
+    versionedOpenNotebook.ifPresent(notebook -> notebook.getCellUris().forEach(cellUri -> {
+      if (cellsWithIssues != null && cellsWithIssues.contains(URI.create(cellUri))) {
         removeCellDiagnostics(URI.create(cellUri));
       }
     }));

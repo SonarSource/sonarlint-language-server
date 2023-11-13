@@ -383,7 +383,7 @@ public class AnalysisTaskExecutor {
         totalIssueCount.addAndGet(foundIssues);
         totalHotspotCount.addAndGet(securityHotspotsCache.count(f));
         diagnosticPublisher.publishDiagnostics(f, task.shouldKeepHotspotsOnly());
-        notebookDiagnosticPublisher.cleanupDiagnostics(f);
+        notebookDiagnosticPublisher.cleanupDiagnosticsForCellsWithoutIssues(f);
       });
       telemetry.addReportedRules(ruleKeys);
       if (!task.shouldKeepHotspotsOnly()) {
