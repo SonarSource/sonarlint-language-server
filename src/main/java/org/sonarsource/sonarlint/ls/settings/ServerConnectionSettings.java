@@ -135,6 +135,6 @@ public class ServerConnectionSettings {
 
   @Override
   public String toString() {
-    return new ReflectionToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).setExcludeFieldNames("endpointParams", "validateConnectionParams").toString();
+    return new ReflectionToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).setExcludeFieldNames("endpointParams", "token", "validateConnectionParams").toString();
   }
 }
