@@ -578,7 +578,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didClose(DidCloseNotebookDocumentParams params) {
-    openNotebooksCache.didClose(create(params.getNotebookDocument().getUri()));
+    var uri = create(params.getNotebookDocument().getUri());
+    issuesCache.clear(uri);
+    notebookDiagnosticPublisher.removeAllExistingDiagnosticsForNotebook(uri);
+    openNotebooksCache.didClose(uri);
   }
 
   private enum TraceValue {
