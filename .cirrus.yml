@@ -146,11 +146,14 @@ promote_task:
     cpu: 0.5
     memory: 500M
   env:
-    GCF_ACCESS_TOKEN: VAULT[development/kv/data/promote data.token]
-    PROMOTE_URL: VAULT[development/kv/data/promote data.url]
+    ARTIFACTORY_PROMOTE_ACCESS_TOKEN: VAULT[development/artifactory/token/${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-promoter access_token]
     GITHUB_TOKEN: VAULT[development/github/token/${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-promotion token]
     # artifacts which will have downloadable links in burgr
     ARTIFACTS: org.sonarsource.sonarlint.ls:sonarlint-language-server:jar
   <<: *MAVEN_CACHE
-  promote_script: cirrus_promote_maven
+  promote_script:
+    - source cirrus-env PROMOTE
+    - source set_maven_build_version "$BUILD_NUMBER"
+    - cirrus_jfrog_promote
+    - burgr-notify-promotion
   cleanup_before_cache_script: cleanup_maven_repository
