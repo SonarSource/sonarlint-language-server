@@ -60,8 +60,8 @@ class ServerConnectionSettingsTests {
   }
 
   @Test
-  void testToString() {
-    assertThat(WITH_ORG).hasToString("ServerConnectionSettings[connectionId=serverId,disableNotifications=false,organizationKey=myOrg,serverUrl=serverUrl,token=token]");
+  void testToStringHidesToken() {
+    assertThat(WITH_ORG).hasToString("ServerConnectionSettings[connectionId=serverId,disableNotifications=false,organizationKey=myOrg,serverUrl=serverUrl]");
   }
 
 }

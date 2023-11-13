@@ -127,7 +127,7 @@ class WorkspaceSettingsTests {
   @Test
   void testToString() {
     assertThat(SETTINGS).hasToString(
-      "WorkspaceSettings[connections={serverId=ServerConnectionSettings[connectionId=serverId,disableNotifications=true,organizationKey=myOrg,serverUrl=serverUrl,token=token]},disableTelemetry=false,excludedRules=[repo1:rule1],focusOnNewCode=false,includedRules=[repo2:rule2],pathToNodeExecutable=path/to/node,ruleParameters={repo2:rule2={param1=value1}},showAnalyzerLogs=false,showVerboseLogs=false]");
+      "WorkspaceSettings[connections={serverId=ServerConnectionSettings[connectionId=serverId,disableNotifications=true,organizationKey=myOrg,serverUrl=serverUrl]},disableTelemetry=false,excludedRules=[repo1:rule1],focusOnNewCode=false,includedRules=[repo2:rule2],pathToNodeExecutable=path/to/node,ruleParameters={repo2:rule2={param1=value1}},showAnalyzerLogs=false,showVerboseLogs=false]");
   }
 
 }
