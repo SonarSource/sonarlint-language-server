@@ -78,6 +78,12 @@ public class FileUtils {
       }
 
       @Override
+      public FileVisitResult visitFileFailed(Path file, IOException e) {
+        SonarLintLogger.get().warn("IOException while reading the file or folder " + file + ". Skipping. Issue tracking might be affected");
+        return FileVisitResult.CONTINUE;
+      }
+
+      @Override
       public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
         return FileVisitResult.CONTINUE;
       }
