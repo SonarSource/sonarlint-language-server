@@ -55,6 +55,11 @@ public class ProjectBindingWrapper {
     return issueTrackerWrapper;
   }
 
+  public String toServerRelativePath(String localRelativePath) {
+    String relativePathWithMaybeLeadingSlash = localRelativePath.replace(binding.idePathPrefix(), binding.serverPathPrefix());
+    return relativePathWithMaybeLeadingSlash.replaceFirst("^/", "");
+  }
+
   @Override
   public String toString() {
     return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
