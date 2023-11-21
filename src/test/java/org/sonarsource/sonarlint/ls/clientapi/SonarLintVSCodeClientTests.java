@@ -383,7 +383,7 @@ class SonarLintVSCodeClientTests {
   void shouldForwardOpenIssueRequest() {
     var textRangeDto = new TextRangeDto(1, 2, 3, 4);
     var showIssueParams = new ShowIssueParams(textRangeDto, "connectionId", "rule:S1234",
-      "issueKey", FILE_PYTHON, "this is wrong", "29.09.2023", "print('ddd')", false, List.of());
+      "issueKey", FILE_PYTHON, "branch", "1234", "this is wrong", "29.09.2023", "print('ddd')", false, List.of());
     var fileUri = fileInAWorkspaceFolderPath.toUri();
 
     when(bindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath()))
@@ -406,7 +406,7 @@ class SonarLintVSCodeClientTests {
   void shouldNotForwardOpenIssueRequestWhenBindingDoesNotExist() {
     var textRangeDto = new TextRangeDto(1, 2, 3, 4);
     var showIssueParams = new ShowIssueParams(textRangeDto, "connectionId", "rule:S1234",
-      "issueKey", FILE_PYTHON, "this is wrong", "29.09.2023", "print('ddd')", false, List.of());
+      "issueKey", FILE_PYTHON, "bb", null, "this is wrong", "29.09.2023", "print('ddd')", false, List.of());
     var fileUri = fileInAWorkspaceFolderPath.toUri();
 
     when(bindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath()))

@@ -130,7 +130,7 @@ class ShowAllLocationsCommandTests {
   void shouldBuildCommandParamsFromShowIssueParams() {
     var textRangeDto = new TextRangeDto(1, 0, 1, 13);
     var showIssueParams = new ShowIssueParams(textRangeDto, "connectionId", "rule:S1234",
-      "issueKey", "/src/java/main/myFile.py", "this is wrong",
+      "issueKey", "/src/java/main/myFile.py", "branch", "pr", "this is wrong",
       "29.09.2023", "print('1234')", false, List.of());
 
     when(projectBindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath())).thenReturn(Optional.of(fileInAWorkspaceFolderPath.toUri()));
@@ -144,7 +144,7 @@ class ShowAllLocationsCommandTests {
   void shouldBuildCommandParamsFromShowIssueParamsForFileLevelIssue() {
     var textRangeDto = new TextRangeDto(0, 0, 0, 0);
     var showIssueParams = new ShowIssueParams(textRangeDto, "connectionId", "rule:S1234",
-      "issueKey", "/src/java/main/myFile.py", "this is wrong",
+      "issueKey", "/src/java/main/myFile.py", "branch", null, "this is wrong",
       "29.09.2023", """
       print('1234')
       print('aa')
@@ -161,7 +161,7 @@ class ShowAllLocationsCommandTests {
   void shouldBuildCommandParamsFromShowIssueParamsForInvalidTextRange() {
     var textRangeDto = new TextRangeDto(-1, 0, -2, 0);
     var showIssueParams = new ShowIssueParams(textRangeDto, "connectionId", "rule:S1234",
-      "issueKey", "/src/java/main/myFile.py", "this is wrong",
+      "issueKey", "/src/java/main/myFile.py", "bb", "1234", "this is wrong",
       "29.09.2023", "print('1234')", false, List.of());
 
     when(projectBindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath())).thenReturn(Optional.of(fileInAWorkspaceFolderPath.toUri()));
@@ -181,7 +181,7 @@ class ShowAllLocationsCommandTests {
     var flow = new FlowDto(List.of(location1, location2));
 
     var showIssueParams = new ShowIssueParams(textRangeDto1, "connectionId", "rule:S1234",
-      "issueKey", "/src/java/main/myFile.py", "this is wrong", "29.09.2023",
+      "issueKey", "/src/java/main/myFile.py", "main", "", "this is wrong", "29.09.2023",
       "print('1234')", false, List.of(flow));
 
     when(projectBindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath())).thenReturn(Optional.of(fileInAWorkspaceFolderPath.toUri()));
