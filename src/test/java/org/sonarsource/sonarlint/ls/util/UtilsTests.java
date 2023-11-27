@@ -23,6 +23,7 @@ import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.assertj.core.api.AssertionsForClassTypes;
+import org.eclipse.lsp4j.MessageType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -124,24 +125,24 @@ class UtilsTests {
     var future = CompletableFuture.runAsync(() -> {
       throw new UnsupportedOperationException("Error while computing future", new Throwable());
     });
-    var futureResult = Utils.safelyGetCompletableFuture(future);
+    var futureResult = Utils.safelyGetCompletableFuture(future, logTester.getLogger());
     assertThat(futureResult).isEmpty();
-    assertThat(logTester.logs(ClientLogOutput.Level.WARN)).contains("Future computation completed with an exception");
+    assertThat(logTester.logs(MessageType.Log)).anyMatch(log -> log.contains("Future computation completed with an exception"));
   }
 
   @Test
   void shouldSafelyGetInterruptedFuture() throws Exception {
     var future = mock(CompletableFuture.class);
     when(future.get()).thenThrow(new InterruptedException());
-    var futureResult = Utils.safelyGetCompletableFuture(future);
+    var futureResult = Utils.safelyGetCompletableFuture(future, logTester.getLogger());
     assertThat(futureResult).isEmpty();
-    assertThat(logTester.logs(ClientLogOutput.Level.DEBUG)).contains("Interrupted!");
+    assertThat(logTester.logs(MessageType.Log)).anyMatch(log -> log.contains("Interrupted!"));
   }
 
   @Test
   void shouldSafelyGetFuture() {
     var future = CompletableFuture.completedFuture(42);
-    var futureResult = Utils.safelyGetCompletableFuture(future);
+    var futureResult = Utils.safelyGetCompletableFuture(future, logTester.getLogger());
     assertThat(futureResult).hasValue(42);
   }
 

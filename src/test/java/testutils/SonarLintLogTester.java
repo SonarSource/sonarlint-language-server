@@ -23,13 +23,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import org.eclipse.lsp4j.MessageActionItem;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.PublishDiagnosticsParams;
+import org.eclipse.lsp4j.ShowMessageRequestParams;
+import org.eclipse.lsp4j.services.LanguageClient;
 import org.junit.jupiter.api.extension.AfterTestExecutionCallback;
 import org.junit.jupiter.api.extension.BeforeTestExecutionCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
-import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput.Level;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+
 
 /**
  * <b>For tests only</b>
@@ -65,21 +73,52 @@ import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 public class SonarLintLogTester implements BeforeTestExecutionCallback, AfterTestExecutionCallback {
 
   private final Queue<String> logs = new ConcurrentLinkedQueue<>();
-  private final Map<Level, Queue<String>> logsByLevel = new ConcurrentHashMap<>();
+  private final Map<MessageType, Queue<String>> logsByLevel = new ConcurrentHashMap<>();
+  private final LanguageClientLogOutput LOG;
+
+  public SonarLintLogTester() {
+    var client = new LanguageClient() {
+      @Override
+      public void telemetryEvent(Object object) {
+
+      }
+
+      @Override
+      public void publishDiagnostics(PublishDiagnosticsParams diagnostics) {
+
+      }
+
+      @Override
+      public void showMessage(MessageParams messageParams) {
+
+      }
+
+      @Override
+      public CompletableFuture<MessageActionItem> showMessageRequest(ShowMessageRequestParams requestParams) {
+        return null;
+      }
+
+      @Override
+      public void logMessage(MessageParams params) {
+        logs.add(params.getMessage());
+        logsByLevel.computeIfAbsent(params.getType(), l -> new ConcurrentLinkedQueue<>()).add(params.getMessage());
+      }
+    };
+    var logger = new LanguageClientLogger(client);
+    logger.initialize(true);
+    LOG = new LanguageClientLogOutput(logger, false);
+  }
+
 
   @Override
   public void beforeTestExecution(ExtensionContext context) throws Exception {
-    SonarLintLogger.setTarget((formattedMessage, level) -> {
-      logs.add(formattedMessage);
-      logsByLevel.computeIfAbsent(level, l -> new ConcurrentLinkedQueue<>()).add(formattedMessage);
-    });
+
   }
 
   @Override
   public void afterTestExecution(ExtensionContext context) throws Exception {
     clear();
   }
-
   /**
    * Logs in chronological order (item at index 0 is the oldest one)
    */
@@ -91,12 +130,16 @@ public class SonarLintLogTester implements BeforeTestExecutionCallback, AfterTes
    * Logs in chronological order (item at index 0 is the oldest one) for
    * a given level
    */
-  public List<String> logs(Level level) {
+  public List<String> logs(MessageType level) {
     return Optional.ofNullable(logsByLevel.get(level)).map(List::copyOf).orElse(List.of());
   }
 
   public void clear() {
     logs.clear();
     logsByLevel.clear();
+  }
+
+  public LanguageClientLogOutput getLogger() {
+    return LOG;
   }
 }

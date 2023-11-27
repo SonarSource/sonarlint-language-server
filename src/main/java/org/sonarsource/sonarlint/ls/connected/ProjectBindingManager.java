@@ -46,7 +46,6 @@ import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingCo
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.DidUpdateBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionParams;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.http.HttpClient;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
@@ -83,9 +82,6 @@ import static org.sonarsource.sonarlint.ls.util.Utils.uriHasFileScheme;
  * Files that are opened alone will have their own binding.
  */
 public class ProjectBindingManager implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
-
-  private static final SonarLintLogger LOG = SonarLintLogger.get();
-
   private final WorkspaceFoldersManager foldersManager;
   private final SettingsManager settingsManager;
   private final ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache;
@@ -205,7 +201,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var endpointParams = getEndpointParamsFor(connectionId);
 
     if (endpointParams == null) {
-      LOG.error("Invalid binding for '{}'", folderRoot);
+      globalLogOutput.error("Invalid binding for '%s'", folderRoot);
       return null;
     }
     var engineOpt = getOrCreateConnectedEngine(connectionId);
@@ -216,20 +212,20 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var projectKey = requireNonNull(settings.getProjectKey());
     Supplier<String> branchProvider = () -> resolveBranchNameForFolder(folderRoot.toUri(), engine, projectKey);
     var httpClient = backendServiceFacade.getHttpClient(connectionId);
-    syncAtStartup(engine, endpointParams, projectKey, branchProvider, httpClient);
+    syncAtStartup(engine, endpointParams, projectKey, branchProvider, httpClient, globalLogOutput);
 
     var ideFilePaths = FileUtils.allRelativePathsForFilesInTree(folderRoot);
     var projectBinding = engine.calculatePathPrefixes(projectKey, ideFilePaths);
-    LOG.debug("Resolved binding {} for folder {}",
+    globalLogOutput.debug("Resolved binding %s for folder %s",
       ToStringBuilder.reflectionToString(projectBinding, ToStringStyle.SHORT_PREFIX_STYLE),
       folderRoot);
     var issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, endpointParams, projectBinding, branchProvider, httpClient,
-      backendServiceFacade, foldersManager);
+      backendServiceFacade, foldersManager, globalLogOutput);
     return new ProjectBindingWrapper(connectionId, projectBinding, engine, issueTrackerWrapper);
   }
 
   private static void syncAtStartup(ConnectedSonarLintEngine engine, EndpointParams endpointParams, String projectKey,
-    Supplier<String> branchProvider, HttpClient httpClient) {
+    Supplier<String> branchProvider, HttpClient httpClient, LanguageClientLogOutput globalLogOutput) {
     try {
       engine.updateProject(endpointParams, httpClient, projectKey, null);
       engine.sync(endpointParams, httpClient, Set.of(projectKey), null);
@@ -238,7 +234,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       engine.syncServerTaintIssues(endpointParams, httpClient, projectKey, currentBranchName, null);
       engine.syncServerHotspots(endpointParams, httpClient, projectKey, currentBranchName, null);
     } catch (Exception exceptionDuringSync) {
-      LOG.warn("Exception happened during initial sync with project " + projectKey, exceptionDuringSync);
+      globalLogOutput.warn("Exception happened during initial sync with project " + projectKey, exceptionDuringSync);
     }
   }
 
@@ -262,7 +258,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var allConnections = settingsManager.getCurrentSettings().getServerConnections();
     var serverConnectionSettings = allConnections.get(connectionId);
     if (serverConnectionSettings == null) {
-      LOG.error("The specified connection id '{}' doesn't exist.", connectionId);
+      globalLogOutput.error("The specified connection id '%s' doesn't exist.", connectionId);
       return null;
     }
     return serverConnectionSettings;
@@ -275,14 +271,14 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   @CheckForNull
   private ConnectedSonarLintEngine createConnectedEngine(String connectionId) {
-    LOG.debug("Starting connected SonarLint engine for '{}'...", connectionId);
+    globalLogOutput.debug("Starting connected SonarLint engine for '%s'...", connectionId);
 
     ConnectedSonarLintEngine engine;
     try {
       var serverConnectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
       engine = enginesFactory.createConnectedEngine(connectionId, serverConnectionSettings);
     } catch (Exception e) {
-      LOG.error("Error starting connected SonarLint engine for '" + connectionId + "'", e);
+      globalLogOutput.error("Error starting connected SonarLint engine for '" + connectionId + "'", e);
       return null;
     }
     return engine;
@@ -357,14 +353,14 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private void unbindFiles() {
     fileBindingCache.replaceAll((uri, binding) -> Optional.empty());
-    LOG.debug("All files outside workspace are now unbound");
+    globalLogOutput.debug("All files outside workspace are now unbound");
     stopUnusedEngines();
     analysisManager.analyzeAllOpenFilesInFolder(null);
   }
 
   private void unbindFolder(WorkspaceFolderWrapper folder) {
     folderBindingCache.put(folder.getUri(), Optional.empty());
-    LOG.debug("Workspace '{}' unbound", folder);
+    globalLogOutput.debug("Workspace '%s' unbound", folder);
     stopUnusedEngines();
     analysisManager.analyzeAllOpenFilesInFolder(folder);
     var bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
@@ -431,15 +427,15 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   public void shutdown() {
-    connectedEngineCacheByConnectionId.forEach(ProjectBindingManager::tryStopServer);
+    connectedEngineCacheByConnectionId.forEach(this::tryStopServer);
   }
 
-  private static void tryStopServer(String connectionId, Optional<ConnectedSonarLintEngine> engine) {
+  private void tryStopServer(String connectionId, Optional<ConnectedSonarLintEngine> engine) {
     engine.ifPresent(e -> {
       try {
         e.stop(false);
       } catch (Exception ex) {
-        LOG.error("Unable to stop engine '" + connectionId + "'", ex);
+        globalLogOutput.error("Unable to stop engine '" + connectionId + "'", ex);
       }
     });
   }
@@ -493,7 +489,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   private void updateTaintIssueCacheFromStorageForServerPath(String filePathFromEvent) {
-    LOG.debug("Re-publishing taint vulnerabilities for \"{}\"", filePathFromEvent);
+    globalLogOutput.debug("Re-publishing taint vulnerabilities for \"%s\"", filePathFromEvent);
     serverPathToFileUri(filePathFromEvent).ifPresent(this::updateTaintIssueCacheFromStorageForFile);
   }
 

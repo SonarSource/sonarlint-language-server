@@ -52,6 +52,7 @@ import org.sonarsource.sonarlint.core.tracking.IssueTrackable;
 import org.sonarsource.sonarlint.ls.AnalysisClientInputFile;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.function.Predicate.not;
@@ -65,6 +66,7 @@ public class ServerIssueTrackerWrapper {
   private final Supplier<String> getReferenceBranchNameForFolder;
   private final HttpClient httpClient;
   private final BackendServiceFacade backend;
+  private final LanguageClientLogOutput logOutput;
   private final WorkspaceFoldersManager workspaceFoldersManager;
 
   private final IssueTrackerCache<Issue> issueTrackerCache;
@@ -75,7 +77,7 @@ public class ServerIssueTrackerWrapper {
 
   ServerIssueTrackerWrapper(ConnectedSonarLintEngine engine, EndpointParams endpointParams,
     ProjectBinding projectBinding, Supplier<String> getReferenceBranchNameForFolder, HttpClient httpClient,
-    BackendServiceFacade backend, WorkspaceFoldersManager workspaceFoldersManager) {
+    BackendServiceFacade backend, WorkspaceFoldersManager workspaceFoldersManager, LanguageClientLogOutput logOutput) {
     this.engine = engine;
     this.endpointParams = endpointParams;
     this.projectBinding = projectBinding;
@@ -83,6 +85,7 @@ public class ServerIssueTrackerWrapper {
     this.httpClient = httpClient;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.backend = backend;
+    this.logOutput = logOutput;
     this.issueTrackerCache = new InMemoryIssueTrackerCache();
     this.hotspotsTrackerCache = new InMemoryIssueTrackerCache();
     this.cachingIssueTracker = new CachingIssueTracker(issueTrackerCache);
@@ -119,7 +122,7 @@ public class ServerIssueTrackerWrapper {
     var issuesByFilepath = getClientTrackedIssuesByServerRelativePath(filePath, issueTrackables);
     var trackWithServerIssuesResponse = Utils.safelyGetCompletableFuture(backend.matchIssues(
       new TrackWithServerIssuesParams(workspaceFolderUri.toString(), issuesByFilepath, shouldFetchServerIssues)
-    ));
+    ), logOutput);
     trackWithServerIssuesResponse.ifPresentOrElse(
       r -> matchAndTrackIssues(filePath, issueListener, issueTrackables, r.getIssuesByServerRelativePath()),
       () -> issueTrackables.stream().map(DelegatingIssue::new).forEach(issueListener::handle)

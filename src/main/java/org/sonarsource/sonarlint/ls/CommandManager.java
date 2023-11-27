@@ -66,7 +66,6 @@ import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleParamDefinitio
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleSplitDescriptionDto;
 import org.sonarsource.sonarlint.core.commons.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.commons.TextRange;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.UrlUtils;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -77,6 +76,7 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -122,10 +122,12 @@ public class CommandManager {
   private final BackendServiceFacade backendServiceFacade;
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final OpenNotebooksCache openNotebooksCache;
+  private final LanguageClientLogOutput logOutput;
 
   CommandManager(SonarLintExtendedLanguageClient client, SettingsManager settingsManager, ProjectBindingManager bindingManager, ServerSynchronizer serverSynchronizer,
     SonarLintTelemetry telemetry, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache,
-    IssuesCache securityHotspotsCache, BackendServiceFacade backendServiceFacade, WorkspaceFoldersManager workspaceFoldersManager, OpenNotebooksCache openNotebooksCache) {
+    IssuesCache securityHotspotsCache, BackendServiceFacade backendServiceFacade, WorkspaceFoldersManager workspaceFoldersManager,
+    OpenNotebooksCache openNotebooksCache, LanguageClientLogOutput logOutput) {
     this.client = client;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
@@ -137,6 +139,7 @@ public class CommandManager {
     this.backendServiceFacade = backendServiceFacade;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.openNotebooksCache = openNotebooksCache;
+    this.logOutput = logOutput;
   }
 
   public List<Either<Command, CodeAction>> computeCodeActions(CodeActionParams params, CancelChecker cancelToken) {
@@ -208,7 +211,7 @@ public class CommandManager {
       var changeStatusPermittedResponse =
         Utils.safelyGetCompletableFuture(backendServiceFacade.checkChangeIssueStatusPermitted(
           new CheckStatusChangePermittedParams(binding.getConnectionId(), key)
-        ));
+        ), logOutput);
       if (changeStatusPermittedResponse.isPresent() && changeStatusPermittedResponse.get().isPermitted()) {
         return Optional.of(createResolveIssueCodeAction(diagnostic, ruleKey, key, uri, false));
       }
@@ -317,7 +320,7 @@ public class CommandManager {
           return result;
         }).get();
     } catch (InterruptedException e) {
-      interrupted(e);
+      interrupted(e, logOutput);
       return Map.of();
     } catch (ExecutionException e) {
       throw new IllegalStateException("Failed to list all standalone rules", e);
@@ -335,7 +338,7 @@ public class CommandManager {
       .exceptionally(e -> {
         var message = "Can't show rule details for unknown rule with key: " + ruleKey;
         client.showMessage(new MessageParams(MessageType.Error, message));
-        SonarLintLogger.get().error(message, e);
+        logOutput.error(message, e);
         return null;
       });
   }
@@ -356,7 +359,7 @@ public class CommandManager {
       }).exceptionally(e -> {
         var message = "Can't show rule details for unknown rule with key: " + ruleKey;
         client.showMessage(new MessageParams(MessageType.Error, message));
-        SonarLintLogger.get().error(message, e);
+        logOutput.error(message, e);
         return null;
       });
   }
@@ -457,7 +460,7 @@ public class CommandManager {
     var issueKey = getAsString(params.getArguments().get(1));
     var issue = securityHotspotsCache.get(create(fileUri)).get(issueKey);
     if (issue == null) {
-      SonarLintLogger.get().error("Hotspot is not found during showing flows");
+      logOutput.error("Hotspot is not found during showing flows");
       return;
     }
     var hotspot = issue.issue();

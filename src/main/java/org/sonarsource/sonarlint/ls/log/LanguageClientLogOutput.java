@@ -19,6 +19,8 @@
  */
 package org.sonarsource.sonarlint.ls.log;
 
+import java.util.Formatter;
+import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 
 public class LanguageClientLogOutput implements ClientLogOutput {
@@ -54,4 +56,33 @@ public class LanguageClientLogOutput implements ClientLogOutput {
     }
   }
 
+  public void error(String format, Object ... args) {
+    var formattedMessage = getFormattedMessage(format, args);
+    lsLogger.error(formattedMessage, isFromAnalysis);
+  }
+
+  public void warn(String format, Object ... args) {
+    var formattedMessage = getFormattedMessage(format, args);
+    lsLogger.warn(formattedMessage, isFromAnalysis);
+  }
+
+  public void info(String format, Object ... args) {
+    var formattedMessage = getFormattedMessage(format, args);
+    lsLogger.info(formattedMessage, isFromAnalysis);
+  }
+
+  public void debug(String format, Object ... args) {
+    var formattedMessage = getFormattedMessage(format, args);
+    lsLogger.debug(formattedMessage, isFromAnalysis);
+  }
+
+  public void trace(String format, Object ... args) {
+    var formattedMessage = getFormattedMessage(format, args);
+    lsLogger.trace(formattedMessage, isFromAnalysis);
+  }
+
+  @NotNull
+  private static String getFormattedMessage(String format, Object[] args) {
+    return new Formatter().format(format, args).toString();
+  }
 }

@@ -39,11 +39,8 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.commons.TextRange;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 
 public class FileUtils {
-
-  private static final SonarLintLogger LOG = SonarLintLogger.get();
   private static final String PATH_SEPARATOR_PATTERN = Pattern.quote(File.separator);
   static final String OS_NAME_PROPERTY = "os.name";
   private static final boolean WINDOWS = System.getProperty(OS_NAME_PROPERTY) != null && System.getProperty(OS_NAME_PROPERTY).startsWith("Windows");
@@ -79,7 +76,8 @@ public class FileUtils {
 
       @Override
       public FileVisitResult visitFileFailed(Path file, IOException e) {
-        SonarLintLogger.get().warn("IOException while reading the file or folder " + file + ". Skipping. Issue tracking might be affected");
+        // TODO solve problem for logging in static context
+        // SonarLintLogger.get().warn("IOException while reading the file or folder " + file + ". Skipping. Issue tracking might be affected");
         return FileVisitResult.CONTINUE;
       }
 
@@ -158,7 +156,8 @@ public class FileUtils {
       return baseDir.relativize(path).toString();
     } catch (IllegalArgumentException e) {
       // Possibly the file has not the same root as baseDir
-      LOG.debug("Unable to relativize " + uri + " to " + baseDir);
+      // TODO solve problem for logging in static context
+      // LOG.debug("Unable to relativize " + uri + " to " + baseDir);
       return path.toString();
     }
   }

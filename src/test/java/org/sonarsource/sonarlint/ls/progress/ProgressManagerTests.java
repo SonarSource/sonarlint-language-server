@@ -31,7 +31,9 @@ import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.ArgumentCaptor;
+import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -44,9 +46,11 @@ import static org.mockito.Mockito.when;
 
 class ProgressManagerTests {
 
+  @RegisterExtension
+  public SonarLintLogTester logTester = new SonarLintLogTester();
   private static final Either<String, Integer> FAKE_CLIENT_TOKEN = Either.forLeft("foo");
   private final LanguageClient client = mock(LanguageClient.class);
-  private final ProgressManager underTest = new ProgressManager(client);
+  private final ProgressManager underTest = new ProgressManager(client, logTester.getLogger());
 
   @Test
   void noop_progress_if_no_client_support() {

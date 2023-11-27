@@ -29,6 +29,7 @@ import org.eclipse.lsp4j.FileEvent;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModuleFileEvent;
@@ -37,9 +38,11 @@ import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.plugin.api.module.file.ModuleFileEvent;
+import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -50,7 +53,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class ModuleEventsProcessorTests {
-
+  @RegisterExtension
+  SonarLintLogTester logTester = new SonarLintLogTester();
   private static final WorkspaceFolderSettings EMPTY_SETTINGS = new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null, null);
   private ModuleEventsProcessor underTest;
   private EnginesFactory enginesFactory;
@@ -62,7 +66,7 @@ class ModuleEventsProcessorTests {
     enginesFactory = mock(EnginesFactory.class);
     foldersManager = mock(WorkspaceFoldersManager.class);
     standaloneEngineManager = mock(StandaloneEngineManager.class);
-    underTest = new ModuleEventsProcessor(standaloneEngineManager, foldersManager, mock(ProjectBindingManager.class), new FileTypeClassifier(), mock(JavaConfigCache.class));
+    underTest = new ModuleEventsProcessor(standaloneEngineManager, foldersManager, mock(ProjectBindingManager.class), new FileTypeClassifier(logTester.getLogger()), mock(JavaConfigCache.class));
   }
 
   @Test
@@ -83,7 +87,7 @@ class ModuleEventsProcessorTests {
     var folderURI = URI.create("file:///folder");
     var sonarLintEngine = mock(StandaloneSonarLintEngine.class);
     when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
-    var folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
+    var folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"), logTester.getLogger());
     folder.setSettings(EMPTY_SETTINGS);
     when(foldersManager.findFolderForFile(any())).thenReturn(Optional.of(folder));
     when(sonarLintEngine.fireModuleFileEvent(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
@@ -102,7 +106,7 @@ class ModuleEventsProcessorTests {
     var folderURI = URI.create("file:///folder");
     var sonarLintEngine = mock(StandaloneSonarLintEngine.class);
     when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
-    var folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
+    var folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"), logTester.getLogger());
     folder.setSettings(EMPTY_SETTINGS);
     when(foldersManager.findFolderForFile(any())).thenReturn(Optional.of(folder));
     when(sonarLintEngine.fireModuleFileEvent(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
@@ -121,7 +125,7 @@ class ModuleEventsProcessorTests {
     var folderURI = URI.create("file:///folder");
     var sonarLintEngine = mock(StandaloneSonarLintEngine.class);
     when(enginesFactory.createStandaloneEngine()).thenReturn(sonarLintEngine);
-    var folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"));
+    var folder = new WorkspaceFolderWrapper(folderURI, new WorkspaceFolder(folderURI.toString(), "folder"), logTester.getLogger());
     folder.setSettings(EMPTY_SETTINGS);
     when(foldersManager.findFolderForFile(any())).thenReturn(Optional.of(folder));
     when(sonarLintEngine.fireModuleFileEvent(any(), any())).thenReturn(CompletableFuture.completedFuture(null));

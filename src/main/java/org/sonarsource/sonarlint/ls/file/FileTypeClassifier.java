@@ -24,21 +24,27 @@ import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 
 public class FileTypeClassifier {
-  private static final SonarLintLogger LOG = SonarLintLogger.get();
+
+  private final LanguageClientLogOutput globalLogOutput;
+
+  public FileTypeClassifier(LanguageClientLogOutput globalLogOutput) {
+
+    this.globalLogOutput = globalLogOutput;
+  }
 
   public boolean isTest(@Nullable WorkspaceFolderSettings settings, URI fileUri,
     boolean isJava, Supplier<Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse>> javaConfig) {
     if (isJava && javaConfig.get().map(SonarLintExtendedLanguageClient.GetJavaConfigResponse::isTest).orElse(false)) {
-      LOG.debug("Classified as test by vscode-java");
+      globalLogOutput.debug("Classified as test by vscode-java");
       return true;
     }
     if (settings != null && settings.getTestMatcher().matches(Paths.get(fileUri))) {
-      LOG.debug("Classified as test by configured 'testFilePattern' setting");
+      globalLogOutput.debug("Classified as test by configured 'testFilePattern' setting");
       return true;
     }
     return false;

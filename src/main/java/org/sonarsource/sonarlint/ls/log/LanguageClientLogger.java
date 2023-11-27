@@ -71,6 +71,7 @@ public class LanguageClientLogger implements WorkspaceSettingsChangeListener {
     this.showVerboseLogs = showVerboseLogs;
   }
 
+  // TODO why everything logs to the client as MessageType.Log?
   private void log(String prefix, String formattedMessage, boolean isDebugOrTrace, boolean isFromAnalysis) {
     if ((!isFromAnalysis || showAnalyzerLogs) && (showVerboseLogs || !isDebugOrTrace)) {
       client.logMessage(new MessageParams(MessageType.Log, prefix(prefix, formattedMessage)));

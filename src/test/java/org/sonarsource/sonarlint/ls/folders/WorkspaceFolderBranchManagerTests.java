@@ -29,6 +29,7 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
@@ -40,6 +41,7 @@ import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import testutils.ImmediateExecutorService;
+import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -48,6 +50,8 @@ import static org.mockito.Mockito.when;
 
 class WorkspaceFolderBranchManagerTests {
 
+  @RegisterExtension
+  SonarLintLogTester logTester = new SonarLintLogTester();
   private SonarLintExtendedLanguageClient client;
   private ProjectBindingManager bindingManager;
   private BackendServiceFacade backendServiceFacade;
@@ -58,7 +62,7 @@ class WorkspaceFolderBranchManagerTests {
     client = mock(SonarLintExtendedLanguageClient.class);
     bindingManager = mock(ProjectBindingManager.class);
     backendServiceFacade = mock(BackendServiceFacade.class);
-    underTest = new WorkspaceFolderBranchManager(client, bindingManager, backendServiceFacade, new ImmediateExecutorService());
+    underTest = new WorkspaceFolderBranchManager(client, bindingManager, backendServiceFacade, new ImmediateExecutorService(), logTester.getLogger());
   }
 
   @Test

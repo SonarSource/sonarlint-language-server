@@ -101,7 +101,6 @@ import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenIssueRespons
 import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -210,7 +209,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.client = launcher.getRemoteProxy();
     this.lsLogOutput = new LanguageClientLogger(this.client);
     var globalLogOutput = new LanguageClientLogOutput(lsLogOutput, false);
-    SonarLintLogger.setTarget(globalLogOutput);
     this.openFilesCache = new OpenFilesCache(lsLogOutput);
 
     this.issuesCache = new IssuesCache();
@@ -220,18 +218,18 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.openNotebooksCache = new OpenNotebooksCache(lsLogOutput, notebookDiagnosticPublisher);
     this.notebookDiagnosticPublisher.setOpenNotebooksCache(openNotebooksCache);
     this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache, securityHotspotsCache, openNotebooksCache);
-    this.progressManager = new ProgressManager(client);
+    this.progressManager = new ProgressManager(client, globalLogOutput);
     this.requestsHandlerServer = new RequestsHandlerServer(client);
-    var vsCodeClient = new SonarLintVSCodeClient(client, requestsHandlerServer);
+    var vsCodeClient = new SonarLintVSCodeClient(client, requestsHandlerServer, globalLogOutput);
     this.backendServiceFacade = new BackendServiceFacade(new SonarLintBackendImpl(vsCodeClient));
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
-    this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade);
-    this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, backendServiceFacade);
+    this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, globalLogOutput);
+    this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, backendServiceFacade, globalLogOutput);
     vsCodeClient.setSettingsManager(settingsManager);
     backendServiceFacade.setSettingsManager(settingsManager);
     var nodeJsRuntime = new NodeJsRuntime(settingsManager);
-    var fileTypeClassifier = new FileTypeClassifier();
-    javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
+    var fileTypeClassifier = new FileTypeClassifier(globalLogOutput);
+    javaConfigCache = new JavaConfigCache(client, openFilesCache, globalLogOutput);
     this.enginesFactory = new EnginesFactory(analyzers, getEmbeddedPluginsToPath(), globalLogOutput, nodeJsRuntime,
       new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, javaConfigCache));
     this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
@@ -239,7 +237,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager, client, globalLogOutput,
       taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, openNotebooksCache);
     vsCodeClient.setBindingManager(bindingManager);
-    this.telemetry = new SonarLintTelemetry(settingsManager, bindingManager, nodeJsRuntime, backendServiceFacade);
+    this.telemetry = new SonarLintTelemetry(settingsManager, bindingManager, nodeJsRuntime, backendServiceFacade, globalLogOutput);
     backendServiceFacade.setTelemetry(telemetry);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
@@ -248,7 +246,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var smartNotifications = new SmartNotifications(client, telemetry);
     vsCodeClient.setSmartNotifications(smartNotifications);
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client);
-    this.scmIgnoredCache = new ScmIgnoredCache(client);
+    this.scmIgnoredCache = new ScmIgnoredCache(client, globalLogOutput);
     this.moduleEventsProcessor = new ModuleEventsProcessor(standaloneEngineManager, workspaceFoldersManager, bindingManager, fileTypeClassifier, javaConfigCache);
     var analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
       fileTypeClassifier, issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, telemetry, skippedPluginsNotifier, standaloneEngineManager, diagnosticPublisher,
@@ -258,19 +256,19 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     bindingManager.setAnalysisManager(analysisScheduler);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) analysisScheduler);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) analysisScheduler);
-    this.serverSynchronizer = new ServerSynchronizer(client, progressManager, bindingManager, analysisScheduler, backendServiceFacade);
+    this.serverSynchronizer = new ServerSynchronizer(client, progressManager, bindingManager, analysisScheduler, backendServiceFacade, globalLogOutput);
     this.commandManager = new CommandManager(client, settingsManager, bindingManager, serverSynchronizer, telemetry, taintVulnerabilitiesCache,
-      issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, openNotebooksCache);
+      issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, openNotebooksCache, globalLogOutput);
     var taintVulnerabilityRaisedNotification = new TaintVulnerabilityRaisedNotification(client, commandManager);
     ServerSentEventsHandlerService serverSentEventsHandler = new ServerSentEventsHandler(bindingManager, taintVulnerabilitiesCache,
       taintVulnerabilityRaisedNotification, settingsManager, workspaceFoldersManager, analysisScheduler);
     vsCodeClient.setServerSentEventsHandlerService(serverSentEventsHandler);
-    this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager, backendServiceFacade);
+    this.branchManager = new WorkspaceFolderBranchManager(client, bindingManager, backendServiceFacade, globalLogOutput);
     this.bindingManager.setBranchResolver(branchManager::getReferenceBranchNameForFolder);
     this.workspaceFoldersManager.addListener(this.branchManager);
     this.workspaceFoldersManager.setBindingManager(bindingManager);
     this.taintIssuesUpdater = new TaintIssuesUpdater(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, settingsManager,
-      diagnosticPublisher, backendServiceFacade);
+      diagnosticPublisher, backendServiceFacade, globalLogOutput);
     var cleanAsYouCodeManager = new CleanAsYouCodeManager(diagnosticPublisher, openFilesCache, backendServiceFacade);
     this.settingsManager.addListener(cleanAsYouCodeManager);
     this.shutdownLatch = new CountDownLatch(1);
@@ -617,7 +615,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<ConnectionCheckResult> checkConnection(ConnectionCheckParams params) {
     var connectionName = getConnectionNameFromConnectionCheckParams(params);
-    SonarLintLogger.get().debug("Received a validate connectionName request for {}", connectionName);
+    lsLogOutput.debug(format("Received a validate connectionName request for %s", connectionName));
     var validateConnectionParams = getValidateConnectionParams(params);
     if (validateConnectionParams != null) {
       return backendServiceFacade.validateConnection(validateConnectionParams)
@@ -640,7 +638,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void onTokenUpdate(OnTokenUpdateNotificationParams onTokenUpdateNotificationParams) {
-    SonarLintLogger.get().info("Updating credentials on token change.");
+    lsLogOutput.info("Updating credentials on token change.");
     backendServiceFacade.didChangeCredentials(onTokenUpdateNotificationParams.getConnectionId());
     var updatedConnection = settingsManager.getCurrentSettings().getServerConnections().get(onTokenUpdateNotificationParams.getConnectionId());
     updatedConnection.setToken(onTokenUpdateNotificationParams.getToken());

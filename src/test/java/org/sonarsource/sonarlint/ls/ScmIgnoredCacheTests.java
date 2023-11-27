@@ -22,6 +22,9 @@ package org.sonarsource.sonarlint.ls;
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -32,9 +35,11 @@ import static org.mockito.Mockito.when;
 
 class ScmIgnoredCacheTests {
 
+  @RegisterExtension
+  SonarLintLogTester logTester = new SonarLintLogTester();
   private static final URI FAKE_URI = URI.create("file://foo.txt");
   private final SonarLintExtendedLanguageClient mockClient = mock(SonarLintExtendedLanguageClient.class);
-  private final ScmIgnoredCache underTest = new ScmIgnoredCache(mockClient);
+  private final ScmIgnoredCache underTest = new ScmIgnoredCache(mockClient, logTester.getLogger());
 
   @Test
   void ignored_status_should_be_cached_if_true() {

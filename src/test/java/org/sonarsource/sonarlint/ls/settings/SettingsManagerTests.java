@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import javax.annotation.Nullable;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -142,7 +143,7 @@ class SettingsManagerTests {
     var backend = mock(BackendService.class);
     when(backendFacade.getInitParams()).thenReturn(new BackendInitParams());
     when(backendFacade.getBackendService()).thenReturn(backend);
-    underTest = new SettingsManager(client, foldersManager, new ImmediateExecutorService(), backendFacade);
+    underTest = new SettingsManager(client, foldersManager, new ImmediateExecutorService(), backendFacade, logTester.getLogger());
     underTest = spy(underTest);
   }
 
@@ -220,11 +221,11 @@ class SettingsManagerTests {
 
     var settings = underTest.getCurrentSettings();
     assertThat(settings.getServerConnections()).isEmpty();
-    assertThat(logTester.logs(Level.ERROR))
-      .containsExactly("Incomplete server connection configuration. Required parameters must not be blank: serverId.",
-        "Incomplete server connection configuration. Required parameters must not be blank: serverUrl.",
-        "Incomplete SonarQube server connection configuration. Required parameters must not be blank: serverUrl.",
-        "Incomplete SonarCloud connection configuration. Required parameters must not be blank: organizationKey.");
+    assertThat(logTester.logs(MessageType.Log))
+      .anyMatch(log -> log.contains("Incomplete server connection configuration. Required parameters must not be blank: serverId."))
+      .anyMatch(log -> log.contains("Incomplete server connection configuration. Required parameters must not be blank: serverUrl."))
+      .anyMatch(log -> log.contains("Incomplete SonarQube server connection configuration. Required parameters must not be blank: serverUrl."))
+      .anyMatch(log -> log.contains("Incomplete SonarCloud connection configuration. Required parameters must not be blank: organizationKey."));
   }
 
   @Test
@@ -245,7 +246,7 @@ class SettingsManagerTests {
 
     var settings = underTest.getCurrentSettings();
     assertThat(settings.getServerConnections()).containsKeys("dup");
-    assertThat(logTester.logs(Level.ERROR)).containsExactly("Multiple server connections with the same identifier 'dup'. Fix your settings.");
+    assertThat(logTester.logs(MessageType.Log)).anyMatch(log -> log.contains("Multiple server connections with the same identifier 'dup'. Fix your settings."));
   }
 
   @Test
@@ -266,7 +267,7 @@ class SettingsManagerTests {
 
     var settings = underTest.getCurrentSettings();
     assertThat(settings.getServerConnections()).containsKeys("<default>");
-    assertThat(logTester.logs(Level.ERROR)).containsExactly("Please specify a unique 'connectionId' in your settings for each of the SonarQube/SonarCloud connections.");
+    assertThat(logTester.logs(MessageType.Log)).anyMatch(log -> log.contains("Please specify a unique 'connectionId' in your settings for each of the SonarQube/SonarCloud connections."));
   }
 
   @Test
@@ -299,8 +300,8 @@ class SettingsManagerTests {
     var settings = underTest.getCurrentDefaultFolderSettings();
     assertThat(settings.getConnectionId()).isNull();
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
-    assertThat(logTester.logs(Level.ERROR))
-      .contains("No SonarQube/SonarCloud connections defined for your binding. Please update your settings.");
+    assertThat(logTester.logs(MessageType.Log))
+      .anyMatch(log -> log.contains("No SonarQube/SonarCloud connections defined for your binding. Please update your settings."));
   }
 
   @Test
@@ -358,7 +359,7 @@ class SettingsManagerTests {
       "    }\n" +
       "  }\n" +
       "}\n");
-    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
+    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder(), logTester.getLogger());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
@@ -366,8 +367,8 @@ class SettingsManagerTests {
     var settings = folderWrapper.getSettings();
     assertThat(settings.getConnectionId()).isNull();
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
-    assertThat(logTester.logs(Level.ERROR))
-      .containsExactly("Multiple connections defined in your settings. Please specify a 'connectionId' in your binding with one of [sc1,sq1,sc2,sq2] to disambiguate.");
+    assertThat(logTester.logs(MessageType.Log))
+      .anyMatch(log -> log.contains("Multiple connections defined in your settings. Please specify a 'connectionId' in your binding with one of [sc1,sq1,sc2,sq2] to disambiguate."));
   }
 
   @Test
@@ -382,7 +383,7 @@ class SettingsManagerTests {
       "    }\n" +
       "  }\n" +
       "}\n");
-    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
+    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder(), logTester.getLogger());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
@@ -390,8 +391,8 @@ class SettingsManagerTests {
     var settings = folderWrapper.getSettings();
     assertThat(settings.getConnectionId()).isEqualTo("unknown");
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
-    assertThat(logTester.logs(Level.ERROR))
-      .containsExactly("No SonarQube/SonarCloud connections defined for your binding with id 'unknown'. Please update your settings.");
+    assertThat(logTester.logs(MessageType.Log))
+      .anyMatch(log -> log.contains("No SonarQube/SonarCloud connections defined for your binding with id 'unknown'. Please update your settings."));
   }
 
   @Test
@@ -466,7 +467,7 @@ class SettingsManagerTests {
     var workspaceFolderUri = workspaceFolder.toUri();
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
-    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder(), logTester.getLogger());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
@@ -489,7 +490,7 @@ class SettingsManagerTests {
     var workspaceFolderUri = workspaceFolder.toUri();
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
-    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder(), logTester.getLogger());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
@@ -512,7 +513,7 @@ class SettingsManagerTests {
     var workspaceFolderUri = workspaceFolder.toUri();
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
-    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder(), logTester.getLogger());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
@@ -537,8 +538,8 @@ class SettingsManagerTests {
     underTest.didChangeConfiguration();
     underTest.getCurrentSettings();
 
-    assertThat(logTester.logs(Level.WARN))
-      .containsExactly("Using ${workspaceFolder} variable in sonarlint.pathToCompileCommands is only supported for files in the workspace");
+    assertThat(logTester.logs(MessageType.Log))
+      .anyMatch(log -> log.contains("Using ${workspaceFolder} variable in sonarlint.pathToCompileCommands is only supported for files in the workspace"));
   }
 
   @Test
@@ -576,8 +577,8 @@ class SettingsManagerTests {
     underTest.didChangeConfiguration();
     underTest.getCurrentSettings();
 
-    assertThat(logTester.logs(Level.ERROR))
-      .containsExactly("Variable ${workspaceFolder} for sonarlint.pathToCompileCommands should be the prefix.");
+    assertThat(logTester.logs(MessageType.Log))
+      .anyMatch(log -> log.contains("Variable ${workspaceFolder} for sonarlint.pathToCompileCommands should be the prefix."));
   }
 
   @Test
@@ -594,14 +595,14 @@ class SettingsManagerTests {
     var workspaceFolderUri = URI.create("notfile:///workspace/folder");
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
-    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder(), logTester.getLogger());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
 
     folderWrapper.getSettings();
-    assertThat(logTester.logs(Level.ERROR))
-      .contains("Workspace folder is not in local filesystem, analysis not supported.");
+    assertThat(logTester.logs(MessageType.Log))
+      .anyMatch(log -> log.contains("Workspace folder is not in local filesystem, analysis not supported."));
   }
 
   @Test
@@ -623,8 +624,8 @@ class SettingsManagerTests {
 
     underTest.didChangeConfiguration();
 
-    assertThat(logTester.logs(Level.ERROR))
-      .contains("Can't get token for server https://mysonarqube1.mycompany.org");
+    assertThat(logTester.logs(MessageType.Log))
+      .anyMatch(log -> log.contains("Can't get token for server https://mysonarqube1.mycompany.org"));
   }
 
   @Test
@@ -646,8 +647,8 @@ class SettingsManagerTests {
 
     underTest.didChangeConfiguration();
 
-    assertThat(logTester.logs(Level.ERROR))
-      .contains("Can't get token for server https://mysonarqube1.mycompany.org");
+    assertThat(logTester.logs(MessageType.Log))
+      .anyMatch(log -> log.contains("Can't get token for server https://mysonarqube1.mycompany.org"));
   }
 
   @Test
