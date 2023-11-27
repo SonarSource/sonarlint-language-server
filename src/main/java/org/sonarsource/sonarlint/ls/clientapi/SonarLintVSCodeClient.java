@@ -44,7 +44,6 @@ import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSma
 import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
 import org.sonarsource.sonarlint.core.clientapi.common.TokenDto;
 import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -54,6 +53,7 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
@@ -63,13 +63,16 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   private SettingsManager settingsManager;
   private SmartNotifications smartNotifications;
   private final RequestsHandlerServer server;
+  private final LanguageClientLogOutput logOutput;
   private ProjectBindingManager bindingManager;
   private ServerSentEventsHandlerService serverSentEventsHandlerService;
   private BackendServiceFacade backendServiceFacade;
 
-  public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, RequestsHandlerServer server) {
+  public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, RequestsHandlerServer server,
+    LanguageClientLogOutput logOutput) {
     this.client = client;
     this.server = server;
+    this.logOutput = logOutput;
   }
 
   @Override
@@ -182,7 +185,7 @@ public class SonarLintVSCodeClient implements SonarLintClient {
       sha1fingerprint = Utils.formatSha1Fingerprint(DigestUtils.sha1Hex(untrustedCert.getEncoded()));
       sha256fingerprint = Utils.formatSha256Fingerprint(DigestUtils.sha256Hex(untrustedCert.getEncoded()));
     } catch (CertificateEncodingException | IndexOutOfBoundsException e) {
-      SonarLintLogger.get().error("Certificate encoding is malformed, SHA fingerprints will not be displayed", e);
+      logOutput.error("Certificate encoding is malformed, SHA fingerprints will not be displayed", e);
     }
     var actualSonarLintUserHome = Optional.ofNullable(EnginesFactory.sonarLintUserHomeOverride).orElse(SonarLintUserHome.get());
     var confirmationParams = new SonarLintExtendedLanguageClient.SslCertificateConfirmationParams(

@@ -35,6 +35,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
@@ -57,6 +58,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
+import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -72,7 +74,8 @@ class ServerIssueTrackerWrapperTests {
 
   @TempDir
   Path baseDir;
-
+  @RegisterExtension
+  SonarLintLogTester logTester = new SonarLintLogTester();
   private static int counter = 1;
 
   @Test
@@ -282,7 +285,7 @@ class ServerIssueTrackerWrapperTests {
     when(workspaceSettings.isFocusOnNewCode()).thenReturn(true);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     return new ServerIssueTrackerWrapper(engine, new EndpointParams("https://sonarcloud.io", true, "known"), projectBinding,
-      branchSupplier, httpClient, backendServiceFacade, workspaceFoldersManager);
+      branchSupplier, httpClient, backendServiceFacade, workspaceFoldersManager, logTester.getLogger());
   }
 
   // create uniquely identifiable issue

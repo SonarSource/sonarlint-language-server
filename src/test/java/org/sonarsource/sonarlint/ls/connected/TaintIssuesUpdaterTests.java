@@ -78,7 +78,8 @@ class TaintIssuesUpdaterTests {
   private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   private final Map<String, ServerConnectionSettings> SERVER_CONNECTIONS = Map.of(CONNECTION_ID, serverConnectionSettings);
   private final ImmediateExecutorService executorService = new ImmediateExecutorService();
-  private final TaintIssuesUpdater underTest = new TaintIssuesUpdater(bindingManager, new TaintVulnerabilitiesCache(), workspaceFoldersManager, settingsManager, diagnosticPublisher, executorService, backendServiceFacade);
+  private final TaintIssuesUpdater underTest = new TaintIssuesUpdater(bindingManager, new TaintVulnerabilitiesCache(), workspaceFoldersManager, settingsManager,
+    diagnosticPublisher, executorService, backendServiceFacade, logTester.getLogger());
 
   @BeforeEach
   void init() {
@@ -116,7 +117,7 @@ class TaintIssuesUpdaterTests {
 
     underTest.updateTaintIssuesAsync(FILE_URI);
 
-    assertThat(logTester.logs()).containsExactly("Fetched 2 vulnerabilities from Connection ID");
+    assertThat(logTester.logs()).anyMatch(log -> log.contains("Fetched 2 vulnerabilities from Connection ID"));
   }
 
   @Test

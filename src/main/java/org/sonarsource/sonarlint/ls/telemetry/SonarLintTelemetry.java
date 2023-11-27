@@ -31,7 +31,6 @@ import java.util.function.Supplier;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.commons.Language;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.telemetry.InternalDebug;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryHttpClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
@@ -39,6 +38,7 @@ import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
 import org.sonarsource.sonarlint.ls.NodeJsRuntime;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
@@ -46,7 +46,6 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 
 public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   public static final String DISABLE_PROPERTY_KEY = "sonarlint.telemetry.disabled";
-  private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private final Supplier<ScheduledExecutorService> executorFactory;
   private final SettingsManager settingsManager;
@@ -58,33 +57,35 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   private ScheduledExecutorService scheduler;
   private Map<String, Object> additionalAttributes;
   private final BackendServiceFacade backendServiceFacade;
+  private final LanguageClientLogOutput logOutput;
 
   public SonarLintTelemetry(SettingsManager settingsManager, ProjectBindingManager bindingManager, NodeJsRuntime nodeJsRuntime,
-    BackendServiceFacade backendServiceFacade) {
+    BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
     this(() -> Executors.newScheduledThreadPool(1, Utils.threadFactory("SonarLint Telemetry", false)), settingsManager, bindingManager, nodeJsRuntime,
-      backendServiceFacade);
+      backendServiceFacade, logOutput);
   }
 
   public SonarLintTelemetry(Supplier<ScheduledExecutorService> executorFactory, SettingsManager settingsManager,
     ProjectBindingManager bindingManager,
-    NodeJsRuntime nodeJsRuntime, BackendServiceFacade backendServiceFacade) {
+    NodeJsRuntime nodeJsRuntime, BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
     this.executorFactory = executorFactory;
     this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
     this.nodeJsRuntime = nodeJsRuntime;
     this.backendServiceFacade = backendServiceFacade;
+    this.logOutput = logOutput;
   }
 
   private void optOut(boolean optOut) {
     if (telemetry != null) {
       if (optOut) {
         if (telemetry.isEnabled()) {
-          LOG.debug("Disabling telemetry");
+          logOutput.debug("Disabling telemetry");
           telemetry.disable();
         }
       } else {
         if (!telemetry.isEnabled()) {
-          LOG.debug("Enabling telemetry");
+          logOutput.debug("Enabling telemetry");
           telemetry.enable();
         }
       }
@@ -110,11 +111,11 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     String platform, String architecture, Map<String, Object> additionalAttributes) {
     this.additionalAttributes = additionalAttributes;
     if (storagePath == null) {
-      LOG.debug("Telemetry disabled because storage path is null");
+      logOutput.debug("Telemetry disabled because storage path is null");
       return;
     }
     if ("true".equals(System.getProperty(DISABLE_PROPERTY_KEY))) {
-      LOG.debug("Telemetry disabled by system property");
+      logOutput.debug("Telemetry disabled by system property");
       return;
     }
 
@@ -126,7 +127,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
         1, TimeUnit.HOURS.toMinutes(6), TimeUnit.MINUTES);
     } catch (Exception e) {
       if (InternalDebug.isEnabled()) {
-        LOG.error("Failed scheduling period telemetry job", e);
+        logOutput.error("Failed scheduling period telemetry job", e);
       }
     }
   }

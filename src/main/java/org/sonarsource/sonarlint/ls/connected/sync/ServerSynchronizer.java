@@ -32,7 +32,6 @@ import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
 import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
 import org.sonarsource.sonarlint.core.http.HttpClient;
@@ -40,11 +39,11 @@ import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.progress.ProgressFacade;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 
 public class ServerSynchronizer {
-  private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private final LanguageClient client;
   private final ProgressManager progressManager;
@@ -52,19 +51,21 @@ public class ServerSynchronizer {
   private final AnalysisScheduler analysisScheduler;
   private final Timer serverSyncTimer;
   private final BackendServiceFacade backendServiceFacade;
+  private final LanguageClientLogOutput logOutput;
 
   public ServerSynchronizer(LanguageClient client, ProgressManager progressManager, ProjectBindingManager bindingManager,
-    AnalysisScheduler analysisScheduler, BackendServiceFacade backendServiceFacade) {
-    this(client, progressManager, bindingManager, analysisScheduler, new Timer("Binding updates checker"), backendServiceFacade);
+    AnalysisScheduler analysisScheduler, BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
+    this(client, progressManager, bindingManager, analysisScheduler, new Timer("Binding updates checker"), backendServiceFacade, logOutput);
   }
 
   ServerSynchronizer(LanguageClient client, ProgressManager progressManager, ProjectBindingManager bindingManager,
-    AnalysisScheduler analysisScheduler, Timer serverSyncTimer, BackendServiceFacade backendServiceFacade) {
+    AnalysisScheduler analysisScheduler, Timer serverSyncTimer, BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
     this.client = client;
     this.progressManager = progressManager;
     this.bindingManager = bindingManager;
     this.analysisScheduler = analysisScheduler;
     this.backendServiceFacade = backendServiceFacade;
+    this.logOutput = logOutput;
     var syncPeriod = Long.parseLong(StringUtils.defaultIfBlank(System.getenv("SONARLINT_INTERNAL_SYNC_PERIOD"), "3600")) * 1000;
     this.serverSyncTimer = serverSyncTimer;
     this.serverSyncTimer.scheduleAtFixedRate(new SyncTask(), syncPeriod, syncPeriod);
@@ -135,7 +136,7 @@ public class ServerSynchronizer {
     });
   }
 
-  private static void tryUpdateBoundProjectsStorage(Set<String> projectKeys, EndpointParams endpointParams,
+  private void tryUpdateBoundProjectsStorage(Set<String> projectKeys, EndpointParams endpointParams,
     ConnectedSonarLintEngine engine, HttpClient httpClient, ProgressFacade progress) {
     projectKeys.forEach(projectKey -> progress.doInSubProgress(projectKey, 1.0f / projectKeys.size(), subProgress -> {
       try {
@@ -143,7 +144,7 @@ public class ServerSynchronizer {
       } catch (CanceledException e) {
         throw e;
       } catch (Exception updateFailed) {
-        LOG.error("Binding update failed for project key '{}'", projectKey, updateFailed);
+        logOutput.error("Binding update failed for project key '%s'", projectKey, updateFailed);
       }
     }));
   }
@@ -159,7 +160,7 @@ public class ServerSynchronizer {
       engine.sync(endpointParams, httpClient, branchNamesByProjectKey.keySet(), progressMonitor);
       syncIssues(engine, endpointParams, branchNamesByProjectKey, httpClient, progressMonitor);
     } catch (Exception e) {
-      LOG.error("Error while synchronizing storage", e);
+      logOutput.error("Error while synchronizing storage", e);
     }
   }
 
@@ -192,7 +193,7 @@ public class ServerSynchronizer {
       var projectsToSynchronize = bindingManager.getActiveConnectionsAndProjects();
       if (!projectsToSynchronize.isEmpty()) {
 
-        LOG.debug("Synchronizing storages...");
+        logOutput.debug("Synchronizing storages...");
         projectsToSynchronize.forEach((connectionId, branchNamesByProjectKey) -> bindingManager.getStartedConnectedEngine(connectionId)
           .ifPresent(engine -> {
             var httpClient = backendServiceFacade.getHttpClient(connectionId);

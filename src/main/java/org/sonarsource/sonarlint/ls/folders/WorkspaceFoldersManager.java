@@ -37,31 +37,30 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.net.URI.create;
 
 public class WorkspaceFoldersManager {
-
-  private static final SonarLintLogger LOG = SonarLintLogger.get();
-
   private final Map<URI, WorkspaceFolderWrapper> folders = new ConcurrentHashMap<>();
   private final List<WorkspaceFolderLifecycleListener> listeners = new ArrayList<>();
   private ProjectBindingManager bindingManager;
   private final BackendServiceFacade backendServiceFacade;
+  private final LanguageClientLogOutput logOutput;
   private final ExecutorService executor;
 
-  public WorkspaceFoldersManager(BackendServiceFacade backendServiceFacade) {
-    this(Executors.newCachedThreadPool(Utils.threadFactory("SonarLint folders manager", false)), backendServiceFacade);
+  public WorkspaceFoldersManager(BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
+    this(Executors.newCachedThreadPool(Utils.threadFactory("SonarLint folders manager", false)), backendServiceFacade, logOutput);
   }
 
-  WorkspaceFoldersManager(ExecutorService executor, BackendServiceFacade backendServiceFacade) {
+  WorkspaceFoldersManager(ExecutorService executor, BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
     this.executor = executor;
     this.backendServiceFacade = backendServiceFacade;
+    this.logOutput = logOutput;
   }
 
   public void setBindingManager(ProjectBindingManager bindingManager) {
@@ -78,7 +77,7 @@ public class WorkspaceFoldersManager {
   }
 
   public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
-    LOG.debug("Processing didChangeWorkspaceFolders event");
+    logOutput.debug("Processing didChangeWorkspaceFolders event");
     var removedFolderWrappers = new ArrayList<WorkspaceFolderWrapper>();
     var addedFolderWrappers = new ArrayList<WorkspaceFolderWrapper>();
     for (var removed : event.getRemoved()) {
@@ -105,20 +104,20 @@ public class WorkspaceFoldersManager {
   private WorkspaceFolderWrapper removeFolder(URI uri) {
     var removed = folders.remove(uri);
     if (removed == null) {
-      LOG.warn("Unregistered workspace folder was missing: " + uri);
+      logOutput.warn("Unregistered workspace folder was missing: " + uri);
       return null;
     }
-    LOG.debug("Folder {} removed", removed);
+    logOutput.debug("Folder %s removed", removed);
     listeners.forEach(l -> l.removed(removed));
     return removed;
   }
 
   private WorkspaceFolderWrapper addFolder(WorkspaceFolder added, URI uri) {
-    var addedWrapper = new WorkspaceFolderWrapper(uri, added);
+    var addedWrapper = new WorkspaceFolderWrapper(uri, added, logOutput);
     if (folders.put(uri, addedWrapper) != null) {
-      LOG.warn("Registered workspace folder {} was already added", addedWrapper);
+      logOutput.warn("Registered workspace folder %s was already added", addedWrapper);
     } else {
-      LOG.debug("Folder {} added", addedWrapper);
+      logOutput.debug("Folder %s added", addedWrapper);
     }
     executor.submit(() -> {
       var optionalProjectBindingWrapper = getBindingProvider().apply(added);
@@ -145,7 +144,7 @@ public class WorkspaceFoldersManager {
       return Optional.empty();
     }
     if (folderUriCandidates.size() > 1) {
-      LOG.debug("Multiple candidates workspace folders to contains {}. Default to the deepest one.", uri);
+      logOutput.debug("Multiple candidates workspace folders to contains %s. Default to the deepest one.", uri);
     }
     return Optional.of(folders.get(folderUriCandidates.get(0)));
   }

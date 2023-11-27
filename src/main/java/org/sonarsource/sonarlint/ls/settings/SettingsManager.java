@@ -44,14 +44,15 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.StandaloneRuleConfigDto;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
+import static java.lang.String.format;
 import static java.util.Arrays.stream;
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -85,7 +86,6 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private static final String WORKSPACE_FOLDER_VARIABLE = "${workspaceFolder}";
 
-  private static final SonarLintLogger LOG = SonarLintLogger.get();
   public static final String SONAR_CS_FILE_SUFFIXES = "sonar.cs.file.suffixes";
 
   private final SonarLintExtendedLanguageClient client;
@@ -101,18 +101,20 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private final List<WorkspaceSettingsChangeListener> globalListeners = new ArrayList<>();
   private final List<WorkspaceFolderSettingsChangeListener> folderListeners = new ArrayList<>();
   private final BackendServiceFacade backendServiceFacade;
+  private final LanguageClientLogOutput logOutput;
 
   public SettingsManager(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager foldersManager,
-    BackendServiceFacade backendServiceFacade) {
-    this(client, foldersManager, Executors.newCachedThreadPool(Utils.threadFactory("SonarLint settings manager", false)), backendServiceFacade);
+    BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
+    this(client, foldersManager, Executors.newCachedThreadPool(Utils.threadFactory("SonarLint settings manager", false)), backendServiceFacade, logOutput);
   }
 
   SettingsManager(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager foldersManager,
-    ExecutorService executor, BackendServiceFacade backendServiceFacade) {
+    ExecutorService executor, BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
     this.client = client;
     this.foldersManager = foldersManager;
     this.executor = executor;
     this.backendServiceFacade = backendServiceFacade;
+    this.logOutput = logOutput;
   }
 
   /**
@@ -124,7 +126,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         return currentSettings;
       }
     } catch (InterruptedException e) {
-      interrupted(e);
+      interrupted(e, logOutput);
     }
     throw new IllegalStateException("Unable to get settings in time");
   }
@@ -147,7 +149,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         return currentDefaultSettings;
       }
     } catch (InterruptedException e) {
-      interrupted(e);
+      interrupted(e, logOutput);
     }
     throw new IllegalStateException("Unable to get settings in time");
   }
@@ -173,9 +175,9 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         foldersManager.getAll().forEach(f -> updateWorkspaceFolderSettings(f, true));
         notifyListeners(newWorkspaceSettings, oldWorkspaceSettings, newDefaultFolderSettings, oldDefaultFolderSettings);
       } catch (InterruptedException e) {
-        interrupted(e);
+        interrupted(e, logOutput);
       } catch (Exception e) {
-        LOG.error("Unable to update configuration", e);
+        logOutput.error("Unable to update configuration", e.getMessage());
       } finally {
         client.readyForTests();
       }
@@ -185,11 +187,11 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private void notifyListeners(WorkspaceSettings newWorkspaceSettings, WorkspaceSettings oldWorkspaceSettings, WorkspaceFolderSettings newDefaultFolderSettings,
     WorkspaceFolderSettings oldDefaultFolderSettings) {
     if (!Objects.equals(oldWorkspaceSettings, newWorkspaceSettings)) {
-      LOG.debug("Global settings updated: {}", newWorkspaceSettings);
+      logOutput.debug(format("Global settings updated: %s", newWorkspaceSettings));
       globalListeners.forEach(l -> l.onChange(oldWorkspaceSettings, newWorkspaceSettings));
     }
     if (!Objects.equals(oldDefaultFolderSettings, newDefaultFolderSettings)) {
-      LOG.debug("Default settings updated: {}", newDefaultFolderSettings);
+      logOutput.debug(format("Default settings updated: %s", newDefaultFolderSettings));
       folderListeners.forEach(l -> l.onChange(null, oldDefaultFolderSettings, newDefaultFolderSettings));
     }
   }
@@ -197,9 +199,9 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   // Visible for testing
   CompletableFuture<Map<String, Object>> requestSonarLintAndOmnisharpConfigurationAsync(@Nullable URI uri) {
     if (uri != null) {
-      LOG.debug("Fetching configuration for folder '{}'", uri);
+      logOutput.debug("Fetching configuration for folder '%s'", uri.toString());
     } else {
-      LOG.debug("Fetching global configuration");
+      logOutput.debug("Fetching global configuration");
     }
     var params = new ConfigurationParams();
     var sonarLintConfigurationItem = getConfigurationItem(SONARLINT_CONFIGURATION_NAMESPACE, uri);
@@ -212,7 +214,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     return client.configuration(params)
       .handle((r, t) -> {
         if (t != null) {
-          LOG.error("Unable to fetch configuration of folder " + uri, t);
+          logOutput.error("Unable to fetch configuration of folder %s %s", uri != null ? uri.toString() : "null", t.getMessage());
         }
         return r;
       })
@@ -288,15 +290,15 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       var old = f.getRawSettings();
       if (!Objects.equals(old, newSettings)) {
         f.setSettings(newSettings);
-        LOG.debug("Workspace folder '{}' configuration updated: {}", f, newSettings);
+        logOutput.debug("Workspace folder '%s' configuration updated: %s", f, newSettings);
         if (notifyOnChange) {
           folderListeners.forEach(l -> l.onChange(f, old, newSettings));
         }
       }
     } catch (InterruptedException e) {
-      interrupted(e);
+      interrupted(e, logOutput);
     } catch (Exception e) {
-      LOG.error("Unable to update configuration of folder " + f.getUri(), e);
+      logOutput.error("Unable to update configuration of folder " + f.getUri(), e);
     }
   }
 
@@ -327,7 +329,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     return serverConnections;
   }
 
-  private static void parseDeprecatedServerEntries(Map<String, Object> connectedModeMap, Map<String, ServerConnectionSettings> serverConnections) {
+  private void parseDeprecatedServerEntries(Map<String, Object> connectedModeMap, Map<String, ServerConnectionSettings> serverConnections) {
     @SuppressWarnings("unchecked")
     var deprecatedServersEntries = (List<Map<String, Object>>) connectedModeMap.getOrDefault("servers", Collections.emptyList());
     deprecatedServersEntries.forEach(m -> {
@@ -378,29 +380,29 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       return client.getTokenForServer(serverUrlOrOrganization).get();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOG.error("Can't get token for server " + serverUrlOrOrganization, e);
+      logOutput.error("Can't get token for server " + serverUrlOrOrganization, e);
       return null;
     } catch (ExecutionException e) {
-      LOG.error("Can't get token for server " + serverUrlOrOrganization, e);
+      logOutput.error("Can't get token for server " + serverUrlOrOrganization, e);
       return null;
     }
   }
 
-  private static boolean checkRequiredAttribute(Map<String, Object> map, String label, String... requiredAttributes) {
+  private boolean checkRequiredAttribute(Map<String, Object> map, String label, String... requiredAttributes) {
     var missing = stream(requiredAttributes).filter(att -> isBlank((String) map.get(att))).toList();
     if (!missing.isEmpty()) {
-      LOG.error("Incomplete {} connection configuration. Required parameters must not be blank: {}.", label, String.join(",", missing));
+      logOutput.error("Incomplete %s connection configuration. Required parameters must not be blank: %s.", label, String.join(",", missing));
       return false;
     }
     return true;
   }
 
-  private static void addIfUniqueConnectionId(Map<String, ServerConnectionSettings> serverConnections, String connectionId, ServerConnectionSettings connectionSettings) {
+  private void addIfUniqueConnectionId(Map<String, ServerConnectionSettings> serverConnections, String connectionId, ServerConnectionSettings connectionSettings) {
     if (serverConnections.containsKey(connectionId)) {
       if (DEFAULT_CONNECTION_ID.equals(connectionId)) {
-        LOG.error("Please specify a unique 'connectionId' in your settings for each of the SonarQube/SonarCloud connections.");
+        logOutput.error("Please specify a unique 'connectionId' in your settings for each of the SonarQube/SonarCloud connections.");
       } else {
-        LOG.error("Multiple server connections with the same identifier '{}'. Fix your settings.", connectionId);
+        logOutput.error("Multiple server connections with the same identifier '%s'. Fix your settings.", connectionId);
       }
     } else {
       serverConnections.put(connectionId, connectionSettings);
@@ -425,16 +427,16 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         connectionId = projectBinding.getOrDefault(SERVER_ID, projectBinding.get(CONNECTION_ID));
         if (isBlank(connectionId)) {
           if (currentSettings.getServerConnections().isEmpty()) {
-            LOG.error("No SonarQube/SonarCloud connections defined for your binding. Please update your settings.");
+            logOutput.error("No SonarQube/SonarCloud connections defined for your binding. Please update your settings.");
           } else if (currentSettings.getServerConnections().size() == 1) {
             connectionId = currentSettings.getServerConnections().keySet().iterator().next();
           } else {
-            LOG.error("Multiple connections defined in your settings. Please specify a 'connectionId' in your binding with one of [{}] to disambiguate.",
+            logOutput.error("Multiple connections defined in your settings. Please specify a 'connectionId' in your binding with one of [%s] to disambiguate.",
               String.join(",", currentSettings.getServerConnections().keySet()));
             connectionId = null;
           }
         } else if (!currentSettings.getServerConnections().containsKey(connectionId)) {
-          LOG.error("No SonarQube/SonarCloud connections defined for your binding with id '{}'. Please update your settings.", connectionId);
+          logOutput.error("No SonarQube/SonarCloud connections defined for your binding with id '%s'. Please update your settings.", connectionId);
         }
       }
     }
@@ -443,7 +445,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   }
 
   @CheckForNull
-  private static String substituteWorkspaceFolderVariable(@Nullable URI workspaceFolderUri, @Nullable String pathToCompileCommands) {
+  private String substituteWorkspaceFolderVariable(@Nullable URI workspaceFolderUri, @Nullable String pathToCompileCommands) {
     if (pathToCompileCommands == null) {
       return null;
     }
@@ -451,15 +453,15 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       return pathToCompileCommands;
     }
     if (!pathToCompileCommands.startsWith(WORKSPACE_FOLDER_VARIABLE)) {
-      LOG.error("Variable ${workspaceFolder} for sonarlint.pathToCompileCommands should be the prefix.");
+      logOutput.error("Variable ${workspaceFolder} for sonarlint.pathToCompileCommands should be the prefix.");
       return pathToCompileCommands;
     }
     if (workspaceFolderUri == null) {
-      LOG.warn("Using ${workspaceFolder} variable in sonarlint.pathToCompileCommands is only supported for files in the workspace");
+      logOutput.warn("Using ${workspaceFolder} variable in sonarlint.pathToCompileCommands is only supported for files in the workspace");
       return pathToCompileCommands;
     }
     if (!Utils.uriHasFileScheme(workspaceFolderUri)) {
-      LOG.error("Workspace folder is not in local filesystem, analysis not supported.");
+      logOutput.error("Workspace folder is not in local filesystem, analysis not supported.");
       return null;
     }
     var workspacePath = Paths.get(workspaceFolderUri);

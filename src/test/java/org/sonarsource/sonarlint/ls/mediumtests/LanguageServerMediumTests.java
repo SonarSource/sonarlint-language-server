@@ -739,7 +739,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
           new DidChangeWorkspaceFoldersParams(
             new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folderUri, "No config")), Collections.emptyList())));
 
-      assertLogContainsPattern("\\[Error.*\\] Unable to fetch configuration of folder " + folderUri);
+      assertLogContainsPattern("\\[Error.*\\] Unable to fetch configuration of folder " + folderUri + ".*");
       assertLogContainsPattern("(?s).*Internal error.*");
     } finally {
       lsProxy.getWorkspaceService()

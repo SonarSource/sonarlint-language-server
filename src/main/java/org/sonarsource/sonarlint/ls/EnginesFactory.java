@@ -35,16 +35,15 @@ import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEng
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneGlobalConfiguration;
 import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
 import org.sonarsource.sonarlint.core.commons.Language;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
+import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
+
+import static java.lang.String.format;
 
 public class EnginesFactory {
 
   public static Path sonarLintUserHomeOverride = null;
-
-  private static final SonarLintLogger LOG = SonarLintLogger.get();
-
   private final LanguageClientLogOutput logOutput;
   private final Collection<Path> standaloneAnalyzers;
   private final Map<String, Path> embeddedPluginsToPath;
@@ -103,8 +102,8 @@ public class EnginesFactory {
     if (shutdown.get().equals(true)) {
       throw new IllegalStateException("Language server is shutting down, won't create engine");
     }
-    LOG.debug("Starting standalone SonarLint engine...");
-    LOG.debug("Using {} analyzers", standaloneAnalyzers.size());
+    logOutput.log("Starting standalone SonarLint engine...", ClientLogOutput.Level.DEBUG);
+    logOutput.log(format("Using %d analyzers", standaloneAnalyzers.size()), ClientLogOutput.Level.DEBUG);
 
     try {
       var configuration = StandaloneGlobalConfiguration.builder()
@@ -118,10 +117,10 @@ public class EnginesFactory {
         .build();
 
       var engine = newStandaloneEngine(configuration);
-      LOG.debug("Standalone SonarLint engine started");
+      logOutput.log("Standalone SonarLint engine started", ClientLogOutput.Level.DEBUG);
       return engine;
     } catch (Exception e) {
-      LOG.error("Error starting standalone SonarLint engine", e);
+      logOutput.log(format("Error starting standalone SonarLint engine %s", e), ClientLogOutput.Level.ERROR);
       throw new IllegalStateException(e);
     }
   }
@@ -156,7 +155,7 @@ public class EnginesFactory {
 
     var engine = newConnectedEngine(builder.build());
 
-    LOG.debug("SonarLint engine started for connection '{}'", connectionId);
+    logOutput.log(format("SonarLint engine started for connection '%s'", connectionId), ClientLogOutput.Level.DEBUG);
     return engine;
   }
 
