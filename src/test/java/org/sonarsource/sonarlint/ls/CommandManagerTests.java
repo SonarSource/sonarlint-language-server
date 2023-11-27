@@ -41,6 +41,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
@@ -87,6 +88,7 @@ import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
+import testutils.SonarLintLogTester;
 
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -110,6 +112,8 @@ import static org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebookTests.
 
 class CommandManagerTests {
 
+  @RegisterExtension
+  SonarLintLogTester logTester = new SonarLintLogTester();
   private static final String FAKE_RULE_KEY = "javascript:S1234";
   private static final String FILE_URI = "file://foo.js";
   private static final String CELL_URI = "vscode-notebook-cell:/Users/dda/Documents/jupyterlab-sonarlint/Jupyter%20Demo.ipynb#W2sZmlsZQ%3D%3D";
@@ -153,7 +157,7 @@ class CommandManagerTests {
     openNotebooksCache = mock(OpenNotebooksCache.class);
 
     underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, serverSynchronizer, mockTelemetry,
-      mockTaintVulnerabilitiesCache, issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, openNotebooksCache);
+      mockTaintVulnerabilitiesCache, issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, openNotebooksCache, logTester.getLogger());
   }
 
   @Test

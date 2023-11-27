@@ -30,22 +30,21 @@ import org.eclipse.lsp4j.WorkDoneProgressCreateParams;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
 import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 
 public class ProgressManager {
-
-  private static final SonarLintLogger LOG = SonarLintLogger.get();
-
   private final LanguageClient client;
+  private final LanguageClientLogOutput globalLogOutput;
   private final Map<Either<String, Integer>, LSProgressMonitor> liveProgress = new ConcurrentHashMap<>();
 
   private boolean workDoneProgressSupportedByClient;
 
-  public ProgressManager(LanguageClient client) {
+  public ProgressManager(LanguageClient client, LanguageClientLogOutput globalLogOutput) {
     this.client = client;
+    this.globalLogOutput = globalLogOutput;
   }
 
   public void setWorkDoneProgressSupportedByClient(boolean supported) {
@@ -61,7 +60,7 @@ public class ProgressManager {
         try {
           client.createProgress(new WorkDoneProgressCreateParams(progressToken)).get();
         } catch (InterruptedException e) {
-          interrupted(e);
+          interrupted(e, globalLogOutput);
         } catch (ExecutionException e) {
           throw new IllegalStateException(e.getCause());
         }
@@ -92,7 +91,7 @@ public class ProgressManager {
   public void cancelProgress(WorkDoneProgressCancelParams params) {
     var progressFacade = liveProgress.get(params.getToken());
     if (progressFacade == null) {
-      LOG.debug("Unable to cancel progress: " + params.getToken());
+      globalLogOutput.debug("Unable to cancel progress: " + params.getToken());
     } else {
       progressFacade.cancel();
     }

@@ -21,16 +21,21 @@ package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class WorkspaceFolderWrapperTests {
 
+  @RegisterExtension
+  public SonarLintLogTester logTester = new SonarLintLogTester();
+
   @Test
   void testEqualsAndHashCode() {
-    WorkspaceFolderWrapper folder1 = new WorkspaceFolderWrapper(URI.create("file://folder1"), null);
-    WorkspaceFolderWrapper folder1bis = new WorkspaceFolderWrapper(URI.create("file://folder1"), null);
-    WorkspaceFolderWrapper folder2 = new WorkspaceFolderWrapper(URI.create("file://folder2"), null);
+    WorkspaceFolderWrapper folder1 = new WorkspaceFolderWrapper(URI.create("file://folder1"), null, logTester.getLogger());
+    WorkspaceFolderWrapper folder1bis = new WorkspaceFolderWrapper(URI.create("file://folder1"), null, logTester.getLogger());
+    WorkspaceFolderWrapper folder2 = new WorkspaceFolderWrapper(URI.create("file://folder2"), null, logTester.getLogger());
 
     assertThat(folder1)
       .isNotEqualTo("foo")

@@ -56,7 +56,7 @@ class WorkspaceFoldersManagerTests {
   BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   BackendService backendService = mock(BackendService.class);
 
-  private final WorkspaceFoldersManager underTest = new WorkspaceFoldersManager(new ImmediateExecutorService(), backendServiceFacade);
+  private final WorkspaceFoldersManager underTest = new WorkspaceFoldersManager(new ImmediateExecutorService(), backendServiceFacade, logTester.getLogger());
 
   @BeforeEach
   void prepare() {
@@ -169,8 +169,9 @@ class WorkspaceFoldersManagerTests {
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList()));
 
     assertThat(underTest.getAll()).extracting(WorkspaceFolderWrapper::getRootPath).containsExactly(basedir);
-    assertThat(logTester.logs()).containsExactly("Processing didChangeWorkspaceFolders event",
-      "Folder WorkspaceFolder[name=<null>,uri=" + basedir.toUri() + "] added");
+    assertThat(logTester.logs())
+      .anyMatch(log -> log.contains("Processing didChangeWorkspaceFolders event"))
+      .anyMatch(log -> log.contains("Folder WorkspaceFolder[name=<null>,uri=" + basedir.toUri() + "] added"));
 
     logTester.clear();
 
@@ -178,8 +179,9 @@ class WorkspaceFoldersManagerTests {
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList()));
 
     assertThat(underTest.getAll()).extracting(WorkspaceFolderWrapper::getRootPath).containsExactly(basedir);
-    assertThat(logTester.logs()).containsExactly("Processing didChangeWorkspaceFolders event",
-      "Registered workspace folder WorkspaceFolder[name=<null>,uri=" + basedir.toUri() + "] was already added");
+    assertThat(logTester.logs())
+      .anyMatch(log -> log.contains("Processing didChangeWorkspaceFolders event"))
+      .anyMatch(log -> log.contains("Registered workspace folder WorkspaceFolder[name=<null>,uri=" + basedir.toUri() + "] was already added"));
   }
 
   @Test
@@ -195,8 +197,9 @@ class WorkspaceFoldersManagerTests {
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(Collections.emptyList(), List.of(workspaceFolder)));
 
     assertThat(underTest.getAll()).isEmpty();
-    assertThat(logTester.logs()).containsExactly("Processing didChangeWorkspaceFolders event",
-      "Folder WorkspaceFolder[name=<null>,uri=" + basedir.toUri() + "] removed");
+    assertThat(logTester.logs())
+      .anyMatch(log -> log.contains("Processing didChangeWorkspaceFolders event"))
+      .anyMatch(log -> log.contains("Folder WorkspaceFolder[name=<null>,uri=" + basedir.toUri() + "] removed"));
 
     logTester.clear();
 
@@ -204,8 +207,9 @@ class WorkspaceFoldersManagerTests {
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(Collections.emptyList(), List.of(workspaceFolder)));
 
     assertThat(underTest.getAll()).isEmpty();
-    assertThat(logTester.logs()).containsExactly("Processing didChangeWorkspaceFolders event",
-      "Unregistered workspace folder was missing: " + basedir.toUri());
+    assertThat(logTester.logs())
+      .anyMatch(log -> log.contains("Processing didChangeWorkspaceFolders event"))
+      .anyMatch(log -> log.contains("Unregistered workspace folder was missing: " + basedir.toUri()));
   }
 
   private static WorkspaceFolder mockWorkspaceFolder(URI uri) {

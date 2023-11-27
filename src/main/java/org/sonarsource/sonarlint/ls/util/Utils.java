@@ -53,16 +53,14 @@ import org.sonarsource.sonarlint.core.clientapi.common.TokenDto;
 import org.sonarsource.sonarlint.core.clientapi.common.UsernamePasswordDto;
 import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
 import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.IssuesCache;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
 public class Utils {
-
-  private static final SonarLintLogger LOG = SonarLintLogger.get();
 
   private static final Pattern MATCH_ALL_WHITESPACES = Pattern.compile("\\s");
   private static final String MESSAGE_WITH_PLURALIZED_SUFFIX = "%s [+%d %s]";
@@ -92,8 +90,8 @@ public class Utils {
     };
   }
 
-  public static void interrupted(InterruptedException e) {
-    LOG.debug("Interrupted!", e);
+  public static void interrupted(InterruptedException e, LanguageClientLogOutput logOutput) {
+    logOutput.debug("Interrupted!", e);
     Thread.currentThread().interrupt();
   }
 
@@ -229,13 +227,13 @@ public class Utils {
     return str.toUpperCase(Locale.ROOT).split("(?<=\\G.{2})");
   }
 
-  public static <T> Optional<T> safelyGetCompletableFuture(CompletableFuture<T> future) {
+  public static <T> Optional<T> safelyGetCompletableFuture(CompletableFuture<T> future, LanguageClientLogOutput logOutput) {
     try {
       return Optional.of(future.get());
     } catch (InterruptedException e) {
-      interrupted(e);
+      interrupted(e, logOutput);
     } catch (ExecutionException e) {
-      LOG.warn("Future computation completed with an exception", e);
+      logOutput.warn("Future computation completed with an exception", e);
     }
     return Optional.empty();
   }

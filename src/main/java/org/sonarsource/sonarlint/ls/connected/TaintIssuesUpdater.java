@@ -23,11 +23,11 @@ import java.net.URI;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.util.FileUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
@@ -36,8 +36,6 @@ import static java.lang.String.format;
 import static org.sonarsource.sonarlint.ls.util.Utils.pluralize;
 
 public class TaintIssuesUpdater {
-
-  private static final SonarLintLogger LOG = SonarLintLogger.get();
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final ProjectBindingManager bindingManager;
@@ -45,16 +43,18 @@ public class TaintIssuesUpdater {
   private final DiagnosticPublisher diagnosticPublisher;
   private final ExecutorService asyncExecutor;
   private final BackendServiceFacade backendServiceFacade;
+  private final LanguageClientLogOutput logOutput;
 
   public TaintIssuesUpdater(ProjectBindingManager bindingManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
     WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, DiagnosticPublisher diagnosticPublisher,
-    BackendServiceFacade backendServiceFacade) {
+    BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
     this(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, settingsManager, diagnosticPublisher,
-      Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Analysis Scheduler", false)), backendServiceFacade);
+      Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Analysis Scheduler", false)), backendServiceFacade, logOutput);
   }
 
   TaintIssuesUpdater(ProjectBindingManager bindingManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache, WorkspaceFoldersManager workspaceFoldersManager,
-    SettingsManager settingsManager, DiagnosticPublisher diagnosticPublisher, ExecutorService asyncExecutor, BackendServiceFacade backendServiceFacade) {
+    SettingsManager settingsManager, DiagnosticPublisher diagnosticPublisher, ExecutorService asyncExecutor, BackendServiceFacade backendServiceFacade,
+    LanguageClientLogOutput logOutput) {
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.settingsManager = settingsManager;
@@ -62,6 +62,7 @@ public class TaintIssuesUpdater {
     this.diagnosticPublisher = diagnosticPublisher;
     this.asyncExecutor = asyncExecutor;
     this.backendServiceFacade = backendServiceFacade;
+    this.logOutput = logOutput;
   }
 
   public void updateTaintIssuesAsync(URI fileUri) {
@@ -90,7 +91,7 @@ public class TaintIssuesUpdater {
     var httpClient = backendServiceFacade.getHttpClient(connectionId);
 
     // download taints
-    var sqFilePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(Paths.get(folderUri), fileUri));
+    var sqFilePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(Paths.get(folderUri), fileUri, logOutput));
     engine.downloadAllServerTaintIssuesForFile(endpointParams, httpClient, binding, sqFilePath, branchName, null);
     var serverIssues = engine.getServerTaintIssues(binding, branchName, sqFilePath, false);
 
@@ -98,7 +99,7 @@ public class TaintIssuesUpdater {
     taintVulnerabilitiesCache.reload(fileUri, TaintIssue.from(serverIssues, connectionSettings.isSonarCloudAlias()));
     long foundVulnerabilities = taintVulnerabilitiesCache.getAsDiagnostics(fileUri, diagnosticPublisher.isFocusOnNewCode()).count();
     if (foundVulnerabilities > 0) {
-      LOG.info(format("Fetched %s %s from %s", foundVulnerabilities,
+      logOutput.info(format("Fetched %s %s from %s", foundVulnerabilities,
         pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), connectionId));
     }
     diagnosticPublisher.publishDiagnostics(fileUri, false);

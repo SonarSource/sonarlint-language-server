@@ -154,11 +154,11 @@ class ServerSynchronizerTests {
     folderBindingCache = new ConcurrentHashMap<>();
     taintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
     diagnosticPublisher = mock(DiagnosticPublisher.class);
-    bindingManager = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, mock(LanguageClientLogOutput.class),
+    bindingManager = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, logTester.getLogger(),
       taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, mock(OpenNotebooksCache.class));
     syncTimer = mock(Timer.class);
     var syncTaskCaptor = ArgumentCaptor.forClass(TimerTask.class);
-    underTest = new ServerSynchronizer(client, new ProgressManager(client), bindingManager, analysisManager, syncTimer, backendServiceFacade);
+    underTest = new ServerSynchronizer(client, new ProgressManager(client, logTester.getLogger()), bindingManager, analysisManager, syncTimer, backendServiceFacade, logTester.getLogger());
     verify(syncTimer).scheduleAtFixedRate(syncTaskCaptor.capture(), anyLong(), anyLong());
     syncTask = syncTaskCaptor.getValue();
     bindingManager.setAnalysisManager(analysisManager);
@@ -280,7 +280,7 @@ class ServerSynchronizerTests {
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder);
     verifyNoMoreInteractions(analysisManager);
-    assertThat(logTester.logs(ClientLogOutput.Level.ERROR)).contains("The specified connection id '" + CONNECTION_ID + "' doesn't exist.");
+    assertThat(logTester.logs(MessageType.Log)).anyMatch(log -> log.contains("The specified connection id '" + CONNECTION_ID + "' doesn't exist."));
   }
 
   @Test
@@ -368,13 +368,13 @@ class ServerSynchronizerTests {
   }
 
   private WorkspaceFolderWrapper mockFileInAFolder() {
-    var folderWrapper = spy(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(), new WorkspaceFolder(workspaceFolderPath.toUri().toString())));
+    var folderWrapper = spy(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(), new WorkspaceFolder(workspaceFolderPath.toUri().toString()), logTester.getLogger()));
     when(foldersManager.findFolderForFile(fileInAWorkspaceFolderPath.toUri())).thenReturn(Optional.of(folderWrapper));
     return folderWrapper;
   }
 
   private WorkspaceFolderWrapper mockFileInAFolder2() {
-    var folderWrapper2 = spy(new WorkspaceFolderWrapper(workspaceFolderPath2.toUri(), new WorkspaceFolder(workspaceFolderPath2.toUri().toString())));
+    var folderWrapper2 = spy(new WorkspaceFolderWrapper(workspaceFolderPath2.toUri(), new WorkspaceFolder(workspaceFolderPath2.toUri().toString()), logTester.getLogger()));
     when(foldersManager.findFolderForFile(fileInAWorkspaceFolderPath2.toUri())).thenReturn(Optional.of(folderWrapper2));
     return folderWrapper2;
   }

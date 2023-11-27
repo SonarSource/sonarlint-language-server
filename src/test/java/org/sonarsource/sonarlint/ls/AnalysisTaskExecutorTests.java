@@ -26,7 +26,9 @@ import java.util.concurrent.Future;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,7 +40,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AnalysisTaskExecutorTests {
-
+  @RegisterExtension
+  SonarLintLogTester logTester = new SonarLintLogTester();
   private AnalysisTaskExecutor underTest;
   private LanguageClientLogger lsLogOutput;
   private ExecutorService executor;
@@ -46,7 +49,7 @@ class AnalysisTaskExecutorTests {
   @BeforeEach
   public void init() {
     lsLogOutput = mock(LanguageClientLogger.class);
-    underTest = new AnalysisTaskExecutor(null, lsLogOutput, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    underTest = new AnalysisTaskExecutor(null, lsLogOutput, logTester.getLogger(), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     executor = Executors.newSingleThreadExecutor();
   }
 

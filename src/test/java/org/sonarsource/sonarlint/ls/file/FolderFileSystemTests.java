@@ -28,12 +28,14 @@ import java.util.Collections;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
+import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
@@ -47,6 +49,8 @@ class FolderFileSystemTests {
   private static final WorkspaceFolderSettings EMPTY_SETTINGS = new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null, null);
   @TempDir
   static Path tempFolder;
+  @RegisterExtension
+  SonarLintLogTester logTester = new SonarLintLogTester();
   private static Path pythonFile;
 
   @BeforeAll
@@ -58,7 +62,7 @@ class FolderFileSystemTests {
   void should_provide_main_files_of_requested_suffix() {
     var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), anyBoolean(), any())).thenReturn(false);
-    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
+    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"), logTester.getLogger());
     folderWrapper.setSettings(EMPTY_SETTINGS);
     var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
@@ -74,7 +78,7 @@ class FolderFileSystemTests {
   void should_provide_test_files_of_requested_suffix() {
     var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), anyBoolean(), any())).thenReturn(true);
-    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
+    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"), logTester.getLogger());
     folderWrapper.setSettings(EMPTY_SETTINGS);
     var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
@@ -90,7 +94,7 @@ class FolderFileSystemTests {
   void should_provide_all_main_files() {
     var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), anyBoolean(), any())).thenReturn(false);
-    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
+    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"), logTester.getLogger());
     folderWrapper.setSettings(EMPTY_SETTINGS);
     var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
@@ -106,7 +110,7 @@ class FolderFileSystemTests {
   void should_provide_all_test_files() {
     var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), anyBoolean(), any())).thenReturn(true);
-    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
+    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"), logTester.getLogger());
     folderWrapper.setSettings(EMPTY_SETTINGS);
     var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
@@ -122,7 +126,7 @@ class FolderFileSystemTests {
   void should_throw_an_exception_when_folder_does_not_exist() {
     var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), anyBoolean(), any())).thenReturn(false);
-    var folderWrapper = new WorkspaceFolderWrapper(URI.create("file:///wrong_path"), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
+    var folderWrapper = new WorkspaceFolderWrapper(URI.create("file:///wrong_path"), new WorkspaceFolder(tempFolder.toString(), "My Folder"), logTester.getLogger());
     folderWrapper.setSettings(EMPTY_SETTINGS);
     var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 

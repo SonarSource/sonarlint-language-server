@@ -38,7 +38,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfi
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.ServerMode;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
@@ -50,14 +50,14 @@ import static java.util.stream.Collectors.joining;
 public class JavaConfigCache {
   private final SonarLintExtendedLanguageClient client;
   private final OpenFilesCache openFilesCache;
-  private final LanguageClientLogger lsLogOutput;
+  private final LanguageClientLogOutput logOutput;
   private final Map<URI, Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse>> javaConfigPerFileURI = new ConcurrentHashMap<>();
   private final Map<Path, List<Path>> jvmClasspathPerJavaHome = new ConcurrentHashMap<>();
 
-  public JavaConfigCache(SonarLintExtendedLanguageClient client, OpenFilesCache openFilesCache, LanguageClientLogger lsLogOutput) {
+  public JavaConfigCache(SonarLintExtendedLanguageClient client, OpenFilesCache openFilesCache, LanguageClientLogOutput logOutput) {
     this.client = client;
     this.openFilesCache = openFilesCache;
-    this.lsLogOutput = lsLogOutput;
+    this.logOutput = logOutput;
   }
 
   public Optional<SonarLintExtendedLanguageClient.GetJavaConfigResponse> getOrFetch(URI fileUri) {
@@ -65,10 +65,10 @@ public class JavaConfigCache {
     try {
       javaConfigOpt = getOrFetchAsync(fileUri).get(1, TimeUnit.MINUTES);
     } catch (InterruptedException e) {
-      Utils.interrupted(e);
+      Utils.interrupted(e, logOutput);
       javaConfigOpt = empty();
     } catch (Exception e) {
-      lsLogOutput.error("Unable to get Java config", e);
+      logOutput.error("Unable to get Java config", e);
       javaConfigOpt = empty();
     }
     return javaConfigOpt;
@@ -88,7 +88,7 @@ public class JavaConfigCache {
     return client.getJavaConfig(fileUri.toString())
       .handle((r, t) -> {
         if (t != null) {
-          lsLogOutput.error("Unable to fetch Java configuration of file " + fileUri, t);
+          logOutput.error("Unable to fetch Java configuration of file " + fileUri, t);
         }
         return r;
       })
@@ -97,7 +97,7 @@ public class JavaConfigCache {
         javaConfigPerFileURI.put(fileUri, configOpt);
         openFile.map(VersionedOpenFile::isJava)
           .filter(Boolean::booleanValue)
-          .ifPresent(isJava -> lsLogOutput.debug("Cached Java config for file \"" + fileUri + "\""));
+          .ifPresent(isJava -> logOutput.debug("Cached Java config for file \"" + fileUri + "\""));
         return configOpt;
       });
   }
@@ -147,7 +147,7 @@ public class JavaConfigCache {
       .filter(path -> {
         boolean exists = new File(path).exists();
         if (!exists) {
-          lsLogOutput.debug(format("Classpath \"%s\" from configuration does not exist, skipped", path));
+          logOutput.debug(format("Classpath \"%s\" from configuration does not exist, skipped", path));
         }
         return exists;
       })
@@ -166,7 +166,7 @@ public class JavaConfigCache {
       // If we have cached an empty result, still clear the value on classpath update to force next analysis to re-attempt fetch
       if (cachedResponseOpt.isEmpty() || sameProject(projectUri, cachedResponseOpt.get())) {
         it.remove();
-        lsLogOutput.debug("Evicted Java config cache for file \"" + entry.getKey() + "\"");
+        logOutput.debug("Evicted Java config cache for file \"" + entry.getKey() + "\"");
       }
     }
   }
@@ -178,7 +178,7 @@ public class JavaConfigCache {
   }
 
   public void didServerModeChange(ServerMode serverModeEnum) {
-    lsLogOutput.debug("Clearing Java config cache on server mode change");
+    logOutput.debug("Clearing Java config cache on server mode change");
     javaConfigPerFileURI.clear();
   }
 

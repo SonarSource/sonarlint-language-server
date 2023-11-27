@@ -67,7 +67,7 @@ class SonarLintTelemetryTests {
   private SonarLintTelemetry createTelemetry() {
     when(telemetryManager.isEnabled()).thenReturn(true);
     var telemetry = new SonarLintTelemetry(mock(SettingsManager.class), mock(ProjectBindingManager.class), mock(NodeJsRuntime.class),
-      mock(BackendServiceFacade.class)) {
+      mock(BackendServiceFacade.class), logTester.getLogger()) {
       @Override
       TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client) {
         return telemetryManager;
@@ -299,7 +299,7 @@ class SonarLintTelemetryTests {
   void should_start_disabled_when_storagePath_null() {
     when(telemetryManager.isEnabled()).thenReturn(true);
     var telemetry = new SonarLintTelemetry(mock(SettingsManager.class), mock(ProjectBindingManager.class), mock(NodeJsRuntime.class),
-      mock(BackendServiceFacade.class)) {
+      mock(BackendServiceFacade.class), logTester.getLogger()) {
       @Override
       TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client) {
         return telemetryManager;

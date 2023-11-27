@@ -29,36 +29,35 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
 import org.sonarsource.sonarlint.core.branch.GitUtils;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleListener {
-
-  private static final SonarLintLogger LOG = SonarLintLogger.get();
-
   private final Map<URI, Optional<String>> referenceBranchNameByFolderUri = new ConcurrentHashMap<>();
   private final SonarLintExtendedLanguageClient client;
   private final ProjectBindingManager bindingManager;
   private final ExecutorService executorService;
+  private final LanguageClientLogOutput logOutput;
   private final BackendServiceFacade backendServiceFacade;
 
   public WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager,
-    BackendServiceFacade backendServiceFacade) {
+    BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
     this(client, bindingManager, backendServiceFacade,
-      Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Branch Manager", false)));
+      Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Branch Manager", false)), logOutput);
   }
 
   WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager,
-    BackendServiceFacade backendServiceFacade, ExecutorService executorService) {
+    BackendServiceFacade backendServiceFacade, ExecutorService executorService, LanguageClientLogOutput logOutput) {
     this.client = client;
     this.bindingManager = bindingManager;
     this.backendServiceFacade = backendServiceFacade;
     this.executorService = executorService;
+    this.logOutput = logOutput;
   }
 
   @Override
@@ -70,9 +69,9 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
 
   public void didBranchNameChange(URI folderUri, @Nullable String branchName) {
     if (branchName != null) {
-      LOG.debug("Folder {} is now on branch {}.", folderUri, branchName);
+      logOutput.debug("Folder %s is now on branch %s.", folderUri, branchName);
     } else {
-      LOG.debug("Folder {} is now on an unknown branch.", folderUri);
+      logOutput.debug("Folder %s is now on an unknown branch.", folderUri);
       return;
     }
     executorService.submit(() -> {
@@ -110,7 +109,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
       var uriWithoutTrailingSlash = StringUtils.removeEnd(folderUri.toString(), "/");
       return referenceBranchNameByFolderUri.getOrDefault(new URI(uriWithoutTrailingSlash), Optional.empty());
     } catch (URISyntaxException e) {
-      LOG.error(e.getMessage());
+      logOutput.error(e.getMessage());
       return Optional.empty();
     }
   }
