@@ -32,8 +32,10 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.commons.TextRange;
+import testutils.SonarLintLogTester;
 
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,6 +45,9 @@ import static org.sonarsource.sonarlint.ls.util.FileUtils.OS_NAME_PROPERTY;
 import static org.sonarsource.sonarlint.ls.util.FileUtils.getTextRangeContentOfFile;
 
 class FileUtilsTests {
+
+  @RegisterExtension
+  SonarLintLogTester logTester = new SonarLintLogTester();
   private static boolean WINDOWS = System.getProperty(OS_NAME_PROPERTY) != null && System.getProperty(OS_NAME_PROPERTY).startsWith("Windows");
 
   @Test
@@ -60,7 +65,7 @@ class FileUtilsTests {
     createNewFile(basedir.resolve("a/b"), "b.txt");
     createNewFile(basedir.resolve("a/b/c"), "c.txt");
 
-    var relativePaths = FileUtils.allRelativePathsForFilesInTree(basedir);
+    var relativePaths = FileUtils.allRelativePathsForFilesInTree(basedir, logTester.getLogger());
     assertThat(relativePaths).containsExactlyInAnyOrder(
       "a/a.txt",
       "a/b/b.txt",
@@ -72,7 +77,7 @@ class FileUtilsTests {
     var deeplyNestedDir = basedir.resolve("a").resolve("b").resolve("c");
     assertThat(deeplyNestedDir).doesNotExist();
 
-    var relativePaths = FileUtils.allRelativePathsForFilesInTree(deeplyNestedDir);
+    var relativePaths = FileUtils.allRelativePathsForFilesInTree(deeplyNestedDir, logTester.getLogger());
     assertThat(relativePaths).isEmpty();
   }
 
@@ -101,7 +106,7 @@ class FileUtilsTests {
       Files.setPosixFilePermissions(basedir.resolve("a/b/c"), perms);
     }
 
-    var relativePaths = FileUtils.allRelativePathsForFilesInTree(basedir);
+    var relativePaths = FileUtils.allRelativePathsForFilesInTree(basedir, logTester.getLogger());
     assertThat(relativePaths).containsExactlyInAnyOrder(
       "a/a.txt",
       "a/b/b.txt");

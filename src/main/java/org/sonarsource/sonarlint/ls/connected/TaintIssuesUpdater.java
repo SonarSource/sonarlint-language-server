@@ -91,7 +91,7 @@ public class TaintIssuesUpdater {
     var httpClient = backendServiceFacade.getHttpClient(connectionId);
 
     // download taints
-    var sqFilePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(Paths.get(folderUri), fileUri));
+    var sqFilePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(Paths.get(folderUri), fileUri, logOutput));
     engine.downloadAllServerTaintIssuesForFile(endpointParams, httpClient, binding, sqFilePath, branchName, null);
     var serverIssues = engine.getServerTaintIssues(binding, branchName, sqFilePath, false);
 

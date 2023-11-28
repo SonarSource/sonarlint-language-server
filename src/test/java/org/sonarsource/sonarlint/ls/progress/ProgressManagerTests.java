@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.progress;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.eclipse.lsp4j.ProgressParams;
 import org.eclipse.lsp4j.WorkDoneProgressBegin;
@@ -36,8 +37,10 @@ import org.mockito.ArgumentCaptor;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -287,6 +290,30 @@ class ProgressManagerTests {
     var end = params.getAllValues().get(6).getValue().getLeft();
     assertThat(end).isInstanceOf(WorkDoneProgressEnd.class);
     assertThat(((WorkDoneProgressEnd) end).getMessage()).isNull();
+  }
+
+  @Test
+  void doWithProgressLogInterrupted() throws ExecutionException, InterruptedException {
+    var future = mock(CompletableFuture.class);
+    when(future.get()).thenThrow(new InterruptedException());
+    when(client.createProgress(any())).thenReturn(future);
+    underTest.setWorkDoneProgressSupportedByClient(true);
+
+    underTest.doWithProgress("Title", null, mock(CancelChecker.class), p -> {
+    });
+
+    assertThat(logTester.logs()).anyMatch(log -> log.contains("Interrupted!"));
+  }
+
+  @Test
+  void doWithProgressExecutionException() throws ExecutionException, InterruptedException {
+    var future = mock(CompletableFuture.class);
+    when(future.get()).thenThrow(new ExecutionException() {});
+    when(client.createProgress(any())).thenReturn(future);
+    underTest.setWorkDoneProgressSupportedByClient(true);
+
+    assertThatThrownBy(() ->  underTest.doWithProgress("Title", null, mock(CancelChecker.class), p -> {}))
+      .isInstanceOf(IllegalStateException.class);
   }
 
 }

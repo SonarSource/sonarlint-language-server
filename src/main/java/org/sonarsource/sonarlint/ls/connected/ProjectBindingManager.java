@@ -214,7 +214,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var httpClient = backendServiceFacade.getHttpClient(connectionId);
     syncAtStartup(engine, endpointParams, projectKey, branchProvider, httpClient, globalLogOutput);
 
-    var ideFilePaths = FileUtils.allRelativePathsForFilesInTree(folderRoot);
+    var ideFilePaths = FileUtils.allRelativePathsForFilesInTree(folderRoot, globalLogOutput);
     var projectBinding = engine.calculatePathPrefixes(projectKey, ideFilePaths);
     globalLogOutput.debug("Resolved binding %s for folder %s",
       ToStringBuilder.reflectionToString(projectBinding, ToStringStyle.SHORT_PREFIX_STYLE),
@@ -497,7 +497,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var workspaceFolder = foldersManager.findFolderForFile(fileUri);
     if (workspaceFolder.isPresent()) {
       var baseDir = workspaceFolder.get().getUri();
-      var filePath = FileUtils.toSonarQubePath(getFileRelativePath(Paths.get(baseDir), fileUri));
+      var filePath = FileUtils.toSonarQubePath(getFileRelativePath(Paths.get(baseDir), fileUri, globalLogOutput));
       Optional<ProjectBindingWrapper> folderBinding = folderBindingCache.get(baseDir);
       if (folderBinding.isPresent()) {
         ProjectBindingWrapper bindingWrapper = folderBinding.get();
