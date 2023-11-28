@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls.log;
 
 import java.util.Formatter;
-import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 
 public class LanguageClientLogOutput implements ClientLogOutput {
@@ -81,8 +80,9 @@ public class LanguageClientLogOutput implements ClientLogOutput {
     lsLogger.trace(formattedMessage, isFromAnalysis);
   }
 
-  @NotNull
   private static String getFormattedMessage(String format, Object[] args) {
-    return new Formatter().format(format, args).toString();
+    try (var formatter = new Formatter()) {
+      return formatter.format(format, args).toString();
+    }
   }
 }
