@@ -145,6 +145,7 @@ public class EnginesFactory {
       .setConnectionId(connectionId)
       .addEnabledLanguages(STANDALONE_LANGUAGES)
       .addEnabledLanguages(CONNECTED_ADDITIONAL_LANGUAGES)
+      .enableDataflowBugDetection()
       .enableHotspots()
       .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
       .setModulesProvider(modulesProvider)

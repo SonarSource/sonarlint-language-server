@@ -25,7 +25,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
@@ -119,7 +118,7 @@ public class BackendServiceFacade {
   private static InitializeParams toInitParams(BackendInitParams initParams) {
     return new InitializeParams(
       new ClientInfoDto("Visual Studio Code", initParams.getTelemetryProductKey(), initParams.getUserAgent()),
-      new FeatureFlagsDto(true, true, true, true, initParams.isEnableSecurityHotspots(), true),
+      new FeatureFlagsDto(true, true, true, true, initParams.isEnableSecurityHotspots(), true, true),
       initParams.getStorageRoot(),
       null,
       initParams.getEmbeddedPluginPaths(),
@@ -141,7 +140,7 @@ public class BackendServiceFacade {
   public void addFolders(List<WorkspaceFolder> added, Function<WorkspaceFolder, Optional<ProjectBindingWrapper>> bindingProvider) {
     List<ConfigurationScopeDto> addedScopeDtos = added.stream()
       .map(folder -> getBackendService().getConfigScopeDto(folder, bindingProvider.apply(folder)))
-      .collect(Collectors.toList());
+      .toList();
     var params = new DidAddConfigurationScopesParams(addedScopeDtos);
     backend.addConfigurationScopes(params);
   }
