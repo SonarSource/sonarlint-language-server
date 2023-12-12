@@ -31,7 +31,6 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.util.Preconditions;
-import org.eclipse.xtext.xbase.lib.Pure;
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenResponse;
@@ -126,7 +125,6 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
       this.projectUri = Preconditions.<String>checkNotNull(projectUri, "projectUri");
     }
 
-    @Pure
     @NonNull
     public String getProjectUri() {
       return projectUri;
@@ -176,7 +174,6 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
       this.serverMode = Preconditions.<String>checkNotNull(serverMode, "serverMode");
     }
 
-    @Pure
     @NonNull
     public String getServerMode() {
       return serverMode;
