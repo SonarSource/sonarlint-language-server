@@ -59,6 +59,12 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/openPathToNodeSettings")
   void openPathToNodeSettings();
 
+  @JsonNotification("sonarlint/doNotShowMissingRequirementsMessageAgain")
+  void doNotShowMissingRequirementsMessageAgain();
+
+  @JsonRequest("sonarlint/canShowMissingRequirementsNotification")
+  CompletableFuture<Boolean> canShowMissingRequirementsNotification();
+
   @JsonNotification("sonarlint/openConnectionSettings")
   void openConnectionSettings(boolean isSonarCloud);
 

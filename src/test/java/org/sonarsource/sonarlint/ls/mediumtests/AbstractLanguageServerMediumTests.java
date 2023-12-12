@@ -462,6 +462,16 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
+    public void doNotShowMissingRequirementsMessageAgain() {
+
+    }
+
+    @Override
+    public CompletableFuture<Boolean> canShowMissingRequirementsNotification() {
+      return CompletableFuture.completedFuture(false);
+    }
+
+    @Override
     public void showRuleDescription(ShowRuleDescriptionParams params) {
       this.ruleDesc = params;
       showRuleDescriptionLatch.countDown();
