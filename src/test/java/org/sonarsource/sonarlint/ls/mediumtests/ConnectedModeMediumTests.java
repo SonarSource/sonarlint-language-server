@@ -60,6 +60,7 @@ import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Components;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Hotspots;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Issues;
+import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Measures;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.ProjectBranches;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Qualityprofiles;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Rules;
@@ -118,6 +119,17 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .build());
     mockWebServerExtension.addProtobufResponse("/api/components/tree.protobuf?qualifiers=FIL,UTS&component=myProject&ps=500&p=1",
       Components.TreeWsResponse.newBuilder().build());
+    mockWebServerExtension.addProtobufResponse("/api/measures/component.protobuf?additionalFields=period&metricKeys=projects&component=" + PROJECT_KEY,
+      Measures.ComponentWsResponse.newBuilder()
+        .setComponent(Measures.Component.newBuilder()
+          .setKey(PROJECT_KEY)
+          .setQualifier("TRK")
+          .build())
+        .setPeriod(Measures.Period.newBuilder()
+          .setMode("PREVIOUS_VERSION")
+          .setParameter("0.1")
+          .build())
+        .build());
     mockWebServerExtension.addStringResponse("/api/plugins/installed",
       "{\"plugins\":[{\"key\": \"python\", \"hash\": \"ignored\", \"filename\": \"sonarpython.jar\", \"sonarLintSupported\": true}]}");
     mockWebServerExtension.addResponse("/api/plugins/download?plugin=python", new MockResponse().setBody(safeGetSonarPython()));
@@ -354,16 +366,22 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analysisConnected_scan_all_hotspot_then_forget() {
+    var file1 = "hotspot1.py";
+    var file2 = "hotspot2.py";
     mockNoIssuesNoHotspotsForProject();
+    mockWebServerExtension.addProtobufResponse("/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + file1 + "&branch=master&ps=500&ps=1",
+      Hotspots.SearchWsResponse.newBuilder().build());
+    mockWebServerExtension.addProtobufResponse("/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + file2 + "&branch=master&ps=500&ps=1",
+      Hotspots.SearchWsResponse.newBuilder().build());
 
-    var uri1InFolder = folder1BaseDir.resolve("hotspot1.py").toUri().toString();
+    var uri1InFolder = folder1BaseDir.resolve(file1).toUri().toString();
     var doc1 = new TextDocumentItem();
     doc1.setUri(uri1InFolder);
     doc1.setText("def foo():\n  id_address = '12.34.56.78'\n");
     doc1.setVersion(0);
     doc1.setLanguageId("[unknown]");
 
-    var uri2InFolder = folder1BaseDir.resolve("hotspot2.py").toUri().toString();
+    var uri2InFolder = folder1BaseDir.resolve(file2).toUri().toString();
     var doc2 = new TextDocumentItem();
     doc2.setUri(uri2InFolder);
     doc2.setText("def foo():\n  id_address = '23.45.67.89'\n");
