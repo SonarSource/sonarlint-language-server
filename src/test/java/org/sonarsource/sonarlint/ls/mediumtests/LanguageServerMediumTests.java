@@ -78,6 +78,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -1113,6 +1114,17 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning)));
+  }
+
+  @Test
+  void change_issue_status_permission_check_not_bound() throws ExecutionException, InterruptedException {
+    var response = lsProxy.checkIssueStatusChangePermitted(new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedParams(temp.toUri().toString(), "key")).get();
+
+    awaitUntilAsserted(() -> {
+      assertFalse(response.isPermitted());
+      assertThat(response.getNotPermittedReason()).isEqualTo("There is no binding for the folder: " + temp.toUri());
+      assertThat(response.getAllowedStatuses()).isEmpty();
+    });
   }
 
   @Override

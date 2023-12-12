@@ -136,6 +136,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.telemetry.TelemetryInitParams;
+import org.sonarsource.sonarlint.ls.util.EnumLabelsMapper;
 import org.sonarsource.sonarlint.ls.util.ExitingInputStream;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
@@ -796,9 +797,28 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
+  public CompletableFuture<CheckIssueStatusChangePermittedResponse> checkIssueStatusChangePermitted(CheckIssueStatusChangePermittedParams params) {
+    var bindingWrapperOpt = bindingManager.getBinding(create(params.getFolderUri()));
+    if (bindingWrapperOpt.isEmpty()) {
+      return CompletableFuture.completedFuture(
+        new CheckIssueStatusChangePermittedResponse(false, "There is no binding for the folder: " + params.getFolderUri(), List.of()));
+    }
+    var connectionId = bindingWrapperOpt.get().getConnectionId();
+    return backendServiceFacade.getBackendService().checkStatusChangePermitted(connectionId, params.getIssueKey())
+      .thenApply(result -> new CheckIssueStatusChangePermittedResponse(result.isPermitted(), result.getNotPermittedReason(),
+        result.getAllowedStatuses().stream().map(EnumLabelsMapper::resolutionStatusToLabel).toList()))
+      .exceptionally(t -> {
+        lsLogOutput.error("Error getting issue status change permissions", t);
+        client.logMessage(new MessageParams(MessageType.Error, "Could not get issue status change for issue \""
+          + params.getIssueKey() + "\". Look at the SonarLint output for details."));
+        return null;
+      });
+  }
+
+  @Override
   public CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params) {
     var coreParams = new org.sonarsource.sonarlint.core.clientapi.backend.issue.ChangeIssueStatusParams(
-      params.getConfigurationScopeId(), params.getIssueId(), params.getNewStatus(), params.isTaintIssue());
+      params.getConfigurationScopeId(), params.getIssueId(), EnumLabelsMapper.resolutionStatusFromLabel(params.getNewStatus()), params.isTaintIssue());
     return backendServiceFacade.getBackendService().changeIssueStatus(coreParams).thenAccept(nothing -> {
       var key = params.getIssueId();
       if (params.isTaintIssue()) {

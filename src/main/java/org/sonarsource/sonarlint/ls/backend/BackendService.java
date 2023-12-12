@@ -187,6 +187,12 @@ public class BackendService {
     return initializedBackend().getBindingService().getBindingSuggestions(params);
   }
 
+  public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedResponse>
+  checkStatusChangePermitted(String connectionId, String issueKey) {
+    return initializedBackend().getIssueService().checkStatusChangePermitted(
+      new org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedParams(connectionId, issueKey));
+  }
+
   public CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params) {
     return initializedBackend().getIssueService().changeStatus(params);
   }
