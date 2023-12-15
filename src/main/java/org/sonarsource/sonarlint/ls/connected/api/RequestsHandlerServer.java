@@ -47,17 +47,7 @@ public class RequestsHandlerServer {
   }
 
   public void showIssueOrHotspotHandleUnknownServer(String url) {
-    var params = new ShowMessageRequestParams();
-    params.setMessage("To display findings, you need to configure a connection to SonarQube (" + url + ") in the settings");
-    params.setType(MessageType.Error);
-    var createConnectionAction = new MessageActionItem("Create Connection");
-    params.setActions(List.of(createConnectionAction));
-    client.showMessageRequest(params)
-      .thenAccept(action -> {
-        if (createConnectionAction.equals(action)) {
-          client.assistCreatingConnection(new SonarLintExtendedLanguageClient.CreateConnectionParams(false, url));
-        }
-      });
+    client.assistCreatingConnection(new SonarLintExtendedLanguageClient.CreateConnectionParams(false, url));
   }
 
   public void showHotspotOrIssueHandleNoBinding(AssistBindingParams assistBindingParams) {
