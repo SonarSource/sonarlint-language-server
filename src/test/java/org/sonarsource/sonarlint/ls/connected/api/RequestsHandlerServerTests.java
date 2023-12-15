@@ -26,6 +26,7 @@ import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 
@@ -75,12 +76,13 @@ class RequestsHandlerServerTests {
     expectedParams.setActions(expectedActions);
     expectedParams.setType(expectedType);
 
-    when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(expectedActions.get(0)));
-
     underTest.showIssueOrHotspotHandleUnknownServer(serverUrl);
 
-    verify(client).showMessageRequest(expectedParams);
-    verify(client).assistCreatingConnection(any(SonarLintExtendedLanguageClient.CreateConnectionParams.class));
+    var argCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.CreateConnectionParams.class);
+    verify(client).assistCreatingConnection(argCaptor.capture());
+    var sentParams = argCaptor.getValue();
+    assertThat(sentParams.getServerUrl()).isEqualTo(serverUrl);
+    assertThat(sentParams.isSonarCloud()).isFalse();
   }
 
   @Test
@@ -100,8 +102,11 @@ class RequestsHandlerServerTests {
 
     underTest.showIssueOrHotspotHandleUnknownServer(serverUrl);
 
-    verify(client).showMessageRequest(expectedParams);
-    verify(client, never()).assistCreatingConnection(any(SonarLintExtendedLanguageClient.CreateConnectionParams.class));
+    var argCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.CreateConnectionParams.class);
+    verify(client).assistCreatingConnection(argCaptor.capture());
+    var sentParams = argCaptor.getValue();
+    assertThat(sentParams.getServerUrl()).isEqualTo(serverUrl);
+    assertThat(sentParams.isSonarCloud()).isFalse();
   }
 
   @Test
