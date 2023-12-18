@@ -805,8 +805,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     }
     var connectionId = bindingWrapperOpt.get().getConnectionId();
     return backendServiceFacade.getBackendService().checkStatusChangePermitted(connectionId, params.getIssueKey())
-      .thenApply(result -> new CheckIssueStatusChangePermittedResponse(result.isPermitted(), result.getNotPermittedReason(),
-        result.getAllowedStatuses().stream().map(EnumLabelsMapper::resolutionStatusToLabel).toList()))
       .exceptionally(t -> {
         lsLogOutput.error("Error getting issue status change permissions", t);
         client.logMessage(new MessageParams(MessageType.Error, "Could not get issue status change for issue \""
