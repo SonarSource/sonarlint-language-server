@@ -804,13 +804,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         new CheckIssueStatusChangePermittedResponse(false, "There is no binding for the folder: " + params.getFolderUri(), List.of()));
     }
     var connectionId = bindingWrapperOpt.get().getConnectionId();
-    return backendServiceFacade.getBackendService().checkStatusChangePermitted(connectionId, params.getIssueKey())
-      .exceptionally(t -> {
-        lsLogOutput.error("Error getting issue status change permissions", t);
-        client.logMessage(new MessageParams(MessageType.Error, "Could not get issue status change for issue \""
-          + params.getIssueKey() + "\". Look at the SonarLint output for details."));
-        return null;
-      });
+    return backendServiceFacade.getBackendService().checkStatusChangePermitted(connectionId, params.getIssueKey());
   }
 
   @Override
@@ -840,13 +834,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   private void addIssueComment(AddIssueCommentParams params) {
     backendServiceFacade.getBackendService().addIssueComment(params)
-      .thenAccept(nothing -> client.showMessage(new MessageParams(MessageType.Info, "New comment was added")))
-      .exceptionally(t -> {
-        lsLogOutput.error("Error adding issue comment", t);
-        client.showMessage(new MessageParams(MessageType.Error, "Could not add a new issue comment. Look at the SonarLint output for " +
-          "details."));
-        return null;
-      });
+      .thenAccept(nothing -> client.showMessage(new MessageParams(MessageType.Info, "New comment was added")));
   }
 
   @Override

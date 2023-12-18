@@ -27,6 +27,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import javax.annotation.Nullable;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsParams;
@@ -228,7 +230,13 @@ public class BackendService {
     return initializedBackend().getIssueService().checkStatusChangePermitted(
       new org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedParams(connectionId, issueKey))
       .thenApply(result -> new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedResponse(result.isPermitted(),
-        result.getNotPermittedReason(), result.getAllowedStatuses().stream().map(EnumLabelsMapper::resolutionStatusToLabel).toList()));
+        result.getNotPermittedReason(), result.getAllowedStatuses().stream().map(EnumLabelsMapper::resolutionStatusToLabel).toList()))
+      .exceptionally(t -> {
+        logOutput.error("Error getting issue status change permissions", t);
+        client.logMessage(new MessageParams(MessageType.Error, "Could not get issue status change for issue \""
+          + issueKey + "\". Look at the SonarLint output for details."));
+        return null;
+      });
   }
 
   public CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params) {
@@ -236,7 +244,13 @@ public class BackendService {
   }
 
   public CompletableFuture<Void> addIssueComment(AddIssueCommentParams params) {
-    return initializedBackend().getIssueService().addComment(params);
+    return initializedBackend().getIssueService().addComment(params)
+      .exceptionally(t -> {
+        logOutput.error("Error adding issue comment", t);
+        client.showMessage(new MessageParams(MessageType.Error, "Could not add a new issue comment. Look at the SonarLint output for " +
+          "details."));
+        return null;
+      });
   }
 
   public CompletableFuture<Void> changeHotspotStatus(ChangeHotspotStatusParams params) {
