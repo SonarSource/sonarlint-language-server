@@ -52,6 +52,7 @@ import org.sonarsource.sonarlint.core.serverconnection.issues.LineLevelServerIss
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerIssue;
 import org.sonarsource.sonarlint.core.tracking.DigestUtils;
 import org.sonarsource.sonarlint.ls.AnalysisClientInputFile;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.folders.InFolderClientInputFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -273,13 +274,15 @@ class ServerIssueTrackerWrapperTests {
     var projectBinding = new ProjectBinding(projectKey, "", "");
     Supplier<String> branchSupplier = () -> "branchName";
     var backendServiceFacade = mock(BackendServiceFacade.class);
+    var backendService = mock(BackendService.class);
     var workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
     var workspaceFolderWrapper = mock(WorkspaceFolderWrapper.class);
     var settingsManager = mock(SettingsManager.class);
     var workspaceSettings = mock(WorkspaceSettings.class);
     var httpClient = mock(HttpClient.class);
-    when(backendServiceFacade.getHttpClient(any())).thenReturn(httpClient);
-    when(backendServiceFacade.matchIssues(any())).thenReturn(trackIssuesResponse);
+    when(backendServiceFacade.getBackendService()).thenReturn(backendService);
+    when(backendService.getHttpClient(any())).thenReturn(httpClient);
+    when(backendService.matchIssues(any())).thenReturn(trackIssuesResponse);
     when(workspaceFolderWrapper.getUri()).thenReturn(URI.create("dummy"));
     when(workspaceFoldersManager.findFolderForFile(any())).thenReturn(Optional.of(workspaceFolderWrapper));
     when(workspaceSettings.isFocusOnNewCode()).thenReturn(true);

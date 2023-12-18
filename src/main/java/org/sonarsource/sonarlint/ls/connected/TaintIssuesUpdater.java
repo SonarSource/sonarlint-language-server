@@ -88,7 +88,7 @@ public class TaintIssuesUpdater {
     var connectionId = bindingWrapper.getConnectionId();
     var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
     var endpointParams = connectionSettings.getEndpointParams();
-    var httpClient = backendServiceFacade.getHttpClient(connectionId);
+    var httpClient = backendServiceFacade.getBackendService().getHttpClient(connectionId);
 
     // download taints
     var sqFilePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(Paths.get(folderUri), fileUri, logOutput));

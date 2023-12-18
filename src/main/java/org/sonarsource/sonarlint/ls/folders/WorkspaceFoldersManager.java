@@ -94,7 +94,7 @@ public class WorkspaceFoldersManager {
       listeners.forEach(l -> l.added(addedWrapper));
     }
     executor.submit(() -> {
-      backendServiceFacade.addFolders(event.getAdded(), getBindingProvider());
+      backendServiceFacade.getBackendService().addWorkspaceFolders(event.getAdded(), getBindingProvider());
       event.getRemoved().forEach(removed -> removeFolderFromBackend(removed.getUri()));
     });
 
@@ -121,7 +121,7 @@ public class WorkspaceFoldersManager {
     }
     executor.submit(() -> {
       var optionalProjectBindingWrapper = getBindingProvider().apply(added);
-      backendServiceFacade.addFolder(added, optionalProjectBindingWrapper);
+      backendServiceFacade.getBackendService().addWorkspaceFolder(added, optionalProjectBindingWrapper);
     });
     return addedWrapper;
   }
@@ -131,7 +131,7 @@ public class WorkspaceFoldersManager {
   }
 
   private void removeFolderFromBackend(String removedUri) {
-    backendServiceFacade.removeWorkspaceFolder(removedUri);
+    backendServiceFacade.getBackendService().removeWorkspaceFolder(removedUri);
   }
 
   public Optional<WorkspaceFolderWrapper> findFolderForFile(URI uri) {

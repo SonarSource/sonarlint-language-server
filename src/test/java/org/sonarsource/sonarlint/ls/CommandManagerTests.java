@@ -74,6 +74,7 @@ import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -134,6 +135,7 @@ class CommandManagerTests {
   private ServerSynchronizer serverSynchronizer;
   private IssuesCache securityHotspotsCache;
   private BackendServiceFacade backendServiceFacade;
+  private BackendService backendService;
   private WorkspaceFoldersManager workspaceFoldersManager;
   private OpenNotebooksCache openNotebooksCache;
 
@@ -155,7 +157,8 @@ class CommandManagerTests {
     backendServiceFacade = mock(BackendServiceFacade.class);
     workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
     openNotebooksCache = mock(OpenNotebooksCache.class);
-
+    backendService = mock(BackendService.class);
+    when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, serverSynchronizer, mockTelemetry,
       mockTaintVulnerabilitiesCache, issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, openNotebooksCache, logTester.getLogger());
   }
@@ -380,7 +383,7 @@ class CommandManagerTests {
     when(ruleDetails.getType()).thenReturn(RuleType.BUG);
     when(ruleDetails.getDefaultSeverity()).thenReturn(IssueSeverity.BLOCKER);
     var response = mock(GetEffectiveRuleDetailsResponse.class);
-    when(backendServiceFacade.getEffectiveRuleDetails(anyString(), anyString(), anyString())).thenReturn(CompletableFuture.completedFuture(response));
+    when(backendService.getEffectiveRuleDetails(anyString(), anyString(), anyString())).thenReturn(CompletableFuture.completedFuture(response));
     var folderWrapper = mock(WorkspaceFolderWrapper.class);
     when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
     when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
@@ -626,7 +629,7 @@ class CommandManagerTests {
     var folderWrapper = mock(WorkspaceFolderWrapper.class);
     when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
     when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
-    when(backendServiceFacade.checkChangeIssueStatusPermitted(any()))
+    when(backendService.checkChangeIssueStatusPermitted(any()))
       .thenReturn(CompletableFuture.completedFuture(new CheckStatusChangePermittedResponse(true, null, Collections.emptyList())));
     var connId = "connectionId";
     when(mockBinding.getConnectionId()).thenReturn(connId);
@@ -664,7 +667,7 @@ class CommandManagerTests {
     var folderWrapper = mock(WorkspaceFolderWrapper.class);
     when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
     when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
-    when(backendServiceFacade.checkChangeIssueStatusPermitted(any()))
+    when(backendService.checkChangeIssueStatusPermitted(any()))
       .thenReturn(CompletableFuture.completedFuture(new CheckStatusChangePermittedResponse(false, null, Collections.emptyList())));
     var connId = "connectionId";
     when(mockBinding.getConnectionId()).thenReturn(connId);
@@ -699,7 +702,7 @@ class CommandManagerTests {
     var folderWrapper = mock(WorkspaceFolderWrapper.class);
     when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
     when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
-    when(backendServiceFacade.checkChangeIssueStatusPermitted(any()))
+    when(backendService.checkChangeIssueStatusPermitted(any()))
       .thenReturn(CompletableFuture.completedFuture(new CheckStatusChangePermittedResponse(true, null, Collections.emptyList())));
     var connId = "connectionId";
     when(mockBinding.getConnectionId()).thenReturn(connId);

@@ -26,7 +26,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.sonarsource.sonarlint.core.analysis.api.ClientModuleFileEvent;
 import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
 import org.sonarsource.sonarlint.core.clientapi.backend.branch.DidChangeActiveSonarProjectBranchParams;
@@ -36,8 +35,10 @@ import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.DidUpdate
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotService;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.ServerIssueTrackerWrapper;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -51,7 +52,9 @@ class BackendServiceTests {
   static SonarLintBackend backend = mock(SonarLintBackend.class);
   HotspotService hotspotService = mock(HotspotService.class);
   ConfigurationService configurationService = mock(ConfigurationService.class);
-  static BackendService underTest = new BackendService(backend);
+  static LanguageClientLogger lsLogOutput = mock(LanguageClientLogger.class);
+  static SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
+  static BackendService underTest = new BackendService(backend, lsLogOutput, client);
 
   @BeforeAll
   public static void setup() {

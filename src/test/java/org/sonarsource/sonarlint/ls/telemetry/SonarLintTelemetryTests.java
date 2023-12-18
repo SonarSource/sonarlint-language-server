@@ -33,6 +33,7 @@ import org.sonarsource.sonarlint.core.telemetry.TelemetryHttpClient;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryManager;
 import org.sonarsource.sonarlint.core.telemetry.TelemetryPathManager;
 import org.sonarsource.sonarlint.ls.NodeJsRuntime;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -50,6 +51,8 @@ import static org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry.getStora
 class SonarLintTelemetryTests {
   private SonarLintTelemetry telemetry;
   private final TelemetryManager telemetryManager = mock(TelemetryManager.class);
+  private static final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
+  private final BackendService backendService = mock(BackendService.class);
 
   @RegisterExtension
   public SonarLintLogTester logTester = new SonarLintLogTester();
@@ -66,8 +69,9 @@ class SonarLintTelemetryTests {
 
   private SonarLintTelemetry createTelemetry() {
     when(telemetryManager.isEnabled()).thenReturn(true);
+    when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     var telemetry = new SonarLintTelemetry(mock(SettingsManager.class), mock(ProjectBindingManager.class), mock(NodeJsRuntime.class),
-      mock(BackendServiceFacade.class), logTester.getLogger()) {
+      backendServiceFacade, logTester.getLogger()) {
       @Override
       TelemetryManager newTelemetryManager(Path path, TelemetryHttpClient client) {
         return telemetryManager;

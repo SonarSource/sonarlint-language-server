@@ -211,7 +211,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var engine = engineOpt.get();
     var projectKey = requireNonNull(settings.getProjectKey());
     Supplier<String> branchProvider = () -> resolveBranchNameForFolder(folderRoot.toUri(), engine, projectKey);
-    var httpClient = backendServiceFacade.getHttpClient(connectionId);
+    var httpClient = backendServiceFacade.getBackendService().getHttpClient(connectionId);
     syncAtStartup(engine, endpointParams, projectKey, branchProvider, httpClient, globalLogOutput);
 
     var ideFilePaths = FileUtils.allRelativePathsForFilesInTree(folderRoot, globalLogOutput);
@@ -419,7 +419,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   public void validateConnection(String id) {
     Optional.ofNullable(getValidateConnectionParamsFor(id))
-      .map(backendServiceFacade::validateConnection)
+      .map(params -> backendServiceFacade.getBackendService().validateConnection(params))
       .ifPresent(validationFuture -> validationFuture.thenAccept(validationResult -> {
         var connectionCheckResult = validationResult.isSuccess() ? ConnectionCheckResult.success(id) : ConnectionCheckResult.failure(id, validationResult.getMessage());
         client.reportConnectionCheckResult(connectionCheckResult);
@@ -551,7 +551,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var engine = getOrCreateConnectedEngine(connectionId)
       .orElseThrow(() -> new IllegalArgumentException(String.format("No connected engine found with ID '%s'", connectionId)));
     try {
-      var httpClient = backendServiceFacade.getHttpClient(connectionId);
+      var httpClient = backendServiceFacade.getBackendService().getHttpClient(connectionId);
       return engine.downloadAllProjects(endpointParams, httpClient, progress.asCoreMonitor())
         .values()
         .stream()
