@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import mockwebserver3.MockResponse;
@@ -53,7 +54,6 @@ import org.sonar.api.utils.DateUtils;
 import org.sonar.scanner.protocol.Constants.Severity;
 import org.sonar.scanner.protocol.input.ScannerInput;
 import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.ResolutionStatus;
 import org.sonarsource.sonarlint.core.commons.Language;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
@@ -74,6 +74,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.sonar.api.rules.RuleType.SECURITY_HOTSPOT;
@@ -701,7 +703,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
 
     lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
-      ResolutionStatus.FALSE_POSITIVE, fileUri, "clever comment", false));
+      "False positive", fileUri, "clever comment", false));
 
     //Now we expect that one issue is resolved
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
@@ -738,7 +740,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri)).isNotEmpty());
     mockWebServerExtension.stopServer();
     lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
-      ResolutionStatus.FALSE_POSITIVE, fileUri, "comment", false));
+      "False positive", fileUri, "comment", false));
 
     awaitUntilAsserted(() -> assertThat(client.shownMessages).isNotEmpty());
     assertThat(client.shownMessages)
@@ -969,6 +971,137 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(response.getAllowedStatuses()).containsExactly("Acknowledged", "Fixed", "Safe");
   }
 
+  @Test
+  void change_issue_status_permission_check() throws ExecutionException, InterruptedException {
+    var issueKey = UUID.randomUUID().toString();
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/batch/issues?key=myProject%3AchangeIssueStatus.py&branch=master",
+      ScannerInput.ServerIssue.newBuilder()
+        .setKey(issueKey)
+        .setRuleRepository("python")
+        .setRuleKey("S1481")
+        .setType(RuleType.BUG.name())
+        .setMsg("Remove the unused local variable \"toto\".")
+        .setSeverity(Severity.INFO)
+        .setManualSeverity(true)
+        .setPath("changeIssueStatus.py")
+        .setLine(2)
+        .build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/issues/search.protobuf?issues=" + issueKey + "&additionalFields=transitions&ps=1&p=1",
+      Issues.SearchWsResponse.newBuilder()
+        .addIssues(Issues.Issue.newBuilder()
+          .setKey("xyz")
+          .setTransitions(Issues.Transitions.newBuilder()
+            .addAllTransitions(List.of("wontfix", "falsepositive"))
+            .build())
+          .build())
+        .build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject%3AchangeIssueStatus.py&rules=&branch=master&ps=500&p=1",
+      Issues.SearchWsResponse.newBuilder()
+        .addIssues(Issues.Issue.newBuilder()
+          .setKey("xyz")
+          .setTransitions(Issues.Transitions.newBuilder()
+            .addAllTransitions(List.of("wontfix", "falsepositive"))
+            .build())
+          .build())
+        .build());
+    mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject%3AchangeIssueStatus.py&rules=&branch=master&ps=500&p=2",
+      Issues.SearchWsResponse.newBuilder().addComponents(Issues.Component.newBuilder().setKey("componentKey").setPath("componentPath").build()).build());
+    // /api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject%3AchangeIssueStatus.py&rules=&branch=master&ps=500&p=2
+
+
+    mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
+    mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
+
+    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
+    var fileUri = folder1BaseDir.resolve("changeIssueStatus.py").toUri().toString();
+    var content = "def foo():\n  toto = 0\n  plouf = 0\n";
+    didOpen(fileUri, "python", content);
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+        Diagnostic::getSeverity)
+      .containsExactlyInAnyOrder(
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+
+    var result = lsProxy.checkIssueStatusChangePermitted(new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedParams(folder1BaseDir.toUri().toString(), issueKey)).get();
+
+    awaitUntilAsserted(() -> {
+      assertTrue(result.isPermitted());
+      assertThat(result.getNotPermittedReason()).isNull();
+      assertThat(result.getAllowedStatuses()).containsExactly("Won't fix", "False positive");
+    });
+  }
+
+  @Test
+  void change_issue_status_permission_check_exceptionally() throws ExecutionException, InterruptedException {
+    var issueKey = "malformed issue UUID";
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/batch/issues?key=myProject%3AchangeIssueStatus.py&branch=master",
+      ScannerInput.ServerIssue.newBuilder()
+        .setKey(issueKey)
+        .setRuleRepository("python")
+        .setRuleKey("S1481")
+        .setType(RuleType.BUG.name())
+        .setMsg("Remove the unused local variable \"toto\".")
+        .setSeverity(Severity.INFO)
+        .setManualSeverity(true)
+        .setPath("changeIssueStatus.py")
+        .setLine(2)
+        .build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/issues/search.protobuf?issues=" + issueKey + "&additionalFields=transitions&ps=1&p=1",
+      Issues.SearchWsResponse.newBuilder()
+        .addIssues(Issues.Issue.newBuilder()
+          .setKey("xyz")
+          .setTransitions(Issues.Transitions.newBuilder()
+            .addAllTransitions(List.of("wontfix", "falsepositive"))
+            .build())
+          .build())
+        .build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject%3AchangeIssueStatus.py&rules=&branch=master&ps=500&p=1",
+      Issues.SearchWsResponse.newBuilder()
+        .addIssues(Issues.Issue.newBuilder()
+          .setKey("xyz")
+          .setTransitions(Issues.Transitions.newBuilder()
+            .addAllTransitions(List.of("wontfix", "falsepositive"))
+            .build())
+          .build())
+        .build());
+    mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject%3AchangeIssueStatus.py&rules=&branch=master&ps=500&p=2",
+      Issues.SearchWsResponse.newBuilder().addComponents(Issues.Component.newBuilder().setKey("componentKey").setPath("componentPath").build()).build());
+
+
+    mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
+    mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
+
+    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
+    var fileUri = folder1BaseDir.resolve("changeIssueStatus.py").toUri().toString();
+    var content = "def foo():\n  toto = 0\n  plouf = 0\n";
+    didOpen(fileUri, "python", content);
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+        Diagnostic::getSeverity)
+      .containsExactlyInAnyOrder(
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+
+    var result = lsProxy.checkIssueStatusChangePermitted(new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedParams(folder1BaseDir.toUri().toString(), issueKey)).get();
+
+    awaitUntilAsserted(() -> {
+      assertNull(result);
+      assertThat(client.logs)
+        .extracting(withoutTimestamp())
+        .contains("Could not get issue status change for issue \""
+        + issueKey + "\". Look at the SonarLint output for details.");
+    });
+  }
+
   private void mockNoIssueAndNoTaintInIncrementalSync() {
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
@@ -1074,7 +1207,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var issueKey = ((JsonObject) diagnostics.stream().filter(it -> it.getMessage().equals("Remove the unused local variable \"plouf\"."))
       .findFirst().get().getData()).get("entryKey").getAsString();
     lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
-      ResolutionStatus.FALSE_POSITIVE, fileUri, "", false));
+      "False positive", fileUri, "", false));
 
     //Now we expect that one issue is resolved
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))

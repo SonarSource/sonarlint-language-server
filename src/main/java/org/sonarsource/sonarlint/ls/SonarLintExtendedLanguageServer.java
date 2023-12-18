@@ -428,12 +428,12 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   class ChangeIssueStatusParams {
     private final String configurationScopeId;
     private final String issueId;
-    private final ResolutionStatus newStatus;
+    private final String newStatus;
     private final String fileUri;
     private final String comment;
     private final boolean isTaintIssue;
 
-    public ChangeIssueStatusParams(String configurationScopeId, @Nullable String issueId, ResolutionStatus newStatus, String fileUri,
+    public ChangeIssueStatusParams(String configurationScopeId, @Nullable String issueId, String newStatus, String fileUri,
       @Nullable String comment, boolean isTaintIssue) {
       this.configurationScopeId = configurationScopeId;
       this.issueId = issueId;
@@ -452,7 +452,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
       return issueId;
     }
 
-    public ResolutionStatus getNewStatus() {
+    public String getNewStatus() {
       return newStatus;
     }
 
@@ -468,6 +468,52 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
       return isTaintIssue;
     }
   }
+
+  @JsonRequest("sonarlint/checkIssueStatusChangePermitted")
+  CompletableFuture<CheckIssueStatusChangePermittedResponse> checkIssueStatusChangePermitted(CheckIssueStatusChangePermittedParams params);
+
+  class CheckIssueStatusChangePermittedParams {
+    String folderUri;
+    String issueKey;
+
+    public CheckIssueStatusChangePermittedParams(String folderUri, String issueKey) {
+      this.folderUri = folderUri;
+      this.issueKey = issueKey;
+    }
+
+    public String getFolderUri() {
+      return folderUri;
+    }
+
+    public String getIssueKey() {
+      return issueKey;
+    }
+  }
+  class CheckIssueStatusChangePermittedResponse {
+    private final boolean permitted;
+    private final String notPermittedReason;
+    private final List<String> allowedStatuses;
+
+    public CheckIssueStatusChangePermittedResponse(boolean permitted, @Nullable String notPermittedReason, List<String> allowedStatuses) {
+      this.permitted = permitted;
+      this.notPermittedReason = notPermittedReason;
+      this.allowedStatuses = allowedStatuses;
+    }
+
+    public boolean isPermitted() {
+      return permitted;
+    }
+
+    @CheckForNull
+    public String getNotPermittedReason() {
+      return notPermittedReason;
+    }
+
+    public List<String> getAllowedStatuses() {
+      return allowedStatuses;
+    }
+  }
+
 
   @JsonNotification("sonarlint/changeIssueStatus")
   CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params);

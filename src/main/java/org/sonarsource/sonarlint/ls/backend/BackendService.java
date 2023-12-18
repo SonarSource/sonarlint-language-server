@@ -67,8 +67,10 @@ import org.sonarsource.sonarlint.core.clientapi.backend.tracking.TrackWithServer
 import org.sonarsource.sonarlint.core.clientapi.backend.tracking.TrackWithServerIssuesResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.http.HttpClient;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
+import org.sonarsource.sonarlint.ls.util.EnumLabelsMapper;
 
 public class BackendService {
 
@@ -185,6 +187,14 @@ public class BackendService {
 
   public CompletableFuture<GetBindingSuggestionsResponse> getBindingSuggestion(GetBindingSuggestionParams params) {
     return initializedBackend().getBindingService().getBindingSuggestions(params);
+  }
+
+  public CompletableFuture<SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedResponse>
+  checkStatusChangePermitted(String connectionId, String issueKey) {
+    return initializedBackend().getIssueService().checkStatusChangePermitted(
+      new org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedParams(connectionId, issueKey))
+      .thenApply(result -> new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedResponse(result.isPermitted(),
+        result.getNotPermittedReason(), result.getAllowedStatuses().stream().map(EnumLabelsMapper::resolutionStatusToLabel).toList()));
   }
 
   public CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params) {
