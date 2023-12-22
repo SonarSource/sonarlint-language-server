@@ -192,7 +192,8 @@ public class BackendService {
 
   public CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(String folderUri) {
     var params = new CheckLocalDetectionSupportedParams(folderUri);
-    return initializedBackend().getHotspotService().checkLocalDetectionSupported(params);
+    return initializedBackend().getHotspotService().checkLocalDetectionSupported(params)
+      .exceptionally(e -> new CheckLocalDetectionSupportedResponse(false, e.getMessage()));
   }
 
   public void shutdown() {
