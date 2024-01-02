@@ -105,6 +105,7 @@ public class BackendServiceFacade {
   public void shutdown() {
     backend.shutdown();
   }
+
   public void initialize(Map<String, ServerConnectionSettings> serverConnections) {
     initOnce(serverConnections);
     telemetry.initialize(telemetryInitParams);
