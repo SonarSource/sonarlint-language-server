@@ -90,7 +90,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
         if (electedBranchName == null) {
           electedBranchName = serverBranches.getMainBranchName();
         }
-        backendServiceFacade.notifyBackendOnBranchChanged(folderUri.toString(), electedBranchName);
+        backendServiceFacade.getBackendService().notifyBackendOnBranchChanged(folderUri.toString(), electedBranchName);
       }
       client.setReferenceBranchNameForFolder(SonarLintExtendedLanguageClient.ReferenceBranchForFolder.of(folderUri.toString(), electedBranchName));
       referenceBranchNameByFolderUri.put(folderUri, Optional.ofNullable(electedBranchName));

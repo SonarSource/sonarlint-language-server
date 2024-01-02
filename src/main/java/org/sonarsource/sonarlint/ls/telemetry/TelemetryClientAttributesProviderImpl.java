@@ -80,7 +80,7 @@ public class TelemetryClientAttributesProviderImpl implements TelemetryClientAtt
   }
 
   private Set<String> getDefaultEnabledRules() {
-    return backendServiceFacade.listAllStandaloneRulesDefinitions().thenApply(response ->
+    return backendServiceFacade.getBackendService().listAllStandaloneRulesDefinitions().thenApply(response ->
         response.getRulesByKey()
           .values()
           .stream()

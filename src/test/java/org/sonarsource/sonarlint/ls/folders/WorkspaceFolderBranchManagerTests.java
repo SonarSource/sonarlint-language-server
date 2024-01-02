@@ -37,6 +37,7 @@ import org.sonarsource.sonarlint.core.client.api.connected.ProjectBranches;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
@@ -56,12 +57,15 @@ class WorkspaceFolderBranchManagerTests {
   private ProjectBindingManager bindingManager;
   private BackendServiceFacade backendServiceFacade;
   private WorkspaceFolderBranchManager underTest;
+  private BackendService backendService;
 
   @BeforeEach
   void setUp() {
     client = mock(SonarLintExtendedLanguageClient.class);
     bindingManager = mock(ProjectBindingManager.class);
     backendServiceFacade = mock(BackendServiceFacade.class);
+    backendService = mock(BackendService.class);
+    when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     underTest = new WorkspaceFolderBranchManager(client, bindingManager, backendServiceFacade, new ImmediateExecutorService(), logTester.getLogger());
   }
 
@@ -150,7 +154,7 @@ class WorkspaceFolderBranchManagerTests {
 
     underTest.didBranchNameChange(folderUri, "branchName");
 
-    verify(backendServiceFacade).notifyBackendOnBranchChanged(folderUri.toString(), "branchName");
+    verify(backendService).notifyBackendOnBranchChanged(folderUri.toString(), "branchName");
   }
 
   private void createAndCheckoutBranch(Path gitProjectBasedir, String currentBranchName) throws IOException, GitAPIException {

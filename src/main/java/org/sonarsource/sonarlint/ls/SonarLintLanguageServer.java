@@ -222,7 +222,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.progressManager = new ProgressManager(client, globalLogOutput);
     this.requestsHandlerServer = new RequestsHandlerServer(client);
     var vsCodeClient = new SonarLintVSCodeClient(client, requestsHandlerServer, globalLogOutput);
-    this.backendServiceFacade = new BackendServiceFacade(new SonarLintBackendImpl(vsCodeClient));
+    this.backendServiceFacade = new BackendServiceFacade(new SonarLintBackendImpl(vsCodeClient), lsLogOutput, client);
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
     this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, globalLogOutput);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, backendServiceFacade, globalLogOutput);
@@ -619,7 +619,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     lsLogOutput.debug(format("Received a validate connectionName request for %s", connectionName));
     var validateConnectionParams = getValidateConnectionParams(params);
     if (validateConnectionParams != null) {
-      return backendServiceFacade.validateConnection(validateConnectionParams)
+      return backendServiceFacade.getBackendService().validateConnection(validateConnectionParams)
         .thenApply(validationResult -> validationResult.isSuccess() ? success(connectionName)
           : failure(connectionName, validationResult.getMessage()));
     }
@@ -640,7 +640,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void onTokenUpdate(OnTokenUpdateNotificationParams onTokenUpdateNotificationParams) {
     lsLogOutput.info("Updating credentials on token change.");
-    backendServiceFacade.didChangeCredentials(onTokenUpdateNotificationParams.getConnectionId());
+    backendServiceFacade.getBackendService().didChangeCredentials(onTokenUpdateNotificationParams.getConnectionId());
     var updatedConnection = settingsManager.getCurrentSettings().getServerConnections().get(onTokenUpdateNotificationParams.getConnectionId());
     updatedConnection.setToken(onTokenUpdateNotificationParams.getToken());
     bindingManager.validateConnection(onTokenUpdateNotificationParams.getConnectionId());
@@ -663,7 +663,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public CompletableFuture<HelpGenerateUserTokenResponse> generateToken(GenerateTokenParams params) {
-    return backendServiceFacade.helpGenerateUserToken(params.getBaseServerUrl(),
+    return backendServiceFacade.getBackendService().helpGenerateUserToken(params.getBaseServerUrl(),
       ServerConnectionSettings.isSonarCloudAlias(params.getBaseServerUrl()));
   }
 
@@ -804,13 +804,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         new CheckIssueStatusChangePermittedResponse(false, "There is no binding for the folder: " + params.getFolderUri(), List.of()));
     }
     var connectionId = bindingWrapperOpt.get().getConnectionId();
-    return backendServiceFacade.getBackendService().checkStatusChangePermitted(connectionId, params.getIssueKey())
-      .exceptionally(t -> {
-        lsLogOutput.error("Error getting issue status change permissions", t);
-        client.logMessage(new MessageParams(MessageType.Error, "Could not get issue status change for issue \""
-          + params.getIssueKey() + "\". Look at the SonarLint output for details."));
-        return null;
-      });
+    return backendServiceFacade.getBackendService().checkStatusChangePermitted(connectionId, params.getIssueKey());
   }
 
   @Override
@@ -840,21 +834,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   private void addIssueComment(AddIssueCommentParams params) {
     backendServiceFacade.getBackendService().addIssueComment(params)
-      .thenAccept(nothing -> client.showMessage(new MessageParams(MessageType.Info, "New comment was added")))
-      .exceptionally(t -> {
-        lsLogOutput.error("Error adding issue comment", t);
-        client.showMessage(new MessageParams(MessageType.Error, "Could not add a new issue comment. Look at the SonarLint output for " +
-          "details."));
-        return null;
-      });
+      .thenAccept(nothing -> client.showMessage(new MessageParams(MessageType.Info, "New comment was added")));
   }
 
   @Override
   public CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(UriParams params) {
     var folderUri = params.getUri();
-    return backendServiceFacade.checkLocalDetectionSupported(folderUri)
-      .thenApply(response -> new CheckLocalDetectionSupportedResponse(response.isSupported(), response.getReason()))
-      .exceptionally(exception -> new CheckLocalDetectionSupportedResponse(false, exception.getCause().getMessage()));
+    return backendServiceFacade.getBackendService().checkLocalDetectionSupported(folderUri)
+      .thenApply(response -> new CheckLocalDetectionSupportedResponse(response.isSupported(), response.getReason()));
   }
 
   @Override
@@ -920,7 +907,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<ReopenIssueResponse> reopenResolvedLocalIssues(ReopenAllIssuesForFileParams params) {
     var reopenAllIssuesParams = new org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenAllIssuesForFileParams(params.getConfigurationScopeId(), params.getRelativePath());
-    return backendServiceFacade.reopenAllIssuesForFile(reopenAllIssuesParams).thenApply(r -> {
+    return backendServiceFacade.getBackendService().reopenAllIssuesForFile(reopenAllIssuesParams).thenApply(r -> {
       if (r.isIssueReopened()) {
         analysisScheduler.didChange(create(params.getFileUri()));
         client.showMessage(new MessageParams(MessageType.Info, "Reopened local issues for " + params.getRelativePath()));

@@ -168,8 +168,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
           initLatch.countDown();
           backendServiceFacade.initialize(getCurrentSettings().getServerConnections());
         } else {
-          backendServiceFacade.didChangeConnections(getCurrentSettings().getServerConnections());
-          backendServiceFacade.updateStandaloneRulesConfiguration(getStandaloneRuleConfigByKey());
+          backendServiceFacade.getBackendService().didChangeConnections(getCurrentSettings().getServerConnections());
+          backendServiceFacade.getBackendService().updateStandaloneRulesConfiguration(getStandaloneRuleConfigByKey());
         }
 
         foldersManager.getAll().forEach(f -> updateWorkspaceFolderSettings(f, true));

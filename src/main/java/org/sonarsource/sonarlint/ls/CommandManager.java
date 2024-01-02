@@ -209,7 +209,7 @@ public class CommandManager {
       var serverIssueKey = delegatingIssue.getServerIssueKey();
       var key = serverIssueKey == null ? issueId.toString() : serverIssueKey;
       var changeStatusPermittedResponse =
-        Utils.safelyGetCompletableFuture(backendServiceFacade.checkChangeIssueStatusPermitted(
+        Utils.safelyGetCompletableFuture(backendServiceFacade.getBackendService().checkChangeIssueStatusPermitted(
           new CheckStatusChangePermittedParams(binding.getConnectionId(), key)
         ), logOutput);
       if (changeStatusPermittedResponse.isPresent() && changeStatusPermittedResponse.get().isPermitted()) {
@@ -311,7 +311,7 @@ public class CommandManager {
   public Map<String, List<Rule>> listAllStandaloneRules() {
     var result = new HashMap<String, List<Rule>>();
     try {
-      return backendServiceFacade.listAllStandaloneRulesDefinitions()
+      return backendServiceFacade.getBackendService().listAllStandaloneRulesDefinitions()
         .thenApply(response -> {
           response.getRulesByKey().forEach((ruleKey, ruleDefinition) -> {
             var languageName = ruleDefinition.getLanguage().getLabel();
@@ -333,7 +333,7 @@ public class CommandManager {
   }
 
   private void openStandaloneRuleDescription(String ruleKey) {
-    backendServiceFacade.getStandaloneRuleDetails(ruleKey)
+    backendServiceFacade.getBackendService().getStandaloneRuleDetails(ruleKey)
       .thenAccept(detailsResponse -> showStandaloneRuleDescription(ruleKey, detailsResponse))
       .exceptionally(e -> {
         var message = "Can't show rule details for unknown rule with key: " + ruleKey;
@@ -351,7 +351,7 @@ public class CommandManager {
       .map(w -> w.get().getUri().toString())
       .orElse(null);
 
-    return backendServiceFacade.getEffectiveRuleDetails(workspaceFolder, ruleKey, ruleContextKey)
+    return backendServiceFacade.getBackendService().getEffectiveRuleDetails(workspaceFolder, ruleKey, ruleContextKey)
       .thenApply(detailsResponse -> {
         var ruleDetailsDto = detailsResponse.details();
         return createShowRuleDescriptionParams(ruleDetailsDto, Collections.emptyMap(), ruleDetailsDto.getDescription(), ruleKey,

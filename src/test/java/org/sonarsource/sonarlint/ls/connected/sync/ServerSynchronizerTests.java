@@ -52,6 +52,7 @@ import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
@@ -90,6 +91,7 @@ class ServerSynchronizerTests {
   private static final String CONNECTION_ID = "myServer";
   private static final String CONNECTION_ID2 = "myServer2";
   private static final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
+  private final BackendService backendService = mock(BackendService.class);
   private static final ServerConnectionSettings GLOBAL_SETTINGS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, true);
   private static final ServerConnectionSettings GLOBAL_SETTINGS_DIFFERENT_SERVER_ID = new ServerConnectionSettings(CONNECTION_ID2, "http://foo2", "token2", null, true
   );
@@ -163,6 +165,7 @@ class ServerSynchronizerTests {
     syncTask = syncTaskCaptor.getValue();
     bindingManager.setAnalysisManager(analysisManager);
     bindingManager.setBranchResolver(uri -> Optional.of("master"));
+    when(backendServiceFacade.getBackendService()).thenReturn(backendService);
   }
 
   private static WorkspaceSettings newWorkspaceSettingsWithServers(Map<String, ServerConnectionSettings> servers) {

@@ -110,7 +110,7 @@ public class ServerSynchronizer {
     projectKeyByConnectionIdsToUpdate.forEach(
       (connectionId, projectKeys) -> {
         var progressFraction = 1.0f / projectKeyByConnectionIdsToUpdate.size();
-        var httpClient = backendServiceFacade.getHttpClient(connectionId);
+        var httpClient = backendServiceFacade.getBackendService().getHttpClient(connectionId);
         tryUpdateConnectionAndBoundProjectsStorages(progress, failedConnectionIds, connectionId, projectKeys, progressFraction, httpClient);
       });
     return failedConnectionIds;
@@ -196,7 +196,7 @@ public class ServerSynchronizer {
         logOutput.debug("Synchronizing storages...");
         projectsToSynchronize.forEach((connectionId, branchNamesByProjectKey) -> bindingManager.getStartedConnectedEngine(connectionId)
           .ifPresent(engine -> {
-            var httpClient = backendServiceFacade.getHttpClient(connectionId);
+            var httpClient = backendServiceFacade.getBackendService().getHttpClient(connectionId);
             syncOneEngine(connectionId, branchNamesByProjectKey, engine, httpClient, null);
           })
         );

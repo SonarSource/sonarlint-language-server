@@ -21,40 +21,16 @@ package org.sonarsource.sonarlint.ls.backend;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
-import javax.annotation.Nullable;
-import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidAddConfigurationScopesParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckLocalDetectionSupportedParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.CheckLocalDetectionSupportedResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.initialize.ClientInfoDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.initialize.FeatureFlagsDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.initialize.InitializeParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenAllIssuesForFileParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenIssueResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.ListAllStandaloneRulesDefinitionsResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.StandaloneRuleConfigDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.UpdateStandaloneRulesConfigurationParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.tracking.TrackWithServerIssuesParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.tracking.TrackWithServerIssuesResponse;
-import org.sonarsource.sonarlint.core.http.HttpClient;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
@@ -72,8 +48,8 @@ public class BackendServiceFacade {
   private TelemetryInitParams telemetryInitParams;
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
-  public BackendServiceFacade(SonarLintBackend backend) {
-    this.backend = new BackendService(backend);
+  public BackendServiceFacade(SonarLintBackend backend, LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client) {
+    this.backend = new BackendService(backend, lsLogOutput, client);
     this.initParams = new BackendInitParams();
     this.rootConfigurationScope = new ConfigurationScopeDto(ROOT_CONFIGURATION_SCOPE, null, false, ROOT_CONFIGURATION_SCOPE,
       new BindingConfigurationDto(null, null, false)
@@ -93,14 +69,6 @@ public class BackendServiceFacade {
 
   public BackendInitParams getInitParams() {
     return initParams;
-  }
-
-  public void didChangeConnections(Map<String, ServerConnectionSettings> connections) {
-    backend.didChangeConnections(connections);
-  }
-
-  public void didChangeCredentials(String connectionId) {
-    backend.didChangeCredentials(connectionId);
   }
 
   private void initOnce(Map<String, ServerConnectionSettings> connections) {
@@ -138,85 +106,9 @@ public class BackendServiceFacade {
     backend.shutdown();
   }
 
-  public void addFolders(List<WorkspaceFolder> added, Function<WorkspaceFolder, Optional<ProjectBindingWrapper>> bindingProvider) {
-    List<ConfigurationScopeDto> addedScopeDtos = added.stream()
-      .map(folder -> getBackendService().getConfigScopeDto(folder, bindingProvider.apply(folder)))
-      .toList();
-    var params = new DidAddConfigurationScopesParams(addedScopeDtos);
-    backend.addConfigurationScopes(params);
-  }
-
-  public void addFolder(WorkspaceFolder added, Optional<ProjectBindingWrapper> bindingWrapperOptional) {
-    ConfigurationScopeDto dto = getBackendService().getConfigScopeDto(added, bindingWrapperOptional);
-    var params = new DidAddConfigurationScopesParams(List.of(dto));
-    backend.addConfigurationScopes(params);
-  }
-
-  public void removeWorkspaceFolder(String removedUri) {
-    backend.removeWorkspaceFolder(removedUri);
-  }
-
-  public CompletableFuture<GetEffectiveRuleDetailsResponse> getEffectiveRuleDetails(@Nullable String workspaceFolder, String ruleKey, String ruleContextKey) {
-    var workspaceOrRootScope = Optional.ofNullable(workspaceFolder).orElse(ROOT_CONFIGURATION_SCOPE);
-    var params = new GetEffectiveRuleDetailsParams(workspaceOrRootScope, ruleKey, ruleContextKey);
-    return backend.getRuleDetails(params);
-  }
-
-  public void updateStandaloneRulesConfiguration(Map<String, StandaloneRuleConfigDto> ruleConfigByKey) {
-    var params = new UpdateStandaloneRulesConfigurationParams(ruleConfigByKey);
-    backend.updateStandaloneRulesConfiguration(params);
-  }
-
-  public CompletableFuture<GetStandaloneRuleDescriptionResponse> getStandaloneRuleDetails(String ruleKey) {
-    var params = new GetStandaloneRuleDescriptionParams(ruleKey);
-    return backend.getStandaloneRuleDetails(params);
-  }
-
-  public CompletableFuture<ListAllStandaloneRulesDefinitionsResponse> listAllStandaloneRulesDefinitions() {
-    return backend.listAllStandaloneRulesDefinitions();
-  }
-
-  public CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(String workspaceFolder) {
-    var params = new CheckLocalDetectionSupportedParams(workspaceFolder);
-    return backend.checkLocalDetectionSupported(params);
-  }
-
-  public CompletableFuture<HelpGenerateUserTokenResponse> helpGenerateUserToken(String serverUrl, boolean isSonarCloud) {
-    var params = new HelpGenerateUserTokenParams(serverUrl, isSonarCloud);
-    return backend.helpGenerateUserToken(params);
-  }
-
   public void initialize(Map<String, ServerConnectionSettings> serverConnections) {
     initOnce(serverConnections);
     telemetry.initialize(telemetryInitParams);
-  }
-
-  public void notifyBackendOnBranchChanged(String folderUri, String newBranchName) {
-    backend.notifyBackendOnBranchChanged(folderUri, newBranchName);
-  }
-
-  public CompletableFuture<TrackWithServerIssuesResponse> matchIssues(TrackWithServerIssuesParams params) {
-    return backend.matchIssues(params);
-  }
-
-  public CompletableFuture<CheckStatusChangePermittedResponse> checkChangeIssueStatusPermitted(CheckStatusChangePermittedParams params) {
-    return backend.checkChangeIssueStatusPermitted(params);
-  }
-
-  public CompletableFuture<ReopenIssueResponse> reopenAllIssuesForFile(ReopenAllIssuesForFileParams params) {
-    return backend.reopenAllIssuesForFile(params);
-  }
-
-  public HttpClient getHttpClientNoAuth() {
-    return backend.getHttpClientNoAuth();
-  }
-
-  public HttpClient getHttpClient(String connectionId) {
-    return backend.getHttpClient(connectionId);
-  }
-
-  public CompletableFuture<ValidateConnectionResponse> validateConnection(ValidateConnectionParams params) {
-    return backend.validateConnection(params);
   }
 
   public void setTelemetry(SonarLintTelemetry telemetry) {

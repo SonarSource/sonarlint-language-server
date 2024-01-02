@@ -25,6 +25,10 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
+import javax.annotation.Nullable;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
 import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsParams;
@@ -62,23 +66,32 @@ import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDe
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetStandaloneRuleDescriptionResponse;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.ListAllStandaloneRulesDefinitionsResponse;
+import org.sonarsource.sonarlint.core.clientapi.backend.rules.StandaloneRuleConfigDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.UpdateStandaloneRulesConfigurationParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.tracking.TrackWithServerIssuesParams;
 import org.sonarsource.sonarlint.core.clientapi.backend.tracking.TrackWithServerIssuesResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.http.HttpClient;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.util.EnumLabelsMapper;
+
+import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.ROOT_CONFIGURATION_SCOPE;
 
 public class BackendService {
 
   private final SonarLintBackend backend;
+  private final LanguageClientLogger logOutput;
+  private final SonarLintExtendedLanguageClient client;
   private final CountDownLatch initializeLatch = new CountDownLatch(1);
 
-  public BackendService(SonarLintBackend backend) {
+  public BackendService(SonarLintBackend backend, LanguageClientLogger logOutput, SonarLintExtendedLanguageClient client) {
     this.backend = backend;
+    this.logOutput = logOutput;
+    this.client = client;
   }
 
   public void initialize(InitializeParams backendInitParams) {
@@ -141,7 +154,7 @@ public class BackendService {
     } else {
       bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
     }
-    return new ConfigurationScopeDto(added.getUri(), BackendServiceFacade.ROOT_CONFIGURATION_SCOPE, true, added.getName(), bindingConfigurationDto);
+    return new ConfigurationScopeDto(added.getUri(), ROOT_CONFIGURATION_SCOPE, true, added.getName(), bindingConfigurationDto);
   }
 
   public void removeWorkspaceFolder(String removedUri) {
@@ -153,12 +166,34 @@ public class BackendService {
     initializedBackend().getConfigurationService().didUpdateBinding(params);
   }
 
-  public void addConfigurationScopes(DidAddConfigurationScopesParams params) {
+  public void addWorkspaceFolders(List<WorkspaceFolder> added, Function<WorkspaceFolder, Optional<ProjectBindingWrapper>> bindingProvider) {
+    List<ConfigurationScopeDto> addedScopeDtos = added.stream()
+      .map(folder -> getConfigScopeDto(folder, bindingProvider.apply(folder)))
+      .toList();
+    var params = new DidAddConfigurationScopesParams(addedScopeDtos);
+    addConfigurationScopes(params);
+  }
+
+  public void addWorkspaceFolder(WorkspaceFolder added, Optional<ProjectBindingWrapper> bindingWrapperOptional) {
+    ConfigurationScopeDto dto = getConfigScopeDto(added, bindingWrapperOptional);
+    var params = new DidAddConfigurationScopesParams(List.of(dto));
+    addConfigurationScopes(params);
+  }
+
+  void addConfigurationScopes(DidAddConfigurationScopesParams params) {
     initializedBackend().getConfigurationService().didAddConfigurationScopes(params);
   }
 
-  public CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(CheckLocalDetectionSupportedParams params) {
-    return initializedBackend().getHotspotService().checkLocalDetectionSupported(params);
+  public CompletableFuture<GetEffectiveRuleDetailsResponse> getEffectiveRuleDetails(@Nullable String workspaceFolder, String ruleKey, String ruleContextKey) {
+    var workspaceOrRootScope = Optional.ofNullable(workspaceFolder).orElse(ROOT_CONFIGURATION_SCOPE);
+    var params = new GetEffectiveRuleDetailsParams(workspaceOrRootScope, ruleKey, ruleContextKey);
+    return getRuleDetails(params);
+  }
+
+  public CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(String folderUri) {
+    var params = new CheckLocalDetectionSupportedParams(folderUri);
+    return initializedBackend().getHotspotService().checkLocalDetectionSupported(params)
+      .exceptionally(e -> new CheckLocalDetectionSupportedResponse(false, e.getMessage()));
   }
 
   public void shutdown() {
@@ -169,11 +204,13 @@ public class BackendService {
     return initializedBackend().getRulesService().getEffectiveRuleDetails(params);
   }
 
-  public void updateStandaloneRulesConfiguration(UpdateStandaloneRulesConfigurationParams params) {
+  public void updateStandaloneRulesConfiguration(Map<String, StandaloneRuleConfigDto> ruleConfigByKey) {
+    var params = new UpdateStandaloneRulesConfigurationParams(ruleConfigByKey);
     initializedBackend().getRulesService().updateStandaloneRulesConfiguration(params);
   }
 
-  public CompletableFuture<GetStandaloneRuleDescriptionResponse> getStandaloneRuleDetails(GetStandaloneRuleDescriptionParams params) {
+  public CompletableFuture<GetStandaloneRuleDescriptionResponse> getStandaloneRuleDetails(String ruleKey) {
+    var params = new GetStandaloneRuleDescriptionParams(ruleKey);
     return initializedBackend().getRulesService().getStandaloneRuleDetails(params);
   }
 
@@ -194,7 +231,13 @@ public class BackendService {
     return initializedBackend().getIssueService().checkStatusChangePermitted(
       new org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedParams(connectionId, issueKey))
       .thenApply(result -> new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedResponse(result.isPermitted(),
-        result.getNotPermittedReason(), result.getAllowedStatuses().stream().map(EnumLabelsMapper::resolutionStatusToLabel).toList()));
+        result.getNotPermittedReason(), result.getAllowedStatuses().stream().map(EnumLabelsMapper::resolutionStatusToLabel).toList()))
+      .exceptionally(t -> {
+        logOutput.error("Error getting issue status change permissions", t);
+        client.logMessage(new MessageParams(MessageType.Error, "Could not get issue status change for issue \""
+          + issueKey + "\". Look at the SonarLint output for details."));
+        return null;
+      });
   }
 
   public CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params) {
@@ -202,7 +245,13 @@ public class BackendService {
   }
 
   public CompletableFuture<Void> addIssueComment(AddIssueCommentParams params) {
-    return initializedBackend().getIssueService().addComment(params);
+    return initializedBackend().getIssueService().addComment(params)
+      .exceptionally(t -> {
+        logOutput.error("Error adding issue comment", t);
+        client.showMessage(new MessageParams(MessageType.Error, "Could not add a new issue comment. Look at the SonarLint output for " +
+          "details."));
+        return null;
+      });
   }
 
   public CompletableFuture<Void> changeHotspotStatus(ChangeHotspotStatusParams params) {
@@ -218,7 +267,8 @@ public class BackendService {
     initializedBackend().getSonarProjectBranchService().didChangeActiveSonarProjectBranch(params);
   }
 
-  public CompletableFuture<HelpGenerateUserTokenResponse> helpGenerateUserToken(HelpGenerateUserTokenParams params) {
+  public CompletableFuture<HelpGenerateUserTokenResponse> helpGenerateUserToken(String serverUrl, boolean isSonarCloud) {
+    var params = new HelpGenerateUserTokenParams(serverUrl, isSonarCloud);
     return initializedBackend().getConnectionService().helpGenerateUserToken(params);
   }
 

@@ -120,7 +120,7 @@ public class ServerIssueTrackerWrapper {
   private void matchAndTrackIssues(String filePath, IssueListener issueListener, boolean shouldFetchServerIssues,
     Collection<Trackable> issueTrackables, URI workspaceFolderUri) {
     var issuesByFilepath = getClientTrackedIssuesByServerRelativePath(filePath, issueTrackables);
-    var trackWithServerIssuesResponse = Utils.safelyGetCompletableFuture(backend.matchIssues(
+    var trackWithServerIssuesResponse = Utils.safelyGetCompletableFuture(backend.getBackendService().matchIssues(
       new TrackWithServerIssuesParams(workspaceFolderUri.toString(), issuesByFilepath, shouldFetchServerIssues)
     ), logOutput);
     trackWithServerIssuesResponse.ifPresentOrElse(

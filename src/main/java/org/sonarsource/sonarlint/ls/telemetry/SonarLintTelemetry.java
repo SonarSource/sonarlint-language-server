@@ -119,7 +119,8 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
       return;
     }
 
-    var client = new TelemetryHttpClient(productName, productVersion, ideVersion, platform, architecture, backendServiceFacade.getHttpClientNoAuth());
+    var client = new TelemetryHttpClient(productName, productVersion, ideVersion, platform, architecture,
+      backendServiceFacade.getBackendService().getHttpClientNoAuth());
     this.telemetry = newTelemetryManager(storagePath, client);
     try {
       this.scheduler = executorFactory.get();

@@ -30,6 +30,7 @@ import org.sonarsource.sonarlint.core.clientapi.backend.rules.ListAllStandaloneR
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleDefinitionDto;
 import org.sonarsource.sonarlint.core.commons.RuleKey;
 import org.sonarsource.sonarlint.ls.NodeJsRuntime;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -46,10 +47,13 @@ class TelemetryClientAttributesProviderImplTests {
   private WorkspaceSettings workspaceSettings;
   private Map<String, Object> additionalAttributes;
   private BackendServiceFacade backendServiceFacade;
+  private BackendService backendService;
 
   @BeforeEach
   void init() {
     backendServiceFacade = mock(BackendServiceFacade.class);
+    backendService = mock(BackendService.class);
+    when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     var nodeJsRuntime = mock(NodeJsRuntime.class);
     when(nodeJsRuntime.nodeVersion()).thenReturn("nodeVersion");
     var settingsManager = mock(SettingsManager.class);
@@ -98,7 +102,7 @@ class TelemetryClientAttributesProviderImplTests {
     when(ruleKey1.toString()).thenReturn("ruleKey1");
     when(ruleKey2.toString()).thenReturn("ruleKey2");
     when(workspaceSettings.getIncludedRules()).thenReturn(List.of(ruleKey1, ruleKey2));
-    when(backendServiceFacade.listAllStandaloneRulesDefinitions())
+    when(backendService.listAllStandaloneRulesDefinitions())
       .thenReturn(CompletableFuture.completedFuture(new ListAllStandaloneRulesDefinitionsResponse(Map.of())));
 
     assertThat(underTest.getNonDefaultEnabledRules()).containsExactly("ruleKey2", "ruleKey1");
@@ -114,7 +118,7 @@ class TelemetryClientAttributesProviderImplTests {
     when(standaloneRule1.getKey()).thenReturn("ruleKey2");
     when(standaloneRule1.isActiveByDefault()).thenReturn(true);
     when(workspaceSettings.getIncludedRules()).thenReturn(List.of(ruleKey1, ruleKey2));
-    when(backendServiceFacade.listAllStandaloneRulesDefinitions())
+    when(backendService.listAllStandaloneRulesDefinitions())
       .thenReturn(CompletableFuture.completedFuture(new ListAllStandaloneRulesDefinitionsResponse(Map.of("ruleKey1", standaloneRule1))));
 
     assertThat(underTest.getNonDefaultEnabledRules()).containsExactly("ruleKey1");
@@ -127,7 +131,7 @@ class TelemetryClientAttributesProviderImplTests {
     when(ruleKey1.toString()).thenReturn("ruleKey1");
     when(ruleKey2.toString()).thenReturn("ruleKey2");
     when(workspaceSettings.getExcludedRules()).thenReturn(List.of(ruleKey1, ruleKey2));
-    when(backendServiceFacade.listAllStandaloneRulesDefinitions())
+    when(backendService.listAllStandaloneRulesDefinitions())
       .thenReturn(CompletableFuture.completedFuture(new ListAllStandaloneRulesDefinitionsResponse(Map.of())));
 
     assertThat(underTest.getDefaultDisabledRules()).isEmpty();
@@ -143,7 +147,7 @@ class TelemetryClientAttributesProviderImplTests {
     when(standaloneRule1.getKey()).thenReturn("ruleKey1");
     when(standaloneRule1.isActiveByDefault()).thenReturn(true);
     when(workspaceSettings.getExcludedRules()).thenReturn(List.of(ruleKey1, ruleKey2));
-    when(backendServiceFacade.listAllStandaloneRulesDefinitions())
+    when(backendService.listAllStandaloneRulesDefinitions())
       .thenReturn(CompletableFuture.completedFuture(new ListAllStandaloneRulesDefinitionsResponse(Map.of("ruleKey1", standaloneRule1))));
 
     assertThat(underTest.getDefaultDisabledRules()).containsExactly("ruleKey1");
