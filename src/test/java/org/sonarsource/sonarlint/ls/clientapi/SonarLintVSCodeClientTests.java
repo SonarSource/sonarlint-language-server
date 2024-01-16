@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.clientapi;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,6 +32,10 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.assertj.core.api.Assertions;
+import org.eclipse.lsp4j.MessageActionItem;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,10 +48,12 @@ import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEng
 import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingSuggestionDto;
 import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
+import org.sonarsource.sonarlint.core.clientapi.client.binding.NoBindingSuggestionFoundParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams;
 import org.sonarsource.sonarlint.core.clientapi.client.event.DidReceiveServerEventParams;
 import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeParams;
+import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.clientapi.client.hotspot.ShowHotspotParams;
 import org.sonarsource.sonarlint.core.clientapi.client.http.CheckServerTrustedParams;
@@ -64,11 +71,15 @@ import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.serverapi.push.IssueChangedEvent;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.AssistCreatingConnectionResponse;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.CreateConnectionParams;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.ServerIssueTrackerWrapper;
-import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
+import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
@@ -77,6 +88,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -100,7 +112,7 @@ class SonarLintVSCodeClientTests {
   SettingsManager settingsManager = mock(SettingsManager.class);
   SmartNotifications smartNotifications = mock(SmartNotifications.class);
   SonarLintVSCodeClient underTest;
-  RequestsHandlerServer server = mock(RequestsHandlerServer.class);
+  HostInfoProvider server = mock(HostInfoProvider.class);
   ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
   ServerSentEventsHandlerService serverSentEventsHandlerService = mock(ServerSentEventsHandlerService.class);
   @Captor
@@ -108,6 +120,7 @@ class SonarLintVSCodeClientTests {
   ProjectBinding binding = mock(ProjectBinding.class);
   ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
   ServerIssueTrackerWrapper serverIssueTrackerWrapper = mock(ServerIssueTrackerWrapper.class);
+  BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
 
   private static final String PEM = "subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH\n" +
     "issuer=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH\n" +
@@ -152,6 +165,7 @@ class SonarLintVSCodeClientTests {
     underTest.setSettingsManager(settingsManager);
     underTest.setBindingManager(bindingManager);
     underTest.setServerSentEventsHandlerService(serverSentEventsHandlerService);
+    underTest.setBackendServiceFacade(backendServiceFacade);
     workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
     Files.createDirectories(workspaceFolderPath);
     fileInAWorkspaceFolderPath = workspaceFolderPath.resolve(FILE_PYTHON);
@@ -173,7 +187,10 @@ class SonarLintVSCodeClientTests {
   @Test
   void shouldCallClientToFindFile() {
     var params = mock(FindFileByNamesInScopeParams.class);
-    underTest.findFileByNamesInScope(params);
+    when(client.findFileByNamesInFolder(any())).thenReturn(CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(List.of())));
+
+    var future = underTest.findFileByNamesInScope(params);
+    await().untilAsserted(() -> assertThat(future).isCompleted());
     var expectedClientParams =
       new SonarLintExtendedLanguageClient.FindFileByNamesInFolder(params.getConfigScopeId(), params.getFilenames());
     verify(client).findFileByNamesInFolder(expectedClientParams);
@@ -261,8 +278,11 @@ class SonarLintVSCodeClientTests {
   void shouldAskTheClientToFindFiles() {
     var folderUri = "file:///some/folder";
     var filesToFind = List.of("file1", "file2");
+    when(client.findFileByNamesInFolder(any())).thenReturn(CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(List.of())));
+
     var params = new FindFileByNamesInScopeParams(folderUri, filesToFind);
-    underTest.findFileByNamesInScope(params);
+    var future = underTest.findFileByNamesInScope(params);
+    await().untilAsserted(() -> assertThat(future).isCompleted());
     var argumentCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.FindFileByNamesInFolder.class);
     verify(client).findFileByNamesInFolder(argumentCaptor.capture());
     assertThat(argumentCaptor.getValue()).extracting(
@@ -305,20 +325,77 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void assistCreateConnectionShouldCallServerMethod() {
-    var assistCreatingConnectionParams = new AssistCreatingConnectionParams("http://localhost:9000", "tokenName", "tokenValue");
+  void assistCreateConnectionShouldCallClientMethod() {
+    String serverUrl = "http://localhost:9000";
+    var assistCreatingConnectionParams = new AssistCreatingConnectionParams(serverUrl, "tokenName", "tokenValue");
+    when(client.workspaceFolders()).thenReturn(CompletableFuture.completedFuture(List.of()));
+    when(client.assistCreatingConnection(any()))
+      .thenReturn(CompletableFuture.completedFuture(new AssistCreatingConnectionResponse("newConnectionId")));
+    when(settingsManager.getCurrentSettings()).thenReturn(mock(WorkspaceSettings.class));
+    when(backendServiceFacade.getBackendService()).thenReturn(mock(BackendService.class));
     var future = underTest.assistCreatingConnection(assistCreatingConnectionParams);
-    verify(server).showIssueOrHotspotHandleUnknownServer(assistCreatingConnectionParams.getServerUrl());
-    assertThat(future).isNotCompleted();
+
+    await().untilAsserted(() -> assertThat(future).isCompleted());
+    var argCaptor = ArgumentCaptor.forClass(CreateConnectionParams.class);
+    verify(client).assistCreatingConnection(argCaptor.capture());
+    var sentParams = argCaptor.getValue();
+    assertThat(sentParams.getServerUrl()).isEqualTo(serverUrl);
+    assertThat(sentParams.isSonarCloud()).isFalse();
+    assertThat(sentParams.getToken()).isEqualTo("tokenValue");
+
+    verify(client).showMessage((new MessageParams(MessageType.Info, "Connection to SonarQube was successfully created.")));
   }
 
   @Test
-  void assistBindingShouldCallServerMethod() {
-    var assistBindingParams = new AssistBindingParams("connectionId", "projectKey", "configSopeId");
+  void assistCreateConnectionShouldCallClientMethod_noTokenCase() {
+    String serverUrl = "http://localhost:9000";
+    var assistCreatingConnectionParams = new AssistCreatingConnectionParams(serverUrl, null, null);
+    when(client.workspaceFolders()).thenReturn(CompletableFuture.completedFuture(List.of()));
+    when(client.assistCreatingConnection(any()))
+      .thenReturn(CompletableFuture.completedFuture(null));
+    when(settingsManager.getCurrentSettings()).thenReturn(mock(WorkspaceSettings.class));
+    when(backendServiceFacade.getBackendService()).thenReturn(mock(BackendService.class));
+    var future = underTest.assistCreatingConnection(assistCreatingConnectionParams);
+
+    await().untilAsserted(() -> assertThat(future).isCompletedExceptionally());
+    var argCaptor = ArgumentCaptor.forClass(CreateConnectionParams.class);
+    verify(client).assistCreatingConnection(argCaptor.capture());
+    var sentParams = argCaptor.getValue();
+    assertThat(sentParams.getServerUrl()).isEqualTo(serverUrl);
+    assertThat(sentParams.isSonarCloud()).isFalse();
+    assertThat(sentParams.getToken()).isNull();
+
+    verify(client, never()).showMessage(any());
+  }
+
+  @Test
+  void assistBindingShouldCallClientMethod() {
+    var configScopeId = "folderUri";
+    var projectKey = "projectKey";
+    var assistBindingParams = new AssistBindingParams("connectionId", projectKey, configScopeId);
+    when(client.assistBinding(any())).thenReturn(
+      CompletableFuture.completedFuture(new SonarLintExtendedLanguageClient.AssistBindingResponse("folderUri")));
+    when(bindingManager.getUpdatedBindingForWorkspaceFolder(URI.create(configScopeId))).thenReturn(CompletableFuture.completedFuture(configScopeId));
     var future = underTest.assistBinding(assistBindingParams);
 
-    verify(server).showHotspotOrIssueHandleNoBinding(assistBindingParams);
-    assertThat(future).isNotCompleted();
+    await().untilAsserted(() -> assertThat(future).isCompleted());
+    verify(client).showMessage(new MessageParams(MessageType.Info, "Project '" + configScopeId + "' was successfully bound to '" + projectKey + "'."));
+  }
+
+  @Test
+  void testNoBindingSuggestionFound(){
+    when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(new MessageActionItem("Learn more")));
+
+    var projectKey = "projectKey";
+    var messageRequestParams = new ShowMessageRequestParams();
+    messageRequestParams.setMessage("SonarLint couldn't match SonarQube project '" + projectKey + "' to any of the currently open workspace folders. Please open your project in VSCode and try again.");
+    messageRequestParams.setType(MessageType.Error);
+    var learnMoreAction = new MessageActionItem("Learn more");
+    messageRequestParams.setActions(List.of(learnMoreAction));
+
+    underTest.noBindingSuggestionFound(new NoBindingSuggestionFoundParams(projectKey));
+    verify(client).showMessageRequest(messageRequestParams);
+    verify(client).browseTo("https://docs.sonarsource.com/sonarlint/vs-code/troubleshooting/#troubleshooting-connected-mode-setup");
   }
 
   @Test

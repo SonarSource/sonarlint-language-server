@@ -527,11 +527,13 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public void assistCreatingConnection(CreateConnectionParams params) {
+    public CompletableFuture<AssistCreatingConnectionResponse> assistCreatingConnection(CreateConnectionParams params) {
+      return CompletableFuture.completedFuture(new AssistCreatingConnectionResponse("connectionId"));
     }
 
     @Override
-    public void assistBinding(AssistBindingParams params) {
+    public CompletableFuture<AssistBindingResponse> assistBinding(AssistBindingParams params) {
+      return CompletableFuture.completedFuture(new AssistBindingResponse("folderUri"));
     }
 
     @Override

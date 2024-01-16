@@ -109,7 +109,7 @@ import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintIssuesUpdater;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
-import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
+import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandler;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
@@ -170,7 +170,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final CommandManager commandManager;
   private final ProgressManager progressManager;
   private final ExecutorService threadPool;
-  private final RequestsHandlerServer requestsHandlerServer;
+  private final HostInfoProvider hostInfoProvider;
   private final WorkspaceFolderBranchManager branchManager;
   private final JavaConfigCache javaConfigCache;
   private final IssuesCache issuesCache;
@@ -220,8 +220,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.notebookDiagnosticPublisher.setOpenNotebooksCache(openNotebooksCache);
     this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache, securityHotspotsCache, openNotebooksCache);
     this.progressManager = new ProgressManager(client, globalLogOutput);
-    this.requestsHandlerServer = new RequestsHandlerServer(client);
-    var vsCodeClient = new SonarLintVSCodeClient(client, requestsHandlerServer, globalLogOutput);
+    this.hostInfoProvider = new HostInfoProvider();
+    var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, globalLogOutput);
     this.backendServiceFacade = new BackendServiceFacade(new SonarLintBackendImpl(vsCodeClient), lsLogOutput, client);
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
     this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, globalLogOutput);
@@ -326,7 +326,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       analysisScheduler.initialize();
       diagnosticPublisher.initialize(firstSecretDetected);
 
-      requestsHandlerServer.initialize(clientVersion, workspaceName);
+      hostInfoProvider.initialize(clientVersion, workspaceName);
       backendServiceFacade.setTelemetryInitParams(new TelemetryInitParams(productKey, telemetryStorage,
         productName, productVersion, ideVersion, platform, architecture, additionalAttributes));
       enginesFactory.setOmnisharpDirectory((String) additionalAttributes.get("omnisharpDirectory"));

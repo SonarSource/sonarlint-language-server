@@ -36,6 +36,7 @@ import java.util.regex.Pattern;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
@@ -241,5 +242,19 @@ public class Utils {
   public static boolean isDelegatingIssueWithServerIssueKey(String serverIssueKey, Map.Entry<String, IssuesCache.VersionedIssue> issueEntry) {
     return issueEntry.getValue().issue() instanceof DelegatingIssue delegatingIssue
       && (serverIssueKey.equals(delegatingIssue.getServerIssueKey()));
+  }
+
+  /**
+   * Encodes the second occurrence of ":/" to URL encoding.
+   * Eg. "file:///c:/work/sonarlint-language-server" to "file:///c%3A/work/sonarlint-language-server"
+   */
+  public static URI fixWindowsURIEncoding(URI uri) {
+    var originalUriString = uri.toString();
+    var indexToReplace = StringUtils.ordinalIndexOf(originalUriString, ":/", 2);
+    if (indexToReplace < 0) {
+      return uri;
+    }
+    var encodedUriString = originalUriString.substring(0, indexToReplace) + "%3A" + originalUriString.substring(indexToReplace + 1);
+    return URI.create(encodedUriString);
   }
 }

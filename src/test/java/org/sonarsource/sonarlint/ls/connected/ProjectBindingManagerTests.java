@@ -46,7 +46,6 @@ import org.sonarsource.sonarlint.core.client.api.connected.ProjectBranches;
 import org.sonarsource.sonarlint.core.commons.IssueSeverity;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
-import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
 import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
 import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
@@ -65,10 +64,13 @@ import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
+import org.sonarsource.sonarlint.ls.util.Utils;
 import testutils.SonarLintLogTester;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -213,7 +215,7 @@ class ProjectBindingManagerTests {
 
     assertThat(logTester.logs(MessageType.Log))
       .anyMatch(log -> log.contains("The specified connection id 'myServer' doesn't exist."))
-      .anyMatch(log -> log.contains("Invalid binding for '" + workspaceFolderPath.toString() + "'"));;
+      .anyMatch(log -> log.contains("Invalid binding for '" + workspaceFolderPath.toString() + "'"));
     assertThat(underTest.usesConnectedMode()).isFalse();
     assertThat(underTest.usesSonarCloud()).isFalse();
   }
@@ -657,6 +659,20 @@ class ProjectBindingManagerTests {
     underTest.getBindingAndRepublishTaints(fileUri);
 
     verify(diagnosticPublisher).publishDiagnostics(URI.create(serverPath), false);
+  }
+
+  @Test
+  void should_get_updated_binding() {
+    var folderUri = Utils.fixWindowsURIEncoding(workspaceFolderPath.toUri());
+    var future = underTest.getUpdatedBindingForWorkspaceFolder(folderUri);
+
+    assertThat(future).isNotCompleted();
+    underTest.onChange(mockFileInABoundWorkspaceFolder(), BOUND_SETTINGS, BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
+
+    await().atMost(10, SECONDS).untilAsserted(() -> {
+      assertThat(future).isCompleted();
+      assertThat(future.get()).isEqualTo(folderUri.toString());
+    });
   }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {

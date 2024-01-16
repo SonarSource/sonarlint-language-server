@@ -29,8 +29,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -75,6 +79,7 @@ import org.sonarsource.sonarlint.ls.util.FileUtils;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 import static org.sonarsource.sonarlint.ls.util.FileUtils.getFileRelativePath;
+import static org.sonarsource.sonarlint.ls.util.Utils.fixWindowsURIEncoding;
 import static org.sonarsource.sonarlint.ls.util.Utils.uriHasFileScheme;
 
 /**
@@ -85,6 +90,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final WorkspaceFoldersManager foldersManager;
   private final SettingsManager settingsManager;
   private final ConcurrentMap<URI, Optional<ProjectBindingWrapper>> folderBindingCache;
+  private final ConcurrentMap<URI, CountDownLatch> bindingUpdateQueue = new ConcurrentHashMap<>();
   private final LanguageClientLogOutput globalLogOutput;
   private final ConcurrentMap<URI, Optional<ProjectBindingWrapper>> fileBindingCache = new ConcurrentHashMap<>();
   private final ConcurrentMap<String, Optional<ConnectedSonarLintEngine>> connectedEngineCacheByConnectionId;
@@ -182,6 +188,29 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       }
     });
   }
+
+  public CompletableFuture<String> getUpdatedBindingForWorkspaceFolder(URI folderUri) {
+    var bindingUpdatedLatch = new CountDownLatch(1);
+    var updatedBinding = new CompletableFuture<String>();
+    bindingUpdateQueue.put(folderUri, bindingUpdatedLatch);
+    Executors.newSingleThreadExecutor().submit(() -> {
+      var actuallyUpdated = false;
+      try {
+        actuallyUpdated = bindingUpdatedLatch.await(10, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException("Interrupted", e);
+      }
+      if (actuallyUpdated) {
+        getBinding(folderUri);
+        updatedBinding.complete(folderUri.toString());
+      } else {
+        updatedBinding.completeExceptionally(new IllegalStateException(String.format("Expected binding update for %s did not happen", folderUri.toString())));
+      }
+    });
+    return updatedBinding;
+  }
+
 
   private Optional<ProjectBindingWrapper> getBindingAndRepublishTaints(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {
     var maybeBinding = getBinding(folder, fileUri);
@@ -314,6 +343,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
       forceRebindDuringNextAnalysis(folder);
       if (folder == null) return;
+      var uri = fixWindowsURIEncoding(folder.getUri());
+      bindingUpdateQueue.getOrDefault(uri, new CountDownLatch(1)).countDown();
+      bindingUpdateQueue.remove(uri);
       var bindingConfigurationDto = new BindingConfigurationDto(newValue.getConnectionId(), newValue.getProjectKey(), false);
       var params = new DidUpdateBindingParams(folder.getUri().toString(), bindingConfigurationDto);
       backendServiceFacade.getBackendService().updateBinding(params);
