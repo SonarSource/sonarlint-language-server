@@ -2,7 +2,7 @@ env:
   CIRRUS_CLONE_DEPTH: "1"
   CIRRUS_SHELL: bash
 
-  ARTIFACTORY_URL: VAULT[development/kv/data/repox data.url]
+  ARTIFACTORY_URL: https://repox.jfrog.io/artifactory
   ARTIFACTORY_PRIVATE_USERNAME: vault-${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-private-reader
   ARTIFACTORY_PRIVATE_PASSWORD: VAULT[development/artifactory/token/${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-private-reader access_token]
   BURGR_URL: VAULT[development/kv/data/burgr data.url]
@@ -10,6 +10,8 @@ env:
   BURGR_PASSWORD: VAULT[development/kv/data/burgr data.cirrus_password]
   SONAR_HOST_URL: VAULT[development/kv/data/next data.url]
   SONAR_TOKEN: VAULT[development/kv/data/next data.token]
+  NPM_CONFIG_//repox.jfrog.io/artifactory/api/npm/:_authToken: VAULT[development/artifactory/token/${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-private-reader access_token]
+  NPM_CONFIG_registry: https://repox.jfrog.io/artifactory/api/npm/npm
 
 auto_cancellation: $CIRRUS_BRANCH != $CIRRUS_DEFAULT_BRANCH
 
