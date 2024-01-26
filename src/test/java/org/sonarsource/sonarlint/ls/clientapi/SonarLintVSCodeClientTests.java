@@ -306,7 +306,7 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void assistCreateConnectionShouldCallServerMethod() {
-    var assistCreatingConnectionParams = new AssistCreatingConnectionParams("http://localhost:9000");
+    var assistCreatingConnectionParams = new AssistCreatingConnectionParams("http://localhost:9000", "tokenName", "tokenValue");
     var future = underTest.assistCreatingConnection(assistCreatingConnectionParams);
     verify(server).showIssueOrHotspotHandleUnknownServer(assistCreatingConnectionParams.getServerUrl());
     assertThat(future).isNotCompleted();
