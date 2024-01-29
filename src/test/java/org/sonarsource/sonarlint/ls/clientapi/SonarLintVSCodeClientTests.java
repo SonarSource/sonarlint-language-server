@@ -314,7 +314,7 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void assistBindingShouldCallServerMethod() {
-    var assistBindingParams = new AssistBindingParams("connectionId", "projectKey");
+    var assistBindingParams = new AssistBindingParams("connectionId", "projectKey", "configSopeId");
     var future = underTest.assistBinding(assistBindingParams);
 
     verify(server).showHotspotOrIssueHandleNoBinding(assistBindingParams);

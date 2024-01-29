@@ -27,6 +27,7 @@ import nl.altindag.ssl.util.CertificateUtils;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintClient;
 import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
+import org.sonarsource.sonarlint.core.clientapi.client.binding.NoBindingSuggestionFoundParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.clientapi.client.connection.GetCredentialsParams;
 import org.sonarsource.sonarlint.core.clientapi.client.connection.GetCredentialsResponse;
@@ -204,6 +205,11 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   @Override
   public void didReceiveServerEvent(DidReceiveServerEventParams params) {
     serverSentEventsHandlerService.handleEvents(params.getServerEvent());
+  }
+
+  @Override
+  public void noBindingSuggestionFound(NoBindingSuggestionFoundParams noBindingSuggestionFoundParams) {
+    // TODO Merge with PR on automatic binding
   }
 
   public void setSettingsManager(SettingsManager settingsManager) {

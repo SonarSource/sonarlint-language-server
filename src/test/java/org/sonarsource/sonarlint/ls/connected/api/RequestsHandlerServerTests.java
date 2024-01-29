@@ -127,7 +127,7 @@ class RequestsHandlerServerTests {
       + projectKey + "' on connection (" + connectionId + ")";
     var expectedType = MessageType.Error;
     var expectedActions = List.of(new MessageActionItem("Configure Binding"));
-    var assistBindingParams = new AssistBindingParams(connectionId, projectKey);
+    var assistBindingParams = new AssistBindingParams(connectionId, projectKey, "configScopeId");
 
     var expectedParams = new ShowMessageRequestParams();
     expectedParams.setMessage(expectedMessage);
@@ -151,7 +151,7 @@ class RequestsHandlerServerTests {
       + projectKey + "' on connection (" + connectionId + ")";
     var expectedType = MessageType.Error;
     var expectedActions = List.of(new MessageActionItem("Configure Binding"));
-    var assistBindingParams = new AssistBindingParams(connectionId, projectKey);
+    var assistBindingParams = new AssistBindingParams(connectionId, projectKey, "configScopeId");
 
     var expectedParams = new ShowMessageRequestParams();
     expectedParams.setMessage(expectedMessage);
