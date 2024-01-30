@@ -19,16 +19,32 @@
  */
 package org.sonarsource.sonarlint.ls.clientapi;
 
+import java.net.URI;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import nl.altindag.ssl.util.CertificateUtils;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.eclipse.lsp4j.MessageActionItem;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.ShowMessageRequestParams;
+import org.eclipse.lsp4j.WorkspaceFolder;
+import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
+import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.clientapi.SonarLintClient;
 import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
+import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.NoBindingSuggestionFoundParams;
 import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
+import org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams;
+import org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.connection.GetCredentialsParams;
 import org.sonarsource.sonarlint.core.clientapi.client.connection.GetCredentialsResponse;
 import org.sonarsource.sonarlint.core.clientapi.client.event.DidReceiveServerEventParams;
@@ -47,14 +63,16 @@ import org.sonarsource.sonarlint.core.clientapi.common.TokenDto;
 import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.CreateConnectionParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
-import org.sonarsource.sonarlint.ls.connected.api.RequestsHandlerServer;
+import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
@@ -63,16 +81,16 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   private final SonarLintExtendedLanguageClient client;
   private SettingsManager settingsManager;
   private SmartNotifications smartNotifications;
-  private final RequestsHandlerServer server;
+  private final HostInfoProvider hostInfoProvider;
   private final LanguageClientLogOutput logOutput;
   private ProjectBindingManager bindingManager;
   private ServerSentEventsHandlerService serverSentEventsHandlerService;
   private BackendServiceFacade backendServiceFacade;
 
-  public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, RequestsHandlerServer server,
+  public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider,
     LanguageClientLogOutput logOutput) {
     this.client = client;
-    this.server = server;
+    this.hostInfoProvider = hostInfoProvider;
     this.logOutput = logOutput;
   }
 
@@ -85,7 +103,9 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   @Override
   public CompletableFuture<FindFileByNamesInScopeResponse> findFileByNamesInScope(FindFileByNamesInScopeParams params) {
-    return client.findFileByNamesInFolder(new SonarLintExtendedLanguageClient.FindFileByNamesInFolder(params.getConfigScopeId(), params.getFilenames()));
+    return CompletableFutures.computeAsync( cancelToken -> client.findFileByNamesInFolder(
+      new SonarLintExtendedLanguageClient.FindFileByNamesInFolder(params.getConfigScopeId(), params.getFilenames()))
+      .join());
   }
 
   @Override
@@ -117,7 +137,7 @@ public class SonarLintVSCodeClient implements SonarLintClient {
 
   @Override
   public CompletableFuture<GetClientInfoResponse> getClientInfo() {
-    return CompletableFuture.completedFuture(server.getHostInfo());
+    return CompletableFuture.completedFuture(hostInfoProvider.getHostInfo());
   }
 
   @Override
@@ -136,17 +156,64 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   }
 
   @Override
-  public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionResponse>
-  assistCreatingConnection(org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams params) {
-    server.showIssueOrHotspotHandleUnknownServer(params.getServerUrl());
-    return CompletableFuture.failedFuture(new UnsupportedOperationException());
+  public CompletableFuture<AssistCreatingConnectionResponse> assistCreatingConnection(AssistCreatingConnectionParams params) {
+    return CompletableFutures.computeAsync(cancelChecker -> {
+      var tokenValue = params.getTokenValue();
+      var workspaceFoldersFuture = client.workspaceFolders();
+      var assistCreatingConnectionFuture = client.assistCreatingConnection(
+        new CreateConnectionParams(false, params.getServerUrl(), tokenValue));
+      return workspaceFoldersFuture.thenCombine(assistCreatingConnectionFuture, (workspaceFolders, assistCreatingConnectionResponse) -> {
+        var currentConnections = getCurrentConnections(params, assistCreatingConnectionResponse);
+        var newConnectionId = assistCreatingConnectionResponse.getNewConnectionId();
+        if (newConnectionId != null) {
+          client.showMessage(new MessageParams(MessageType.Info, "Connection to SonarQube was successfully created."));
+          backendServiceFacade.getBackendService().didChangeConnections(currentConnections);
+        }
+        return new AssistCreatingConnectionResponse(newConnectionId,
+          workspaceFolders.stream().map(WorkspaceFolder::getUri).collect(Collectors.toSet()));
+      }).join();
+    });
+  }
+
+  @NotNull
+  private HashMap<String, ServerConnectionSettings> getCurrentConnections(AssistCreatingConnectionParams params,
+    @Nullable SonarLintExtendedLanguageClient.AssistCreatingConnectionResponse assistCreatingConnectionResponse) {
+    if (assistCreatingConnectionResponse == null) {
+      throw new CancellationException("Automatic connection setup was cancelled");
+    }
+    var newConnection = new ServerConnectionSettings(assistCreatingConnectionResponse.getNewConnectionId(), params.getServerUrl(), params.getTokenValue(), null, false);
+    var currentConnections = new HashMap<>(settingsManager.getCurrentSettings().getServerConnections());
+    currentConnections.put(assistCreatingConnectionResponse.getNewConnectionId(), newConnection);
+    return currentConnections;
   }
 
   @Override
-  public CompletableFuture<org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingResponse>
-  assistBinding(org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams params) {
-    server.showHotspotOrIssueHandleNoBinding(params);
-    return CompletableFuture.failedFuture(new UnsupportedOperationException());
+  public CompletableFuture<AssistBindingResponse> assistBinding(org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams params) {
+    return CompletableFutures.computeAsync(cancelChecker -> client.assistBinding(params)
+      .thenCompose(response -> bindingManager.getUpdatedBindingForWorkspaceFolder(URI.create(response.getConfigurationScopeId())))
+      .thenApply(configurationScopeId -> {
+        var pathParts = configurationScopeId.split("/");
+        var projectName = pathParts[pathParts.length - 1];
+        client.showMessage(new MessageParams(MessageType.Info, "Project '" + projectName + "' was successfully bound to '" + params.getProjectKey() + "'."));
+        return new AssistBindingResponse(configurationScopeId);
+      }).join());
+  }
+
+
+  @Override
+  public void noBindingSuggestionFound(NoBindingSuggestionFoundParams params) {
+    var messageRequestParams = new ShowMessageRequestParams();
+    messageRequestParams.setMessage("SonarLint couldn't match SonarQube project '" + params.getProjectKey() + "' to any of the currently " +
+      "open workspace folders. Please open your project in VSCode and try again.");
+    messageRequestParams.setType(MessageType.Error);
+    var learnMoreAction = new MessageActionItem("Learn more");
+    messageRequestParams.setActions(List.of(learnMoreAction));
+    client.showMessageRequest(messageRequestParams)
+      .thenAccept(action -> {
+        if (learnMoreAction.equals(action)) {
+          client.browseTo("https://docs.sonarsource.com/sonarlint/vs-code/troubleshooting/#troubleshooting-connected-mode-setup");
+        }
+      });
   }
 
   @Override
@@ -205,11 +272,6 @@ public class SonarLintVSCodeClient implements SonarLintClient {
   @Override
   public void didReceiveServerEvent(DidReceiveServerEventParams params) {
     serverSentEventsHandlerService.handleEvents(params.getServerEvent());
-  }
-
-  @Override
-  public void noBindingSuggestionFound(NoBindingSuggestionFoundParams noBindingSuggestionFoundParams) {
-    // TODO Merge with PR on automatic binding
   }
 
   public void setSettingsManager(SettingsManager settingsManager) {

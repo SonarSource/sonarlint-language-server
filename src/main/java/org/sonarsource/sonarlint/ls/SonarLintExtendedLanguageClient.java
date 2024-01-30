@@ -31,6 +31,7 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
+import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.EffectiveRuleParamDto;
 import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleParamDefinitionDto;
@@ -68,11 +69,38 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/openConnectionSettings")
   void openConnectionSettings(boolean isSonarCloud);
 
-  @JsonNotification("sonarlint/assistCreatingConnection")
-  void assistCreatingConnection(CreateConnectionParams params);
+  @JsonRequest("sonarlint/assistCreatingConnection")
+  CompletableFuture<AssistCreatingConnectionResponse> assistCreatingConnection(CreateConnectionParams params);
 
-  @JsonNotification("sonarlint/assistBinding")
-  void assistBinding(AssistBindingParams params);
+  class AssistCreatingConnectionResponse {
+    private final String newConnectionId;
+
+    public AssistCreatingConnectionResponse(@NonNull String newConnectionId) {
+      this.newConnectionId = newConnectionId;
+    }
+
+    @NonNull
+    public String getNewConnectionId() {
+      return newConnectionId;
+    }
+  }
+
+  @JsonRequest("sonarlint/assistBinding")
+  CompletableFuture<AssistBindingResponse> assistBinding(AssistBindingParams params);
+
+  class AssistBindingResponse {
+    private final String configurationScopeId;
+
+    public AssistBindingResponse(@NonNull String configurationScopeId) {
+      this.configurationScopeId = configurationScopeId;
+    }
+
+    @NonNull
+    public String getConfigurationScopeId() {
+      return configurationScopeId;
+    }
+  }
+
 
   @JsonNotification("sonarlint/showRuleDescription")
   void showRuleDescription(ShowRuleDescriptionParams params);
@@ -504,10 +532,12 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     private final boolean isSonarCloud;
 
     private final String serverUrl;
+    private final String token;
 
-    public CreateConnectionParams(boolean isSonarCloud, String serverUrl) {
+    public CreateConnectionParams(boolean isSonarCloud, String serverUrl, @Nullable String token) {
       this.isSonarCloud = isSonarCloud;
       this.serverUrl = serverUrl;
+      this.token = token;
     }
 
     public boolean isSonarCloud() {
@@ -516,6 +546,10 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
     public String getServerUrl() {
       return serverUrl;
+    }
+
+    public String getToken() {
+      return token;
     }
   }
 

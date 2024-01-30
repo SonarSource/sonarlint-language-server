@@ -201,4 +201,11 @@ class UtilsTests {
     assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(token, null, serverUrl))).isEqualTo(serverUrl);
     assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(connectionId))).isEqualTo(connectionId);
   }
+
+  @Test
+  void testFixWindowsURIEncoding() {
+    assertThat(Utils.fixWindowsURIEncoding(URI.create("file:///c:/work/sonarlint-language-server"))).isEqualTo(URI.create("file:///c%3A/work/sonarlint-language-server"));
+    assertThat(Utils.fixWindowsURIEncoding(URI.create("file:///c%3A/work/sonarlint-language-server"))).isEqualTo(URI.create("file:///c%3A/work/sonarlint-language-server"));
+    assertThat(Utils.fixWindowsURIEncoding(URI.create("file:///path/work/sonarlint-language-server"))).isEqualTo(URI.create("file:///path/work/sonarlint-language-server"));
+  }
 }
