@@ -134,6 +134,7 @@ import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
+import org.sonarsource.sonarlint.ls.standalone.notifications.PromotionalNotifications;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.telemetry.TelemetryInitParams;
 import org.sonarsource.sonarlint.ls.util.EnumLabelsMapper;
@@ -182,6 +183,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   private final TaintIssuesUpdater taintIssuesUpdater;
   private final NotebookDiagnosticPublisher notebookDiagnosticPublisher;
+  private final PromotionalNotifications promotionalNotifications;
 
   private String appName;
 
@@ -272,6 +274,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       diagnosticPublisher, backendServiceFacade, globalLogOutput);
     var cleanAsYouCodeManager = new CleanAsYouCodeManager(diagnosticPublisher, openFilesCache, backendServiceFacade);
     this.settingsManager.addListener(cleanAsYouCodeManager);
+    this.promotionalNotifications = new PromotionalNotifications(client, bindingManager);
     this.shutdownLatch = new CountDownLatch(1);
     launcher.startListening();
   }
@@ -469,6 +472,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
       analysisScheduler.didOpen(file);
       taintIssuesUpdater.updateTaintIssuesAsync(uri);
+      promotionalNotifications.didOpen(params);
     });
   }
 

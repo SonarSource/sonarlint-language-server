@@ -166,6 +166,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonRequest("sonarlint/filterOutExcludedFiles")
   CompletableFuture<FileUrisResult> filterOutExcludedFiles(FileUrisParams params);
 
+  @JsonNotification("sonarlint/maybeShowWiderLanguageSupportNotification")
+  void maybeShowWiderLanguageSupportNotification(List<String> languageLabel);
+
   @JsonNotification("sonarlint/showNotificationForFirstSecretsIssue")
   void showFirstSecretDetectionNotification();
 

@@ -507,6 +507,11 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
+    public void maybeShowWiderLanguageSupportNotification(List<String> languageLabel) {
+
+    }
+
+    @Override
     public void showFirstSecretDetectionNotification() {
     }
 
