@@ -154,6 +154,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     throw new IllegalStateException("Unable to get settings in time");
   }
 
+  public boolean hasConnectionDefined() {
+    return !currentSettings.getServerConnections().isEmpty();
+  }
+
   public void didChangeConfiguration() {
     executor.execute(() -> {
       try {

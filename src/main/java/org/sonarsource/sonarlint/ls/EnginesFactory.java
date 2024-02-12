@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.sonarsource.sonarlint.core.ConnectedSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.StandaloneSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
@@ -183,6 +184,10 @@ public class EnginesFactory {
 
   public static Set<Language> getConnectedLanguages() {
     return Set.of(CONNECTED_ADDITIONAL_LANGUAGES);
+  }
+
+  public static boolean isConnectedLanguage(@Nullable Language language) {
+    return language != null && getConnectedLanguages().contains(language);
   }
 
   public void shutdown() {

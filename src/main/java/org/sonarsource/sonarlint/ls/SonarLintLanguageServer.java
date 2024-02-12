@@ -274,7 +274,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       diagnosticPublisher, backendServiceFacade, globalLogOutput);
     var cleanAsYouCodeManager = new CleanAsYouCodeManager(diagnosticPublisher, openFilesCache, backendServiceFacade);
     this.settingsManager.addListener(cleanAsYouCodeManager);
-    this.promotionalNotifications = new PromotionalNotifications(client, bindingManager);
+    this.promotionalNotifications = new PromotionalNotifications(client, settingsManager);
     this.shutdownLatch = new CountDownLatch(1);
     launcher.startListening();
   }

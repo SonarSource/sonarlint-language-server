@@ -21,32 +21,33 @@ package org.sonarsource.sonarlint.ls.standalone.notifications;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.sonarsource.sonarlint.core.commons.Language;
-import org.sonarsource.sonarlint.ls.EnginesFactory;
+import org.sonarsource.sonarlint.ls.AnalysisClientInputFile;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+
+import static org.sonarsource.sonarlint.ls.EnginesFactory.isConnectedLanguage;
 
 public class PromotionalNotifications {
   private final SonarLintExtendedLanguageClient client;
-  private final ProjectBindingManager bindingManager;
+  private final SettingsManager settingsManager;
 
-  public PromotionalNotifications(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager) {
+  public PromotionalNotifications(SonarLintExtendedLanguageClient client, SettingsManager settingsManager) {
     this.client = client;
-    this.bindingManager = bindingManager;
+    this.settingsManager = settingsManager;
   }
 
   public void didOpen(DidOpenTextDocumentParams didOpenTextDocumentParams) {
-    var isConnected = bindingManager.usesConnectedMode();
+    var clientLanguageIdLowerCase = didOpenTextDocumentParams.getTextDocument().getLanguageId().toLowerCase(Locale.ENGLISH);
+    var isConnected = settingsManager.hasConnectionDefined();
     if (!isConnected) {
-      var connectedLanguageForOpenedFile = EnginesFactory.getConnectedLanguages().stream().filter(additionalLanguage ->
-        Objects.equals(additionalLanguage.getLanguageKey().toLowerCase(Locale.ENGLISH),
-          didOpenTextDocumentParams.getTextDocument().getLanguageId().toLowerCase(Locale.ENGLISH))).findFirst();
-      var didOpenSQLFile = didOpenTextDocumentParams.getTextDocument().getLanguageId().equals("sql");
+      var sonarLanguage = AnalysisClientInputFile
+        .toSqLanguage(clientLanguageIdLowerCase);
+      var didOpenSQLFile = clientLanguageIdLowerCase.contains("sql");
 
-      if (connectedLanguageForOpenedFile.isPresent()) {
-        client.maybeShowWiderLanguageSupportNotification(List.of(connectedLanguageForOpenedFile.get().getLabel()));
+      if (isConnectedLanguage(sonarLanguage)) {
+        client.maybeShowWiderLanguageSupportNotification(List.of(sonarLanguage.getLabel()));
       } else if (didOpenSQLFile) {
         client.maybeShowWiderLanguageSupportNotification(List.of(Language.PLSQL.getLabel(), Language.TSQL.getLabel()));
       }
