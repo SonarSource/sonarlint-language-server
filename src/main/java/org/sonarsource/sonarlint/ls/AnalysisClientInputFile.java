@@ -92,7 +92,7 @@ public class AnalysisClientInputFile implements ClientInputFile {
   }
 
   @CheckForNull
-  private static Language toSqLanguage(@Nullable String clientLanguageId) {
+  public static Language toSqLanguage(@Nullable String clientLanguageId) {
     if (clientLanguageId == null) {
       return null;
     }
