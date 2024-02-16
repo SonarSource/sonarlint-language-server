@@ -17,7 +17,26 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-@ParametersAreNonnullByDefault
-package org.sonarsource.sonarlint.ls.connected.domain;
+package org.sonarsource.sonarlint.ls.connected;
 
-import javax.annotation.ParametersAreNonnullByDefault;
+import org.junit.jupiter.api.Test;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+
+class ProjectBindingTests {
+
+  @Test
+  void test_getters() {
+    var engine = mock(SonarLintAnalysisEngine.class);
+    var issueTrackerWrapper = mock(ServerIssueTrackerWrapper.class);
+    var underTest = new ProjectBinding("serverId", "projectKey", engine, issueTrackerWrapper);
+
+    assertThat(underTest.getConnectionId()).isEqualTo("serverId");
+    assertThat(underTest.getProjectKey()).isEqualTo("projectKey");
+    assertThat(underTest.getEngine()).isEqualTo(engine);
+    assertThat(underTest.getServerIssueTracker()).isEqualTo(issueTrackerWrapper);
+  }
+
+}

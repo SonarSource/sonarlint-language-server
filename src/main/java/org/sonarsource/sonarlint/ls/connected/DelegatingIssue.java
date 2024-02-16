@@ -24,19 +24,20 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.commons.CleanCodeAttribute;
-import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
-import org.sonarsource.sonarlint.core.commons.ImpactSeverity;
-import org.sonarsource.sonarlint.core.commons.IssueSeverity;
-import org.sonarsource.sonarlint.core.commons.RuleType;
-import org.sonarsource.sonarlint.core.commons.SoftwareQuality;
-import org.sonarsource.sonarlint.core.commons.TextRange;
-import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
-import org.sonarsource.sonarlint.core.issuetracking.Trackable;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.VulnerabilityProbability;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
+import org.sonarsource.sonarlint.ls.Issue;
 
 public class DelegatingIssue implements Issue {
 
@@ -44,116 +45,127 @@ public class DelegatingIssue implements Issue {
   private boolean resolved;
   private IssueSeverity severity;
   private String serverIssueKey;
-  private final Issue issue;
+  private final RawIssue issue;
   private final RuleType type;
-  private final HotspotReviewStatus reviewStatus;
+  private HotspotStatus reviewStatus;
   private boolean isOnNewCode;
 
-  DelegatingIssue(Trackable<Issue> trackable) {
-    var userSeverity = trackable.getSeverity();
-    this.issue = trackable.getClientObject();
-    this.severity = userSeverity != null ? userSeverity : issue.getSeverity();
-    this.type = trackable.getType();
-    this.serverIssueKey = trackable.getServerIssueKey();
-    this.reviewStatus = trackable.getReviewStatus();
+  private DelegatingIssue(RawIssue issue) {
+    this.issueId = UUID.randomUUID();
+    this.issue = issue;
+    this.severity = issue.getSeverity();
+    this.type = issue.getType();
     this.isOnNewCode = true;
   }
 
-  DelegatingIssue(Trackable<Issue> trackable, UUID issueId, boolean resolved, boolean isOnNewCode) {
-    this(trackable);
+  public DelegatingIssue(RawIssue rawIssue, UUID issueId, boolean resolved, boolean isOnNewCode) {
+    this(rawIssue);
     this.issueId = issueId;
     this.resolved = resolved;
     this.isOnNewCode = isOnNewCode;
   }
 
-  DelegatingIssue(Trackable<Issue> trackable, UUID issueId, boolean resolved, IssueSeverity overriddenSeverity, String serverIssueKey, boolean isOnNewCode) {
-    this(trackable);
+  DelegatingIssue(RawIssue rawIssue, UUID issueId, boolean resolved, IssueSeverity overriddenSeverity,
+    String serverIssueKey, boolean isOnNewCode, @Nullable HotspotStatus reviewStatus) {
+    this(rawIssue);
     this.issueId = issueId;
     this.resolved = resolved;
     this.severity = overriddenSeverity;
     this.serverIssueKey = serverIssueKey;
     this.isOnNewCode = isOnNewCode;
+    this.reviewStatus = reviewStatus;
   }
 
-  @Override
+  private DelegatingIssue(RawIssue rawIssue, RuleType type, String serverIssueKey, IssueSeverity severity, HotspotStatus reviewStatus) {
+    this.issueId = UUID.randomUUID();
+    this.issue = rawIssue;
+    this.type = type;
+    this.serverIssueKey = serverIssueKey;
+    this.severity = severity;
+    this.reviewStatus = reviewStatus;
+  }
+
+  public DelegatingIssue cloneWithNewStatus(HotspotStatus newStatus) {
+    return new DelegatingIssue(this.issue, this.type, this.serverIssueKey, this.severity, newStatus);
+  }
+
   public IssueSeverity getSeverity() {
     return severity;
   }
 
   @CheckForNull
-  @Override
   public RuleType getType() {
     return type;
   }
 
-  @Override
   public Optional<CleanCodeAttribute> getCleanCodeAttribute() {
     return issue.getCleanCodeAttribute();
   }
 
-  @Override
   public Map<SoftwareQuality, ImpactSeverity> getImpacts() {
     return issue.getImpacts();
   }
 
   @CheckForNull
-  @Override
   public String getMessage() {
     return issue.getMessage();
   }
 
-  @Override
   public String getRuleKey() {
     return issue.getRuleKey();
   }
 
-  @CheckForNull
   @Override
+  @CheckForNull
   public Integer getStartLine() {
-    return issue.getStartLine();
+    var textRange = issue.getTextRange();
+    return textRange != null ? textRange.getStartLine() : null;
   }
 
-  @CheckForNull
   @Override
+  @CheckForNull
   public Integer getStartLineOffset() {
-    return issue.getStartLineOffset();
+    var textRange = issue.getTextRange();
+    return textRange != null ? textRange.getStartLineOffset() : null;
   }
 
-  @CheckForNull
   @Override
+  @CheckForNull
   public Integer getEndLine() {
-    return issue.getEndLine();
+    var textRange = issue.getTextRange();
+    return textRange != null ? textRange.getEndLine() : null;
   }
 
-  @CheckForNull
   @Override
+  @CheckForNull
   public Integer getEndLineOffset() {
-    return issue.getEndLineOffset();
+    var textRange = issue.getTextRange();
+    return textRange != null ? textRange.getEndLineOffset() : null;
   }
 
-  @Override
   public List<Flow> flows() {
-    return issue.flows();
+    return issue.getFlows();
   }
 
   @CheckForNull
-  @Override
   public ClientInputFile getInputFile() {
     return issue.getInputFile();
   }
 
   @CheckForNull
-  @Override
-  public TextRange getTextRange() {
+  public TextRangeDto getTextRange() {
     return issue.getTextRange();
   }
 
   @Override
+  public RawIssue getRawIssue() {
+    return issue;
+  }
+
   public List<QuickFix> quickFixes() {
     return issue.quickFixes();
   }
 
-  @Override
   public Optional<String> getRuleDescriptionContextKey() {
     return issue.getRuleDescriptionContextKey();
   }
@@ -162,12 +174,12 @@ public class DelegatingIssue implements Issue {
     return serverIssueKey;
   }
 
-  @Override
   public Optional<VulnerabilityProbability> getVulnerabilityProbability() {
     return issue.getVulnerabilityProbability();
   }
 
-  public HotspotReviewStatus getReviewStatus() {
+  @CheckForNull
+  public HotspotStatus getReviewStatus() {
     return reviewStatus;
   }
 
@@ -181,17 +193,5 @@ public class DelegatingIssue implements Issue {
 
   public boolean isOnNewCode() {
     return isOnNewCode;
-  }
-
-  private DelegatingIssue(Issue issue, RuleType type, String serverIssueKey, IssueSeverity severity, HotspotReviewStatus reviewStatus) {
-    this.issue = issue;
-    this.type = type;
-    this.serverIssueKey = serverIssueKey;
-    this.severity = severity;
-    this.reviewStatus = reviewStatus;
-  }
-
-  public DelegatingIssue cloneWithNewStatus(HotspotReviewStatus newStatus) {
-    return new DelegatingIssue(this.issue, this.type, this.serverIssueKey, this.severity, newStatus);
   }
 }

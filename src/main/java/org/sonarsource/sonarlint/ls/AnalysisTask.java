@@ -21,7 +21,7 @@ package org.sonarsource.sonarlint.ls;
 
 import java.util.Set;
 import java.util.concurrent.Future;
-import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
+import org.sonarsource.sonarlint.core.commons.api.progress.CanceledException;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 
 class AnalysisTask {

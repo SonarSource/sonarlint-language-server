@@ -31,12 +31,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.ConfigurationScopeDto;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import testutils.ImmediateExecutorService;
 import testutils.SonarLintLogTester;
 
@@ -61,7 +61,7 @@ class WorkspaceFoldersManagerTests {
   @BeforeEach
   void prepare() {
     bindingManager = mock(ProjectBindingManager.class);
-    when(bindingManager.getBinding(URI.create(""))).thenReturn(Optional.of(mock(ProjectBindingWrapper.class)));
+    when(bindingManager.getBinding(URI.create(""))).thenReturn(Optional.of(mock(ProjectBinding.class)));
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     when(backendService.getConfigScopeDto(any(), any()))
       .thenReturn(new ConfigurationScopeDto("id", BackendServiceFacade.ROOT_CONFIGURATION_SCOPE, true, "name",

@@ -20,7 +20,7 @@
 package org.sonarsource.sonarlint.ls.backend;
 
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
+import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
@@ -29,10 +29,8 @@ import static org.mockito.Mockito.mock;
 
 class BackendServiceFacadeTests {
 
-  SonarLintBackend backend = mock(SonarLintBackend.class);
-  LanguageClientLogger lsLogOutput = mock(LanguageClientLogger.class);
-  SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
-  BackendServiceFacade underTest = new BackendServiceFacade(backend, lsLogOutput, client);
+  SonarLintRpcClientDelegate backend = mock(SonarLintRpcClientDelegate.class);
+  BackendServiceFacade underTest = new BackendServiceFacade(backend, mock(LanguageClientLogger.class), mock(SonarLintExtendedLanguageClient.class));
 
   @Test
   void shouldFailIfBackendNotInitialized() {

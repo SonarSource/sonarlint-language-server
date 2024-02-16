@@ -43,7 +43,9 @@ import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.StandaloneRuleConfigDto;
+import org.sonarsource.sonarlint.core.commons.RuleKey;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeClientNodeJsPathParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.StandaloneRuleConfigDto;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
@@ -133,11 +135,15 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   public Map<String, StandaloneRuleConfigDto> getStandaloneRuleConfigByKey() {
     var standaloneRuleConfigByKey = new HashMap<String, StandaloneRuleConfigDto>();
-    currentSettings.getRuleParameters().forEach(((ruleKey, paramValueByKey) -> {
-      var active = currentSettings.getIncludedRules().contains(ruleKey);
-      standaloneRuleConfigByKey.put(ruleKey.toString(), new StandaloneRuleConfigDto(active, paramValueByKey));
-    }));
+    currentSettings.getIncludedRules().forEach((ruleKey -> addRulesToConfig(ruleKey, standaloneRuleConfigByKey, true)));
+    currentSettings.getExcludedRules().forEach((ruleKey -> addRulesToConfig(ruleKey, standaloneRuleConfigByKey, false)));
     return standaloneRuleConfigByKey;
+  }
+
+  private void addRulesToConfig(RuleKey ruleKey, HashMap<String, StandaloneRuleConfigDto> standaloneRuleConfigByKey, boolean isActive) {
+    var params = currentSettings.getRuleParameters().get(ruleKey);
+    var sanitizedParams = params != null ? params : Map.<String, String>of();
+    standaloneRuleConfigByKey.put(ruleKey.toString(), new StandaloneRuleConfigDto(isActive, sanitizedParams));
   }
 
   /**
@@ -172,6 +178,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
           initLatch.countDown();
           backendServiceFacade.initialize(getCurrentSettings().getServerConnections());
         } else {
+          notifyChangeClientNodeJsPathIfNeeded(oldWorkspaceSettings, newWorkspaceSettings);
           backendServiceFacade.getBackendService().didChangeConnections(getCurrentSettings().getServerConnections());
           backendServiceFacade.getBackendService().updateStandaloneRulesConfiguration(getStandaloneRuleConfigByKey());
         }
@@ -186,6 +193,13 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         client.readyForTests();
       }
     });
+  }
+
+  private void notifyChangeClientNodeJsPathIfNeeded(WorkspaceSettings oldWorkspaceSettings, WorkspaceSettings newWorkspaceSettings) {
+    var hasNodeJsPathChanged = !Objects.equals(oldWorkspaceSettings.pathToNodeExecutable(), newWorkspaceSettings.pathToNodeExecutable());
+    if(hasNodeJsPathChanged) {
+      backendServiceFacade.getBackendService().didChangeClientNodeJsPath(new DidChangeClientNodeJsPathParams(Path.of(newWorkspaceSettings.pathToNodeExecutable())));
+    }
   }
 
   private void notifyListeners(WorkspaceSettings newWorkspaceSettings, WorkspaceSettings oldWorkspaceSettings, WorkspaceFolderSettings newDefaultFolderSettings,
@@ -511,4 +525,5 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   public static String connectionIdOrDefault(@Nullable String connectionId) {
     return connectionId == null ? DEFAULT_CONNECTION_ID : connectionId;
   }
+
 }

@@ -22,7 +22,7 @@ package org.sonarsource.sonarlint.ls.standalone.notifications;
 import java.util.List;
 import java.util.Locale;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
-import org.sonarsource.sonarlint.core.commons.Language;
+import org.sonarsource.sonarlint.core.client.utils.Language;
 import org.sonarsource.sonarlint.ls.AnalysisClientInputFile;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -46,8 +46,9 @@ public class PromotionalNotifications {
         .toSqLanguage(clientLanguageIdLowerCase);
       var didOpenSQLFile = clientLanguageIdLowerCase.contains("sql");
 
-      if (isConnectedLanguage(sonarLanguage)) {
-        client.maybeShowWiderLanguageSupportNotification(List.of(sonarLanguage.getLabel()));
+      var rpcLanguage = sonarLanguage == null ? null : org.sonarsource.sonarlint.core.rpc.protocol.common.Language.valueOf(sonarLanguage.name());
+      if (isConnectedLanguage(rpcLanguage)) {
+        client.maybeShowWiderLanguageSupportNotification(List.of(Language.fromDto(rpcLanguage).getLabel()));
       } else if (didOpenSQLFile) {
         client.maybeShowWiderLanguageSupportNotification(List.of(Language.PLSQL.getLabel(), Language.TSQL.getLabel()));
       }

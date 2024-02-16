@@ -25,29 +25,28 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.Nullable;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.sonarsource.sonarlint.core.ConnectedSonarLintEngineImpl;
-import org.sonarsource.sonarlint.core.StandaloneSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedGlobalConfiguration;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneGlobalConfiguration;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
-import org.sonarsource.sonarlint.core.commons.Language;
-import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.EngineConfiguration;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
+import org.sonarsource.sonarlint.core.client.utils.ClientLogOutput;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
-import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static java.lang.String.format;
+import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 
 public class EnginesFactory {
 
   public static Path sonarLintUserHomeOverride = null;
   private final LanguageClientLogOutput logOutput;
   private final Collection<Path> standaloneAnalyzers;
-  private final Map<String, Path> embeddedPluginsToPath;
   private String omnisharpDirectory;
 
 
@@ -81,84 +80,64 @@ public class EnginesFactory {
     Language.PLSQL,
     Language.TSQL
   };
-
-  private final NodeJsRuntime nodeJsRuntime;
   private final ClientModulesProvider modulesProvider;
+  private BackendServiceFacade backendServiceFacade;
   private final AtomicReference<Boolean> shutdown = new AtomicReference<>(false);
 
-  public EnginesFactory(Collection<Path> standaloneAnalyzers, Map<String, Path> embeddedPluginsToPath,
-    LanguageClientLogOutput globalLogOutput, NodeJsRuntime nodeJsRuntime, ClientModulesProvider modulesProvider) {
+  public EnginesFactory(Collection<Path> standaloneAnalyzers, LanguageClientLogOutput globalLogOutput,
+    ClientModulesProvider modulesProvider, BackendServiceFacade backendServiceFacade) {
     this.standaloneAnalyzers = standaloneAnalyzers;
-    this.embeddedPluginsToPath = embeddedPluginsToPath;
     this.logOutput = globalLogOutput;
-    this.nodeJsRuntime = nodeJsRuntime;
     this.modulesProvider = modulesProvider;
+    this.backendServiceFacade = backendServiceFacade;
   }
 
   public void setOmnisharpDirectory(String omnisharpDirectory) {
     this.omnisharpDirectory = omnisharpDirectory;
   }
 
-  public StandaloneSonarLintEngine createStandaloneEngine() {
+  public SonarLintAnalysisEngine createEngine(@Nullable String connectionId) {
     if (shutdown.get().equals(true)) {
       throw new IllegalStateException("Language server is shutting down, won't create engine");
     }
+
     logOutput.log("Starting standalone SonarLint engine...", ClientLogOutput.Level.DEBUG);
     logOutput.log(format("Using %d analyzers", standaloneAnalyzers.size()), ClientLogOutput.Level.DEBUG);
-
     try {
-      var configuration = StandaloneGlobalConfiguration.builder()
+      var configuration = EngineConfiguration.builder()
         .setSonarLintUserHome(sonarLintUserHomeOverride)
-        .addEnabledLanguages(STANDALONE_LANGUAGES)
-        .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
-        .addPlugins(standaloneAnalyzers.toArray(Path[]::new))
         .setModulesProvider(modulesProvider)
         .setExtraProperties(getExtraProperties())
-        .setLogOutput(logOutput)
-        .build();
+        .setLogOutput(logOutput).build();
 
-      var engine = newStandaloneEngine(configuration);
-      logOutput.log("Standalone SonarLint engine started", ClientLogOutput.Level.DEBUG);
-      return engine;
+      return waitForBackendInit()
+        .thenApply(unused -> {
+          var engine = new SonarLintAnalysisEngine(configuration, backendServiceFacade.getBackendService().getBackend(), connectionId);
+          logOutput.log("Standalone SonarLint engine started", ClientLogOutput.Level.DEBUG);
+          return engine;
+        }).join();
     } catch (Exception e) {
       logOutput.log(format("Error starting standalone SonarLint engine %s", e), ClientLogOutput.Level.ERROR);
       throw new IllegalStateException(e);
     }
   }
 
-  StandaloneSonarLintEngine newStandaloneEngine(StandaloneGlobalConfiguration configuration) {
-    return new StandaloneSonarLintEngineImpl(configuration);
-  }
-
-  public ConnectedSonarLintEngine createConnectedEngine(String connectionId,
-    ServerConnectionSettings serverConnectionSettings) {
-    if (shutdown.get().equals(true)) {
-      throw new IllegalStateException("Language server is shutting down, won't create engine");
-    }
-    ConnectedGlobalConfiguration.Builder builder;
-    if (serverConnectionSettings.isSonarCloudAlias()) {
-      builder = ConnectedGlobalConfiguration.sonarCloudBuilder();
-    } else {
-      builder = ConnectedGlobalConfiguration.sonarQubeBuilder();
-    }
-    builder
-      .setSonarLintUserHome(sonarLintUserHomeOverride)
-      .setConnectionId(connectionId)
-      .addEnabledLanguages(STANDALONE_LANGUAGES)
-      .addEnabledLanguages(CONNECTED_ADDITIONAL_LANGUAGES)
-      .enableDataflowBugDetection()
-      .enableHotspots()
-      .setNodeJs(nodeJsRuntime.getNodeJsPath(), nodeJsRuntime.getNodeJsVersion())
-      .setModulesProvider(modulesProvider)
-      .setExtraProperties(getExtraProperties())
-      .setLogOutput(logOutput);
-
-    embeddedPluginsToPath.forEach(builder::useEmbeddedPlugin);
-
-    var engine = newConnectedEngine(builder.build());
-
-    logOutput.log(format("SonarLint engine started for connection '%s'", connectionId), ClientLogOutput.Level.DEBUG);
-    return engine;
+  private CompletableFuture<Void> waitForBackendInit() {
+    var initResult = new CompletableFuture<Void>();
+    Executors.newSingleThreadExecutor().submit(() -> {
+      var initialized = false;
+      try {
+        initialized = backendServiceFacade.getInitLatch().await(1, TimeUnit.MINUTES);
+      } catch (InterruptedException e) {
+        interrupted(e, logOutput);
+      }
+      if (initialized) {
+        initResult.complete(null);
+      } else {
+        initResult.completeExceptionally(new IllegalStateException("Backend wasn't initialized in expected time"));
+      }
+    });
+    return initResult;
   }
 
   @NotNull
@@ -172,10 +151,6 @@ public class EnginesFactory {
         "sonar.cs.internal.omnisharpMonoLocation", Path.of(omnisharpDirectory, "mono").toString()
       );
     }
-  }
-
-  ConnectedSonarLintEngine newConnectedEngine(ConnectedGlobalConfiguration configuration) {
-    return new ConnectedSonarLintEngineImpl(configuration);
   }
 
   public static Set<Language> getStandaloneLanguages() {
@@ -193,4 +168,5 @@ public class EnginesFactory {
   public void shutdown() {
     shutdown.set(true);
   }
+
 }

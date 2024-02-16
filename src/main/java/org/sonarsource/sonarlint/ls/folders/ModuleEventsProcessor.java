@@ -20,17 +20,21 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.eclipse.lsp4j.FileChangeType;
 import org.eclipse.lsp4j.FileEvent;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModuleFileEvent;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModuleInfo;
-import org.sonarsource.sonarlint.core.client.api.common.SonarLintEngine;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.ClientFileDto;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.FolderFileSystem;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
@@ -43,6 +47,7 @@ public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
 
   private final FileTypeClassifier fileTypeClassifier;
   private final JavaConfigCache javaConfigCache;
+  private final BackendServiceFacade backendServiceFacade;
 
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final ProjectBindingManager bindingManager;
@@ -50,12 +55,13 @@ public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
   private final ExecutorService asyncExecutor;
 
   public ModuleEventsProcessor(StandaloneEngineManager standaloneEngineManager, WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager,
-    FileTypeClassifier fileTypeClassifier, JavaConfigCache javaConfigCache) {
+    FileTypeClassifier fileTypeClassifier, JavaConfigCache javaConfigCache, BackendServiceFacade backendServiceFacade) {
     this.standaloneEngineManager = standaloneEngineManager;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.bindingManager = bindingManager;
     this.fileTypeClassifier = fileTypeClassifier;
     this.javaConfigCache = javaConfigCache;
+    this.backendServiceFacade = backendServiceFacade;
     this.asyncExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Module Events Processor", false));
   }
 
@@ -65,6 +71,30 @@ public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
       var eventType = translate(fileEvent.getType());
       asyncExecutor.execute(() -> processFileEvent(fileUri, eventType));
     });
+    notifyBackend(changes);
+  }
+
+  private void notifyBackend(List<FileEvent> changes) {
+    var deletedFileUris = changes.stream()
+      .filter(event -> event.getType() == FileChangeType.Deleted)
+      .map(event -> URI.create(event.getUri()))
+      .toList();
+    var events = changes.stream()
+      .filter(event -> event.getType() == FileChangeType.Deleted)
+      .map(event -> {
+        var fileUri = URI.create(event.getUri());
+        return workspaceFoldersManager.findFolderForFile(fileUri)
+          .map(folder -> {
+            var settings = folder.getSettings();
+            var baseDir = folder.getRootPath();
+            var fsPath = Paths.get(fileUri);
+            return new ClientFileDto(fileUri, baseDir.relativize(fsPath), folder.getUri().toString(),
+              fileTypeClassifier.isTest(settings, fileUri, false, () -> javaConfigCache.getOrFetch(fileUri)), StandardCharsets.UTF_8.name(), fsPath, null);
+          });
+      })
+      .flatMap(Optional::stream)
+      .toList();
+    backendServiceFacade.getBackendService().updateFileSystem(deletedFileUris, events);
   }
 
   private void processFileEvent(URI fileUri, Type eventType) {
@@ -75,7 +105,7 @@ public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
 
         var binding = bindingManager.getBinding(fileUri);
 
-        var engineForFile = binding.isPresent() ? binding.get().getEngine() : standaloneEngineManager.getOrCreateStandaloneEngine();
+        var engineForFile = binding.isPresent() ? binding.get().getEngine() : standaloneEngineManager.getOrCreateAnalysisEngine();
 
         var inputFile = new InFolderClientInputFile(fileUri, baseDir.relativize(Paths.get(fileUri)).toString(),
           fileTypeClassifier.isTest(settings, fileUri, false, () -> javaConfigCache.getOrFetch(fileUri)));
@@ -96,11 +126,11 @@ public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
     throw new IllegalArgumentException("Unknown event type: " + type);
   }
 
-  private SonarLintEngine findEngineFor(WorkspaceFolderWrapper folder) {
+  private SonarLintAnalysisEngine findEngineFor(WorkspaceFolderWrapper folder) {
     return bindingManager.getBinding(folder)
-      .map(ProjectBindingWrapper::getEngine)
-      .map(SonarLintEngine.class::cast)
-      .orElseGet(standaloneEngineManager::getOrCreateStandaloneEngine);
+      .map(ProjectBinding::getEngine)
+      .map(SonarLintAnalysisEngine.class::cast)
+      .orElseGet(standaloneEngineManager::getOrCreateAnalysisEngine);
   }
 
   @Override

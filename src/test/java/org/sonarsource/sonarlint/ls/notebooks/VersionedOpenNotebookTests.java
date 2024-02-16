@@ -39,10 +39,11 @@ import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
 import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.commons.IssueSeverity;
-import org.sonarsource.sonarlint.core.commons.Language;
-import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
+import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
+import org.sonarsource.sonarlint.core.commons.api.TextRange;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -71,7 +72,7 @@ public class VersionedOpenNotebookTests {
       SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER +
       "cell3 line1\n" +
       "cell3 line2\n");
-    assertThat(versionedOpenFile.getLanguageId()).isEqualTo(Language.IPYTHON.getLanguageKey());
+    assertThat(versionedOpenFile.getLanguageId()).isEqualTo(SonarLanguage.IPYTHON.getSonarLanguageKey());
   }
 
   @Test
@@ -90,7 +91,7 @@ public class VersionedOpenNotebookTests {
     assertThat(versionedOpenFile.getContent()).isEqualTo("" +
       "cell1 line1\n" +
       "cell1 line2\n");
-    assertThat(versionedOpenFile.getLanguageId()).isEqualTo(Language.IPYTHON.getLanguageKey());
+    assertThat(versionedOpenFile.getLanguageId()).isEqualTo(SonarLanguage.IPYTHON.getSonarLanguageKey());
   }
 
   @Test
@@ -127,18 +128,14 @@ public class VersionedOpenNotebookTests {
 
   @Test
   void shouldConvertToCellIssue() {
-    Issue issue = mock(Issue.class);
-    TextRange textRange = new TextRange(5, 0, 6, 5);
+    RawIssue issue = mock(RawIssue.class);
+    TextRangeDto textRange = new TextRangeDto(5, 0, 6, 5);
 
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
     when(issue.getTextRange()).thenReturn(textRange);
-    when(issue.getStartLine()).thenReturn(5);
-    when(issue.getStartLineOffset()).thenReturn(0);
-    when(issue.getEndLine()).thenReturn(6);
-    when(issue.getEndLineOffset()).thenReturn(5);
-    when(issue.flows()).thenReturn(List.of(mock(Flow.class)));
+    when(issue.getFlows()).thenReturn(List.of(mock(Flow.class)));
     when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
 
     var tmpUri = URI.create("file:///some/notebook.ipynb");
@@ -157,7 +154,7 @@ public class VersionedOpenNotebookTests {
 
   @Test
   void shouldConvertQuickFixWithSingleFileEdit() {
-    var issue = mock(Issue.class);
+    var issue = mock(RawIssue.class);
     var tmpUri = URI.create("file:///some/notebook.ipynb");
     var fakeNotebook = createTestNotebookWithThreeCells(tmpUri);
     var quickFixTextRange = new TextRange(9, 0, 9, 2);
@@ -194,7 +191,7 @@ public class VersionedOpenNotebookTests {
 
   @Test
   void shouldConvertQuickFixWithMultipleFileEdits() {
-    var issue = mock(Issue.class);
+    var issue = mock(RawIssue.class);
     var tmpUri = URI.create("file:///some/notebook.ipynb");
     var fakeNotebook = createTestNotebookWithThreeCells(tmpUri);
     var quickFixTextRange1 = new TextRange(9, 0, 9, 2);
@@ -252,17 +249,13 @@ public class VersionedOpenNotebookTests {
 
   @Test
   void shouldConvertToCellIssueWhenIssueTextRangeIsNull() {
-    Issue issue = mock(Issue.class);
+    RawIssue issue = mock(RawIssue.class);
 
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
     when(issue.getTextRange()).thenReturn(null);
-    when(issue.getStartLine()).thenReturn(null);
-    when(issue.getStartLineOffset()).thenReturn(null);
-    when(issue.getEndLine()).thenReturn(null);
-    when(issue.getEndLineOffset()).thenReturn(null);
-    when(issue.flows()).thenReturn(List.of(mock(Flow.class)));
+    when(issue.getFlows()).thenReturn(List.of(mock(Flow.class)));
     when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
 
     var tmpUri = URI.create("file:///some/notebook.ipynb");

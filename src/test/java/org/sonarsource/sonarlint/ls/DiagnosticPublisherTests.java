@@ -20,14 +20,14 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
+import java.util.UUID;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.commons.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -56,7 +56,8 @@ class DiagnosticPublisherTests {
     issuesCache = new IssuesCache();
     hotspotsCache = new IssuesCache();
     languageClient = mock(SonarLintExtendedLanguageClient.class);
-    underTest = new DiagnosticPublisher(languageClient, new TaintVulnerabilitiesCache(), issuesCache, hotspotsCache, mock(OpenNotebooksCache.class));
+    underTest = new DiagnosticPublisher(languageClient, new TaintVulnerabilitiesCache(), issuesCache, hotspotsCache,
+      mock(OpenNotebooksCache.class));
   }
 
   @Test
@@ -66,7 +67,7 @@ class DiagnosticPublisherTests {
     when(issue.getMessage()).thenReturn("Do this, don't do that");
     when(issue.getStartLine()).thenReturn(null);
     var versionedIssue = new VersionedIssue(issue, 1);
-    Diagnostic diagnostic = underTest.convert(entry("id", versionedIssue));
+    Diagnostic diagnostic = underTest.taintDtoToDiagnostic(entry("id", versionedIssue));
     assertThat(diagnostic.getRange()).isEqualTo(new Range(new Position(0, 0), new Position(0, 0)));
   }
 
@@ -78,15 +79,15 @@ class DiagnosticPublisherTests {
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getMessage()).thenReturn("Do this, don't do that");
     var versionedIssue = new VersionedIssue(issue, 1);
-    assertThat(underTest.convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(underTest.taintDtoToDiagnostic(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.CRITICAL);
-    assertThat(underTest.convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(underTest.taintDtoToDiagnostic(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.MAJOR);
-    assertThat(underTest.convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(underTest.taintDtoToDiagnostic(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.MINOR);
-    assertThat(underTest.convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(underTest.taintDtoToDiagnostic(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.INFO);
-    assertThat(underTest.convert(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(underTest.taintDtoToDiagnostic(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
   }
 
   @Test
@@ -140,7 +141,8 @@ class DiagnosticPublisherTests {
   }
 
   private URI initWithOneSecretIssue() {
-    var issue = mock(Issue.class);
+    var issue = mock(DelegatingIssue.class);
+    when(issue.getIssueId()).thenReturn(UUID.randomUUID());
     when(issue.getRuleKey()).thenReturn("secrets:123");
     when(issue.getSeverity()).thenReturn(IssueSeverity.MAJOR);
     when(issue.getMessage()).thenReturn("Boo");
@@ -155,7 +157,7 @@ class DiagnosticPublisherTests {
   }
 
   private URI initWithOneCobolIssue() {
-    var issue = mock(Issue.class);
+    var issue = mock(DelegatingIssue.class);
     when(issue.getRuleKey()).thenReturn("cobol:S3643");
     when(issue.getSeverity()).thenReturn(IssueSeverity.MAJOR);
     when(issue.getMessage()).thenReturn("Boo");

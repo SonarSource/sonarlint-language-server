@@ -17,7 +17,24 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-@ParametersAreNonnullByDefault
-package org.sonarsource.sonarlint.ls.connected.sync;
+package org.sonarsource.sonarlint.ls.util;
 
-import javax.annotation.ParametersAreNonnullByDefault;
+import java.net.URI;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+public class URIUtils {
+
+  private URIUtils() {
+    // static stuff only
+  }
+  public static String uriStringWithTrailingSlash(String uriString) {
+    return uriString.endsWith("/") ? uriString : uriString.concat("/");
+  }
+
+  public static URI getFullFileUriFromFragments(String workspaceFolderUriString, Path fileRelativePath) {
+    return Paths.get(URI.create(workspaceFolderUriString))
+      .resolve(fileRelativePath)
+      .toUri();
+  }
+}

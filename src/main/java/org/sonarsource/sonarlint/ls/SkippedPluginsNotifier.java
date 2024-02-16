@@ -28,13 +28,14 @@ import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.sonarsource.sonarlint.core.analysis.api.AnalysisResults;
-import org.sonarsource.sonarlint.core.client.api.common.PluginDetails;
-import org.sonarsource.sonarlint.core.commons.log.SonarLintLogger;
-import org.sonarsource.sonarlint.core.plugin.commons.SkipReason;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.PluginDetails;
+import org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason;
+import org.sonarsource.sonarlint.ls.domain.LSLanguage;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
 import static java.util.stream.Collectors.toSet;
-import static org.sonarsource.sonarlint.core.plugin.commons.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.JRE;
-import static org.sonarsource.sonarlint.core.plugin.commons.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.NODEJS;
+import static org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.JRE;
+import static org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.NODEJS;
 
 public class SkippedPluginsNotifier {
 
@@ -44,9 +45,11 @@ public class SkippedPluginsNotifier {
   public static final MessageActionItem ACTION_DONT_SHOW_AGAIN = new MessageActionItem("Don't Show Again");
 
   private final SonarLintExtendedLanguageClient client;
+  private final LanguageClientLogOutput globalLogOutput;
 
-  public SkippedPluginsNotifier(SonarLintExtendedLanguageClient client) {
+  public SkippedPluginsNotifier(SonarLintExtendedLanguageClient client, LanguageClientLogOutput globalLogOutput) {
     this.client = client;
+    this.globalLogOutput = globalLogOutput;
   }
 
   public void notifyOnceForSkippedPlugins(AnalysisResults analysisResults, Collection<PluginDetails> allPlugins) {
@@ -58,7 +61,7 @@ public class SkippedPluginsNotifier {
       final var correspondingPlugin = allPlugins.stream().filter(p -> p.key().equals(l.getPluginKey())).findFirst();
       correspondingPlugin.flatMap(PluginDetails::skipReason).ifPresent(skipReason -> {
         if (skipReason instanceof SkipReason.UnsatisfiedRuntimeRequirement runtimeRequirement) {
-          final var title = String.format("SonarLint failed to analyze %s code", l.getLabel());
+          final var title = String.format("SonarLint failed to analyze %s code", LSLanguage.valueOf(l.name()).getLabel());
           if (runtimeRequirement.getRuntime() == JRE) {
             handleMissingJRERequirement(runtimeRequirement, title);
           } else if (runtimeRequirement.getRuntime() == NODEJS) {
@@ -72,7 +75,7 @@ public class SkippedPluginsNotifier {
   private void handleMissingJRERequirement(SkipReason.UnsatisfiedRuntimeRequirement runtimeRequirement, String title) {
     var content = String.format(
       "Java runtime version %s or later is required. Current version is %s.", runtimeRequirement.getMinVersion(), runtimeRequirement.getCurrentVersion());
-    SonarLintLogger.get().warn(content);
+    globalLogOutput.warn(content);
     showMessageWithOpenSettingsAction(client, formatMessage(title, content), JRE,
       client::openJavaHomeSettings);
   }
@@ -84,7 +87,7 @@ public class SkippedPluginsNotifier {
       content += String.format(" Current version is %s.", runtimeRequirement.getCurrentVersion());
     }
     var isNotificationAllowed = client.canShowMissingRequirementsNotification().join();
-    SonarLintLogger.get().warn(content);
+    globalLogOutput.warn(content);
     if (Boolean.TRUE.equals(isNotificationAllowed)) {
       showMessageWithOpenSettingsAction(client, formatMessage(title, content), NODEJS,
         client::openPathToNodeSettings);

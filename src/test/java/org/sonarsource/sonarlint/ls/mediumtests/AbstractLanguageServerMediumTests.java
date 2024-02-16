@@ -94,10 +94,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
-import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
-import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
-import org.sonarsource.sonarlint.core.clientapi.client.hotspot.HotspotDetailsDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.ServerMain;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -317,6 +316,7 @@ public abstract class AbstractLanguageServerMediumTests {
     Map<String, GetJavaConfigResponse> javaConfigs = new HashMap<>();
     Map<String, String> branchNameByFolder = new HashMap<>();
     Map<String, String> referenceBranchNameByFolder = new HashMap<>();
+    Map<String, Boolean> scopeReadyForAnalysis = new HashMap<>();
     CountDownLatch settingsLatch = new CountDownLatch(0);
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
     CountDownLatch suggestBindingLatch = new CountDownLatch(0);
@@ -345,6 +345,7 @@ public abstract class AbstractLanguageServerMediumTests {
       readyForTestsLatch = new CountDownLatch(0);
       needCompilationDatabaseCalls.set(0);
       shouldAnalyseFile = true;
+      scopeReadyForAnalysis.clear();
     }
 
     @Override
@@ -445,7 +446,7 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public CompletableFuture<FindFileByNamesInScopeResponse> findFileByNamesInFolder(FindFileByNamesInFolder params) {
+    public CompletableFuture<FindFileByNamesInScopeResponse> listFilesInFolder(FolderUriParams params) {
       return CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(Collections.emptyList()));
     }
 
@@ -478,7 +479,7 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public void showHotspot(HotspotDetailsDto h) {
+    public void showHotspot(ShowHotspotParams h) {
     }
 
     @Override
@@ -539,11 +540,6 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public CompletableFuture<AssistBindingResponse> assistBinding(AssistBindingParams params) {
       return CompletableFuture.completedFuture(new AssistBindingResponse("folderUri"));
-    }
-
-    @Override
-    public CompletableFuture<String> getBranchNameForFolder(String folderUri) {
-      return CompletableFutures.computeAsync(cancelToken -> branchNameByFolder.get(folderUri));
     }
 
     @Override

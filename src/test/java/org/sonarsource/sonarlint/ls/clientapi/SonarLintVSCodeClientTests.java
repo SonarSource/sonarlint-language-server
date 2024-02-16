@@ -20,15 +20,20 @@
 package org.sonarsource.sonarlint.ls.clientapi;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.assertj.core.api.Assertions;
@@ -44,57 +49,64 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingSuggestionDto;
-import org.sonarsource.sonarlint.core.clientapi.client.OpenUrlInBrowserParams;
-import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
-import org.sonarsource.sonarlint.core.clientapi.client.binding.NoBindingSuggestionFoundParams;
-import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
-import org.sonarsource.sonarlint.core.clientapi.client.connection.AssistCreatingConnectionParams;
-import org.sonarsource.sonarlint.core.clientapi.client.event.DidReceiveServerEventParams;
-import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeParams;
-import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
-import org.sonarsource.sonarlint.core.clientapi.client.hotspot.HotspotDetailsDto;
-import org.sonarsource.sonarlint.core.clientapi.client.hotspot.ShowHotspotParams;
-import org.sonarsource.sonarlint.core.clientapi.client.http.CheckServerTrustedParams;
-import org.sonarsource.sonarlint.core.clientapi.client.http.X509CertificateDto;
-import org.sonarsource.sonarlint.core.clientapi.client.info.GetClientInfoResponse;
-import org.sonarsource.sonarlint.core.clientapi.client.issue.ShowIssueParams;
-import org.sonarsource.sonarlint.core.clientapi.client.message.ShowMessageParams;
-import org.sonarsource.sonarlint.core.clientapi.client.message.ShowSoonUnsupportedMessageParams;
-import org.sonarsource.sonarlint.core.clientapi.client.progress.StartProgressParams;
-import org.sonarsource.sonarlint.core.clientapi.client.smartnotification.ShowSmartNotificationParams;
-import org.sonarsource.sonarlint.core.clientapi.client.sync.DidSynchronizeConfigurationScopeParams;
-import org.sonarsource.sonarlint.core.clientapi.common.TextRangeDto;
-import org.sonarsource.sonarlint.core.commons.IssueSeverity;
-import org.sonarsource.sonarlint.core.commons.RuleType;
-import org.sonarsource.sonarlint.core.serverapi.push.IssueChangedEvent;
-import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.OpenUrlInBrowserParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.http.CheckServerTrustedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.http.X509CertificateDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.info.GetClientLiveInfoResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueDetailsDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.ShowIssueParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogLevel;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.message.ShowSoonUnsupportedMessageParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.smartnotification.ShowSmartNotificationParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
+import org.sonarsource.sonarlint.ls.AnalysisScheduler;
+import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.AssistCreatingConnectionResponse;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.CreateConnectionParams;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
+import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.ServerIssueTrackerWrapper;
+import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
+import org.sonarsource.sonarlint.ls.domain.TaintIssue;
+import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
+import org.sonarsource.sonarlint.ls.util.URIUtils;
 import testutils.SonarLintLogTester;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.awaitility.Awaitility.await;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -107,20 +119,23 @@ class SonarLintVSCodeClientTests {
   SonarLintLogTester logTester = new SonarLintLogTester();
   private Path workspaceFolderPath;
   private Path fileInAWorkspaceFolderPath;
-  private final String FILE_PYTHON = "myFile.py";
+  private final Path FILE_PYTHON = Path.of("myFile.py");
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   SettingsManager settingsManager = mock(SettingsManager.class);
   SmartNotifications smartNotifications = mock(SmartNotifications.class);
   SonarLintVSCodeClient underTest;
   HostInfoProvider server = mock(HostInfoProvider.class);
   ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
+  OpenFilesCache openFilesCache = mock(OpenFilesCache.class);
   ServerSentEventsHandlerService serverSentEventsHandlerService = mock(ServerSentEventsHandlerService.class);
   @Captor
   ArgumentCaptor<ShowAllLocationsCommand.Param> paramCaptor;
-  ProjectBinding binding = mock(ProjectBinding.class);
-  ConnectedSonarLintEngine engine = mock(ConnectedSonarLintEngine.class);
+  SonarLintAnalysisEngine engine = mock(SonarLintAnalysisEngine.class);
   ServerIssueTrackerWrapper serverIssueTrackerWrapper = mock(ServerIssueTrackerWrapper.class);
   BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
+  TaintVulnerabilitiesCache taintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
+  DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
+  AnalysisScheduler analysisScheduler = mock(AnalysisScheduler.class);
 
   private static final String PEM = "subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH\n" +
     "issuer=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH\n" +
@@ -160,12 +175,14 @@ class SonarLintVSCodeClientTests {
 
   @BeforeEach
   public void setup() throws IOException {
-    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger());
+    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, openFilesCache);
     underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);
     underTest.setBindingManager(bindingManager);
     underTest.setServerSentEventsHandlerService(serverSentEventsHandlerService);
     underTest.setBackendServiceFacade(backendServiceFacade);
+    underTest.setDiagnosticPublisher(diagnosticPublisher);
+    underTest.setAnalysisScheduler(analysisScheduler);
     workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
     Files.createDirectories(workspaceFolderPath);
     fileInAWorkspaceFolderPath = workspaceFolderPath.resolve(FILE_PYTHON);
@@ -176,39 +193,41 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void openUrlInBrowserTest() {
-    var params = new OpenUrlInBrowserParams("url");
+  void openUrlInBrowserTest() throws MalformedURLException {
+    var params = new OpenUrlInBrowserParams("https://www.sonarsource.com");
 
-    underTest.openUrlInBrowser(params);
+    underTest.openUrlInBrowser(new URL("https://www.sonarsource.com"));
 
     verify(client).browseTo(params.getUrl());
   }
 
   @Test
   void shouldCallClientToFindFile() {
-    var params = mock(FindFileByNamesInScopeParams.class);
-    when(client.findFileByNamesInFolder(any())).thenReturn(CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(List.of())));
+    when(client.listFilesInFolder(any())).thenReturn(CompletableFuture.completedFuture(new SonarLintExtendedLanguageClient.FindFileByNamesInScopeResponse(List.of())));
 
-    var future = underTest.findFileByNamesInScope(params);
-    await().untilAsserted(() -> assertThat(future).isCompleted());
+    underTest.listFiles(URI.create("file:///folderUri").toString());
+
     var expectedClientParams =
-      new SonarLintExtendedLanguageClient.FindFileByNamesInFolder(params.getConfigScopeId(), params.getFilenames());
-    verify(client).findFileByNamesInFolder(expectedClientParams);
+      new SonarLintExtendedLanguageClient.FolderUriParams("file:///folderUri");
+    verify(client).listFilesInFolder(expectedClientParams);
   }
 
   @Test
   void shouldSuggestBinding() {
     var suggestions = new HashMap<String, List<BindingSuggestionDto>>();
     suggestions.put("key", Collections.emptyList());
-    var params = new SuggestBindingParams(suggestions);
-    underTest.suggestBinding(params);
 
-    verify(client).suggestBinding(params);
+    underTest.suggestBinding(suggestions);
+
+    var captor = ArgumentCaptor.forClass(SuggestBindingParams.class);
+    verify(client).suggestBinding(captor.capture());
+    assertThat(captor.getValue().getSuggestions()).isEqualTo(suggestions);
   }
 
   @Test
   void shouldThrowForShowMessage() {
-    assertThrows(UnsupportedOperationException.class, () -> underTest.showMessage(mock(ShowMessageParams.class)));
+    assertThrows(UnsupportedOperationException.class, () -> underTest.showMessage(mock(
+      org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType.class), ""));
   }
 
   @Test
@@ -263,65 +282,62 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void shouldReturnEmptyFutureForStartProgress() throws ExecutionException, InterruptedException {
-    assertThat(underTest.startProgress(mock(StartProgressParams.class)).get()).isNull();
-  }
-
-  @Test
-  void shouldUpdateAllTaintIssuesForDidSynchronizeConfigurationScopes() {
-    underTest.didSynchronizeConfigurationScopes(mock(DidSynchronizeConfigurationScopeParams.class));
-
-    verify(bindingManager).updateAllTaintIssues();
-  }
-
-  @Test
   void shouldAskTheClientToFindFiles() {
-    var folderUri = "file:///some/folder";
-    var filesToFind = List.of("file1", "file2");
-    when(client.findFileByNamesInFolder(any())).thenReturn(CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(List.of())));
+    var folderPath = basedir.resolve("someFile");
+    var folderUri = folderPath.toUri();
+    var fileName1 = "file1";
+    var fileName2 = "file2";
+    var folderUriParams = new SonarLintExtendedLanguageClient.FolderUriParams(folderUri.toString());
+    when(client.listFilesInFolder(folderUriParams)).thenReturn(CompletableFuture.completedFuture(
+      new SonarLintExtendedLanguageClient.FindFileByNamesInScopeResponse(List.of(
+        new SonarLintExtendedLanguageClient.FoundFileDto(fileName1, folderPath + "/" + fileName1, "foo"),
+        new SonarLintExtendedLanguageClient.FoundFileDto(fileName2, folderPath + "/" + fileName2, "bar")
+      ))));
 
-    var params = new FindFileByNamesInScopeParams(folderUri, filesToFind);
-    var future = underTest.findFileByNamesInScope(params);
-    await().untilAsserted(() -> assertThat(future).isCompleted());
-    var argumentCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.FindFileByNamesInFolder.class);
-    verify(client).findFileByNamesInFolder(argumentCaptor.capture());
-    assertThat(argumentCaptor.getValue()).extracting(
-      SonarLintExtendedLanguageClient.FindFileByNamesInFolder::getFolderUri,
-      SonarLintExtendedLanguageClient.FindFileByNamesInFolder::getFilenames
-    ).containsExactly(
-      folderUri,
-      filesToFind.toArray()
-    );
+    underTest.listFiles(folderUri.toString());
+
+    var argumentCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.FolderUriParams.class);
+    verify(client).listFilesInFolder(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue())
+      .extracting(SonarLintExtendedLanguageClient.FolderUriParams::getFolderUri).isEqualTo(folderUri.toString());
   }
 
   @Test
   void shouldCallServerOnGetHostInfo() {
-    underTest.getClientInfo();
+    when(server.getHostInfo()).thenReturn(new GetClientLiveInfoResponse("description"));
+
+    underTest.getClientLiveDescription();
+
     verify(server).getHostInfo();
   }
 
   @Test
   void shouldGetHostInfo() throws ExecutionException, InterruptedException {
     var desc = "This is Test";
-    when(server.getHostInfo()).thenReturn(new GetClientInfoResponse("This is Test"));
-    var result = underTest.getClientInfo().get();
-    assertThat(result.getDescription()).isEqualTo(desc);
+    when(server.getHostInfo()).thenReturn(new GetClientLiveInfoResponse("This is Test"));
+    var result = underTest.getClientLiveDescription();
+    assertThat(result).isEqualTo(desc);
   }
 
   @Test
   void shouldCallClientShowHotspot() {
-    var showHotspotParams = new ShowHotspotParams("myFolder", new HotspotDetailsDto("key1",
+    var hotspotRule = mock(HotspotDetailsDto.HotspotRule.class);
+    var hotspotDetailsDto = new HotspotDetailsDto("key1",
       "message1",
-      "myfolder/myFile",
+      Path.of("myfolder/myFile"),
       null,
       null,
       "TO_REVIEW",
       "fixed",
-      null,
+      hotspotRule,
       null
-    ));
-    underTest.showHotspot(showHotspotParams);
-    verify(client).showHotspot(showHotspotParams.getHotspotDetails());
+    );
+    underTest.showHotspot("myFolder", hotspotDetailsDto);
+    var argCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.ShowHotspotParams.class);
+    verify(client).showHotspot(argCaptor.capture());
+    assertThat(argCaptor.getValue()).isNotNull();
+    assertThat(argCaptor.getValue().getStatus()).isEqualTo("To Review");
+    assertThat(argCaptor.getValue().getMessage()).isEqualTo("message1");
   }
 
   @Test
@@ -333,9 +349,8 @@ class SonarLintVSCodeClientTests {
       .thenReturn(CompletableFuture.completedFuture(new AssistCreatingConnectionResponse("newConnectionId")));
     when(settingsManager.getCurrentSettings()).thenReturn(mock(WorkspaceSettings.class));
     when(backendServiceFacade.getBackendService()).thenReturn(mock(BackendService.class));
-    var future = underTest.assistCreatingConnection(assistCreatingConnectionParams);
+    underTest.assistCreatingConnection(assistCreatingConnectionParams, null);
 
-    await().untilAsserted(() -> assertThat(future).isCompleted());
     var argCaptor = ArgumentCaptor.forClass(CreateConnectionParams.class);
     verify(client).assistCreatingConnection(argCaptor.capture());
     var sentParams = argCaptor.getValue();
@@ -351,13 +366,13 @@ class SonarLintVSCodeClientTests {
     String serverUrl = "http://localhost:9000";
     var assistCreatingConnectionParams = new AssistCreatingConnectionParams(serverUrl, null, null);
     when(client.workspaceFolders()).thenReturn(CompletableFuture.completedFuture(List.of()));
-    when(client.assistCreatingConnection(any()))
-      .thenReturn(CompletableFuture.completedFuture(null));
+    when(client.assistCreatingConnection(any())).thenReturn(CompletableFuture.completedFuture(
+      new AssistCreatingConnectionResponse(null)
+    ));
     when(settingsManager.getCurrentSettings()).thenReturn(mock(WorkspaceSettings.class));
     when(backendServiceFacade.getBackendService()).thenReturn(mock(BackendService.class));
-    var future = underTest.assistCreatingConnection(assistCreatingConnectionParams);
+    underTest.assistCreatingConnection(assistCreatingConnectionParams, null);
 
-    await().untilAsserted(() -> assertThat(future).isCompletedExceptionally());
     var argCaptor = ArgumentCaptor.forClass(CreateConnectionParams.class);
     verify(client).assistCreatingConnection(argCaptor.capture());
     var sentParams = argCaptor.getValue();
@@ -376,14 +391,13 @@ class SonarLintVSCodeClientTests {
     when(client.assistBinding(any())).thenReturn(
       CompletableFuture.completedFuture(new SonarLintExtendedLanguageClient.AssistBindingResponse("folderUri")));
     when(bindingManager.getUpdatedBindingForWorkspaceFolder(URI.create(configScopeId))).thenReturn(CompletableFuture.completedFuture(configScopeId));
-    var future = underTest.assistBinding(assistBindingParams);
+    underTest.assistBinding(assistBindingParams, null);
 
-    await().untilAsserted(() -> assertThat(future).isCompleted());
     verify(client).showMessage(new MessageParams(MessageType.Info, "Project '" + configScopeId + "' was successfully bound to '" + projectKey + "'."));
   }
 
   @Test
-  void testNoBindingSuggestionFound(){
+  void testNoBindingSuggestionFound() {
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(new MessageActionItem("Learn more")));
 
     var projectKey = "projectKey";
@@ -393,7 +407,7 @@ class SonarLintVSCodeClientTests {
     var learnMoreAction = new MessageActionItem("Learn more");
     messageRequestParams.setActions(List.of(learnMoreAction));
 
-    underTest.noBindingSuggestionFound(new NoBindingSuggestionFoundParams(projectKey));
+    underTest.noBindingSuggestionFound(projectKey);
     verify(client).showMessageRequest(messageRequestParams);
     verify(client).browseTo("https://docs.sonarsource.com/sonarlint/vs-code/troubleshooting/#troubleshooting-connected-mode-setup");
   }
@@ -403,7 +417,7 @@ class SonarLintVSCodeClientTests {
     var params = new CheckServerTrustedParams(List.of(new X509CertificateDto(PEM)), "authType");
     when(client.askSslCertificateConfirmation(any())).thenReturn(CompletableFuture.completedFuture(true));
 
-    var response = underTest.checkServerTrusted(params).get();
+    var response = underTest.checkServerTrusted(List.of(new X509CertificateDto(PEM)), "authType");
 
     var branchCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.SslCertificateConfirmationParams.class);
     verify(client).askSslCertificateConfirmation(branchCaptor.capture());
@@ -414,7 +428,7 @@ class SonarLintVSCodeClientTests {
     Assertions.assertThat(capturedValue.getSha256Fingerprint()).isEqualTo("35 A0 22 CB CD 8D 57 55 F8 83 B3 CE 63 2A 42 A1\n" +
       "22 81 83 33 BF 2F 9A E7 E9 D7 81 F0 82 2C AD 58");
 
-    assertThat(response.isTrusted()).isTrue();
+    assertThat(response).isTrue();
   }
 
   @Test
@@ -436,7 +450,7 @@ class SonarLintVSCodeClientTests {
     var params = new CheckServerTrustedParams(List.of(new X509CertificateDto("malformed")), "authType");
     when(client.askSslCertificateConfirmation(any())).thenReturn(CompletableFuture.completedFuture(true));
 
-    var response = underTest.checkServerTrusted(params).get();
+    var response = underTest.checkServerTrusted(List.of(new X509CertificateDto("malformed")), "authType");
 
     var branchCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.SslCertificateConfirmationParams.class);
     verify(client).askSslCertificateConfirmation(branchCaptor.capture());
@@ -448,54 +462,150 @@ class SonarLintVSCodeClientTests {
     Assertions.assertThat(capturedValue.getSha1Fingerprint()).isEmpty();
     Assertions.assertThat(capturedValue.getSha256Fingerprint()).isEmpty();
 
-    assertThat(response.isTrusted()).isTrue();
-  }
-
-  @Test
-  void shouldForwardServerSentEvent() {
-    var serverEvent = new IssueChangedEvent("projectKey", List.of("issueKey"), IssueSeverity.MAJOR, RuleType.BUG, false);
-    var params = new DidReceiveServerEventParams("connectionId", serverEvent);
-    underTest.didReceiveServerEvent(params);
-
-    verify(serverSentEventsHandlerService).handleEvents(serverEvent);
+    assertThat(response).isTrue();
   }
 
   @Test
   void shouldForwardOpenIssueRequest() {
-    var textRangeDto = new TextRangeDto(1, 2, 3, 4);
-    var showIssueParams = new ShowIssueParams(textRangeDto, "connectionId", "rule:S1234",
-      "issueKey", FILE_PYTHON, "branch", "1234", "this is wrong", "29.09.2023", "print('ddd')", false, List.of());
     var fileUri = fileInAWorkspaceFolderPath.toUri();
+    var textRangeDto = new TextRangeDto(1, 2, 3, 4);
+    var issueDetailsDto = new IssueDetailsDto(textRangeDto, "rule:S1234",
+      "issueKey", FILE_PYTHON, "branch", "PR", "this is wrong",
+      "29.09.2023", "print('ddd')", false, List.of());
+    var showIssueParams = new ShowIssueParams(fileUri.toString(), issueDetailsDto);
 
-    when(bindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath()))
-      .thenReturn(Optional.of(fileUri));
     when(bindingManager.getBinding(fileUri))
-      .thenReturn(Optional.of(new ProjectBindingWrapper("connectionId", binding, engine, serverIssueTrackerWrapper)));
+      .thenReturn(Optional.of(new ProjectBinding("connectionId", "projectKey", engine, serverIssueTrackerWrapper)));
 
-    underTest.showIssue(showIssueParams);
+    underTest.showIssue(fileUri.toString(), issueDetailsDto);
     verify(client).showIssue(paramCaptor.capture());
 
     var showAllLocationParams = paramCaptor.getValue();
 
-    assertEquals(showIssueParams.getFlows().size(), showAllLocationParams.getFlows().size());
+    assertEquals(showIssueParams.getIssueDetails().getFlows().size(), showAllLocationParams.getFlows().size());
     assertEquals("", showAllLocationParams.getSeverity());
-    assertEquals(showIssueParams.getMessage(), showAllLocationParams.getMessage());
-    assertEquals(showIssueParams.getRuleKey(), showAllLocationParams.getRuleKey());
+    assertEquals(showIssueParams.getIssueDetails().getMessage(), showAllLocationParams.getMessage());
+    assertEquals(showIssueParams.getIssueDetails().getRuleKey(), showAllLocationParams.getRuleKey());
   }
 
   @Test
   void shouldNotForwardOpenIssueRequestWhenBindingDoesNotExist() {
-    var textRangeDto = new TextRangeDto(1, 2, 3, 4);
-    var showIssueParams = new ShowIssueParams(textRangeDto, "connectionId", "rule:S1234",
-      "issueKey", FILE_PYTHON, "bb", null, "this is wrong", "29.09.2023", "print('ddd')", false, List.of());
     var fileUri = fileInAWorkspaceFolderPath.toUri();
+    var textRangeDto = new TextRangeDto(1, 2, 3, 4);
+    var issueDetailsDto = new IssueDetailsDto(textRangeDto, "rule:S1234",
+      "issueKey", FILE_PYTHON, "bb", null, "this is wrong", "29.09.2023", "print('ddd')",
+      false, List.of());
 
-    when(bindingManager.serverPathToFileUri(showIssueParams.getServerRelativeFilePath()))
-      .thenReturn(Optional.of(fileUri));
     when(bindingManager.getBinding(fileUri))
       .thenReturn(Optional.empty());
 
-    underTest.showIssue(showIssueParams);
+    underTest.showIssue(fileUri.toString(), issueDetailsDto);
     verify(client, never()).showIssue(any(ShowAllLocationsCommand.Param.class));
   }
+
+  @Test
+  void shouldLogMessagesWithLogLevel() {
+    underTest.log(new LogParams(LogLevel.ERROR, null, null, null, Instant.now()));
+    assertThat(logTester.logs())
+      .anyMatch(log -> log.contains("null"));
+
+    underTest.log(new LogParams(LogLevel.ERROR, "Log message", null, null, Instant.now()));
+    assertThat(logTester.logs(MessageType.Log))
+      .anyMatch(log -> log.contains("null"));
+    underTest.log(new LogParams(LogLevel.WARN, "Log message", null, null, Instant.now()));
+    assertThat(logTester.logs(MessageType.Log))
+      .anyMatch(log -> log.contains("null"));
+    underTest.log(new LogParams(LogLevel.INFO, "Log message", null, null, Instant.now()));
+    assertThat(logTester.logs(MessageType.Log))
+      .anyMatch(log -> log.contains("null"));
+    underTest.log(new LogParams(LogLevel.DEBUG, "Log message", null, null, Instant.now()));
+    assertThat(logTester.logs(MessageType.Log))
+      .anyMatch(log -> log.contains("null"));
+    underTest.log(new LogParams(LogLevel.TRACE, "Log message", null, null, Instant.now()));
+    assertThat(logTester.logs(MessageType.Log))
+      .anyMatch(log -> log.contains("null"));
+  }
+
+  @Test
+  void shouldUpdateTaintsCacheOnTaintsChangedAndPublishDiagnostics() {
+    var filePath = Path.of("filePath");
+    var workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
+    var workspaceFolderWrapper = mock(WorkspaceFolderWrapper.class);
+    var workspaceFolderSettings = mock(WorkspaceFolderSettings.class);
+    var serverConnectionSettings = mock(ServerConnectionSettings.class);
+    when(serverConnectionSettings.isSonarCloudAlias()).thenReturn(true);
+    when(workspaceFolderSettings.getConnectionId()).thenReturn("connectionId");
+    when(bindingManager.getServerConnectionSettingsFor("connectionId")).thenReturn(serverConnectionSettings);
+    when(workspaceFolderWrapper.getSettings()).thenReturn(workspaceFolderSettings);
+    underTest.setWorkspaceFoldersManager(workspaceFoldersManager);
+    when(workspaceFoldersManager.getFolder(workspaceFolderPath.toUri())).thenReturn(Optional.of(workspaceFolderWrapper));
+    var uuid1 = UUID.randomUUID();
+    var uuid2 = UUID.randomUUID();
+    var uuid3 = UUID.randomUUID();
+    var uuid4 = UUID.randomUUID();
+    when(taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile()).thenReturn(Map.of(filePath.toUri(),
+      List.of(getTaintIssue(uuid1), getTaintIssue(uuid2))));
+
+    underTest.didChangeTaintVulnerabilities(workspaceFolderPath.toUri().toString(), Set.of(uuid1),
+      List.of(getTaintDto(uuid1), getTaintDto(uuid2)), List.of(getTaintDto(uuid3), getTaintDto(uuid4)));
+
+    verify(taintVulnerabilitiesCache, times(2)).reload(eq(workspaceFolderPath.toUri().resolve(filePath.toString())), any());
+    verify(taintVulnerabilitiesCache).removeTaintIssue(URIUtils.getFullFileUriFromFragments(workspaceFolderPath.toUri().toString(), filePath).toString(),
+      getTaintIssue(uuid1).getSonarServerKey());
+  }
+
+  @Test
+  void shouldPopulateTaintsCacheOnAnalysisReadinessChangedAndPublishDiagnostics() throws InterruptedException {
+    var filePath = Path.of("filePath");
+    var workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
+    var workspaceFolderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(workspaceFolderWrapper.getUri()).thenReturn(workspaceFolderPath.toUri());
+    var serverConnectionSettings = mock(ServerConnectionSettings.class);
+    when(serverConnectionSettings.isSonarCloudAlias()).thenReturn(true);
+    when(bindingManager.getServerConnectionSettingsFor("connectionId")).thenReturn(serverConnectionSettings);
+    var fakeBinding = mock(ProjectBinding.class);
+    when(bindingManager.getBinding(workspaceFolderPath.toUri()))
+      .thenReturn(Optional.of(fakeBinding));
+    when(fakeBinding.getConnectionId()).thenReturn("connectionId");
+    underTest.setWorkspaceFoldersManager(workspaceFoldersManager);
+    when(workspaceFoldersManager.getAll()).thenReturn(List.of(workspaceFolderWrapper));
+    var uuid1 = UUID.randomUUID();
+    var uuid2 = UUID.randomUUID();
+
+    var fakeBackend = mock(BackendService.class);
+    when(backendServiceFacade.getBackendService()).thenReturn(fakeBackend);
+    when(fakeBackend.getAllTaints(workspaceFolderPath.toUri().toString()))
+      .thenReturn(CompletableFuture.completedFuture(new ListAllResponse(List.of(getTaintDto(uuid1), getTaintDto(uuid2)))));
+    when(taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile()).thenReturn(Map.of());
+    doNothing().when(analysisScheduler).analyzeAllUnboundOpenFiles();
+
+    underTest.didChangeAnalysisReadiness(Set.of(workspaceFolderPath.toUri().toString()), true);
+
+    var captor = ArgumentCaptor.forClass(List.class);
+
+    Thread.sleep(1000);
+    verify(taintVulnerabilitiesCache).reload(eq(URIUtils.getFullFileUriFromFragments(workspaceFolderPath.toUri().toString(), filePath)), captor.capture());
+    var taintIssues = captor.getValue();
+    assertThat(taintIssues).hasSize(2);
+    assertThat(((TaintIssue) taintIssues.get(0)).getId()).isEqualTo(uuid1);
+    assertThat(((TaintIssue) taintIssues.get(1)).getId()).isEqualTo(uuid2);
+    verify(diagnosticPublisher).publishDiagnostics(URIUtils.getFullFileUriFromFragments(workspaceFolderPath.toUri().toString(), filePath), false);
+  }
+
+
+  private TaintVulnerabilityDto getTaintDto(UUID uuid) {
+    return new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
+      Path.of("filePath"), Instant.now(), IssueSeverity.MAJOR, RuleType.BUG, List.of(),
+      new TextRangeWithHashDto(5, 5, 5, 5, ""), "", CleanCodeAttribute.CONVENTIONAL,
+      Map.of(), true);
+  }
+
+  private TaintIssue getTaintIssue(UUID uuid) {
+    return new TaintIssue(new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
+      Path.of("filePath"), Instant.now(), IssueSeverity.MAJOR, RuleType.BUG, List.of(),
+      new TextRangeWithHashDto(5, 5, 5, 5, ""), "", CleanCodeAttribute.CONVENTIONAL,
+      Map.of(), true), "folderUri", true);
+  }
+
+
 }
