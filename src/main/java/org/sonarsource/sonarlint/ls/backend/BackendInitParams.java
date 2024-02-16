@@ -23,10 +23,10 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarCloudConnectionConfigurationDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.config.SonarQubeConnectionConfigurationDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.StandaloneRuleConfigDto;
-import org.sonarsource.sonarlint.core.commons.Language;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarCloudConnectionConfigurationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarQubeConnectionConfigurationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.StandaloneRuleConfigDto;
 
 public class BackendInitParams {
 
@@ -43,6 +43,7 @@ public class BackendInitParams {
   private Map<String, StandaloneRuleConfigDto> standaloneRuleConfigByKey;
   private String userAgent;
   private boolean isFocusOnNewCode;
+  private String clientNodePath;
 
   public String getTelemetryProductKey() {
     return telemetryProductKey;
@@ -146,5 +147,13 @@ public class BackendInitParams {
 
   public void setUserAgent(String userAgent) {
     this.userAgent = userAgent;
+  }
+
+  public void setClientNodePath(String clientNodePath) {
+    this.clientNodePath = clientNodePath;
+  }
+
+  public String getClientNodePath() {
+    return clientNodePath;
   }
 }

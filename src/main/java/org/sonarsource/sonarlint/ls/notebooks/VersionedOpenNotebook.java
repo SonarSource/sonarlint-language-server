@@ -37,9 +37,9 @@ import org.eclipse.lsp4j.TextDocumentItem;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
 import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.commons.Language;
-import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
+import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
+import org.sonarsource.sonarlint.core.commons.api.TextRange;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.InFolderClientInputFile;
 
@@ -101,7 +101,7 @@ public class VersionedOpenNotebook {
   }
 
   public VersionedOpenFile asVersionedOpenFile() {
-    return new VersionedOpenFile(uri, Language.IPYTHON.getLanguageKey(), this.notebookVersion, getContent());
+    return new VersionedOpenFile(uri, SonarLanguage.IPYTHON.getSonarLanguageKey(), this.notebookVersion, getContent());
   }
 
   String getContent() {
@@ -124,7 +124,7 @@ public class VersionedOpenNotebook {
       .map(URI::create);
   }
 
-  public DelegatingCellIssue toCellIssue(Issue issue) {
+  public DelegatingCellIssue toCellIssue(RawIssue issue) {
     indexCellsByLineNumber();
     var issueTextRange = issue.getTextRange();
     var originalQuickFixes = issue.quickFixes();

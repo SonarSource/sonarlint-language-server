@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
-import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import testutils.SonarLintLogTester;
 
 import static java.util.Collections.emptyList;
@@ -176,8 +176,8 @@ class FileUtilsTests {
       "  }\n" +
       "}\n";
 
-    var textRangeContent = getTextRangeContentOfFile(content.lines().collect(Collectors.toList()), new TextRange(12, 21, 12, 42));
-    var multiLineTextRangeContent = getTextRangeContentOfFile(content.lines().collect(Collectors.toList()), new TextRange(12, 21, 14, 60));
+    var textRangeContent = getTextRangeContentOfFile(content.lines().collect(Collectors.toList()), new TextRangeDto(12, 21, 12, 42));
+    var multiLineTextRangeContent = getTextRangeContentOfFile(content.lines().collect(Collectors.toList()), new TextRangeDto(12, 21, 14, 60));
 
     assertThat(getTextRangeContentOfFile(emptyList(), null)).isNull();
     assertThat(textRangeContent).isEqualTo("con.createStatement()");
@@ -191,8 +191,8 @@ class FileUtilsTests {
       "\n" +
       "// TODO implement the TODO bellow\n" +
       "// TODO implement this class";
-    var textRangeContent = getTextRangeContentOfFile(content.lines().collect(Collectors.toList()), new TextRange(3, 0, 2, 666));
-    var multiLineTextRangeContent = getTextRangeContentOfFile(content.lines().collect(Collectors.toList()), new TextRange(3, 0, 4, 666));
+    var textRangeContent = getTextRangeContentOfFile(content.lines().collect(Collectors.toList()), new TextRangeDto(3, 0, 2, 666));
+    var multiLineTextRangeContent = getTextRangeContentOfFile(content.lines().collect(Collectors.toList()), new TextRangeDto(3, 0, 4, 666));
 
     assertThat(textRangeContent).isEqualTo("// TODO implement the TODO bellow" + System.lineSeparator());
     assertThat(multiLineTextRangeContent).isEqualTo("// TODO implement the TODO bellow" + System.lineSeparator()

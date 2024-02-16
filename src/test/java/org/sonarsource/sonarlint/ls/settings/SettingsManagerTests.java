@@ -37,13 +37,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.commons.RuleKey;
-import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput.Level;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeClientNodeJsPathParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.util.Utils;
@@ -56,7 +56,9 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.settings.SettingsManager.ANALYZER_PROPERTIES;
 
@@ -67,82 +69,78 @@ class SettingsManagerTests {
   @RegisterExtension
   public SonarLintLogTester logTester = new SonarLintLogTester();
 
-  private static final String DEPRECATED_SAMPLE_CONFIG = "{\n" +
-    "  \"connectedMode\": {\n" +
-    "    \"servers\": [\n" +
-    "      { \"serverId\": \"server1\", \"serverUrl\": \"https://mysonarqube.mycompany.org\", \"token\": \"ab12\" }," +
-    "      { \"serverId\": \"sc\", \"serverUrl\": \"https://sonarcloud.io\", \"token\": \"cd34\", \"organizationKey\": \"myOrga\" }" +
-    "    ],\n" +
-    "    \"project\": {\n" +
-    "      \"serverId\": \"server1\",\n" +
-    "      \"projectKey\": \"myProject\"\n" +
-    "    }\n" +
-    "  }\n" +
-    "}\n";
+  private static final String DEPRECATED_SAMPLE_CONFIG = """
+    {
+      "connectedMode": {
+        "servers": [
+          { "serverId": "server1", "serverUrl": "https://mysonarqube.mycompany.org", "token": "ab12" },      { "serverId": "sc", "serverUrl": "https://sonarcloud.io", "token": "cd34", "organizationKey": "myOrga" }    ],
+        "project": {
+          "serverId": "server1",
+          "projectKey": "myProject"
+        }
+      }
+    }
+    """;
 
-  private static final String FULL_SAMPLE_CONFIG = "{\n" +
-    "  \"testFilePattern\": \"**/*Test.*\",\n" +
-    "  \"analyzerProperties\": {\n" +
-    "    \"sonar.polop\": \"palap\"\n" +
-    "  },\n" +
-    "  \"pathToCompileCommands\": \"/pathToCompileCommand\",\n" +
-    "  \"disableTelemetry\": true,\n"
-    + "\"output\": {\n" +
-    "  \"showAnalyzerLogs\": true,\n" +
-    "  \"showVerboseLogs\": true\n"
-    + "},\n" +
-    "  \"rules\": {\n" +
-    "    \"xoo:rule1\": {\n" +
-    "      \"level\": \"off\"\n" +
-    "    },\n" +
-    "    \"xoo:rule2\": {\n" +
-    "      \"level\": \"warn\"\n" +
-    "    },\n" +
-    "    \"xoo:rule3\": {\n" +
-    "      \"level\": \"on\"\n" +
-    "    },\n" +
-    "    \"xoo:rule4\": {\n" +
-    "      \"level\": \"on\",\n" +
-    "      \"parameters\": { \"param1\": \"123\" }" +
-    "    },\n" +
-    "    \"xoo:notEvenARule\": \"definitely not a rule\",\n" +
-    "    \"somethingNotParsedByRuleKey\": {\n" +
-    "      \"level\": \"off\"\n" +
-    "    }\n" +
-    "  },\n" +
-    "  \"connectedMode\": {\n" +
-    "    \"connections\": {\n" +
-    "      \"sonarqube\": [\n" +
-    "        { \"connectionId\": \"sq1\", \"serverUrl\": \"https://mysonarqube1.mycompany.org\", \"token\": \"ab12\" }," +
-    "        { \"connectionId\": \"sq2\", \"serverUrl\": \"https://mysonarqube2.mycompany.org\", \"token\": \"cd34\" }" +
-    "      ],\n" +
-    "      \"sonarcloud\": [\n" +
-    "        { \"connectionId\": \"sc1\", \"token\": \"ab12\", \"organizationKey\": \"myOrga1\" }," +
-    "        { \"connectionId\": \"sc2\", \"token\": \"cd34\", \"organizationKey\": \"myOrga2\" }" +
-    "      ]\n" +
-    "    },\n" +
-    "    \"project\": {\n" +
-    "      \"connectionId\": \"sq1\",\n" +
-    "      \"projectKey\": \"myProject\"\n" +
-    "    }\n" +
-    "  }\n" +
-    "}\n";
+  private static final String FULL_SAMPLE_CONFIG = """
+    {
+      "testFilePattern": "**/*Test.*",
+      "analyzerProperties": {
+        "sonar.polop": "palap"
+      },
+      "pathToCompileCommands": "/pathToCompileCommand",
+      "disableTelemetry": true,
+    "output": {
+      "showAnalyzerLogs": true,
+      "showVerboseLogs": true
+    },
+      "rules": {
+        "xoo:rule1": {
+          "level": "off"
+        },
+        "xoo:rule2": {
+          "level": "warn"
+        },
+        "xoo:rule3": {
+          "level": "on"
+        },
+        "xoo:rule4": {
+          "level": "on",
+          "parameters": { "param1": "123" }    },
+        "xoo:notEvenARule": "definitely not a rule",
+        "somethingNotParsedByRuleKey": {
+          "level": "off"
+        }
+      },
+      "connectedMode": {
+        "connections": {
+          "sonarqube": [
+            { "connectionId": "sq1", "serverUrl": "https://mysonarqube1.mycompany.org", "token": "ab12" },        { "connectionId": "sq2", "serverUrl": "https://mysonarqube2.mycompany.org", "token": "cd34" }      ],
+          "sonarcloud": [
+            { "connectionId": "sc1", "token": "ab12", "organizationKey": "myOrga1" },        { "connectionId": "sc2", "token": "cd34", "organizationKey": "myOrga2" }      ]
+        },
+        "project": {
+          "connectionId": "sq1",
+          "projectKey": "myProject"
+        }
+      }
+    }
+    """;
 
   private SettingsManager underTest;
   private WorkspaceFoldersManager foldersManager;
-  private ProjectBindingManager bindingManager;
   private SonarLintExtendedLanguageClient client;
+  private BackendService backendService;
 
   @BeforeEach
   void prepare() {
     foldersManager = mock(WorkspaceFoldersManager.class);
-    bindingManager = mock(ProjectBindingManager.class);
     client = mock(SonarLintExtendedLanguageClient.class);
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token-from-storage"));
     var backendFacade = mock(BackendServiceFacade.class);
-    var backend = mock(BackendService.class);
+    backendService = mock(BackendService.class);
     when(backendFacade.getInitParams()).thenReturn(new BackendInitParams());
-    when(backendFacade.getBackendService()).thenReturn(backend);
+    when(backendFacade.getBackendService()).thenReturn(backendService);
     underTest = new SettingsManager(client, foldersManager, new ImmediateExecutorService(), backendFacade, logTester.getLogger());
     underTest = spy(underTest);
   }
@@ -165,6 +163,7 @@ class SettingsManagerTests {
     doReturn(CompletableFuture.supplyAsync(() -> fromJsonString(json))).when(underTest).requestSonarLintAndOmnisharpConfigurationAsync(uri);
   }
 
+
   @Test
   void shouldParseFullDeprecatedWellFormedJsonWorkspaceFolderSettings() {
     mockConfigurationRequest(null, DEPRECATED_SAMPLE_CONFIG);
@@ -174,6 +173,7 @@ class SettingsManagerTests {
     assertThat(settings.getConnectionId()).isEqualTo("server1");
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
   }
+
 
   @Test
   void shouldParseFullWellFormedJsonWorkspaceSettings() {
@@ -199,24 +199,23 @@ class SettingsManagerTests {
         tuple("sc2", "https://sonarcloud.io", "token-from-storage", "myOrga2"));
   }
 
+
   @Test
   void shouldLogErrorIfIncompleteConnections() {
-    mockConfigurationRequest(null, "{\n" +
-      "  \"connectedMode\": {\n" +
-      "    \"servers\": [\n" +
-      "      { \"serverUrl\": \"https://mysonarqube.mycompany.org\", \"token\": \"ab12\" }," +
-      "      { \"serverId\": \"server1\", \"token\": \"ab12\" }" +
-      "    ],\n" +
-      "    \"connections\": {\n" +
-      "      \"sonarqube\": [\n" +
-      "        { \"token\": \"cd34\" }" +
-      "      ],\n" +
-      "      \"sonarcloud\": [\n" +
-      "        { \"token\": \"ab12\" }" +
-      "      ]\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n");
+    mockConfigurationRequest(null, """
+      {
+        "connectedMode": {
+          "servers": [
+            { "serverUrl": "https://mysonarqube.mycompany.org", "token": "ab12" },      { "serverId": "server1", "token": "ab12" }    ],
+          "connections": {
+            "sonarqube": [
+              { "token": "cd34" }      ],
+            "sonarcloud": [
+              { "token": "ab12" }      ]
+          }
+        }
+      }
+      """);
     underTest.didChangeConfiguration();
 
     var settings = underTest.getCurrentSettings();
@@ -228,20 +227,21 @@ class SettingsManagerTests {
       .anyMatch(log -> log.contains("Incomplete SonarCloud connection configuration. Required parameters must not be blank: organizationKey."));
   }
 
+
   @Test
   void shouldLogErrorIfDuplicateConnectionId() {
-    mockConfigurationRequest(null, "{\n" +
-      "  \"connectedMode\": {\n" +
-      "    \"connections\": {\n" +
-      "      \"sonarqube\": [\n" +
-      "        { \"connectionId\": \"dup\", \"serverUrl\": \"https://mysonarqube1.mycompany.org\", \"token\": \"ab12\" }" +
-      "      ],\n" +
-      "      \"sonarcloud\": [\n" +
-      "        { \"connectionId\": \"dup\", \"token\": \"ab12\", \"organizationKey\": \"myOrga1\" }" +
-      "      ]\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n");
+    mockConfigurationRequest(null, """
+      {
+        "connectedMode": {
+          "connections": {
+            "sonarqube": [
+              { "connectionId": "dup", "serverUrl": "https://mysonarqube1.mycompany.org", "token": "ab12" }      ],
+            "sonarcloud": [
+              { "connectionId": "dup", "token": "ab12", "organizationKey": "myOrga1" }      ]
+          }
+        }
+      }
+      """);
     underTest.didChangeConfiguration();
 
     var settings = underTest.getCurrentSettings();
@@ -249,26 +249,28 @@ class SettingsManagerTests {
     assertThat(logTester.logs(MessageType.Log)).anyMatch(log -> log.contains("Multiple server connections with the same identifier 'dup'. Fix your settings."));
   }
 
+
   @Test
   void shouldLogErrorIfDuplicateConnectionsWithoutId() {
-    mockConfigurationRequest(null, "{\n" +
-      "  \"connectedMode\": {\n" +
-      "    \"connections\": {\n" +
-      "      \"sonarqube\": [\n" +
-      "        { \"serverUrl\": \"https://mysonarqube1.mycompany.org\", \"token\": \"ab12\" }" +
-      "      ],\n" +
-      "      \"sonarcloud\": [\n" +
-      "        { \"token\": \"ab12\", \"organizationKey\": \"myOrga1\" }" +
-      "      ]\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n");
+    mockConfigurationRequest(null, """
+      {
+        "connectedMode": {
+          "connections": {
+            "sonarqube": [
+              { "serverUrl": "https://mysonarqube1.mycompany.org", "token": "ab12" }      ],
+            "sonarcloud": [
+              { "token": "ab12", "organizationKey": "myOrga1" }      ]
+          }
+        }
+      }
+      """);
     underTest.didChangeConfiguration();
 
     var settings = underTest.getCurrentSettings();
     assertThat(settings.getServerConnections()).containsKeys("<default>");
     assertThat(logTester.logs(MessageType.Log)).anyMatch(log -> log.contains("Please specify a unique 'connectionId' in your settings for each of the SonarQube/SonarCloud connections."));
   }
+
 
   @Test
   void shouldParseFullDeprecatedWellFormedJsonWorkspaceSettings() {
@@ -284,17 +286,20 @@ class SettingsManagerTests {
         tuple("sc", "https://sonarcloud.io", "cd34", "myOrga"));
   }
 
+
   @Test
   void shouldLogErrorIfNoConnectionToDefault() {
-    mockConfigurationRequest(null, "{\n" +
-      "  \"connectedMode\": {\n" +
-      "    \"connections\": {\n" +
-      "    },\n" +
-      "    \"project\": {\n" +
-      "      \"projectKey\": \"myProject\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n");
+    mockConfigurationRequest(null, """
+      {
+        "connectedMode": {
+          "connections": {
+          },
+          "project": {
+            "projectKey": "myProject"
+          }
+        }
+      }
+      """);
     underTest.didChangeConfiguration();
 
     var settings = underTest.getCurrentDefaultFolderSettings();
@@ -304,20 +309,22 @@ class SettingsManagerTests {
       .anyMatch(log -> log.contains("No SonarQube/SonarCloud connections defined for your binding. Please update your settings."));
   }
 
+
   @Test
   void shouldDefaultIfOnlyOneConnectionId() {
-    mockConfigurationRequest(null, "{\n" +
-      "  \"connectedMode\": {\n" +
-      "    \"connections\": {\n" +
-      "      \"sonarqube\": [\n" +
-      "        { \"connectionId\": \"sq\", \"serverUrl\": \"https://mysonarqube2.mycompany.org\", \"token\": \"cd34\" }" +
-      "      ]\n" +
-      "    },\n" +
-      "    \"project\": {\n" +
-      "      \"projectKey\": \"myProject\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n");
+    mockConfigurationRequest(null, """
+      {
+        "connectedMode": {
+          "connections": {
+            "sonarqube": [
+              { "connectionId": "sq", "serverUrl": "https://mysonarqube2.mycompany.org", "token": "cd34" }      ]
+          },
+          "project": {
+            "projectKey": "myProject"
+          }
+        }
+      }
+      """);
     underTest.didChangeConfiguration();
 
     var settings = underTest.getCurrentDefaultFolderSettings();
@@ -325,20 +332,22 @@ class SettingsManagerTests {
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
   }
 
+
   @Test
   void shouldDefaultIfNoConnectionId() {
-    mockConfigurationRequest(null, "{\n" +
-      "  \"connectedMode\": {\n" +
-      "    \"connections\": {\n" +
-      "      \"sonarqube\": [\n" +
-      "        { \"serverUrl\": \"https://mysonarqube2.mycompany.org\", \"token\": \"cd34\" }" +
-      "      ]\n" +
-      "    },\n" +
-      "    \"project\": {\n" +
-      "      \"projectKey\": \"myProject\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n");
+    mockConfigurationRequest(null, """
+      {
+        "connectedMode": {
+          "connections": {
+            "sonarqube": [
+              { "serverUrl": "https://mysonarqube2.mycompany.org", "token": "cd34" }      ]
+          },
+          "project": {
+            "projectKey": "myProject"
+          }
+        }
+      }
+      """);
     underTest.didChangeConfiguration();
 
     assertThat(underTest.getCurrentSettings().getServerConnections().keySet()).containsExactly("<default>");
@@ -348,17 +357,20 @@ class SettingsManagerTests {
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
   }
 
+
   @Test
   void shouldLogAnErrorIfAmbiguousConnectionId() {
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
 
-    mockConfigurationRequest(FOLDER_URI, "{\n" +
-      "  \"connectedMode\": {\n" +
-      "    \"project\": {\n" +
-      "      \"projectKey\": \"myProject\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n");
+    mockConfigurationRequest(FOLDER_URI, """
+      {
+        "connectedMode": {
+          "project": {
+            "projectKey": "myProject"
+          }
+        }
+      }
+      """);
     var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder(), logTester.getLogger());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
@@ -371,18 +383,21 @@ class SettingsManagerTests {
       .anyMatch(log -> log.contains("Multiple connections defined in your settings. Please specify a 'connectionId' in your binding with one of [sc1,sq1,sc2,sq2] to disambiguate."));
   }
 
+
   @Test
   void shouldLogAnErrorIfUnknownConnectionId() {
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
 
-    mockConfigurationRequest(FOLDER_URI, "{\n" +
-      "  \"connectedMode\": {\n" +
-      "    \"project\": {\n" +
-      "      \"connectionId\": \"unknown\",\n" +
-      "      \"projectKey\": \"myProject\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n");
+    mockConfigurationRequest(FOLDER_URI, """
+      {
+        "connectedMode": {
+          "project": {
+            "connectionId": "unknown",
+            "projectKey": "myProject"
+          }
+        }
+      }
+      """);
     var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder(), logTester.getLogger());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
@@ -395,52 +410,61 @@ class SettingsManagerTests {
       .anyMatch(log -> log.contains("No SonarQube/SonarCloud connections defined for your binding with id 'unknown'. Please update your settings."));
   }
 
+
   @Test
   void shouldHaveLocalRuleConfigurationWithDisabledRule() {
-    mockConfigurationRequest(null, "{\n" +
-      "  \"rules\": {\n" +
-      "    \"xoo:rule1\": {\n" +
-      "      \"level\": \"off\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n");
+    mockConfigurationRequest(null, """
+      {
+        "rules": {
+          "xoo:rule1": {
+            "level": "off"
+          }
+        }
+      }
+      """);
     underTest.didChangeConfiguration();
 
     var settings = underTest.getCurrentSettings();
     assertThat(settings.hasLocalRuleConfiguration()).isTrue();
   }
+
 
   @Test
   void shouldHaveLocalRuleConfigurationWithEnabledRule() {
-    mockConfigurationRequest(null, "{\n" +
-      "  \"rules\": {\n" +
-      "    \"xoo:rule1\": {\n" +
-      "      \"level\": \"on\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n");
+    mockConfigurationRequest(null, """
+      {
+        "rules": {
+          "xoo:rule1": {
+            "level": "on"
+          }
+        }
+      }
+      """);
     underTest.didChangeConfiguration();
 
     var settings = underTest.getCurrentSettings();
     assertThat(settings.hasLocalRuleConfiguration()).isTrue();
   }
 
+
   @Test
   void shouldParseScalarParameterValuesWithSomeTolerance() {
-    mockConfigurationRequest(null, "{\n" +
-      "  \"rules\": {\n" +
-      "    \"xoo:rule1\": {\n" +
-      "      \"level\": \"on\",\n" +
-      "      \"parameters\": {\n" +
-      "        \"intParam\": 42,\n" +
-      "        \"floatParam\": 123.456,\n" +
-      "        \"boolParam\": true,\n" +
-      "        \"nullParam\": null,\n" +
-      "        \"stringParam\": \"you get the picture\"\n" +
-      "      }\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n");
+    mockConfigurationRequest(null, """
+      {
+        "rules": {
+          "xoo:rule1": {
+            "level": "on",
+            "parameters": {
+              "intParam": 42,
+              "floatParam": 123.456,
+              "boolParam": true,
+              "nullParam": null,
+              "stringParam": "you get the picture"
+            }
+          }
+        }
+      }
+      """);
     underTest.didChangeConfiguration();
 
     var settings = underTest.getCurrentSettings();
@@ -453,17 +477,20 @@ class SettingsManagerTests {
       entry("stringParam", "you get the picture"));
   }
 
+
   @Test
   void workspaceFolderVariableForPathToCompileCommands(@TempDir Path workspaceFolder) {
-    var config = "{\n" +
-      "  \"testFilePattern\": \"**/*Test.*\",\n" +
-      "  \"pathToCompileCommands\": \"${workspaceFolder}/pathToCompileCommand\",\n" +
-      "  \"disableTelemetry\": true,\n" +
-      "  \"output\": {\n" +
-      "  \"showAnalyzerLogs\": true,\n" +
-      "  \"showVerboseLogs\": true\n"
-      + "}\n" +
-      "}\n";
+    var config = """
+      {
+        "testFilePattern": "**/*Test.*",
+        "pathToCompileCommands": "${workspaceFolder}/pathToCompileCommand",
+        "disableTelemetry": true,
+        "output": {
+        "showAnalyzerLogs": true,
+        "showVerboseLogs": true
+      }
+      }
+      """;
     var workspaceFolderUri = workspaceFolder.toUri();
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
@@ -475,18 +502,21 @@ class SettingsManagerTests {
     var settings = folderWrapper.getSettings();
     assertThat(settings.getPathToCompileCommands()).isEqualTo(workspaceFolder.resolve("pathToCompileCommand").toString());
   }
+
 
   @Test
   void workspaceFolderVariableForPathToCompileCommandsShouldWorkWithoutFileSeparator(@TempDir Path workspaceFolder) {
-    var config = "{\n" +
-      "  \"testFilePattern\": \"**/*Test.*\",\n" +
-      "  \"pathToCompileCommands\": \"${workspaceFolder}pathToCompileCommand\",\n" +
-      "  \"disableTelemetry\": true,\n" +
-      "  \"output\": {\n" +
-      "  \"showAnalyzerLogs\": true,\n" +
-      "  \"showVerboseLogs\": true\n"
-      + "}\n" +
-      "}\n";
+    var config = """
+      {
+        "testFilePattern": "**/*Test.*",
+        "pathToCompileCommands": "${workspaceFolder}pathToCompileCommand",
+        "disableTelemetry": true,
+        "output": {
+        "showAnalyzerLogs": true,
+        "showVerboseLogs": true
+      }
+      }
+      """;
     var workspaceFolderUri = workspaceFolder.toUri();
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
@@ -498,18 +528,21 @@ class SettingsManagerTests {
     var settings = folderWrapper.getSettings();
     assertThat(settings.getPathToCompileCommands()).isEqualTo(workspaceFolder.resolve("pathToCompileCommand").toString());
   }
+
 
   @Test
   void workspaceFolderVariableForPathToCompileCommandsShouldWorkWithWindowsFileSeparator(@TempDir Path workspaceFolder) {
-    var config = "{\n" +
-      "  \"testFilePattern\": \"**/*Test.*\",\n" +
-      "  \"pathToCompileCommands\": \"${workspaceFolder}\\\\pathToCompileCommand\",\n" +
-      "  \"disableTelemetry\": true,\n" +
-      "  \"output\": {\n" +
-      "  \"showAnalyzerLogs\": true,\n" +
-      "  \"showVerboseLogs\": true\n"
-      + "}\n" +
-      "}\n";
+    var config = """
+      {
+        "testFilePattern": "**/*Test.*",
+        "pathToCompileCommands": "${workspaceFolder}\\\\pathToCompileCommand",
+        "disableTelemetry": true,
+        "output": {
+        "showAnalyzerLogs": true,
+        "showVerboseLogs": true
+      }
+      }
+      """;
     var workspaceFolderUri = workspaceFolder.toUri();
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
@@ -522,17 +555,20 @@ class SettingsManagerTests {
     assertThat(settings.getPathToCompileCommands()).isEqualTo(workspaceFolder.resolve("pathToCompileCommand").toString());
   }
 
+
   @Test
   void workspaceFolderVariableShouldNotWorkForGlobalConfiguration() {
-    var config = "{\n" +
-      "  \"testFilePattern\": \"**/*Test.*\",\n" +
-      "  \"pathToCompileCommands\": \"${workspaceFolder}/pathToCompileCommand\",\n" +
-      "  \"disableTelemetry\": true,\n" +
-      "  \"output\": {\n" +
-      "  \"showAnalyzerLogs\": true,\n" +
-      "  \"showVerboseLogs\": true\n"
-      + "}\n" +
-      "}\n";
+    var config = """
+      {
+        "testFilePattern": "**/*Test.*",
+        "pathToCompileCommands": "${workspaceFolder}/pathToCompileCommand",
+        "disableTelemetry": true,
+        "output": {
+        "showAnalyzerLogs": true,
+        "showVerboseLogs": true
+      }
+      }
+      """;
     mockConfigurationRequest(null, config);
 
     underTest.didChangeConfiguration();
@@ -542,17 +578,20 @@ class SettingsManagerTests {
       .anyMatch(log -> log.contains("Using ${workspaceFolder} variable in sonarlint.pathToCompileCommands is only supported for files in the workspace"));
   }
 
+
   @Test
   void pathToCompileCommandsWithoutWorkspaceFolderVariableForGlobalConfigShouldBeAccepted() {
-    var config = "{\n" +
-      "  \"testFilePattern\": \"**/*Test.*\",\n" +
-      "  \"pathToCompileCommands\": \"/pathToCompileCommand\",\n" +
-      "  \"disableTelemetry\": true,\n" +
-      "  \"output\": {\n" +
-      "  \"showAnalyzerLogs\": true,\n" +
-      "  \"showVerboseLogs\": true\n"
-      + "}\n" +
-      "}\n";
+    var config = """
+      {
+        "testFilePattern": "**/*Test.*",
+        "pathToCompileCommands": "/pathToCompileCommand",
+        "disableTelemetry": true,
+        "output": {
+        "showAnalyzerLogs": true,
+        "showVerboseLogs": true
+      }
+      }
+      """;
     mockConfigurationRequest(null, config);
 
     underTest.didChangeConfiguration();
@@ -561,17 +600,20 @@ class SettingsManagerTests {
     assertThat(settings.getPathToCompileCommands()).isEqualTo("/pathToCompileCommand");
   }
 
+
   @Test
   void workspaceFolderVariableShouldBePrefixOfPropertyValue() {
-    var config = "{\n" +
-      "  \"testFilePattern\": \"**/*Test.*\",\n" +
-      "  \"pathToCompileCommands\": \"something${workspaceFolder}/pathToCompileCommand\",\n" +
-      "  \"disableTelemetry\": true,\n" +
-      "  \"output\": {\n" +
-      "  \"showAnalyzerLogs\": true,\n" +
-      "  \"showVerboseLogs\": true\n"
-      + "}\n" +
-      "}\n";
+    var config = """
+      {
+        "testFilePattern": "**/*Test.*",
+        "pathToCompileCommands": "something${workspaceFolder}/pathToCompileCommand",
+        "disableTelemetry": true,
+        "output": {
+        "showAnalyzerLogs": true,
+        "showVerboseLogs": true
+      }
+      }
+      """;
     mockConfigurationRequest(null, config);
 
     underTest.didChangeConfiguration();
@@ -581,17 +623,20 @@ class SettingsManagerTests {
       .anyMatch(log -> log.contains("Variable ${workspaceFolder} for sonarlint.pathToCompileCommands should be the prefix."));
   }
 
+
   @Test
   void failForNotValidWorkspaceFolderPath() {
-    var config = "{\n" +
-      "  \"testFilePattern\": \"**/*Test.*\",\n" +
-      "  \"pathToCompileCommands\": \"${workspaceFolder}/pathToCompileCommand\",\n" +
-      "  \"disableTelemetry\": true,\n" +
-      "  \"output\": {\n" +
-      "  \"showAnalyzerLogs\": true,\n" +
-      "  \"showVerboseLogs\": true\n"
-      + "}\n" +
-      "}\n";
+    var config = """
+      {
+        "testFilePattern": "**/*Test.*",
+        "pathToCompileCommands": "${workspaceFolder}/pathToCompileCommand",
+        "disableTelemetry": true,
+        "output": {
+        "showAnalyzerLogs": true,
+        "showVerboseLogs": true
+      }
+      }
+      """;
     var workspaceFolderUri = URI.create("notfile:///workspace/folder");
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
@@ -605,57 +650,63 @@ class SettingsManagerTests {
       .anyMatch(log -> log.contains("Workspace folder is not in local filesystem, analysis not supported."));
   }
 
+
   @Test
   void ifCanNotGetTokenFromClientDueToInterruptedExceptionShouldLogError() {
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.failedFuture(new InterruptedException()));
-    mockConfigurationRequest(null, "{\n" +
-      "  \"connectedMode\": {\n" +
-      "    \"connections\": {\n" +
-      "      \"sonarqube\": [\n" +
-      "        { \"connectionId\": \"sq1\", \"serverUrl\": \"https://mysonarqube1.mycompany.org\", \"token\": \"ab12\" }," +
-      "      ]\n" +
-      "    },\n" +
-      "    \"project\": {\n" +
-      "      \"connectionId\": \"sq1\",\n" +
-      "      \"projectKey\": \"myProject\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n");
+    mockConfigurationRequest(null, """
+      {
+        "connectedMode": {
+          "connections": {
+            "sonarqube": [
+              { "connectionId": "sq1", "serverUrl": "https://mysonarqube1.mycompany.org", "token": "ab12" },      ]
+          },
+          "project": {
+            "connectionId": "sq1",
+            "projectKey": "myProject"
+          }
+        }
+      }
+      """);
 
     underTest.didChangeConfiguration();
 
     assertThat(logTester.logs(MessageType.Log))
       .anyMatch(log -> log.contains("Can't get token for server https://mysonarqube1.mycompany.org"));
   }
+
 
   @Test
   void ifCanNotGetTokenFromClientDueToExcecutionExceptionShouldLogError() {
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.failedFuture(new ExecutionException(new IllegalStateException())));
-    mockConfigurationRequest(null, "{\n" +
-      "  \"connectedMode\": {\n" +
-      "    \"connections\": {\n" +
-      "      \"sonarqube\": [\n" +
-      "        { \"connectionId\": \"sq1\", \"serverUrl\": \"https://mysonarqube1.mycompany.org\", \"token\": \"ab12\" }," +
-      "      ]\n" +
-      "    },\n" +
-      "    \"project\": {\n" +
-      "      \"connectionId\": \"sq1\",\n" +
-      "      \"projectKey\": \"myProject\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}\n");
+    mockConfigurationRequest(null, """
+      {
+        "connectedMode": {
+          "connections": {
+            "sonarqube": [
+              { "connectionId": "sq1", "serverUrl": "https://mysonarqube1.mycompany.org", "token": "ab12" },      ]
+          },
+          "project": {
+            "connectionId": "sq1",
+            "projectKey": "myProject"
+          }
+        }
+      }
+      """);
 
     underTest.didChangeConfiguration();
 
     assertThat(logTester.logs(MessageType.Log))
       .anyMatch(log -> log.contains("Can't get token for server https://mysonarqube1.mycompany.org"));
   }
+
 
   @Test
   void shouldReturnUntouchedNonNullConnectionId() {
     var connectionId = "connectionId";
     assertThat(SettingsManager.connectionIdOrDefault(connectionId)).isEqualTo(connectionId);
   }
+
 
   @Test
   void shouldReturnDefaultConnectionIdIfNull() {
@@ -693,6 +744,36 @@ class SettingsManagerTests {
     assertThat(result).containsKey(ANALYZER_PROPERTIES);
     var analyzerProperties = (Map<String, String>) result.get(ANALYZER_PROPERTIES);
     assertThat(analyzerProperties).contains(entry("sonar.cs.file.suffixes", ".cs"));
+  }
+
+  @Test
+  void shouldNotifyAboutNodeJsChange(){
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    underTest.didChangeConfiguration();
+
+    var newNodePath = "path/to/node";
+    mockConfigurationRequest(null, "{\n" +
+      "\"pathToNodeExecutable\" : \"" + newNodePath + "\"" +
+      "}\n");
+    underTest.didChangeConfiguration();
+
+    var argumentCaptor = ArgumentCaptor.forClass(DidChangeClientNodeJsPathParams.class);
+    verify(backendService).didChangeClientNodeJsPath(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue().getClientNodeJsPath()).isEqualTo(Path.of(newNodePath));
+  }
+
+  @Test
+  void shouldNotNotifyAboutNodeJsChange(){
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    underTest.didChangeConfiguration();
+
+    mockConfigurationRequest(null, """
+      {
+      "disableTelemetry" : "true"}
+      """);
+    underTest.didChangeConfiguration();
+
+    verify(backendService, never()).didChangeClientNodeJsPath(any());
   }
 
   private static Map<String, Object> fromJsonString(String json) {

@@ -28,9 +28,9 @@ import org.eclipse.lsp4j.FileChangeType;
 import org.eclipse.lsp4j.FileEvent;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModuleFileEvent;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModuleInfo;
-import org.sonarsource.sonarlint.core.client.api.common.SonarLintEngine;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.FolderFileSystem;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
@@ -75,7 +75,7 @@ public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
 
         var binding = bindingManager.getBinding(fileUri);
 
-        var engineForFile = binding.isPresent() ? binding.get().getEngine() : standaloneEngineManager.getOrCreateStandaloneEngine();
+        var engineForFile = binding.isPresent() ? binding.get().getEngine() : standaloneEngineManager.getOrCreateAnalysisEngine();
 
         var inputFile = new InFolderClientInputFile(fileUri, baseDir.relativize(Paths.get(fileUri)).toString(),
           fileTypeClassifier.isTest(settings, fileUri, false, () -> javaConfigCache.getOrFetch(fileUri)));
@@ -96,11 +96,11 @@ public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
     throw new IllegalArgumentException("Unknown event type: " + type);
   }
 
-  private SonarLintEngine findEngineFor(WorkspaceFolderWrapper folder) {
+  private SonarLintAnalysisEngine findEngineFor(WorkspaceFolderWrapper folder) {
     return bindingManager.getBinding(folder)
-      .map(ProjectBindingWrapper::getEngine)
-      .map(SonarLintEngine.class::cast)
-      .orElseGet(standaloneEngineManager::getOrCreateStandaloneEngine);
+      .map(ProjectBinding::getEngine)
+      .map(SonarLintAnalysisEngine.class::cast)
+      .orElseGet(standaloneEngineManager::getOrCreateAnalysisEngine);
   }
 
   @Override

@@ -63,7 +63,7 @@ public class NotebookDiagnosticPublisher {
 
     var localDiagnostics = localIssues.entrySet()
       .stream()
-      .map(entry -> Map.entry(entry.getKey(), versionedOpenNotebook.toCellIssue(entry.getValue().issue())))
+      .map(entry -> Map.entry(entry.getKey(), versionedOpenNotebook.toCellIssue(entry.getValue().issue().getRawIssue())))
       .map(NotebookDiagnosticPublisher::convertCellIssue)
       .collect(groupingBy(diagnostic -> {
         var localIssue = localIssues.get(((DiagnosticPublisher.DiagnosticData) diagnostic.getData()).getEntryKey());

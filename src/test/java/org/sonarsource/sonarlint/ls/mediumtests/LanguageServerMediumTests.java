@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
+
 import com.google.gson.JsonPrimitive;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -60,11 +61,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
-import org.sonarsource.sonarlint.core.commons.CleanCodeAttribute;
-import org.sonarsource.sonarlint.core.commons.CleanCodeAttributeCategory;
-import org.sonarsource.sonarlint.core.commons.ImpactSeverity;
-import org.sonarsource.sonarlint.core.commons.SoftwareQuality;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Components;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.Rule;
@@ -72,6 +73,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
+import org.sonarsource.sonarlint.ls.util.EnumLabelsMapper;
 import testutils.MockWebServerExtension;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -107,6 +109,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "productName", "SLCORE tests",
       "productVersion", "0.1",
       "showVerboseLogs", false,
+      "productKey", "productKey",
       "additionalAttributes", Map.of(
         "extra", "value",
         "omnisharpDirectory", omnisharpDir.toString()
@@ -128,6 +131,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleJsFileOnOpen() throws Exception {
+    setShowVerboseLogs(client.globalSettings, true);
     var uri = getUri("analyzeSimpleJsFileOnOpen.js");
     didOpen(uri, "javascript", "function foo() {\n  let toto = 0;\n  let plouf = 0;\n}");
 
@@ -166,7 +170,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "\t} else if condition1 { // Noncompliant\n" +
       "\t}\n" +
       "}");
-
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
@@ -661,9 +664,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
 
     assertThat(client.ruleDesc.getKey()).isEqualTo(JAVA_S2095);
-    assertThat(client.ruleDesc.getCleanCodeAttribute()).isEqualTo(CleanCodeAttribute.COMPLETE.getIssueLabel());
-    assertThat(client.ruleDesc.getCleanCodeAttributeCategory()).isEqualTo(CleanCodeAttributeCategory.INTENTIONAL.getIssueLabel());
-    assertThat(client.ruleDesc.getImpacts()).containsExactly(Map.entry(SoftwareQuality.RELIABILITY.getDisplayLabel(), ImpactSeverity.HIGH.getDisplayLabel()));
+    assertThat(client.ruleDesc.getCleanCodeAttribute()).isEqualTo(EnumLabelsMapper.cleanCodeAttributeToLabel(CleanCodeAttribute.COMPLETE));
+    assertThat(client.ruleDesc.getCleanCodeAttributeCategory()).isEqualTo(EnumLabelsMapper.cleanCodeAttributeCategoryToLabel(CleanCodeAttributeCategory.INTENTIONAL));
+    assertThat(client.ruleDesc.getImpacts()).containsExactly(Map.entry(EnumLabelsMapper.softwareQualityToLabel(SoftwareQuality.RELIABILITY), EnumLabelsMapper.impactSeverityToLabel(ImpactSeverity.HIGH)));
   }
 
   @Test
@@ -866,7 +869,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .contains(
         "[Info] Analyzing file \"" + uri + "\"...",
         "[Info] Index files",
-        "[Debug] Language of file \"" + uri + "\" is set to \"Python\"",
+        "[Debug] Language of file \"" + uri + "\" is set to \"PYTHON\"",
         "[Info] 1 file indexed",
         "[Debug] Execute Sensor: Python Sensor",
         "[Info] Found 1 issue"));

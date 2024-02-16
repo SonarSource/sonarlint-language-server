@@ -22,33 +22,44 @@ package org.sonarsource.sonarlint.ls.notebooks;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.commons.CleanCodeAttribute;
-import org.sonarsource.sonarlint.core.commons.ImpactSeverity;
-import org.sonarsource.sonarlint.core.commons.IssueSeverity;
-import org.sonarsource.sonarlint.core.commons.RuleType;
-import org.sonarsource.sonarlint.core.commons.SoftwareQuality;
-import org.sonarsource.sonarlint.core.commons.TextRange;
-import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
+import org.sonarsource.sonarlint.core.commons.api.TextRange;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.VulnerabilityProbability;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
+import org.sonarsource.sonarlint.ls.Issue;
+
+import static org.sonarsource.sonarlint.ls.util.TextRangeUtils.textRangeDtoFromTextRange;
 
 public class DelegatingCellIssue implements Issue {
-  private final Issue issue;
+  private final RawIssue issue;
   private final RuleType type;
   private final IssueSeverity severity;
   private final TextRange textRange;
   private final List<QuickFix> quickFixes;
 
-  DelegatingCellIssue(Issue issue, TextRange textRange, List<QuickFix> quickFixes) {
+  DelegatingCellIssue(RawIssue issue, @Nullable TextRange textRange, List<QuickFix> quickFixes) {
     var userSeverity = issue.getSeverity();
     this.issue = issue;
     this.severity = userSeverity != null ? userSeverity : this.issue.getSeverity();
     this.type = issue.getType();
     this.textRange = textRange;
     this.quickFixes = quickFixes;
+  }
+
+  @Override
+  public UUID getIssueId() {
+    return UUID.randomUUID();
   }
 
   @Override
@@ -76,6 +87,17 @@ public class DelegatingCellIssue implements Issue {
   @Override
   public String getMessage() {
     return issue.getMessage();
+  }
+
+  @CheckForNull
+  @Override
+  public TextRangeDto getTextRange() {
+    return textRangeDtoFromTextRange(textRange);
+  }
+
+  @Override
+  public RawIssue getRawIssue() {
+    return issue;
   }
 
   @Override
@@ -109,18 +131,17 @@ public class DelegatingCellIssue implements Issue {
 
   @Override
   public List<Flow> flows() {
-    return issue.flows();
+    return issue.getFlows();
   }
 
   @CheckForNull
-  @Override
   public ClientInputFile getInputFile() {
     return issue.getInputFile();
   }
 
+  // TODO non interface method, ideally find a way to use the one from the interface
   @CheckForNull
-  @Override
-  public TextRange getTextRange() {
+  public TextRange getCellIssueTextRange() {
     return textRange;
   }
 

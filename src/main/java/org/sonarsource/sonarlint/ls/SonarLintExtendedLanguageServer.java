@@ -31,12 +31,11 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.util.Preconditions;
-import org.sonarsource.sonarlint.core.clientapi.backend.analysis.GetSupportedFilePatternsResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.binding.GetBindingSuggestionParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.auth.HelpGenerateUserTokenResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.ReopenIssueResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.ResolutionStatus;
-import org.sonarsource.sonarlint.core.clientapi.client.binding.GetBindingSuggestionsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpGenerateUserTokenResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 
 public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
@@ -628,7 +627,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   }
 
   @JsonNotification("sonarlint/reopenResolvedLocalIssues")
-  CompletableFuture<ReopenIssueResponse> reopenResolvedLocalIssues(ReopenAllIssuesForFileParams params);
+  void reopenResolvedLocalIssues(ReopenAllIssuesForFileParams params);
 
   class ReopenAllIssuesForFileParams {
     private final String relativePath;
@@ -691,5 +690,66 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/analyseOpenFileIgnoringExcludes")
   CompletableFuture<Void> analyseOpenFileIgnoringExcludes(AnalyseOpenFileIgnoringExcludesParams params);
+
+  class DidAddConfigurationScopes{
+    private final String id;
+    private final boolean bindable;
+    private final String name;
+    private final String connectionId;
+    private final String sonarProjectKey;
+    private final boolean bindingSuggestionDisabled;
+
+    public DidAddConfigurationScopes(String id, boolean bindable, String name, String connectionId, String sonarProjectKey,
+      boolean bindingSuggestionDisabled) {
+      this.id = id;
+      this.bindable = bindable;
+      this.name = name;
+      this.connectionId = connectionId;
+      this.sonarProjectKey = sonarProjectKey;
+      this.bindingSuggestionDisabled = bindingSuggestionDisabled;
+    }
+
+    public String getId() {
+      return id;
+    }
+
+    public boolean isBindable() {
+      return bindable;
+    }
+
+    public String getName() {
+      return name;
+    }
+
+    public String getConnectionId() {
+      return connectionId;
+    }
+
+    public String getSonarProjectKey() {
+      return sonarProjectKey;
+    }
+
+    public boolean isBindingSuggestionDisabled() {
+      return bindingSuggestionDisabled;
+    }
+  }
+
+  @JsonNotification("didAddConfigurationScopes")
+  CompletableFuture<Void> didAddConfigurationScopes(DidAddConfigurationScopes params);
+
+  class DidRemoveConfigurationScopeParams {
+    private final String removedId;
+
+    public DidRemoveConfigurationScopeParams(String removedId) {
+      this.removedId = removedId;
+    }
+
+    public String getRemovedId() {
+      return removedId;
+    }
+  }
+
+  @JsonNotification("didRemoveConfigurationScope")
+  CompletableFuture<Void> didRemoveConfigurationScope(DidRemoveConfigurationScopeParams params);
 
 }

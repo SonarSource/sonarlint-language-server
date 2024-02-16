@@ -20,35 +20,23 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-class ProjectBindingWrapperTests {
+class ProjectBindingTests {
 
   @Test
   void test_getters() {
-    var binding = new ProjectBinding("projectKey", "prefix", "idePrefix");
-    var engine = mock(ConnectedSonarLintEngine.class);
+    var engine = mock(SonarLintAnalysisEngine.class);
     var issueTrackerWrapper = mock(ServerIssueTrackerWrapper.class);
-    var underTest = new ProjectBindingWrapper("serverId", binding, engine, issueTrackerWrapper);
+    var underTest = new ProjectBinding("serverId", "projectKey", engine, issueTrackerWrapper);
 
     assertThat(underTest.getConnectionId()).isEqualTo("serverId");
-    assertThat(underTest.getBinding()).isEqualTo(binding);
+    assertThat(underTest.getProjectKey()).isEqualTo("projectKey");
     assertThat(underTest.getEngine()).isEqualTo(engine);
     assertThat(underTest.getServerIssueTracker()).isEqualTo(issueTrackerWrapper);
-    assertThat(underTest.toServerRelativePath("idePrefix/some/file")).isEqualTo("prefix/some/file");
   }
 
-  @Test
-  void test_fix_path_prefix() {
-    var binding = new ProjectBinding("projectKey", "", "some/folder");
-    var engine = mock(ConnectedSonarLintEngine.class);
-    var issueTrackerWrapper = mock(ServerIssueTrackerWrapper.class);
-    var underTest = new ProjectBindingWrapper("serverId", binding, engine, issueTrackerWrapper);
-
-    assertThat(underTest.toServerRelativePath("some/folder/some/file")).isEqualTo("some/file");
-  }
 }

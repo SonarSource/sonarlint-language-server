@@ -27,16 +27,15 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
-import org.sonarsource.sonarlint.core.commons.Language;
-import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
-import org.sonarsource.sonarlint.ls.util.Utils;
 
+import static org.sonarsource.sonarlint.ls.util.TextRangeUtils.convert;
 import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralizedSuffix;
 
 public class DiagnosticPublisher {
@@ -57,8 +56,8 @@ public class DiagnosticPublisher {
 
   private boolean focusOnNewCode;
 
-  public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache, IssuesCache hotspotsCache,
-    OpenNotebooksCache openNotebooksCache) {
+  public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
+    IssuesCache issuesCache, IssuesCache hotspotsCache, OpenNotebooksCache openNotebooksCache) {
     this.client = client;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.issuesCache = issuesCache;
@@ -81,11 +80,10 @@ public class DiagnosticPublisher {
     client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
   }
 
-  Diagnostic convert(Map.Entry<String, VersionedIssue> entry) {
+  Diagnostic taintDtoToDiagnostic(Map.Entry<String, VersionedIssue> entry) {
     var issue = entry.getValue().issue();
     return prepareDiagnostic(issue, entry.getKey(), false, focusOnNewCode);
   }
-
 
   public void setFocusOnNewCode(boolean focusOnNewCode) {
     this.focusOnNewCode = focusOnNewCode;
@@ -99,7 +97,7 @@ public class DiagnosticPublisher {
     var diagnostic = new Diagnostic();
 
     setSeverity(diagnostic, issue, focusOnNewCode);
-    var range = Utils.convert(issue);
+    var range = convert(issue);
     diagnostic.setRange(range);
     diagnostic.setCode(issue.getRuleKey());
     diagnostic.setMessage(message(issue, ignoreSecondaryLocations));
@@ -125,7 +123,8 @@ public class DiagnosticPublisher {
     @Nullable
     String serverIssueKey;
     @Nullable
-    HotspotReviewStatus status;
+    HotspotStatus status;
+
     public void setEntryKey(String entryKey) {
       this.entryKey = entryKey;
     }
@@ -134,7 +133,7 @@ public class DiagnosticPublisher {
       this.serverIssueKey = serverIssueKey;
     }
 
-    public void setStatus(@Nullable HotspotReviewStatus status) {
+    public void setStatus(@Nullable HotspotStatus status) {
       this.status = status;
     }
 
@@ -143,6 +142,7 @@ public class DiagnosticPublisher {
     }
 
   }
+
   public static void setSource(Diagnostic diagnostic, Issue issue) {
     if (issue instanceof DelegatingIssue delegatedIssue) {
       var isKnown = delegatedIssue.getServerIssueKey() != null;
@@ -182,14 +182,14 @@ public class DiagnosticPublisher {
 
     Map<String, VersionedIssue> localIssues = issuesCache.get(newUri);
 
-    if (!firstSecretIssueDetected && localIssues.values().stream().anyMatch(v -> v.issue().getRuleKey().startsWith(Language.SECRETS.getLanguageKey()))) {
+    if (!firstSecretIssueDetected && localIssues.values().stream().anyMatch(v -> v.issue().getRuleKey().startsWith(SonarLanguage.SECRETS.getSonarLanguageKey()))) {
       client.showFirstSecretDetectionNotification();
       firstSecretIssueDetected = true;
     }
 
     var localDiagnostics = localIssues.entrySet()
       .stream()
-      .map(this::convert);
+      .map(this::taintDtoToDiagnostic);
     var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostics(newUri, focusOnNewCode);
 
     var diagnosticList = Stream.concat(localDiagnostics, taintDiagnostics)
@@ -206,7 +206,7 @@ public class DiagnosticPublisher {
 
     p.setDiagnostics(hotspotsCache.get(newUri).entrySet()
       .stream()
-      .map(this::convert)
+      .map(this::taintDtoToDiagnostic)
       .sorted(DiagnosticPublisher.byLineNumber())
       .toList());
     p.setUri(newUri.toString());

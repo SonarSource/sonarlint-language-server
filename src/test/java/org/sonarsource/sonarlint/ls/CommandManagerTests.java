@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls;
 
 import com.google.gson.JsonPrimitive;
 import java.net.URI;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -44,44 +45,44 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
 import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedRuleDetails;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.clientapi.backend.issue.CheckStatusChangePermittedResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.EffectiveRuleDetailsDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.GetEffectiveRuleDetailsResponse;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleContextualSectionDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleContextualSectionWithDefaultContextKeyDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleDescriptionTabDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleMonolithicDescriptionDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleNonContextualSectionDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleSplitDescriptionDto;
-import org.sonarsource.sonarlint.core.commons.CleanCodeAttribute;
-import org.sonarsource.sonarlint.core.commons.CleanCodeAttributeCategory;
-import org.sonarsource.sonarlint.core.commons.ImpactSeverity;
-import org.sonarsource.sonarlint.core.commons.IssueSeverity;
-import org.sonarsource.sonarlint.core.commons.Language;
-import org.sonarsource.sonarlint.core.commons.RuleType;
-import org.sonarsource.sonarlint.core.commons.SoftwareQuality;
-import org.sonarsource.sonarlint.core.commons.TextRange;
-import org.sonarsource.sonarlint.core.commons.VulnerabilityProbability;
-import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
-import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
+import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
+import org.sonarsource.sonarlint.core.commons.api.TextRange;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRuleDetailsDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetEffectiveRuleDetailsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ImpactDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleContextualSectionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleContextualSectionWithDefaultContextKeyDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleDescriptionTabDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleMonolithicDescriptionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleNonContextualSectionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleSplitDescriptionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.VulnerabilityProbability;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
+import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
-import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
-import org.sonarsource.sonarlint.ls.connected.sync.ServerSynchronizer;
+import org.sonarsource.sonarlint.ls.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
@@ -93,6 +94,7 @@ import testutils.SonarLintLogTester;
 
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -100,16 +102,19 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARCLOUD_TAINT_SOURCE;
-import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARLINT_SOURCE;
-import static org.sonarsource.sonarlint.ls.AnalysisScheduler.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_BROWSE_TAINT_VULNERABILITY;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_QUICK_FIX_APPLIED;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS;
-import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_UPDATE_ALL_BINDINGS_COMMAND;
+import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARCLOUD_TAINT_SOURCE;
+import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARLINT_SOURCE;
+import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebookTests.createTestNotebookWithThreeCells;
+import static org.sonarsource.sonarlint.ls.util.EnumLabelsMapper.cleanCodeAttributeCategoryToLabel;
+import static org.sonarsource.sonarlint.ls.util.EnumLabelsMapper.cleanCodeAttributeToLabel;
+import static org.sonarsource.sonarlint.ls.util.EnumLabelsMapper.impactSeverityToLabel;
+import static org.sonarsource.sonarlint.ls.util.EnumLabelsMapper.softwareQualityToLabel;
 
 class CommandManagerTests {
 
@@ -125,14 +130,13 @@ class CommandManagerTests {
   };
   private CommandManager underTest;
   private ProjectBindingManager bindingManager;
-  private ProjectBindingWrapper mockBinding;
-  private ConnectedSonarLintEngine mockConnectedEngine;
+  private ProjectBinding mockBinding;
+  private SonarLintAnalysisEngine mockConnectedEngine;
   private SonarLintExtendedLanguageClient mockClient;
   private TaintVulnerabilitiesCache mockTaintVulnerabilitiesCache;
   private IssuesCache issuesCache;
   private SettingsManager mockSettingsManager;
   private SonarLintTelemetry mockTelemetry;
-  private ServerSynchronizer serverSynchronizer;
   private IssuesCache securityHotspotsCache;
   private BackendServiceFacade backendServiceFacade;
   private BackendService backendService;
@@ -143,31 +147,23 @@ class CommandManagerTests {
   public void prepareMocks() {
     bindingManager = mock(ProjectBindingManager.class);
     mockSettingsManager = mock(SettingsManager.class);
-    mockBinding = mock(ProjectBindingWrapper.class);
-    mockConnectedEngine = mock(ConnectedSonarLintEngine.class);
+    mockBinding = mock(ProjectBinding.class);
+    mockConnectedEngine = mock(SonarLintAnalysisEngine.class);
     when(mockBinding.getEngine()).thenReturn(mockConnectedEngine);
-    when(mockBinding.getBinding()).thenReturn(new ProjectBinding("projectKey", "sqPathPrefix", "idePathPrefix"));
+    when(mockBinding.getProjectKey()).thenReturn("projectKey");
 
     mockClient = mock(SonarLintExtendedLanguageClient.class);
     mockTaintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
     issuesCache = mock(IssuesCache.class);
     mockTelemetry = mock(SonarLintTelemetry.class);
-    serverSynchronizer = mock(ServerSynchronizer.class);
     securityHotspotsCache = mock(IssuesCache.class);
     backendServiceFacade = mock(BackendServiceFacade.class);
     workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
     openNotebooksCache = mock(OpenNotebooksCache.class);
     backendService = mock(BackendService.class);
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
-    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, serverSynchronizer, mockTelemetry,
+    underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, mockTelemetry,
       mockTaintVulnerabilitiesCache, issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, openNotebooksCache, logTester.getLogger());
-  }
-
-  @Test
-  void updateAllBinding() {
-    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_UPDATE_ALL_BINDINGS_COMMAND, emptyList()), NOP_CANCEL_TOKEN);
-
-    verify(serverSynchronizer).updateAllBindings(NOP_CANCEL_TOKEN, null);
   }
 
   @Test
@@ -262,6 +258,9 @@ class CommandManagerTests {
     when(fix.message()).thenReturn("Fix the issue!");
     when(fix.inputFileEdits()).thenReturn(List.of(edit));
     when(issue.quickFixes()).thenReturn(List.of(fix));
+    var rawIssue = mock(RawIssue.class);
+    when(issue.getRawIssue()).thenReturn(rawIssue);
+    when(rawIssue.quickFixes()).thenReturn(List.of(fix));
     var versionedIssue = new VersionedIssue(issue, 1);
     when(openNotebooksCache.getFile(notebookUri)).thenReturn(Optional.of(fakeNotebook));
     when(openNotebooksCache.getNotebookUriFromCellUri(URI.create(CELL_URI))).thenReturn(fakeNotebook.getUri());
@@ -297,12 +296,12 @@ class CommandManagerTests {
 
     var issue = mock(TaintIssue.class);
     when(issue.getRuleKey()).thenReturn("ruleKey");
-    when(issue.getCreationDate()).thenReturn(Instant.EPOCH);
-    var flow = mock(ServerTaintIssue.Flow.class);
+    when(issue.getIntroductionDate()).thenReturn(Instant.EPOCH);
+    var flow = mock(TaintVulnerabilityDto.FlowDto.class);
     when(issue.getFlows()).thenReturn(List.of(flow));
-    var location = mock(ServerTaintIssue.ServerIssueLocation.class);
-    when(flow.locations()).thenReturn(List.of(location));
-    when(issue.getKey()).thenReturn("SomeIssueKey");
+    var location = mock(TaintVulnerabilityDto.FlowDto.LocationDto.class);
+    when(flow.getLocations()).thenReturn(List.of(location));
+    when(issue.getRuleKey()).thenReturn("SomeIssueKey");
     when(issue.getRuleDescriptionContextKey()).thenReturn("servlet");
     when(mockTaintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
@@ -375,13 +374,6 @@ class CommandManagerTests {
 
   @Test
   void openRuleDescriptionForBoundProject() {
-    var ruleDetails = mock(ConnectedRuleDetails.class);
-    when(ruleDetails.getKey()).thenReturn(FAKE_RULE_KEY);
-    when(ruleDetails.getName()).thenReturn("Name");
-    when(ruleDetails.getHtmlDescription()).thenReturn("Desc");
-    when(ruleDetails.getExtendedDescription()).thenReturn("");
-    when(ruleDetails.getType()).thenReturn(RuleType.BUG);
-    when(ruleDetails.getDefaultSeverity()).thenReturn(IssueSeverity.BLOCKER);
     var response = mock(GetEffectiveRuleDetailsResponse.class);
     when(backendService.getEffectiveRuleDetails(anyString(), anyString(), anyString())).thenReturn(CompletableFuture.completedFuture(response));
     var folderWrapper = mock(WorkspaceFolderWrapper.class);
@@ -389,13 +381,16 @@ class CommandManagerTests {
     when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
     var details = mock(EffectiveRuleDetailsDto.class);
     when(details.getName()).thenReturn("Name");
-    when(details.getType()).thenReturn(RuleType.BUG);
-    when(details.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(details.getType()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType.BUG);
+    when(details.getSeverity()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity.BLOCKER);
     when(details.getParams()).thenReturn(emptyList());
     when(details.getKey()).thenReturn(FAKE_RULE_KEY);
-    when(details.getLanguage()).thenReturn(Language.JS);
-    when(details.getCleanCodeAttribute()).thenReturn(Optional.of(CleanCodeAttribute.COMPLETE));
-    when(details.getDefaultImpacts()).thenReturn(Map.of(SoftwareQuality.SECURITY, ImpactSeverity.MEDIUM));
+    when(details.getLanguage()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.Language.JS);
+    when(details.getCleanCodeAttribute()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute.COMPLETE);
+    when(details.getCleanCodeAttributeCategory()).thenReturn(CleanCodeAttributeCategory.INTENTIONAL);
+    when(details.getDefaultImpacts()).thenReturn(
+      List.of(new ImpactDto(org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality.SECURITY, org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity.HIGH),
+        new ImpactDto(org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality.SECURITY, org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity.MEDIUM)));
     var desc = mock(RuleMonolithicDescriptionDto.class);
     when(desc.getHtmlContent()).thenReturn("Desc");
     when(details.getDescription()).thenReturn(Either.forLeft(desc));
@@ -404,11 +399,19 @@ class CommandManagerTests {
       new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND, List.of(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI), new JsonPrimitive(""))),
       NOP_CANCEL_TOKEN);
 
-    verify(mockClient).showRuleDescription(new ShowRuleDescriptionParams(FAKE_RULE_KEY, "Name", "Desc",
-      new SonarLintExtendedLanguageClient.RuleDescriptionTab[0], RuleType.BUG, Language.JS.getLanguageKey(),
-      IssueSeverity.BLOCKER, Collections.emptyList(), CleanCodeAttribute.COMPLETE.getIssueLabel(),
-      CleanCodeAttributeCategory.INTENTIONAL.getIssueLabel(), Map.of(SoftwareQuality.SECURITY.getDisplayLabel(), ImpactSeverity.MEDIUM.getDisplayLabel()))
-    );
+    var captor = ArgumentCaptor.forClass(ShowRuleDescriptionParams.class);
+    verify(mockClient).showRuleDescription(captor.capture());
+
+    var actualParam = captor.getValue();
+    assertThat(actualParam.getKey()).isEqualTo(FAKE_RULE_KEY);
+    assertThat(actualParam.getName()).isEqualTo("Name");
+    assertThat(actualParam.getType()).isEqualTo(RuleType.BUG.name());
+    assertThat(actualParam.getSeverity()).isEqualTo(IssueSeverity.BLOCKER.name());
+    assertThat(actualParam.getLanguageKey()).isEqualTo(SonarLanguage.JS.getSonarLanguageKey());
+    assertThat(actualParam.getHtmlDescription()).isEqualTo("Desc");
+    assertThat(actualParam.getCleanCodeAttributeCategory()).isEqualTo(cleanCodeAttributeCategoryToLabel(CleanCodeAttributeCategory.INTENTIONAL));
+    assertThat(actualParam.getCleanCodeAttribute()).isEqualTo(cleanCodeAttributeToLabel(CleanCodeAttribute.COMPLETE));
+    assertThat(actualParam.getImpacts()).containsExactly(entry(softwareQualityToLabel(SoftwareQuality.SECURITY), impactSeverityToLabel(ImpactSeverity.MEDIUM)));
   }
 
   @Test
@@ -425,12 +428,15 @@ class CommandManagerTests {
     var connectionId = "connectionId";
     var issue = mock(TaintIssue.class);
     when(issue.getRuleKey()).thenReturn("ruleKey");
-    when(issue.getCreationDate()).thenReturn(Instant.EPOCH);
+    var filePath = Path.of("path");
+    when(issue.getIdeFilePath()).thenReturn(filePath);
+    when(issue.getIntroductionDate()).thenReturn(Instant.EPOCH);
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
-    var flow = mock(ServerTaintIssue.Flow.class);
+    var flow = mock(TaintVulnerabilityDto.FlowDto.class);
     when(issue.getFlows()).thenReturn(List.of(flow));
-    var location = mock(ServerTaintIssue.ServerIssueLocation.class);
-    when(flow.locations()).thenReturn(List.of(location));
+    var location = mock(TaintVulnerabilityDto.FlowDto.LocationDto.class);
+    when(location.getFilePath()).thenReturn(filePath);
+    when(flow.getLocations()).thenReturn(List.of(location));
     when(mockTaintVulnerabilitiesCache.getTaintVulnerabilityByKey(issueKey)).thenReturn(Optional.of(issue));
 
     underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(new JsonPrimitive(issueKey), new JsonPrimitive(connectionId))),
@@ -457,8 +463,37 @@ class CommandManagerTests {
 
       @Nullable
       @Override
-      public TextRange getTextRange() {
+      public TextRangeDto getTextRange() {
         return null;
+      }
+
+      @Override
+      public RawIssue getRawIssue() {
+        return null;
+      }
+
+      @Nullable
+      @Override
+      public Integer getStartLine() {
+        return Issue.super.getStartLine();
+      }
+
+      @Nullable
+      @Override
+      public Integer getStartLineOffset() {
+        return Issue.super.getStartLineOffset();
+      }
+
+      @Nullable
+      @Override
+      public Integer getEndLine() {
+        return Issue.super.getEndLine();
+      }
+
+      @Nullable
+      @Override
+      public Integer getEndLineOffset() {
+        return Issue.super.getEndLineOffset();
       }
 
       @Nullable
@@ -470,6 +505,11 @@ class CommandManagerTests {
       @Nullable
       @Override
       public ClientInputFile getInputFile() {
+        return null;
+      }
+
+      @Override
+      public UUID getIssueId() {
         return null;
       }
 
@@ -531,7 +571,8 @@ class CommandManagerTests {
   @Test
   void getHtmlDescriptionTabsMonolithicShouldReturnNoTabs() {
     var monolithicDesc = new RuleMonolithicDescriptionDto("monolithicHtmlContent");
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null, Either.forLeft(monolithicDesc), emptyList(), null);
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,
+      List.of(), Either.forLeft(monolithicDesc), emptyList(), null, null);
 
     assertThat(CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription(), "")).isEmpty();
   }
@@ -543,7 +584,8 @@ class CommandManagerTests {
     var tab1 = new RuleDescriptionTabDto("title1", Either.forLeft(section1));
     var tab2 = new RuleDescriptionTabDto("title2", Either.forLeft(section2));
     var splitDesc = new RuleSplitDescriptionDto("introHtmlContent", List.of(tab1, tab2));
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,Either.forRight(splitDesc), emptyList(), null);
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,
+      List.of(), Either.forRight(splitDesc), emptyList(), null, null);
 
     var descriptionTabs = CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription(), "");
 
@@ -570,7 +612,8 @@ class CommandManagerTests {
     var tab1 = new RuleDescriptionTabDto("title1", Either.forRight(sectionDto1));
     var tab2 = new RuleDescriptionTabDto("title2", Either.forRight(sectionDto2));
     var splitDesc = new RuleSplitDescriptionDto("introHtmlContent", List.of(tab1, tab2));
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null, Either.forRight(splitDesc), emptyList(), null);
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,
+      List.of(), Either.forRight(splitDesc), emptyList(), null, null);
 
     var descriptionTabs = CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription(), "java");
 
@@ -597,7 +640,8 @@ class CommandManagerTests {
   @Test
   void getHtmlDescriptionMonolithic() {
     var monolithicDesc = new RuleMonolithicDescriptionDto("monolithicHtmlContent");
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,Either.forLeft(monolithicDesc), emptyList(), null);
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,
+      List.of(), Either.forLeft(monolithicDesc), emptyList(), null, null);
 
     assertThat(CommandManager.getHtmlDescription(ruleDetails.getDescription())).isEqualTo("monolithicHtmlContent");
   }
@@ -607,7 +651,8 @@ class CommandManagerTests {
     var section1 = new RuleNonContextualSectionDto(null);
     var tab1 = new RuleDescriptionTabDto(null, Either.forLeft(section1));
     var splitDesc = new RuleSplitDescriptionDto("splitHtmlContent", List.of(tab1));
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,Either.forRight(splitDesc), emptyList(), null);
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,
+      List.of(), Either.forRight(splitDesc), emptyList(), null, null);
 
 
     assertThat(CommandManager.getHtmlDescription(ruleDetails.getDescription())).isEqualTo("splitHtmlContent");

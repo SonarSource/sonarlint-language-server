@@ -19,16 +19,26 @@
  */
 package org.sonarsource.sonarlint.ls.backend;
 
+import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.sonarsource.sonarlint.core.clientapi.SonarLintBackend;
-import org.sonarsource.sonarlint.core.clientapi.backend.config.binding.BindingConfigurationDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.ConfigurationScopeDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.config.scope.DidAddConfigurationScopesParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.initialize.ClientInfoDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.initialize.FeatureFlagsDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.initialize.InitializeParams;
+import org.sonarsource.sonarlint.core.rpc.client.ClientJsonRpcLauncher;
+import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
+import org.sonarsource.sonarlint.core.rpc.impl.BackendJsonRpcLauncher;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.ConfigurationScopeDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.DidAddConfigurationScopesParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.ClientConstantInfoDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.FeatureFlagsDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.InitializeParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.TelemetryClientConstantAttributesDto;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
@@ -40,16 +50,32 @@ public class BackendServiceFacade {
 
   public static final String ROOT_CONFIGURATION_SCOPE = "<root>";
 
-  private final BackendService backend;
+  private final BackendService backendService;
   private final BackendInitParams initParams;
   private final ConfigurationScopeDto rootConfigurationScope;
+  private final BackendJsonRpcLauncher serverLauncher;
+  private final ClientJsonRpcLauncher clientLauncher;
+  private final LanguageClientLogger lsLogOutput;
   private SettingsManager settingsManager;
   private SonarLintTelemetry telemetry;
   private TelemetryInitParams telemetryInitParams;
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
-  public BackendServiceFacade(SonarLintBackend backend, LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client) {
-    this.backend = new BackendService(backend, lsLogOutput, client);
+  public BackendServiceFacade(SonarLintRpcClientDelegate rpcClient,  LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client) {
+    this.lsLogOutput = lsLogOutput;
+    var clientToServerOutputStream = new PipedOutputStream();
+    PipedInputStream clientToServerInputStream = null;
+    try {
+      clientToServerInputStream = new PipedInputStream(clientToServerOutputStream);
+      var serverToClientOutputStream = new PipedOutputStream();
+      var serverToClientInputStream = new PipedInputStream(serverToClientOutputStream);
+      serverLauncher = new BackendJsonRpcLauncher(clientToServerInputStream, serverToClientOutputStream);
+      clientLauncher = new ClientJsonRpcLauncher(serverToClientInputStream, clientToServerOutputStream, rpcClient);
+      this.backendService = new BackendService(clientLauncher.getServerProxy(), lsLogOutput, client);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
     this.initParams = new BackendInitParams();
     this.rootConfigurationScope = new ConfigurationScopeDto(ROOT_CONFIGURATION_SCOPE, null, false, ROOT_CONFIGURATION_SCOPE,
       new BindingConfigurationDto(null, null, false)
@@ -60,7 +86,7 @@ public class BackendServiceFacade {
     if (!initialized.get()) {
       throw new IllegalStateException("Backend service is not initialized");
     }
-    return backend;
+    return backendService;
   }
 
   public void setSettingsManager(SettingsManager settingsManager) {
@@ -79,17 +105,22 @@ public class BackendServiceFacade {
     initParams.setSonarCloudConnections(scConnections);
     initParams.setStandaloneRuleConfigByKey(settingsManager.getStandaloneRuleConfigByKey());
     initParams.setFocusOnNewCode(settingsManager.getCurrentSettings().isFocusOnNewCode());
-    backend.initialize(toInitParams(initParams));
-    backend.addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(rootConfigurationScope)));
+    backendService.initialize(toInitParams(initParams));
+    backendService.addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(rootConfigurationScope)));
   }
 
-  private static InitializeParams toInitParams(BackendInitParams initParams) {
+  private InitializeParams toInitParams(BackendInitParams initParams) {
     return new InitializeParams(
-      new ClientInfoDto("Visual Studio Code", initParams.getTelemetryProductKey(), initParams.getUserAgent()),
-      new FeatureFlagsDto(true, true, true, true, initParams.isEnableSecurityHotspots(), true,
-        true),
+      new ClientConstantInfoDto("Visual Studio Code", initParams.getUserAgent()),
+      new TelemetryClientConstantAttributesDto(initParams.getTelemetryProductKey(),
+        telemetryInitParams.getProductName(),
+        telemetryInitParams.getProductVersion(),
+        telemetryInitParams.getIdeVersion(),
+        telemetryInitParams.getAdditionalAttributes()),
+      new FeatureFlagsDto(true, true, true,
+        true, initParams.isEnableSecurityHotspots(), true, true, true),
       initParams.getStorageRoot(),
-      null,
+      Path.of(initParams.getSonarlintUserHome()),
       initParams.getEmbeddedPluginPaths(),
       initParams.getConnectedModeEmbeddedPluginPathsByKey(),
       initParams.getEnabledLanguagesInStandaloneMode(),
@@ -98,17 +129,35 @@ public class BackendServiceFacade {
       initParams.getSonarCloudConnections(),
       initParams.getSonarlintUserHome(),
       initParams.getStandaloneRuleConfigByKey(),
-      initParams.isFocusOnNewCode()
+      initParams.isFocusOnNewCode(),
+      initParams.getClientNodePath() == null ? null : Path.of(initParams.getClientNodePath())
     );
   }
 
   public void shutdown() {
-    backend.shutdown();
+    backendService.shutdown();
+    try {
+      backendService.shutdown().get(10, TimeUnit.SECONDS);
+    } catch (ExecutionException | TimeoutException e) {
+      lsLogOutput.error("Unable to shutdown the SonartLint backend", e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    } finally {
+      try {
+        serverLauncher.close();
+      } catch (Exception e) {
+        lsLogOutput.error("Unable to stop the SonartLint server launcher", e);
+      }
+      try {
+        clientLauncher.close();
+      } catch (Exception e) {
+        lsLogOutput.error("Unable to stop the SonartLint client launcher", e);
+      }
+    }
   }
 
   public void initialize(Map<String, ServerConnectionSettings> serverConnections) {
     initOnce(serverConnections);
-    telemetry.initialize(telemetryInitParams);
   }
 
   public void setTelemetry(SonarLintTelemetry telemetry) {
@@ -118,4 +167,12 @@ public class BackendServiceFacade {
   public void setTelemetryInitParams(TelemetryInitParams telemetryInitParams) {
     this.telemetryInitParams = telemetryInitParams;
   }
+  public TelemetryInitParams getTelemetryInitParams() {
+    return telemetryInitParams;
+  }
+
+  public AtomicBoolean isInitialized() {
+    return initialized;
+  }
+
 }

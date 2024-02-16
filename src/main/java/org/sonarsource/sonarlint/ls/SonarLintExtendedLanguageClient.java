@@ -33,14 +33,13 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.EffectiveRuleParamDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleParamDefinitionDto;
-import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
-import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
-import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
-import org.sonarsource.sonarlint.core.clientapi.client.hotspot.HotspotDetailsDto;
-import org.sonarsource.sonarlint.core.commons.IssueSeverity;
-import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRuleParamDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleParamDefinitionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
 public interface SonarLintExtendedLanguageClient extends LanguageClient {
@@ -48,8 +47,8 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/suggestBinding")
   void suggestBinding(SuggestBindingParams binding);
 
-  @JsonRequest("sonarlint/findFileByNamesInFolder")
-  CompletableFuture<FindFileByNamesInScopeResponse> findFileByNamesInFolder(FindFileByNamesInFolder params);
+  @JsonRequest("sonarlint/listFilesInFolder")
+  CompletableFuture<FindFileByNamesInScopeResponse> listFilesInFolder(FolderUriParams params);
 
   @JsonNotification("sonarlint/showSonarLintOutput")
   void showSonarLintOutput();
@@ -448,38 +447,41 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
   }
 
-  class FindFileByNamesInFolder {
-    @Expose
-    private final String folderUri;
-    @Expose
-    private final String[] filenames;
+  class FindFileByNamesInScopeResponse {
+    private final List<FoundFileDto> foundFiles;
 
-    public FindFileByNamesInFolder(String folderUri, List<String> filenames) {
-      this.folderUri = folderUri;
-      this.filenames = filenames.toArray(new String[0]);
+    public FindFileByNamesInScopeResponse(List<FoundFileDto> foundFiles) {
+      this.foundFiles = foundFiles;
     }
 
-    public String getFolderUri() {
-      return folderUri;
+    public List<FoundFileDto> getFoundFiles() {
+      return foundFiles;
+    }
+  }
+
+  class FoundFileDto {
+
+    private final String fileName;
+    private final String filePath;
+
+    private final String content;
+
+    public FoundFileDto(String fileName, String filePath, String content) {
+      this.fileName = fileName;
+      this.filePath = filePath;
+      this.content = content;
     }
 
-    public String[] getFilenames() {
-      return filenames;
+    public String getFileName() {
+      return fileName;
     }
 
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      FindFileByNamesInFolder that = (FindFileByNamesInFolder) o;
-      return Objects.equals(folderUri, that.folderUri) && Arrays.equals(filenames, that.filenames);
+    public String getFilePath() {
+      return filePath;
     }
 
-    @Override
-    public int hashCode() {
-      int result = Objects.hash(folderUri);
-      result = 31 * result + Arrays.hashCode(filenames);
-      return result;
+    public String getContent() {
+      return content;
     }
   }
 
@@ -819,6 +821,31 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
     public boolean isSupported() {
       return isSupported;
+    }
+  }
+
+  class FolderUriParams {
+    String folderUri;
+
+    public FolderUriParams(String folderUri) {
+      this.folderUri = folderUri;
+    }
+
+    public String getFolderUri() {
+      return folderUri;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      FolderUriParams that = (FolderUriParams) o;
+      return Objects.equals(folderUri, that.folderUri);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(folderUri);
     }
   }
 

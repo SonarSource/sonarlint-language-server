@@ -26,8 +26,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
-import org.sonarsource.sonarlint.core.commons.Language;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,7 +48,7 @@ class EnginesFactoryTests {
       Paths.get("sonarhtml.jar"),
       Paths.get("sonarxml.jar"));
     underTest = new EnginesFactory(standaloneAnalysers, Collections.emptyMap(), logTester.getLogger(),
-      mock(NodeJsRuntime.class), mock(ClientModulesProvider.class));
+      mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), mock(BackendServiceFacade.class));
     underTest = spy(underTest);
   }
 

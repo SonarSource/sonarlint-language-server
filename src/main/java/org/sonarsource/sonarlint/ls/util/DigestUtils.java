@@ -17,7 +17,16 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-@ParametersAreNonnullByDefault
-package org.sonarsource.sonarlint.ls.connected.domain;
+package org.sonarsource.sonarlint.ls.util;
 
-import javax.annotation.ParametersAreNonnullByDefault;
+public class DigestUtils {
+
+  private DigestUtils() {
+    // utility class, forbidden constructor
+  }
+
+  public static String digest(String content) {
+    return org.apache.commons.codec.digest.DigestUtils.md5Hex(content.replaceAll("[\\s]", ""));
+  }
+
+}

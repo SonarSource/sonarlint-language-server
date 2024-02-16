@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -57,10 +58,6 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
 
   private static final CompletableFuture<Void> COMPLETED_FUTURE = CompletableFuture.completedFuture(null);
   private static final int DEFAULT_TIMER_MS = 2000;
-
-  static final String SONARLINT_SOURCE = "sonarlint";
-  public static final String SONARQUBE_TAINT_SOURCE = "Latest SonarQube Analysis";
-  public static final String SONARCLOUD_TAINT_SOURCE = "Latest SonarCloud Analysis";
 
   public static final String ITEM_LOCATION = "location";
   public static final String ITEM_FLOW = "flow";
@@ -101,6 +98,17 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   }
 
   public void didOpen(VersionedOpenFile file) {
+    var uri = file.getUri();
+    Optional<WorkspaceFolderWrapper> folderForFileOpt = workspaceFoldersManager.findFolderForFile(uri);
+    if (folderForFileOpt.isPresent() && !workspaceFoldersManager.isReadyForAnalysis(folderForFileOpt.get().getUri().toString())) {
+      lsLogOutput.info(String.format("Skipping text document analysis because " +
+        "workspace folder is not synchronized yet \"%s\"", uri));
+      return;
+    }
+    if (bindingManager.getBinding(file.getUri()).isEmpty()) {
+      analyzeAsync(AnalysisParams.newAnalysisParams(List.of(file)));
+      return;
+    }
     analyzeAsync(AnalysisParams.newAnalysisParams(List.of(file)).withFetchServerIssues());
   }
 
@@ -312,7 +320,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     analyzeAsync(AnalysisParams.newAnalysisParams(files).withOnlyHotspots().withProgress());
   }
 
-  private void analyzeAllUnboundOpenFiles() {
+  public void analyzeAllUnboundOpenFiles() {
     var openedUnboundFileUris = openFilesCache.getAll().stream()
       .filter(f -> bindingManager.getBinding(f.getUri()).isEmpty())
       .toList();

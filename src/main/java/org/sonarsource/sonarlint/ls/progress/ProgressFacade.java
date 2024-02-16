@@ -22,7 +22,7 @@ package org.sonarsource.sonarlint.ls.progress;
 import java.util.function.Consumer;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
+import org.sonarsource.sonarlint.core.commons.api.progress.ClientProgressMonitor;
 
 public interface ProgressFacade {
 

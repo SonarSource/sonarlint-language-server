@@ -27,6 +27,7 @@ import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.sonarsource.sonarlint.core.NodeJsHelper;
 import org.sonarsource.sonarlint.core.commons.Version;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 public class NodeJsRuntime {
@@ -37,7 +38,7 @@ public class NodeJsRuntime {
   private Path nodeJsPath = null;
   private Version nodeJsVersion = null;
 
-  NodeJsRuntime(SettingsManager settingsManager) {
+  public NodeJsRuntime(SettingsManager settingsManager, LanguageClientLogOutput lsLogOutput) {
     this(settingsManager, NodeJsHelper::new);
   }
 

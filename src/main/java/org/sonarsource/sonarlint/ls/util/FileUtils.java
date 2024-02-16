@@ -38,7 +38,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
 public class FileUtils {
@@ -161,7 +161,7 @@ public class FileUtils {
     }
   }
 
-  public static String getTextRangeContentOfFile(List<String> contentLines, @Nullable TextRange textRange) {
+  public static String getTextRangeContentOfFile(List<String> contentLines, @Nullable TextRangeDto textRange) {
     if (textRange == null) return null;
     var startLine = textRange.getStartLine() - 1;
     var endLine = textRange.getEndLine() - 1;

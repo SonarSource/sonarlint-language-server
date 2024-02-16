@@ -20,7 +20,7 @@
 package org.sonarsource.sonarlint.ls.log;
 
 import java.util.Formatter;
-import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
+import org.sonarsource.sonarlint.core.client.utils.ClientLogOutput;
 
 public class LanguageClientLogOutput implements ClientLogOutput {
 

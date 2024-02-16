@@ -21,20 +21,19 @@ package org.sonarsource.sonarlint.ls.connected;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedSonarLintEngine;
-import org.sonarsource.sonarlint.core.serverconnection.ProjectBinding;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 
 
-public class ProjectBindingWrapper {
+public class ProjectBinding {
 
   private final String connectionId;
-  private final ProjectBinding binding;
-  private final ConnectedSonarLintEngine engine;
+  private final String projectKey;
+  private final SonarLintAnalysisEngine engine;
   private final ServerIssueTrackerWrapper issueTrackerWrapper;
 
-  public ProjectBindingWrapper(String connectionId, ProjectBinding binding, ConnectedSonarLintEngine engine, ServerIssueTrackerWrapper issueTrackerWrapper) {
+  public ProjectBinding(String connectionId, String projectKey, SonarLintAnalysisEngine engine, ServerIssueTrackerWrapper issueTrackerWrapper) {
     this.connectionId = connectionId;
-    this.binding = binding;
+    this.projectKey = projectKey;
     this.engine = engine;
     this.issueTrackerWrapper = issueTrackerWrapper;
   }
@@ -43,21 +42,16 @@ public class ProjectBindingWrapper {
     return connectionId;
   }
 
-  public ProjectBinding getBinding() {
-    return binding;
+  public String getProjectKey() {
+    return projectKey;
   }
 
-  public ConnectedSonarLintEngine getEngine() {
+  public SonarLintAnalysisEngine getEngine() {
     return engine;
   }
 
   public ServerIssueTrackerWrapper getServerIssueTracker() {
     return issueTrackerWrapper;
-  }
-
-  public String toServerRelativePath(String localRelativePath) {
-    String relativePathWithMaybeLeadingSlash = localRelativePath.replace(binding.idePathPrefix(), binding.serverPathPrefix());
-    return relativePathWithMaybeLeadingSlash.replaceFirst("^/", "");
   }
 
   @Override

@@ -25,11 +25,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
-import org.sonarsource.sonarlint.ls.util.FileUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
@@ -80,23 +78,7 @@ public class TaintIssuesUpdater {
       return;
     }
     var bindingWrapper = bindingWrapperOptional.get();
-    var folderUri = folderForFile.get().getUri();
-
-    var binding = bindingWrapper.getBinding();
-    var engine = bindingWrapper.getEngine();
-    var branchName = bindingManager.resolveBranchNameForFolder(folderUri, engine, binding.projectKey());
     var connectionId = bindingWrapper.getConnectionId();
-    var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
-    var endpointParams = connectionSettings.getEndpointParams();
-    var httpClient = backendServiceFacade.getBackendService().getHttpClient(connectionId);
-
-    // download taints
-    var sqFilePath = FileUtils.toSonarQubePath(FileUtils.getFileRelativePath(Paths.get(folderUri), fileUri, logOutput));
-    engine.downloadAllServerTaintIssuesForFile(endpointParams, httpClient, binding, sqFilePath, branchName, null);
-    var serverIssues = engine.getServerTaintIssues(binding, branchName, sqFilePath, false);
-
-    // reload cache
-    taintVulnerabilitiesCache.reload(fileUri, TaintIssue.from(serverIssues, connectionSettings.isSonarCloudAlias()));
     long foundVulnerabilities = taintVulnerabilitiesCache.getAsDiagnostics(fileUri, diagnosticPublisher.isFocusOnNewCode()).count();
     if (foundVulnerabilities > 0) {
       logOutput.info(format("Fetched %s %s from %s", foundVulnerabilities,
