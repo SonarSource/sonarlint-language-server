@@ -75,6 +75,7 @@ public class WorkspaceFoldersManager {
         var uri = create(wf.getUri());
         addFolder(wf, uri);
       });
+      executor.submit(() -> backendServiceFacade.getBackendService().addWorkspaceFolders(workspaceFolders, getBindingProvider()));
     }
   }
 
@@ -121,10 +122,6 @@ public class WorkspaceFoldersManager {
     } else {
       logOutput.debug("Folder %s added", addedWrapper);
     }
-    executor.submit(() -> {
-      var optionalProjectBindingWrapper = getBindingProvider().apply(added);
-      backendServiceFacade.getBackendService().addWorkspaceFolder(added, optionalProjectBindingWrapper);
-    });
     return addedWrapper;
   }
 

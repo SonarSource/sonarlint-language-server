@@ -89,10 +89,17 @@ public class BackendServiceFacade {
   }
 
   public BackendService getBackendService() {
-    if (initLatch.getCount() != 0) {
-      throw new IllegalStateException("Backend service is not initialized");
+    try {
+      var initialized = initLatch.await(10, TimeUnit.SECONDS);
+      if (initialized) {
+        return backendService;
+      } else {
+        throw new IllegalStateException("Backend service not initialized in time");
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted", e);
     }
-    return backendService;
   }
 
   public void setSettingsManager(SettingsManager settingsManager) {
