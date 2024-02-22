@@ -619,9 +619,6 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/browseTo")
   void browseTo(String link);
 
-  @JsonRequest("sonarlint/getBranchNameForFolder")
-  CompletableFuture<String> getBranchNameForFolder(String folderUri);
-
   class ReferenceBranchForFolder {
     private final String folderUri;
     @Nullable
