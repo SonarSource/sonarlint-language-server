@@ -462,8 +462,8 @@ class ProjectBindingManagerTests {
     assertThat(logTester.logs())
       .anyMatch(log -> log.contains("Starting connected SonarLint engine for 'myServer2'..."));
 
-    verify(enginesFactory).createEngine(eq("myServer"));
-    verify(enginesFactory).createEngine(eq("myServer2"));
+    verify(enginesFactory).createEngine("myServer");
+    verify(enginesFactory).createEngine("myServer2");
 
     underTest.shutdown();
 

@@ -81,8 +81,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.StandaloneRuleC
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.UpdateStandaloneRulesConfigurationParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.GetStatusResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.MatchWithServerSecurityHotspotsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.MatchWithServerSecurityHotspotsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TrackWithServerIssuesParams;
@@ -354,10 +352,6 @@ public class BackendService {
 
   public CompletableFuture<GetFilesStatusResponse> getFilesStatus(Map<String, List<URI>> fileUrisByFolderUri){
     return initializedBackend().getFileService().getFilesStatus(new GetFilesStatusParams(fileUrisByFolderUri));
-  }
-
-  public CompletableFuture<ListAllResponse> listAllTaints(String folderUri) {
-    return initializedBackend().getTaintVulnerabilityTrackingService().listAll(new ListAllParams(folderUri));
   }
 
   public SonarLintRpcServer getBackend() {

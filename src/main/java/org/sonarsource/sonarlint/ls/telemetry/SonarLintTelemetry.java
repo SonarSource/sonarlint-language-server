@@ -73,7 +73,7 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   public void analysisDoneOnSingleLanguage(SonarLanguage language, int analysisTimeMs) {
     if (enabled()) {
       backendServiceFacade.getBackendService().getTelemetryService()
-        .analysisDoneOnSingleLanguage(new AnalysisDoneOnSingleLanguageParams(org.sonarsource.sonarlint.core.rpc.protocol.common.Language.valueOf(language.name()), analysisTimeMs));
+        .analysisDoneOnSingleLanguage(new AnalysisDoneOnSingleLanguageParams(Language.valueOf(language.name()), analysisTimeMs));
     }
   }
 
