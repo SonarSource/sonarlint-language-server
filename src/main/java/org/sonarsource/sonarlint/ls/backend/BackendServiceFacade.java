@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.commons.lang3.StringUtils;
 import org.sonarsource.sonarlint.core.rpc.client.ClientJsonRpcLauncher;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
 import org.sonarsource.sonarlint.core.rpc.impl.BackendJsonRpcLauncher;
@@ -130,7 +131,7 @@ public class BackendServiceFacade {
       initParams.getSonarlintUserHome(),
       initParams.getStandaloneRuleConfigByKey(),
       initParams.isFocusOnNewCode(),
-      initParams.getClientNodePath() == null ? null : Path.of(initParams.getClientNodePath())
+      StringUtils.isEmpty(initParams.getClientNodePath()) ? null : Path.of(initParams.getClientNodePath())
     );
   }
 
