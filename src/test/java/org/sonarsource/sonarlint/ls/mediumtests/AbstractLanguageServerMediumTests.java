@@ -543,11 +543,6 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public CompletableFuture<String> getBranchNameForFolder(String folderUri) {
-      return CompletableFutures.computeAsync(cancelToken -> branchNameByFolder.get(folderUri));
-    }
-
-    @Override
     public void setReferenceBranchNameForFolder(ReferenceBranchForFolder newReferenceBranch) {
       referenceBranchNameByFolder.put(newReferenceBranch.getFolderUri(), newReferenceBranch.getBranchName());
     }
