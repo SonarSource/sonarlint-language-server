@@ -62,7 +62,8 @@ public class GitUtils {
   }
 
   @CheckForNull
-  public static String electBestMatchingServerBranchForCurrentHead(Repository repo, Set<String> serverCandidateNames, @Nullable String serverMainBranch, LanguageClientLogOutput logOutput) {
+  public static String electBestMatchingServerBranchForCurrentHead(Repository repo, Set<String> serverCandidateNames,
+    @Nullable String serverMainBranch, LanguageClientLogOutput logOutput) {
     try {
 
       String currentBranch = repo.getBranch();
@@ -93,13 +94,15 @@ public class GitUtils {
         return null;
       }
 
-      int minDistance = branchesPerDistance.keySet().stream().min(naturalOrder()).get();
-      var bestCandidates = branchesPerDistance.get(minDistance);
-      if (serverMainBranch != null && bestCandidates.contains(serverMainBranch)) {
-        // Favor the main branch when there are multiple candidates with the same distance
-        return serverMainBranch;
-      }
-      return bestCandidates.iterator().next();
+      return branchesPerDistance.keySet().stream().min(naturalOrder())
+        .map(minDistance -> {
+          var bestCandidates = branchesPerDistance.get(minDistance);
+          if (serverMainBranch != null && bestCandidates.contains(serverMainBranch)) {
+            // Favor the main branch when there are multiple candidates with the same distance
+            return serverMainBranch;
+          }
+          return bestCandidates.iterator().next();
+        }).orElse(null);
     } catch (IOException e) {
       logOutput.error("Couldn't find best matching branch", e);
       return null;

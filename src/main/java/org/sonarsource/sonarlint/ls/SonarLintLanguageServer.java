@@ -935,7 +935,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void reopenResolvedLocalIssues(ReopenAllIssuesForFileParams params) {
-    var reopenAllIssuesParams = new org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileParams(params.getConfigurationScopeId(), Path.of(params.getRelativePath()));
+    var reopenAllIssuesParams = new org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileParams(
+      params.getConfigurationScopeId(), Path.of(params.getRelativePath()));
     backendServiceFacade.getBackendService().reopenAllIssuesForFile(reopenAllIssuesParams).thenApply(r -> {
       if (r.isSuccess()) {
         analysisScheduler.didChange(create(params.getFileUri()));
