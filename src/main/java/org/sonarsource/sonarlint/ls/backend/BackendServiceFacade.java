@@ -44,7 +44,6 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
-import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.telemetry.TelemetryInitParams;
 
 public class BackendServiceFacade {
@@ -58,7 +57,6 @@ public class BackendServiceFacade {
   private final ClientJsonRpcLauncher clientLauncher;
   private final LanguageClientLogger lsLogOutput;
   private SettingsManager settingsManager;
-  private SonarLintTelemetry telemetry;
   private TelemetryInitParams telemetryInitParams;
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
@@ -74,7 +72,7 @@ public class BackendServiceFacade {
       clientLauncher = new ClientJsonRpcLauncher(serverToClientInputStream, clientToServerOutputStream, rpcClient);
       this.backendService = new BackendService(clientLauncher.getServerProxy(), lsLogOutput, client);
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new IllegalStateException(e);
     }
 
     this.initParams = new BackendInitParams();
@@ -159,10 +157,6 @@ public class BackendServiceFacade {
 
   public void initialize(Map<String, ServerConnectionSettings> serverConnections) {
     initOnce(serverConnections);
-  }
-
-  public void setTelemetry(SonarLintTelemetry telemetry) {
-    this.telemetry = telemetry;
   }
 
   public void setTelemetryInitParams(TelemetryInitParams telemetryInitParams) {

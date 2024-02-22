@@ -52,9 +52,8 @@ public class DelegatingIssue implements Issue {
 
   private DelegatingIssue(RawIssue issue) {
     this.issueId = UUID.randomUUID();
-    var userSeverity = issue.getSeverity();
     this.issue = issue;
-    this.severity = userSeverity != null ? userSeverity : this.issue.getSeverity();
+    this.severity = issue.getSeverity();
     this.type = issue.getType();
     this.isOnNewCode = true;
   }
@@ -66,7 +65,8 @@ public class DelegatingIssue implements Issue {
     this.isOnNewCode = isOnNewCode;
   }
 
-  DelegatingIssue(RawIssue rawIssue, UUID issueId, boolean resolved, IssueSeverity overriddenSeverity, String serverIssueKey, boolean isOnNewCode, @Nullable HotspotStatus reviewStatus) {
+  DelegatingIssue(RawIssue rawIssue, UUID issueId, boolean resolved, IssueSeverity overriddenSeverity,
+    String serverIssueKey, boolean isOnNewCode, @Nullable HotspotStatus reviewStatus) {
     this(rawIssue);
     this.issueId = issueId;
     this.resolved = resolved;

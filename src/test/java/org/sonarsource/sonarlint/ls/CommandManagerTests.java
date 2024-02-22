@@ -295,6 +295,8 @@ class CommandManagerTests {
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, taintSource, "ruleKey");
 
     var issue = mock(TaintIssue.class);
+    var issueId = UUID.randomUUID();
+    when(issue.getId()).thenReturn(issueId);
     when(issue.getRuleKey()).thenReturn("ruleKey");
     when(issue.getIntroductionDate()).thenReturn(Instant.EPOCH);
     var flow = mock(TaintVulnerabilityDto.FlowDto.class);

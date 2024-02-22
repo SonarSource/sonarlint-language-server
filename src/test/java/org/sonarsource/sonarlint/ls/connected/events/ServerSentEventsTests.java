@@ -48,7 +48,6 @@ import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
-import org.sonarsource.sonarlint.ls.connected.notifications.TaintVulnerabilityRaisedNotification;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
@@ -98,8 +97,6 @@ class ServerSentEventsTests {
   private static TaintVulnerabilityRaisedEvent.Location MAIN_LOCATION;
   private static final List<TaintVulnerabilityRaisedEvent.Flow> FLOWS = new ArrayList<>();
   ProjectBindingManager projectBindingManager;
-  TaintVulnerabilityRaisedNotification taintVulnerabilityRaisedNotification = mock(TaintVulnerabilityRaisedNotification.class);
-  WorkspaceFoldersManager workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
   AnalysisScheduler analysisScheduler = mock(AnalysisScheduler.class);
 
   @BeforeEach
@@ -114,7 +111,7 @@ class ServerSentEventsTests {
     taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
 
     projectBindingManager = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, folderBindingCache,
-      null, connectedEngineCacheByConnectionId, taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade, mock(OpenNotebooksCache.class));
+      null, connectedEngineCacheByConnectionId, backendServiceFacade, mock(OpenNotebooksCache.class));
 
     underTest = new ServerSentEventsHandler(analysisScheduler);
 

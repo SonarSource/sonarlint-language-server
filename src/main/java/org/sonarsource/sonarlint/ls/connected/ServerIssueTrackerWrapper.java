@@ -29,12 +29,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ClientTrackedFindingDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.LineWithHashDto;
@@ -46,7 +43,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TrackWithSer
 import org.sonarsource.sonarlint.ls.AnalysisClientInputFile;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.util.DigestUtils;
 
 import static java.util.function.Predicate.not;
@@ -57,19 +53,12 @@ import static org.sonarsource.sonarlint.ls.util.FileUtils.getTextRangeContentOfF
 
 public class ServerIssueTrackerWrapper {
 
-  private final SonarLintAnalysisEngine engine;
   private final BackendServiceFacade backend;
-  private final LanguageClientLogOutput logOutput;
   private final WorkspaceFoldersManager workspaceFoldersManager;
-  private final String projectKey;
 
-  ServerIssueTrackerWrapper(SonarLintAnalysisEngine engine, String projectKey,
-    BackendServiceFacade backend, WorkspaceFoldersManager workspaceFoldersManager, LanguageClientLogOutput logOutput) {
-    this.engine = engine;
-    this.projectKey = projectKey;
+  ServerIssueTrackerWrapper(BackendServiceFacade backend, WorkspaceFoldersManager workspaceFoldersManager) {
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.backend = backend;
-    this.logOutput = logOutput;
   }
 
   public void matchAndTrack(String filePath, Collection<RawIssue> issues, Consumer<DelegatingIssue> issueListener, boolean shouldFetchServerIssues) {
@@ -113,7 +102,8 @@ public class ServerIssueTrackerWrapper {
         if (either.isLeft()) {
           var serverHotspot = either.getLeft();
           var hotspotSeverity = issue.getSeverity();
-          return new DelegatingIssue(issue, serverHotspot.getId(), isResolved(serverHotspot.getStatus()), hotspotSeverity, serverHotspot.getServerKey(), serverHotspot.isOnNewCode(), serverHotspot.getStatus());
+          return new DelegatingIssue(issue, serverHotspot.getId(), isResolved(serverHotspot.getStatus()),
+            hotspotSeverity, serverHotspot.getServerKey(), serverHotspot.isOnNewCode(), serverHotspot.getStatus());
         } else {
           var localHotspot = either.getRight();
           return new DelegatingIssue(issue, localHotspot.getId(), false, true);
@@ -172,21 +162,15 @@ public class ServerIssueTrackerWrapper {
     TextRangeWithHashDto textRangeWithHashDto = null;
     LineWithHashDto lineWithHashDto = null;
     var textRange = issue.getTextRange();
-    if (issue.getInputFile() != null && textRange != null) {
-        var fileLines = inputFile.contents().lines().toList();
-        var textRangeContent = getTextRangeContentOfFile(fileLines, textRange);
-        var lineContent = fileLines.get(textRange.getStartLine() - 1);
-        textRangeWithHashDto = new TextRangeWithHashDto(textRange.getStartLine(), textRange.getStartLineOffset(),
-          textRange.getEndLine(), textRange.getEndLineOffset(), DigestUtils.digest(textRangeContent));
-        lineWithHashDto = new LineWithHashDto(textRange.getStartLine(), DigestUtils.digest(lineContent));
+    if (issue.getInputFile() != null && textRange != null && inputFile != null) {
+      var fileLines = inputFile.contents().lines().toList();
+      var textRangeContent = getTextRangeContentOfFile(fileLines, textRange);
+      var lineContent = fileLines.get(textRange.getStartLine() - 1);
+      textRangeWithHashDto = new TextRangeWithHashDto(textRange.getStartLine(), textRange.getStartLineOffset(),
+        textRange.getEndLine(), textRange.getEndLineOffset(), DigestUtils.digest(textRangeContent));
+      lineWithHashDto = new LineWithHashDto(textRange.getStartLine(), DigestUtils.digest(lineContent));
     }
     return new ClientTrackedFindingDto(null, issue.getSeverity().toString(), textRangeWithHashDto, lineWithHashDto, issue.getRuleKey(), issue.getMessage());
   }
-//
-//  @CheckForNull
-//  static LineWithHashDto createLineWithHashDto(RawIssue issue) {
-//    issue.getCellIssueTextRange() == null ? : issue.getCellIssueTextRange().getStartLine();
-//    return issue.getLine() != null ? new LineWithHashDto(issue.getLine(), issue.getLineHash()) : null;
-//  }
 
 }

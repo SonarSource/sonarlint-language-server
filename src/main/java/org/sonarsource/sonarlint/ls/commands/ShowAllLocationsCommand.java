@@ -38,7 +38,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.LocationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.Issue;
 import org.sonarsource.sonarlint.ls.LocalCodeFile;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 
 import static org.sonarsource.sonarlint.ls.util.TextRangeUtils.textRangeWithHashDtoToTextRangeDto;
 
@@ -183,11 +182,11 @@ public final class ShowAllLocationsCommand {
 
     private Location(IssueLocation location) {
       // TODO compute hash
-
-      this.textRange = new TextRangeWithHashDto(location.getTextRange().getStartLine(),
-        location.getTextRange().getStartLineOffset(),
-        location.getTextRange().getEndLine(),
-        location.getTextRange().getEndLineOffset(), "");
+      var locationTextRange = location.getTextRange();
+      this.textRange = locationTextRange != null ? new TextRangeWithHashDto(locationTextRange.getStartLine(),
+        locationTextRange.getStartLineOffset(),
+        locationTextRange.getEndLine(),
+        locationTextRange.getEndLineOffset(), "") : null;
       this.uri = nullableUri(location.getInputFile());
       this.filePath = this.uri == null ? null : this.uri.getPath();
       this.message = location.getMessage();
@@ -237,6 +236,7 @@ public final class ShowAllLocationsCommand {
       }
     }
 
+    @CheckForNull
     public TextRangeWithHashDto getTextRange() {
       return textRange;
     }

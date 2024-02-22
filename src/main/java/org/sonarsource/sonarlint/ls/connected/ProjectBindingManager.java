@@ -48,7 +48,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.V
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
-import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
@@ -69,6 +68,7 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 import static org.sonarsource.sonarlint.ls.util.Utils.fixWindowsURIEncoding;
+import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 import static org.sonarsource.sonarlint.ls.util.Utils.uriHasFileScheme;
 
 /**
@@ -86,23 +86,18 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final SonarLintExtendedLanguageClient client;
   private final EnginesFactory enginesFactory;
   private AnalysisScheduler analysisManager;
-  private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
-  private final DiagnosticPublisher diagnosticPublisher;
   private final BackendServiceFacade backendServiceFacade;
   private final OpenNotebooksCache openNotebooksCache;
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
-    LanguageClientLogOutput globalLogOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher,
-    BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache) {
+    LanguageClientLogOutput globalLogOutput, BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache) {
     this(enginesFactory, foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput, new ConcurrentHashMap<>(),
-      taintVulnerabilitiesCache, diagnosticPublisher, backendServiceFacade,
-      openNotebooksCache);
+      backendServiceFacade, openNotebooksCache);
   }
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
     ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput,
-    ConcurrentMap<String, Optional<SonarLintAnalysisEngine>> connectedEngineCacheByConnectionId, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
-    DiagnosticPublisher diagnosticPublisher, BackendServiceFacade backendServiceFacade,
+    ConcurrentMap<String, Optional<SonarLintAnalysisEngine>> connectedEngineCacheByConnectionId, BackendServiceFacade backendServiceFacade,
     OpenNotebooksCache openNotebooksCache) {
     this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
@@ -111,8 +106,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     this.folderBindingCache = folderBindingCache;
     this.globalLogOutput = globalLogOutput;
     this.connectedEngineCacheByConnectionId = connectedEngineCacheByConnectionId;
-    this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
-    this.diagnosticPublisher = diagnosticPublisher;
     this.backendServiceFacade = backendServiceFacade;
     this.openNotebooksCache = openNotebooksCache;
   }
@@ -219,8 +212,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var engine = engineOpt.get();
     var projectKey = requireNonNull(settings.getProjectKey());
     globalLogOutput.debug("Resolved binding %s for folder %s", projectKey, folderRoot);
-    var issueTrackerWrapper = new ServerIssueTrackerWrapper(engine, projectKey,
-      backendServiceFacade, foldersManager, globalLogOutput);
+    var issueTrackerWrapper = new ServerIssueTrackerWrapper(backendServiceFacade, foldersManager);
     return new ProjectBinding(connectionId, projectKey, engine, issueTrackerWrapper);
   }
 
@@ -451,9 +443,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     } catch (DownloadException downloadFailed) {
       throw new IllegalStateException(String.format("Failed to fetch list of projects from '%s'", connectionId), downloadFailed);
     } catch (ExecutionException e) {
-      throw new RuntimeException(e);
+      throw new IllegalStateException(e);
     } catch (InterruptedException e) {
-      throw new RuntimeException(e);
+      interrupted(e, globalLogOutput);
     }
+    return Map.of();
   }
 }

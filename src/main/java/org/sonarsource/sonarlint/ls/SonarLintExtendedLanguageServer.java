@@ -34,7 +34,6 @@ import org.eclipse.lsp4j.util.Preconditions;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpGenerateUserTokenResponse;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 
 public interface SonarLintExtendedLanguageServer extends LanguageServer {
@@ -62,7 +61,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
       this.connectionId = connectionId;
     }
 
-    public ConnectionCheckParams(String token, String organization, String serverUrl) {
+    public ConnectionCheckParams(@Nullable String token, @Nullable String organization,@Nullable String serverUrl) {
       this.token = token;
       this.serverUrl = serverUrl;
       this.organization = organization;
@@ -116,9 +115,6 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
     @NonNull
     private String projectUri;
-
-    public DidClasspathUpdateParams() {
-    }
 
     public DidClasspathUpdateParams(@NonNull final String projectUri) {
       this.projectUri = Preconditions.<String>checkNotNull(projectUri, "projectUri");
