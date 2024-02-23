@@ -408,6 +408,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       });
     }
   }
+
   public void setSettingsManager(SettingsManager settingsManager) {
     this.settingsManager = settingsManager;
   }

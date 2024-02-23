@@ -916,7 +916,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<Void> didAddConfigurationScopes(DidAddConfigurationScopes params){
+  public CompletableFuture<Void> didAddConfigurationScopes(DidAddConfigurationScopes params) {
     var bindingConfigurationDto = new BindingConfigurationDto(params.getConnectionId(), params.getSonarProjectKey(),
       params.isBindingSuggestionDisabled());
     var configurationDto = new ConfigurationScopeDto(params.getId(), null, params.isBindable(), params.getName(), bindingConfigurationDto);

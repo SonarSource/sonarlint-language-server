@@ -162,7 +162,7 @@ public class FileUtils {
   }
 
   public static String getTextRangeContentOfFile(List<String> contentLines, @Nullable TextRangeDto textRange) {
-    if (textRange == null) return null;
+    if (textRange == null || contentLines.isEmpty()) return null;
     var startLine = textRange.getStartLine() - 1;
     var endLine = textRange.getEndLine() - 1;
     if (startLine == endLine) {

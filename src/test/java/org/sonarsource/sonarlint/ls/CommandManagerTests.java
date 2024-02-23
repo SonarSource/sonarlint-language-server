@@ -431,6 +431,7 @@ class CommandManagerTests {
     var issue = mock(TaintIssue.class);
     when(issue.getRuleKey()).thenReturn("ruleKey");
     var filePath = Path.of("path");
+    when(issue.getWorkspaceFolderUri()).thenReturn("file:///user/folder");
     when(issue.getIdeFilePath()).thenReturn(filePath);
     when(issue.getIntroductionDate()).thenReturn(Instant.EPOCH);
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
@@ -573,7 +574,7 @@ class CommandManagerTests {
   @Test
   void getHtmlDescriptionTabsMonolithicShouldReturnNoTabs() {
     var monolithicDesc = new RuleMonolithicDescriptionDto("monolithicHtmlContent");
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, null, null,
       List.of(), Either.forLeft(monolithicDesc), emptyList(), null, null);
 
     assertThat(CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription(), "")).isEmpty();
@@ -586,7 +587,7 @@ class CommandManagerTests {
     var tab1 = new RuleDescriptionTabDto("title1", Either.forLeft(section1));
     var tab2 = new RuleDescriptionTabDto("title2", Either.forLeft(section2));
     var splitDesc = new RuleSplitDescriptionDto("introHtmlContent", List.of(tab1, tab2));
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, null, null,
       List.of(), Either.forRight(splitDesc), emptyList(), null, null);
 
     var descriptionTabs = CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription(), "");
@@ -614,7 +615,7 @@ class CommandManagerTests {
     var tab1 = new RuleDescriptionTabDto("title1", Either.forRight(sectionDto1));
     var tab2 = new RuleDescriptionTabDto("title2", Either.forRight(sectionDto2));
     var splitDesc = new RuleSplitDescriptionDto("introHtmlContent", List.of(tab1, tab2));
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, null, null,
       List.of(), Either.forRight(splitDesc), emptyList(), null, null);
 
     var descriptionTabs = CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription(), "java");
@@ -642,7 +643,7 @@ class CommandManagerTests {
   @Test
   void getHtmlDescriptionMonolithic() {
     var monolithicDesc = new RuleMonolithicDescriptionDto("monolithicHtmlContent");
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, null, null,
       List.of(), Either.forLeft(monolithicDesc), emptyList(), null, null);
 
     assertThat(CommandManager.getHtmlDescription(ruleDetails.getDescription())).isEqualTo("monolithicHtmlContent");
@@ -653,7 +654,7 @@ class CommandManagerTests {
     var section1 = new RuleNonContextualSectionDto(null);
     var tab1 = new RuleDescriptionTabDto(null, Either.forLeft(section1));
     var splitDesc = new RuleSplitDescriptionDto("splitHtmlContent", List.of(tab1));
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null,  null, null,
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, null, null,
       List.of(), Either.forRight(splitDesc), emptyList(), null, null);
 
 
@@ -672,7 +673,7 @@ class CommandManagerTests {
   }
 
   @Test
-  void hasResolveIssueActionForBoundProject(){
+  void hasResolveIssueActionForBoundProject() {
     var folderWrapper = mock(WorkspaceFolderWrapper.class);
     when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
     when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
@@ -710,7 +711,7 @@ class CommandManagerTests {
   }
 
   @Test
-  void doesNotHaveResolveIssueActionWhenIssueStatusChangeNotPermitted(){
+  void doesNotHaveResolveIssueActionWhenIssueStatusChangeNotPermitted() {
     var folderWrapper = mock(WorkspaceFolderWrapper.class);
     when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
     when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
@@ -745,7 +746,7 @@ class CommandManagerTests {
   }
 
   @Test
-  void doesNotHaveResolveIssueActionForBoundProjectForIssueWithoutKey(){
+  void doesNotHaveResolveIssueActionForBoundProjectForIssueWithoutKey() {
     var folderWrapper = mock(WorkspaceFolderWrapper.class);
     when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
     when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));

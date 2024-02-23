@@ -19,9 +19,12 @@
  */
 package org.sonarsource.sonarlint.ls.commands;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +41,10 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.LocationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.Issue;
 import org.sonarsource.sonarlint.ls.LocalCodeFile;
+import org.sonarsource.sonarlint.ls.domain.TaintIssue;
+import org.sonarsource.sonarlint.ls.util.FileUtils;
+import org.sonarsource.sonarlint.ls.util.TextRangeUtils;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static org.sonarsource.sonarlint.ls.util.TextRangeUtils.textRangeWithHashDtoToTextRangeDto;
 
@@ -102,12 +109,12 @@ public final class ShowAllLocationsCommand {
       }
     }
 
-    Param(TaintVulnerabilityDto taint, String connectionId, Map<URI, LocalCodeFile> localFileCache) {
-      this.fileUri = taint.getIdeFilePath().toUri();
+    Param(TaintIssue taint, String connectionId, Map<URI, LocalCodeFile> localFileCache) {
+      this.fileUri = URI.create(taint.getWorkspaceFolderUri() + File.separator + taint.getIdeFilePath().toString());
       this.message = taint.getMessage();
       this.severity = taint.getSeverity().toString();
       this.ruleKey = taint.getRuleKey();
-      this.flows = taint.getFlows().stream().map(f -> new Flow(f, localFileCache)).toList();
+      this.flows = taint.getFlows().stream().map(f -> new Flow(f, localFileCache, taint.getWorkspaceFolderUri())).toList();
       this.textRange = textRangeWithHashDtoToTextRangeDto(taint.getTextRange());
       this.connectionId = connectionId;
       this.creationDate = DateTimeFormatter.ISO_DATE_TIME.format(taint.getIntroductionDate().atOffset(ZoneOffset.UTC));
@@ -164,8 +171,8 @@ public final class ShowAllLocationsCommand {
       this.locations = flow.getLocations().stream().map(locationDto -> new Location(locationDto, new HashMap<>())).toList();
     }
 
-    private Flow(TaintVulnerabilityDto.FlowDto flow, Map<URI, LocalCodeFile> localFileCache) {
-      this.locations = flow.getLocations().stream().map(l -> new Location(l, localFileCache)).toList();
+    private Flow(TaintVulnerabilityDto.FlowDto flow, Map<URI, LocalCodeFile> localFileCache, String workspaceFolderUri) {
+      this.locations = flow.getLocations().stream().map(l -> new Location(l, localFileCache, workspaceFolderUri)).toList();
     }
 
     public List<Location> getLocations() {
@@ -179,14 +186,24 @@ public final class ShowAllLocationsCommand {
     private String filePath;
     private final String message;
     private boolean exists = false;
+    private boolean codeMatches = false;
 
     private Location(IssueLocation location) {
-      // TODO compute hash
       var locationTextRange = location.getTextRange();
+      String locationTextRangeHash;
+      try {
+        var inputFile = location.getInputFile();
+        List<String> fileLines = inputFile != null ? inputFile.contents().lines().toList() : Collections.emptyList();
+        var fileTextRange = FileUtils.getTextRangeContentOfFile(fileLines,
+          TextRangeUtils.textRangeDtoFromTextRange(locationTextRange));
+        locationTextRangeHash = fileTextRange != null ? Utils.hash(fileTextRange) : "";
+      } catch (IOException e) {
+        locationTextRangeHash = "";
+      }
       this.textRange = locationTextRange != null ? new TextRangeWithHashDto(locationTextRange.getStartLine(),
         locationTextRange.getStartLineOffset(),
         locationTextRange.getEndLine(),
-        locationTextRange.getEndLineOffset(), "") : null;
+        locationTextRange.getEndLineOffset(), locationTextRangeHash) : null;
       this.uri = nullableUri(location.getInputFile());
       this.filePath = this.uri == null ? null : this.uri.getPath();
       this.message = location.getMessage();
@@ -194,17 +211,22 @@ public final class ShowAllLocationsCommand {
     }
 
     private Location(LocationDto location, Map<URI, LocalCodeFile> localCodeCache) {
-      // TODO generate hash by taking code from code cache
       this.textRange = new TextRangeWithHashDto(location.getTextRange().getStartLine(),
         location.getTextRange().getStartLineOffset(),
         location.getTextRange().getEndLine(),
-        location.getTextRange().getEndLineOffset(), "");
+        location.getTextRange().getEndLineOffset(), Utils.hash(location.getCodeSnippet()));
       this.uri = location.getIdeFilePath().toUri();
       this.message = location.getMessage();
       this.filePath = location.getIdeFilePath().toUri().toString();
       String localCode = codeExists(localCodeCache);
       if (localCode != null) {
         this.exists = true;
+        var locationTextRange = location.getTextRange();
+        if (locationTextRange == null) {
+          this.codeMatches = false;
+        } else {
+          this.codeMatches = location.getCodeSnippet().equals(localCode);
+        }
       }
     }
 
@@ -222,17 +244,27 @@ public final class ShowAllLocationsCommand {
       return null;
     }
 
-    private Location(TaintVulnerabilityDto.FlowDto.LocationDto location, Map<URI, LocalCodeFile> localCodeCache) {
+    private Location(TaintVulnerabilityDto.FlowDto.LocationDto location, Map<URI, LocalCodeFile> localCodeCache, String workspaceFolderUri) {
+      this.textRange = location.getTextRange();
       var locationFilePath = location.getFilePath();
       if (locationFilePath != null) {
-        this.uri = locationFilePath.toUri();
-        this.filePath = locationFilePath.toUri().toString();
+        this.uri = URI.create(workspaceFolderUri + File.separator + locationFilePath);
+        this.filePath = locationFilePath.toString();
+      } else {
+        this.filePath = "Could not locate file";
       }
       this.message = location.getMessage();
       String localCode = codeExists(localCodeCache);
       if (localCode != null) {
         this.exists = true;
-        this.textRange = location.getTextRange();
+        var locationTextRange = location.getTextRange();
+        if (locationTextRange == null) {
+          this.codeMatches = false;
+        } else {
+          var textRangeHash = locationTextRange.getHash();
+          var localCodeHash = Utils.hash(localCode);
+          this.codeMatches = textRangeHash.equals(localCodeHash);
+        }
       }
     }
 
@@ -256,13 +288,17 @@ public final class ShowAllLocationsCommand {
     public boolean getExists() {
       return exists;
     }
+
+    public boolean isCodeMatches() {
+      return codeMatches;
+    }
   }
 
   public static Param params(Issue issue) {
     return new Param(issue);
   }
 
-  public static Param params(TaintVulnerabilityDto issue, String connectionId) {
+  public static Param params(TaintIssue issue, String connectionId) {
     return new Param(issue, connectionId, new HashMap<>());
   }
 
