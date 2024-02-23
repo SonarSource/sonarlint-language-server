@@ -23,10 +23,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.function.Supplier;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
-import org.sonarsource.sonarlint.core.NodeJsHelper;
 import org.sonarsource.sonarlint.core.commons.Version;
+import org.sonarsource.sonarlint.core.nodejs.NodeJsHelper;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 public class NodeJsRuntime {
@@ -53,8 +54,9 @@ public class NodeJsRuntime {
       .filter(StringUtils::isNotEmpty)
       .map(Paths::get)
       .orElse(null));
-    this.nodeJsPath = helper.getNodeJsPath();
-    this.nodeJsVersion = helper.getNodeJsVersion();
+    var installedNodeJs = helper.autoDetect();
+    this.nodeJsPath = installedNodeJs == null ? null : installedNodeJs.getPath();
+    this.nodeJsVersion = installedNodeJs == null ? null : installedNodeJs.getVersion();
     this.init = true;
   }
 
@@ -65,6 +67,7 @@ public class NodeJsRuntime {
       .orElse(null);
   }
 
+  @CheckForNull
   public Path getNodeJsPath() {
     if (!init) {
       init();
@@ -72,6 +75,7 @@ public class NodeJsRuntime {
     return nodeJsPath;
   }
 
+  @CheckForNull
   public Version getNodeJsVersion() {
     if (!init) {
       init();

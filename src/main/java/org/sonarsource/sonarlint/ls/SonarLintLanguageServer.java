@@ -240,7 +240,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager,
       client, globalLogOutput, backendServiceFacade, openNotebooksCache);
     vsCodeClient.setBindingManager(bindingManager);
-    vsCodeClient.setNodeJsRuntime(nodeJsRuntime);
     vsCodeClient.setEngineManager(standaloneEngineManager);
     this.telemetry = new SonarLintTelemetry(backendServiceFacade, globalLogOutput);
     this.settingsManager.addListener(telemetry);

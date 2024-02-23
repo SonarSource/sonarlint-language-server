@@ -76,7 +76,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.UsernamePasswordDto;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
-import org.sonarsource.sonarlint.ls.NodeJsRuntime;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.CreateConnectionParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -115,7 +114,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private ServerSentEventsHandlerService serverSentEventsHandlerService;
   private BackendServiceFacade backendServiceFacade;
   private WorkspaceFolderBranchManager branchManager;
-  private NodeJsRuntime nodeJsRuntime;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final OpenFilesCache openFilesCache;
   private WorkspaceFoldersManager workspaceFoldersManager;
@@ -359,11 +357,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   }
 
   @Override
-  public void didUpdatePlugins(String connectionId) {
-    engineManger.getOrCreateAnalysisEngine().restartAsync();
-  }
-
-  @Override
   public void didChangeTaintVulnerabilities(String configurationScopeId, Set<UUID> closedTaintVulnerabilityIds,
     List<TaintVulnerabilityDto> addedTaintVulnerabilities, List<TaintVulnerabilityDto> updatedTaintVulnerabilities) {
     var taintVulnerabilitiesByFile = Stream.concat(addedTaintVulnerabilities.stream(), updatedTaintVulnerabilities.stream())
@@ -394,11 +387,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
         })
         .toList();
     }).join();
-  }
-
-  @Override
-  public void didChangeNodeJs(@Nullable Path nodeJsPath, @Nullable String version) {
-    engineManger.getOrCreateAnalysisEngine().restartAsync();
   }
 
   @Override
@@ -457,14 +445,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   public WorkspaceFolderBranchManager getBranchManager() {
     return branchManager;
-  }
-
-  public void setNodeJsRuntime(NodeJsRuntime nodeJsRuntime) {
-    this.nodeJsRuntime = nodeJsRuntime;
-  }
-
-  public NodeJsRuntime getNodeJsRuntime() {
-    return nodeJsRuntime;
   }
 
   public void setWorkspaceFoldersManager(WorkspaceFoldersManager workspaceFoldersManager) {
