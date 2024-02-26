@@ -21,15 +21,9 @@ package org.sonarsource.sonarlint.ls.util;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.PosixFilePermission;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -41,90 +35,12 @@ import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.sonarsource.sonarlint.ls.util.FileUtils.OS_NAME_PROPERTY;
 import static org.sonarsource.sonarlint.ls.util.FileUtils.getTextRangeContentOfFile;
 
 class FileUtilsTests {
 
   @RegisterExtension
   SonarLintLogTester logTester = new SonarLintLogTester();
-  private static boolean WINDOWS = System.getProperty(OS_NAME_PROPERTY) != null && System.getProperty(OS_NAME_PROPERTY).startsWith("Windows");
-
-  @Test
-  void allRelativePathsForFilesInTree_should_find_all_files(@TempDir Path basedir) {
-    var deeplyNestedDir = basedir.resolve("a").resolve("b").resolve("c");
-    assertThat(deeplyNestedDir.toFile().isDirectory()).isFalse();
-    FileUtils.mkdirs(deeplyNestedDir);
-    FileUtils.mkdirs(basedir.resolve(".git").resolve("refs"));
-    FileUtils.mkdirs(basedir.resolve("a").resolve(".config"));
-
-    createNewFile(basedir, ".gitignore");
-    createNewFile(basedir.resolve(".git/refs"), "HEAD");
-    createNewFile(basedir.resolve("a"), "a.txt");
-    createNewFile(basedir.resolve("a/.config"), "test");
-    createNewFile(basedir.resolve("a/b"), "b.txt");
-    createNewFile(basedir.resolve("a/b/c"), "c.txt");
-
-    var relativePaths = FileUtils.allRelativePathsForFilesInTree(basedir, logTester.getLogger());
-    assertThat(relativePaths).containsExactlyInAnyOrder(
-      "a/a.txt",
-      "a/b/b.txt",
-      "a/b/c/c.txt");
-  }
-
-  @Test
-  void allRelativePathsForFilesInTree_should_handle_non_existing_dir(@TempDir Path basedir) {
-    var deeplyNestedDir = basedir.resolve("a").resolve("b").resolve("c");
-    assertThat(deeplyNestedDir).doesNotExist();
-
-    var relativePaths = FileUtils.allRelativePathsForFilesInTree(deeplyNestedDir, logTester.getLogger());
-    assertThat(relativePaths).isEmpty();
-  }
-
-  @Test
-  void allRelativePathsForFilesInTree_should_ignore_restricted_folder(@TempDir Path basedir) throws IOException {
-    var deeplyNestedDir = basedir.resolve("a").resolve("b").resolve("c");
-    assertThat(deeplyNestedDir.toFile().isDirectory()).isFalse();
-    FileUtils.mkdirs(deeplyNestedDir);
-    FileUtils.mkdirs(basedir.resolve(".git").resolve("refs"));
-    FileUtils.mkdirs(basedir.resolve("a").resolve(".config"));
-
-    createNewFile(basedir, ".gitignore");
-    createNewFile(basedir.resolve(".git/refs"), "HEAD");
-    createNewFile(basedir.resolve("a"), "a.txt");
-    createNewFile(basedir.resolve("a/.config"), "test");
-    createNewFile(basedir.resolve("a/b"), "b.txt");
-    createNewFile(basedir.resolve("a/b/c"), "c.txt");
-
-//    basedir.resolve("a/b/c").toFile().setReadable(false);
-    var perms = new HashSet<>(Arrays.asList(PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE,
-      PosixFilePermission.GROUP_EXECUTE, PosixFilePermission.OTHERS_EXECUTE));
-
-    if (WINDOWS) {
-      Files.setAttribute(basedir.resolve("a/b/c"), "dos:hidden", true);
-    } else {
-      Files.setPosixFilePermissions(basedir.resolve("a/b/c"), perms);
-    }
-
-    var relativePaths = FileUtils.allRelativePathsForFilesInTree(basedir, logTester.getLogger());
-    assertThat(relativePaths).containsExactlyInAnyOrder(
-      "a/a.txt",
-      "a/b/b.txt");
-  }
-
-  @Test
-  void allRelativePathsForFilesInTree_should_throw_on_io_error(@TempDir Path basedir) {
-    var deeplyNestedDir = basedir.resolve("a");
-    FileUtils.mkdirs(deeplyNestedDir);
-    SimpleFileVisitor<Path> visitor = new SimpleFileVisitor<>() {
-      @Override
-      public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-        throw new IOException();
-      }
-    };
-    assertThrows(IllegalStateException.class,
-      () -> FileUtils.allRelativePathsForFilesInTree(deeplyNestedDir, visitor, new HashSet<>()));
-  }
 
   @Test
   void toSonarQubePath_should_return_slash_separated_path() {

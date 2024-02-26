@@ -110,7 +110,7 @@ public final class ShowAllLocationsCommand {
     }
 
     Param(TaintIssue taint, String connectionId, Map<URI, LocalCodeFile> localFileCache) {
-      this.fileUri = URI.create(taint.getWorkspaceFolderUri() + File.separator + taint.getIdeFilePath().toString());
+      this.fileUri = URI.create(taint.getWorkspaceFolderUri()).resolve(taint.getIdeFilePath().toUri());
       this.message = taint.getMessage();
       this.severity = taint.getSeverity().toString();
       this.ruleKey = taint.getRuleKey();
@@ -248,7 +248,7 @@ public final class ShowAllLocationsCommand {
       this.textRange = location.getTextRange();
       var locationFilePath = location.getFilePath();
       if (locationFilePath != null) {
-        this.uri = URI.create(workspaceFolderUri + File.separator + locationFilePath);
+        this.uri = URI.create(workspaceFolderUri).resolve(locationFilePath.toUri());
         this.filePath = locationFilePath.toString();
       } else {
         this.filePath = "Could not locate file";

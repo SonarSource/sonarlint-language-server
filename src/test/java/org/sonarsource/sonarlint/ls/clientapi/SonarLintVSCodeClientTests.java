@@ -520,7 +520,7 @@ class SonarLintVSCodeClientTests {
     var filePath = Path.of("filePath");
     var workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
     var workspaceFolderWrapper = mock(WorkspaceFolderWrapper.class);
-    when(workspaceFolderWrapper.getUri()).thenReturn(URI.create("folderUri"));
+    when(workspaceFolderWrapper.getUri()).thenReturn(workspaceFolderPath.toUri());
     var workspaceFolderSettings = mock(WorkspaceFolderSettings.class);
     var serverConnectionSettings = mock(ServerConnectionSettings.class);
     when(serverConnectionSettings.isSonarCloudAlias()).thenReturn(true);
@@ -536,10 +536,10 @@ class SonarLintVSCodeClientTests {
     when(taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile()).thenReturn(Map.of(filePath.toUri(),
       List.of(getTaintIssue(uuid1), getTaintIssue(uuid2))));
 
-    underTest.didChangeTaintVulnerabilities("folderUri", Set.of(uuid1),
+    underTest.didChangeTaintVulnerabilities(workspaceFolderPath.toUri().toString(), Set.of(uuid1),
       List.of(getTaintDto(uuid1), getTaintDto(uuid2)), List.of(getTaintDto(uuid3), getTaintDto(uuid4)));
 
-    verify(taintVulnerabilitiesCache).reload(eq(URI.create(Path.of("folderUri").resolve(filePath).toString())), any());
+    verify(taintVulnerabilitiesCache).reload(eq(workspaceFolderPath.toUri().resolve(filePath.toString())), any());
     verify(taintVulnerabilitiesCache).removeTaintIssue(filePath.toUri().toString(), uuid1.toString());
   }
 

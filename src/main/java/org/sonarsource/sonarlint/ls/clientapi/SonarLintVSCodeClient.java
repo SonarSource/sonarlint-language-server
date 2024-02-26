@@ -357,19 +357,19 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   }
 
   @Override
-  public void didChangeTaintVulnerabilities(String configurationScopeId, Set<UUID> closedTaintVulnerabilityIds,
+  public void didChangeTaintVulnerabilities(String folderUri, Set<UUID> closedTaintVulnerabilityIds,
     List<TaintVulnerabilityDto> addedTaintVulnerabilities, List<TaintVulnerabilityDto> updatedTaintVulnerabilities) {
     var taintVulnerabilitiesByFile = Stream.concat(addedTaintVulnerabilities.stream(), updatedTaintVulnerabilities.stream())
-      .collect(groupingBy(taintVulnerabilityDto -> URI.create(Path.of(configurationScopeId).resolve(taintVulnerabilityDto.getIdeFilePath()).toString()), toList()));
+      .collect(groupingBy(taintVulnerabilityDto -> URI.create(folderUri).resolve(taintVulnerabilityDto.getIdeFilePath().toString()), toList()));
     taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().values().stream().flatMap(Collection::stream)
       .filter(taintIssue -> closedTaintVulnerabilityIds.contains(taintIssue.getId()))
       .forEach(taintIssue -> taintVulnerabilitiesCache.removeTaintIssue(taintIssue.getIdeFilePath().toUri().toString(), taintIssue.getId().toString()));
-    workspaceFoldersManager.getAll().stream().filter(workspaceFolder -> workspaceFolder.getUri().equals(URI.create(configurationScopeId)))
+    workspaceFoldersManager.getAll().stream().filter(workspaceFolder -> workspaceFolder.getUri().equals(URI.create(folderUri)))
       .findFirst().map(workspaceFolderWrapper -> Objects.requireNonNull(bindingManager
         .getServerConnectionSettingsFor(workspaceFolderWrapper.getSettings().getConnectionId())).isSonarCloudAlias())
       .ifPresent(isSonarCloud -> taintVulnerabilitiesByFile.forEach((file, taints) -> {
         taintVulnerabilitiesCache.reload(file, taints.stream()
-          .map(dto -> new TaintIssue(dto, configurationScopeId, isSonarCloud ? SONARCLOUD_TAINT_SOURCE : SONARQUBE_TAINT_SOURCE)).toList());
+          .map(dto -> new TaintIssue(dto, folderUri, isSonarCloud ? SONARCLOUD_TAINT_SOURCE : SONARQUBE_TAINT_SOURCE)).toList());
         diagnosticPublisher.publishDiagnostics(file, false);
       }));
   }
