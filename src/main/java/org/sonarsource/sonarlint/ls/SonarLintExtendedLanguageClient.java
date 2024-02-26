@@ -460,13 +460,11 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   }
 
   class FoundFileDto {
-
     private final String fileName;
     private final String filePath;
-
     private final String content;
 
-    public FoundFileDto(String fileName, String filePath, String content) {
+    public FoundFileDto(String fileName, String filePath, @Nullable String content) {
       this.fileName = fileName;
       this.filePath = filePath;
       this.content = content;
@@ -480,6 +478,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       return filePath;
     }
 
+    @CheckForNull
     public String getContent() {
       return content;
     }
