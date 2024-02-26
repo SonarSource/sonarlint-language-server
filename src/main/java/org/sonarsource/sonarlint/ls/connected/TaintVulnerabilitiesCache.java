@@ -68,7 +68,7 @@ public class TaintVulnerabilitiesCache {
   public Optional<TaintIssue> getTaintVulnerabilityByKey(String issueId) {
     return taintVulnerabilitiesPerFile.values().stream()
       .flatMap(List::stream)
-      .filter(i -> issueId.equals(i.getId().toString()))
+      .filter(i -> issueId.equals(i.getSonarServerKey()))
       .findFirst();
   }
 
@@ -120,7 +120,7 @@ public class TaintVulnerabilitiesCache {
     }
   }
 
-  public Set<URI> getAllFilesWithTaintIssues(){
+  public Set<URI> getAllFilesWithTaintIssues() {
     return taintVulnerabilitiesPerFile.keySet();
   }
 

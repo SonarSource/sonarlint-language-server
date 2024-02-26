@@ -79,11 +79,11 @@ public final class ShowAllLocationsCommand {
     }
 
     public Param(ShowIssueParams showIssueParams, String connectionId) {
-      this.fileUri = showIssueParams.getIssueDetails().getIdeFilePath().toUri();
+      this.fileUri = URI.create(showIssueParams.getConfigurationScopeId() + File.separator + showIssueParams.getIssueDetails().getIdeFilePath());
       this.message = showIssueParams.getIssueDetails().getMessage();
       this.severity = "";
       this.ruleKey = showIssueParams.getIssueDetails().getRuleKey();
-      this.flows = showIssueParams.getIssueDetails().getFlows().stream().map(Flow::new).toList();
+      this.flows = showIssueParams.getIssueDetails().getFlows().stream().map(f -> new Flow(f, showIssueParams.getConfigurationScopeId())).toList();
       this.textRange = new TextRangeDto(showIssueParams.getIssueDetails().getTextRange().getStartLine(),
         showIssueParams.getIssueDetails().getTextRange().getStartLineOffset(),
         showIssueParams.getIssueDetails().getTextRange().getEndLine(),
@@ -167,8 +167,8 @@ public final class ShowAllLocationsCommand {
     }
 
     // TODO provide local code cache if possible
-    private Flow(FlowDto flow) {
-      this.locations = flow.getLocations().stream().map(locationDto -> new Location(locationDto, new HashMap<>())).toList();
+    private Flow(FlowDto flow, String workspaceFolderUri) {
+      this.locations = flow.getLocations().stream().map(locationDto -> new Location(locationDto, new HashMap<>(), workspaceFolderUri)).toList();
     }
 
     private Flow(TaintVulnerabilityDto.FlowDto flow, Map<URI, LocalCodeFile> localFileCache, String workspaceFolderUri) {
@@ -208,14 +208,15 @@ public final class ShowAllLocationsCommand {
       this.filePath = this.uri == null ? null : this.uri.getPath();
       this.message = location.getMessage();
       this.exists = true;
+      this.codeMatches = true;
     }
 
-    private Location(LocationDto location, Map<URI, LocalCodeFile> localCodeCache) {
+    private Location(LocationDto location, Map<URI, LocalCodeFile> localCodeCache, String workspaceFolderUri) {
       this.textRange = new TextRangeWithHashDto(location.getTextRange().getStartLine(),
         location.getTextRange().getStartLineOffset(),
         location.getTextRange().getEndLine(),
         location.getTextRange().getEndLineOffset(), Utils.hash(location.getCodeSnippet()));
-      this.uri = location.getIdeFilePath().toUri();
+      this.uri = URI.create(workspaceFolderUri + File.separator + location.getIdeFilePath());
       this.message = location.getMessage();
       this.filePath = location.getIdeFilePath().toUri().toString();
       String localCode = codeExists(localCodeCache);

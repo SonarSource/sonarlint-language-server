@@ -60,7 +60,7 @@ public class BackendServiceFacade {
   private TelemetryInitParams telemetryInitParams;
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
-  public BackendServiceFacade(SonarLintRpcClientDelegate rpcClient,  LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client) {
+  public BackendServiceFacade(SonarLintRpcClientDelegate rpcClient, LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client) {
     this.lsLogOutput = lsLogOutput;
     var clientToServerOutputStream = new PipedOutputStream();
     PipedInputStream clientToServerInputStream = null;
@@ -162,6 +162,7 @@ public class BackendServiceFacade {
   public void setTelemetryInitParams(TelemetryInitParams telemetryInitParams) {
     this.telemetryInitParams = telemetryInitParams;
   }
+
   public TelemetryInitParams getTelemetryInitParams() {
     return telemetryInitParams;
   }
