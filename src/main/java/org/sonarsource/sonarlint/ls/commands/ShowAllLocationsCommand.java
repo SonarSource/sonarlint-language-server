@@ -19,9 +19,9 @@
  */
 package org.sonarsource.sonarlint.ls.commands;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Paths;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
@@ -79,7 +79,7 @@ public final class ShowAllLocationsCommand {
     }
 
     public Param(ShowIssueParams showIssueParams, String connectionId) {
-      this.fileUri = URI.create(showIssueParams.getConfigurationScopeId() + File.separator + showIssueParams.getIssueDetails().getIdeFilePath());
+      this.fileUri = Paths.get(URI.create(showIssueParams.getConfigurationScopeId()).resolve(showIssueParams.getIssueDetails().getIdeFilePath().toString())).toUri();
       this.message = showIssueParams.getIssueDetails().getMessage();
       this.severity = "";
       this.ruleKey = showIssueParams.getIssueDetails().getRuleKey();
@@ -216,7 +216,8 @@ public final class ShowAllLocationsCommand {
         location.getTextRange().getStartLineOffset(),
         location.getTextRange().getEndLine(),
         location.getTextRange().getEndLineOffset(), Utils.hash(location.getCodeSnippet()));
-      this.uri = URI.create(workspaceFolderUri + File.separator + location.getIdeFilePath());
+//      this.uri = URI.create(workspaceFolderUri).resolve(location.getIdeFilePath().toString());
+      this.uri = URI.create(workspaceFolderUri).resolve(location.getIdeFilePath().toString());
       this.message = location.getMessage();
       this.filePath = location.getIdeFilePath().toUri().toString();
       String localCode = codeExists(localCodeCache);

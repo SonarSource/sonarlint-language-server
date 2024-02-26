@@ -20,7 +20,7 @@
 package org.sonarsource.sonarlint.ls.backend;
 
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
+import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
@@ -29,12 +29,12 @@ import static org.mockito.Mockito.mock;
 
 class BackendServiceFacadeTests {
 
-//  SonarLintRpcServer backend = mock(SonarLintRpcServer.class);
-//  BackendServiceFacade underTest = new BackendServiceFacade(backend);
-//
-//  @Test
-//  void shouldFailIfBackendNotInitialized() {
-//    assertThrows(IllegalStateException.class, () -> underTest.getBackendService());
-//  }
+  SonarLintRpcClientDelegate backend = mock(SonarLintRpcClientDelegate.class);
+  BackendServiceFacade underTest = new BackendServiceFacade(backend, mock(LanguageClientLogger.class), mock(SonarLintExtendedLanguageClient.class));
+
+  @Test
+  void shouldFailIfBackendNotInitialized() {
+    assertThrows(IllegalStateException.class, () -> underTest.getBackendService());
+  }
 
 }

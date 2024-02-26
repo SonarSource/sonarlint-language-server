@@ -177,10 +177,11 @@ class TaintVulnerabilitiesCacheTests {
     when(issue.getId()).thenReturn(issueId);
     when(issue.getRuleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
     when(issue.isResolved()).thenReturn(false);
+    when(issue.getSonarServerKey()).thenReturn("serverIssueKey");
 
     underTest.reload(uri, List.of(issue));
 
-    assertThat(underTest.getTaintVulnerabilityByKey(issueId.toString())).hasValue(issue);
+    assertThat(underTest.getTaintVulnerabilityByKey("serverIssueKey")).hasValue(issue);
     assertThat(underTest.getTaintVulnerabilityByKey("otherKey")).isEmpty();
   }
 
@@ -192,12 +193,13 @@ class TaintVulnerabilitiesCacheTests {
     when(issue.getId()).thenReturn(issueId);
     when(issue.getRuleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
     when(issue.isResolved()).thenReturn(false);
+    when(issue.getSonarServerKey()).thenReturn("serverIssueKey");
 
     underTest.getTaintVulnerabilitiesPerFile().put(uri,  new ArrayList<>(Arrays.asList(issue)));
-    assertThat(underTest.getTaintVulnerabilityByKey(issueId.toString())).hasValue(issue);
+    assertThat(underTest.getTaintVulnerabilityByKey("serverIssueKey")).hasValue(issue);
 
     underTest.removeTaintIssue(uri.toString(), issueId.toString());
-    assertThat(underTest.getTaintVulnerabilityByKey(issueId.toString())).isEmpty();
+    assertThat(underTest.getTaintVulnerabilityByKey("serverIssueKey")).isEmpty();
 
 
   }

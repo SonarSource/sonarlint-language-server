@@ -69,8 +69,8 @@ class TaintIssuesUpdaterTests {
   private final BackendService backendService = mock(BackendService.class);
   private final Map<String, ServerConnectionSettings> SERVER_CONNECTIONS = Map.of(CONNECTION_ID, serverConnectionSettings);
   private final ImmediateExecutorService executorService = new ImmediateExecutorService();
-  private final TaintIssuesUpdater underTest = new TaintIssuesUpdater(bindingManager, new TaintVulnerabilitiesCache(), workspaceFoldersManager, settingsManager,
-    diagnosticPublisher, executorService, backendServiceFacade, logTester.getLogger());
+  private final TaintIssuesUpdater underTest = new TaintIssuesUpdater(bindingManager, new TaintVulnerabilitiesCache(), workspaceFoldersManager,
+    diagnosticPublisher, executorService, logTester.getLogger());
 
   @BeforeEach
   void init() {

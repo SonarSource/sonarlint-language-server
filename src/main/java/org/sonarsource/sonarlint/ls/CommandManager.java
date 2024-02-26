@@ -268,7 +268,7 @@ public class CommandManager {
     edit.setDocumentChanges(
       fix.inputFileEdits().stream()
         .map(fileEdit -> newLspDocumentEdit(fileEdit, documentVersion))
-        .collect(Collectors.toList()));
+        .toList());
     return edit;
   }
 
@@ -277,7 +277,7 @@ public class CommandManager {
     documentEdit.setTextDocument(new VersionedTextDocumentIdentifier(fileEdit.target().uri().toString(), documentVersion));
     documentEdit.setEdits(fileEdit.textEdits().stream()
       .map(CommandManager::newLspTextEdit)
-      .collect(Collectors.toList()));
+      .toList());
     return Either.forLeft(documentEdit);
   }
 

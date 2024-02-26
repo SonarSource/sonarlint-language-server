@@ -43,7 +43,6 @@ public class EnginesFactory {
   public static Path sonarLintUserHomeOverride = null;
   private final LanguageClientLogOutput logOutput;
   private final Collection<Path> standaloneAnalyzers;
-  private final Map<String, Path> embeddedPluginsToPath;
   private String omnisharpDirectory;
 
 
@@ -77,18 +76,14 @@ public class EnginesFactory {
     Language.PLSQL,
     Language.TSQL
   };
-
-  private final NodeJsRuntime nodeJsRuntime;
   private final ClientModulesProvider modulesProvider;
   private BackendServiceFacade backendServiceFacade;
   private final AtomicReference<Boolean> shutdown = new AtomicReference<>(false);
 
-  public EnginesFactory(Collection<Path> standaloneAnalyzers, Map<String, Path> embeddedPluginsToPath,
-    LanguageClientLogOutput globalLogOutput, NodeJsRuntime nodeJsRuntime, ClientModulesProvider modulesProvider, BackendServiceFacade backendServiceFacade) {
+  public EnginesFactory(Collection<Path> standaloneAnalyzers, LanguageClientLogOutput globalLogOutput,
+    ClientModulesProvider modulesProvider, BackendServiceFacade backendServiceFacade) {
     this.standaloneAnalyzers = standaloneAnalyzers;
-    this.embeddedPluginsToPath = embeddedPluginsToPath;
     this.logOutput = globalLogOutput;
-    this.nodeJsRuntime = nodeJsRuntime;
     this.modulesProvider = modulesProvider;
     this.backendServiceFacade = backendServiceFacade;
   }

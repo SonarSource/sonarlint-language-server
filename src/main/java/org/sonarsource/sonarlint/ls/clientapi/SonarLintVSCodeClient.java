@@ -94,7 +94,6 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
-import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.stream.Collectors.groupingBy;
@@ -118,7 +117,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private final OpenFilesCache openFilesCache;
   private WorkspaceFoldersManager workspaceFoldersManager;
   private AnalysisScheduler analysisScheduler;
-  private StandaloneEngineManager engineManger;
   private DiagnosticPublisher diagnosticPublisher;
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider,
@@ -454,10 +452,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   public void setAnalysisScheduler(AnalysisScheduler analysisScheduler) {
     this.analysisScheduler = analysisScheduler;
-  }
-
-  public void setEngineManager(StandaloneEngineManager engineManger) {
-    this.engineManger = engineManger;
   }
 
   public void setDiagnosticPublisher(DiagnosticPublisher diagnosticPublisher) {

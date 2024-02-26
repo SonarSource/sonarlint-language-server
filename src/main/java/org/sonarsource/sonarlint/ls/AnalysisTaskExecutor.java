@@ -76,7 +76,6 @@ import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.partitioningBy;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 import static org.sonarsource.sonarlint.ls.util.Utils.pluralize;
@@ -290,7 +289,7 @@ public class AnalysisTaskExecutor {
 
     var folderUri = workspaceFolder.map(WorkspaceFolderWrapper::getUri)
       // if files are not part of any workspace folder, take the common ancestor of all files (assume all files will have the same root)
-      .orElse(findCommonPrefix(filesToAnalyze.keySet().stream().map(Paths::get).collect(toList())).toUri());
+      .orElse(findCommonPrefix(filesToAnalyze.keySet().stream().map(Paths::get).toList()).toUri());
 
     var nonExcludedFiles = new HashMap<>(filesToAnalyze);
     binding.ifPresent(projectBinding -> {

@@ -20,14 +20,11 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 import java.net.URI;
-import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
-import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
-import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
@@ -37,29 +34,24 @@ public class TaintIssuesUpdater {
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final ProjectBindingManager bindingManager;
-  private final SettingsManager settingsManager;
   private final DiagnosticPublisher diagnosticPublisher;
   private final ExecutorService asyncExecutor;
-  private final BackendServiceFacade backendServiceFacade;
   private final LanguageClientLogOutput logOutput;
 
   public TaintIssuesUpdater(ProjectBindingManager bindingManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
-    WorkspaceFoldersManager workspaceFoldersManager, SettingsManager settingsManager, DiagnosticPublisher diagnosticPublisher,
-    BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
-    this(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, settingsManager, diagnosticPublisher,
-      Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Analysis Scheduler", false)), backendServiceFacade, logOutput);
+    WorkspaceFoldersManager workspaceFoldersManager,DiagnosticPublisher diagnosticPublisher, LanguageClientLogOutput logOutput) {
+    this(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, diagnosticPublisher,
+      Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Analysis Scheduler", false)), logOutput);
   }
 
-  TaintIssuesUpdater(ProjectBindingManager bindingManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache, WorkspaceFoldersManager workspaceFoldersManager,
-    SettingsManager settingsManager, DiagnosticPublisher diagnosticPublisher, ExecutorService asyncExecutor, BackendServiceFacade backendServiceFacade,
+  TaintIssuesUpdater(ProjectBindingManager bindingManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
+    WorkspaceFoldersManager workspaceFoldersManager, DiagnosticPublisher diagnosticPublisher, ExecutorService asyncExecutor,
     LanguageClientLogOutput logOutput) {
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.workspaceFoldersManager = workspaceFoldersManager;
-    this.settingsManager = settingsManager;
     this.bindingManager = bindingManager;
     this.diagnosticPublisher = diagnosticPublisher;
     this.asyncExecutor = asyncExecutor;
-    this.backendServiceFacade = backendServiceFacade;
     this.logOutput = logOutput;
   }
 

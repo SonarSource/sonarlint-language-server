@@ -34,7 +34,9 @@ import org.sonarsource.sonarlint.core.analysis.api.IssueLocation;
 import org.sonarsource.sonarlint.core.commons.api.TextRange;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.ShowIssueParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.FlowDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.LocationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.Issue;
 
@@ -60,7 +62,8 @@ class ShowAllLocationsCommandTests {
     Files.writeString(fileInAWorkspaceFolderPath, """
       print('1234')
       print('aa')
-      print('b')""");
+      print('b')
+      print('kkkk')""");
   }
 
   @Test
@@ -116,25 +119,48 @@ class ShowAllLocationsCommandTests {
 
   @Test
   void shouldBuildCommandParamsFromShowIssueParams() {
+    var ideFilePath = Path.of("myFile.py");
+    var flow1 = mock(FlowDto.class);
+    var loc11 = mock(LocationDto.class);
+    when(loc11.getTextRange()).thenReturn(new TextRangeDto(1, 0, 1, 7));
+    when(loc11.getCodeSnippet()).thenReturn("");
+    when(loc11.getIdeFilePath()).thenReturn(ideFilePath);
+    var loc12 = mock(LocationDto.class);
+    when(loc12.getTextRange()).thenReturn(new TextRangeDto(2, 2, 2, 9));
+    when(loc12.getCodeSnippet()).thenReturn("f=1");
+    when(loc12.getIdeFilePath()).thenReturn(ideFilePath);
+    var locations1 = List.of(loc11, loc12);
+    when(flow1.getLocations()).thenReturn(locations1);
+    var flow2 = mock(FlowDto.class);
+    var loc2 = mock(LocationDto.class);
+    when(loc2.getTextRange()).thenReturn(new TextRangeDto(2, 0, 4, 7));
+    when(loc2.getCodeSnippet()).thenReturn("return;");
+    when(loc2.getIdeFilePath()).thenReturn(ideFilePath);
+    var locations2 = List.of(loc2);
+    when(flow2.getLocations()).thenReturn(locations2);
+    var flows = List.of(flow1, flow2);
+
     var textRangeDto = new TextRangeDto(1, 0, 1, 13);
-    var showIssueParams = new ShowIssueParams("connectionId", new IssueDetailsDto(textRangeDto,  "rule:S1234",
-      "issueKey", workspaceFolderPath.resolve("myFile.py"), "branch", "pr", "this is wrong",
-      "29.09.2023", "print('1234')", false, List.of()));
+    var showIssueParams = new ShowIssueParams(workspaceFolderPath.toUri().toString(), new IssueDetailsDto(textRangeDto, "rule:S1234",
+      "issueKey", Path.of("myFile.py"), "branch", "pr", "this is wrong",
+      "29.09.2023", "print('1234')", false, flows));
 
     var result = new ShowAllLocationsCommand.Param(showIssueParams, "connectionId");
 
     assertTrue(result.getCodeMatches());
+    assertThat(result.getFileUri()).hasToString(workspaceFolderPath.toUri() + "myFile.py");
   }
 
   @Test
   void shouldBuildCommandParamsFromShowIssueParamsForFileLevelIssue() {
     var textRangeDto = new TextRangeDto(0, 0, 0, 0);
-    var showIssueParams = new ShowIssueParams("connectionId", new IssueDetailsDto(textRangeDto, "rule:S1234",
-      "issueKey", workspaceFolderPath.resolve("myFile.py"), "branch", null, "this is wrong",
+    var showIssueParams = new ShowIssueParams(workspaceFolderPath.toUri().toString(), new IssueDetailsDto(textRangeDto, "rule:S1234",
+      "issueKey", Path.of("myFile.py"), "branch", null, "this is wrong",
       "29.09.2023", """
       print('1234')
       print('aa')
-      print('b')""", false, List.of()));
+      print('b')
+      print('kkkk')""", false, List.of()));
 
     var result = new ShowAllLocationsCommand.Param(showIssueParams, "connectionId");
 
@@ -144,8 +170,8 @@ class ShowAllLocationsCommandTests {
   @Test
   void shouldBuildCommandParamsFromShowIssueParamsForInvalidTextRange() {
     var textRangeDto = new TextRangeDto(-1, 0, -2, 0);
-    var showIssueParams = new ShowIssueParams("connectionId", new IssueDetailsDto(textRangeDto,  "rule:S1234",
-      "issueKey", Path.of("/src/java/main/myFile.py"), "bb", "1234", "this is wrong",
+    var showIssueParams = new ShowIssueParams(workspaceFolderPath.toUri().toString(), new IssueDetailsDto(textRangeDto, "rule:S1234",
+      "issueKey", Path.of("myFile.py"), "bb", "1234", "this is wrong",
       "29.09.2023", "print('1234')", false, List.of()));
 
     var result = new ShowAllLocationsCommand.Param(showIssueParams, "connectionId");

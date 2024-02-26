@@ -47,8 +47,7 @@ class EnginesFactoryTests {
       Paths.get("sonarjs.jar"),
       Paths.get("sonarhtml.jar"),
       Paths.get("sonarxml.jar"));
-    underTest = new EnginesFactory(standaloneAnalysers, Collections.emptyMap(), logTester.getLogger(),
-      mock(NodeJsRuntime.class), mock(ClientModulesProvider.class), mock(BackendServiceFacade.class));
+    underTest = new EnginesFactory(standaloneAnalysers, logTester.getLogger(), mock(ClientModulesProvider.class), mock(BackendServiceFacade.class));
     underTest = spy(underTest);
   }
 

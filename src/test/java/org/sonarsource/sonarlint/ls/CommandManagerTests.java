@@ -305,6 +305,7 @@ class CommandManagerTests {
     when(flow.getLocations()).thenReturn(List.of(location));
     when(issue.getRuleKey()).thenReturn("SomeIssueKey");
     when(issue.getRuleDescriptionContextKey()).thenReturn("servlet");
+    when(issue.getSonarServerKey()).thenReturn("serverIssueKey");
     when(mockTaintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
