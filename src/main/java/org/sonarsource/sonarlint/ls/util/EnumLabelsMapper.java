@@ -41,7 +41,7 @@ public class EnumLabelsMapper {
     return switch (resolutionStatus) {
       case WONT_FIX -> "Won't fix";
       case FALSE_POSITIVE -> "False positive";
-      case ACCEPT -> "Accept";
+      case ACCEPT -> "Accepted";
     };
   }
 
@@ -49,7 +49,7 @@ public class EnumLabelsMapper {
     return switch (label) {
       case "Won't fix" -> ResolutionStatus.WONT_FIX;
       case "False positive" -> ResolutionStatus.FALSE_POSITIVE;
-      case "Accept" -> ResolutionStatus.ACCEPT;
+      case "Accepted" -> ResolutionStatus.ACCEPT;
       default -> throw new IllegalArgumentException("Unknown issue resolution status label" + label);
     };
   }

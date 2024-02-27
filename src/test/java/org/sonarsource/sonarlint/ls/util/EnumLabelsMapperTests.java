@@ -35,14 +35,14 @@ class EnumLabelsMapperTests {
 
   @Test
   void resolutionStatusToLabel() {
-    assertThat(EnumLabelsMapper.resolutionStatusToLabel(ResolutionStatus.ACCEPT)).isEqualTo("Accept");
+    assertThat(EnumLabelsMapper.resolutionStatusToLabel(ResolutionStatus.ACCEPT)).isEqualTo("Accepted");
     assertThat(EnumLabelsMapper.resolutionStatusToLabel(ResolutionStatus.FALSE_POSITIVE)).isEqualTo("False positive");
     assertThat(EnumLabelsMapper.resolutionStatusToLabel(ResolutionStatus.WONT_FIX)).isEqualTo("Won't fix");
   }
 
   @Test
   void resolutionStatusFromLabel() {
-    assertThat(EnumLabelsMapper.resolutionStatusFromLabel("Accept")).isEqualTo(ResolutionStatus.ACCEPT);
+    assertThat(EnumLabelsMapper.resolutionStatusFromLabel("Accepted")).isEqualTo(ResolutionStatus.ACCEPT);
     assertThat(EnumLabelsMapper.resolutionStatusFromLabel("False positive")).isEqualTo(ResolutionStatus.FALSE_POSITIVE);
     assertThat(EnumLabelsMapper.resolutionStatusFromLabel("Won't fix")).isEqualTo(ResolutionStatus.WONT_FIX);
     assertThrows(IllegalArgumentException.class, () -> EnumLabelsMapper.resolutionStatusFromLabel("Unknown"));

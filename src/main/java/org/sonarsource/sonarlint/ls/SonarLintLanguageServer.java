@@ -822,9 +822,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       params.getConfigurationScopeId(), Objects.requireNonNull(params.getIssueId()), EnumLabelsMapper.resolutionStatusFromLabel(params.getNewStatus()), params.isTaintIssue());
     return backendServiceFacade.getBackendService().changeIssueStatus(coreParams).thenAccept(nothing -> {
       var key = params.getIssueId();
-      if (params.isTaintIssue()) {
-        taintVulnerabilitiesCache.removeTaintIssue(params.getFileUri(), key);
-      } else {
+      if (!params.isTaintIssue()) {
         issuesCache.removeIssueWithServerKey(params.getFileUri(), key);
       }
 

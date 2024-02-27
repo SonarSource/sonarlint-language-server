@@ -19,12 +19,15 @@
  */
 package org.sonarsource.sonarlint.ls.clientapi;
 
+import java.io.File;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -34,6 +37,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import nl.altindag.ssl.util.CertificateUtils;
@@ -358,16 +362,18 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   public void didChangeTaintVulnerabilities(String folderUri, Set<UUID> closedTaintVulnerabilityIds,
     List<TaintVulnerabilityDto> addedTaintVulnerabilities, List<TaintVulnerabilityDto> updatedTaintVulnerabilities) {
     var taintVulnerabilitiesByFile = Stream.concat(addedTaintVulnerabilities.stream(), updatedTaintVulnerabilities.stream())
-      .collect(groupingBy(taintVulnerabilityDto -> URI.create(folderUri).resolve(taintVulnerabilityDto.getIdeFilePath().toString()), toList()));
+      .collect(groupingBy(taintVulnerabilityDto -> URI.create(folderUri + File.separator + taintVulnerabilityDto.getIdeFilePath()), toList()));
     taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().values().stream().flatMap(Collection::stream)
       .filter(taintIssue -> closedTaintVulnerabilityIds.contains(taintIssue.getId()))
-      .forEach(taintIssue -> taintVulnerabilitiesCache.removeTaintIssue(taintIssue.getIdeFilePath().toUri().toString(), taintIssue.getId().toString()));
+      .forEach(taintIssue -> taintVulnerabilitiesCache.removeTaintIssue(
+        Paths.get(URI.create(folderUri).resolve(taintIssue.getIdeFilePath().toString())).toUri().toString(), taintIssue.getId().toString()));
     workspaceFoldersManager.getAll().stream().filter(workspaceFolder -> workspaceFolder.getUri().equals(URI.create(folderUri)))
       .findFirst().map(workspaceFolderWrapper -> Objects.requireNonNull(bindingManager
         .getServerConnectionSettingsFor(workspaceFolderWrapper.getSettings().getConnectionId())).isSonarCloudAlias())
       .ifPresent(isSonarCloud -> taintVulnerabilitiesByFile.forEach((file, taints) -> {
         taintVulnerabilitiesCache.reload(file, taints.stream()
-          .map(dto -> new TaintIssue(dto, folderUri, isSonarCloud ? SONARCLOUD_TAINT_SOURCE : SONARQUBE_TAINT_SOURCE)).toList());
+          .filter(dto -> !dto.isResolved())
+          .map(dto -> new TaintIssue(dto, folderUri, isSonarCloud ? SONARCLOUD_TAINT_SOURCE : SONARQUBE_TAINT_SOURCE)).collect(Collectors.toCollection(ArrayList::new)));
         diagnosticPublisher.publishDiagnostics(file, false);
       }));
   }

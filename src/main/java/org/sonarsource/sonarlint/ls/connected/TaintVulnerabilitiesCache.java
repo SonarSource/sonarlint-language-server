@@ -115,7 +115,7 @@ public class TaintVulnerabilitiesCache {
     var fileUri = URI.create(fileUriStr);
     var issues = taintVulnerabilitiesPerFile.get(fileUri);
     if (issues != null) {
-      var issueToRemove = issues.stream().filter(taintIssue -> taintIssue.getId().toString().equals(key)).findFirst();
+      var issueToRemove = issues.stream().filter(taintIssue -> taintIssue.getSonarServerKey().equals(key) || taintIssue.getId().toString().equals(key)).findFirst();
       issueToRemove.ifPresent(issues::remove);
     }
   }

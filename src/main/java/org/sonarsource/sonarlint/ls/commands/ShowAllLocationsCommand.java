@@ -21,7 +21,6 @@ package org.sonarsource.sonarlint.ls.commands;
 
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Paths;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
@@ -47,6 +46,7 @@ import org.sonarsource.sonarlint.ls.util.TextRangeUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static org.sonarsource.sonarlint.ls.util.TextRangeUtils.textRangeWithHashDtoToTextRangeDto;
+import static org.sonarsource.sonarlint.ls.util.URIUtils.getFullFileUriFromFragments;
 
 public final class ShowAllLocationsCommand {
 
@@ -79,7 +79,7 @@ public final class ShowAllLocationsCommand {
     }
 
     public Param(ShowIssueParams showIssueParams, String connectionId) {
-      this.fileUri = Paths.get(URI.create(showIssueParams.getConfigurationScopeId()).resolve(showIssueParams.getIssueDetails().getIdeFilePath().toString())).toUri();
+      this.fileUri = getFullFileUriFromFragments(showIssueParams.getConfigurationScopeId(), showIssueParams.getIssueDetails().getIdeFilePath());
       this.message = showIssueParams.getIssueDetails().getMessage();
       this.severity = "";
       this.ruleKey = showIssueParams.getIssueDetails().getRuleKey();
@@ -110,7 +110,7 @@ public final class ShowAllLocationsCommand {
     }
 
     Param(TaintIssue taint, String connectionId, Map<URI, LocalCodeFile> localFileCache) {
-      this.fileUri = URI.create(taint.getWorkspaceFolderUri()).resolve(taint.getIdeFilePath().toUri());
+      this.fileUri = getFullFileUriFromFragments(taint.getWorkspaceFolderUri(), taint.getIdeFilePath());
       this.message = taint.getMessage();
       this.severity = taint.getSeverity().toString();
       this.ruleKey = taint.getRuleKey();
@@ -216,8 +216,7 @@ public final class ShowAllLocationsCommand {
         location.getTextRange().getStartLineOffset(),
         location.getTextRange().getEndLine(),
         location.getTextRange().getEndLineOffset(), Utils.hash(location.getCodeSnippet()));
-//      this.uri = URI.create(workspaceFolderUri).resolve(location.getIdeFilePath().toString());
-      this.uri = URI.create(workspaceFolderUri).resolve(location.getIdeFilePath().toString());
+      this.uri = getFullFileUriFromFragments(workspaceFolderUri, location.getIdeFilePath());
       this.message = location.getMessage();
       this.filePath = location.getIdeFilePath().toUri().toString();
       String localCode = codeExists(localCodeCache);
@@ -250,7 +249,7 @@ public final class ShowAllLocationsCommand {
       this.textRange = location.getTextRange();
       var locationFilePath = location.getFilePath();
       if (locationFilePath != null) {
-        this.uri = URI.create(workspaceFolderUri).resolve(locationFilePath.toUri());
+        this.uri = getFullFileUriFromFragments(workspaceFolderUri, locationFilePath);
         this.filePath = locationFilePath.toString();
       } else {
         this.filePath = "Could not locate file";

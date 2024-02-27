@@ -119,7 +119,7 @@ class ShowAllLocationsCommandTests {
 
   @Test
   void shouldBuildCommandParamsFromShowIssueParams() {
-    var ideFilePath = Path.of("myFile.py");
+    var ideFilePath = Path.of(FILE_PYTHON);
     var flow1 = mock(FlowDto.class);
     var loc11 = mock(LocationDto.class);
     when(loc11.getTextRange()).thenReturn(new TextRangeDto(1, 0, 1, 7));
