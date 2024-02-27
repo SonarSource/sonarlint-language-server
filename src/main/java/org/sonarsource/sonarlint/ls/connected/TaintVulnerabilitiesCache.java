@@ -111,6 +111,10 @@ public class TaintVulnerabilitiesCache {
     taintVulnerabilitiesPerFile.put(fileUri, taintIssues);
   }
 
+  public void add(URI fileUri, TaintIssue taintIssue) {
+    taintVulnerabilitiesPerFile.get(fileUri).add(taintIssue);
+  }
+
   public void removeTaintIssue(String fileUriStr, String key) {
     var fileUri = URI.create(fileUriStr);
     var issues = taintVulnerabilitiesPerFile.get(fileUri);

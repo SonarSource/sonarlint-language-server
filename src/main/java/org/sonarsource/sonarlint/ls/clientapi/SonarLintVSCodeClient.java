@@ -19,12 +19,10 @@
  */
 package org.sonarsource.sonarlint.ls.clientapi;
 
-import java.io.File;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -38,7 +36,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import nl.altindag.ssl.util.CertificateUtils;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -98,6 +95,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.util.URIUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.stream.Collectors.groupingBy;
@@ -361,21 +359,75 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public void didChangeTaintVulnerabilities(String folderUri, Set<UUID> closedTaintVulnerabilityIds,
     List<TaintVulnerabilityDto> addedTaintVulnerabilities, List<TaintVulnerabilityDto> updatedTaintVulnerabilities) {
-    var taintVulnerabilitiesByFile = Stream.concat(addedTaintVulnerabilities.stream(), updatedTaintVulnerabilities.stream())
-      .collect(groupingBy(taintVulnerabilityDto -> URI.create(folderUri + File.separator + taintVulnerabilityDto.getIdeFilePath()), toList()));
+    var addedTaintVulnerabilitiesByFile = addedTaintVulnerabilities.stream()
+      .collect(groupingBy(taintVulnerabilityDto -> URIUtils.getFullFileUriFromFragments(folderUri, taintVulnerabilityDto.getIdeFilePath()), toList()));
+    var updatedTaintVulnerabilitiesByFile = updatedTaintVulnerabilities.stream()
+      .collect(groupingBy(taintVulnerabilityDto -> URIUtils.getFullFileUriFromFragments(folderUri, taintVulnerabilityDto.getIdeFilePath()), toList()));
+
+    // Remove taints that were closed
     taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().values().stream().flatMap(Collection::stream)
       .filter(taintIssue -> closedTaintVulnerabilityIds.contains(taintIssue.getId()))
       .forEach(taintIssue -> taintVulnerabilitiesCache.removeTaintIssue(
-        Paths.get(URI.create(folderUri).resolve(taintIssue.getIdeFilePath().toString())).toUri().toString(), taintIssue.getId().toString()));
+        URIUtils.getFullFileUriFromFragments(folderUri, taintIssue.getIdeFilePath()).toString(), taintIssue.getSonarServerKey()));
+
+
     workspaceFoldersManager.getAll().stream().filter(workspaceFolder -> workspaceFolder.getUri().equals(URI.create(folderUri)))
       .findFirst().map(workspaceFolderWrapper -> Objects.requireNonNull(bindingManager
         .getServerConnectionSettingsFor(workspaceFolderWrapper.getSettings().getConnectionId())).isSonarCloudAlias())
-      .ifPresent(isSonarCloud -> taintVulnerabilitiesByFile.forEach((file, taints) -> {
-        taintVulnerabilitiesCache.reload(file, taints.stream()
-          .filter(dto -> !dto.isResolved())
-          .map(dto -> new TaintIssue(dto, folderUri, isSonarCloud ? SONARCLOUD_TAINT_SOURCE : SONARQUBE_TAINT_SOURCE)).collect(Collectors.toCollection(ArrayList::new)));
-        diagnosticPublisher.publishDiagnostics(file, false);
-      }));
+      .ifPresent(isSonarCloud -> updateTaintVulnerabilitiesCache(addedTaintVulnerabilitiesByFile, updatedTaintVulnerabilitiesByFile, folderUri, isSonarCloud));
+  }
+
+  private void updateTaintVulnerabilitiesCache(Map<URI, List<TaintVulnerabilityDto>> addedTaints, Map<URI, List<TaintVulnerabilityDto>> updateTaints,
+    String folderUri, boolean isSonarCloud) {
+    var existingTaintVulnerabilitiesPerFile = taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile();
+
+    // add new ones
+    handleAddedTaints(addedTaints, folderUri, isSonarCloud, existingTaintVulnerabilitiesPerFile);
+
+    // update existing ones
+    handleUpdatedTaints(updateTaints, folderUri, isSonarCloud, existingTaintVulnerabilitiesPerFile);
+  }
+
+  private void handleAddedTaints(Map<URI, List<TaintVulnerabilityDto>> addedTaints, String folderUri, boolean isSonarCloud,
+    Map<URI, List<TaintIssue>> existingTaintVulnerabilitiesPerFile) {
+    addedTaints.forEach((fileUri, added) -> {
+      var addedTaintIssuesForFile = added
+        .stream()
+        .map(dto ->
+          new TaintIssue(dto, folderUri, isSonarCloud ? SONARCLOUD_TAINT_SOURCE : SONARQUBE_TAINT_SOURCE))
+        .filter(t -> !t.isResolved())
+        .collect(Collectors.toCollection(ArrayList::new));
+      if (existingTaintVulnerabilitiesPerFile.containsKey(fileUri)) {
+        addedTaintIssuesForFile.addAll(existingTaintVulnerabilitiesPerFile.get(fileUri));
+      }
+      taintVulnerabilitiesCache.reload(fileUri, addedTaintIssuesForFile);
+      diagnosticPublisher.publishDiagnostics(fileUri, false);
+    });
+  }
+
+  private void handleUpdatedTaints(Map<URI, List<TaintVulnerabilityDto>> updateTaints, String folderUri, boolean isSonarCloud,
+    Map<URI, List<TaintIssue>> existingTaintVulnerabilitiesPerFile) {
+    updateTaints.forEach((fileUri, updates) -> {
+      String source = isSonarCloud ? SONARCLOUD_TAINT_SOURCE : SONARQUBE_TAINT_SOURCE;
+      if (existingTaintVulnerabilitiesPerFile.containsKey(fileUri)) {
+        updates.forEach(dto -> {
+          if (taintVulnerabilitiesCache.getTaintVulnerabilityByKey(dto.getSonarServerKey()).isPresent()) {
+            taintVulnerabilitiesCache.removeTaintIssue(fileUri.toString(), dto.getSonarServerKey());
+          }
+          if (!dto.isResolved()) {
+            taintVulnerabilitiesCache.add(fileUri, new TaintIssue(dto, folderUri, source));
+          }
+        });
+      } else {
+        taintVulnerabilitiesCache.reload(fileUri, updates
+          .stream()
+          .map(dto ->
+            new TaintIssue(dto, folderUri, source))
+          .filter(t -> !t.isResolved())
+          .collect(Collectors.toCollection(ArrayList::new)));
+      }
+      diagnosticPublisher.publishDiagnostics(fileUri, false);
+    });
   }
 
   @Override

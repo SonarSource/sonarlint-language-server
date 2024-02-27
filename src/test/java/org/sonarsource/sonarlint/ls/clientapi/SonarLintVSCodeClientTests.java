@@ -94,6 +94,7 @@ import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
+import org.sonarsource.sonarlint.ls.util.URIUtils;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -103,6 +104,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -275,7 +277,7 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void shouldAskTheClientToFindFiles()  {
+  void shouldAskTheClientToFindFiles() {
     var folderPath = basedir.resolve("someFile");
     var folderUri = folderPath.toUri();
     var fileName1 = "file1";
@@ -285,7 +287,7 @@ class SonarLintVSCodeClientTests {
       new SonarLintExtendedLanguageClient.FindFileByNamesInScopeResponse(List.of(
         new SonarLintExtendedLanguageClient.FoundFileDto(fileName1, folderPath + "/" + fileName1, "foo"),
         new SonarLintExtendedLanguageClient.FoundFileDto(fileName2, folderPath + "/" + fileName2, "bar")
-        ))));
+      ))));
 
     underTest.listFiles(folderUri.toString());
 
@@ -324,7 +326,7 @@ class SonarLintVSCodeClientTests {
       null,
       null
     );
-    var showHotspotParams = new ShowHotspotParams("myFolder", hotspotDetailsDto );
+    var showHotspotParams = new ShowHotspotParams("myFolder", hotspotDetailsDto);
     underTest.showHotspot("myFolder", hotspotDetailsDto);
     verify(client).showHotspot(showHotspotParams.getHotspotDetails());
   }
@@ -386,7 +388,7 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void testNoBindingSuggestionFound(){
+  void testNoBindingSuggestionFound() {
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(new MessageActionItem("Learn more")));
 
     var projectKey = "projectKey";
@@ -539,21 +541,22 @@ class SonarLintVSCodeClientTests {
     underTest.didChangeTaintVulnerabilities(workspaceFolderPath.toUri().toString(), Set.of(uuid1),
       List.of(getTaintDto(uuid1), getTaintDto(uuid2)), List.of(getTaintDto(uuid3), getTaintDto(uuid4)));
 
-    verify(taintVulnerabilitiesCache).reload(eq(workspaceFolderPath.toUri().resolve(filePath.toString())), any());
-    verify(taintVulnerabilitiesCache).removeTaintIssue(filePath.toUri().toString(), uuid1.toString());
+    verify(taintVulnerabilitiesCache, times(2)).reload(eq(workspaceFolderPath.toUri().resolve(filePath.toString())), any());
+    verify(taintVulnerabilitiesCache).removeTaintIssue(URIUtils.getFullFileUriFromFragments(workspaceFolderPath.toUri().toString(), filePath).toString(),
+      getTaintIssue(uuid1).getSonarServerKey());
   }
 
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
     return new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), IssueSeverity.MAJOR, RuleType.BUG, List.of(),
-      new TextRangeWithHashDto(5,5,5,5, ""), "", CleanCodeAttribute.CONVENTIONAL,
+      new TextRangeWithHashDto(5, 5, 5, 5, ""), "", CleanCodeAttribute.CONVENTIONAL,
       Map.of(), true);
   }
 
   private TaintIssue getTaintIssue(UUID uuid) {
     return new TaintIssue(new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), IssueSeverity.MAJOR, RuleType.BUG, List.of(),
-      new TextRangeWithHashDto(5,5,5,5, ""), "", CleanCodeAttribute.CONVENTIONAL,
+      new TextRangeWithHashDto(5, 5, 5, 5, ""), "", CleanCodeAttribute.CONVENTIONAL,
       Map.of(), true), "folderUri", "SONARCLOUD");
   }
 
