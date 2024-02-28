@@ -316,6 +316,7 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void shouldCallClientShowHotspot() {
+    var hotspotRule = mock(HotspotDetailsDto.HotspotRule.class);
     var hotspotDetailsDto = new HotspotDetailsDto("key1",
       "message1",
       Path.of("myfolder/myFile"),
@@ -323,12 +324,15 @@ class SonarLintVSCodeClientTests {
       null,
       "TO_REVIEW",
       "fixed",
-      null,
+      hotspotRule,
       null
     );
-    var showHotspotParams = new ShowHotspotParams("myFolder", hotspotDetailsDto);
     underTest.showHotspot("myFolder", hotspotDetailsDto);
-    verify(client).showHotspot(showHotspotParams.getHotspotDetails());
+    var argCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.ShowHotspotParams.class);
+    verify(client).showHotspot(argCaptor.capture());
+    assertThat(argCaptor.getValue()).isNotNull();
+    assertThat(argCaptor.getValue().getStatus()).isEqualTo("To Review");
+    assertThat(argCaptor.getValue().getMessage()).isEqualTo("message1");
   }
 
   @Test

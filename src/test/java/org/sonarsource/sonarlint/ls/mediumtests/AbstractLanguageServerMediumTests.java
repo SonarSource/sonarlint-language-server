@@ -479,7 +479,7 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public void showHotspot(HotspotDetailsDto h) {
+    public void showHotspot(ShowHotspotParams h) {
     }
 
     @Override

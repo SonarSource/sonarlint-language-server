@@ -37,9 +37,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRulePa
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleParamDefinitionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
 public interface SonarLintExtendedLanguageClient extends LanguageClient {
@@ -104,8 +104,114 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/showRuleDescription")
   void showRuleDescription(ShowRuleDescriptionParams params);
 
+  class ShowHotspotParams {
+    private final String message;
+    private final String ideFilePath;
+    private final String key;
+    private final TextRangeDto textRange;
+    private final String author;
+    private final String status;
+    @Nullable
+    private final String resolution;
+    private final HotspotRule rule;
+
+    public ShowHotspotParams(String key, String message, String ideFilePath, TextRangeDto textRange, String author, String status,
+      @Nullable String resolution, HotspotRule rule) {
+      this.key = key;
+      this.message = message;
+      this.ideFilePath = ideFilePath;
+      this.textRange = textRange;
+      this.author = author;
+      this.status = status;
+      this.resolution = resolution;
+      this.rule = rule;
+    }
+
+    public String getKey() {
+      return this.key;
+    }
+
+    public String getMessage() {
+      return this.message;
+    }
+
+    public String getIdeFilePath() {
+      return this.ideFilePath;
+    }
+
+    public TextRangeDto getTextRange() {
+      return this.textRange;
+    }
+
+    public String getAuthor() {
+      return this.author;
+    }
+
+    public String getStatus() {
+      return this.status;
+    }
+
+    @Nullable
+    public String getResolution() {
+      return this.resolution;
+    }
+
+    public HotspotRule getRule() {
+      return this.rule;
+    }
+
+    public static class HotspotRule {
+      private final String key;
+      private final String name;
+      private final String securityCategory;
+      private final String vulnerabilityProbability;
+      private final String riskDescription;
+      private final String vulnerabilityDescription;
+      private final String fixRecommendations;
+
+      public HotspotRule(String key, String name, String securityCategory, String vulnerabilityProbability, String riskDescription,
+        String vulnerabilityDescription, String fixRecommendations) {
+        this.key = key;
+        this.name = name;
+        this.securityCategory = securityCategory;
+        this.vulnerabilityProbability = vulnerabilityProbability;
+        this.riskDescription = riskDescription;
+        this.vulnerabilityDescription = vulnerabilityDescription;
+        this.fixRecommendations = fixRecommendations;
+      }
+
+      public String getKey() {
+        return this.key;
+      }
+
+      public String getName() {
+        return this.name;
+      }
+
+      public String getSecurityCategory() {
+        return this.securityCategory;
+      }
+
+      public String getVulnerabilityProbability() {
+        return this.vulnerabilityProbability;
+      }
+
+      public String getRiskDescription() {
+        return this.riskDescription;
+      }
+
+      public String getVulnerabilityDescription() {
+        return this.vulnerabilityDescription;
+      }
+
+      public String getFixRecommendations() {
+        return this.fixRecommendations;
+      }
+    }
+  }
+
   @JsonNotification("sonarlint/showHotspot")
-  void showHotspot(HotspotDetailsDto hotspot);
+  void showHotspot(ShowHotspotParams showHotspotParams);
 
   @JsonNotification("sonarlint/showIssue")
   void showIssue(ShowAllLocationsCommand.Param showIssueParams);
