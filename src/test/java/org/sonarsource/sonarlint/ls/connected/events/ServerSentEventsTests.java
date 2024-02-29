@@ -19,16 +19,20 @@
  */
 package org.sonarsource.sonarlint.ls.connected.events;
 
+import java.net.URI;
 import java.nio.file.Path;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.event.DidReceiveServerHotspotEvent;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import testutils.SonarLintLogTester;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class ServerSentEventsTests {
 
@@ -38,18 +42,26 @@ class ServerSentEventsTests {
   private ServerSentEventsHandlerService underTest;
 
   AnalysisScheduler analysisScheduler = mock(AnalysisScheduler.class);
+  ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
 
   @BeforeEach
   void init() {
-     underTest = new ServerSentEventsHandler(analysisScheduler);
+    underTest = new ServerSentEventsHandler(analysisScheduler, bindingManager);
   }
 
   @Test
   void handleHotspotEventTest() {
     var filePath = Path.of("severFilePath");
-    underTest.handleHotspotEvent(new DidReceiveServerHotspotEvent("connectionId", "myProject", filePath));
+    var connectionId = "connectionId";
+    var projectKey = "myProject";
+    var fullFileUri = URI.create("file:///my/workspace/serverFilePath");
 
-    verify(analysisScheduler).didReceiveHotspotEvent(filePath.toUri());
+    when(bindingManager.fullFilePathFromRelative(filePath, connectionId, projectKey))
+      .thenReturn(Optional.of(fullFileUri));
+
+    underTest.handleHotspotEvent(new DidReceiveServerHotspotEvent(connectionId, projectKey, filePath));
+
+    verify(analysisScheduler).didReceiveHotspotEvent(fullFileUri);
   }
 
 

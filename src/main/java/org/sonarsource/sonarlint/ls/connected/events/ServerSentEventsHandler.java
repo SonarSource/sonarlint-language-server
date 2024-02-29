@@ -21,17 +21,20 @@ package org.sonarsource.sonarlint.ls.connected.events;
 
 import org.sonarsource.sonarlint.core.rpc.protocol.client.event.DidReceiveServerHotspotEvent;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 
 public class ServerSentEventsHandler implements ServerSentEventsHandlerService {
   private final AnalysisScheduler analysisScheduler;
+  private final ProjectBindingManager projectBindingManager;
 
-  public ServerSentEventsHandler(AnalysisScheduler analysisScheduler) {
+  public ServerSentEventsHandler(AnalysisScheduler analysisScheduler, ProjectBindingManager projectBindingManager) {
     this.analysisScheduler = analysisScheduler;
+    this.projectBindingManager = projectBindingManager;
   }
 
   public void handleHotspotEvent(DidReceiveServerHotspotEvent event) {
-    var fileUri = event.getIdeFilePath().toUri();
-    analysisScheduler.didReceiveHotspotEvent(fileUri);
+    var fileUri = projectBindingManager.fullFilePathFromRelative(event.getIdeFilePath(), event.getConnectionId(), event.getSonarProjectKey());
+    fileUri.ifPresent(analysisScheduler::didReceiveHotspotEvent);
   }
 
 }

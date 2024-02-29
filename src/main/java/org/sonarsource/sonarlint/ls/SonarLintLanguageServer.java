@@ -111,6 +111,8 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintIssuesUpdater;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
+import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandler;
+import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
@@ -180,6 +182,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final TaintIssuesUpdater taintIssuesUpdater;
   private final NotebookDiagnosticPublisher notebookDiagnosticPublisher;
   private final PromotionalNotifications promotionalNotifications;
+  private final ServerSentEventsHandlerService serverSentEventsHandler;
 
   private String appName;
 
@@ -254,6 +257,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       client, openNotebooksCache, notebookDiagnosticPublisher, progressManager, backendServiceFacade);
     this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor, client);
     vsCodeClient.setAnalysisScheduler(analysisScheduler);
+    this.serverSentEventsHandler = new ServerSentEventsHandler(analysisScheduler, bindingManager);
+    vsCodeClient.setServerSentEventsHandlerService(serverSentEventsHandler);
     this.workspaceFoldersManager.addListener(moduleEventsProcessor);
     bindingManager.setAnalysisManager(analysisScheduler);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) analysisScheduler);

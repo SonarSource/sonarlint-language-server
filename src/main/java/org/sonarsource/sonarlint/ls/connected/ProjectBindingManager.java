@@ -34,6 +34,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -63,6 +64,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
+import org.sonarsource.sonarlint.ls.util.URIUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.Objects.requireNonNull;
@@ -448,5 +450,22 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       interrupted(e, globalLogOutput);
     }
     return Map.of();
+  }
+
+  public Optional<URI> fullFilePathFromRelative(Path ideFilePath, String connectionId, String projectKey) {
+    AtomicReference<ProjectBinding> binding = new AtomicReference<>();
+    AtomicReference<URI> folderUri = new AtomicReference<>();
+    folderBindingCache.forEach((f, b) -> {
+      if (b.isPresent()
+        && b.get().getProjectKey().equals(projectKey)
+        && b.get().getConnectionId().equals(connectionId)) {
+        binding.set(b.get());
+        folderUri.set(f);
+      }
+    });
+    if (binding.get() != null) {
+      return Optional.of(URIUtils.getFullFileUriFromFragments(folderUri.get().toString(), ideFilePath));
+    }
+    return Optional.empty();
   }
 }
