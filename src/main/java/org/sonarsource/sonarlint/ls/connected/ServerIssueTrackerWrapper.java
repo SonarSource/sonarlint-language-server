@@ -43,7 +43,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TrackWithSer
 import org.sonarsource.sonarlint.ls.AnalysisClientInputFile;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.util.DigestUtils;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.function.Predicate.not;
 import static org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus.FIXED;
@@ -167,8 +167,8 @@ public class ServerIssueTrackerWrapper {
       var textRangeContent = getTextRangeContentOfFile(fileLines, textRange);
       var lineContent = fileLines.get(textRange.getStartLine() - 1);
       textRangeWithHashDto = new TextRangeWithHashDto(textRange.getStartLine(), textRange.getStartLineOffset(),
-        textRange.getEndLine(), textRange.getEndLineOffset(), DigestUtils.digest(textRangeContent));
-      lineWithHashDto = new LineWithHashDto(textRange.getStartLine(), DigestUtils.digest(lineContent));
+        textRange.getEndLine(), textRange.getEndLineOffset(), Utils.hash(textRangeContent));
+      lineWithHashDto = new LineWithHashDto(textRange.getStartLine(), Utils.hash(lineContent));
     }
     return new ClientTrackedFindingDto(null, issue.getSeverity().toString(), textRangeWithHashDto, lineWithHashDto, issue.getRuleKey(), issue.getMessage());
   }
