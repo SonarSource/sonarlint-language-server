@@ -22,13 +22,17 @@ package org.sonarsource.sonarlint.ls.backend;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.net.URI;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.sonarsource.sonarlint.core.rpc.client.ClientJsonRpcLauncher;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
@@ -38,7 +42,10 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.Configur
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.DidAddConfigurationScopesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.ClientConstantInfoDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.FeatureFlagsDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.HttpConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.InitializeParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarCloudAlternativeEnvironmentDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SslConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.TelemetryClientConstantAttributesDto;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -116,6 +123,8 @@ public class BackendServiceFacade {
         telemetryInitParams.getProductVersion(),
         telemetryInitParams.getIdeVersion(),
         telemetryInitParams.getAdditionalAttributes()),
+      getHttpConfiguration(),
+      getSonarCloudAlternativeEnvironment(),
       new FeatureFlagsDto(true, true, true,
         true, initParams.isEnableSecurityHotspots(), true, true, true),
       initParams.getStorageRoot(),
@@ -131,6 +140,37 @@ public class BackendServiceFacade {
       initParams.isFocusOnNewCode(),
       StringUtils.isEmpty(initParams.getClientNodePath()) ? null : Path.of(initParams.getClientNodePath())
     );
+  }
+
+  private static HttpConfigurationDto getHttpConfiguration() {
+    return new HttpConfigurationDto(
+      new SslConfigurationDto(getPathProperty("sonarlint.ssl.trustStorePath"), System.getProperty("sonarlint.ssl.trustStorePassword"),
+        System.getProperty("sonarlint.ssl.trustStoreType"), getPathProperty("sonarlint.ssl.keyStorePath"), System.getProperty("sonarlint.ssl.keyStorePassword"),
+        System.getProperty("sonarlint.ssl.keyStoreType")),
+      getTimeoutProperty("sonarlint.http.connectTimeout"), getTimeoutProperty("sonarlint.http.socketTimeout"), getTimeoutProperty("sonarlint.http.connectionRequestTimeout"),
+      getTimeoutProperty("sonarlint.http.responseTimeout"));
+  }
+
+  @Nullable
+  private static SonarCloudAlternativeEnvironmentDto getSonarCloudAlternativeEnvironment() {
+    var sonarCloudUrl = System.getProperty("sonarlint.internal.sonarcloud.url");
+    var sonarCloudWebSocketUrl = System.getProperty("sonarlint.internal.sonarcloud.websocket.url");
+    if (sonarCloudUrl != null && sonarCloudWebSocketUrl != null) {
+      return new SonarCloudAlternativeEnvironmentDto(URI.create(sonarCloudUrl), URI.create(sonarCloudWebSocketUrl));
+    }
+    return null;
+  }
+
+  @Nullable
+  private static Path getPathProperty(String propertyName) {
+    var property = System.getProperty(propertyName);
+    return property == null ? null : Paths.get(property);
+  }
+
+  @Nullable
+  private static Duration getTimeoutProperty(String propertyName) {
+    var property = System.getProperty(propertyName);
+    return property == null ? null : Duration.parse(property);
   }
 
   public void shutdown() {
