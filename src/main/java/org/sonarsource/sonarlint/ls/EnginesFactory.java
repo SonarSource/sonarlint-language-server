@@ -35,6 +35,7 @@ import org.sonarsource.sonarlint.core.client.utils.ClientLogOutput;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
 
@@ -110,10 +111,13 @@ public class EnginesFactory {
       var engine = new SonarLintAnalysisEngine(configuration, backendServiceFacade.getBackendService().getBackend(), connectionId);
       logOutput.log("Standalone SonarLint engine started", ClientLogOutput.Level.DEBUG);
       return engine;
+    } catch (InterruptedException e) {
+      Utils.interrupted(e, logOutput);
     } catch (Exception e) {
       logOutput.log(format("Error starting standalone SonarLint engine %s", e), ClientLogOutput.Level.ERROR);
       throw new IllegalStateException(e);
     }
+    throw  new IllegalStateException("Can't init engine");
   }
 
   private void waitForBackendInit() throws InterruptedException {

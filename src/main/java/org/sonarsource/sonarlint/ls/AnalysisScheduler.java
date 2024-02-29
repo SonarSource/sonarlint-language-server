@@ -32,6 +32,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -171,6 +172,7 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     }
 
     private void triggerFiles(List<VersionedOpenFile> filesToTrigger) {
+      List<VersionedOpenFile> filesToTriggerReadyForAnalysis = filterFilesReadyForAnalysis(filesToTrigger);
       if (!filesToTrigger.isEmpty()) {
         if (!onChangeCurrentTask.isDone()) {
           lsLogOutput.debug("Attempt to cancel previous analysis...");
@@ -178,9 +180,21 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
           // Wait for the next loop of EventWatcher to recheck if task has been successfully cancelled and then trigger the analysis
           return;
         }
-        filesToTrigger.forEach(f -> events.remove(f.getUri()));
-        onChangeCurrentTask = analyzeAsync(AnalysisParams.newAnalysisParams(filesToTrigger));
+        filesToTriggerReadyForAnalysis.forEach(f -> events.remove(f.getUri()));
+        onChangeCurrentTask = analyzeAsync(AnalysisParams.newAnalysisParams(filesToTriggerReadyForAnalysis));
       }
+    }
+
+    private List<VersionedOpenFile> filterFilesReadyForAnalysis(List<VersionedOpenFile> filesToTrigger) {
+      return filesToTrigger.stream().filter(file -> {
+        Optional<WorkspaceFolderWrapper> folderForFileOpt = workspaceFoldersManager.findFolderForFile(file.getUri());
+        if (folderForFileOpt.isPresent() && !workspaceFoldersManager.isReadyForAnalysis(folderForFileOpt.get().getUri().toString())) {
+          lsLogOutput.info(format("Skipping text document analysis because " +
+            "workspace folder is not synchronized yet \"%s\"", file.getUri()));
+          return false;
+        }
+        return true;
+      }).toList();
     }
   }
 
