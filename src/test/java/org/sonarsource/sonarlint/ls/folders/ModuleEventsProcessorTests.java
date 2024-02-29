@@ -35,6 +35,8 @@ import org.mockito.Mockito;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModuleFileEvent;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
@@ -65,7 +67,10 @@ class ModuleEventsProcessorTests {
     enginesFactory = mock(EnginesFactory.class);
     foldersManager = mock(WorkspaceFoldersManager.class);
     standaloneEngineManager = mock(StandaloneEngineManager.class);
-    underTest = new ModuleEventsProcessor(standaloneEngineManager, foldersManager, mock(ProjectBindingManager.class), new FileTypeClassifier(logTester.getLogger()), mock(JavaConfigCache.class));
+    var backendServiceFacade = mock(BackendServiceFacade.class);
+    when(backendServiceFacade.getBackendService()).thenReturn(mock(BackendService.class));
+    underTest = new ModuleEventsProcessor(standaloneEngineManager, foldersManager, mock(ProjectBindingManager.class), new FileTypeClassifier(logTester.getLogger()),
+      mock(JavaConfigCache.class), backendServiceFacade);
   }
 
   @Test
