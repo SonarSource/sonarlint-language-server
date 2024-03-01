@@ -44,6 +44,25 @@ class URIUtilsTest {
 
     assertEquals(uriStringTrailingSlash, uriStringWithTrailingSlash(uriStringTrailingSlash));
   }
+  @Test
+  void shouldHandleSpaceInFileName() {
+    var workspaceFolderUriString = "file:///my/workspace/folder";
+    var ideFilePath = Path.of("src/my file.py");
+
+    var result = getFullFileUriFromFragments(workspaceFolderUriString, ideFilePath);
+
+    assertEquals(URI.create("file:///my/workspace/folder/src/my+file.py"), result);
+  }
+
+  @Test
+  void shouldHandleSpaceInFolderName() {
+    var workspaceFolderUriString = "file:///my+workspace/folder";
+    var ideFilePath = Path.of("src/myFile.py");
+
+    var result = getFullFileUriFromFragments(workspaceFolderUriString, ideFilePath);
+
+    assertEquals(URI.create("file:///my+workspace/folder/src/myFile.py"), result);
+  }
 
   @Test
   @DisabledOnOs(OS.WINDOWS)
