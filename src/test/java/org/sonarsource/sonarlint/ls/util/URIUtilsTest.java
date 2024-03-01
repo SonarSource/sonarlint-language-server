@@ -24,8 +24,10 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.sonarsource.sonarlint.ls.util.URIUtils.getFullFileUriFromFragments;
 import static org.sonarsource.sonarlint.ls.util.URIUtils.uriStringWithTrailingSlash;
 
@@ -35,44 +37,29 @@ class URIUtilsTest {
   void shouldAddTrailingSlash() {
     var uriStringNoTrailingSlash = "file:///my/workspace/folder";
 
-    assertEquals("file:///my/workspace/folder/", uriStringWithTrailingSlash(uriStringNoTrailingSlash));
+    assertThat(uriStringWithTrailingSlash(uriStringNoTrailingSlash)).isEqualTo("file:///my/workspace/folder/");
   }
 
   @Test
   void shouldNotAddTrailingSlash() {
     var uriStringTrailingSlash = "file:///my/workspace/folder/";
 
-    assertEquals(uriStringTrailingSlash, uriStringWithTrailingSlash(uriStringTrailingSlash));
-  }
-  @Test
-  void shouldHandleSpaceInFileName() {
-    var workspaceFolderUriString = "file:///my/workspace/folder";
-    var ideFilePath = Path.of("src/my file.py");
-
-    var result = getFullFileUriFromFragments(workspaceFolderUriString, ideFilePath);
-
-    assertEquals(URI.create("file:///my/workspace/folder/src/my+file.py"), result);
+    assertThat(uriStringWithTrailingSlash(uriStringTrailingSlash)).isEqualTo(uriStringTrailingSlash);
   }
 
-  @Test
-  void shouldHandleSpaceInFolderName() {
-    var workspaceFolderUriString = "file:///my+workspace/folder";
-    var ideFilePath = Path.of("src/myFile.py");
-
-    var result = getFullFileUriFromFragments(workspaceFolderUriString, ideFilePath);
-
-    assertEquals(URI.create("file:///my+workspace/folder/src/myFile.py"), result);
-  }
-
-  @Test
+  @ParameterizedTest(name = "URI built from folder path `{0}` and relative file path `{1}` should be `{2}`")
+  @CsvSource({
+    "file:///my/workspace/folder,src/myFile.py,file:///my/workspace/folder/src/myFile.py",
+    "file:///my/workspace/folder,src/my file.py,file:///my/workspace/folder/src/my+file.py",
+    "file:///my+workspace/folder,src/myFile.py,file:///my+workspace/folder/src/myFile.py",
+  })
   @DisabledOnOs(OS.WINDOWS)
-  void shouldMergeToFullUri() {
-    var workspaceFolderUriString = "file:///my/workspace/folder";
-    var ideFilePath = Path.of("src/myFile.py");
+  void shouldBuildFullFileUriFromFragments(String workspaceFolderUriString, String relativePath, String expectedURI) {
+    var ideFilePath = Path.of(relativePath);
 
     var result = getFullFileUriFromFragments(workspaceFolderUriString, ideFilePath);
 
-    assertEquals(URI.create("file:///my/workspace/folder/src/myFile.py"), result);
+    assertThat(result).isEqualTo(URI.create(expectedURI));
   }
 
   @Test
@@ -82,7 +69,7 @@ class URIUtilsTest {
 
     var result = getFullFileUriFromFragments(workspaceFolderUriString, ideFilePath);
 
-    assertEquals(URI.create("file:///c:/my/workspace/folder/src/myFile.py"), result);
+    assertThat(result).isEqualTo(URI.create("file:///c:/my/workspace/folder/src/myFile.py"));
   }
 
 }
