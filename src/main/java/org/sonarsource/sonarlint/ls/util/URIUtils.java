@@ -35,4 +35,7 @@ public class URIUtils {
       .resolve(separatorsToUnix(fileRelativePath.toString()))).toUri();
   }
 
+  private URIUtils() {
+    // utility class
+  }
 }

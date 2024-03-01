@@ -79,7 +79,7 @@ public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
     var deletedFileUris = changes.stream()
       .filter(event -> event.getType() == FileChangeType.Deleted)
       .map(event -> URI.create(event.getUri()))
-      .collect(Collectors.toList());
+      .toList();
     var events = changes.stream()
       .filter(event -> event.getType() == FileChangeType.Deleted)
       .map(event -> {
@@ -94,7 +94,7 @@ public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
           });
       })
       .flatMap(Optional::stream)
-      .collect(Collectors.toList());
+      .toList();
     backendServiceFacade.getBackendService().updateFileSystem(deletedFileUris, events);
   }
 
