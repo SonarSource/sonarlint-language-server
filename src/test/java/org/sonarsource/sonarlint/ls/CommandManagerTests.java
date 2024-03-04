@@ -528,17 +528,6 @@ class CommandManagerTests {
       }
 
       @Override
-      public Optional<CleanCodeAttribute> getCleanCodeAttribute() {
-        return Optional.empty();
-      }
-
-      @Nullable
-      @Override
-      public Map<SoftwareQuality, ImpactSeverity> getImpacts() {
-        return null;
-      }
-
-      @Override
       public String getRuleKey() {
         return "";
       }
@@ -558,10 +547,6 @@ class CommandManagerTests {
         return Optional.empty();
       }
 
-      @Override
-      public Optional<VulnerabilityProbability> getVulnerabilityProbability() {
-        return Optional.empty();
-      }
     };
     var versionedIssue = new VersionedIssue(issue, 1);
     when(securityHotspotsCache.get(URI.create("fileUri"))).thenReturn(Map.of(issueKey, versionedIssue));

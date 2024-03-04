@@ -23,7 +23,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ResolutionStatu
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
 
 /**
@@ -98,83 +97,4 @@ public class EnumLabelsMapper {
     };
   }
 
-  public static String languageToLanguageKey(Language language) {
-    return switch (language) {
-      case ABAP -> "abap";
-      case APEX -> "apex";
-      case AZURERESOURCEMANAGER -> "azureresourcemanager";
-      case C -> "c";
-      case CLOUDFORMATION -> "cloudformation";
-      case COBOL -> "cobol";
-      case CPP -> "cpp";
-      case CS -> "cs";
-      case CSS -> "css";
-      case DOCKER -> "docker";
-      case GO -> "go";
-      case HTML -> "web";
-      case IPYTHON -> "ipynb";
-      case JAVA -> "java";
-      case JS -> "js";
-      case JSON -> "json";
-      case JSP -> "jsp";
-      case KOTLIN -> "kotlin";
-      case KUBERNETES -> "kubernetes";
-      case OBJC -> "objc";
-      case PHP -> "php";
-      case PLI -> "pli";
-      case PLSQL -> "plsql";
-      case PYTHON -> "py";
-      case RPG -> "rpg";
-      case RUBY -> "ruby";
-      case SCALA -> "scala";
-      case SECRETS -> "secrets";
-      case SWIFT -> "swift";
-      case TERRAFORM -> "terraform";
-      case TS -> "ts";
-      case TSQL -> "tsql";
-      case VBNET -> "vbnet";
-      case XML -> "xml";
-      case YAML -> "yaml";
-    };
-  }
-
-  public static String languageToLabel(Language language) {
-    return switch (language) {
-      case ABAP -> "ABAP";
-      case APEX -> "Apex";
-      case AZURERESOURCEMANAGER -> "AzureResourceManager";
-      case C -> "C";
-      case CLOUDFORMATION -> "CloudFormation";
-      case COBOL -> "COBOL";
-      case CPP -> "C++";
-      case CS -> "C#";
-      case CSS -> "CSS";
-      case DOCKER -> "Docker";
-      case GO -> "Go";
-      case HTML -> "HTML";
-      case IPYTHON -> "IPython Notebooks";
-      case JAVA -> "Java";
-      case JS -> "JavaScript";
-      case JSON -> "JSON";
-      case JSP -> "JSP";
-      case KOTLIN -> "Kotlin";
-      case KUBERNETES -> "Kubernetes";
-      case OBJC -> "Objective C";
-      case PHP -> "PHP";
-      case PLI -> "PL/I";
-      case PLSQL -> "PL/SQL";
-      case PYTHON -> "Python";
-      case RPG -> "RPG";
-      case RUBY -> "Ruby";
-      case SCALA -> "Scala";
-      case SECRETS -> "Secrets";
-      case SWIFT -> "Swift";
-      case TERRAFORM -> "Terraform";
-      case TS -> "TypeScript";
-      case TSQL -> "TSQL";
-      case VBNET -> "VB.Net";
-      case XML -> "XML";
-      case YAML -> "YAML";
-    };
-  }
 }

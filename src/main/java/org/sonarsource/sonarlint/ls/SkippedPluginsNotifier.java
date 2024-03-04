@@ -30,9 +30,8 @@ import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.sonarsource.sonarlint.core.analysis.api.AnalysisResults;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.PluginDetails;
 import org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
+import org.sonarsource.sonarlint.ls.domain.LSLanguage;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
-import org.sonarsource.sonarlint.ls.util.EnumLabelsMapper;
 
 import static java.util.stream.Collectors.toSet;
 import static org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.JRE;
@@ -62,7 +61,7 @@ public class SkippedPluginsNotifier {
       final var correspondingPlugin = allPlugins.stream().filter(p -> p.key().equals(l.getPluginKey())).findFirst();
       correspondingPlugin.flatMap(PluginDetails::skipReason).ifPresent(skipReason -> {
         if (skipReason instanceof SkipReason.UnsatisfiedRuntimeRequirement runtimeRequirement) {
-          final var title = String.format("SonarLint failed to analyze %s code", EnumLabelsMapper.languageToLabel(Language.valueOf(l.name())));
+          final var title = String.format("SonarLint failed to analyze %s code", LSLanguage.valueOf(l.name()).getLabel());
           if (runtimeRequirement.getRuntime() == JRE) {
             handleMissingJRERequirement(runtimeRequirement, title);
           } else if (runtimeRequirement.getRuntime() == NODEJS) {

@@ -25,12 +25,8 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.branch.DidChangeActiveSonarProjectBranchParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.branch.DidVcsRepositoryChangeParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.branch.SonarProjectBranchRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.ConfigurationRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpdateBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotRpcService;
@@ -106,20 +102,6 @@ class BackendServiceTests {
     assertThat(result.getBinding().getConnectionId()).isNull();
     assertThat(result.getBinding().getSonarProjectKey()).isNull();
     assertThat(result.getBinding().isBindingSuggestionDisabled()).isFalse();
-  }
-
-  @Test
-  void notifyBackendOnBranchChanged() {
-    var branchService = mock(SonarProjectBranchRpcService.class);
-    when(backend.getSonarProjectBranchService()).thenReturn(branchService);
-    var paramsArgumentCaptor = ArgumentCaptor.forClass(DidVcsRepositoryChangeParams.class);
-    var expectedParams = new DidChangeActiveSonarProjectBranchParams("f", "b");
-
-    underTest.notifyBackendOnVscChange("f");
-
-    verify(branchService).didVcsRepositoryChange(paramsArgumentCaptor.capture());
-    var actualParams = paramsArgumentCaptor.getValue();
-    assertThat(expectedParams.getConfigScopeId()).isEqualTo(actualParams.getConfigurationScopeId());
   }
 
 }

@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import javax.annotation.CheckForNull;
@@ -28,25 +27,16 @@ import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.VulnerabilityProbability;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 
-//todo check that all methods here are needed; remove unused
 public interface Issue {
 
   UUID getIssueId();
   IssueSeverity getSeverity();
 
   RuleType getType();
-
-  Optional<CleanCodeAttribute> getCleanCodeAttribute();
-
-  Map<SoftwareQuality, ImpactSeverity> getImpacts();
 
   String getRuleKey();
 
@@ -55,8 +45,6 @@ public interface Issue {
   List<QuickFix> quickFixes();
 
   Optional<String> getRuleDescriptionContextKey();
-
-  Optional<VulnerabilityProbability> getVulnerabilityProbability();
 
   @CheckForNull
   ClientInputFile getInputFile();

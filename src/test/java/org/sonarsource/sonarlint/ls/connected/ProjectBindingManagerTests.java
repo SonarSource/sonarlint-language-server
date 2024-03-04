@@ -67,7 +67,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -447,8 +446,6 @@ class ProjectBindingManagerTests {
     when(projectBinding.projectKey()).thenReturn(PROJECT_KEY);
     var projectBinding2 = mock(org.sonarsource.sonarlint.core.serverconnection.ProjectBinding.class);
     when(projectBinding2.projectKey()).thenReturn(PROJECT_KEY2);
-//    when(fakeEngine.calculatePathPrefixes(any(), any())).thenReturn(projectBinding);
-//    when(fakeEngine2.calculatePathPrefixes(any(), any())).thenReturn(projectBinding2);
 
     var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     assertThat(binding).isNotEmpty();

@@ -25,9 +25,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -61,7 +59,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
@@ -779,24 +776,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void test_binding_suggestion_for_client() throws Exception {
-    client.suggestBindingLatch = new CountDownLatch(1);
-    var basedir = Paths.get("path/to/base").toAbsolutePath();
-    var workspaceUri = basedir.toUri().toString();
-    var workspaceFolder = new WorkspaceFolder(workspaceUri);
-    getFolderSettings(workspaceUri);
-    foldersToRemove.add(workspaceUri);
-    lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
-      new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
-
-    assertTrue(client.suggestBindingLatch.await(10, SECONDS));
-
-    assertThat(client.suggestedBindings).isNotNull();
-    assertThat(client.suggestedBindings.getSuggestions()).isNotEmpty();
-    assertThat(client.suggestedBindings.getSuggestions().get(workspaceUri)).isNotNull();
-  }
-
-  @Test
   void test_analysis_logs_disabled() throws Exception {
     Thread.sleep(1000);
     client.logs.clear();
@@ -1021,21 +1000,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var result = lsProxy.helpAndFeedbackLinkClicked(params);
 
     assertThat(result).isNull();
-  }
-
-  @Test
-  void getBindingSuggestions() throws ExecutionException, InterruptedException {
-    var basedir = Paths.get("path/to/base").toAbsolutePath();
-    var workspaceUri = basedir.toUri().toString();
-    var workspaceFolder = new WorkspaceFolder(workspaceUri, "foo-bar");
-    client.folderSettings = new HashMap<>();
-    client.folderSettings.put(workspaceUri, new HashMap<>());
-    lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
-      new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
-    foldersToRemove.add(workspaceUri);
-    var result = lsProxy.getBindingSuggestion(new GetBindingSuggestionParams(workspaceUri, CONNECTION_ID)).get();
-    assertThat(result).isNotNull();
-    assertThat(result.getSuggestions()).hasSize(1);
   }
 
   @Test

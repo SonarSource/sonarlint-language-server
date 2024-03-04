@@ -98,7 +98,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
-    ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache, @Nullable LanguageClientLogOutput globalLogOutput,
+    ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache, LanguageClientLogOutput globalLogOutput,
     ConcurrentMap<String, Optional<SonarLintAnalysisEngine>> connectedEngineCacheByConnectionId, BackendServiceFacade backendServiceFacade,
     OpenNotebooksCache openNotebooksCache) {
     this.enginesFactory = enginesFactory;
@@ -188,7 +188,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         getBinding(folderUri);
         updatedBinding.complete(folderUri.toString());
       } else {
-        updatedBinding.completeExceptionally(new IllegalStateException(String.format("Expected binding update for %s did not happen", folderUri.toString())));
+        updatedBinding.completeExceptionally(new IllegalStateException(String.format("Expected binding update for %s did not happen", folderUri)));
       }
     });
     return updatedBinding;

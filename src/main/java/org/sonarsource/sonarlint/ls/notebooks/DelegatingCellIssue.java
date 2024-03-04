@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls.notebooks;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import javax.annotation.CheckForNull;
@@ -30,12 +29,8 @@ import org.sonarsource.sonarlint.core.analysis.api.Flow;
 import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
 import org.sonarsource.sonarlint.core.commons.api.TextRange;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.VulnerabilityProbability;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.Issue;
 
@@ -71,16 +66,6 @@ public class DelegatingCellIssue implements Issue {
   @Override
   public RuleType getType() {
     return type;
-  }
-
-  @Override
-  public Optional<CleanCodeAttribute> getCleanCodeAttribute() {
-    return issue.getCleanCodeAttribute();
-  }
-
-  @Override
-  public Map<SoftwareQuality, ImpactSeverity> getImpacts() {
-    return issue.getImpacts();
   }
 
   @CheckForNull
@@ -155,8 +140,4 @@ public class DelegatingCellIssue implements Issue {
     return issue.getRuleDescriptionContextKey();
   }
 
-  @Override
-  public Optional<VulnerabilityProbability> getVulnerabilityProbability() {
-    return issue.getVulnerabilityProbability();
-  }
 }

@@ -28,10 +28,10 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.sonarsource.sonarlint.core.rpc.client.ClientJsonRpcLauncher;
@@ -65,7 +65,7 @@ public class BackendServiceFacade {
   private final LanguageClientLogger lsLogOutput;
   private SettingsManager settingsManager;
   private TelemetryInitParams telemetryInitParams;
-  private final AtomicBoolean initialized = new AtomicBoolean(false);
+  private final CountDownLatch initLatch = new CountDownLatch(1);
 
   public BackendServiceFacade(SonarLintRpcClientDelegate rpcClient, LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client) {
     this.lsLogOutput = lsLogOutput;
@@ -89,7 +89,7 @@ public class BackendServiceFacade {
   }
 
   public BackendService getBackendService() {
-    if (!initialized.get()) {
+    if (initLatch.getCount() != 0) {
       throw new IllegalStateException("Backend service is not initialized");
     }
     return backendService;
@@ -104,15 +104,17 @@ public class BackendServiceFacade {
   }
 
   private void initOnce(Map<String, ServerConnectionSettings> connections) {
-    if (initialized.getAndSet(true)) return;
-    var sqConnections = BackendService.extractSonarQubeConnections(connections);
-    var scConnections = BackendService.extractSonarCloudConnections(connections);
-    initParams.setSonarQubeConnections(sqConnections);
-    initParams.setSonarCloudConnections(scConnections);
-    initParams.setStandaloneRuleConfigByKey(settingsManager.getStandaloneRuleConfigByKey());
-    initParams.setFocusOnNewCode(settingsManager.getCurrentSettings().isFocusOnNewCode());
-    backendService.initialize(toInitParams(initParams));
-    backendService.addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(rootConfigurationScope)));
+    if (initLatch.getCount() != 0) {
+      var sqConnections = BackendService.extractSonarQubeConnections(connections);
+      var scConnections = BackendService.extractSonarCloudConnections(connections);
+      initParams.setSonarQubeConnections(sqConnections);
+      initParams.setSonarCloudConnections(scConnections);
+      initParams.setStandaloneRuleConfigByKey(settingsManager.getStandaloneRuleConfigByKey());
+      initParams.setFocusOnNewCode(settingsManager.getCurrentSettings().isFocusOnNewCode());
+      backendService.initialize(toInitParams(initParams));
+      backendService.addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(rootConfigurationScope)));
+      initLatch.countDown();
+    }
   }
 
   private InitializeParams toInitParams(BackendInitParams initParams) {
@@ -207,8 +209,7 @@ public class BackendServiceFacade {
     return telemetryInitParams;
   }
 
-  public AtomicBoolean isInitialized() {
-    return initialized;
+  public CountDownLatch getInitLatch() {
+    return initLatch;
   }
-
 }

@@ -166,7 +166,6 @@ public final class ShowAllLocationsCommand {
       this.locations = flow.locations().stream().map(Location::new).toList();
     }
 
-    // TODO provide local code cache if possible
     private Flow(FlowDto flow, String workspaceFolderUri) {
       this.locations = flow.getLocations().stream().map(locationDto -> new Location(locationDto, new HashMap<>(), workspaceFolderUri)).toList();
     }

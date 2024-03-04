@@ -25,6 +25,9 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nullable;
 import org.jetbrains.annotations.NotNull;
@@ -35,9 +38,9 @@ import org.sonarsource.sonarlint.core.client.utils.ClientLogOutput;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
-import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
+import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 
 public class EnginesFactory {
 
@@ -107,25 +110,34 @@ public class EnginesFactory {
         .setExtraProperties(getExtraProperties())
         .setLogOutput(logOutput).build();
 
-      waitForBackendInit();
-      var engine = new SonarLintAnalysisEngine(configuration, backendServiceFacade.getBackendService().getBackend(), connectionId);
-      logOutput.log("Standalone SonarLint engine started", ClientLogOutput.Level.DEBUG);
-      return engine;
-    } catch (InterruptedException e) {
-      Utils.interrupted(e, logOutput);
+      return waitForBackendInit()
+        .thenApply(unused -> {
+          var engine = new SonarLintAnalysisEngine(configuration, backendServiceFacade.getBackendService().getBackend(), connectionId);
+          logOutput.log("Standalone SonarLint engine started", ClientLogOutput.Level.DEBUG);
+          return engine;
+        }).join();
     } catch (Exception e) {
       logOutput.log(format("Error starting standalone SonarLint engine %s", e), ClientLogOutput.Level.ERROR);
       throw new IllegalStateException(e);
     }
-    throw  new IllegalStateException("Can't init engine");
   }
 
-  private void waitForBackendInit() throws InterruptedException {
-    var counter = 0;
-    while (!backendServiceFacade.isInitialized().get() && counter < 10) {
-      Thread.sleep(200);
-      counter++;
-    }
+  private CompletableFuture<Void> waitForBackendInit() {
+    var initResult = new CompletableFuture<Void>();
+    Executors.newSingleThreadExecutor().submit(() -> {
+      var initialized = false;
+      try {
+        initialized = backendServiceFacade.getInitLatch().await(1, TimeUnit.MINUTES);
+      } catch (InterruptedException e) {
+        interrupted(e, logOutput);
+      }
+      if (initialized) {
+        initResult.complete(null);
+      } else {
+        initResult.completeExceptionally(new IllegalStateException("Backend wasn't initialized in expected time"));
+      }
+    });
+    return initResult;
   }
 
   @NotNull
