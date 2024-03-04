@@ -21,8 +21,10 @@ package org.sonarsource.sonarlint.ls.util;
 
 import java.net.URI;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -50,12 +52,12 @@ class URIUtilsTest {
   @ParameterizedTest(name = "URI built from folder path `{0}` and relative file path `{1}` should be `{2}`")
   @CsvSource({
     "file:///my/workspace/folder,src/myFile.py,file:///my/workspace/folder/src/myFile.py",
-    "file:///my/workspace/folder,src/my file.py,file:///my/workspace/folder/src/my+file.py",
-    "file:///my+workspace/folder,src/myFile.py,file:///my+workspace/folder/src/myFile.py",
+    "file:///my/workspace/folder,src/my file.py,file:///my/workspace/folder/src/my%20file.py",
+    "file:///my%20workspace/folder,src/myFile.py,file:///my%20workspace/folder/src/myFile.py",
   })
   @DisabledOnOs(OS.WINDOWS)
   void shouldBuildFullFileUriFromFragments(String workspaceFolderUriString, String relativePath, String expectedURI) {
-    var ideFilePath = Path.of(relativePath);
+    var ideFilePath = Paths.get(relativePath);
 
     var result = getFullFileUriFromFragments(workspaceFolderUriString, ideFilePath);
 
@@ -63,6 +65,7 @@ class URIUtilsTest {
   }
 
   @Test
+  @EnabledOnOs(OS.WINDOWS)
   void shouldMergeToFullUriWindows() {
     var workspaceFolderUriString = "file:///c:/my/workspace/folder";
     var ideFilePath = Path.of("src\\myFile.py");

@@ -20,12 +20,8 @@
 package org.sonarsource.sonarlint.ls.util;
 
 import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
-import static org.apache.commons.io.FilenameUtils.separatorsToUnix;
 
 public class URIUtils {
 
@@ -37,8 +33,8 @@ public class URIUtils {
   }
 
   public static URI getFullFileUriFromFragments(String workspaceFolderUriString, Path fileRelativePath) {
-    return Paths.get(URI.create(uriStringWithTrailingSlash(workspaceFolderUriString))
-      .resolve(URLEncoder.encode(separatorsToUnix(fileRelativePath.toString()), StandardCharsets.UTF_8)))
+    return Paths.get(URI.create(workspaceFolderUriString))
+      .resolve(fileRelativePath)
       .toUri();
   }
 
