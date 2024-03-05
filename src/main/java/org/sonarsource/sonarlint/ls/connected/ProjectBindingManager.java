@@ -137,15 +137,20 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
    * @return empty if the file is unbound
    */
   public Optional<ProjectBinding> getBinding(URI fileUri) {
+    if (!isUriValidAndNotNotebook(fileUri)) return Optional.empty();
+    var folder = foldersManager.findFolderForFile(fileUri);
+    var cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
+    return getBinding(folder, cacheKey);
+  }
+
+  private boolean isUriValidAndNotNotebook(URI fileUri) {
     if (!uriHasFileScheme(fileUri) || openNotebooksCache.isNotebook(fileUri)) {
       if (globalLogOutput != null) {
         globalLogOutput.log("Ignoring connected mode settings for unsupported URI: " + fileUri, ClientLogOutput.Level.DEBUG);
       }
-      return Optional.empty();
+      return false;
     }
-    var folder = foldersManager.findFolderForFile(fileUri);
-    var cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
-    return getBinding(folder, cacheKey);
+    return true;
   }
 
   /**
@@ -154,20 +159,16 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
    * @return empty if the file is unbound
    */
   public Optional<ProjectBinding> getBindingIfExists(URI fileUri) {
-    if (!uriHasFileScheme(fileUri) || openNotebooksCache.isNotebook(fileUri)) {
-      if (globalLogOutput != null) {
-        globalLogOutput.log("Ignoring connected mode settings for unsupported URI: " + fileUri, ClientLogOutput.Level.DEBUG);
-      }
-      return Optional.empty();
-    }
+    if (!isUriValidAndNotNotebook(fileUri)) return Optional.empty();
     var folder = foldersManager.findFolderForFile(fileUri);
     var cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
     return getBindingIfExists(folder, cacheKey);
   }
 
   private Optional<ProjectBinding> getBindingIfExists(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {
-    var maybeBinding = folder.isPresent() ? folderBindingCache.get(folder.get().getUri()) : fileBindingCache.get(fileUri);
-    return maybeBinding != null ? maybeBinding : Optional.empty();
+    return folder.isPresent()
+      ? folderBindingCache.getOrDefault(folder.get().getUri(), Optional.empty())
+      : fileBindingCache.getOrDefault(fileUri, Optional.empty());
   }
 
   private Optional<ProjectBinding> getBinding(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {

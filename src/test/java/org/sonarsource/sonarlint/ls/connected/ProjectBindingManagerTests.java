@@ -307,7 +307,6 @@ class ProjectBindingManagerTests {
     mockFileOutsideFolder();
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(BOUND_SETTINGS);
     servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
-//    when(fakeEngine.calculatePathPrefixes(eq(PROJECT_KEY), any())).thenReturn(FAKE_BINDING);
 
     var binding = underTest.getBinding(fileNotInAWorkspaceFolderPath.toUri());
     assertThat(binding).isNotEmpty();
@@ -333,7 +332,6 @@ class ProjectBindingManagerTests {
     assertThat(binding).isNotEmpty();
 
     when(folder.getSettings()).thenReturn(BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
-//    when(fakeEngine.calculatePathPrefixes(eq(PROJECT_KEY2), any())).thenReturn(FAKE_BINDING2);
 
     underTest.onChange(folder, BOUND_SETTINGS, BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
 
@@ -424,9 +422,7 @@ class ProjectBindingManagerTests {
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
     assertThat(binding).isNotEmpty();
-    //verify(fakeEngine).calculatePathPrefixes(eq(PROJECT_KEY), any());
     verify(fakeEngine).stop();
-    //verify(fakeEngine2).calculatePathPrefixes(eq(PROJECT_KEY), any());
     assertThat(logTester.logs())
       .anyMatch(log -> log.contains("Resolved binding myProject2 for folder " + workspaceFolderPath.toString()));
   }
@@ -593,11 +589,33 @@ class ProjectBindingManagerTests {
     });
   }
 
+  @Test
+  void should_get_binding_if_existis_empty() {
+    var uri = URI.create("file:///folderUri");
+
+    var maybeBinding = underTest.getBindingIfExists(uri);
+
+    assertThat(maybeBinding).isEmpty();
+  }
+
+  @Test
+  void should_get_binding_if_existis() {
+    var fileUri = URI.create("file:///fileUri");
+    var folderUri = URI.create("file:///folderUri");
+    when(foldersManager.findFolderForFile(fileUri))
+      .thenReturn(Optional.of(new WorkspaceFolderWrapper(folderUri, null, null)));
+    folderBindingCache.put(folderUri, Optional.of(new ProjectBinding("connectionId",
+      "projectKey", null, null)));
+    var maybeBinding = underTest.getBindingIfExists(fileUri);
+
+    assertThat(maybeBinding.get().getConnectionId()).isEqualTo("connectionId");
+    assertThat(maybeBinding.get().getProjectKey()).isEqualTo("projectKey");
+  }
+
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {
     var folder = mockFileInAFolder();
     folder.setSettings(BOUND_SETTINGS);
     servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
-//    when(fakeEngine.calculatePathPrefixes(eq(PROJECT_KEY), any())).thenReturn(FAKE_BINDING);
     return folder;
   }
 

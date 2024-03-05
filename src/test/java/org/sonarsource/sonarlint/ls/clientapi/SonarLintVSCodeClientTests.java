@@ -101,6 +101,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -494,7 +495,7 @@ class SonarLintVSCodeClientTests {
     var issueDetailsDto = new IssueDetailsDto(textRangeDto, "rule:S1234",
       "issueKey", FILE_PYTHON, "bb", null, "this is wrong", "29.09.2023", "print('ddd')",
       false, List.of());
-    when(bindingManager.getBinding(fileUri))
+    when(bindingManager.getBindingIfExists(fileUri))
       .thenReturn(Optional.empty());
 
     underTest.showIssue(fileUri.toString(), issueDetailsDto);
@@ -504,6 +505,25 @@ class SonarLintVSCodeClientTests {
 
     assertFalse(showAllLocationParams.isShouldOpenRuleDescription());
   }
+
+  @Test
+  void shouldForwardOpenIssueRequestWithRuleDescriptionWhenBindingDoesExist() {
+    var fileUri = fileInAWorkspaceFolderPath.toUri();
+    var textRangeDto = new TextRangeDto(1, 2, 3, 4);
+    var issueDetailsDto = new IssueDetailsDto(textRangeDto, "rule:S1234",
+      "issueKey", FILE_PYTHON, "bb", null, "this is wrong", "29.09.2023", "print('ddd')",
+      false, List.of());
+    when(bindingManager.getBindingIfExists(fileUri))
+      .thenReturn(Optional.of(new ProjectBinding("connectionId", "projectKey", null, null)));
+
+    underTest.showIssue(fileUri.toString(), issueDetailsDto);
+    verify(client).showIssue(paramCaptor.capture());
+
+    var showAllLocationParams = paramCaptor.getValue();
+
+    assertTrue(showAllLocationParams.isShouldOpenRuleDescription());
+  }
+
 
   @Test
   void shouldLogMessagesWithLogLevel() {
