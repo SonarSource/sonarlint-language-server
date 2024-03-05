@@ -23,19 +23,18 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static org.apache.commons.io.FilenameUtils.separatorsToUnix;
-
 public class URIUtils {
+
+  private URIUtils() {
+    // static stuff only
+  }
   public static String uriStringWithTrailingSlash(String uriString) {
     return uriString.endsWith("/") ? uriString : uriString.concat("/");
   }
 
   public static URI getFullFileUriFromFragments(String workspaceFolderUriString, Path fileRelativePath) {
-    return Paths.get(URI.create(uriStringWithTrailingSlash(workspaceFolderUriString))
-      .resolve(separatorsToUnix(fileRelativePath.toString()))).toUri();
-  }
-
-  private URIUtils() {
-    // utility class
+    return Paths.get(URI.create(workspaceFolderUriString))
+      .resolve(fileRelativePath)
+      .toUri();
   }
 }
