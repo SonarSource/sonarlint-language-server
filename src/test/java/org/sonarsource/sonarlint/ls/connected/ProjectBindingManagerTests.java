@@ -58,13 +58,10 @@ import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
-import org.sonarsource.sonarlint.ls.util.Utils;
 import testutils.SonarLintLogTester;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
@@ -573,20 +570,6 @@ class ProjectBindingManagerTests {
     var fullFilePath = underTest.fullFilePathFromRelative(Path.of("filePath"), "connectionId", "projectKey");
 
     assertThat(fullFilePath).contains(URI.create("file:///idePath/filePath"));
-  }
-
-  @Test
-  void should_get_updated_binding() {
-    var folderUri = Utils.fixWindowsURIEncoding(workspaceFolderPath.toUri());
-    var future = underTest.getUpdatedBindingForWorkspaceFolder(folderUri);
-
-    assertThat(future).isNotCompleted();
-    underTest.onChange(mockFileInABoundWorkspaceFolder(), BOUND_SETTINGS, BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
-
-    await().atMost(10, SECONDS).untilAsserted(() -> {
-      assertThat(future).isCompleted();
-      assertThat(future.get()).isEqualTo(folderUri.toString());
-    });
   }
 
   @Test

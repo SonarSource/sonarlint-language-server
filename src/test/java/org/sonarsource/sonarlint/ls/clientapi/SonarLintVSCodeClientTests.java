@@ -58,7 +58,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingP
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.ShowHotspotParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.CheckServerTrustedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.X509CertificateDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.info.GetClientLiveInfoResponse;
@@ -387,7 +386,6 @@ class SonarLintVSCodeClientTests {
     var assistBindingParams = new AssistBindingParams("connectionId", projectKey, configScopeId);
     when(client.assistBinding(any())).thenReturn(
       CompletableFuture.completedFuture(new SonarLintExtendedLanguageClient.AssistBindingResponse("folderUri")));
-    when(bindingManager.getUpdatedBindingForWorkspaceFolder(URI.create(configScopeId))).thenReturn(CompletableFuture.completedFuture(configScopeId));
     var workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
     underTest.setWorkspaceFoldersManager(workspaceFoldersManager);
 

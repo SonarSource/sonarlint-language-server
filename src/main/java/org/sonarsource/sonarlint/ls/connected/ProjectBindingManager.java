@@ -27,13 +27,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -183,33 +180,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         return Optional.ofNullable(computeProjectBinding(settings, folderRoot));
       }
     });
-  }
-
-  public CompletableFuture<String> getUpdatedBindingForWorkspaceFolder(URI folderUri) {
-    var bindingUpdatedLatch = new CountDownLatch(1);
-    var updatedBinding = new CompletableFuture<String>();
-    bindingUpdateQueue.put(folderUri, bindingUpdatedLatch);
-    Executors.newSingleThreadExecutor().submit(() -> {
-      var actuallyUpdated = false;
-      try {
-        actuallyUpdated = bindingUpdatedLatch.await(10, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new IllegalStateException("Interrupted", e);
-      }
-      if (actuallyUpdated) {
-        getBinding(folderUri);
-        updatedBinding.complete(folderUri.toString());
-      } else {
-        updatedBinding.completeExceptionally(new IllegalStateException(String.format("Expected binding update for %s did not happen", folderUri)));
-      }
-    });
-    return updatedBinding;
-  }
-
-
-  private Optional<ProjectBinding> getBindingAndRepublishTaints(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {
-    return getBinding(folder, fileUri);
   }
 
   @CheckForNull
