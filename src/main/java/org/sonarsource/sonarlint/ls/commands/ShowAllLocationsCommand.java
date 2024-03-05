@@ -59,6 +59,7 @@ public final class ShowAllLocationsCommand {
   public static class Param {
     private final URI fileUri;
     private final String message;
+    private final boolean shouldOpenRuleDescription;
     private final String severity;
     private final String ruleKey;
     private final List<Flow> flows;
@@ -66,6 +67,7 @@ public final class ShowAllLocationsCommand {
     private final String creationDate;
     private final TextRangeDto textRange;
     private boolean codeMatches = false;
+
 
     private Param(Issue issue) {
       this.fileUri = nullableUri(issue.getInputFile());
@@ -76,11 +78,13 @@ public final class ShowAllLocationsCommand {
       this.textRange = issue.getTextRange();
       this.connectionId = null;
       this.creationDate = null;
+      this.shouldOpenRuleDescription = true;
     }
 
-    public Param(ShowIssueParams showIssueParams, String connectionId) {
+    public Param(ShowIssueParams showIssueParams, @Nullable String connectionId, boolean shouldOpenRuleDescription) {
       this.fileUri = getFullFileUriFromFragments(showIssueParams.getConfigurationScopeId(), showIssueParams.getIssueDetails().getIdeFilePath());
       this.message = showIssueParams.getIssueDetails().getMessage();
+      this.shouldOpenRuleDescription = shouldOpenRuleDescription;
       this.severity = "";
       this.ruleKey = showIssueParams.getIssueDetails().getRuleKey();
       this.flows = showIssueParams.getIssueDetails().getFlows().stream().map(f -> new Flow(f, showIssueParams.getConfigurationScopeId())).toList();
@@ -118,6 +122,7 @@ public final class ShowAllLocationsCommand {
       this.textRange = textRangeWithHashDtoToTextRangeDto(taint.getTextRange());
       this.connectionId = connectionId;
       this.creationDate = DateTimeFormatter.ISO_DATE_TIME.format(taint.getIntroductionDate().atOffset(ZoneOffset.UTC));
+      this.shouldOpenRuleDescription = true;
     }
 
     public URI getFileUri() {
@@ -157,6 +162,11 @@ public final class ShowAllLocationsCommand {
     public boolean getCodeMatches() {
       return codeMatches;
     }
+
+    public boolean isShouldOpenRuleDescription() {
+      return shouldOpenRuleDescription;
+    }
+
   }
 
   static class Flow {

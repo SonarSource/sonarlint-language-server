@@ -148,14 +148,26 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return getBinding(folder, cacheKey);
   }
 
-  public void getBindingAndRepublishTaints(WorkspaceFolderWrapper folder) {
-    getBindingAndRepublishTaints(Optional.of(folder), folder.getUri());
-  }
-
-  public Optional<ProjectBinding> getBindingAndRepublishTaints(URI fileUri) {
+  /**
+   * Return the binding of the given file.
+   *
+   * @return empty if the file is unbound
+   */
+  public Optional<ProjectBinding> getBindingIfExists(URI fileUri) {
+    if (!uriHasFileScheme(fileUri) || openNotebooksCache.isNotebook(fileUri)) {
+      if (globalLogOutput != null) {
+        globalLogOutput.log("Ignoring connected mode settings for unsupported URI: " + fileUri, ClientLogOutput.Level.DEBUG);
+      }
+      return Optional.empty();
+    }
     var folder = foldersManager.findFolderForFile(fileUri);
     var cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
-    return getBindingAndRepublishTaints(folder, cacheKey);
+    return getBindingIfExists(folder, cacheKey);
+  }
+
+  private Optional<ProjectBinding> getBindingIfExists(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {
+    var maybeBinding = folder.isPresent() ? folderBindingCache.get(folder.get().getUri()) : fileBindingCache.get(fileUri);
+    return maybeBinding != null ? maybeBinding : Optional.empty();
   }
 
   private Optional<ProjectBinding> getBinding(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {

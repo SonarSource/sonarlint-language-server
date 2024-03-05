@@ -145,7 +145,7 @@ class ShowAllLocationsCommandTests {
       "issueKey", Path.of("myFile.py"), "branch", "pr", "this is wrong",
       "29.09.2023", "print('1234')", false, flows));
 
-    var result = new ShowAllLocationsCommand.Param(showIssueParams, "connectionId");
+    var result = new ShowAllLocationsCommand.Param(showIssueParams, "connectionId", true);
 
     assertTrue(result.getCodeMatches());
     assertThat(result.getFileUri()).hasToString(workspaceFolderPath.toUri() + "myFile.py");
@@ -162,7 +162,7 @@ class ShowAllLocationsCommandTests {
       print('b')
       print('kkkk')""", false, List.of()));
 
-    var result = new ShowAllLocationsCommand.Param(showIssueParams, "connectionId");
+    var result = new ShowAllLocationsCommand.Param(showIssueParams, "connectionId", true);
 
     assertTrue(result.getCodeMatches());
   }
@@ -174,7 +174,7 @@ class ShowAllLocationsCommandTests {
       "issueKey", Path.of("myFile.py"), "bb", "1234", "this is wrong",
       "29.09.2023", "print('1234')", false, List.of()));
 
-    var result = new ShowAllLocationsCommand.Param(showIssueParams, "connectionId");
+    var result = new ShowAllLocationsCommand.Param(showIssueParams, "connectionId", true);
 
     assertFalse(result.getCodeMatches());
   }

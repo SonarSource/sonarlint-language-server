@@ -236,8 +236,6 @@ class ProjectBindingManagerTests {
     mockFileInABoundWorkspaceFolder();
     servers.put("sonarcloud", new ServerConnectionSettings("sonarcloud", "https://sonarcloud.io", "token", null, true));
 
-//    when(fakeEngine.calculatePathPrefixes(eq(PROJECT_KEY), any())).thenReturn(FAKE_BINDING);
-
     var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     assertThat(binding).isNotEmpty();
 
@@ -345,7 +343,6 @@ class ProjectBindingManagerTests {
 
     assertThat(binding).isNotEmpty();
     verify(fakeEngine, never()).stop();
-//    verify(fakeEngine).calculatePathPrefixes(eq(PROJECT_KEY2), any());
     assertThat(logTester.logs())
       .anyMatch(log -> log.contains("Resolved binding myProject2 for folder " + workspaceFolderPath.toString()));
   }
@@ -566,35 +563,21 @@ class ProjectBindingManagerTests {
       .hasMessage("Failed to fetch list of projects from '" + CONNECTION_ID + "'");
   }
 
-//  @Test
-//  void should_update_taint_issue_cache_from_storage() {
-//    var serverPath = fileInAWorkspaceFolderPath.toUri().toString();
-//    var fileUri = fileInAWorkspaceFolderPath.toUri();
-//    var folderUri = workspaceFolderPath.toUri();
-//    var projectBindingWrapperMock = mock(ProjectBindingWrapper.class);
-//    var projectBinding = mock(ProjectBinding.class);
-//    var connectedEngine = mock(ConnectedSonarLintEngine.class);
-//    when(projectBindingWrapperMock.getBinding()).thenReturn(projectBinding);
-//    when(projectBindingWrapperMock.getConnectionId()).thenReturn("connectionId");
-//    when(projectBindingWrapperMock.getEngine()).thenReturn(connectedEngine);
-//
-//    when(connectedEngine.getServerBranches(any())).thenReturn(new ProjectBranches(Set.of("main", "feature"), "main"));
-//    when(connectedEngine.getAllServerTaintIssues(any(), any())).thenReturn(List.of(
-//      new ServerTaintIssue("taint1", false, "ruleKey1",
-//        "message", fileUri.getRawPath(), Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY,
-//        new TextRangeWithHash(1, 1, 1, 1, ""),
-//        null, null, null)));
-//
-//    when((projectBinding.serverPathToIdePath(fileUri.getRawPath()))).thenReturn(Optional.of(FILE_PHP));
-//    folderBindingCache.put(folderUri, Optional.of(projectBindingWrapperMock));
-//    connectedEngineCacheByConnectionId.put("connectionId", Optional.of(connectedEngine));
-//    var workspaceFolderWrapper = new WorkspaceFolderWrapper(folderUri, new WorkspaceFolder(folderUri.toString(), "sample-folder"), logTester.getLogger());
-//    when(foldersManager.findFolderForFile(fileUri)).thenReturn(Optional.of(workspaceFolderWrapper));
-//
-//    underTest.getBindingAndRepublishTaints(fileUri);
-//
-//    verify(diagnosticPublisher).publishDiagnostics(URI.create(serverPath), false);
-//  }
+  @Test
+  void shouldComputeEmptyFullFilePathFromRelative() {
+    var fullFilePath = underTest.fullFilePathFromRelative(Path.of("idePath"), "connectionId", "projectKey");
+
+    assertThat(fullFilePath).isEmpty();
+  }
+
+  @Test
+  void shouldComputeFullFilePathFromRelative() {
+    folderBindingCache.put(URI.create("file:///idePath"), Optional.of(new ProjectBinding("connectionId", "projectKey", null, null)));
+
+    var fullFilePath = underTest.fullFilePathFromRelative(Path.of("filePath"), "connectionId", "projectKey");
+
+    assertThat(fullFilePath).contains(URI.create("file:///idePath/filePath"));
+  }
 
   @Test
   void should_get_updated_binding() {
@@ -622,7 +605,6 @@ class ProjectBindingManagerTests {
     var folder2 = mockFileInAFolder2();
     folder2.setSettings(BOUND_SETTINGS2);
     servers.put(SERVER_ID2, GLOBAL_SETTINGS_DIFFERENT_SERVER_ID);
-//    when(fakeEngine2.calculatePathPrefixes(eq(PROJECT_KEY2), any())).thenReturn(FAKE_BINDING2);
     return folder2;
   }
 

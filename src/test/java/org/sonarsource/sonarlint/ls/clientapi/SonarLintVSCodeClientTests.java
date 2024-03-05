@@ -99,6 +99,7 @@ import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -386,6 +387,9 @@ class SonarLintVSCodeClientTests {
     when(client.assistBinding(any())).thenReturn(
       CompletableFuture.completedFuture(new SonarLintExtendedLanguageClient.AssistBindingResponse("folderUri")));
     when(bindingManager.getUpdatedBindingForWorkspaceFolder(URI.create(configScopeId))).thenReturn(CompletableFuture.completedFuture(configScopeId));
+    var workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
+    underTest.setWorkspaceFoldersManager(workspaceFoldersManager);
+
     underTest.assistBinding(assistBindingParams, null);
 
     verify(client).showMessage(new MessageParams(MessageType.Info, "Project '" + configScopeId + "' was successfully bound to '" + projectKey + "'."));
@@ -484,18 +488,21 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void shouldNotForwardOpenIssueRequestWhenBindingDoesNotExist() {
+  void shouldForwardOpenIssueRequestWithoutRuleDescriptionWhenBindingDoesNotExist() {
     var fileUri = fileInAWorkspaceFolderPath.toUri();
     var textRangeDto = new TextRangeDto(1, 2, 3, 4);
     var issueDetailsDto = new IssueDetailsDto(textRangeDto, "rule:S1234",
       "issueKey", FILE_PYTHON, "bb", null, "this is wrong", "29.09.2023", "print('ddd')",
       false, List.of());
-
     when(bindingManager.getBinding(fileUri))
       .thenReturn(Optional.empty());
 
     underTest.showIssue(fileUri.toString(), issueDetailsDto);
-    verify(client, never()).showIssue(any(ShowAllLocationsCommand.Param.class));
+    verify(client).showIssue(paramCaptor.capture());
+
+    var showAllLocationParams = paramCaptor.getValue();
+
+    assertFalse(showAllLocationParams.isShouldOpenRuleDescription());
   }
 
   @Test
