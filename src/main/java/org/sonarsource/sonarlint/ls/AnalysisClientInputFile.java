@@ -28,13 +28,13 @@ import java.nio.file.Paths;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
-import org.sonarsource.sonarlint.core.commons.Language;
+import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 
 public class AnalysisClientInputFile implements ClientInputFile {
 
   private final URI fileUri;
   private final String content;
-  private final Language sqLanguage;
+  private final SonarLanguage sqLanguage;
   private final String relativePath;
   private final boolean isTest;
 
@@ -82,7 +82,7 @@ public class AnalysisClientInputFile implements ClientInputFile {
   }
 
   @Override
-  public Language language() {
+  public SonarLanguage language() {
     return sqLanguage;
   }
 
@@ -92,23 +92,23 @@ public class AnalysisClientInputFile implements ClientInputFile {
   }
 
   @CheckForNull
-  public static Language toSqLanguage(@Nullable String clientLanguageId) {
+  public static SonarLanguage toSqLanguage(@Nullable String clientLanguageId) {
     if (clientLanguageId == null) {
       return null;
     }
     // See https://microsoft.github.io/language-server-protocol/specification#textDocumentItem
     return switch (clientLanguageId) {
-      case "javascript", "javascriptreact", "vue", "vue component", "babel es6 javascript" -> Language.JS;
-      case "python" -> Language.PYTHON;
-      case "typescript", "typescriptreact" -> Language.TS;
-      case "html" -> Language.HTML;
-      case "oraclesql" -> Language.PLSQL;
+      case "javascript", "javascriptreact", "vue", "vue component", "babel es6 javascript" -> SonarLanguage.JS;
+      case "python" -> SonarLanguage.PYTHON;
+      case "typescript", "typescriptreact" -> SonarLanguage.TS;
+      case "html" -> SonarLanguage.HTML;
+      case "oraclesql" -> SonarLanguage.PLSQL;
       case "apex", "apex-anon" ->
         // See https://github.com/forcedotcom/salesforcedx-vscode/blob/5e4b7715d1cb3d1ee2780780ed63f70f58e93b20/packages/salesforcedx-vscode-apex/package.json#L273
-        Language.APEX;
+        SonarLanguage.APEX;
       default ->
         // Other supported languages map to the same key as the one used in SonarQube/SonarCloud
-        Language.forKey(clientLanguageId).orElse(null);
+        SonarLanguage.forKey(clientLanguageId).orElse(null);
     };
   }
 }

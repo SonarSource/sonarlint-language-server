@@ -21,7 +21,6 @@ package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModuleInfo;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
@@ -48,7 +47,7 @@ public class WorkspaceFoldersProvider implements ClientModulesProvider {
   public List<ClientModuleInfo> getModules() {
     return workspaceFoldersManager.getAll().stream()
       .map(this::createModuleInfo)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private ClientModuleInfo createModuleInfo(WorkspaceFolderWrapper folder) {

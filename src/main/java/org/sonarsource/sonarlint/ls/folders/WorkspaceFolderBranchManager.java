@@ -20,41 +20,29 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.file.Paths;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import javax.annotation.Nullable;
-import org.apache.commons.lang3.StringUtils;
-import org.sonarsource.sonarlint.core.branch.GitUtils;
-import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.util.GitUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleListener {
-  private final Map<URI, Optional<String>> referenceBranchNameByFolderUri = new ConcurrentHashMap<>();
-  private final SonarLintExtendedLanguageClient client;
-  private final ProjectBindingManager bindingManager;
   private final ExecutorService executorService;
   private final LanguageClientLogOutput logOutput;
   private final BackendServiceFacade backendServiceFacade;
 
-  public WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager,
-    BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
-    this(client, bindingManager, backendServiceFacade,
-      Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Branch Manager", false)), logOutput);
+  public WorkspaceFolderBranchManager(BackendServiceFacade backendServiceFacade,
+    LanguageClientLogOutput logOutput) {
+    this(backendServiceFacade, Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Branch Manager",
+      false)), logOutput);
   }
 
-  WorkspaceFolderBranchManager(SonarLintExtendedLanguageClient client, ProjectBindingManager bindingManager,
-    BackendServiceFacade backendServiceFacade, ExecutorService executorService, LanguageClientLogOutput logOutput) {
-    this.client = client;
-    this.bindingManager = bindingManager;
+  WorkspaceFolderBranchManager(BackendServiceFacade backendServiceFacade,
+    ExecutorService executorService, LanguageClientLogOutput logOutput) {
     this.backendServiceFacade = backendServiceFacade;
     this.executorService = executorService;
     this.logOutput = logOutput;
@@ -63,58 +51,25 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
   @Override
   public void added(WorkspaceFolderWrapper added) {
     var folderUri = added.getUri();
-    client.getBranchNameForFolder(folderUri.toString())
-      .thenAccept(branchName -> didBranchNameChange(folderUri, branchName));
-  }
-
-  public void didBranchNameChange(URI folderUri, @Nullable String branchName) {
-    if (branchName != null) {
-      logOutput.debug("Folder %s is now on branch %s.", folderUri, branchName);
-    } else {
-      logOutput.debug("Folder %s is now on an unknown branch.", folderUri);
-      return;
-    }
-    executorService.submit(() -> {
-      Optional<ProjectBindingWrapper> bindingOptional = bindingManager.getBindingAndRepublishTaints(folderUri);
-      String electedBranchName = null;
-      if (bindingOptional.isPresent()) {
-        ProjectBindingWrapper binding = bindingOptional.get();
-        var serverBranches = binding.getEngine().getServerBranches(binding.getBinding().projectKey());
-        var serverBranchNames = serverBranches.getBranchNames();
-        var repo = GitUtils.getRepositoryForDir(Paths.get(folderUri));
-        if (repo != null) {
-          try (repo) {
-            electedBranchName = GitUtils.electBestMatchingServerBranchForCurrentHead(repo, serverBranchNames, serverBranches.getMainBranchName());
-          }
-        }
-        if (electedBranchName == null) {
-          electedBranchName = serverBranches.getMainBranchName();
-        }
-        backendServiceFacade.getBackendService().notifyBackendOnBranchChanged(folderUri.toString(), electedBranchName);
-      }
-      client.setReferenceBranchNameForFolder(SonarLintExtendedLanguageClient.ReferenceBranchForFolder.of(folderUri.toString(), electedBranchName));
-      referenceBranchNameByFolderUri.put(folderUri, Optional.ofNullable(electedBranchName));
-    });
-  }
-
-  /**
-   * @param folderUri a workspace folder's URI
-   * @return the current known reference branch name for the folder, or empty if unknown or not in connected mode
-   */
-  public Optional<String> getReferenceBranchNameForFolder(@Nullable URI folderUri) {
-    if (folderUri == null) {
-      return Optional.empty();
-    }
-    try {
-      var uriWithoutTrailingSlash = StringUtils.removeEnd(folderUri.toString(), "/");
-      return referenceBranchNameByFolderUri.getOrDefault(new URI(uriWithoutTrailingSlash), Optional.empty());
-    } catch (URISyntaxException e) {
-      logOutput.error(e.getMessage());
-      return Optional.empty();
-    }
+    backendServiceFacade.getBackendService().notifyBackendOnVscChange(folderUri.toString());
   }
 
   public void shutdown() {
     Utils.shutdownAndAwait(executorService, true);
+  }
+
+  public String matchSonarProjectBranch(String folderUri, String mainBranchName, Set<String> allBranchesNames, CancelChecker cancelChecker) {
+    if (cancelChecker.isCanceled()) return mainBranchName;
+    var repo = GitUtils.getRepositoryForDir(Paths.get(URI.create(folderUri)), logOutput);
+    String electedBranchName = null;
+    if (repo != null) {
+      try (repo) {
+        electedBranchName = GitUtils.electBestMatchingServerBranchForCurrentHead(repo, allBranchesNames, mainBranchName, logOutput);
+      }
+    }
+    if (electedBranchName == null) {
+      electedBranchName = mainBranchName;
+    }
+    return electedBranchName;
   }
 }

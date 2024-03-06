@@ -82,7 +82,7 @@ class AnalysisSchedulerTests {
   }
 
   @Test
-  void shouldScheduleAnalysisWithIssueRefreshOnOpen() {
+  void shouldScheduleAnalysisWithoutServerIssuesFetchingOnOpen() {
     underTest.didOpen(JS_FILE);
 
     ArgumentCaptor<AnalysisTask> taskCaptor = ArgumentCaptor.forClass(AnalysisTask.class);
@@ -90,7 +90,9 @@ class AnalysisSchedulerTests {
 
     AnalysisTask submittedTask = taskCaptor.getValue();
     assertThat(submittedTask.getFilesToAnalyze()).containsExactly(JS_FILE);
-    assertThat(submittedTask.shouldFetchServerIssues()).isTrue();
+    // important behavior change:
+    // since js file is not a part of workspace, it can't be bound so there's no point to fetch server issues
+    assertThat(submittedTask.shouldFetchServerIssues()).isFalse();
   }
 
   @Test

@@ -23,8 +23,9 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.sonarsource.sonarlint.core.NodeJsHelper;
 import org.sonarsource.sonarlint.core.commons.Version;
+import org.sonarsource.sonarlint.core.nodejs.InstalledNodeJs;
+import org.sonarsource.sonarlint.core.nodejs.NodeJsHelper;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
@@ -43,10 +44,14 @@ class NodeJsRuntimeTests {
   private NodeJsHelper nodeJsHelper;
 
   private NodeJsRuntime underTest;
+  private InstalledNodeJs installedNodeJs;
 
   @BeforeEach
   void setUp() {
     nodeJsHelper = mock(NodeJsHelper.class);
+    installedNodeJs = mock(InstalledNodeJs.class);
+    when(nodeJsHelper.autoDetect()).thenReturn(installedNodeJs);
+
     settings = mock(WorkspaceSettings.class);
     var settingsManager = mock(SettingsManager.class);
     when(settingsManager.getCurrentSettings()).thenReturn(settings);
@@ -69,10 +74,10 @@ class NodeJsRuntimeTests {
   @Test
   void shouldLazyInitializeWithNodeSettings() {
     when(settings.pathToNodeExecutable()).thenReturn(temp.getFileName().toString());
-    when(nodeJsHelper.getNodeJsPath()).thenReturn(temp.getFileName());
+    when(installedNodeJs.getPath()).thenReturn(temp.getFileName());
     var versionString = "12.34.56";
     var version = Version.create(versionString);
-    when(nodeJsHelper.getNodeJsVersion()).thenReturn(version);
+    when(installedNodeJs.getVersion()).thenReturn(version);
 
     assertThat(underTest.getNodeJsPath()).isEqualTo(temp.getFileName());
     assertThat(underTest.getNodeJsVersion()).isEqualTo(version);

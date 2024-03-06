@@ -33,14 +33,13 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.EffectiveRuleParamDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.rules.RuleParamDefinitionDto;
-import org.sonarsource.sonarlint.core.clientapi.client.binding.AssistBindingParams;
-import org.sonarsource.sonarlint.core.clientapi.client.binding.SuggestBindingParams;
-import org.sonarsource.sonarlint.core.clientapi.client.fs.FindFileByNamesInScopeResponse;
-import org.sonarsource.sonarlint.core.clientapi.client.hotspot.HotspotDetailsDto;
-import org.sonarsource.sonarlint.core.commons.IssueSeverity;
-import org.sonarsource.sonarlint.core.commons.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRuleParamDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleParamDefinitionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 
 public interface SonarLintExtendedLanguageClient extends LanguageClient {
@@ -48,8 +47,8 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/suggestBinding")
   void suggestBinding(SuggestBindingParams binding);
 
-  @JsonRequest("sonarlint/findFileByNamesInFolder")
-  CompletableFuture<FindFileByNamesInScopeResponse> findFileByNamesInFolder(FindFileByNamesInFolder params);
+  @JsonRequest("sonarlint/listFilesInFolder")
+  CompletableFuture<FindFileByNamesInScopeResponse> listFilesInFolder(FolderUriParams params);
 
   @JsonNotification("sonarlint/showSonarLintOutput")
   void showSonarLintOutput();
@@ -105,8 +104,114 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/showRuleDescription")
   void showRuleDescription(ShowRuleDescriptionParams params);
 
+  class ShowHotspotParams {
+    private final String message;
+    private final String ideFilePath;
+    private final String key;
+    private final TextRangeDto textRange;
+    private final String author;
+    private final String status;
+    @Nullable
+    private final String resolution;
+    private final HotspotRule rule;
+
+    public ShowHotspotParams(String key, String message, String ideFilePath, TextRangeDto textRange, String author, String status,
+      @Nullable String resolution, HotspotRule rule) {
+      this.key = key;
+      this.message = message;
+      this.ideFilePath = ideFilePath;
+      this.textRange = textRange;
+      this.author = author;
+      this.status = status;
+      this.resolution = resolution;
+      this.rule = rule;
+    }
+
+    public String getKey() {
+      return this.key;
+    }
+
+    public String getMessage() {
+      return this.message;
+    }
+
+    public String getIdeFilePath() {
+      return this.ideFilePath;
+    }
+
+    public TextRangeDto getTextRange() {
+      return this.textRange;
+    }
+
+    public String getAuthor() {
+      return this.author;
+    }
+
+    public String getStatus() {
+      return this.status;
+    }
+
+    @Nullable
+    public String getResolution() {
+      return this.resolution;
+    }
+
+    public HotspotRule getRule() {
+      return this.rule;
+    }
+
+    public static class HotspotRule {
+      private final String key;
+      private final String name;
+      private final String securityCategory;
+      private final String vulnerabilityProbability;
+      private final String riskDescription;
+      private final String vulnerabilityDescription;
+      private final String fixRecommendations;
+
+      public HotspotRule(String key, String name, String securityCategory, String vulnerabilityProbability, String riskDescription,
+        String vulnerabilityDescription, String fixRecommendations) {
+        this.key = key;
+        this.name = name;
+        this.securityCategory = securityCategory;
+        this.vulnerabilityProbability = vulnerabilityProbability;
+        this.riskDescription = riskDescription;
+        this.vulnerabilityDescription = vulnerabilityDescription;
+        this.fixRecommendations = fixRecommendations;
+      }
+
+      public String getKey() {
+        return this.key;
+      }
+
+      public String getName() {
+        return this.name;
+      }
+
+      public String getSecurityCategory() {
+        return this.securityCategory;
+      }
+
+      public String getVulnerabilityProbability() {
+        return this.vulnerabilityProbability;
+      }
+
+      public String getRiskDescription() {
+        return this.riskDescription;
+      }
+
+      public String getVulnerabilityDescription() {
+        return this.vulnerabilityDescription;
+      }
+
+      public String getFixRecommendations() {
+        return this.fixRecommendations;
+      }
+    }
+  }
+
   @JsonNotification("sonarlint/showHotspot")
-  void showHotspot(HotspotDetailsDto hotspot);
+  void showHotspot(ShowHotspotParams showHotspotParams);
 
   @JsonNotification("sonarlint/showIssue")
   void showIssue(ShowAllLocationsCommand.Param showIssueParams);
@@ -448,38 +553,40 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
   }
 
-  class FindFileByNamesInFolder {
-    @Expose
-    private final String folderUri;
-    @Expose
-    private final String[] filenames;
+  class FindFileByNamesInScopeResponse {
+    private final List<FoundFileDto> foundFiles;
 
-    public FindFileByNamesInFolder(String folderUri, List<String> filenames) {
-      this.folderUri = folderUri;
-      this.filenames = filenames.toArray(new String[0]);
+    public FindFileByNamesInScopeResponse(List<FoundFileDto> foundFiles) {
+      this.foundFiles = foundFiles;
     }
 
-    public String getFolderUri() {
-      return folderUri;
+    public List<FoundFileDto> getFoundFiles() {
+      return foundFiles;
+    }
+  }
+
+  class FoundFileDto {
+    private final String fileName;
+    private final String filePath;
+    private final String content;
+
+    public FoundFileDto(String fileName, String filePath, @Nullable String content) {
+      this.fileName = fileName;
+      this.filePath = filePath;
+      this.content = content;
     }
 
-    public String[] getFilenames() {
-      return filenames;
+    public String getFileName() {
+      return fileName;
     }
 
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      FindFileByNamesInFolder that = (FindFileByNamesInFolder) o;
-      return Objects.equals(folderUri, that.folderUri) && Arrays.equals(filenames, that.filenames);
+    public String getFilePath() {
+      return filePath;
     }
 
-    @Override
-    public int hashCode() {
-      int result = Objects.hash(folderUri);
-      result = 31 * result + Arrays.hashCode(filenames);
-      return result;
+    @CheckForNull
+    public String getContent() {
+      return content;
     }
   }
 
@@ -616,9 +723,6 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
   @JsonNotification("sonarlint/browseTo")
   void browseTo(String link);
-
-  @JsonRequest("sonarlint/getBranchNameForFolder")
-  CompletableFuture<String> getBranchNameForFolder(String folderUri);
 
   class ReferenceBranchForFolder {
     private final String folderUri;
@@ -819,6 +923,31 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
     public boolean isSupported() {
       return isSupported;
+    }
+  }
+
+  class FolderUriParams {
+    String folderUri;
+
+    public FolderUriParams(String folderUri) {
+      this.folderUri = folderUri;
+    }
+
+    public String getFolderUri() {
+      return folderUri;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      FolderUriParams that = (FolderUriParams) o;
+      return Objects.equals(folderUri, that.folderUri);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(folderUri);
     }
   }
 

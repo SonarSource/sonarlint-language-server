@@ -65,7 +65,8 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
-      "productVersion", "0.1"));
+      "productVersion", "0.1",
+      "productKey", "productKey"));
   }
 
   @Override

@@ -20,7 +20,7 @@
 package org.sonarsource.sonarlint.ls.connected.api;
 
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.clientapi.client.info.GetClientInfoResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.info.GetClientLiveInfoResponse;
 
 public class HostInfoProvider {
   private String clientVersion;
@@ -31,8 +31,8 @@ public class HostInfoProvider {
     this.workspaceName = workspaceName == null ? "(no open folder)" : workspaceName;
   }
 
-  public GetClientInfoResponse getHostInfo() {
-    return new GetClientInfoResponse(this.clientVersion + " - " + this.workspaceName);
+  public GetClientLiveInfoResponse getHostInfo() {
+    return new GetClientLiveInfoResponse(this.clientVersion + " - " + this.workspaceName);
   }
 
 }

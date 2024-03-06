@@ -32,24 +32,25 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.analysis.api.AnalysisResults;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
-import org.sonarsource.sonarlint.core.client.api.common.AbstractAnalysisConfiguration.AbstractBuilder;
-import org.sonarsource.sonarlint.core.client.api.common.PluginDetails;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.IssueListener;
-import org.sonarsource.sonarlint.core.client.api.connected.ConnectedAnalysisConfiguration;
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneAnalysisConfiguration;
-import org.sonarsource.sonarlint.core.commons.RuleType;
-import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
-import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.AnalysisConfiguration;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.PluginDetails;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssueListener;
+import org.sonarsource.sonarlint.core.commons.api.progress.CanceledException;
+import org.sonarsource.sonarlint.core.commons.api.progress.ClientProgressMonitor;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
+import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
@@ -67,6 +68,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.util.FileUtils;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
 import static java.util.Optional.ofNullable;
@@ -74,7 +76,6 @@ import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.partitioningBy;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 import static org.sonarsource.sonarlint.ls.util.Utils.pluralize;
@@ -100,12 +101,14 @@ public class AnalysisTaskExecutor {
   private final OpenNotebooksCache openNotebooksCache;
   private final NotebookDiagnosticPublisher notebookDiagnosticPublisher;
   private final ProgressManager progressManager;
+  private final BackendServiceFacade backendServiceFacade;
 
   public AnalysisTaskExecutor(ScmIgnoredCache filesIgnoredByScmCache, LanguageClientLogger clientLogger, LanguageClientLogOutput logOutput,
     WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, JavaConfigCache javaConfigCache, SettingsManager settingsManager,
     FileTypeClassifier fileTypeClassifier, IssuesCache issuesCache, IssuesCache securityHotspotsCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
     SonarLintTelemetry telemetry, SkippedPluginsNotifier skippedPluginsNotifier, StandaloneEngineManager standaloneEngineManager, DiagnosticPublisher diagnosticPublisher,
-    SonarLintExtendedLanguageClient lsClient, OpenNotebooksCache openNotebooksCache, NotebookDiagnosticPublisher notebookDiagnosticPublisher, ProgressManager progressManager) {
+    SonarLintExtendedLanguageClient lsClient, OpenNotebooksCache openNotebooksCache, NotebookDiagnosticPublisher notebookDiagnosticPublisher,
+    ProgressManager progressManager, BackendServiceFacade backendServiceFacade) {
     this.filesIgnoredByScmCache = filesIgnoredByScmCache;
     this.clientLogger = clientLogger;
     this.logOutput = logOutput;
@@ -125,6 +128,7 @@ public class AnalysisTaskExecutor {
     this.openNotebooksCache = openNotebooksCache;
     this.notebookDiagnosticPublisher = notebookDiagnosticPublisher;
     this.progressManager = progressManager;
+    this.backendServiceFacade = backendServiceFacade;
   }
 
   public void run(AnalysisTask task) {
@@ -200,7 +204,7 @@ public class AnalysisTaskExecutor {
     }
   }
 
-  private void analyze(AnalysisTask task, Optional<WorkspaceFolderWrapper> workspaceFolder, Optional<ProjectBindingWrapper> binding, Map<URI, VersionedOpenFile> filesToAnalyze) {
+  private void analyze(AnalysisTask task, Optional<WorkspaceFolderWrapper> workspaceFolder, Optional<ProjectBinding> binding, Map<URI, VersionedOpenFile> filesToAnalyze) {
     Map<Boolean, Map<URI, VersionedOpenFile>> splitJavaAndNonJavaFiles = filesToAnalyze.entrySet().stream().collect(partitioningBy(
       entry -> entry.getValue().isJava(),
       toMap(Entry::getKey, Entry::getValue)));
@@ -279,35 +283,35 @@ public class AnalysisTaskExecutor {
   /**
    * Here we have only files from the same folder, same binding, same Java module, so we can run the analysis engine.
    */
-  private void analyzeSingleModule(AnalysisTask task, Optional<WorkspaceFolderWrapper> workspaceFolder, WorkspaceFolderSettings settings, Optional<ProjectBindingWrapper> binding,
+  private void analyzeSingleModule(AnalysisTask task, Optional<WorkspaceFolderWrapper> workspaceFolder, WorkspaceFolderSettings settings, Optional<ProjectBinding> binding,
     Map<URI, VersionedOpenFile> filesToAnalyze,
     Map<URI, GetJavaConfigResponse> javaConfigs) {
 
-    var baseDirUri = workspaceFolder.map(WorkspaceFolderWrapper::getUri)
+    var folderUri = workspaceFolder.map(WorkspaceFolderWrapper::getUri)
       // if files are not part of any workspace folder, take the common ancestor of all files (assume all files will have the same root)
-      .orElse(findCommonPrefix(filesToAnalyze.keySet().stream().map(Paths::get).collect(toList())).toUri());
+      .orElse(findCommonPrefix(filesToAnalyze.keySet().stream().map(Paths::get).toList()).toUri());
 
     var nonExcludedFiles = new HashMap<>(filesToAnalyze);
-    if (binding.isPresent()) {
-      var connectedEngine = binding.get().getEngine();
-      var excludedByServerConfiguration = connectedEngine.getExcludedFiles(binding.get().getBinding(),
-        filesToAnalyze.keySet(),
-        uri -> FileUtils.getFileRelativePath(Paths.get(baseDirUri), uri, logOutput),
-        uri -> fileTypeClassifier.isTest(settings, uri, filesToAnalyze.get(uri).isJava(), () -> javaConfigCache.getOrFetch(uri)));
-      excludedByServerConfiguration.forEach(f -> {
-        clientLogger.debug(format("Skip analysis of file \"%s\" excluded by server configuration", f));
-        nonExcludedFiles.remove(f);
-        clearIssueCacheAndPublishEmptyDiagnostics(f);
-      });
-    }
+    binding.ifPresent(projectBinding -> {
+      var fileUrisByFolderUri = Map.of(folderUri.toString(), filesToAnalyze.keySet().stream().toList());
+      var excludedByServerConfiguration = backendServiceFacade.getBackendService().getFilesStatus(fileUrisByFolderUri);
+      var getFilesStatusResponse = Utils.safelyGetCompletableFuture(excludedByServerConfiguration, logOutput);
+      getFilesStatusResponse.ifPresent(filesStatusResponse -> filesStatusResponse.getFileStatuses().forEach((fileUri, fileStatus) -> {
+        if (fileStatus.isExcluded()) {
+          clientLogger.debug(format("Skip analysis of file \"%s\" excluded by server configuration", fileUri));
+          nonExcludedFiles.remove(fileUri);
+          clearIssueCacheAndPublishEmptyDiagnostics(fileUri);
+        }
+      }));
+    });
 
     if (!nonExcludedFiles.isEmpty()) {
       if (task.shouldShowProgress()) {
         progressManager.doWithProgress(String.format("SonarLint scanning %d files for hotspots", task.getFilesToAnalyze().size()), null, () -> {
           },
-          progressFacade -> analyzeSingleModuleNonExcluded(task, settings, binding, nonExcludedFiles, baseDirUri, javaConfigs, progressFacade));
+          progressFacade -> analyzeSingleModuleNonExcluded(task, settings, binding, nonExcludedFiles, folderUri, javaConfigs, progressFacade));
       } else {
-        analyzeSingleModuleNonExcluded(task, settings, binding, nonExcludedFiles, baseDirUri, javaConfigs, null);
+        analyzeSingleModuleNonExcluded(task, settings, binding, nonExcludedFiles, folderUri, javaConfigs, null);
       }
     }
 
@@ -325,8 +329,8 @@ public class AnalysisTaskExecutor {
     return paths.stream().allMatch(p -> p.startsWith(prefixCandidate));
   }
 
-  private void analyzeSingleModuleNonExcluded(AnalysisTask task, WorkspaceFolderSettings settings, Optional<ProjectBindingWrapper> binding,
-    Map<URI, VersionedOpenFile> filesToAnalyze, URI baseDirUri, Map<URI, GetJavaConfigResponse> javaConfigs, @Nullable ProgressFacade progressFacade) {
+  private void analyzeSingleModuleNonExcluded(AnalysisTask task, WorkspaceFolderSettings settings, Optional<ProjectBinding> binding,
+    Map<URI, VersionedOpenFile> filesToAnalyze, URI folderUri, Map<URI, GetJavaConfigResponse> javaConfigs, @Nullable ProgressFacade progressFacade) {
     checkCanceled(task, progressFacade);
     if (filesToAnalyze.size() == 1) {
       clientLogger.info(format("Analyzing file \"%s\"...", filesToAnalyze.keySet().iterator().next()));
@@ -352,8 +356,8 @@ public class AnalysisTaskExecutor {
     AnalysisResultsWrapper analysisResults;
     var filesSuccessfullyAnalyzed = new HashSet<>(filesToAnalyze.keySet());
     analysisResults = binding
-      .map(projectBindingWrapper -> analyzeConnected(task, projectBindingWrapper, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener, progressFacade))
-      .orElseGet(() -> analyzeStandalone(task, settings, baseDirUri, filesToAnalyze, javaConfigs, issueListener));
+      .map(projectBindingWrapper -> analyzeConnected(task, projectBindingWrapper, settings, folderUri, filesToAnalyze, javaConfigs, issueListener, progressFacade))
+      .orElseGet(() -> analyzeStandalone(task, settings, folderUri, filesToAnalyze, javaConfigs));
     checkCanceled(task, progressFacade);
     skippedPluginsNotifier.notifyOnceForSkippedPlugins(analysisResults.results, analysisResults.allPlugins);
 
@@ -386,6 +390,8 @@ public class AnalysisTaskExecutor {
         totalHotspotCount.addAndGet(securityHotspotsCache.count(f));
         diagnosticPublisher.publishDiagnostics(f, task.shouldKeepHotspotsOnly());
         notebookDiagnosticPublisher.cleanupDiagnosticsForCellsWithoutIssues(f);
+        openNotebooksCache.getFile(f).ifPresent(notebook -> notebookDiagnosticPublisher.publishNotebookDiagnostics(f, notebook));
+
       });
       telemetry.addReportedRules(ruleKeys);
       if (!task.shouldKeepHotspotsOnly()) {
@@ -405,27 +411,30 @@ public class AnalysisTaskExecutor {
     }
   }
 
-  private IssueListener createIssueListener(Map<URI, VersionedOpenFile> filesToAnalyze, Set<String> ruleKeys, AnalysisTask task) {
+  private Consumer<DelegatingIssue> createIssueListener(Map<URI, VersionedOpenFile> filesToAnalyze, Set<String> ruleKeys, AnalysisTask task) {
     return issue -> {
       var inputFile = issue.getInputFile();
       // FIXME SLVSCODE-255 support project level issues
       if (inputFile != null) {
         URI uri = inputFile.getClientObject();
-        var versionedOpenNotebook = openNotebooksCache.getFile(uri);
-        if (versionedOpenNotebook.isPresent()) {
-          issuesCache.reportIssue(versionedOpenNotebook.get().asVersionedOpenFile(), issue);
-          notebookDiagnosticPublisher.publishNotebookDiagnostics(uri, versionedOpenNotebook.get());
-        } else {
-          var versionedOpenFile = filesToAnalyze.get(uri);
-          if (issue.getType() == RuleType.SECURITY_HOTSPOT) {
-            securityHotspotsCache.reportIssue(versionedOpenFile, issue);
-          } else if (!task.shouldKeepHotspotsOnly()) {
-            issuesCache.reportIssue(versionedOpenFile, issue);
-          }
-        }
+        handleIssue(filesToAnalyze, task, issue, uri);
         ruleKeys.add(issue.getRuleKey());
       }
     };
+  }
+
+  private void handleIssue(Map<URI, VersionedOpenFile> filesToAnalyze, AnalysisTask task, DelegatingIssue issue, URI uri) {
+    var versionedOpenNotebook = openNotebooksCache.getFile(uri);
+    if (versionedOpenNotebook.isPresent()) {
+      issuesCache.reportIssue(versionedOpenNotebook.get().asVersionedOpenFile(), issue);
+    } else {
+      var versionedOpenFile = filesToAnalyze.get(uri);
+      if (issue.getType() == org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType.SECURITY_HOTSPOT) {
+        securityHotspotsCache.reportIssue(versionedOpenFile, issue);
+      } else if (!task.shouldKeepHotspotsOnly()) {
+        issuesCache.reportIssue(versionedOpenFile, issue);
+      }
+    }
   }
 
   private static final class TaskProgressMonitor implements ClientProgressMonitor {
@@ -468,33 +477,36 @@ public class AnalysisTaskExecutor {
     }
   }
 
-  private AnalysisResultsWrapper analyzeStandalone(AnalysisTask task, WorkspaceFolderSettings settings, URI baseDirUri, Map<URI, VersionedOpenFile> filesToAnalyze,
-    Map<URI, GetJavaConfigResponse> javaConfigs, IssueListener issueListener) {
-    var baseDir = Paths.get(baseDirUri);
+  private AnalysisResultsWrapper analyzeStandalone(AnalysisTask task, WorkspaceFolderSettings settings, URI folderUri, Map<URI, VersionedOpenFile> filesToAnalyze,
+    Map<URI, GetJavaConfigResponse> javaConfigs) {
+    var baseDir = Paths.get(folderUri);
 
-    var configuration = buildCommonAnalysisConfiguration(settings, baseDirUri, filesToAnalyze, javaConfigs, baseDir, StandaloneAnalysisConfiguration.builder())
-      .addExcludedRules(settingsManager.getCurrentSettings().getExcludedRules())
-      .addIncludedRules(settingsManager.getCurrentSettings().getIncludedRules())
-      .addRuleParameters(settingsManager.getCurrentSettings().getRuleParameters())
-      .build();
+    var configuration = buildCommonAnalysisConfiguration(settings, folderUri, filesToAnalyze, javaConfigs, baseDir);
 
     clientLogger.debug(format("Analysis triggered with configuration:%n%s", configuration.toString()));
 
-    var engine = standaloneEngineManager.getOrCreateStandaloneEngine();
-    return analyzeWithTiming(() -> engine.analyze(configuration, issueListener, new LanguageClientLogOutput(clientLogger, true), new TaskProgressMonitor(task)),
-      engine.getPluginDetails(),
-      () -> {
+    RawIssueListener listener = rawIssue -> {
+      var inputFile = rawIssue.getInputFile();
+      // FIXME SLVSCODE-255 support project level issues
+      if (inputFile != null) {
+        URI uri = inputFile.getClientObject();
+        var delegatingIssue = new DelegatingIssue(rawIssue, UUID.randomUUID(), false, true);
+        handleIssue(filesToAnalyze, task, delegatingIssue, uri);
+      }
+    };
+
+    var engine = standaloneEngineManager.getOrCreateAnalysisEngine();
+    return analyzeWithTiming(() -> engine.analyze(configuration, listener, new LanguageClientLogOutput(clientLogger, true), new TaskProgressMonitor(task), folderUri.toString()),
+      engine.getPluginDetails(), () -> {
       });
   }
 
-  private AnalysisResultsWrapper analyzeConnected(AnalysisTask task, ProjectBindingWrapper binding, WorkspaceFolderSettings settings, URI baseDirUri,
+  private AnalysisResultsWrapper analyzeConnected(AnalysisTask task, ProjectBinding binding, WorkspaceFolderSettings settings, URI folderUri,
     Map<URI, VersionedOpenFile> filesToAnalyze,
-    Map<URI, GetJavaConfigResponse> javaConfigs, IssueListener issueListener, @Nullable ProgressFacade progressFacade) {
-    var baseDir = Paths.get(baseDirUri);
+    Map<URI, GetJavaConfigResponse> javaConfigs, Consumer<DelegatingIssue> issueListener, @Nullable ProgressFacade progressFacade) {
+    var baseDir = Paths.get(folderUri);
 
-    var configuration = buildCommonAnalysisConfiguration(settings, baseDirUri, filesToAnalyze, javaConfigs, baseDir, ConnectedAnalysisConfiguration.builder())
-      .setProjectKey(settings.getProjectKey())
-      .build();
+    var configuration = buildCommonAnalysisConfiguration(settings, folderUri, filesToAnalyze, javaConfigs, baseDir);
 
     if (settingsManager.getCurrentSettings().hasLocalRuleConfiguration()) {
       clientLogger.debug("Local rules settings are ignored, using quality profile from server");
@@ -503,41 +515,43 @@ public class AnalysisTaskExecutor {
 
     var engine = binding.getEngine();
     var serverIssueTracker = binding.getServerIssueTracker();
-    var issuesPerFiles = new HashMap<URI, List<Issue>>();
-    IssueListener accumulatorIssueListener = i -> {
+    var issuesPerFiles = new HashMap<URI, List<RawIssue>>();
+    RawIssueListener accumulatorIssueListener = i -> {
       var inputFile = i.getInputFile();
       // FIXME SLVSCODE-255 support project level issues
       if (inputFile != null) {
         issuesPerFiles.computeIfAbsent(inputFile.getClientObject(), uri -> new ArrayList<>()).add(i);
       }
     };
+
     var progressMonitor = progressFacade == null ? new TaskProgressMonitor(task) : progressFacade.asCoreMonitor();
-    return analyzeWithTiming(() -> engine.analyze(configuration, accumulatorIssueListener, new LanguageClientLogOutput(clientLogger, true), progressMonitor),
+    return analyzeWithTiming(() -> engine.analyze(configuration, accumulatorIssueListener, new LanguageClientLogOutput(clientLogger, true) , progressMonitor, folderUri.toString()),
       engine.getPluginDetails(),
       () -> filesToAnalyze.forEach((fileUri, openFile) -> {
         var issues = issuesPerFiles.getOrDefault(fileUri, List.of());
-        var filePath = FileUtils.toSonarQubePath(binding.toServerRelativePath(FileUtils.getFileRelativePath(baseDir, fileUri, logOutput)));
-        serverIssueTracker.matchAndTrack(filePath, issues, issueListener, task.shouldFetchServerIssues());
+        serverIssueTracker.matchAndTrack(FileUtils.getFileRelativePath(baseDir, fileUri, logOutput), issues, issueListener, task.shouldFetchServerIssues());
       }));
   }
 
-  private <G extends AbstractBuilder<G>> G buildCommonAnalysisConfiguration(WorkspaceFolderSettings settings, URI baseDirUri, Map<URI, VersionedOpenFile> filesToAnalyze,
-    Map<URI, GetJavaConfigResponse> javaConfigs, Path baseDir,
-    G configurationBuilder) {
-    configurationBuilder.setBaseDir(baseDir)
-      .setModuleKey(baseDirUri)
+  private AnalysisConfiguration buildCommonAnalysisConfiguration(WorkspaceFolderSettings settings, URI folderUri,
+    Map<URI, VersionedOpenFile> filesToAnalyze, Map<URI, GetJavaConfigResponse> javaConfigs, Path baseDir) {
+    var configBuilder = AnalysisConfiguration.builder()
       .putAllExtraProperties(settings.getAnalyzerProperties())
-      .putAllExtraProperties(javaConfigCache.configureJavaProperties(filesToAnalyze.keySet(), javaConfigs));
-    var pathToCompileCommands = settings.getPathToCompileCommands();
-    if (pathToCompileCommands != null) {
-      configurationBuilder.putExtraProperty("sonar.cfamily.compile-commands", pathToCompileCommands);
-    }
-    filesToAnalyze.forEach((uri, openFile) -> configurationBuilder
+      .putAllExtraProperties(javaConfigCache.configureJavaProperties(filesToAnalyze.keySet(), javaConfigs))
+      .setBaseDir(baseDir)
+      .setModuleKey(folderUri);
+
+    filesToAnalyze.forEach((uri, openFile) -> configBuilder
       .addInputFiles(
         new AnalysisClientInputFile(uri, FileUtils.getFileRelativePath(baseDir, uri, logOutput), openFile.getContent(),
           fileTypeClassifier.isTest(settings, uri, openFile.isJava(), () -> ofNullable(javaConfigs.get(uri))),
           openFile.getLanguageId())));
-    return configurationBuilder;
+
+    var pathToCompileCommands = settings.getPathToCompileCommands();
+    if (pathToCompileCommands != null) {
+      configBuilder.putExtraProperty("sonar.cfamily.compile-commands", pathToCompileCommands);
+    }
+    return configBuilder.build();
   }
 
   /**

@@ -26,7 +26,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -41,7 +42,8 @@ class LocalCodeFileTests {
 
   @Test
   void shouldNotFindNullRange() {
-    assertThat(underTest.codeAt(null)).isNull();
+    assertThat(underTest.codeAt(((TextRangeDto) null))).isNull();
+    assertThat(underTest.codeAt(((TextRangeWithHashDto) null))).isNull();
   }
 
   @ParameterizedTest(name = "codeAt(range({0}, {1}, {2}, {3})) should be `{4}`")
@@ -75,7 +77,7 @@ class LocalCodeFileTests {
     );
   }
 
-  private static TextRange range(int startLine, int startLineOffset, int endLine, int endLineOffset) {
-    return new TextRange(startLine, startLineOffset, endLine, endLineOffset);
+  private static TextRangeDto range(int startLine, int startLineOffset, int endLine, int endLineOffset) {
+    return new TextRangeDto(startLine, startLineOffset, endLine, endLineOffset);
   }
 }

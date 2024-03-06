@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -39,7 +40,7 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingWrapper;
+import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
@@ -47,6 +48,7 @@ import static java.net.URI.create;
 
 public class WorkspaceFoldersManager {
   private final Map<URI, WorkspaceFolderWrapper> folders = new ConcurrentHashMap<>();
+  private final Map<String, Boolean> analysisReadiness = new ConcurrentHashMap<>();
   private final List<WorkspaceFolderLifecycleListener> listeners = new ArrayList<>();
   private ProjectBindingManager bindingManager;
   private final BackendServiceFacade backendServiceFacade;
@@ -73,6 +75,7 @@ public class WorkspaceFoldersManager {
         var uri = create(wf.getUri());
         addFolder(wf, uri);
       });
+      executor.submit(() -> backendServiceFacade.getBackendService().addWorkspaceFolders(workspaceFolders, getBindingProvider()));
     }
   }
 
@@ -119,14 +122,10 @@ public class WorkspaceFoldersManager {
     } else {
       logOutput.debug("Folder %s added", addedWrapper);
     }
-    executor.submit(() -> {
-      var optionalProjectBindingWrapper = getBindingProvider().apply(added);
-      backendServiceFacade.getBackendService().addWorkspaceFolder(added, optionalProjectBindingWrapper);
-    });
     return addedWrapper;
   }
 
-  private Function<WorkspaceFolder, Optional<ProjectBindingWrapper>> getBindingProvider() {
+  private Function<WorkspaceFolder, Optional<ProjectBinding>> getBindingProvider() {
     return folder -> bindingManager.getBinding(create(folder.getUri()));
   }
 
@@ -187,4 +186,13 @@ public class WorkspaceFoldersManager {
   public void shutdown() {
     Utils.shutdownAndAwait(executor, true);
   }
+
+  public void updateAnalysisReadiness(Set<String> configurationScopeIds, boolean areReadyForAnalysis) {
+    configurationScopeIds.forEach(folderUri -> analysisReadiness.put(folderUri, areReadyForAnalysis));
+  }
+
+  public boolean isReadyForAnalysis(String folderUri) {
+    return analysisReadiness.getOrDefault(folderUri, false);
+  }
+
 }

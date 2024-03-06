@@ -20,7 +20,7 @@
 package org.sonarsource.sonarlint.ls.util;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import java.net.URI;
 import java.util.Arrays;
@@ -37,25 +37,17 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.lsp4j.Diagnostic;
-import org.eclipse.lsp4j.Position;
-import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.jetbrains.annotations.NotNull;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.common.TransientSonarCloudConnectionDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.common.TransientSonarQubeConnectionDto;
-import org.sonarsource.sonarlint.core.clientapi.backend.connection.validate.ValidateConnectionParams;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
-import org.sonarsource.sonarlint.core.clientapi.common.TokenDto;
-import org.sonarsource.sonarlint.core.clientapi.common.UsernamePasswordDto;
-import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
-import org.sonarsource.sonarlint.core.commons.TextRangeWithHash;
-import org.sonarsource.sonarlint.core.serverapi.push.TaintVulnerabilityRaisedEvent;
-import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.common.TransientSonarCloudConnectionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.common.TransientSonarQubeConnectionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TokenDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.UsernamePasswordDto;
 import org.sonarsource.sonarlint.ls.IssuesCache;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
@@ -77,7 +69,7 @@ public class Utils {
   @CheckForNull
   public static Map<String, Object> parseToMap(Object obj) {
     try {
-      return new Gson().fromJson((JsonElement) obj, Map.class);
+      return new Gson().fromJson((JsonObject) obj, Map.class);
     } catch (JsonSyntaxException e) {
       throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Expected a JSON map but was: " + obj, e));
     }
@@ -118,45 +110,6 @@ public class Utils {
     return nbItems == 1 ? singular : plural;
   }
 
-  public static Range convert(Issue issue) {
-    if (issue.getStartLine() == null) {
-      return new Range(new Position(0, 0), new Position(0, 0));
-    }
-    return new Range(
-      new Position(
-        issue.getStartLine() - 1,
-        issue.getStartLineOffset()),
-      new Position(
-        issue.getEndLine() - 1,
-        issue.getEndLineOffset()));
-  }
-
-
-  public static Range convert(ServerTaintIssue issue) {
-    return convert(issue.getTextRange());
-  }
-
-  public static Range convert(ServerTaintIssue.ServerIssueLocation issue) {
-    return convert(issue.getTextRange());
-  }
-
-  public static Range convert(@Nullable TextRangeWithHash textRange) {
-    if (textRange == null) {
-      return new Range(new Position(0, 0), new Position(0, 0));
-    }
-    return new Range(
-      new Position(
-        textRange.getStartLine() - 1,
-        textRange.getStartLineOffset()),
-      new Position(
-        textRange.getEndLine() - 1,
-        textRange.getEndLineOffset()));
-  }
-
-  public static boolean locationMatches(ServerTaintIssue i, Diagnostic d) {
-    return convert(i).equals(d.getRange());
-  }
-
   public static String buildMessageWithPluralizedSuffix(@Nullable String issueMessage, long nbItems, String itemName) {
     return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issueMessage, nbItems, pluralize(nbItems, itemName));
   }
@@ -170,13 +123,6 @@ public class Utils {
     return DigestUtils.md5Hex(codeSnippetWithoutWhitespaces);
   }
 
-  public static TextRangeWithHash textRangeWithHashFromTextRange(TaintVulnerabilityRaisedEvent.Location.TextRange textRange) {
-    return new TextRangeWithHash(textRange.getStartLine(),
-      textRange.getStartLineOffset(),
-      textRange.getEndLine(),
-      textRange.getEndLineOffset(),
-      textRange.getHash());
-  }
 
   @NotNull
   public static ValidateConnectionParams getValidateConnectionParamsForNewConnection(SonarLintExtendedLanguageServer.ConnectionCheckParams params) {
@@ -193,16 +139,8 @@ public class Utils {
   }
 
   public static HotspotStatus hotspotStatusOfTitle(String title) {
-    return Arrays.stream(HotspotStatus.values()).filter(hotspotStatus -> hotspotStatus.getTitle().equals(title)).findFirst()
+    return Arrays.stream(HotspotStatus.values()).filter(hotspotStatus -> hotspotStatus.name().equals(title)).findFirst()
       .orElseThrow(() -> new IllegalArgumentException("There is no such hotspot status: " + title));
-  }
-
-  public static HotspotStatus hotspotStatusValueOfHotspotReviewStatus(HotspotReviewStatus reviewStatus) {
-    return HotspotStatus.valueOf(reviewStatus.name());
-  }
-
-  public static HotspotReviewStatus hotspotReviewStatusValueOfHotspotStatus(HotspotStatus status) {
-    return HotspotReviewStatus.valueOf(status.name());
   }
 
   public static String formatSha256Fingerprint(String decodedFingerprint) {

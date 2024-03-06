@@ -19,22 +19,22 @@
  */
 package org.sonarsource.sonarlint.ls.standalone;
 
-import org.sonarsource.sonarlint.core.client.api.standalone.StandaloneSonarLintEngine;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 
 public class StandaloneEngineManager {
 
   private final EnginesFactory enginesFactory;
 
-  private StandaloneSonarLintEngine standaloneEngine;
+  private SonarLintAnalysisEngine standaloneEngine;
 
   public StandaloneEngineManager(EnginesFactory enginesFactory) {
     this.enginesFactory = enginesFactory;
   }
 
-  public synchronized StandaloneSonarLintEngine getOrCreateStandaloneEngine() {
+  public synchronized SonarLintAnalysisEngine getOrCreateAnalysisEngine() {
     if (standaloneEngine == null) {
-      standaloneEngine = enginesFactory.createStandaloneEngine();
+      standaloneEngine = enginesFactory.createEngine(null);
     }
     return standaloneEngine;
   }

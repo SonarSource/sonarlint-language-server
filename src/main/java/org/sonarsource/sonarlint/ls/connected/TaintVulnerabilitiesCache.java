@@ -29,11 +29,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
-import org.sonarsource.sonarlint.ls.connected.domain.TaintIssue;
-import org.sonarsource.sonarlint.ls.util.Utils;
+import org.sonarsource.sonarlint.ls.domain.TaintIssue;
+import org.sonarsource.sonarlint.ls.util.TextRangeUtils;
 
 import static java.util.Collections.emptyList;
+import static org.sonarsource.sonarlint.ls.util.TextRangeUtils.locationMatches;
 import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralizedSuffix;
 
 public class TaintVulnerabilitiesCache {
@@ -55,18 +57,18 @@ public class TaintVulnerabilitiesCache {
       .findFirst();
   }
 
-  private static boolean hasSameKey(Diagnostic d, TaintIssue i) {
-    return d.getData() != null && d.getData().equals(i.getKey());
+  private static boolean hasSameKey(Diagnostic d, TaintVulnerabilityDto i) {
+    return d.getData() != null && d.getData().equals(i.getId().toString());
   }
 
-  private static boolean hasSameRuleKeyAndLocation(Diagnostic d, TaintIssue i) {
-    return i.getRuleKey().equals(d.getCode().getLeft()) && Utils.locationMatches(i, d);
+  private static boolean hasSameRuleKeyAndLocation(Diagnostic d, TaintVulnerabilityDto i) {
+    return i.getRuleKey().equals(d.getCode().getLeft()) && locationMatches(i, d);
   }
 
   public Optional<TaintIssue> getTaintVulnerabilityByKey(String issueId) {
     return taintVulnerabilitiesPerFile.values().stream()
       .flatMap(List::stream)
-      .filter(i -> issueId.equals(i.getKey()))
+      .filter(i -> issueId.equals(i.getSonarServerKey()))
       .findFirst();
   }
 
@@ -78,27 +80,28 @@ public class TaintVulnerabilitiesCache {
 
   static Optional<Diagnostic> convert(TaintIssue issue, boolean focusOnNewCode) {
     if (issue.getTextRange() != null) {
-      var range = Utils.convert(issue);
+      var range = TextRangeUtils.convert(issue.getTextRange());
       var diagnostic = new Diagnostic();
-      var severity = focusOnNewCode && !issue.isOnNewCode() ? DiagnosticSeverity.Hint : DiagnosticSeverity.Warning;
+      boolean onNewCode = issue.isOnNewCode();
+      var severity = (focusOnNewCode && !onNewCode) ? DiagnosticSeverity.Hint : DiagnosticSeverity.Warning;
 
       diagnostic.setSeverity(severity);
       diagnostic.setRange(range);
       diagnostic.setCode(issue.getRuleKey());
       diagnostic.setMessage(message(issue));
       diagnostic.setSource(issue.getSource());
-      diagnostic.setData(issue.getKey());
+      diagnostic.setData(issue.getId().toString());
 
       return Optional.of(diagnostic);
     }
     return Optional.empty();
   }
 
-  static String message(TaintIssue issue) {
+  static String message(TaintVulnerabilityDto issue) {
     if (issue.getFlows().isEmpty()) {
       return issue.getMessage();
     } else if (issue.getFlows().size() == 1) {
-      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.getFlows().get(0).locations().size(), AnalysisScheduler.ITEM_LOCATION);
+      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.getFlows().get(0).getLocations().size(), AnalysisScheduler.ITEM_LOCATION);
     } else {
       return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.getFlows().size(), AnalysisScheduler.ITEM_FLOW);
     }
@@ -108,16 +111,20 @@ public class TaintVulnerabilitiesCache {
     taintVulnerabilitiesPerFile.put(fileUri, taintIssues);
   }
 
+  public void add(URI fileUri, TaintIssue taintIssue) {
+    taintVulnerabilitiesPerFile.get(fileUri).add(taintIssue);
+  }
+
   public void removeTaintIssue(String fileUriStr, String key) {
     var fileUri = URI.create(fileUriStr);
     var issues = taintVulnerabilitiesPerFile.get(fileUri);
     if (issues != null) {
-      var issueToRemove = issues.stream().filter(taintIssue -> taintIssue.getKey().equals(key)).findFirst();
+      var issueToRemove = issues.stream().filter(taintIssue -> taintIssue.getSonarServerKey().equals(key) || taintIssue.getId().toString().equals(key)).findFirst();
       issueToRemove.ifPresent(issues::remove);
     }
   }
 
-  public Set<URI> getAllFilesWithTaintIssues(){
+  public Set<URI> getAllFilesWithTaintIssues() {
     return taintVulnerabilitiesPerFile.keySet();
   }
 

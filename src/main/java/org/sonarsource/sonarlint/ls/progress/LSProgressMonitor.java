@@ -28,8 +28,8 @@ import org.eclipse.lsp4j.WorkDoneProgressReport;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.sonarsource.sonarlint.core.commons.progress.CanceledException;
-import org.sonarsource.sonarlint.core.commons.progress.ClientProgressMonitor;
+import org.sonarsource.sonarlint.core.commons.api.progress.CanceledException;
+import org.sonarsource.sonarlint.core.commons.api.progress.ClientProgressMonitor;
 
 public class LSProgressMonitor implements ClientProgressMonitor, ProgressFacade {
 

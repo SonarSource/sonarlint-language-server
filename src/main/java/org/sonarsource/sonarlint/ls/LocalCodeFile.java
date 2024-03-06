@@ -28,9 +28,11 @@ import java.util.Collections;
 import java.util.List;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.commons.TextRange;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 
 public class LocalCodeFile {
+
 
   private List<String> lines;
 
@@ -38,7 +40,6 @@ public class LocalCodeFile {
     var localFile = new File(uri);
     if (localFile.exists()) {
       try {
-        // TODO Find the right character set to use?
         this.lines = Files.readAllLines(localFile.toPath(), StandardCharsets.UTF_8);
       } catch (IOException ioe) {
         this.lines = Collections.emptyList();
@@ -53,25 +54,37 @@ public class LocalCodeFile {
   }
 
   @CheckForNull
-  public String codeAt(@Nullable TextRange range) {
+  public String codeAt(@Nullable TextRangeWithHashDto range) {
     if (range == null) {
       return null;
     }
-    var lineIndex = range.getStartLine() - 1;
+    return getCodeAt(range.getStartLine() - 1, range.getStartLineOffset(), range.getEndLine(), range.getEndLineOffset());
+  }
+
+  @CheckForNull
+  public String codeAt(@Nullable TextRangeDto range) {
+    if (range == null) {
+      return null;
+    }
+    return getCodeAt(range.getStartLine() - 1, range.getStartLineOffset(), range.getEndLine(), range.getEndLineOffset());
+  }
+
+  @Nullable
+  private String getCodeAt(int lineIndex, int startLineOffset, int endLine, int endLineOffset) {
     if (lines.size() < lineIndex) {
       return null;
     } else {
-      if (lines.get(lineIndex).length() < range.getStartLineOffset()) {
+      if (lines.get(lineIndex).length() < startLineOffset) {
         return null;
       } else {
         var snippet = new StringBuilder();
-        var maxLine = Math.min(lines.size() - 1, range.getEndLine() - 1);
-        var startOffset = range.getStartLineOffset();
+        var maxLine = Math.min(lines.size() - 1, endLine - 1);
+        var startOffset = startLineOffset;
         do {
           var currentLine = lines.get(lineIndex);
           if (lineIndex == maxLine) {
-            var endOffset = Math.min(currentLine.length(), range.getEndLineOffset());
-            snippet.append(currentLine.substring(startOffset, endOffset));
+            var endOffset = Math.min(currentLine.length(), endLineOffset);
+            snippet.append(currentLine, startOffset, endOffset);
           } else {
             snippet.append(currentLine.substring(startOffset)).append('\n');
             startOffset = 0;

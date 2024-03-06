@@ -28,9 +28,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.analysis.api.AnalysisResults;
-import org.sonarsource.sonarlint.core.client.api.common.PluginDetails;
-import org.sonarsource.sonarlint.core.commons.Language;
-import org.sonarsource.sonarlint.core.plugin.commons.SkipReason;
+import org.sonarsource.sonarlint.core.client.legacy.analysis.PluginDetails;
+import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
+import org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,18 +40,17 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.sonarsource.sonarlint.core.plugin.commons.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.JRE;
-import static org.sonarsource.sonarlint.core.plugin.commons.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.NODEJS;
+import static org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.JRE;
+import static org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.NODEJS;
 
 class SkippedPluginsNotifierTests {
-
   private SonarLintExtendedLanguageClient languageClient;
   private SkippedPluginsNotifier underTest;
 
   @BeforeEach
   void initClient() {
     languageClient = mock(SonarLintExtendedLanguageClient.class);
-    underTest = new SkippedPluginsNotifier(languageClient);
+    underTest = new SkippedPluginsNotifier(languageClient, mock(LanguageClientLogOutput.class));
     when(languageClient.canShowMissingRequirementsNotification()).thenReturn(CompletableFuture.completedFuture(true));
   }
 
@@ -72,7 +72,7 @@ class SkippedPluginsNotifierTests {
     when(languageClient.canShowMissingRequirementsNotification()).thenReturn(CompletableFuture.completedFuture(false));
 
     var results = mock(AnalysisResults.class);
-    when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, Language.JAVA));
+    when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, SonarLanguage.JAVA));
 
     underTest.notifyOnceForSkippedPlugins(results, Collections.emptyList());
 
@@ -82,7 +82,7 @@ class SkippedPluginsNotifierTests {
   @Test
   void send_notification_once_for_jre() {
     var results = mock(AnalysisResults.class);
-    when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, Language.JAVA));
+    when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, SonarLanguage.JAVA));
     preparePopupSelection(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
 
     var analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE = new PluginDetails("java", "Java Code Quality and Security", "6.7.8.90123",
@@ -103,7 +103,7 @@ class SkippedPluginsNotifierTests {
   @Test
   void send_notification_for_jre_and_close_notification() {
     var results = mock(AnalysisResults.class);
-    when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, Language.JAVA));
+    when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, SonarLanguage.JAVA));
     preparePopupSelection(null);
 
     var analyzerSkipReasonUnsatisfiedRuntimeRequirementJRE = new PluginDetails("java", "Java Code Quality and Security", "6.7.8.90123",
@@ -122,7 +122,7 @@ class SkippedPluginsNotifierTests {
   @Test
   void send_notification_for_node_when_found() {
     var results = mock(AnalysisResults.class);
-    when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, Language.JS));
+    when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, SonarLanguage.JS));
     preparePopupSelection(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
 
     var analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs = new PluginDetails("javascript", "JS and TS Code Quality and Security", "6.5.4.32109",
@@ -142,7 +142,7 @@ class SkippedPluginsNotifierTests {
   @Test
   void send_notification_for_node_when_not_found() {
     var results = mock(AnalysisResults.class);
-    when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, Language.JS));
+    when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, SonarLanguage.JS));
     preparePopupSelection(null);
 
     var analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs = new PluginDetails("javascript", "JS and TS Code Quality and Security", "6.5.4.32109",
@@ -162,7 +162,7 @@ class SkippedPluginsNotifierTests {
   @Test
   void should_turn_off_notifications_when_user_opts_out() {
     var results = mock(AnalysisResults.class);
-    when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, Language.JS));
+    when(results.languagePerFile()).thenReturn(Collections.singletonMap(null, SonarLanguage.JS));
     preparePopupSelection(SkippedPluginsNotifier.ACTION_DONT_SHOW_AGAIN);
 
     var analyzerSkipReasonUnsatisfiedRuntimeRequirementNodeJs = new PluginDetails("javascript", "JS and TS Code Quality and Security", "6.5.4.32109",

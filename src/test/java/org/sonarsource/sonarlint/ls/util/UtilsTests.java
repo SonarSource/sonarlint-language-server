@@ -22,15 +22,11 @@ package org.sonarsource.sonarlint.ls.util;
 import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import org.assertj.core.api.AssertionsForClassTypes;
 import org.eclipse.lsp4j.MessageType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
-import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
-import org.sonarsource.sonarlint.core.commons.log.ClientLogOutput;
 import org.sonarsource.sonarlint.ls.IssuesCache;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.ConnectionCheckParams;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
@@ -38,14 +34,10 @@ import org.sonarsource.sonarlint.ls.notebooks.DelegatingCellIssue;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.util.Utils.getValidateConnectionParamsForNewConnection;
-import static org.sonarsource.sonarlint.ls.util.Utils.hotspotReviewStatusValueOfHotspotStatus;
-import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusOfTitle;
-import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusValueOfHotspotReviewStatus;
 import static org.sonarsource.sonarlint.ls.util.Utils.isDelegatingIssueWithServerIssueKey;
 
 class UtilsTests {
@@ -79,30 +71,6 @@ class UtilsTests {
   void uriHasFileSchemeTest() {
     assertThat(Utils.uriHasFileScheme(URI.create("file:///path"))).isTrue();
     assertThat(Utils.uriHasFileScheme(URI.create("notfile:///path"))).isFalse();
-  }
-
-  @Test
-  void valueOfTitleTest() {
-    AssertionsForClassTypes.assertThat(hotspotStatusOfTitle("To Review")).isEqualTo(HotspotStatus.TO_REVIEW);
-    AssertionsForClassTypes.assertThat(hotspotStatusOfTitle("Safe")).isEqualTo(HotspotStatus.SAFE);
-    AssertionsForClassTypes.assertThat(hotspotStatusOfTitle("Fixed")).isEqualTo(HotspotStatus.FIXED);
-    AssertionsForClassTypes.assertThat(hotspotStatusOfTitle("Acknowledged")).isEqualTo(HotspotStatus.ACKNOWLEDGED);
-    var thrown = assertThrows(IllegalArgumentException.class, ()-> hotspotStatusOfTitle("Unknown"));
-    AssertionsForClassTypes.assertThat(thrown).hasMessage("There is no such hotspot status: Unknown");
-  }
-
-  @Test
-  void valueOfHotspotReviewStatusTest() {
-    for (HotspotReviewStatus value : HotspotReviewStatus.values()) {
-      AssertionsForClassTypes.assertThat(hotspotStatusValueOfHotspotReviewStatus(value)).isEqualTo(HotspotStatus.valueOf(value.name()));
-    }
-  }
-
-  @Test
-  void valueOfHotspotStatusTest() {
-    for (HotspotStatus value : HotspotStatus.values()) {
-      AssertionsForClassTypes.assertThat(hotspotReviewStatusValueOfHotspotStatus(value)).isEqualTo(HotspotReviewStatus.valueOf(value.name()));
-    }
   }
 
   @Test

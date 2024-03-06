@@ -35,7 +35,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
-import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.ServerMode;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -177,7 +176,7 @@ public class JavaConfigCache {
     return Paths.get(URI.create(cachedResponse.getProjectRoot())).equals(Paths.get(projectUri));
   }
 
-  public void didServerModeChange(ServerMode serverModeEnum) {
+  public void didServerModeChange() {
     logOutput.debug("Clearing Java config cache on server mode change");
     javaConfigPerFileURI.clear();
   }

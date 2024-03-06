@@ -28,16 +28,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.Diagnostic;
-import org.sonarsource.sonarlint.core.client.api.common.analysis.Issue;
-import org.sonarsource.sonarlint.core.clientapi.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 
-import static org.sonarsource.sonarlint.ls.util.Utils.hotspotReviewStatusValueOfHotspotStatus;
 import static org.sonarsource.sonarlint.ls.util.Utils.isDelegatingIssueWithServerIssueKey;
 
 public class IssuesCache {
@@ -69,22 +66,10 @@ public class IssuesCache {
     inProgressAnalysisIssuesPerIdPerFileURI.remove(versionedOpenFile.getUri());
   }
 
-  public void reportIssue(VersionedOpenFile versionedOpenFile, Issue issue) {
-    var issueId = getIssueId(issue);
+  public void reportIssue(VersionedOpenFile versionedOpenFile, DelegatingIssue issue) {
+    var issueId = issue.getIssueId().toString();
     inProgressAnalysisIssuesPerIdPerFileURI.computeIfAbsent(versionedOpenFile.getUri(), u -> new HashMap<>()).put(issueId,
       new VersionedIssue(issue, versionedOpenFile.getVersion()));
-  }
-
-  private static String getIssueId(Issue issue) {
-    String issueId = null;
-    if (issue instanceof DelegatingIssue delegatingIssue) {
-      var issueUuid = delegatingIssue.getIssueId();
-      issueId = issueUuid != null ? issueUuid.toString() : null;
-    }
-    if (issueId == null) {
-      issueId = UUID.randomUUID().toString();
-    }
-    return issueId;
   }
 
   public int count(URI f) {
@@ -120,8 +105,7 @@ public class IssuesCache {
   }
 
   private static boolean isLocalIssueWithKey(String key, VersionedIssue versionedIssue) {
-    return versionedIssue.issue() instanceof DelegatingIssue delegatingIssue
-      && (key.equals(delegatingIssue.getIssueId().toString()));
+    return key.equals(versionedIssue.issue.getIssueId().toString());
   }
 
   public Optional<Map.Entry<String, VersionedIssue>> findIssuePerId(String fileUriStr, String serverIssueKey) {
@@ -141,7 +125,7 @@ public class IssuesCache {
     if (issuePerId.isPresent()) {
       var versionedIssue = issuePerId.get().getValue();
       var delegatingIssue = (DelegatingIssue) versionedIssue.issue();
-      var clonedDelegatingIssue = delegatingIssue.cloneWithNewStatus(hotspotReviewStatusValueOfHotspotStatus(newStatus));
+      var clonedDelegatingIssue = delegatingIssue.cloneWithNewStatus(newStatus);
       var clonedVersionedIssue = new VersionedIssue(clonedDelegatingIssue, versionedIssue.documentVersion);
       var issuesByKey = issuesPerIdPerFileURI.get(URI.create(fileUriStr));
       if (issuesByKey != null) {
