@@ -27,13 +27,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -137,15 +134,38 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
    * @return empty if the file is unbound
    */
   public Optional<ProjectBinding> getBinding(URI fileUri) {
+    if (!isUriValidAndNotNotebook(fileUri)) return Optional.empty();
+    var folder = foldersManager.findFolderForFile(fileUri);
+    var cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
+    return getBinding(folder, cacheKey);
+  }
+
+  private boolean isUriValidAndNotNotebook(URI fileUri) {
     if (!uriHasFileScheme(fileUri) || openNotebooksCache.isNotebook(fileUri)) {
       if (globalLogOutput != null) {
         globalLogOutput.log("Ignoring connected mode settings for unsupported URI: " + fileUri, ClientLogOutput.Level.DEBUG);
       }
-      return Optional.empty();
+      return false;
     }
+    return true;
+  }
+
+  /**
+   * Return the binding of the given file.
+   *
+   * @return empty if the file is unbound
+   */
+  public Optional<ProjectBinding> getBindingIfExists(URI fileUri) {
+    if (!isUriValidAndNotNotebook(fileUri)) return Optional.empty();
     var folder = foldersManager.findFolderForFile(fileUri);
     var cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
-    return getBinding(folder, cacheKey);
+    return getBindingIfExists(folder, cacheKey);
+  }
+
+  private Optional<ProjectBinding> getBindingIfExists(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {
+    return folder.isPresent()
+      ? folderBindingCache.getOrDefault(folder.get().getUri(), Optional.empty())
+      : fileBindingCache.getOrDefault(fileUri, Optional.empty());
   }
 
   private Optional<ProjectBinding> getBinding(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {
@@ -160,33 +180,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         return Optional.ofNullable(computeProjectBinding(settings, folderRoot));
       }
     });
-  }
-
-  public CompletableFuture<String> getUpdatedBindingForWorkspaceFolder(URI folderUri) {
-    var bindingUpdatedLatch = new CountDownLatch(1);
-    var updatedBinding = new CompletableFuture<String>();
-    bindingUpdateQueue.put(folderUri, bindingUpdatedLatch);
-    Executors.newSingleThreadExecutor().submit(() -> {
-      var actuallyUpdated = false;
-      try {
-        actuallyUpdated = bindingUpdatedLatch.await(10, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new IllegalStateException("Interrupted", e);
-      }
-      if (actuallyUpdated) {
-        getBinding(folderUri);
-        updatedBinding.complete(folderUri.toString());
-      } else {
-        updatedBinding.completeExceptionally(new IllegalStateException(String.format("Expected binding update for %s did not happen", folderUri)));
-      }
-    });
-    return updatedBinding;
-  }
-
-
-  private Optional<ProjectBinding> getBindingAndRepublishTaints(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {
-    return getBinding(folder, fileUri);
   }
 
   @CheckForNull

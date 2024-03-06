@@ -217,9 +217,15 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public void showIssue(String folderUri, IssueDetailsDto issueDetails) {
-    var maybeBinding = bindingManager.getBinding(URI.create(folderUri));
-    maybeBinding.ifPresent(projectBindingWrapper ->
-      client.showIssue(new ShowAllLocationsCommand.Param(new ShowIssueParams(folderUri, issueDetails), projectBindingWrapper.getConnectionId())));
+    var maybeBinding = bindingManager.getBindingIfExists(URI.create(folderUri));
+    if (maybeBinding.isPresent()) {
+      logOutput.debug("Show issue with description");
+      var projectBinding = maybeBinding.get();
+      client.showIssue(new ShowAllLocationsCommand.Param(new ShowIssueParams(folderUri, issueDetails), projectBinding.getConnectionId(), true));
+    } else {
+      logOutput.debug("Show issue without description");
+      client.showIssue(new ShowAllLocationsCommand.Param(new ShowIssueParams(folderUri, issueDetails), null, false));
+    }
   }
 
   @Override
@@ -252,9 +258,10 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public AssistBindingResponse assistBinding(AssistBindingParams params, CancelChecker cancelChecker) {
+    workspaceFoldersManager.updateAnalysisReadiness(Set.of(params.getConfigScopeId()), false);
     return client.assistBinding(params)
-      .thenCompose(response -> bindingManager.getUpdatedBindingForWorkspaceFolder(URI.create(response.getConfigurationScopeId())))
-      .thenApply(configurationScopeId -> {
+      .thenApply(response -> {
+        var configurationScopeId = response.getConfigurationScopeId();
         var pathParts = configurationScopeId.split("/");
         var projectName = pathParts[pathParts.length - 1];
         client.showMessage(new MessageParams(MessageType.Info, "Project '" + projectName + "' was successfully bound to '" + params.getProjectKey() + "'."));
