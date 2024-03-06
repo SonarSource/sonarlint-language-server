@@ -148,16 +148,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return getBinding(folder, cacheKey);
   }
 
-  public void getBindingAndRepublishTaints(WorkspaceFolderWrapper folder) {
-    getBindingAndRepublishTaints(Optional.of(folder), folder.getUri());
-  }
-
-  public Optional<ProjectBinding> getBindingAndRepublishTaints(URI fileUri) {
-    var folder = foldersManager.findFolderForFile(fileUri);
-    var cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
-    return getBindingAndRepublishTaints(folder, cacheKey);
-  }
-
   private Optional<ProjectBinding> getBinding(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {
     var bindingCache = folder.isPresent() ? folderBindingCache : fileBindingCache;
     return bindingCache.computeIfAbsent(fileUri, k -> {

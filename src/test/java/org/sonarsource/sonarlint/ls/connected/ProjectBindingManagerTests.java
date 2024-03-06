@@ -542,7 +542,7 @@ class ProjectBindingManagerTests {
       .thenReturn(CompletableFuture.completedFuture(new GetAllProjectsResponse(List.of(
         new SonarProjectDto(key1, name1),
         new SonarProjectDto(key2, name2)
-     ))));
+      ))));
     servers.put(SettingsManager.connectionIdOrDefault(null), GLOBAL_SETTINGS);
     assertThat(underTest.getRemoteProjects(null)).containsExactlyInAnyOrderEntriesOf(Map.of(
       key1, name1,

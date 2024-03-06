@@ -51,6 +51,7 @@ import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.OpenUrlInBrowserParams;
@@ -58,7 +59,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingP
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.ShowHotspotParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.CheckServerTrustedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.X509CertificateDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.info.GetClientLiveInfoResponse;
@@ -72,6 +72,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
+import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.AssistCreatingConnectionResponse;
@@ -102,6 +103,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -132,6 +134,8 @@ class SonarLintVSCodeClientTests {
   ServerIssueTrackerWrapper serverIssueTrackerWrapper = mock(ServerIssueTrackerWrapper.class);
   BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   TaintVulnerabilitiesCache taintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
+  AnalysisScheduler analysisScheduler = mock(AnalysisScheduler.class);
+  DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
 
   private static final String PEM = "subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH\n" +
     "issuer=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH\n" +
@@ -177,7 +181,8 @@ class SonarLintVSCodeClientTests {
     underTest.setBindingManager(bindingManager);
     underTest.setServerSentEventsHandlerService(serverSentEventsHandlerService);
     underTest.setBackendServiceFacade(backendServiceFacade);
-    underTest.setDiagnosticPublisher(mock(DiagnosticPublisher.class));
+    underTest.setDiagnosticPublisher(diagnosticPublisher);
+    underTest.setAnalysisScheduler(analysisScheduler);
     workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
     Files.createDirectories(workspaceFolderPath);
     fileInAWorkspaceFolderPath = workspaceFolderPath.resolve(FILE_PYTHON);
@@ -526,7 +531,6 @@ class SonarLintVSCodeClientTests {
     var filePath = Path.of("filePath");
     var workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
     var workspaceFolderWrapper = mock(WorkspaceFolderWrapper.class);
-    when(workspaceFolderWrapper.getUri()).thenReturn(workspaceFolderPath.toUri());
     var workspaceFolderSettings = mock(WorkspaceFolderSettings.class);
     var serverConnectionSettings = mock(ServerConnectionSettings.class);
     when(serverConnectionSettings.isSonarCloudAlias()).thenReturn(true);
@@ -534,7 +538,7 @@ class SonarLintVSCodeClientTests {
     when(bindingManager.getServerConnectionSettingsFor("connectionId")).thenReturn(serverConnectionSettings);
     when(workspaceFolderWrapper.getSettings()).thenReturn(workspaceFolderSettings);
     underTest.setWorkspaceFoldersManager(workspaceFoldersManager);
-    when(workspaceFoldersManager.getAll()).thenReturn(List.of(workspaceFolderWrapper));
+    when(workspaceFoldersManager.getFolder(workspaceFolderPath.toUri())).thenReturn(Optional.of(workspaceFolderWrapper));
     var uuid1 = UUID.randomUUID();
     var uuid2 = UUID.randomUUID();
     var uuid3 = UUID.randomUUID();
@@ -550,6 +554,45 @@ class SonarLintVSCodeClientTests {
       getTaintIssue(uuid1).getSonarServerKey());
   }
 
+  @Test
+  void shouldPopulateTaintsCacheOnAnalysisReadinessChangedAndPublishDiagnostics() throws InterruptedException {
+    var filePath = Path.of("filePath");
+    var workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
+    var workspaceFolderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(workspaceFolderWrapper.getUri()).thenReturn(workspaceFolderPath.toUri());
+    var serverConnectionSettings = mock(ServerConnectionSettings.class);
+    when(serverConnectionSettings.isSonarCloudAlias()).thenReturn(true);
+    when(bindingManager.getServerConnectionSettingsFor("connectionId")).thenReturn(serverConnectionSettings);
+    var fakeBinding = mock(ProjectBinding.class);
+    when(bindingManager.getBinding(workspaceFolderPath.toUri()))
+      .thenReturn(Optional.of(fakeBinding));
+    when(fakeBinding.getConnectionId()).thenReturn("connectionId");
+    underTest.setWorkspaceFoldersManager(workspaceFoldersManager);
+    when(workspaceFoldersManager.getAll()).thenReturn(List.of(workspaceFolderWrapper));
+    var uuid1 = UUID.randomUUID();
+    var uuid2 = UUID.randomUUID();
+
+    var fakeBackend = mock(BackendService.class);
+    when(backendServiceFacade.getBackendService()).thenReturn(fakeBackend);
+    when(fakeBackend.getAllTaints(workspaceFolderPath.toUri().toString()))
+      .thenReturn(CompletableFuture.completedFuture(new ListAllResponse(List.of(getTaintDto(uuid1), getTaintDto(uuid2)))));
+    when(taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile()).thenReturn(Map.of());
+    doNothing().when(analysisScheduler).analyzeAllUnboundOpenFiles();
+
+    underTest.didChangeAnalysisReadiness(Set.of(workspaceFolderPath.toUri().toString()), true);
+
+    var captor = ArgumentCaptor.forClass(List.class);
+
+    Thread.sleep(1000);
+    verify(taintVulnerabilitiesCache).reload(eq(URIUtils.getFullFileUriFromFragments(workspaceFolderPath.toUri().toString(), filePath)), captor.capture());
+    var taintIssues = captor.getValue();
+    assertThat(taintIssues).hasSize(2);
+    assertThat(((TaintIssue) taintIssues.get(0)).getId()).isEqualTo(uuid1);
+    assertThat(((TaintIssue) taintIssues.get(1)).getId()).isEqualTo(uuid2);
+    verify(diagnosticPublisher).publishDiagnostics(URIUtils.getFullFileUriFromFragments(workspaceFolderPath.toUri().toString(), filePath), false);
+  }
+
+
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
     return new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), IssueSeverity.MAJOR, RuleType.BUG, List.of(),
@@ -561,7 +604,7 @@ class SonarLintVSCodeClientTests {
     return new TaintIssue(new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), IssueSeverity.MAJOR, RuleType.BUG, List.of(),
       new TextRangeWithHashDto(5, 5, 5, 5, ""), "", CleanCodeAttribute.CONVENTIONAL,
-      Map.of(), true), "folderUri", "SONARCLOUD");
+      Map.of(), true), "folderUri", true);
   }
 
 

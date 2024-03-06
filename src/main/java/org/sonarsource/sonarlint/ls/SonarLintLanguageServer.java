@@ -372,7 +372,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var classLoader = ClassLoader.getSystemClassLoader();
     try (var is = classLoader.getResourceAsStream(fileName)) {
       try (var isr = new InputStreamReader(is, StandardCharsets.UTF_8);
-        var reader = new BufferedReader(isr)) {
+           var reader = new BufferedReader(isr)) {
         return reader.lines().findFirst().orElse(null);
       }
     } catch (IOException e) {
@@ -400,18 +400,18 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<Object> shutdown() {
     List.<Runnable>of(
-      // prevent creation of new engines
-      enginesFactory::shutdown,
-      analysisScheduler::shutdown,
-      branchManager::shutdown,
-      settingsManager::shutdown,
-      workspaceFoldersManager::shutdown,
-      moduleEventsProcessor::shutdown,
-      taintIssuesUpdater::shutdown,
-      // shutdown engines after the rest so that no operations remain on them, and they won't be recreated accidentally
-      bindingManager::shutdown,
-      standaloneEngineManager::shutdown,
-      backendServiceFacade::shutdown)
+        // prevent creation of new engines
+        enginesFactory::shutdown,
+        analysisScheduler::shutdown,
+        branchManager::shutdown,
+        settingsManager::shutdown,
+        workspaceFoldersManager::shutdown,
+        moduleEventsProcessor::shutdown,
+        taintIssuesUpdater::shutdown,
+        // shutdown engines after the rest so that no operations remain on them, and they won't be recreated accidentally
+        bindingManager::shutdown,
+        standaloneEngineManager::shutdown,
+        backendServiceFacade::shutdown)
       // Do last
       .forEach(this::invokeQuietly);
 

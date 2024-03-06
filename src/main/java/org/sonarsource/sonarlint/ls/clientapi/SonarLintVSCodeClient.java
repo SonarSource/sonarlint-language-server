@@ -105,8 +105,6 @@ import static java.util.stream.Collectors.toList;
 public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   public static final String SONARLINT_SOURCE = "sonarlint";
-  public static final String SONARQUBE_TAINT_SOURCE = "Latest SonarQube Analysis";
-  public static final String SONARCLOUD_TAINT_SOURCE = "Latest SonarCloud Analysis";
   private final SonarLintExtendedLanguageClient client;
   private SettingsManager settingsManager;
   private SmartNotifications smartNotifications;
@@ -209,7 +207,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     var rule = hotspotDetails.getRule();
     var clientRule = new SonarLintExtendedLanguageClient.ShowHotspotParams.HotspotRule(rule.getKey(), rule.getName(), rule.getSecurityCategory(),
       rule.getVulnerabilityProbability(), rule.getRiskDescription(), rule.getVulnerabilityDescription(), rule.getFixRecommendations());
-    var reviewStatus = HotspotReviewStatus.TO_REVIEW.name().equals(hotspotDetails.getStatus())? "To Review" : "Reviewed";
+    var reviewStatus = HotspotReviewStatus.TO_REVIEW.name().equals(hotspotDetails.getStatus()) ? "To Review" : "Reviewed";
     var showHotspotParams = new SonarLintExtendedLanguageClient.ShowHotspotParams(hotspotDetails.getKey(), hotspotDetails.getMessage(),
       hotspotDetails.getIdeFilePath().toString(),
       hotspotDetails.getTextRange(), hotspotDetails.getAuthor(), reviewStatus, hotspotDetails.getResolution(),
@@ -379,9 +377,8 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       .forEach(taintIssue -> taintVulnerabilitiesCache.removeTaintIssue(
         URIUtils.getFullFileUriFromFragments(folderUri, taintIssue.getIdeFilePath()).toString(), taintIssue.getSonarServerKey()));
 
-
-    workspaceFoldersManager.getAll().stream().filter(workspaceFolder -> workspaceFolder.getUri().equals(URI.create(folderUri)))
-      .findFirst().map(workspaceFolderWrapper -> Objects.requireNonNull(bindingManager
+    workspaceFoldersManager.getFolder(URI.create(folderUri))
+      .map(workspaceFolderWrapper -> Objects.requireNonNull(bindingManager
         .getServerConnectionSettingsFor(workspaceFolderWrapper.getSettings().getConnectionId())).isSonarCloudAlias())
       .ifPresent(isSonarCloud -> updateTaintVulnerabilitiesCache(addedTaintVulnerabilitiesByFile, updatedTaintVulnerabilitiesByFile, folderUri, isSonarCloud));
   }
@@ -400,12 +397,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private void handleAddedTaints(Map<URI, List<TaintVulnerabilityDto>> addedTaints, String folderUri, boolean isSonarCloud,
     Map<URI, List<TaintIssue>> existingTaintVulnerabilitiesPerFile) {
     addedTaints.forEach((fileUri, added) -> {
-      var addedTaintIssuesForFile = added
-        .stream()
-        .map(dto ->
-          new TaintIssue(dto, folderUri, isSonarCloud ? SONARCLOUD_TAINT_SOURCE : SONARQUBE_TAINT_SOURCE))
-        .filter(t -> !t.isResolved())
-        .collect(Collectors.toCollection(ArrayList::new));
+      var addedTaintIssuesForFile = dtosToTaintIssues(folderUri, added, isSonarCloud);
       if (existingTaintVulnerabilitiesPerFile.containsKey(fileUri)) {
         addedTaintIssuesForFile.addAll(existingTaintVulnerabilitiesPerFile.get(fileUri));
       }
@@ -417,23 +409,17 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private void handleUpdatedTaints(Map<URI, List<TaintVulnerabilityDto>> updateTaints, String folderUri, boolean isSonarCloud,
     Map<URI, List<TaintIssue>> existingTaintVulnerabilitiesPerFile) {
     updateTaints.forEach((fileUri, updates) -> {
-      String source = isSonarCloud ? SONARCLOUD_TAINT_SOURCE : SONARQUBE_TAINT_SOURCE;
       if (existingTaintVulnerabilitiesPerFile.containsKey(fileUri)) {
         updates.forEach(dto -> {
           if (taintVulnerabilitiesCache.getTaintVulnerabilityByKey(dto.getSonarServerKey()).isPresent()) {
             taintVulnerabilitiesCache.removeTaintIssue(fileUri.toString(), dto.getSonarServerKey());
           }
           if (!dto.isResolved()) {
-            taintVulnerabilitiesCache.add(fileUri, new TaintIssue(dto, folderUri, source));
+            taintVulnerabilitiesCache.add(fileUri, new TaintIssue(dto, folderUri, isSonarCloud));
           }
         });
       } else {
-        taintVulnerabilitiesCache.reload(fileUri, updates
-          .stream()
-          .map(dto ->
-            new TaintIssue(dto, folderUri, source))
-          .filter(t -> !t.isResolved())
-          .collect(Collectors.toCollection(ArrayList::new)));
+        taintVulnerabilitiesCache.reload(fileUri, dtosToTaintIssues(folderUri, updates, isSonarCloud));
       }
       diagnosticPublisher.publishDiagnostics(fileUri, false);
     });
@@ -471,7 +457,42 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
         }
         analysisScheduler.analyzeAllUnboundOpenFiles();
       });
+      initializeTaintCache(configurationScopeIds);
     }
+  }
+
+  private void initializeTaintCache(Set<String> configurationScopeIds) {
+    configurationScopeIds.forEach(configurationScopeId -> {
+      var binding = bindingManager.getBinding(URI.create(configurationScopeId));
+      if (binding.isPresent()) {
+        var isSonarCloud = Objects.requireNonNull(bindingManager.getServerConnectionSettingsFor(binding.get().getConnectionId())).isSonarCloudAlias();
+        CompletableFutures.computeAsync(cancelChecker -> {
+          var taints = backendServiceFacade.getBackendService().getAllTaints(configurationScopeId).join();
+
+          var taintsByFile = taints.getTaintVulnerabilities()
+            .stream()
+            .collect(groupingBy(taintVulnerabilityDto ->
+              URIUtils.getFullFileUriFromFragments(configurationScopeId, taintVulnerabilityDto.getIdeFilePath()), toList()));
+
+          taintsByFile.forEach((fileUri, t) -> {
+            var vulnerabilities = dtosToTaintIssues(configurationScopeId, t, isSonarCloud);
+            taintVulnerabilitiesCache.reload(fileUri, vulnerabilities);
+            diagnosticPublisher.publishDiagnostics(fileUri, false);
+          });
+
+          return null;
+        });
+      }
+    });
+  }
+
+  @NotNull
+  private static ArrayList<TaintIssue> dtosToTaintIssues(String configurationScopeId, List<TaintVulnerabilityDto> t, Boolean isSonarCloud) {
+    return t.stream()
+      .map(dto ->
+        new TaintIssue(dto, configurationScopeId, isSonarCloud))
+      .filter(tv -> !tv.isResolved())
+      .collect(Collectors.toCollection(ArrayList::new));
   }
 
   public void setSettingsManager(SettingsManager settingsManager) {

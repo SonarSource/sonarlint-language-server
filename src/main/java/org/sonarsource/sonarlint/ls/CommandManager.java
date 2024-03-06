@@ -89,9 +89,9 @@ import org.sonarsource.sonarlint.ls.util.EnumLabelsMapper;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.net.URI.create;
-import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARCLOUD_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARLINT_SOURCE;
-import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARQUBE_TAINT_SOURCE;
+import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARCLOUD_TAINT_SOURCE;
+import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 
 public class CommandManager {

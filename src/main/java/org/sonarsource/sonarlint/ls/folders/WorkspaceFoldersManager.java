@@ -39,8 +39,8 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
+import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
@@ -146,6 +146,10 @@ public class WorkspaceFoldersManager {
       logOutput.debug("Multiple candidates workspace folders to contains %s. Default to the deepest one.", uri);
     }
     return Optional.of(folders.get(folderUriCandidates.get(0)));
+  }
+
+  public Optional<WorkspaceFolderWrapper> getFolder(URI folderUri) {
+    return Optional.ofNullable(folders.get(folderUri));
   }
 
   // Visible for testing

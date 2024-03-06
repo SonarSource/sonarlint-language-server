@@ -30,23 +30,22 @@ import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
-
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARCLOUD_TAINT_SOURCE;
-import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache.convert;
+import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARCLOUD_TAINT_SOURCE;
+import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARQUBE_TAINT_SOURCE;
 
 class TaintVulnerabilitiesCacheTests {
 
@@ -64,7 +63,7 @@ class TaintVulnerabilitiesCacheTests {
     when(flow.getLocations()).thenReturn(List.of(loc1, loc2));
     var issueId = UUID.randomUUID();
     when(issue.getId()).thenReturn(issueId);
-    when(issue.getTextRange()).thenReturn(new TextRangeWithHashDto(1,0,0,0, ""));
+    when(issue.getTextRange()).thenReturn(new TextRangeWithHashDto(1, 0, 0, 0, ""));
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getRuleKey()).thenReturn("ruleKey");
     when(issue.getMessage()).thenReturn("message");
@@ -119,7 +118,7 @@ class TaintVulnerabilitiesCacheTests {
     when(taint.getRuleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
     when(taint.isResolved()).thenReturn(false);
     when(taint.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
-    when(taint.getTextRange()).thenReturn(new TextRangeWithHashDto(1,1,1,1, ""));
+    when(taint.getTextRange()).thenReturn(new TextRangeWithHashDto(1, 1, 1, 1, ""));
     when(taint.getMessage()).thenReturn("Boo");
 
     var resolvedTaint = mock(TaintIssue.class);
@@ -127,7 +126,7 @@ class TaintVulnerabilitiesCacheTests {
     when(resolvedTaint.getRuleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
     when(resolvedTaint.isResolved()).thenReturn(true);
     when(resolvedTaint.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
-    when(resolvedTaint.getTextRange()).thenReturn(new TextRangeWithHashDto(1,1,1,1, ""));
+    when(resolvedTaint.getTextRange()).thenReturn(new TextRangeWithHashDto(1, 1, 1, 1, ""));
     when(resolvedTaint.getMessage()).thenReturn("Foo");
 
 
@@ -195,7 +194,7 @@ class TaintVulnerabilitiesCacheTests {
     when(issue.isResolved()).thenReturn(false);
     when(issue.getSonarServerKey()).thenReturn("serverIssueKey");
 
-    underTest.getTaintVulnerabilitiesPerFile().put(uri,  new ArrayList<>(Arrays.asList(issue)));
+    underTest.getTaintVulnerabilitiesPerFile().put(uri, new ArrayList<>(Arrays.asList(issue)));
     assertThat(underTest.getTaintVulnerabilityByKey("serverIssueKey")).hasValue(issue);
 
     underTest.removeTaintIssue(uri.toString(), issueId.toString());
