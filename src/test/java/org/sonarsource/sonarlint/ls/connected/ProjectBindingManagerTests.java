@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -83,7 +84,7 @@ class ProjectBindingManagerTests {
   private static final org.sonarsource.sonarlint.core.serverconnection.ProjectBinding FAKE_BINDING2 = new org.sonarsource.sonarlint.core.serverconnection.ProjectBinding(PROJECT_KEY2, "sqPrefix2", "idePrefix2");
   private static final String CONNECTION_ID = "myServer";
   private static final String SERVER_ID2 = "myServer2";
-  private static BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
+  private static final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   private static final ServerConnectionSettings GLOBAL_SETTINGS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, true);
   private static final ServerConnectionSettings GLOBAL_SETTINGS_DIFFERENT_SERVER_ID = new ServerConnectionSettings(SERVER_ID2, "http://foo2", "token2", null, true);
   private static final WorkspaceFolderSettings UNBOUND_SETTINGS = new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null, null);
@@ -565,11 +566,14 @@ class ProjectBindingManagerTests {
 
   @Test
   void shouldComputeFullFilePathFromRelative() {
+    var result = Paths.get(URI.create(URI.create("file:///idePath").toString()))
+      .resolve(Path.of("filePath"))
+      .toUri();
     folderBindingCache.put(URI.create("file:///idePath"), Optional.of(new ProjectBinding("connectionId", "projectKey", null, null)));
 
     var fullFilePath = underTest.fullFilePathFromRelative(Path.of("filePath"), "connectionId", "projectKey");
 
-    assertThat(fullFilePath).contains(URI.create("file:///idePath/filePath"));
+    assertThat(fullFilePath).contains(result);
   }
 
   @Test
