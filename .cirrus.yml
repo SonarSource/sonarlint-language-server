@@ -74,8 +74,8 @@ build_task:
     - regular_mvn_build_deploy_analyze -Dmaven.test.skip=true -Dsonar.skip=true
   cleanup_before_cache_script: cleanup_maven_repository
   on_failure:
-    slack_notification_script:
-      - ./.cirrus/slack-notification.sh
+    slack_notification_script: |
+      .cirrus/slack-notification.sh
 
 qa_linux_task:
   # name: "Run unit tests on Linux with Java 17 and SonarQube analysis on Next"
@@ -96,8 +96,8 @@ qa_linux_task:
     junit_artifacts:
       path: '**/target/surefire-reports/TEST-*.xml'
       format: junit
-    slack_notification_script:
-      - ./.cirrus/slack-notification.sh
+    slack_notification_script: |
+      .cirrus/slack-notification.sh
 
 qa_windows_task:
   # name: "Run unit tests on Windows with Java 17"
@@ -117,8 +117,8 @@ qa_windows_task:
     junit_artifacts:
       path: '**/target/surefire-reports/TEST-*.xml'
       format: junit
-    slack_notification_script:
-      - ./.cirrus/slack-notification.sh
+    slack_notification_script: |
+      .cirrus/slack-notification.sh
 
 mend_scan_task:
   # name: "Mend scan"
@@ -144,8 +144,8 @@ mend_scan_task:
     ws_scan_artifacts:
       path: "whitesource/**/*"
   on_failure:
-    slack_notification_script:
-      - ./.cirrus/slack-notification.sh
+    slack_notification_script: |
+      .cirrus/slack-notification.sh
 
 promote_task:
   depends_on:
@@ -171,5 +171,5 @@ promote_task:
     - burgr-notify-promotion
   cleanup_before_cache_script: cleanup_maven_repository
   on_failure:
-    slack_notification_script:
-      - ./.cirrus/slack-notification.sh
+    slack_notification_script: |
+      .cirrus/slack-notification.sh
