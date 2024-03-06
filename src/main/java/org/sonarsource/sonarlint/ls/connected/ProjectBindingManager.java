@@ -114,11 +114,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     this.analysisManager = analysisManager;
   }
 
-  public void clearBindingCache() {
-    folderBindingCache.clear();
-    fileBindingCache.clear();
-  }
-
   /**
    * Return the binding of the given folder.
    *
@@ -253,10 +248,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   public boolean usesSonarCloud() {
     return hasAnyBindingThatMatch(ServerConnectionSettings::isSonarCloudAlias);
-  }
-
-  public boolean smartNotificationsDisabled() {
-    return hasAnyBindingThatMatch(ServerConnectionSettings::isSmartNotificationsDisabled);
   }
 
   private boolean hasAnyBindingThatMatch(Predicate<ServerConnectionSettings> predicate) {
