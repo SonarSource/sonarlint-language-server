@@ -192,6 +192,7 @@ public class WorkspaceFoldersManager {
   }
 
   public void updateAnalysisReadiness(Set<String> configurationScopeIds, boolean areReadyForAnalysis) {
+    configurationScopeIds.forEach(s -> logOutput.debug("Analysis readiness changed for config scope " + s + " to " + areReadyForAnalysis));
     configurationScopeIds.forEach(folderUri -> analysisReadiness.put(folderUri, areReadyForAnalysis));
   }
 

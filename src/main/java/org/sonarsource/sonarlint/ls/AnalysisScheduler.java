@@ -49,6 +49,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
+import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toSet;
 
 /**
@@ -287,7 +288,20 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
         var notIgnoredFiles = files
           .stream().filter(it -> notIgnoredFileUris.getFileUris().contains(it.getUri().toString()))
           .toList();
-        analyzeAsync(AnalysisParams.newAnalysisParams(notIgnoredFiles));
+        var filesByMaybeFolderUri = notIgnoredFiles.stream().collect(groupingBy(f -> workspaceFoldersManager.findFolderForFile(f.getUri())));
+        for (var entry : filesByMaybeFolderUri.entrySet()) {
+          var maybeFolderUri = entry.getKey();
+          var filesToAnalyse = entry.getValue();
+          if (maybeFolderUri.isPresent()) {
+            var folderUri = maybeFolderUri.get().getUri();
+            if (workspaceFoldersManager.isReadyForAnalysis(folderUri.toString())) {
+              analyzeAsync(AnalysisParams.newAnalysisParams(filesToAnalyse));
+            }
+          }
+          if (bindingManager.getBindingIfExists(filesToAnalyse.get(0).getUri()).isEmpty()) {
+            analyzeAsync(AnalysisParams.newAnalysisParams(filesToAnalyse));
+          }
+        }
       });
   }
 

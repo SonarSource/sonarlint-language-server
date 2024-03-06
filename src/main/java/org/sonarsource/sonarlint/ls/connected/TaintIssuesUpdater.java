@@ -56,7 +56,12 @@ public class TaintIssuesUpdater {
   }
 
   public void updateTaintIssuesAsync(URI fileUri) {
-    asyncExecutor.submit(() -> updateTaintIssues(fileUri));
+    workspaceFoldersManager.findFolderForFile(fileUri)
+        .ifPresent(workspaceFolderWrapper -> {
+          if (workspaceFoldersManager.isReadyForAnalysis(workspaceFolderWrapper.getUri().toString())) {
+            asyncExecutor.submit(() -> updateTaintIssues(fileUri));
+          }
+        });
   }
 
   private void updateTaintIssues(URI fileUri) {
