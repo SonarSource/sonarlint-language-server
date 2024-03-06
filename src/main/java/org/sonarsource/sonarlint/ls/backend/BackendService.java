@@ -82,6 +82,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.StandaloneRuleC
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.UpdateStandaloneRulesConfigurationParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.GetStatusResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.MatchWithServerSecurityHotspotsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.MatchWithServerSecurityHotspotsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TrackWithServerIssuesParams;
@@ -242,14 +244,14 @@ public class BackendService {
     return initializedBackend().getBindingService().getBindingSuggestions(params);
   }
 
-  public void didChangeClientNodeJsPath(DidChangeClientNodeJsPathParams params){
+  public void didChangeClientNodeJsPath(DidChangeClientNodeJsPathParams params) {
     initializedBackend().getAnalysisService().didChangeClientNodeJsPath(params);
   }
 
   public CompletableFuture<SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedResponse>
   checkStatusChangePermitted(String connectionId, String issueKey) {
     return initializedBackend().getIssueService().checkStatusChangePermitted(
-      new org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedParams(connectionId, issueKey))
+        new org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedParams(connectionId, issueKey))
       .thenApply(result -> new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedResponse(result.isPermitted(),
         result.getNotPermittedReason(), result.getAllowedStatuses().stream().map(EnumLabelsMapper::resolutionStatusToLabel).toList()))
       .exceptionally(t -> {
@@ -299,7 +301,7 @@ public class BackendService {
     return initializedBackend().getIssueTrackingService().trackWithServerIssues(params);
   }
 
-  public CompletableFuture<MatchWithServerSecurityHotspotsResponse> matchHotspots(MatchWithServerSecurityHotspotsParams params){
+  public CompletableFuture<MatchWithServerSecurityHotspotsResponse> matchHotspots(MatchWithServerSecurityHotspotsParams params) {
     return initializedBackend().getSecurityHotspotMatchingService().matchWithServerSecurityHotspots(params);
   }
 
@@ -352,12 +354,17 @@ public class BackendService {
     return initializedBackend().getConnectionService().getAllProjects(new GetAllProjectsParams(transientConnection));
   }
 
-  public CompletableFuture<GetFilesStatusResponse> getFilesStatus(Map<String, List<URI>> fileUrisByFolderUri){
+  public CompletableFuture<GetFilesStatusResponse> getFilesStatus(Map<String, List<URI>> fileUrisByFolderUri) {
     return initializedBackend().getFileService().getFilesStatus(new GetFilesStatusParams(fileUrisByFolderUri));
   }
 
   public void updateFileSystem(List<URI> deletedFileUris, List<ClientFileDto> addedOrChangedFiles) {
     initializedBackend().getFileService().didUpdateFileSystem(new DidUpdateFileSystemParams(deletedFileUris, addedOrChangedFiles));
+  }
+
+  public CompletableFuture<ListAllResponse> getAllTaints(String folderUri) {
+    var params = new ListAllParams(folderUri, true);
+    return backend.getTaintVulnerabilityTrackingService().listAll(params);
   }
 
   public SonarLintRpcServer getBackend() {

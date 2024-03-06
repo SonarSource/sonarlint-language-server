@@ -22,15 +22,17 @@ package org.sonarsource.sonarlint.ls.domain;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 
 public class TaintIssue extends TaintVulnerabilityDto {
+  public static final String SONARQUBE_TAINT_SOURCE = "Latest SonarQube Analysis";
+  public static final String SONARCLOUD_TAINT_SOURCE = "Latest SonarCloud Analysis";
   String workspaceFolderUri;
   String source;
 
-  public TaintIssue(TaintVulnerabilityDto taintDto, String workspaceFolderUri, String source) {
+  public TaintIssue(TaintVulnerabilityDto taintDto, String workspaceFolderUri, boolean isSonarCloud) {
     super(taintDto.getId(), taintDto.getSonarServerKey(), taintDto.isResolved(), taintDto.getRuleKey(), taintDto.getMessage(),
       taintDto.getIdeFilePath(), taintDto.getIntroductionDate(), taintDto.getSeverity(), taintDto.getType(), taintDto.getFlows(), taintDto.getTextRange(),
       taintDto.getRuleDescriptionContextKey(), taintDto.getCleanCodeAttribute(), taintDto.getImpacts(), taintDto.isOnNewCode());
     this.workspaceFolderUri = workspaceFolderUri;
-    this.source = source;
+    this.source = isSonarCloud ? SONARCLOUD_TAINT_SOURCE : SONARQUBE_TAINT_SOURCE;
   }
 
   public String getWorkspaceFolderUri() {
