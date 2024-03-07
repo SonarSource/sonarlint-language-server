@@ -169,7 +169,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final StandaloneEngineManager standaloneEngineManager;
   private final CommandManager commandManager;
   private final ProgressManager progressManager;
-  private final ExecutorService threadPool;
+  private final ExecutorService lspThreadPool;
   private final HostInfoProvider hostInfoProvider;
   private final WorkspaceFolderBranchManager branchManager;
   private final JavaConfigCache javaConfigCache;
@@ -196,8 +196,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final Collection<Path> analyzers;
   private final CountDownLatch shutdownLatch;
 
+  private final ExecutorService branchChangeEventExecutor;
+
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers) {
-    this.threadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
+    this.lspThreadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
 
     var input = new ExitingInputStream(inputStream, this);
     var launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
@@ -205,8 +207,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .setRemoteInterface(SonarLintExtendedLanguageClient.class)
       .setInput(input)
       .setOutput(outputStream)
-      .setExecutorService(threadPool)
+      .setExecutorService(lspThreadPool)
       .create();
+    this.branchChangeEventExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint branch change event handler", false));
 
     this.analyzers = analyzers;
     this.client = launcher.getRemoteProxy();
@@ -424,7 +427,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   private void waitBeforeExit() {
     try {
-      threadPool.awaitTermination(5, TimeUnit.SECONDS);
+      lspThreadPool.awaitTermination(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }
@@ -444,7 +447,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void exit() {
-    invokeQuietly(() -> Utils.shutdownAndAwait(threadPool, true));
+    invokeQuietly(() -> Utils.shutdownAndAwait(lspThreadPool, true));
     // The Socket will be closed by the client, and so remaining threads will die and the JVM will terminate
   }
 
@@ -616,7 +619,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       lsLogOutput.debug(format("Folder %s is now on an unknown branch.", folderUri));
       return;
     }
-    backendServiceFacade.getBackendService().notifyBackendOnVscChange(folderUri);
+    branchChangeEventExecutor.submit(() -> backendServiceFacade.getBackendService().notifyBackendOnVscChange(folderUri));
   }
 
   @Override
