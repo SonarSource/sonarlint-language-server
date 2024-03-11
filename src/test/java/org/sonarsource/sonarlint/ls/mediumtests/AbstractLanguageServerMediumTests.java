@@ -276,11 +276,15 @@ public abstract class AbstractLanguageServerMediumTests {
     for (var uri : notebooksToBeClosed) {
       lsProxy.getNotebookDocumentService().didClose(new DidCloseNotebookDocumentParams(new NotebookDocumentIdentifier(uri), List.of()));
     }
-    var changeWorkspaceFoldersParams = new DidChangeWorkspaceFoldersParams();
-    var event = new WorkspaceFoldersChangeEvent();
-    event.setRemoved(foldersToRemove.stream().map(WorkspaceFolder::new).collect(Collectors.toList()));
-    changeWorkspaceFoldersParams.setEvent(event);
-    lsProxy.getWorkspaceService().didChangeWorkspaceFolders(changeWorkspaceFoldersParams);
+    foldersToRemove.forEach(folderUri -> {
+      lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
+        new WorkspaceFoldersChangeEvent(List.of(), List.of(new WorkspaceFolder(folderUri)))));
+      awaitUntilAsserted(() -> assertThat(client)
+        .satisfies(
+          c -> c.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Configuration scope '" + folderUri + "' removed, clearing matched branch"))
+        )
+      );
+    });
     instanceTempDirs.forEach(tempDirPath -> FileUtils.deleteQuietly(tempDirPath.toFile()));
     instanceTempDirs.clear();
   }

@@ -92,8 +92,6 @@ import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.ConfigurationScopeDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.CheckStatusChangePermittedParams;
@@ -915,23 +913,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarLint output for details."));
       return null;
     });
-  }
-
-  @Override
-  public CompletableFuture<Void> didAddConfigurationScopes(DidAddConfigurationScopes params) {
-    var bindingConfigurationDto = new BindingConfigurationDto(params.getConnectionId(), params.getSonarProjectKey(),
-      params.isBindingSuggestionDisabled());
-    var configurationDto = new ConfigurationScopeDto(params.getId(), null, params.isBindable(), params.getName(), bindingConfigurationDto);
-    var arg = new org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.DidAddConfigurationScopesParams(List.of(configurationDto));
-    backendServiceFacade.getBackendService().didAddConfigurationScopes(arg);
-    return CompletableFuture.completedFuture(null);
-  }
-
-  @Override
-  public CompletableFuture<Void> didRemoveConfigurationScope(DidRemoveConfigurationScopeParams params) {
-    var arg = new org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.DidRemoveConfigurationScopeParams(params.getRemovedId());
-    backendServiceFacade.getBackendService().didRemoveConfigurationScope(arg);
-    return CompletableFuture.completedFuture(null);
   }
 
   @Override

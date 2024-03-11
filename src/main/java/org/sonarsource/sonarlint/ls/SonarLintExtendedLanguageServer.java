@@ -730,22 +730,4 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
   }
 
-  @JsonNotification("didAddConfigurationScopes")
-  CompletableFuture<Void> didAddConfigurationScopes(DidAddConfigurationScopes params);
-
-  class DidRemoveConfigurationScopeParams {
-    private final String removedId;
-
-    public DidRemoveConfigurationScopeParams(String removedId) {
-      this.removedId = removedId;
-    }
-
-    public String getRemovedId() {
-      return removedId;
-    }
-  }
-
-  @JsonNotification("didRemoveConfigurationScope")
-  CompletableFuture<Void> didRemoveConfigurationScope(DidRemoveConfigurationScopeParams params);
-
 }
