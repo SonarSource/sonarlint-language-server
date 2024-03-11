@@ -183,7 +183,6 @@ public class BackendServiceFacade {
   }
 
   public void shutdown() {
-    backendService.shutdown();
     try {
       backendService.shutdown().get(10, TimeUnit.SECONDS);
     } catch (ExecutionException | TimeoutException e) {

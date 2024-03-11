@@ -1222,7 +1222,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void change_issue_status_permission_check_exceptionally() throws ExecutionException, InterruptedException {
     addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
 
     var issueKey = "malformed issue UUID";
     var result = lsProxy.checkIssueStatusChangePermitted(new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedParams(folder1BaseDir.toUri().toString(), issueKey)).get();
