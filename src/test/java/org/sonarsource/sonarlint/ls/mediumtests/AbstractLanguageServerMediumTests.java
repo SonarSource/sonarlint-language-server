@@ -231,7 +231,8 @@ public abstract class AbstractLanguageServerMediumTests {
     System.clearProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY);
     try {
       if (lsProxy != null) {
-        lsProxy.shutdown().join();
+        // 20 seconds should be way enough time for the backend to stop
+        lsProxy.shutdown().get(20, SECONDS);
         lsProxy.exit();
       }
     } finally {

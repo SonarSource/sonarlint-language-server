@@ -31,7 +31,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import mockwebserver3.MockResponse;
@@ -59,7 +58,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonar.api.utils.DateUtils;
 import org.sonar.scanner.protocol.Constants.Severity;
@@ -1222,7 +1220,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void change_issue_status_permission_check_exceptionally() throws ExecutionException, InterruptedException {
     addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
 
     var issueKey = "malformed issue UUID";
     var result = lsProxy.checkIssueStatusChangePermitted(new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedParams(folder1BaseDir.toUri().toString(), issueKey)).get();
@@ -1413,9 +1410,9 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
 
   @Test
-  void test_binding_suggestion_for_client() throws Exception {
+  void should_automatically_suggest_bindings_to_client() throws Exception {
     client.suggestBindingLatch = new CountDownLatch(1);
-    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    var basedir = Paths.get("path/to/base/auto-suggest").toAbsolutePath();
     var workspaceUri = basedir.toUri().toString();
     addedConfigScopeIds.add(workspaceUri);
     var workspaceFolder = new WorkspaceFolder(workspaceUri);
@@ -1433,8 +1430,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
 
   @Test
-  void getBindingSuggestions() throws ExecutionException, InterruptedException {
-    var basedir = Paths.get("path/to/base").toAbsolutePath();
+  void should_allow_client_to_explicitly_ask_for_binding_suggestions() throws ExecutionException, InterruptedException {
+    var basedir = Paths.get("path/to/base/explicit-request").toAbsolutePath();
     var workspaceUri = basedir.toUri().toString();
     addedConfigScopeIds.add(workspaceUri);
     var workspaceFolder = new WorkspaceFolder(workspaceUri, "foo-bar");
@@ -1443,9 +1440,11 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
       new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
     foldersToRemove.add(workspaceUri);
-    var result = lsProxy.getBindingSuggestion(new GetBindingSuggestionParams(workspaceUri, CONNECTION_ID)).get();
-    assertThat(result).isNotNull();
-    assertThat(result.getSuggestions()).hasSize(1);
+    // Availability of binding suggestions for the added folder can take some time
+    awaitUntilAsserted(() -> {
+      var result = lsProxy.getBindingSuggestion(new GetBindingSuggestionParams(workspaceUri, CONNECTION_ID)).get();
+      assertThat(result).isNotNull();
+      assertThat(result.getSuggestions()).hasSize(1);
+    });
   }
-
 }
