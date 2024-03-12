@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -53,7 +52,6 @@ import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -110,7 +108,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private static final String PROJECT_NAME2 = "Project Two";
   private static final long CURRENT_TIME = System.currentTimeMillis();
   private static Path folder1BaseDir;
-  private List<String> addedConfigScopeIds;
 
   @BeforeAll
   public static void initialize() throws Exception {
@@ -121,11 +118,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         "productVersion", "0.1",
         "productKey", "productKey"),
       new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
-  }
 
-  @AfterEach
-  void removeBoundedScopes() {
-    addedConfigScopeIds.forEach(addedConfigScopeId -> lsProxy.didRemoveConfigurationScope(new SonarLintExtendedLanguageServer.DidRemoveConfigurationScopeParams(addedConfigScopeId)));
   }
 
   @BeforeEach
@@ -198,8 +191,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .setType(Common.BranchType.BRANCH)
           .build())
         .build());
-
-    addedConfigScopeIds = new ArrayList<>();
   }
 
   @NotNull
@@ -240,7 +231,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   void analysisConnected_find_hotspot() {
     mockNoIssuesNoHotspotsForProject();
 
-    addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
+    addConfigScope(folder1BaseDir.toUri().toString());
     var uriInFolder = folder1BaseDir.resolve("hotspot.py").toUri().toString();
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
@@ -325,7 +316,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .build()
     );
 
-    addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
+    addConfigScope(folder1BaseDir.toUri().toString());
     awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
@@ -401,7 +392,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     );
 
     var uriInFolder = folder1BaseDir.resolve("hotspot.py").toUri().toString();
-    addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
+    addConfigScope(folder1BaseDir.toUri().toString());
     awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
@@ -443,7 +434,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     List<TextDocumentItem> documents = List.of(doc1, doc2);
     var scanParams = new SonarLintExtendedLanguageServer.ScanFolderForHotspotsParams(folder1BaseDir.toUri().toString(), documents);
 
-    addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
+    addConfigScope(folder1BaseDir.toUri().toString());
     awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
@@ -524,7 +515,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setQueryTimestamp(CURRENT_TIME)
         .build());
 
-    addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
+    addConfigScope(folder1BaseDir.toUri().toString());
     var uriInFolder = folder1BaseDir.resolve("inFolder.py").toUri().toString();
     didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
@@ -536,10 +527,12 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
   }
 
-  private void addConfigScope(String connectionId, String projectKey, String configScopeId) {
-    lsProxy.didAddConfigurationScopes(new SonarLintExtendedLanguageServer.DidAddConfigurationScopes(configScopeId, true, "someName",
-      connectionId, projectKey, false));
-    addedConfigScopeIds.add(configScopeId);
+  private void addConfigScope(String configScopeId) {
+    lsProxy.getWorkspaceService()
+      .didChangeWorkspaceFolders(
+        new DidChangeWorkspaceFoldersParams(
+          new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(configScopeId)), Collections.emptyList())));
+    foldersToRemove.add(configScopeId);
     awaitUntilAsserted(() -> assertThat(client)
       .satisfiesAnyOf(
         c -> c.scopeReadyForAnalysis.containsKey(configScopeId),
@@ -590,8 +583,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject&rules=&branch=master&ps=500&p=2",
       Issues.SearchWsResponse.newBuilder().addComponents(Issues.Component.newBuilder().setKey("componentKey").setPath("componentPath").build()).build());
 
-    addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
+    addConfigScope(folder1BaseDir.toUri().toString());
+    awaitUntilAsserted(() -> assertLogContains("Synchronizing project branches for project 'myProject'"));
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
     var uriInFolder = folder1BaseDir.resolve("inFolder.py").toUri().toString();
@@ -649,7 +642,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setQueryTimestamp(System.currentTimeMillis())
         .build());
 
-    addConfigScope(CONNECTION_ID, "myProject", CONFIG_SCOPE_ID);
     var uriInFolder = folder1BaseDir.resolve("pythonFile.py").toUri().toString();
     didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
@@ -739,16 +731,22 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void openHotspotInBrowserShouldLogIfBranchNotFound() {
+    lsProxy.getWorkspaceService()
+      .didChangeWorkspaceFolders(
+        new DidChangeWorkspaceFoldersParams(
+          new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folder1BaseDir.toUri().toString())), Collections.emptyList())));
+    foldersToRemove.add(folder1BaseDir.toUri().toString());
+
     lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotInBrowserLsParams("id", folder1BaseDir.toUri().toString()));
 
-    assertLogContains("Can't find branch for workspace folder " + folder1BaseDir.toUri().getPath()
-      + " during attempt to open hotspot in browser.");
+    awaitUntilAsserted(() -> assertLogContains("Can't find branch for workspace folder " + folder1BaseDir.toUri().getPath()
+      + " during attempt to open hotspot in browser."));
   }
 
   @Test
   void shouldOpenHotspotDescription() {
     mockNoIssuesNoHotspotsForProject();
-    addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
+    addConfigScope(folder1BaseDir.toUri().toString());
     var uriInFolder = folder1BaseDir.resolve("hotspot.py").toUri().toString();
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder)).hasSize(1));
@@ -820,7 +818,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
 
-    addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
+    addConfigScope(folder1BaseDir.toUri().toString());
     awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
 
@@ -865,7 +863,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .build());
     mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
 
-    addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
+    addConfigScope(folder1BaseDir.toUri().toString());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
     var fileUri = folder1BaseDir.resolve("changeIssueStatus.py").toUri().toString();
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";
@@ -946,7 +944,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
 
     var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
-    addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
+    addConfigScope(folder1BaseDir.toUri().toString());
     awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
@@ -1040,7 +1038,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
 
     var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
-    addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
+    addConfigScope(folder1BaseDir.toUri().toString());
     awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
@@ -1135,7 +1133,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
 
     var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
-    addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
+    addConfigScope(folder1BaseDir.toUri().toString());
     awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
 
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
@@ -1195,7 +1193,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
-
+    addConfigScope(folder1BaseDir.toUri().toString());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
     var fileUri = folder1BaseDir.resolve("changeIssueStatus.py").toUri().toString();
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";
@@ -1219,7 +1217,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void change_issue_status_permission_check_exceptionally() throws ExecutionException, InterruptedException {
-    addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
+    addConfigScope(folder1BaseDir.toUri().toString());
+    awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
 
     var issueKey = "malformed issue UUID";
     var result = lsProxy.checkIssueStatusChangePermitted(new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedParams(folder1BaseDir.toUri().toString(), issueKey)).get();
@@ -1323,7 +1322,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     mockWebServerExtension.addResponse("/api/issues/anticipated_transitions?projectKey=myProject", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
 
-    addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
+    addConfigScope(folder1BaseDir.toUri().toString());
     awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
 
@@ -1398,7 +1397,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setCreationDate(Instant.now().toEpochMilli())
         .build());
 
-    addConfigScope(CONNECTION_ID, "myProject", folder1BaseDir.toUri().toString());
+    addConfigScope(folder1BaseDir.toUri().toString());
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";
     didOpen(fileUri, "python", content);
 
@@ -1408,15 +1407,12 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .contains(tuple(0, 1, 0, 2, "ruleKey", "Latest SonarQube Analysis", "message", DiagnosticSeverity.Warning)));
   }
 
-
   @Test
   void should_automatically_suggest_bindings_to_client() throws Exception {
     client.suggestBindingLatch = new CountDownLatch(1);
     var basedir = Paths.get("path/to/base/auto-suggest").toAbsolutePath();
     var workspaceUri = basedir.toUri().toString();
-    addedConfigScopeIds.add(workspaceUri);
     var workspaceFolder = new WorkspaceFolder(workspaceUri);
-    getFolderSettings(workspaceUri);
     foldersToRemove.add(workspaceUri);
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
       new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
@@ -1428,17 +1424,15 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.suggestedBindings.getSuggestions().get(workspaceUri)).isNotNull();
   }
 
-
   @Test
   void should_allow_client_to_explicitly_ask_for_binding_suggestions() throws ExecutionException, InterruptedException {
-    var basedir = Paths.get("path/to/base/explicit-request").toAbsolutePath();
-    var workspaceUri = basedir.toUri().toString();
-    addedConfigScopeIds.add(workspaceUri);
+    var workspaceUri = folder1BaseDir.resolve("foo-bar").toUri().toString();
     var workspaceFolder = new WorkspaceFolder(workspaceUri, "foo-bar");
     client.folderSettings = new HashMap<>();
     client.folderSettings.put(workspaceUri, new HashMap<>());
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
       new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
+
     foldersToRemove.add(workspaceUri);
     // Availability of binding suggestions for the added folder can take some time
     awaitUntilAsserted(() -> {

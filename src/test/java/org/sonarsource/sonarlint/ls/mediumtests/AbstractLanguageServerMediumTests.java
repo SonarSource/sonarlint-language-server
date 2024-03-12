@@ -46,7 +46,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.apache.commons.io.FileUtils;
@@ -96,7 +95,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.ServerMain;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -276,11 +274,11 @@ public abstract class AbstractLanguageServerMediumTests {
     for (var uri : notebooksToBeClosed) {
       lsProxy.getNotebookDocumentService().didClose(new DidCloseNotebookDocumentParams(new NotebookDocumentIdentifier(uri), List.of()));
     }
-    var changeWorkspaceFoldersParams = new DidChangeWorkspaceFoldersParams();
-    var event = new WorkspaceFoldersChangeEvent();
-    event.setRemoved(foldersToRemove.stream().map(WorkspaceFolder::new).collect(Collectors.toList()));
-    changeWorkspaceFoldersParams.setEvent(event);
-    lsProxy.getWorkspaceService().didChangeWorkspaceFolders(changeWorkspaceFoldersParams);
+    foldersToRemove.forEach(folderUri -> {
+      lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
+        new WorkspaceFoldersChangeEvent(List.of(), List.of(new WorkspaceFolder(folderUri)))));
+      awaitUntilAsserted(() -> assertLogContains("Configuration scope '" + folderUri + "' removed, clearing matched branch"));
+    });
     instanceTempDirs.forEach(tempDirPath -> FileUtils.deleteQuietly(tempDirPath.toFile()));
     instanceTempDirs.clear();
   }
