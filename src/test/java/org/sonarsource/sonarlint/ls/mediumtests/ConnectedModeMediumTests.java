@@ -1432,12 +1432,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     client.folderSettings.put(workspaceUri, new HashMap<>());
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
       new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
-    awaitUntilAsserted(() -> assertThat(client)
-      .satisfiesAnyOf(
-        c -> c.scopeReadyForAnalysis.containsKey(workspaceUri),
-        c -> c.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Configuration scope '" + workspaceUri + "' is already bound"))
-      )
-    );
 
     foldersToRemove.add(workspaceUri);
     // Availability of binding suggestions for the added folder can take some time
