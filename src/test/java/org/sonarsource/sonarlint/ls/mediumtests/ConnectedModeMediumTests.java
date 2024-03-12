@@ -584,7 +584,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Issues.SearchWsResponse.newBuilder().addComponents(Issues.Component.newBuilder().setKey("componentKey").setPath("componentPath").build()).build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
+    awaitUntilAsserted(() -> assertLogContains("Synchronizing project branches for project 'myProject'"));
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
     var uriInFolder = folder1BaseDir.resolve("inFolder.py").toUri().toString();
