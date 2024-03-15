@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.clientapi;
 
+import java.net.Authenticator;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -322,7 +323,10 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public GetProxyPasswordAuthenticationResponse getProxyPasswordAuthentication(String host, int port, String protocol, String prompt, String scheme, URL targetHost) {
-    return new GetProxyPasswordAuthenticationResponse(null, null);
+    var passwordAuthentication = Authenticator.requestPasswordAuthentication(host, null, port, protocol, prompt, scheme,
+      targetHost, Authenticator.RequestorType.PROXY);
+    return new GetProxyPasswordAuthenticationResponse(passwordAuthentication != null ? passwordAuthentication.getUserName() : null,
+      passwordAuthentication != null ? new String(passwordAuthentication.getPassword()) : null);
   }
 
   @Override
