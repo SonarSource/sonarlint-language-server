@@ -244,6 +244,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       client, globalLogOutput, backendServiceFacade, openNotebooksCache);
     vsCodeClient.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(backendServiceFacade, globalLogOutput);
+    backendServiceFacade.setTelemetry(this.telemetry);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) bindingManager);

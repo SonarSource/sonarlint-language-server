@@ -61,7 +61,12 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   }
 
   public boolean enabled() {
-    return !"true".equals(System.getProperty(DISABLE_PROPERTY_KEY));
+    var telemetrySystemPropertyOverride = System.getProperty(DISABLE_PROPERTY_KEY);
+    var telemetryDisabledBySystemProperty = "true".equals(telemetrySystemPropertyOverride);
+    if (telemetryDisabledBySystemProperty) {
+      logOutput.debug("Telemetry is disabled by system property");
+    }
+    return !telemetryDisabledBySystemProperty;
   }
 
   public void analysisDoneOnMultipleFiles() {
