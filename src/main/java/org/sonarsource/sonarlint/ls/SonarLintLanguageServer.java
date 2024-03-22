@@ -303,12 +303,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         .orElse(false);
       progressManager.setWorkDoneProgressSupportedByClient(workDoneSupportedByClient);
 
-      workspaceFoldersManager.initialize(params.getWorkspaceFolders());
-
       var options = Utils.parseToMap(params.getInitializationOptions());
       if (options == null) {
         options = Collections.emptyMap();
       }
+      var showVerboseLogs = (boolean) options.getOrDefault("showVerboseLogs", true);
+      lsLogOutput.initialize(showVerboseLogs);
+
+      workspaceFoldersManager.initialize(params.getWorkspaceFolders());
 
       var productKey = (String) options.get("productKey");
       // deprecated, will be ignored when productKey present
@@ -325,11 +327,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var platform = (String) options.get("platform");
       var architecture = (String) options.get("architecture");
       var additionalAttributes = (Map<String, Object>) options.getOrDefault("additionalAttributes", Map.of());
-      var showVerboseLogs = (boolean) options.getOrDefault("showVerboseLogs", true);
       var userAgent = productName + " " + productVersion;
       var clientNodePath = (String) options.get("clientNodePath");
 
-      lsLogOutput.initialize(showVerboseLogs);
       analysisScheduler.initialize();
       diagnosticPublisher.initialize(firstSecretDetected);
 
