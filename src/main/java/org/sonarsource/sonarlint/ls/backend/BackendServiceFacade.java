@@ -92,7 +92,7 @@ public class BackendServiceFacade {
 
   public BackendService getBackendService() {
     try {
-      var initialized = initLatch.await(10, TimeUnit.SECONDS);
+      var initialized = initLatch.await(1, TimeUnit.MINUTES);
       if (initialized) {
         return backendService;
       } else {
