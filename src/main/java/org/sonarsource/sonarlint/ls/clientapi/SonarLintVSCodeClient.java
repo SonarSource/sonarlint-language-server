@@ -59,6 +59,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingR
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.ConnectionSuggestionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.event.DidReceiveServerHotspotEvent;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.GetProxyPasswordAuthenticationResponse;
@@ -134,6 +136,13 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   public void suggestBinding(Map<String, List<BindingSuggestionDto>> suggestionsByConfigScope) {
     if (!suggestionsByConfigScope.isEmpty()) {
       client.suggestBinding(new SuggestBindingParams(suggestionsByConfigScope));
+    }
+  }
+
+  @Override
+  public void suggestConnection(Map<String, List<ConnectionSuggestionDto>> suggestionsByConfigScope) {
+    if (!suggestionsByConfigScope.isEmpty()) {
+      client.suggestConnection(new SuggestConnectionParams(suggestionsByConfigScope));
     }
   }
 
