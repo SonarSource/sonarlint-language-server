@@ -134,6 +134,7 @@ import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.standalone.notifications.PromotionalNotifications;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.telemetry.TelemetryInitParams;
+import org.sonarsource.sonarlint.ls.util.CatchingRunnable;
 import org.sonarsource.sonarlint.ls.util.EnumLabelsMapper;
 import org.sonarsource.sonarlint.ls.util.ExitingInputStream;
 import org.sonarsource.sonarlint.ls.util.Utils;
@@ -618,7 +619,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       lsLogOutput.debug(format("Folder %s is now on an unknown branch.", folderUri));
       return;
     }
-    branchChangeEventExecutor.submit(() -> backendServiceFacade.getBackendService().notifyBackendOnVscChange(folderUri));
+    branchChangeEventExecutor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().notifyBackendOnVscChange(folderUri)));
   }
 
   @Override

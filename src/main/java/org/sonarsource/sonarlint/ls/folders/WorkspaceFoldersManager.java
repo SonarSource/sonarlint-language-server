@@ -42,6 +42,7 @@ import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.util.CatchingRunnable;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.net.URI.create;
@@ -75,7 +76,7 @@ public class WorkspaceFoldersManager {
         var uri = create(wf.getUri());
         addFolder(wf, uri);
       });
-      executor.submit(() -> backendServiceFacade.getBackendService().addWorkspaceFolders(workspaceFolders, getBindingProvider()));
+      executor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().addWorkspaceFolders(workspaceFolders, getBindingProvider())));
     }
   }
 
@@ -96,10 +97,10 @@ public class WorkspaceFoldersManager {
       addedFolderWrappers.add(addedWrapper);
       listeners.forEach(l -> l.added(addedWrapper));
     }
-    executor.submit(() -> {
+    executor.submit(new CatchingRunnable(() -> {
       backendServiceFacade.getBackendService().addWorkspaceFolders(event.getAdded(), getBindingProvider());
       event.getRemoved().forEach(removed -> removeFolderFromBackend(removed.getUri()));
-    });
+    }));
 
   }
 
