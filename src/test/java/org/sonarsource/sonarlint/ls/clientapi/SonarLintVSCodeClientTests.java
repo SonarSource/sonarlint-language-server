@@ -20,8 +20,15 @@
 package org.sonarsource.sonarlint.ls.clientapi;
 
 import java.io.IOException;
+import java.net.Authenticator;
+import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.PasswordAuthentication;
+import java.net.Proxy;
+import java.net.ProxySelector;
+import java.net.SocketAddress;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -60,6 +67,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBinding
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.CheckServerTrustedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.http.ProxyDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.X509CertificateDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.info.GetClientLiveInfoResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueDetailsDto;
@@ -99,6 +107,7 @@ import org.sonarsource.sonarlint.ls.util.URIUtils;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -618,6 +627,60 @@ class SonarLintVSCodeClientTests {
     verify(diagnosticPublisher).publishDiagnostics(URIUtils.getFullFileUriFromFragments(workspaceFolderPath.toUri().toString(), filePath), false);
   }
 
+  @Test
+  void testDefaultProxyBehavior() throws ExecutionException, InterruptedException, URISyntaxException {
+    ProxySelector.setDefault(new ProxySelector() {
+      @Override
+      public List<Proxy> select(URI uri) {
+        if (uri.equals(URI.create("http://foo"))) {
+          return List.of(
+            new Proxy(Proxy.Type.HTTP, new InetSocketAddress("http://myproxy", 8085)),
+            new Proxy(Proxy.Type.HTTP, new InetSocketAddress("http://myproxy2", 8086)));
+        }
+        return List.of(Proxy.NO_PROXY);
+      }
+
+      @Override
+      public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {
+
+      }
+    });
+
+    var selectProxiesResponse = underTest.selectProxies(new URI("http://foo"));
+
+    assertThat(selectProxiesResponse).extracting(ProxyDto::getType, ProxyDto::getHostname, ProxyDto::getPort)
+      .containsExactly(tuple(Proxy.Type.HTTP, "http://myproxy", 8085),
+        tuple(Proxy.Type.HTTP, "http://myproxy2", 8086));
+
+    var selectProxiesResponseDirectProxy = underTest.selectProxies(new URI("http://foo2"));
+
+    assertThat(selectProxiesResponseDirectProxy).extracting(ProxyDto::getType, ProxyDto::getHostname, ProxyDto::getPort)
+      .containsExactlyInAnyOrder(tuple(Proxy.Type.DIRECT, null, 0));
+  }
+
+  @Test
+  void testDefaultAuthenticatorBehavior() throws ExecutionException, InterruptedException, MalformedURLException {
+
+    Authenticator.setDefault(new Authenticator() {
+      @Override
+      protected PasswordAuthentication getPasswordAuthentication() {
+        assertThat(getRequestingHost()).isEqualTo("http://foo");
+        assertThat(getRequestingURL()).hasToString("http://targethost");
+        assertThat(getRequestingPort()).isEqualTo(8085);
+        assertThat(getRequestingProtocol()).isEqualTo("protocol");
+        assertThat(getRequestingScheme()).isEqualTo("scheme");
+        assertThat(getRequestingPrompt()).isEqualTo("prompt");
+        assertThat(getRequestorType()).isEqualTo(RequestorType.PROXY);
+        return new PasswordAuthentication("username", "password".toCharArray());
+      }
+    });
+
+    var response = underTest.getProxyPasswordAuthentication("http://foo", 8085, "protocol",
+      "prompt", "scheme", new URL("http://targethost"));
+    assertThat(response.getProxyUser()).isEqualTo("username");
+    assertThat(response.getProxyPassword()).isEqualTo("password");
+
+  }
 
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
     return new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",

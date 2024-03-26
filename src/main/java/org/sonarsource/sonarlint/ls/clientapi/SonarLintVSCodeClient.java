@@ -337,6 +337,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public GetProxyPasswordAuthenticationResponse getProxyPasswordAuthentication(String host, int port, String protocol, String prompt, String scheme, URL targetHost) {
+    // use null addr, because the authentication fails if it does not exactly match the expected realm's host
     var passwordAuthentication = Authenticator.requestPasswordAuthentication(host, null, port, protocol, prompt, scheme,
       targetHost, Authenticator.RequestorType.PROXY);
     return new GetProxyPasswordAuthenticationResponse(passwordAuthentication != null ? passwordAuthentication.getUserName() : null,
