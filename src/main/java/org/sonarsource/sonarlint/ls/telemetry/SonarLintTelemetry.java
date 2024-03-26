@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.telemetry;
 
 import java.util.Set;
 import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixAppliedForRuleParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddReportedRulesParams;
@@ -75,8 +76,8 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     }
   }
 
-  public void analysisDoneOnSingleLanguage(SonarLanguage language, int analysisTimeMs) {
-    if (enabled()) {
+  public void analysisDoneOnSingleLanguage(@Nullable SonarLanguage language, int analysisTimeMs) {
+    if (enabled() && language != null) {
       backendServiceFacade.getBackendService().getTelemetryService()
         .analysisDoneOnSingleLanguage(new AnalysisDoneOnSingleLanguageParams(Language.valueOf(language.name()), analysisTimeMs));
     }

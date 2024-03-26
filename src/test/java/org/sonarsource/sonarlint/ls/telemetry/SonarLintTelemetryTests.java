@@ -131,6 +131,14 @@ class SonarLintTelemetryTests {
   }
 
   @Test
+  void analysisDoneOnSingleFile_should_not_trigger_analysisDoneOnSingleFile_when_language_is_null() {
+    telemetry.analysisDoneOnSingleLanguage(null, 1000);
+
+    verify(telemetryService, never()).analysisDoneOnSingleLanguage(any());
+
+  }
+
+  @Test
   void analysisDoneOnSingleFile_should_not_trigger_analysisDoneOnSingleFile_when_disabled() {
     System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
     telemetry.analysisDoneOnSingleLanguage(SonarLanguage.JAVA, 1000);
