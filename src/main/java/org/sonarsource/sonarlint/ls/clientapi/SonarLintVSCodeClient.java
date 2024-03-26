@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.clientapi;
 
 import java.net.Authenticator;
 import java.net.InetSocketAddress;
+import java.net.PasswordAuthentication;
 import java.net.Proxy;
 import java.net.ProxySelector;
 import java.net.URI;
@@ -33,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -131,6 +133,28 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     this.logOutput = logOutput;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.openFilesCache = openFilesCache;
+    initializeDefaultProxyAuthenticator();
+  }
+
+  private static void initializeDefaultProxyAuthenticator() {
+    Authenticator.setDefault(new Authenticator() {
+      @Override
+      protected PasswordAuthentication getPasswordAuthentication() {
+        if (getRequestorType() == RequestorType.PROXY) {
+          var protocol = getRequestingProtocol().toLowerCase(Locale.ROOT);
+          var host = System.getProperty(protocol + ".proxyHost", "");
+          var port = System.getProperty(protocol + ".proxyPort", "80");
+          var user = System.getProperty(protocol + ".proxyUser", "");
+          var password = System.getProperty(protocol + ".proxyPassword", "");
+
+          if (getRequestingHost().equalsIgnoreCase(host) && Integer.parseInt(port) == getRequestingPort()) {
+            // Seems to be OK.
+            return new PasswordAuthentication(user, password.toCharArray());
+          }
+        }
+        return null;
+      }
+    });
   }
 
   @Override
