@@ -619,7 +619,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       lsLogOutput.debug(format("Folder %s is now on an unknown branch.", folderUri));
       return;
     }
-    branchChangeEventExecutor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().notifyBackendOnVscChange(folderUri)));
+    branchChangeEventExecutor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().notifyBackendOnVcsChange(folderUri),
+      t -> lsLogOutput.error("Failed to notify backend on VCS change", t)));
   }
 
   @Override

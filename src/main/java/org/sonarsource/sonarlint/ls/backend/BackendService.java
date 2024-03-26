@@ -284,7 +284,7 @@ public class BackendService {
     return initializedBackend().getHotspotService().checkStatusChangePermitted(params);
   }
 
-  public void notifyBackendOnVscChange(String folderUri) {
+  public void notifyBackendOnVcsChange(String folderUri) {
     initializedBackend().getSonarProjectBranchService().didVcsRepositoryChange(new DidVcsRepositoryChangeParams(folderUri));
   }
 

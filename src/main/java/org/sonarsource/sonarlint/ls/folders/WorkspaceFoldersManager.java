@@ -76,7 +76,8 @@ public class WorkspaceFoldersManager {
         var uri = create(wf.getUri());
         addFolder(wf, uri);
       });
-      executor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().addWorkspaceFolders(workspaceFolders, getBindingProvider())));
+      executor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().addWorkspaceFolders(workspaceFolders, getBindingProvider()),
+        t -> logOutput.error("Failed to initialize workspace folders", t)));
     }
   }
 
@@ -100,7 +101,7 @@ public class WorkspaceFoldersManager {
     executor.submit(new CatchingRunnable(() -> {
       backendServiceFacade.getBackendService().addWorkspaceFolders(event.getAdded(), getBindingProvider());
       event.getRemoved().forEach(removed -> removeFolderFromBackend(removed.getUri()));
-    }));
+    }, t -> logOutput.error("Failed to add workspace folder", t)));
 
   }
 
