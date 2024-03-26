@@ -51,7 +51,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
   @Override
   public void added(WorkspaceFolderWrapper added) {
     var folderUri = added.getUri();
-    backendServiceFacade.getBackendService().notifyBackendOnVscChange(folderUri.toString());
+    backendServiceFacade.getBackendService().notifyBackendOnVcsChange(folderUri.toString());
   }
 
   public void shutdown() {

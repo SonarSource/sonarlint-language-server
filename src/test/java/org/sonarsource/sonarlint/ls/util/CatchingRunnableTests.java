@@ -19,23 +19,41 @@
  */
 package org.sonarsource.sonarlint.ls.util;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
+import org.junit.jupiter.api.Test;
 
-public class CatchingRunnable implements Runnable {
-  private final Runnable delegate;
-  private final Consumer<Throwable> errorLogger;
+import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
-  public CatchingRunnable(Runnable delegate, Consumer<Throwable> errorLogger) {
-    this.delegate = delegate;
-    this.errorLogger = errorLogger;
+
+class CatchingRunnableTests {
+  List<String> fakeLogs = new ArrayList<>();
+  boolean callVerifier = false;
+  Consumer<Throwable> dummyConsumer = (t) -> fakeLogs.add("I have failed");
+
+  @Test
+  void shouldApplyConsumerWithThrowable() {
+    var underTest = new CatchingRunnable(throwingRunnable, dummyConsumer);
+    underTest.run();
+
+    assertThat(fakeLogs).hasSize(1);
   }
 
-  @Override
-  public void run() {
-    try {
-      this.delegate.run();
-    } catch (Exception e) {
-      errorLogger.accept(e);
-    }
+  @Test
+  void shouldApplyNormalConsumer() {
+    var underTest = new CatchingRunnable(normalRunnable, dummyConsumer);
+    underTest.run();
+
+    assertThat(callVerifier).isTrue();
   }
+
+  Runnable throwingRunnable = () -> {
+    throw new IllegalArgumentException("This is not allowed");
+  };
+
+  Runnable normalRunnable = () -> {
+    callVerifier = true;
+  };
+
 }
