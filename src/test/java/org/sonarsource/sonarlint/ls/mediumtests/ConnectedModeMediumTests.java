@@ -535,8 +535,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     foldersToRemove.add(configScopeId);
     awaitUntilAsserted(() -> assertThat(client)
       .satisfiesAnyOf(
-        c -> c.scopeReadyForAnalysis.containsKey(configScopeId),
-        c -> c.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Configuration scope '" + configScopeId + "' is already bound"))
+        c -> assertThat(c.scopeReadyForAnalysis).containsKey(configScopeId),
+        c -> assertThat(c.logs.stream()).anyMatch(messageParams -> messageParams.getMessage().contains(String.format("Configuration scope '%s' is already bound", configScopeId)))
       )
     );
   }
