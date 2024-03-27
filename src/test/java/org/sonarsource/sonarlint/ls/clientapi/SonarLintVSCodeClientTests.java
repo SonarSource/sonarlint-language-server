@@ -681,6 +681,21 @@ class SonarLintVSCodeClientTests {
     assertThat(response.getProxyPassword()).isEqualTo("password");
 
   }
+  @Test
+  void shouldUseDefaultAuthenticatorWithSystemProperties() throws MalformedURLException {
+    // setup
+    System.setProperty("http.proxyHost", "localhost");
+    System.setProperty("http.proxyPort", "1234");
+    System.setProperty("http.proxyUser", "myUser");
+    System.setProperty("http.proxyPassword", "myPass");
+
+    var passwordAuth = Authenticator.requestPasswordAuthentication("localhost", null, 1234,
+      "http", "", "", new URL("http://localhost:9000"),
+      Authenticator.RequestorType.PROXY);
+
+    assertThat(passwordAuth.getUserName()).isEqualTo("myUser");
+    assertThat(new String(passwordAuth.getPassword())).isEqualTo("myPass");
+  }
 
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
     return new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
