@@ -48,6 +48,8 @@ import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -124,6 +126,14 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SonarLintVSCodeClientTests {
+  private static final Set<String> PROXY_PROPERTY_KEYS = Set.of(
+    "http.proxyHost",
+    "http.proxyPort",
+    "http.proxyUser",
+    "http.proxyPassword"
+  );
+  private static final Map<String, String> savedProxyProperties = new HashMap<>();
+
   @TempDir
   Path basedir;
   @RegisterExtension
@@ -201,6 +211,23 @@ class SonarLintVSCodeClientTests {
     Files.write(fileInAWorkspaceFolderPath, ("print('1234')\n" +
       "print('aa')\n" +
       "print('b')\n").getBytes(StandardCharsets.UTF_8));
+  }
+
+  @BeforeAll
+  static void saveProxyProperties() {
+    PROXY_PROPERTY_KEYS.forEach(k -> savedProxyProperties.put(k, System.getProperty(k)));
+  }
+
+  @AfterAll
+  static void cleanupProxyProperties() {
+    PROXY_PROPERTY_KEYS.forEach(k -> {
+      var savedPropertyValue = savedProxyProperties.get(k);
+      if (savedPropertyValue == null) {
+        System.clearProperty(k);
+      } else {
+        System.setProperty(k, savedPropertyValue);
+      }
+    });
   }
 
   @Test
