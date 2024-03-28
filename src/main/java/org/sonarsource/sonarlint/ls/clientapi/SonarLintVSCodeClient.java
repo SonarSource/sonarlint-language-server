@@ -20,6 +20,9 @@
 package org.sonarsource.sonarlint.ls.clientapi;
 
 import java.net.Authenticator;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.ProxySelector;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -128,6 +131,11 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     this.logOutput = logOutput;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.openFilesCache = openFilesCache;
+    initializeDefaultProxyAuthenticator();
+  }
+
+  private static void initializeDefaultProxyAuthenticator() {
+    Authenticator.setDefault(new SystemPropertiesAuthenticator());
   }
 
   @Override
@@ -318,11 +326,23 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public List<ProxyDto> selectProxies(URI uri) {
-    return List.of();
+    var proxies = ProxySelector.getDefault().select(uri);
+    return proxies.stream().map(SonarLintVSCodeClient::convert).toList();
+  }
+
+  private static ProxyDto convert(Proxy proxy) {
+    if (proxy.type() == Proxy.Type.DIRECT) {
+      return ProxyDto.NO_PROXY;
+    }
+    var address = (InetSocketAddress) proxy.address();
+    var server = address.getHostString();
+    var port = address.getPort();
+    return new ProxyDto(proxy.type(), server, port);
   }
 
   @Override
   public GetProxyPasswordAuthenticationResponse getProxyPasswordAuthentication(String host, int port, String protocol, String prompt, String scheme, URL targetHost) {
+    // use null addr, because the authentication fails if it does not exactly match the expected realm's host
     var passwordAuthentication = Authenticator.requestPasswordAuthentication(host, null, port, protocol, prompt, scheme,
       targetHost, Authenticator.RequestorType.PROXY);
     return new GetProxyPasswordAuthenticationResponse(passwordAuthentication != null ? passwordAuthentication.getUserName() : null,
