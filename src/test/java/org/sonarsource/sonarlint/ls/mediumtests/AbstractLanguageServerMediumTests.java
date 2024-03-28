@@ -95,6 +95,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.ServerMain;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -534,6 +535,11 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public CompletableFuture<AssistCreatingConnectionResponse> assistCreatingConnection(CreateConnectionParams params) {
       return CompletableFuture.completedFuture(new AssistCreatingConnectionResponse("connectionId"));
+    }
+
+    @Override
+    public void suggestConnection(SuggestConnectionParams suggestConnectionParams) {
+
     }
 
     @Override
