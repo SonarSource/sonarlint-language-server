@@ -366,8 +366,8 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     var confirmationParams = new SonarLintExtendedLanguageClient.SslCertificateConfirmationParams(
       untrustedCert == null ? "" : untrustedCert.getSubjectX500Principal().getName(),
       untrustedCert == null ? "" : untrustedCert.getIssuerX500Principal().getName(),
-      untrustedCert == null ? "" : untrustedCert.getNotAfter().toString(),
       untrustedCert == null ? "" : untrustedCert.getNotBefore().toString(),
+      untrustedCert == null ? "" : untrustedCert.getNotAfter().toString(),
       sha1fingerprint,
       sha256fingerprint,
       actualSonarLintUserHome.toString()
