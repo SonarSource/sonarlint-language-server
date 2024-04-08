@@ -37,6 +37,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRulePa
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleParamDefinitionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
@@ -46,6 +47,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
   @JsonNotification("sonarlint/suggestBinding")
   void suggestBinding(SuggestBindingParams binding);
+
+  @JsonNotification("sonarlint/suggestConnection")
+  void suggestConnection(SuggestConnectionParams suggestConnectionParams);
 
   @JsonRequest("sonarlint/listFilesInFolder")
   CompletableFuture<FindFileByNamesInScopeResponse> listFilesInFolder(FolderUriParams params);

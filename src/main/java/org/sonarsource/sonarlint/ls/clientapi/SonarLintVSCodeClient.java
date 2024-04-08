@@ -62,6 +62,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingR
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.ConnectionSuggestionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.event.DidReceiveServerHotspotEvent;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.GetProxyPasswordAuthenticationResponse;
@@ -457,25 +459,35 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   }
 
   @Override
-  public List<ClientFileDto> listFiles(String folderUri) {
-    return CompletableFutures.computeAsync(c -> {
-      var response = client.listFilesInFolder(new SonarLintExtendedLanguageClient.FolderUriParams(folderUri)).join();
-      var folderPath = Path.of(URI.create(folderUri));
-      return response.getFoundFiles().stream()
-        .map(file -> {
-          var filePath = Path.of(file.getFilePath());
-          return new ClientFileDto(filePath.toUri(), folderPath.relativize(filePath), folderUri, null, StandardCharsets.UTF_8.name(), filePath,
-            file.getContent());
-        })
-        .toList();
-    }).join();
+  public List<ClientFileDto> listFiles(String configScopeId) {
+    return configScopeIdAsUri(configScopeId)
+      .map(configScopeIdAsUri -> CompletableFutures.computeAsync(c -> {
+        var response = client.listFilesInFolder(new SonarLintExtendedLanguageClient.FolderUriParams(configScopeId)).join();
+        var folderPath = Path.of(configScopeIdAsUri);
+        return response.getFoundFiles().stream()
+          .map(file -> {
+            var filePath = Path.of(file.getFilePath());
+            return new ClientFileDto(filePath.toUri(), folderPath.relativize(filePath), configScopeId, null, StandardCharsets.UTF_8.name(), filePath,
+              file.getContent());
+          })
+          .toList();
+      }).join())
+      .orElse(List.of());
+  }
+
+  private static Optional<URI> configScopeIdAsUri(String configScopeId) {
+    try {
+      return Optional.of(URI.create(configScopeId));
+    } catch (IllegalArgumentException e) {
+      return Optional.empty();
+    }
   }
 
   @Override
   public void didChangeAnalysisReadiness(Set<String> configurationScopeIds, boolean areReadyForAnalysis) {
     workspaceFoldersManager.updateAnalysisReadiness(configurationScopeIds, areReadyForAnalysis);
     if (areReadyForAnalysis) {
-      // for each open folderUri do didOpen for each open file
+      // for each open configScopeId do didOpen for each open file
       Collection<WorkspaceFolderWrapper> all = workspaceFoldersManager.getAll();
       all.forEach(folderWrapper -> {
         var folderUri = folderWrapper.getUri();
@@ -515,6 +527,14 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
         });
       }
     });
+  }
+
+  @Override
+  public void suggestConnection(Map<String, List<ConnectionSuggestionDto>> configScopesToConnectionSuggestions) {
+    if (configScopesToConnectionSuggestions.isEmpty()) {
+      return;
+    }
+    client.suggestConnection(new SuggestConnectionParams(configScopesToConnectionSuggestions));
   }
 
   @NotNull
