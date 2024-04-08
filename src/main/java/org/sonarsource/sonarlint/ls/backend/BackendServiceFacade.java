@@ -51,6 +51,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.telemetry.TelemetryInitParams;
 
 public class BackendServiceFacade {
@@ -65,6 +66,7 @@ public class BackendServiceFacade {
   private final LanguageClientLogger lsLogOutput;
   private SettingsManager settingsManager;
   private TelemetryInitParams telemetryInitParams;
+  private SonarLintTelemetry telemetry;
   private final CountDownLatch initLatch = new CountDownLatch(1);
 
   public BackendServiceFacade(SonarLintRpcClientDelegate rpcClient, LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client) {
@@ -125,6 +127,7 @@ public class BackendServiceFacade {
   }
 
   private InitializeParams toInitParams(BackendInitParams initParams) {
+    var telemetryEnabled = telemetry != null && telemetry.enabled();
     return new InitializeParams(
       new ClientConstantInfoDto("Visual Studio Code", initParams.getUserAgent()),
       new TelemetryClientConstantAttributesDto(initParams.getTelemetryProductKey(),
@@ -135,7 +138,7 @@ public class BackendServiceFacade {
       getHttpConfiguration(),
       getSonarCloudAlternativeEnvironment(),
       new FeatureFlagsDto(true, true, true,
-        true, initParams.isEnableSecurityHotspots(), true, true, true),
+        true, initParams.isEnableSecurityHotspots(), true, true, true, telemetryEnabled),
       initParams.getStorageRoot(),
       Path.of(initParams.getSonarlintUserHome()),
       initParams.getEmbeddedPluginPaths(),
@@ -213,6 +216,10 @@ public class BackendServiceFacade {
 
   public TelemetryInitParams getTelemetryInitParams() {
     return telemetryInitParams;
+  }
+
+  public void setTelemetry(SonarLintTelemetry telemetry) {
+    this.telemetry = telemetry;
   }
 
   public CountDownLatch getInitLatch() {

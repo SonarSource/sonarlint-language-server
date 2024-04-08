@@ -22,8 +22,8 @@ package org.sonarsource.sonarlint.ls.folders;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.eclipse.lsp4j.FileChangeType;
@@ -38,6 +38,7 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.FolderFileSystem;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.util.Utils;
 import org.sonarsource.sonarlint.plugin.api.module.file.ModuleFileEvent;
@@ -75,26 +76,26 @@ public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
   }
 
   private void notifyBackend(List<FileEvent> changes) {
-    var deletedFileUris = changes.stream()
-      .filter(event -> event.getType() == FileChangeType.Deleted)
-      .map(event -> URI.create(event.getUri()))
-      .toList();
-    var events = changes.stream()
-      .filter(event -> event.getType() == FileChangeType.Deleted)
-      .map(event -> {
-        var fileUri = URI.create(event.getUri());
-        return workspaceFoldersManager.findFolderForFile(fileUri)
-          .map(folder -> {
+    List<URI> deletedFileUris = new ArrayList<>();
+    List<ClientFileDto> addedOrChangedFiles = new ArrayList<>();
+    changes.forEach(event -> {
+      var fileUri = URI.create(event.getUri());
+      if (event.getType() == FileChangeType.Deleted) {
+        deletedFileUris.add(fileUri);
+      } else {
+        workspaceFoldersManager.findFolderForFile(fileUri)
+          .ifPresent(folder -> {
             var settings = folder.getSettings();
             var baseDir = folder.getRootPath();
             var fsPath = Paths.get(fileUri);
-            return new ClientFileDto(fileUri, baseDir.relativize(fsPath), folder.getUri().toString(),
-              fileTypeClassifier.isTest(settings, fileUri, false, () -> javaConfigCache.getOrFetch(fileUri)), StandardCharsets.UTF_8.name(), fsPath, null);
+            var relativePath = baseDir.relativize(fsPath);
+            var folderUri = folder.getUri().toString();
+            var isTest = isTestFile(fileUri, settings);
+            addedOrChangedFiles.add(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(), fsPath, null));
           });
-      })
-      .flatMap(Optional::stream)
-      .toList();
-    backendServiceFacade.getBackendService().updateFileSystem(deletedFileUris, events);
+      }
+    });
+    backendServiceFacade.getBackendService().updateFileSystem(deletedFileUris, addedOrChangedFiles);
   }
 
   private void processFileEvent(URI fileUri, Type eventType) {
@@ -102,28 +103,23 @@ public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
       .ifPresent(folder -> {
         var settings = folder.getSettings();
         var baseDir = folder.getRootPath();
-
         var binding = bindingManager.getBinding(fileUri);
-
         var engineForFile = binding.isPresent() ? binding.get().getEngine() : standaloneEngineManager.getOrCreateAnalysisEngine();
-
-        var inputFile = new InFolderClientInputFile(fileUri, baseDir.relativize(Paths.get(fileUri)).toString(),
-          fileTypeClassifier.isTest(settings, fileUri, false, () -> javaConfigCache.getOrFetch(fileUri)));
-
+        var inputFile = new InFolderClientInputFile(fileUri, baseDir.relativize(Paths.get(fileUri)).toString(), isTestFile(fileUri, settings));
         engineForFile.fireModuleFileEvent(WorkspaceFoldersProvider.key(folder), ClientModuleFileEvent.of(inputFile, eventType));
       });
   }
 
+  private boolean isTestFile(URI fileUri, WorkspaceFolderSettings settings) {
+    return fileTypeClassifier.isTest(settings, fileUri, false, () -> javaConfigCache.getOrFetch(fileUri));
+  }
+
   private static ModuleFileEvent.Type translate(FileChangeType type) {
-    switch (type) {
-      case Created:
-        return ModuleFileEvent.Type.CREATED;
-      case Changed:
-        return ModuleFileEvent.Type.MODIFIED;
-      case Deleted:
-        return ModuleFileEvent.Type.DELETED;
-    }
-    throw new IllegalArgumentException("Unknown event type: " + type);
+    return switch (type) {
+      case Created -> Type.CREATED;
+      case Changed -> Type.MODIFIED;
+      case Deleted -> Type.DELETED;
+    };
   }
 
   private SonarLintAnalysisEngine findEngineFor(WorkspaceFolderWrapper folder) {
