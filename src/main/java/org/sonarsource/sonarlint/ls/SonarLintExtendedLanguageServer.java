@@ -33,6 +33,8 @@ import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.util.Preconditions;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 
@@ -61,7 +63,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
       this.connectionId = connectionId;
     }
 
-    public ConnectionCheckParams(@Nullable String token, @Nullable String organization,@Nullable String serverUrl) {
+    public ConnectionCheckParams(@Nullable String token, @Nullable String organization, @Nullable String serverUrl) {
       this.token = token;
       this.serverUrl = serverUrl;
       this.organization = organization;
@@ -484,6 +486,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
       return issueKey;
     }
   }
+
   class CheckIssueStatusChangePermittedResponse {
     private final boolean permitted;
     private final String notPermittedReason;
@@ -687,7 +690,10 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonNotification("sonarlint/analyseOpenFileIgnoringExcludes")
   CompletableFuture<Void> analyseOpenFileIgnoringExcludes(AnalyseOpenFileIgnoringExcludesParams params);
 
-  class DidAddConfigurationScopes{
+  @JsonRequest("sonarlint/getSharedConnectedModeFileContent")
+  CompletableFuture<GetSharedConnectedModeConfigFileResponse> getSharedConnectedModeConfigFileContents(GetSharedConnectedModeConfigFileParams params);
+
+  class DidAddConfigurationScopes {
     private final String id;
     private final boolean bindable;
     private final String name;
