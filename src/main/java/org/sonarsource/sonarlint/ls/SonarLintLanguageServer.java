@@ -412,6 +412,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         workspaceFoldersManager::shutdown,
         moduleEventsProcessor::shutdown,
         taintIssuesUpdater::shutdown,
+        branchChangeEventExecutor::shutdown,
         // shutdown engines after the rest so that no operations remain on them, and they won't be recreated accidentally
         bindingManager::shutdown,
         standaloneEngineManager::shutdown,
