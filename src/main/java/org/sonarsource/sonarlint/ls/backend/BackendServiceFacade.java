@@ -56,8 +56,11 @@ import org.sonarsource.sonarlint.ls.telemetry.TelemetryInitParams;
 
 public class BackendServiceFacade {
 
+  private static final int DEFAULT_INIT_TIMEOUT_SECONDS = 60;
+
   public static final String ROOT_CONFIGURATION_SCOPE = "<root>";
 
+  private final int initTimeoutSeconds;
   private final BackendService backendService;
   private final BackendInitParams initParams;
   private final ConfigurationScopeDto rootConfigurationScope;
@@ -70,6 +73,11 @@ public class BackendServiceFacade {
   private final CountDownLatch initLatch = new CountDownLatch(1);
 
   public BackendServiceFacade(SonarLintRpcClientDelegate rpcClient, LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client) {
+    this(rpcClient, lsLogOutput, client, DEFAULT_INIT_TIMEOUT_SECONDS);
+  }
+
+  BackendServiceFacade(SonarLintRpcClientDelegate rpcClient, LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client, int initTimeoutSeconds) {
+    this.initTimeoutSeconds = initTimeoutSeconds;
     this.lsLogOutput = lsLogOutput;
     var clientToServerOutputStream = new PipedOutputStream();
     PipedInputStream clientToServerInputStream = null;
@@ -92,7 +100,7 @@ public class BackendServiceFacade {
 
   public BackendService getBackendService() {
     try {
-      var initialized = initLatch.await(1, TimeUnit.MINUTES);
+      var initialized = initLatch.await(initTimeoutSeconds, TimeUnit.SECONDS);
       if (initialized) {
         return backendService;
       } else {
