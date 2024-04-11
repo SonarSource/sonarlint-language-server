@@ -30,7 +30,7 @@ import static org.mockito.Mockito.mock;
 class BackendServiceFacadeTests {
 
   SonarLintRpcClientDelegate backend = mock(SonarLintRpcClientDelegate.class);
-  BackendServiceFacade underTest = new BackendServiceFacade(backend, mock(LanguageClientLogger.class), mock(SonarLintExtendedLanguageClient.class));
+  BackendServiceFacade underTest = new BackendServiceFacade(backend, mock(LanguageClientLogger.class), mock(SonarLintExtendedLanguageClient.class), 0);
 
   @Test
   void shouldFailIfBackendNotInitialized() {
