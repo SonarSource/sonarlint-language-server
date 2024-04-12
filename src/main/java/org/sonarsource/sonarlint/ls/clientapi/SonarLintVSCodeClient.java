@@ -530,7 +530,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   }
 
   @Override
-  public void suggestConnection(Map<String, List<ConnectionSuggestionDto>> configScopesToConnectionSuggestions) {
+  public void suggestConnection(Map<String, List<ConnectionSuggestionDto>> configScopesToConnectionSuggestions, CancelChecker cancelChecker) {
     if (configScopesToConnectionSuggestions.isEmpty()) {
       return;
     }

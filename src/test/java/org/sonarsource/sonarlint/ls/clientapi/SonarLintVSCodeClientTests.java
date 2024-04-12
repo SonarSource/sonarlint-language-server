@@ -30,7 +30,6 @@ import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -47,6 +46,7 @@ import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
+import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -158,6 +158,8 @@ class SonarLintVSCodeClientTests {
   TaintVulnerabilitiesCache taintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
   AnalysisScheduler analysisScheduler = mock(AnalysisScheduler.class);
   DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
+  private static final CancelChecker NOP_CANCEL_TOKEN = () -> {
+  };
 
   private static final String PEM = """
     subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH
@@ -271,7 +273,7 @@ class SonarLintVSCodeClientTests {
     var suggestions = new HashMap<String, List<ConnectionSuggestionDto>>();
     suggestions.put("key", List.of());
 
-    underTest.suggestConnection(suggestions);
+    underTest.suggestConnection(suggestions, NOP_CANCEL_TOKEN);
 
     var captor = ArgumentCaptor.forClass(SuggestConnectionParams.class);
     verify(client).suggestConnection(captor.capture());
@@ -280,7 +282,7 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void shouldSkipEmptySuggestionConnection() {
-    underTest.suggestConnection(Map.of());
+    underTest.suggestConnection(Map.of(), NOP_CANCEL_TOKEN);
 
     verify(client, never()).suggestBinding(any());
   }
@@ -448,7 +450,7 @@ class SonarLintVSCodeClientTests {
   void assistBindingShouldCallClientMethod() {
     var configScopeId = "folderUri";
     var projectKey = "projectKey";
-    var assistBindingParams = new AssistBindingParams("connectionId", projectKey, configScopeId);
+    var assistBindingParams = new AssistBindingParams("connectionId", projectKey, configScopeId, false);
     when(client.assistBinding(any())).thenReturn(
       CompletableFuture.completedFuture(new SonarLintExtendedLanguageClient.AssistBindingResponse("folderUri")));
     var workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
@@ -731,6 +733,7 @@ class SonarLintVSCodeClientTests {
     assertThat(response.getProxyPassword()).isEqualTo("password");
 
   }
+
   @Test
   void shouldUseDefaultAuthenticatorWithSystemProperties() throws MalformedURLException {
     // setup

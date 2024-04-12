@@ -27,6 +27,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.BindingRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.ConfigurationRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpdateBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotRpcService;
@@ -47,6 +49,7 @@ class BackendServiceTests {
   static SonarLintRpcServer backend = mock(SonarLintRpcServer.class);
   HotspotRpcService hotspotService = mock(HotspotRpcService.class);
   ConfigurationRpcService configurationService = mock(ConfigurationRpcService.class);
+  BindingRpcService bindingRpcService = mock(BindingRpcService.class);
   static LanguageClientLogger lsLogOutput = mock(LanguageClientLogger.class);
   static SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   static BackendService underTest = new BackendService(backend, lsLogOutput, client);
@@ -61,6 +64,7 @@ class BackendServiceTests {
   void init() {
     when(backend.getHotspotService()).thenReturn(hotspotService);
     when(backend.getConfigurationService()).thenReturn(configurationService);
+    when(backend.getBindingService()).thenReturn(bindingRpcService);
   }
 
   @Test
@@ -84,7 +88,7 @@ class BackendServiceTests {
     var workspaceUri = "/workspace";
     var connectionId = "connectionId";
     var binding = mock(org.sonarsource.sonarlint.core.serverconnection.ProjectBinding.class);
-    var bindingWrapper = new ProjectBinding(connectionId,"projectKey", mock(SonarLintAnalysisEngine.class), mock(ServerIssueTrackerWrapper.class));
+    var bindingWrapper = new ProjectBinding(connectionId, "projectKey", mock(SonarLintAnalysisEngine.class), mock(ServerIssueTrackerWrapper.class));
     var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri), Optional.of(bindingWrapper));
 
     assertThat(result.getId()).isEqualTo(workspaceUri);
@@ -102,6 +106,15 @@ class BackendServiceTests {
     assertThat(result.getBinding().getConnectionId()).isNull();
     assertThat(result.getBinding().getSonarProjectKey()).isNull();
     assertThat(result.getBinding().isBindingSuggestionDisabled()).isFalse();
+  }
+
+  @Test
+  void getSharedConnectedModeFileContents() {
+    var params = new GetSharedConnectedModeConfigFileParams("file:///workspace");
+
+    underTest.getSharedConnectedModeConfigFileContents(params);
+
+    verify(bindingRpcService).getSharedConnectedModeConfigFileContents(params);
   }
 
 }
