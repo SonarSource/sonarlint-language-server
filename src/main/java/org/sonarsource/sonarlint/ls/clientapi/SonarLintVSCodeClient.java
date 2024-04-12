@@ -39,6 +39,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import nl.altindag.ssl.util.CertificateUtils;
@@ -142,8 +143,15 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public void suggestBinding(Map<String, List<BindingSuggestionDto>> suggestionsByConfigScope) {
-    if (!suggestionsByConfigScope.isEmpty()) {
-      client.suggestBinding(new SuggestBindingParams(suggestionsByConfigScope));
+    var relevantSuggestionsPerConfigScope = new ConcurrentHashMap<String, List<BindingSuggestionDto>>();
+    suggestionsByConfigScope.forEach((configScopeId, suggestions) -> {
+      var maybeBinding = bindingManager.getBinding(URI.create(configScopeId));
+      if (maybeBinding.isEmpty()) {
+        relevantSuggestionsPerConfigScope.put(configScopeId, suggestions);
+      }
+    });
+    if (!relevantSuggestionsPerConfigScope.isEmpty()) {
+      client.suggestBinding(new SuggestBindingParams(relevantSuggestionsPerConfigScope));
     }
   }
 

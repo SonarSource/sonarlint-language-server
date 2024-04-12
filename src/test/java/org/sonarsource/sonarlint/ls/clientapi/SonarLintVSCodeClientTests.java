@@ -269,6 +269,19 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
+  void shouldNotSuggestBindingIfAlreadyExists() {
+    var suggestions = new HashMap<String, List<BindingSuggestionDto>>();
+    String configScopeId = workspaceFolderPath.toUri().toString();
+    suggestions.put(configScopeId, List.of());
+    var mockBinding = mock(ProjectBinding.class);
+
+    when(bindingManager.getBinding(workspaceFolderPath.toUri())).thenReturn(Optional.of(mockBinding));
+    underTest.suggestBinding(suggestions);
+
+    verify(client, never()).suggestBinding(any());
+  }
+
+  @Test
   void shouldSuggestConnection() {
     var suggestions = new HashMap<String, List<ConnectionSuggestionDto>>();
     suggestions.put("key", List.of());
