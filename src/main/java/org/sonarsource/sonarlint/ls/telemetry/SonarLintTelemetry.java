@@ -20,9 +20,11 @@
 package org.sonarsource.sonarlint.ls.telemetry;
 
 import java.util.Set;
+import java.util.function.Consumer;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixAppliedForRuleParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddReportedRulesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisDoneOnSingleLanguageParams;
@@ -71,51 +73,53 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   }
 
   public void analysisDoneOnMultipleFiles() {
-    if (enabled()) {
-      backendServiceFacade.getBackendService().getTelemetryService().analysisDoneOnMultipleFiles();
-    }
+    actIfEnabled(TelemetryRpcService::analysisDoneOnMultipleFiles);
   }
 
   public void analysisDoneOnSingleLanguage(@Nullable SonarLanguage language, int analysisTimeMs) {
-    if (enabled() && language != null) {
-      backendServiceFacade.getBackendService().getTelemetryService()
-        .analysisDoneOnSingleLanguage(new AnalysisDoneOnSingleLanguageParams(Language.valueOf(language.name()), analysisTimeMs));
-    }
+    if (language == null) return;
+    actIfEnabled(telemetryService -> telemetryService.analysisDoneOnSingleLanguage(new AnalysisDoneOnSingleLanguageParams(Language.valueOf(language.name()), analysisTimeMs)));
   }
 
   public void addReportedRules(Set<String> ruleKeys) {
-    if (enabled()) {
-      backendServiceFacade.getBackendService().getTelemetryService().addReportedRules(new AddReportedRulesParams(ruleKeys));
-    }
+    actIfEnabled(telemetryService -> telemetryService.addReportedRules(new AddReportedRulesParams(ruleKeys)));
   }
 
   public void devNotificationsClicked(String eventType) {
-    if (enabled()) {
-      backendServiceFacade.getBackendService().getTelemetryService().devNotificationsClicked(new DevNotificationsClickedParams(eventType));
-    }
+    actIfEnabled(telemetryRpcService -> telemetryRpcService.devNotificationsClicked(new DevNotificationsClickedParams(eventType)));
   }
 
   public void taintVulnerabilitiesInvestigatedLocally() {
-    if (enabled()) {
-      backendServiceFacade.getBackendService().getTelemetryService().taintVulnerabilitiesInvestigatedLocally();
-    }
+    actIfEnabled(TelemetryRpcService::taintVulnerabilitiesInvestigatedLocally);
   }
 
   public void taintVulnerabilitiesInvestigatedRemotely() {
-    if (enabled()) {
-      backendServiceFacade.getBackendService().getTelemetryService().taintVulnerabilitiesInvestigatedRemotely();
-    }
+    actIfEnabled(TelemetryRpcService::taintVulnerabilitiesInvestigatedRemotely);
   }
 
   public void addQuickFixAppliedForRule(String ruleKey) {
-    if (enabled()) {
-      backendServiceFacade.getBackendService().getTelemetryService().addQuickFixAppliedForRule(new AddQuickFixAppliedForRuleParams(ruleKey));
-    }
+    actIfEnabled(telemetryRpcService -> telemetryRpcService.addQuickFixAppliedForRule(new AddQuickFixAppliedForRuleParams(ruleKey)));
   }
 
   public void helpAndFeedbackLinkClicked(String itemId) {
+    actIfEnabled(telemetryRpcService -> telemetryRpcService.helpAndFeedbackLinkClicked(new HelpAndFeedbackClickedParams(itemId)));
+  }
+
+  public void addedAutomaticBindings() {
+    actIfEnabled(TelemetryRpcService::addedAutomaticBindings);
+  }
+
+  public void addedImportedBindings() {
+    actIfEnabled(TelemetryRpcService::addedImportedBindings);
+  }
+
+  public void addedManualBindings() {
+    actIfEnabled(TelemetryRpcService::addedManualBindings);
+  }
+
+  private void actIfEnabled(Consumer<TelemetryRpcService> action) {
     if (enabled()) {
-      backendServiceFacade.getBackendService().getTelemetryService().helpAndFeedbackLinkClicked(new HelpAndFeedbackClickedParams(itemId));
+      action.accept(backendServiceFacade.getBackendService().getTelemetryService());
     }
   }
 

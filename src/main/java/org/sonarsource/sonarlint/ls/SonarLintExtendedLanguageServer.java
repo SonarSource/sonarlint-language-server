@@ -693,47 +693,13 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonRequest("sonarlint/getSharedConnectedModeFileContent")
   CompletableFuture<GetSharedConnectedModeConfigFileResponse> getSharedConnectedModeConfigFileContents(GetSharedConnectedModeConfigFileParams params);
 
-  class DidAddConfigurationScopes {
-    private final String id;
-    private final boolean bindable;
-    private final String name;
-    private final String connectionId;
-    private final String sonarProjectKey;
-    private final boolean bindingSuggestionDisabled;
-
-    public DidAddConfigurationScopes(String id, boolean bindable, String name, String connectionId, String sonarProjectKey,
-      boolean bindingSuggestionDisabled) {
-      this.id = id;
-      this.bindable = bindable;
-      this.name = name;
-      this.connectionId = connectionId;
-      this.sonarProjectKey = sonarProjectKey;
-      this.bindingSuggestionDisabled = bindingSuggestionDisabled;
-    }
-
-    public String getId() {
-      return id;
-    }
-
-    public boolean isBindable() {
-      return bindable;
-    }
-
-    public String getName() {
-      return name;
-    }
-
-    public String getConnectionId() {
-      return connectionId;
-    }
-
-    public String getSonarProjectKey() {
-      return sonarProjectKey;
-    }
-
-    public boolean isBindingSuggestionDisabled() {
-      return bindingSuggestionDisabled;
-    }
+  enum BindingCreationMode {
+    AUTOMATIC,
+    IMPORTED,
+    MANUAL
   }
+
+  @JsonNotification("sonarlint/didCreateBinding")
+  void didCreateBinding(BindingCreationMode creationMode);
 
 }
