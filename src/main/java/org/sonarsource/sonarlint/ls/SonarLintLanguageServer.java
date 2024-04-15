@@ -821,6 +821,15 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
+  public void didCreateBinding(BindingCreationMode creationMode) {
+    switch (creationMode) {
+      case AUTOMATIC -> telemetry.addedAutomaticBindings();
+      case IMPORTED -> telemetry.addedImportedBindings();
+      case MANUAL -> telemetry.addedManualBindings();
+    }
+  }
+
+  @Override
   public CompletableFuture<CheckIssueStatusChangePermittedResponse> checkIssueStatusChangePermitted(CheckIssueStatusChangePermittedParams params) {
     var bindingWrapperOpt = bindingManager.getBinding(create(params.getFolderUri()));
     if (bindingWrapperOpt.isEmpty()) {

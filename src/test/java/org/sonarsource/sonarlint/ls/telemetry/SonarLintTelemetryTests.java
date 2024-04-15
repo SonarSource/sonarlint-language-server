@@ -227,6 +227,51 @@ class SonarLintTelemetryTests {
   }
 
   @Test
+  void addedAutomaticBindings_when_disabled() {
+    telemetry.addedAutomaticBindings();
+
+    verify(telemetryService).addedAutomaticBindings();
+  }
+
+  @Test
+  void addedAutomaticBindings_when_enabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+    telemetry.addedAutomaticBindings();
+
+    verify(telemetryService, never()).addedAutomaticBindings();
+  }
+
+  @Test
+  void addedImportedBindings_when_disabled() {
+    telemetry.addedImportedBindings();
+
+    verify(telemetryService).addedImportedBindings();
+  }
+
+  @Test
+  void addedImportedBindings_when_enabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+    telemetry.addedImportedBindings();
+
+    verify(telemetryService, never()).addedImportedBindings();
+  }
+
+  @Test
+  void addedManualBindings_when_disabled() {
+    telemetry.addedManualBindings();
+
+    verify(telemetryService).addedManualBindings();
+  }
+
+  @Test
+  void addedManualBindings_when_enabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+    telemetry.addedManualBindings();
+
+    verify(telemetryService, never()).addedManualBindings();
+  }
+
+  @Test
   void addReportedRules() {
     var rule = "ruleKey";
     var reportedRuleKeys = Collections.singleton(rule);
