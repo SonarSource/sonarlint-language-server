@@ -63,6 +63,7 @@ import org.sonar.scanner.protocol.input.ScannerInput;
 import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Components;
@@ -225,6 +226,16 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @AfterAll
   public static void cleanUp() {
     FileUtils.deleteQuietly(folder1BaseDir.toFile());
+  }
+
+  @Test
+  void should_export_binding_settings() {
+    var configScopeId = folder1BaseDir.toUri().toString();
+    addConfigScope(configScopeId);
+    var connectedModeConfigContents = lsProxy.getSharedConnectedModeConfigFileContents(new GetSharedConnectedModeConfigFileParams(configScopeId)).join();
+    assertThat(connectedModeConfigContents.getJsonFileContent())
+      .isNotEmpty()
+      .contains(PROJECT_KEY);
   }
 
   @Test
@@ -536,7 +547,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client)
       .satisfiesAnyOf(
         c -> assertThat(c.scopeReadyForAnalysis).containsKey(configScopeId),
-        c -> assertThat(c.logs.stream()).anyMatch(messageParams -> messageParams.getMessage().contains(String.format("Configuration scope '%s' is already bound", configScopeId)))
+        c -> assertThat(c.logs.stream()).anyMatch(messageParams -> messageParams.getMessage().contains(String.format("Configuration scope '%s' is already bound", configScopeId))),
+        c -> assertThat(c.logs.stream()).anyMatch(messageParams -> messageParams.getMessage().contains(String.format("Duplicate configuration scope registered: %s", configScopeId)))
       )
     );
   }
