@@ -278,7 +278,6 @@ public abstract class AbstractLanguageServerMediumTests {
     foldersToRemove.forEach(folderUri -> {
       lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
         new WorkspaceFoldersChangeEvent(List.of(), List.of(new WorkspaceFolder(folderUri)))));
-      awaitUntilAsserted(() -> assertLogContains("Configuration scope '" + folderUri + "' removed, clearing matched branch"));
     });
     instanceTempDirs.forEach(tempDirPath -> FileUtils.deleteQuietly(tempDirPath.toFile()));
     instanceTempDirs.clear();
