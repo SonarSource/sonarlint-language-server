@@ -39,6 +39,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import nl.altindag.ssl.util.CertificateUtils;
@@ -125,6 +129,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private WorkspaceFoldersManager workspaceFoldersManager;
   private AnalysisScheduler analysisScheduler;
   private DiagnosticPublisher diagnosticPublisher;
+  private final ScheduledExecutorService bindingSuggestionsHandler;
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider,
     LanguageClientLogOutput logOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, OpenFilesCache openFilesCache) {
@@ -133,6 +138,8 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     this.logOutput = logOutput;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.openFilesCache = openFilesCache;
+    var bindingSuggestionsThreadFactory = Utils.threadFactory("Binding suggestion handler", false);
+    bindingSuggestionsHandler = Executors.newSingleThreadScheduledExecutor(bindingSuggestionsThreadFactory);
     initializeDefaultProxyAuthenticator();
   }
 
@@ -142,9 +149,18 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public void suggestBinding(Map<String, List<BindingSuggestionDto>> suggestionsByConfigScope) {
-    if (!suggestionsByConfigScope.isEmpty()) {
-      client.suggestBinding(new SuggestBindingParams(suggestionsByConfigScope));
-    }
+    bindingSuggestionsHandler.schedule(() -> {
+      var relevantSuggestionsPerConfigScope = new ConcurrentHashMap<String, List<BindingSuggestionDto>>();
+      suggestionsByConfigScope.forEach((configScopeId, suggestions) -> {
+        var maybeBinding = bindingManager.getBinding(URI.create(configScopeId));
+        if (maybeBinding.isEmpty()) {
+          relevantSuggestionsPerConfigScope.put(configScopeId, suggestions);
+        }
+      });
+      if (!relevantSuggestionsPerConfigScope.isEmpty()) {
+        client.suggestBinding(new SuggestBindingParams(relevantSuggestionsPerConfigScope));
+      }
+    }, 5L, TimeUnit.SECONDS);
   }
 
   @Override

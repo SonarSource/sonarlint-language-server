@@ -41,7 +41,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import org.assertj.core.api.Assertions;
+import org.awaitility.Awaitility;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
@@ -264,8 +266,23 @@ class SonarLintVSCodeClientTests {
     underTest.suggestBinding(suggestions);
 
     var captor = ArgumentCaptor.forClass(SuggestBindingParams.class);
-    verify(client).suggestBinding(captor.capture());
-    assertThat(captor.getValue().getSuggestions()).isEqualTo(suggestions);
+    Awaitility.await().atMost(10L, TimeUnit.SECONDS).untilAsserted(() -> {
+      verify(client).suggestBinding(captor.capture());
+      assertThat(captor.getValue().getSuggestions()).isEqualTo(suggestions);
+    });
+  }
+
+  @Test
+  void shouldNotSuggestBindingIfAlreadyExists() {
+    var suggestions = new HashMap<String, List<BindingSuggestionDto>>();
+    String configScopeId = workspaceFolderPath.toUri().toString();
+    suggestions.put(configScopeId, List.of());
+    var mockBinding = mock(ProjectBinding.class);
+
+    when(bindingManager.getBinding(workspaceFolderPath.toUri())).thenReturn(Optional.of(mockBinding));
+    underTest.suggestBinding(suggestions);
+
+    verify(client, never()).suggestBinding(any());
   }
 
   @Test
