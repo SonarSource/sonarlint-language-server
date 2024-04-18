@@ -40,7 +40,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
@@ -48,7 +47,6 @@ import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
-import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -160,8 +158,6 @@ class SonarLintVSCodeClientTests {
   TaintVulnerabilitiesCache taintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
   AnalysisScheduler analysisScheduler = mock(AnalysisScheduler.class);
   DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
-  private static final CancelChecker NOP_CANCEL_TOKEN = () -> {
-  };
 
   private static final String PEM = """
     subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH
@@ -290,7 +286,7 @@ class SonarLintVSCodeClientTests {
     var suggestions = new HashMap<String, List<ConnectionSuggestionDto>>();
     suggestions.put("key", List.of());
 
-    underTest.suggestConnection(suggestions, NOP_CANCEL_TOKEN);
+    underTest.suggestConnection(suggestions);
 
     var captor = ArgumentCaptor.forClass(SuggestConnectionParams.class);
     verify(client).suggestConnection(captor.capture());
@@ -299,7 +295,7 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void shouldSkipEmptySuggestionConnection() {
-    underTest.suggestConnection(Map.of(), NOP_CANCEL_TOKEN);
+    underTest.suggestConnection(Map.of());
 
     verify(client, never()).suggestBinding(any());
   }
@@ -392,7 +388,7 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void shouldGetHostInfo() throws ExecutionException, InterruptedException {
+  void shouldGetHostInfo() {
     var desc = "This is Test";
     when(server.getHostInfo()).thenReturn(new GetClientLiveInfoResponse("This is Test"));
     var result = underTest.getClientLiveDescription();
@@ -495,7 +491,7 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void checkServerTrusted() throws ExecutionException, InterruptedException {
+  void checkServerTrusted() {
     var params = new CheckServerTrustedParams(List.of(new X509CertificateDto(PEM)), "authType");
     when(client.askSslCertificateConfirmation(any())).thenReturn(CompletableFuture.completedFuture(true));
 
@@ -528,7 +524,7 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void checkServerTrustedMalformedCert() throws ExecutionException, InterruptedException {
+  void checkServerTrustedMalformedCert() {
     var params = new CheckServerTrustedParams(List.of(new X509CertificateDto("malformed")), "authType");
     when(client.askSslCertificateConfirmation(any())).thenReturn(CompletableFuture.completedFuture(true));
 
@@ -697,7 +693,7 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void testDefaultProxyBehavior() throws ExecutionException, InterruptedException, URISyntaxException {
+  void testDefaultProxyBehavior() throws URISyntaxException {
     ProxySelector.setDefault(new ProxySelector() {
       @Override
       public List<Proxy> select(URI uri) {
@@ -728,7 +724,7 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void testDefaultAuthenticatorBehavior() throws ExecutionException, InterruptedException, MalformedURLException {
+  void testDefaultAuthenticatorBehavior() throws MalformedURLException {
 
     Authenticator.setDefault(new Authenticator() {
       @Override

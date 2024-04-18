@@ -38,7 +38,6 @@ import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -68,6 +67,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleSplitDescri
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
@@ -562,7 +562,7 @@ class CommandManagerTests {
     var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, null, null,
       List.of(), Either.forLeft(monolithicDesc), emptyList(), null, null);
 
-    assertThat(CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription(), "")).isEmpty();
+    assertThat(CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription().getLsp4jEither(), "")).isEmpty();
   }
 
   @Test
@@ -575,7 +575,7 @@ class CommandManagerTests {
     var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, null, null,
       List.of(), Either.forRight(splitDesc), emptyList(), null, null);
 
-    var descriptionTabs = CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription(), "");
+    var descriptionTabs = CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription().getLsp4jEither(), "");
 
     assertThat(descriptionTabs[0].getTitle()).isEqualTo("title1");
     assertThat(descriptionTabs[1].getTitle()).isEqualTo("title2");
@@ -603,7 +603,7 @@ class CommandManagerTests {
     var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, null, null,
       List.of(), Either.forRight(splitDesc), emptyList(), null, null);
 
-    var descriptionTabs = CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription(), "java");
+    var descriptionTabs = CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription().getLsp4jEither(), "java");
 
     assertThat(descriptionTabs[0].getTitle()).isEqualTo("title1");
     assertThat(descriptionTabs[1].getTitle()).isEqualTo("title2");
@@ -631,7 +631,7 @@ class CommandManagerTests {
     var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, null, null,
       List.of(), Either.forLeft(monolithicDesc), emptyList(), null, null);
 
-    assertThat(CommandManager.getHtmlDescription(ruleDetails.getDescription())).isEqualTo("monolithicHtmlContent");
+    assertThat(CommandManager.getHtmlDescription(ruleDetails.getDescription().getLsp4jEither())).isEqualTo("monolithicHtmlContent");
   }
 
   @Test
@@ -643,7 +643,7 @@ class CommandManagerTests {
       List.of(), Either.forRight(splitDesc), emptyList(), null, null);
 
 
-    assertThat(CommandManager.getHtmlDescription(ruleDetails.getDescription())).isEqualTo("splitHtmlContent");
+    assertThat(CommandManager.getHtmlDescription(ruleDetails.getDescription().getLsp4jEither())).isEqualTo("splitHtmlContent");
   }
 
   @Test
