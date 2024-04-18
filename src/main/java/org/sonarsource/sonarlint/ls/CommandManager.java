@@ -356,7 +356,7 @@ public class CommandManager {
     return backendServiceFacade.getBackendService().getEffectiveRuleDetails(workspaceFolder, ruleKey, ruleContextKey)
       .thenApply(detailsResponse -> {
         var ruleDetailsDto = detailsResponse.details();
-        return createShowRuleDescriptionParams(ruleDetailsDto, Collections.emptyMap(), ruleDetailsDto.getDescription(), ruleKey,
+        return createShowRuleDescriptionParams(ruleDetailsDto, Collections.emptyMap(), ruleDetailsDto.getDescription().getLsp4jEither(), ruleKey,
           ruleContextKey);
       }).exceptionally(e -> {
         var message = "Can't show rule details for unknown rule with key: " + ruleKey;
@@ -369,7 +369,7 @@ public class CommandManager {
   private void showStandaloneRuleDescription(String ruleKey, GetStandaloneRuleDescriptionResponse ruleDetails) {
     var ruleDefinition = ruleDetails.getRuleDefinition();
     var paramDetails = ruleDefinition.getParamsByKey();
-    var showRuleDescriptionParams = createShowRuleDescriptionParams(ruleDefinition, paramDetails, ruleDetails.getDescription(), ruleKey,
+    var showRuleDescriptionParams = createShowRuleDescriptionParams(ruleDefinition, paramDetails, ruleDetails.getDescription().getLsp4jEither(), ruleKey,
       "");
     client.showRuleDescription(showRuleDescriptionParams);
   }
@@ -405,6 +405,7 @@ public class CommandManager {
   }
 
   public void executeCommand(ExecuteCommandParams params, CancelChecker cancelToken) {
+    cancelToken.checkCanceled();
     switch (params.getCommand()) {
       case SONARLINT_QUICK_FIX_APPLIED:
         telemetry.addQuickFixAppliedForRule(getAsString(params.getArguments().get(0)));

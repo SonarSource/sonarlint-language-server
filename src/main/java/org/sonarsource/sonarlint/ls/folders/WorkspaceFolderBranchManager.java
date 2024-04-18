@@ -24,7 +24,7 @@ import java.nio.file.Paths;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import org.eclipse.lsp4j.jsonrpc.CancelChecker;
+import org.sonarsource.sonarlint.core.rpc.client.SonarLintCancelChecker;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.util.GitUtils;
@@ -58,7 +58,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
     Utils.shutdownAndAwait(executorService, true);
   }
 
-  public String matchSonarProjectBranch(String folderUri, String mainBranchName, Set<String> allBranchesNames, CancelChecker cancelChecker) {
+  public String matchSonarProjectBranch(String folderUri, String mainBranchName, Set<String> allBranchesNames, SonarLintCancelChecker cancelChecker) {
     if (cancelChecker.isCanceled()) return mainBranchName;
     var repo = GitUtils.getRepositoryForDir(Paths.get(URI.create(folderUri)), logOutput);
     String electedBranchName = null;
