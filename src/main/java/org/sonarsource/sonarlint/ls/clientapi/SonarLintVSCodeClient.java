@@ -484,7 +484,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
           .map(file -> {
             var filePath = Path.of(file.getFilePath());
             return new ClientFileDto(filePath.toUri(), folderPath.relativize(filePath), configScopeId, null, StandardCharsets.UTF_8.name(), filePath,
-              file.getContent());
+              file.getContent(), null);
           })
           .toList();
       }).join())

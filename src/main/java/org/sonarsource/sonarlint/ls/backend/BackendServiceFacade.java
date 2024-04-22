@@ -44,6 +44,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.ClientCons
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.FeatureFlagsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.HttpConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.InitializeParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.LanguageSpecificRequirements;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarCloudAlternativeEnvironmentDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SslConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.TelemetryClientConstantAttributesDto;
@@ -136,8 +137,14 @@ public class BackendServiceFacade {
 
   private InitializeParams toInitParams(BackendInitParams initParams) {
     var telemetryEnabled = telemetry != null && telemetry.enabled();
+    var clientNodeJsPath = StringUtils.isEmpty(initParams.getClientNodePath()) ? null : Path.of(initParams.getClientNodePath());
+    var languageSpecificRequirements = new LanguageSpecificRequirements(
+      clientNodeJsPath,
+      // Omnisharp requirements are set to null since analysis is still in process
+      null
+    );
     return new InitializeParams(
-      new ClientConstantInfoDto("Visual Studio Code", initParams.getUserAgent()),
+      new ClientConstantInfoDto("Visual Studio Code", initParams.getUserAgent(), Integer.MIN_VALUE),
       new TelemetryClientConstantAttributesDto(initParams.getTelemetryProductKey(),
         telemetryInitParams.getProductName(),
         telemetryInitParams.getProductVersion(),
@@ -158,7 +165,7 @@ public class BackendServiceFacade {
       initParams.getSonarlintUserHome(),
       initParams.getStandaloneRuleConfigByKey(),
       initParams.isFocusOnNewCode(),
-      StringUtils.isEmpty(initParams.getClientNodePath()) ? null : Path.of(initParams.getClientNodePath())
+      languageSpecificRequirements
     );
   }
 
