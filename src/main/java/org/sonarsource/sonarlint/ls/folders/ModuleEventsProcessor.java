@@ -91,7 +91,7 @@ public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
             var relativePath = baseDir.relativize(fsPath);
             var folderUri = folder.getUri().toString();
             var isTest = isTestFile(fileUri, settings);
-            addedOrChangedFiles.add(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(), fsPath, null));
+            addedOrChangedFiles.add(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(), fsPath, null, null));
           });
       }
     });
