@@ -386,8 +386,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(0, 0, 0, 0, "php:S113", "sonarlint", "Add a new line at the end of this file.", DiagnosticSeverity.Warning),
-        tuple(1, 15, 1, 16, "php:S1808", "sonarlint", "Move this open curly brace to the beginning of the next line.", DiagnosticSeverity.Warning),
-        tuple(2, 2, 2, 6, "php:S2041", "sonarlint", "Remove the parentheses from this \"echo\" call.", DiagnosticSeverity.Warning),
+        tuple(2, 2, 2, 15, "php:S6600", "sonarlint", "Remove the parentheses from this \"echo\" call.", DiagnosticSeverity.Warning),
         tuple(4, 0, 4, 2, "php:S1780", "sonarlint", "Remove this closing tag \"?>\".", DiagnosticSeverity.Warning)));
   }
 
@@ -645,13 +644,17 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", List.of("javascript:S930"))).get();
     assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
 
+    var firstTabNonContextualInfo = client.ruleDesc.getHtmlDescriptionTabs()[0].getRuleDescriptionTabNonContextual();
+    var htmlContent = firstTabNonContextualInfo != null ? firstTabNonContextualInfo.getHtmlContent() : "";
+
     assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S930");
     assertThat(client.ruleDesc.getName()).isEqualTo("Function calls should not pass extra arguments");
-    assertThat(client.ruleDesc.getHtmlDescription()).contains("You can easily call a JavaScript function with more arguments than the function needs");
+    assertThat(htmlContent).contains("When you call a function in JavaScript and provide more arguments than the function expects, the extra arguments are simply ignored by the\n" +
+      "function.");
     assertThat(client.ruleDesc.getType()).isEqualTo("BUG");
     assertThat(client.ruleDesc.getSeverity()).isEqualTo("CRITICAL");
     assertThat(client.ruleDesc.getParameters()).isEmpty();
-    assertThat(client.ruleDesc.getHtmlDescriptionTabs()).isEmpty();
+    assertThat(client.ruleDesc.getHtmlDescriptionTabs()).hasSize(2);
   }
 
   @Test
@@ -672,9 +675,12 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", List.of(PYTHON_S139))).get();
     assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
 
+    var firstTabNonContextualInfo = client.ruleDesc.getHtmlDescriptionTabs()[0].getRuleDescriptionTabNonContextual();
+    var htmlContent = firstTabNonContextualInfo != null ? firstTabNonContextualInfo.getHtmlContent() : "";
+
     assertThat(client.ruleDesc.getKey()).isEqualTo(PYTHON_S139);
     assertThat(client.ruleDesc.getName()).isEqualTo("Comments should not be located at the end of lines of code");
-    assertThat(client.ruleDesc.getHtmlDescription()).contains("This rule verifies that single-line comments are not located at the ends of lines of code.");
+    assertThat(htmlContent).contains("This rule verifies that single-line comments are not located at the ends of lines of code.");
     assertThat(client.ruleDesc.getType()).isEqualTo("CODE_SMELL");
     assertThat(client.ruleDesc.getSeverity()).isEqualTo("MINOR");
     assertThat(client.ruleDesc.getParameters()).hasSize(1)
@@ -683,7 +689,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .containsExactly(
         tuple("legalTrailingCommentPattern",
           "Pattern for text of trailing comments that are allowed. By default, Mypy and Black pragma comments as well as comments containing only one word.",
-          "^#\\s*+([^\\s]++|fmt.*|type.*)$"));
+          "^#\\s*+([^\\s]++|fmt.*|type.*|noqa.*)$"));
   }
 
   @Test
@@ -979,11 +985,15 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void test_open_rule_desc_for_file_without_workspace() throws Exception {
     client.showRuleDescriptionLatch = new CountDownLatch(1);
     lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenRuleDescCodeAction", List.of(PYTHON_S1481, "file://foo.py", ""))).get();
+
     assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
 
+    var ruleDescriptionTabNonContextual = client.ruleDesc.getHtmlDescriptionTabs()[0].getRuleDescriptionTabNonContextual();
+    var htmlContent = ruleDescriptionTabNonContextual != null ? ruleDescriptionTabNonContextual.getHtmlContent() : "";
     assertThat(client.ruleDesc.getKey()).isEqualTo(PYTHON_S1481);
     assertThat(client.ruleDesc.getName()).isEqualTo("Unused local variables should be removed");
-    assertThat(client.ruleDesc.getHtmlDescription()).contains("If a local variable is declared but not used, it is dead code and should be removed.");
+    assertThat(htmlContent).contains("It is dead code,\n" +
+      "contributing to unnecessary complexity and leading to confusion when reading the code.");
     assertThat(client.ruleDesc.getType()).isEqualTo("CODE_SMELL");
     assertThat(client.ruleDesc.getSeverity()).isEqualTo("MINOR");
   }
