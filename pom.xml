@@ -28,16 +28,16 @@
     <!-- Version used by Xodus -->
     <kotlin.version>1.6.10</kotlin.version>
     <!-- analyzers used for tests -->
-    <sonar.java.version>7.24.0.32100</sonar.java.version>
-    <sonar.javascript.version>10.1.0.21143</sonar.javascript.version>
-    <sonar.php.version>3.28.0.9490</sonar.php.version>
-    <sonar.python.version>4.2.0.11487</sonar.python.version>
-    <sonar.html.version>3.7.1.3306</sonar.html.version>
-    <sonar.xml.version>2.7.0.3820</sonar.xml.version>
-    <sonar.text.version>2.0.1.611</sonar.text.version>
-    <sonar.go.version>1.12.0.4259</sonar.go.version>
-    <sonar.iac.version>1.22.0.7057</sonar.iac.version>
-    <sonarlint.omnisharp.version>1.13.0.76953</sonarlint.omnisharp.version>
+    <sonar.java.version>7.33.0.35775</sonar.java.version>
+    <sonar.javascript.version>10.13.0.25911</sonar.javascript.version>
+    <sonar.php.version>3.35.0.11659</sonar.php.version>
+    <sonar.python.version>4.17.0.14845</sonar.python.version>
+    <sonar.html.version>3.16.0.5274</sonar.html.version>
+    <sonar.xml.version>2.10.0.4108</sonar.xml.version>
+    <sonar.text.version>2.10.0.2188</sonar.text.version>
+    <sonar.go.version>1.15.0.4655</sonar.go.version>
+    <sonar.iac.version>1.27.0.9518</sonar.iac.version>
+    <sonarlint.omnisharp.version>1.19.0.86083</sonarlint.omnisharp.version>
     <gitRepositoryName>sonarlint-language-server</gitRepositoryName>
     <!-- Release: enable publication to Bintray -->
     <artifactsToPublish>${project.groupId}:${project.artifactId}:jar</artifactsToPublish>
@@ -149,13 +149,13 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
-      <version>5.2.0</version>
+      <version>5.8.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-junit-jupiter</artifactId>
-      <version>5.2.0</version>
+      <version>5.8.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -344,7 +344,7 @@
         <artifactId>frontend-maven-plugin</artifactId>
         <version>1.8.0</version>
         <configuration>
-          <nodeVersion>v16.13.2</nodeVersion>
+          <nodeVersion>v18.20.1</nodeVersion>
           <workingDirectory>src/test/resources/fake-ts-project</workingDirectory>
         </configuration>
         <executions>

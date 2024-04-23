@@ -190,11 +190,17 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
         "SonarLint.OpenRuleDescCodeAction",
         List.of(PYTHON_S1481, folder1BaseDir.resolve("foo.py").toUri().toString(), "")))
       .get();
+
+
     assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
+
+    var ruleDescriptionTabNonContextual = client.ruleDesc.getHtmlDescriptionTabs()[0].getRuleDescriptionTabNonContextual();
+    var htmlContent = ruleDescriptionTabNonContextual != null ? ruleDescriptionTabNonContextual.getHtmlContent() : "";
 
     assertThat(client.ruleDesc.getKey()).isEqualTo(PYTHON_S1481);
     assertThat(client.ruleDesc.getName()).isEqualTo("Unused local variables should be removed");
-    assertThat(client.ruleDesc.getHtmlDescription()).contains("If a local variable is declared but not used, it is dead code and should be removed.");
+    assertThat(htmlContent).contains("It is dead code,\n" +
+      "contributing to unnecessary complexity and leading to confusion when reading the code.");
     assertThat(client.ruleDesc.getType()).isEqualTo("CODE_SMELL");
     assertThat(client.ruleDesc.getSeverity()).isEqualTo("MINOR");
   }

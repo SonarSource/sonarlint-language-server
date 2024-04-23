@@ -619,11 +619,11 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     codeActionParams.setRange(firstDiagnostic.getRange());
     codeActionParams.setContext(new CodeActionContext(List.of(firstDiagnostic)));
     var codeActions = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
-    assertThat(codeActions).hasSize(2)
+    assertThat(codeActions).hasSize(3)
       .extracting(Either::getRight)
       .extracting(CodeAction::getCommand)
       .extracting(Command::getCommand)
-      .containsExactlyInAnyOrder("SonarLint.ResolveIssue", "SonarLint.OpenRuleDescCodeAction");
+      .containsExactlyInAnyOrder("SonarLint.QuickFixApplied", "SonarLint.ResolveIssue", "SonarLint.OpenRuleDescCodeAction");
   }
 
   @Test
