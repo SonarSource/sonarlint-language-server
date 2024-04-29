@@ -167,8 +167,8 @@ public class DiagnosticPublisher {
     if (issue.flows().isEmpty() || ignoreSecondaryLocations) {
       return issue.getMessage();
     } else if (issue.flows().size() == 1) {
-      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.flows().get(0).locations().size(), ITEM_LOCATION);
-    } else if (issue.flows().stream().allMatch(f -> f.locations().size() == 1)) {
+      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.flows().get(0).getLocations().size(), ITEM_LOCATION);
+    } else if (issue.flows().stream().allMatch(f -> f.getLocations().size() == 1)) {
       int nbLocations = issue.flows().size();
       return buildMessageWithPluralizedSuffix(issue.getMessage(), nbLocations, ITEM_LOCATION);
     } else {

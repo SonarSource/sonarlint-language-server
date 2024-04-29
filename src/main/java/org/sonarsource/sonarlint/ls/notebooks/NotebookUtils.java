@@ -28,7 +28,7 @@ import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentItem;
-import org.sonarsource.sonarlint.core.commons.api.TextRange;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 
 public class NotebookUtils {
 
@@ -126,11 +126,11 @@ public class NotebookUtils {
     return new Range(start, end);
   }
 
-  public static TextRange fileTextRangeToCellTextRange(int fileStartLine, int fileStartLineOffset,
+  public static TextRangeDto fileTextRangeToCellTextRange(int fileStartLine, int fileStartLineOffset,
     int fileEndLine, int fileEndLineOffset, Map<Integer, Integer> virtualFileLineToCellLine) {
     var cellStartLine = virtualFileLineToCellLine.get(fileStartLine);
     var cellEndLine = virtualFileLineToCellLine.get(fileEndLine);
 
-    return new TextRange(cellStartLine, fileStartLineOffset, cellEndLine, fileEndLineOffset);
+    return new TextRangeDto(cellStartLine, fileStartLineOffset, cellEndLine, fileEndLineOffset);
   }
 }

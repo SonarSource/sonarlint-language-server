@@ -34,14 +34,13 @@ import org.eclipse.lsp4j.NotebookDocumentChangeEvent;
 import org.eclipse.lsp4j.NotebookDocumentChangeEventCellTextContent;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
-import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
-import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
-import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
 import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
-import org.sonarsource.sonarlint.core.commons.api.TextRange;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.FileEditDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.QuickFixDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.TextEditDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
-import org.sonarsource.sonarlint.ls.folders.InFolderClientInputFile;
 
 import static org.sonarsource.sonarlint.ls.notebooks.NotebookUtils.applyChangeToCellContent;
 import static org.sonarsource.sonarlint.ls.notebooks.NotebookUtils.fileTextRangeToCellTextRange;
@@ -124,30 +123,29 @@ public class VersionedOpenNotebook {
       .map(URI::create);
   }
 
-  public DelegatingCellIssue toCellIssue(RawIssue issue) {
+  public DelegatingCellIssue toCellIssue(RawIssueDto issue) {
     indexCellsByLineNumber();
     var issueTextRange = issue.getTextRange();
-    var originalQuickFixes = issue.quickFixes();
-    var convertedQuickFixes = new ArrayList<QuickFix>();
-    TextRange cellTextRange = null;
+    var originalQuickFixes = issue.getQuickFixes();
+    var convertedQuickFixes = new ArrayList<QuickFixDto>();
+    TextRangeDto cellTextRange = null;
     if (issueTextRange != null) {
       cellTextRange = fileTextRangeToCellTextRange(issueTextRange.getStartLine(), issueTextRange.getStartLineOffset(),
         issueTextRange.getEndLine(), issueTextRange.getEndLineOffset(), virtualFileLineToCellLine);
     }
     if (originalQuickFixes != null && !originalQuickFixes.isEmpty()) {
       AtomicReference<URI> textEditCellUri = new AtomicReference<>();
-      for (QuickFix quickFix : originalQuickFixes) {
-        var newFileEdits = quickFix.inputFileEdits().stream().map(fileEdit -> {
+      for (QuickFixDto quickFix : originalQuickFixes) {
+        var newFileEdits = quickFix.fileEdits().stream().map(fileEdit -> {
           var newTextEdits = fileEdit.textEdits().stream().map(textEdit -> {
             textEditCellUri.set(URI.create(fileLineToCell.get(textEdit.range().getStartLine()).getUri()));
             var newTextRange = fileTextRangeToCellTextRange(textEdit.range().getStartLine(), textEdit.range().getStartLineOffset(),
               textEdit.range().getEndLine(), textEdit.range().getEndLineOffset(), virtualFileLineToCellLine);
-            return new TextEdit(newTextRange, textEdit.newText());
+            return new TextEditDto(newTextRange, textEdit.newText());
           }).toList();
-          var clientInputFile = new InFolderClientInputFile(textEditCellUri.get(), "", false);
-          return new ClientInputFileEdit(clientInputFile, newTextEdits);
+          return new FileEditDto(textEditCellUri.get(), newTextEdits);
         }).toList();
-        var convertedQuickFix = new QuickFix(newFileEdits, quickFix.message());
+        var convertedQuickFix = new QuickFixDto(newFileEdits, quickFix.message());
         convertedQuickFixes.add(convertedQuickFix);
       }
     }

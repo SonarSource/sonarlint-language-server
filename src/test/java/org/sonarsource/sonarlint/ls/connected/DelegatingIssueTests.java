@@ -23,9 +23,8 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
-import org.sonarsource.sonarlint.core.analysis.api.Flow;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 
@@ -36,21 +35,20 @@ import static org.mockito.Mockito.when;
 class DelegatingIssueTests {
 
   private final TextRangeDto textRange = mock(TextRangeDto.class);
-  private final RawIssue issue = mock(RawIssue.class);
+  private final RawIssueDto issue = mock(RawIssueDto.class);
   private DelegatingIssue delegatingIssue;
 
   @BeforeEach
   public void prepare() {
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
-    when(issue.getMessage()).thenReturn("don't do this");
+    when(issue.getPrimaryMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
     when(issue.getTextRange()).thenReturn(textRange);
     when(textRange.getStartLine()).thenReturn(2);
     when(textRange.getStartLineOffset()).thenReturn(3);
     when(textRange.getEndLine()).thenReturn(4);
     when(textRange.getEndLineOffset()).thenReturn(5);
-    when(issue.getFlows()).thenReturn(List.of(mock(Flow.class)));
-    when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
+    when(issue.getFlows()).thenReturn(List.of(mock(RawIssueFlowDto.class)));
     delegatingIssue = new DelegatingIssue(issue, UUID.randomUUID(), false, false);
   }
 
@@ -74,7 +72,7 @@ class DelegatingIssueTests {
 
   @Test
   void testGetMessage() {
-    assertThat(delegatingIssue.getMessage()).isNotEmpty().isEqualTo(issue.getMessage());
+    assertThat(delegatingIssue.getMessage()).isNotEmpty().isEqualTo(issue.getPrimaryMessage());
   }
 
   @Test
@@ -105,11 +103,6 @@ class DelegatingIssueTests {
   @Test
   void testFlows() {
     assertThat(delegatingIssue.flows()).isNotEmpty().isEqualTo(issue.getFlows());
-  }
-
-  @Test
-  void testGetInputFile() {
-    assertThat(delegatingIssue.getInputFile()).isNotNull().isEqualTo(issue.getInputFile());
   }
 
   @Test

@@ -19,14 +19,13 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import java.net.URI;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import javax.annotation.CheckForNull;
-import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
-import org.sonarsource.sonarlint.core.analysis.api.Flow;
-import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.QuickFixDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
@@ -34,20 +33,19 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 public interface Issue {
 
   UUID getIssueId();
+
   IssueSeverity getSeverity();
 
   RuleType getType();
 
   String getRuleKey();
 
-  List<Flow> flows();
+  List<RawIssueFlowDto> flows();
 
-  List<QuickFix> quickFixes();
-
-  Optional<String> getRuleDescriptionContextKey();
+  List<QuickFixDto> quickFixes();
 
   @CheckForNull
-  ClientInputFile getInputFile();
+  String getRuleDescriptionContextKey();
 
   @CheckForNull
   String getMessage();
@@ -55,7 +53,9 @@ public interface Issue {
   @CheckForNull
   TextRangeDto getTextRange();
 
-  RawIssue getRawIssue();
+  URI getFileUri();
+
+  RawIssueDto getRawIssue();
 
   @CheckForNull
   default Integer getStartLine() {

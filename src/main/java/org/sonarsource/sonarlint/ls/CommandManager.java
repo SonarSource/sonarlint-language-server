@@ -55,10 +55,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.jetbrains.annotations.NotNull;
-import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
-import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
 import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
-import org.sonarsource.sonarlint.core.commons.api.TextRange;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.AbstractRuleDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetStandaloneRuleDescriptionResponse;
@@ -67,9 +64,13 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleDescription
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleMonolithicDescriptionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleParamDefinitionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleSplitDescriptionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.FileEditDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.QuickFixDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.TextEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.core.serverapi.UrlUtils;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -173,7 +174,7 @@ public class CommandManager {
     var hasBinding = binding.isPresent();
     if (issueForDiagnostic.isPresent()) {
       var versionedIssue = issueForDiagnostic.get();
-      ruleContextKey = versionedIssue.issue().getRuleDescriptionContextKey().orElse("");
+      ruleContextKey = versionedIssue.issue().getRuleDescriptionContextKey();
       var quickFixes = isNotebookCellUri && versionedOpenNotebook.isPresent() ?
         versionedOpenNotebook.get().toCellIssue(versionedIssue.issue().getRawIssue()).quickFixes() :
         versionedIssue.issue().quickFixes();
@@ -193,7 +194,7 @@ public class CommandManager {
         resolveIssueCodeAction.ifPresent(ca -> codeActions.add(Either.forRight(ca)));
       }
     }
-    addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey, ruleContextKey);
+    addRuleDescriptionCodeAction(params, codeActions, diagnostic, ruleKey, ruleContextKey != null ? ruleContextKey : "");
     issueForDiagnostic.ifPresent(versionedIssue -> addShowAllLocationsCodeAction(versionedIssue, codeActions, diagnostic, ruleKey, isNotebookCellUri));
     if (!hasBinding) {
       var titleDeactivate = String.format("Deactivate rule '%s'", ruleKey);
@@ -262,25 +263,25 @@ public class CommandManager {
     });
   }
 
-  private static WorkspaceEdit newWorkspaceEdit(QuickFix fix, @Nullable Integer documentVersion) {
+  private static WorkspaceEdit newWorkspaceEdit(QuickFixDto fix, @Nullable Integer documentVersion) {
     var edit = new WorkspaceEdit();
     edit.setDocumentChanges(
-      fix.inputFileEdits().stream()
+      fix.fileEdits().stream()
         .map(fileEdit -> newLspDocumentEdit(fileEdit, documentVersion))
         .toList());
     return edit;
   }
 
-  private static Either<TextDocumentEdit, ResourceOperation> newLspDocumentEdit(ClientInputFileEdit fileEdit, @Nullable Integer documentVersion) {
+  private static Either<TextDocumentEdit, ResourceOperation> newLspDocumentEdit(FileEditDto fileEdit, @Nullable Integer documentVersion) {
     var documentEdit = new TextDocumentEdit();
-    documentEdit.setTextDocument(new VersionedTextDocumentIdentifier(fileEdit.target().uri().toString(), documentVersion));
+    documentEdit.setTextDocument(new VersionedTextDocumentIdentifier(fileEdit.target().toString(), documentVersion));
     documentEdit.setEdits(fileEdit.textEdits().stream()
       .map(CommandManager::newLspTextEdit)
       .toList());
     return Either.forLeft(documentEdit);
   }
 
-  private static TextEdit newLspTextEdit(org.sonarsource.sonarlint.core.analysis.api.TextEdit textEdit) {
+  private static TextEdit newLspTextEdit(TextEditDto textEdit) {
     var lspEdit = new TextEdit();
     lspEdit.setNewText(textEdit.newText());
     var lspRange = newLspRange(textEdit.range());
@@ -288,7 +289,7 @@ public class CommandManager {
     return lspEdit;
   }
 
-  private static Range newLspRange(TextRange range) {
+  private static Range newLspRange(TextRangeDto range) {
     var lspRange = new Range();
     lspRange.setStart(new Position(range.getStartLine() - 1, range.getStartLineOffset()));
     lspRange.setEnd(new Position(range.getEndLine() - 1, range.getEndLineOffset()));
