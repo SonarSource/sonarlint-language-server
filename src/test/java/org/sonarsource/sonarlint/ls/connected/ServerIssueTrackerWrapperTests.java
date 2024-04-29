@@ -32,15 +32,14 @@ import java.util.concurrent.CompletableFuture;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.LocalOnlyIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ServerMatchedIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TrackWithServerIssuesResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
-import org.sonarsource.sonarlint.ls.AnalysisClientInputFile;
 import org.sonarsource.sonarlint.ls.Issue;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -114,21 +113,21 @@ class ServerIssueTrackerWrapperTests {
   @Test
   void getWorkspaceFolderUriTest() {
     var noIssues = getWorkspaceFolderUri(Collections.emptyList(), mock(WorkspaceFoldersManager.class));
-    var noInputFile = getWorkspaceFolderUri(List.of(mock(RawIssue.class)), mock(WorkspaceFoldersManager.class));
+    var noInputFile = getWorkspaceFolderUri(List.of(mock(RawIssueDto.class)), mock(WorkspaceFoldersManager.class));
     var workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
     when(workspaceFoldersManager.findFolderForFile(any(URI.class))).thenReturn(Optional.empty());
-    var noFolderForFile = getWorkspaceFolderUri(List.of(mock(RawIssue.class)), workspaceFoldersManager);
+    var noFolderForFile = getWorkspaceFolderUri(List.of(mock(RawIssueDto.class)), workspaceFoldersManager);
 
     assertThat(noIssues).isEmpty();
     assertThat(noInputFile).isEmpty();
     assertThat(noFolderForFile).isEmpty();
   }
 
-  private Collection<Issue> matchAndTrack(ServerIssueTrackerWrapper tracker, String filePath, Collection<RawIssue> issues) {
+  private Collection<Issue> matchAndTrack(ServerIssueTrackerWrapper tracker, String filePath, Collection<RawIssueDto> issues) {
     return matchAndTrack(tracker, filePath, issues, false);
   }
 
-  private Collection<Issue> matchAndTrack(ServerIssueTrackerWrapper tracker, String filePath, Collection<RawIssue> issues,
+  private Collection<Issue> matchAndTrack(ServerIssueTrackerWrapper tracker, String filePath, Collection<RawIssueDto> issues,
     boolean shouldFetchServerIssues) {
     var recorded = new LinkedList<Issue>();
     tracker.matchAndTrack(filePath, issues, recorded::add, shouldFetchServerIssues);
@@ -151,13 +150,13 @@ class ServerIssueTrackerWrapperTests {
     return new ServerIssueTrackerWrapper(backendServiceFacade, workspaceFoldersManager);
   }
 
-  private RawIssue mockRawIssue(RuleType type, IssueSeverity severity) {
-    var issue = mock(RawIssue.class);
+  private RawIssueDto mockRawIssue(RuleType type, IssueSeverity severity) {
+    var issue = mock(RawIssueDto.class);
     when(issue.getRuleKey()).thenReturn("ruleKey");
     when(issue.getSeverity()).thenReturn(severity);
     when(issue.getType()).thenReturn(type);
     var fileUri = "fileUri";
-    when(issue.getInputFile()).thenReturn(new AnalysisClientInputFile(URI.create(fileUri), fileUri, "", false, "java"));
+    when(issue.getFileUri()).thenReturn(URI.create(fileUri));
     return issue;
   }
 

@@ -19,18 +19,17 @@
  */
 package org.sonarsource.sonarlint.ls.connected;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
-import org.sonarsource.sonarlint.core.analysis.api.Flow;
-import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.VulnerabilityProbability;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.QuickFixDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
@@ -45,12 +44,12 @@ public class DelegatingIssue implements Issue {
   private boolean resolved;
   private IssueSeverity severity;
   private String serverIssueKey;
-  private final RawIssue issue;
+  private final RawIssueDto issue;
   private final RuleType type;
   private HotspotStatus reviewStatus;
   private boolean isOnNewCode;
 
-  private DelegatingIssue(RawIssue issue) {
+  private DelegatingIssue(RawIssueDto issue) {
     this.issueId = UUID.randomUUID();
     this.issue = issue;
     this.severity = issue.getSeverity();
@@ -58,14 +57,14 @@ public class DelegatingIssue implements Issue {
     this.isOnNewCode = true;
   }
 
-  public DelegatingIssue(RawIssue rawIssue, UUID issueId, boolean resolved, boolean isOnNewCode) {
+  public DelegatingIssue(RawIssueDto rawIssue, UUID issueId, boolean resolved, boolean isOnNewCode) {
     this(rawIssue);
     this.issueId = issueId;
     this.resolved = resolved;
     this.isOnNewCode = isOnNewCode;
   }
 
-  DelegatingIssue(RawIssue rawIssue, UUID issueId, boolean resolved, IssueSeverity overriddenSeverity,
+  DelegatingIssue(RawIssueDto rawIssue, UUID issueId, boolean resolved, IssueSeverity overriddenSeverity,
     String serverIssueKey, boolean isOnNewCode, @Nullable HotspotStatus reviewStatus) {
     this(rawIssue);
     this.issueId = issueId;
@@ -76,7 +75,7 @@ public class DelegatingIssue implements Issue {
     this.reviewStatus = reviewStatus;
   }
 
-  private DelegatingIssue(RawIssue rawIssue, RuleType type, String serverIssueKey, IssueSeverity severity, HotspotStatus reviewStatus) {
+  private DelegatingIssue(RawIssueDto rawIssue, RuleType type, String serverIssueKey, IssueSeverity severity, HotspotStatus reviewStatus) {
     this.issueId = UUID.randomUUID();
     this.issue = rawIssue;
     this.type = type;
@@ -98,7 +97,7 @@ public class DelegatingIssue implements Issue {
     return type;
   }
 
-  public Optional<CleanCodeAttribute> getCleanCodeAttribute() {
+  public CleanCodeAttribute getCleanCodeAttribute() {
     return issue.getCleanCodeAttribute();
   }
 
@@ -108,7 +107,7 @@ public class DelegatingIssue implements Issue {
 
   @CheckForNull
   public String getMessage() {
-    return issue.getMessage();
+    return issue.getPrimaryMessage();
   }
 
   public String getRuleKey() {
@@ -143,13 +142,8 @@ public class DelegatingIssue implements Issue {
     return textRange != null ? textRange.getEndLineOffset() : null;
   }
 
-  public List<Flow> flows() {
+  public List<RawIssueFlowDto> flows() {
     return issue.getFlows();
-  }
-
-  @CheckForNull
-  public ClientInputFile getInputFile() {
-    return issue.getInputFile();
   }
 
   @CheckForNull
@@ -158,15 +152,21 @@ public class DelegatingIssue implements Issue {
   }
 
   @Override
-  public RawIssue getRawIssue() {
+  public URI getFileUri() {
+    return issue.getFileUri();
+  }
+
+  @Override
+  public RawIssueDto getRawIssue() {
     return issue;
   }
 
-  public List<QuickFix> quickFixes() {
-    return issue.quickFixes();
+  public List<QuickFixDto> quickFixes() {
+    return issue.getQuickFixes();
   }
 
-  public Optional<String> getRuleDescriptionContextKey() {
+  @CheckForNull
+  public String getRuleDescriptionContextKey() {
     return issue.getRuleDescriptionContextKey();
   }
 
@@ -174,7 +174,7 @@ public class DelegatingIssue implements Issue {
     return serverIssueKey;
   }
 
-  public Optional<VulnerabilityProbability> getVulnerabilityProbability() {
+  public VulnerabilityProbability getVulnerabilityProbability() {
     return issue.getVulnerabilityProbability();
   }
 

@@ -60,6 +60,7 @@ import org.sonarsource.sonarlint.core.rpc.client.SonarLintCancelChecker;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
@@ -86,6 +87,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TokenDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.UsernamePasswordDto;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
+import org.sonarsource.sonarlint.ls.AnalysisTaskExecutor;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -131,6 +133,9 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private DiagnosticPublisher diagnosticPublisher;
   private final ScheduledExecutorService bindingSuggestionsHandler;
 
+
+  private AnalysisTaskExecutor analysisTaskExecutor;
+
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider,
     LanguageClientLogOutput logOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, OpenFilesCache openFilesCache) {
     this.client = client;
@@ -145,6 +150,10 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   private static void initializeDefaultProxyAuthenticator() {
     Authenticator.setDefault(new SystemPropertiesAuthenticator());
+  }
+
+  public void setAnalysisTaskExecutor(AnalysisTaskExecutor analysisTaskExecutor) {
+    this.analysisTaskExecutor = analysisTaskExecutor;
   }
 
   @Override
@@ -611,5 +620,11 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   public void setDiagnosticPublisher(DiagnosticPublisher diagnosticPublisher) {
     this.diagnosticPublisher = diagnosticPublisher;
+  }
+
+  @Override
+  public void didRaiseIssue(String configurationScopeId, UUID analysisId, RawIssueDto rawIssue) {
+    client.showMessage(new MessageParams(MessageType.Info, "I discovered issue!"));
+    analysisTaskExecutor.didRaiseIssue(rawIssue, analysisId);
   }
 }

@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import javax.annotation.CheckForNull;
 import org.eclipse.lsp4j.CodeActionContext;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Diagnostic;
@@ -47,10 +48,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
-import org.sonarsource.sonarlint.core.analysis.api.Flow;
-import org.sonarsource.sonarlint.core.analysis.api.QuickFix;
 import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.commons.api.TextRange;
@@ -65,6 +63,11 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleMonolithicD
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleNonContextualSectionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleSplitDescriptionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.FileEditDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.QuickFixDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.TextEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
@@ -213,17 +216,15 @@ class CommandManagerTests {
     var versionedIssue = new VersionedIssue(issue, 1);
     when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionedIssue));
 
-    var textEdit = mock(TextEdit.class);
+    var textEdit = mock(TextEditDto.class);
     when(textEdit.newText()).thenReturn("");
-    when(textEdit.range()).thenReturn(new TextRange(1, 0, 1, 1));
-    var edit = mock(ClientInputFileEdit.class);
+    when(textEdit.range()).thenReturn(new TextRangeDto(1, 0, 1, 1));
+    var edit = mock(FileEditDto.class);
     when(edit.textEdits()).thenReturn(List.of(textEdit));
-    var target = mock(ClientInputFile.class);
-    when(target.uri()).thenReturn(fileUri);
-    when(edit.target()).thenReturn(target);
-    var fix = mock(QuickFix.class);
+    when(edit.target()).thenReturn(fileUri);
+    var fix = mock(QuickFixDto.class);
     when(fix.message()).thenReturn("Fix the issue!");
-    when(fix.inputFileEdits()).thenReturn(List.of(edit));
+    when(fix.fileEdits()).thenReturn(List.of(edit));
     when(issue.quickFixes()).thenReturn(List.of(fix));
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
@@ -245,21 +246,19 @@ class CommandManagerTests {
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
     var issue = mock(Issue.class);
-    var textEdit = mock(TextEdit.class);
+    var textEdit = mock(TextEditDto.class);
     when(textEdit.newText()).thenReturn("");
-    when(textEdit.range()).thenReturn(new TextRange(1, 0, 1, 1));
-    var edit = mock(ClientInputFileEdit.class);
+    when(textEdit.range()).thenReturn(new TextRangeDto(1, 0, 1, 1));
+    var edit = mock(FileEditDto.class);
     when(edit.textEdits()).thenReturn(List.of(textEdit));
-    var target = mock(ClientInputFile.class);
-    when(target.uri()).thenReturn(notebookUri);
-    when(edit.target()).thenReturn(target);
-    var fix = mock(QuickFix.class);
+    when(edit.target()).thenReturn(notebookUri);
+    var fix = mock(QuickFixDto.class);
     when(fix.message()).thenReturn("Fix the issue!");
-    when(fix.inputFileEdits()).thenReturn(List.of(edit));
+    when(fix.fileEdits()).thenReturn(List.of(edit));
     when(issue.quickFixes()).thenReturn(List.of(fix));
-    var rawIssue = mock(RawIssue.class);
+    var rawIssue = mock(RawIssueDto.class);
     when(issue.getRawIssue()).thenReturn(rawIssue);
-    when(rawIssue.quickFixes()).thenReturn(List.of(fix));
+    when(rawIssue.getQuickFixes()).thenReturn(List.of(fix));
     var versionedIssue = new VersionedIssue(issue, 1);
     when(openNotebooksCache.getFile(notebookUri)).thenReturn(Optional.of(fakeNotebook));
     when(openNotebooksCache.getNotebookUriFromCellUri(URI.create(CELL_URI))).thenReturn(fakeNotebook.getUri());
@@ -356,7 +355,7 @@ class CommandManagerTests {
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
-    var flow = mock(Flow.class);
+    var flow = mock(RawIssueFlowDto.class);
     var flows = List.of(flow);
     var issue = mock(Issue.class);
     var versionedIssue = new VersionedIssue(issue, 1);
@@ -471,7 +470,7 @@ class CommandManagerTests {
       }
 
       @Override
-      public RawIssue getRawIssue() {
+      public RawIssueDto getRawIssue() {
         return null;
       }
 
@@ -507,7 +506,7 @@ class CommandManagerTests {
 
       @Nullable
       @Override
-      public ClientInputFile getInputFile() {
+      public URI getFileUri() {
         return null;
       }
 
@@ -532,18 +531,19 @@ class CommandManagerTests {
       }
 
       @Override
-      public List<Flow> flows() {
+      public List<RawIssueFlowDto> flows() {
         return emptyList();
       }
 
       @Override
-      public List<QuickFix> quickFixes() {
+      public List<QuickFixDto> quickFixes() {
         return null;
       }
 
       @Override
-      public Optional<String> getRuleDescriptionContextKey() {
-        return Optional.empty();
+      @CheckForNull
+      public String getRuleDescriptionContextKey() {
+        return null;
       }
 
     };

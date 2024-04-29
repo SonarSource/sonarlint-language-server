@@ -19,11 +19,9 @@
  */
 package org.sonarsource.sonarlint.ls.commands;
 
-import java.io.IOException;
 import java.net.URI;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,9 +29,10 @@ import java.util.Optional;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
-import org.sonarsource.sonarlint.core.analysis.api.IssueLocation;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueLocationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.ShowIssueParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.FlowDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.LocationDto;
@@ -41,8 +40,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.Issue;
 import org.sonarsource.sonarlint.ls.LocalCodeFile;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
-import org.sonarsource.sonarlint.ls.util.FileUtils;
-import org.sonarsource.sonarlint.ls.util.TextRangeUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static org.sonarsource.sonarlint.ls.util.TextRangeUtils.textRangeWithHashDtoToTextRangeDto;
@@ -70,7 +67,7 @@ public final class ShowAllLocationsCommand {
 
 
     private Param(Issue issue) {
-      this.fileUri = nullableUri(issue.getInputFile());
+      this.fileUri = issue.getFileUri();
       this.message = issue.getMessage();
       this.severity = issue.getSeverity().toString();
       this.ruleKey = issue.getRuleKey();
@@ -172,8 +169,8 @@ public final class ShowAllLocationsCommand {
   static class Flow {
     private final List<Location> locations;
 
-    private Flow(org.sonarsource.sonarlint.core.analysis.api.Flow flow) {
-      this.locations = flow.locations().stream().map(Location::new).toList();
+    private Flow(RawIssueFlowDto flow) {
+      this.locations = flow.getLocations().stream().map(Location::new).toList();
     }
 
     private Flow(FlowDto flow, String workspaceFolderUri) {
@@ -197,23 +194,23 @@ public final class ShowAllLocationsCommand {
     private boolean exists = false;
     private boolean codeMatches = false;
 
-    private Location(IssueLocation location) {
+    private Location(RawIssueLocationDto location) {
       var locationTextRange = location.getTextRange();
       String locationTextRangeHash;
-      try {
-        var inputFile = location.getInputFile();
-        List<String> fileLines = inputFile != null ? inputFile.contents().lines().toList() : Collections.emptyList();
-        var fileTextRange = FileUtils.getTextRangeContentOfFile(fileLines,
-          TextRangeUtils.textRangeDtoFromTextRange(locationTextRange));
-        locationTextRangeHash = fileTextRange != null ? Utils.hash(fileTextRange) : "";
-      } catch (IOException e) {
-        locationTextRangeHash = "";
-      }
+//      try {
+//        var inputFile = location.getInputFile();
+//        List<String> fileLines = inputFile != null ? inputFile.contents().lines().toList() : Collections.emptyList();
+//        var fileTextRange = FileUtils.getTextRangeContentOfFile(fileLines,
+//          TextRangeUtils.textRangeDtoFromTextRange(locationTextRange));
+//        locationTextRangeHash = fileTextRange != null ? Utils.hash(fileTextRange) : "";
+//      } catch (IOException e) {
+//      }
+      locationTextRangeHash = "";
       this.textRange = locationTextRange != null ? new TextRangeWithHashDto(locationTextRange.getStartLine(),
         locationTextRange.getStartLineOffset(),
         locationTextRange.getEndLine(),
         locationTextRange.getEndLineOffset(), locationTextRangeHash) : null;
-      this.uri = nullableUri(location.getInputFile());
+      this.uri = location.getFileUri();
       this.filePath = this.uri == null ? null : this.uri.getPath();
       this.message = location.getMessage();
       this.exists = true;

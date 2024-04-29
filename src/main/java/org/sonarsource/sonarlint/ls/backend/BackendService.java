@@ -23,6 +23,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -32,6 +33,8 @@ import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFilesParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFilesResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeClientNodeJsPathParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
@@ -371,6 +374,11 @@ public class BackendService {
   public CompletableFuture<ListAllResponse> getAllTaints(String folderUri) {
     var params = new ListAllParams(folderUri, true);
     return backend.getTaintVulnerabilityTrackingService().listAll(params);
+  }
+
+  public CompletableFuture<AnalyzeFilesResponse> analyzeFiles(String configScopeId, UUID analysisId, List<URI> filesToAnalyze, Map<String, String> extraProps) {
+    var params = new AnalyzeFilesParams(configScopeId, analysisId, filesToAnalyze, extraProps, System.currentTimeMillis());
+    return backend.getAnalysisService().analyzeFiles(params);
   }
 
   public SonarLintRpcServer getBackend() {

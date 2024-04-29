@@ -27,8 +27,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -101,6 +104,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.ClientFileDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
@@ -130,6 +134,7 @@ import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
@@ -184,6 +189,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final NotebookDiagnosticPublisher notebookDiagnosticPublisher;
   private final PromotionalNotifications promotionalNotifications;
   private final ServerSentEventsHandlerService serverSentEventsHandler;
+  private final FileTypeClassifier fileTypeClassifier;
 
   private String appName;
 
@@ -237,10 +243,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     vsCodeClient.setSettingsManager(settingsManager);
     vsCodeClient.setWorkspaceFoldersManager(workspaceFoldersManager);
     backendServiceFacade.setSettingsManager(settingsManager);
-    var fileTypeClassifier = new FileTypeClassifier(globalLogOutput);
+    this.fileTypeClassifier = new FileTypeClassifier(globalLogOutput);
     javaConfigCache = new JavaConfigCache(client, openFilesCache, globalLogOutput);
     this.enginesFactory = new EnginesFactory(analyzers, globalLogOutput,
-      new WorkspaceFoldersProvider(workspaceFoldersManager, fileTypeClassifier, javaConfigCache), backendServiceFacade);
+      new WorkspaceFoldersProvider(workspaceFoldersManager, this.fileTypeClassifier, javaConfigCache), backendServiceFacade);
     this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager,
@@ -262,6 +268,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       fileTypeClassifier, issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, telemetry, skippedPluginsNotifier, standaloneEngineManager, diagnosticPublisher,
       client, openNotebooksCache, notebookDiagnosticPublisher, progressManager, backendServiceFacade);
     this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor, client);
+    vsCodeClient.setAnalysisTaskExecutor(analysisTaskExecutor);
     vsCodeClient.setAnalysisScheduler(analysisScheduler);
     this.serverSentEventsHandler = new ServerSentEventsHandler(analysisScheduler, bindingManager);
     vsCodeClient.setServerSentEventsHandlerService(serverSentEventsHandler);
@@ -470,6 +477,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didOpen(DidOpenTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
+    notifyBackendWithFileLanguageAndContent(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText());
     if (openNotebooksCache.isNotebook(uri)) {
       lsLogOutput.debug(String.format("Skipping text document analysis of notebook \"%s\"", uri));
       return;
@@ -479,12 +487,36 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       analysisScheduler.didOpen(file);
       taintIssuesUpdater.updateTaintIssuesAsync(uri);
       promotionalNotifications.didOpen(params);
+//      var configScope = workspaceFoldersManager.findFolderForFile(uri).isEmpty() ? null : workspaceFoldersManager.findFolderForFile(uri).get().getUri().toString();
+//      backendServiceFacade.getBackendService().analyzeFiles(configScope, UUID.randomUUID(), List.of(uri), Map.of());
     });
+  }
+
+  private void notifyBackendWithFileLanguageAndContent(URI fileUri, String languageId, String content) {
+    // TODO possibly move to OpenFilesCache
+    List<ClientFileDto> filesToNotify = new ArrayList<>();
+    workspaceFoldersManager.findFolderForFile(fileUri)
+      .ifPresent(folder -> {
+        var settings = folder.getSettings();
+        var baseDir = folder.getRootPath();
+        var fsPath = Paths.get(fileUri);
+        var relativePath = baseDir.relativize(fsPath);
+        var folderUri = folder.getUri().toString();
+        var isTest = isTestFile(fileUri, settings);
+        filesToNotify.add(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(), fsPath, content, Language.valueOf(AnalysisClientInputFile.toSqLanguage(languageId).getSonarLanguageKey().toUpperCase())));
+      });
+    backendServiceFacade.getBackendService().updateFileSystem(List.of(), filesToNotify);
+  }
+
+  private boolean isTestFile(URI fileUri, WorkspaceFolderSettings settings) {
+    return fileTypeClassifier.isTest(settings, fileUri, false, () -> javaConfigCache.getOrFetch(fileUri));
   }
 
   @Override
   public void didChange(DidChangeTextDocumentParams params) {
+    // TODO notify backend that the content changed
     var uri = create(params.getTextDocument().getUri());
+    // VSCode sends us full file content in the change event
     runIfAnalysisNeeded(params.getTextDocument().getUri(), () -> {
       openFilesCache.didChange(uri, params.getContentChanges().get(0).getText(), params.getTextDocument().getVersion());
       analysisScheduler.didChange(uri);
@@ -722,9 +754,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var fileUri = params.fileUri;
     var ruleKey = params.ruleKey;
     var issue = securityHotspotsCache.get(create(fileUri)).get(params.getHotspotId());
-    var ruleContextKey = Objects.isNull(issue) ? "" : issue.issue().getRuleDescriptionContextKey().orElse("");
+    var ruleContextKey = Objects.isNull(issue) ? "" : issue.issue().getRuleDescriptionContextKey();
     var showHotspotCommandParams = new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
-      List.of(new JsonPrimitive(ruleKey), new JsonPrimitive(fileUri), new JsonPrimitive(ruleContextKey)));
+      List.of(new JsonPrimitive(ruleKey), new JsonPrimitive(fileUri), new JsonPrimitive(ruleContextKey != null ? ruleContextKey : "")));
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
       commandManager.executeCommand(showHotspotCommandParams, cancelToken);
@@ -881,8 +913,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var fileUri = params.fileUri;
     var ruleKey = params.ruleKey;
     var issue = securityHotspotsCache.get(create(fileUri)).get(params.getHotspotId());
-    var ruleContextKey = Objects.isNull(issue) ? "" : issue.issue().getRuleDescriptionContextKey().orElse("");
-    return commandManager.getShowRuleDescriptionParams(fileUri, ruleKey, ruleContextKey);
+    var ruleContextKey = Objects.isNull(issue) ? "" : issue.issue().getRuleDescriptionContextKey();
+    return commandManager.getShowRuleDescriptionParams(fileUri, ruleKey, ruleContextKey != null ? ruleContextKey : "");
   }
 
   @Override

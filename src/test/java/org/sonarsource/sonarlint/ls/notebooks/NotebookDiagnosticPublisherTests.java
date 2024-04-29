@@ -31,14 +31,11 @@ import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
-import org.sonarsource.sonarlint.core.analysis.api.Flow;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.RawIssue;
-import org.sonarsource.sonarlint.core.commons.api.TextRange;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
-import org.sonarsource.sonarlint.ls.Issue;
 import org.sonarsource.sonarlint.ls.IssuesCache;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 
@@ -65,7 +62,7 @@ class NotebookDiagnosticPublisherTests {
   @Test
   void shouldConvertCellIssue() {
     DelegatingCellIssue issue = mock(DelegatingCellIssue.class);
-    TextRange textRange = new TextRange(4, 0, 5, 5);
+    TextRangeDto textRange = new TextRangeDto(4, 0, 5, 5);
 
     var issueKey = UUID.randomUUID().toString();
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
@@ -76,8 +73,7 @@ class NotebookDiagnosticPublisherTests {
     when(issue.getStartLineOffset()).thenReturn(0);
     when(issue.getEndLine()).thenReturn(5);
     when(issue.getEndLineOffset()).thenReturn(5);
-    when(issue.flows()).thenReturn(List.of(mock(Flow.class)));
-    when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
+    when(issue.flows()).thenReturn(List.of(mock(RawIssueFlowDto.class)));
 
     var diagnostic = convertCellIssue(new AbstractMap.SimpleImmutableEntry<>(issueKey, issue));
 
@@ -196,30 +192,28 @@ class NotebookDiagnosticPublisherTests {
   }
 
   private DelegatingCellIssue createFakeBlockerIssue() {
-    var issue = mock(RawIssue.class);
+    var issue = mock(RawIssueDto.class);
     TextRangeDto textRangeDto = new TextRangeDto(2, 0, 2, 5);
-    TextRange textRange = new TextRange(2, 0, 2, 5);
+    TextRangeDto textRange = new TextRangeDto(2, 0, 2, 5);
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
-    when(issue.getMessage()).thenReturn("don't do this");
+    when(issue.getPrimaryMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
     when(issue.getTextRange()).thenReturn(textRangeDto);
-    when(issue.getFlows()).thenReturn(List.of(mock(Flow.class)));
-    when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
+    when(issue.getFlows()).thenReturn(List.of(mock(RawIssueFlowDto.class)));
 
     return new DelegatingCellIssue(issue, textRange, Collections.emptyList());
   }
 
   private DelegatingCellIssue createFakeMinorIssue() {
-    var issue = mock(RawIssue.class);
-    TextRange textRange = new TextRange(1, 0, 1, 3);
+    var issue = mock(RawIssueDto.class);
     TextRangeDto textRangeDto = new TextRangeDto(1, 0, 1, 3);
+    TextRangeDto textRange = new TextRangeDto(1, 0, 1, 3);
 
     when(issue.getSeverity()).thenReturn(IssueSeverity.MINOR);
-    when(issue.getMessage()).thenReturn("don't do this please");
+    when(issue.getPrimaryMessage()).thenReturn("don't do this please");
     when(issue.getRuleKey()).thenReturn("squid:122");
     when(issue.getTextRange()).thenReturn(textRangeDto);
-    when(issue.getFlows()).thenReturn(List.of(mock(Flow.class)));
-    when(issue.getInputFile()).thenReturn(mock(ClientInputFile.class));
+    when(issue.getFlows()).thenReturn(List.of(mock(RawIssueFlowDto.class)));
 
     return new DelegatingCellIssue(issue, textRange, Collections.emptyList());
   }
