@@ -19,21 +19,20 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import javax.annotation.Nullable;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
-import org.sonarsource.sonarlint.core.analysis.api.AnalysisResults;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.PluginDetails;
 import org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidSkipLoadingPluginParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.domain.LSLanguage;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 
-import static java.util.stream.Collectors.toSet;
 import static org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.JRE;
 import static org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.NODEJS;
 
@@ -52,39 +51,28 @@ public class SkippedPluginsNotifier {
     this.globalLogOutput = globalLogOutput;
   }
 
-  public void notifyOnceForSkippedPlugins(AnalysisResults analysisResults, Collection<PluginDetails> allPlugins) {
-    var attemptedLanguages = analysisResults.languagePerFile().values()
-      .stream()
-      .filter(Objects::nonNull)
-      .collect(toSet());
-    attemptedLanguages.forEach(l -> {
-      final var correspondingPlugin = allPlugins.stream().filter(p -> p.key().equals(l.getPluginKey())).findFirst();
-      correspondingPlugin.flatMap(PluginDetails::skipReason).ifPresent(skipReason -> {
-        if (skipReason instanceof SkipReason.UnsatisfiedRuntimeRequirement runtimeRequirement) {
-          final var title = String.format("SonarLint failed to analyze %s code", LSLanguage.valueOf(l.name()).getLabel());
-          if (runtimeRequirement.getRuntime() == JRE) {
-            handleMissingJRERequirement(runtimeRequirement, title);
-          } else if (runtimeRequirement.getRuntime() == NODEJS) {
-            handleMissingNodeRuntimeRequirement(runtimeRequirement, title);
-          }
-        }
-      });
-    });
+  public void notifyOnceForSkippedPlugins(Language language, DidSkipLoadingPluginParams.SkipReason reason, String minVersion, @Nullable String currentVersion) {
+    final var title = String.format("SonarLint failed to analyze %s code", LSLanguage.valueOf(language.name()).getLabel());
+    if (reason == DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_JRE) {
+      handleMissingJRERequirement(minVersion, Objects.requireNonNull(currentVersion), title);
+    } else if (reason == DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_NODE_JS) {
+      handleMissingNodeRuntimeRequirement(minVersion, currentVersion, title);
+    }
   }
 
-  private void handleMissingJRERequirement(SkipReason.UnsatisfiedRuntimeRequirement runtimeRequirement, String title) {
+  private void handleMissingJRERequirement(String minVersion, String currentVersion, String title) {
     var content = String.format(
-      "Java runtime version %s or later is required. Current version is %s.", runtimeRequirement.getMinVersion(), runtimeRequirement.getCurrentVersion());
+      "Java runtime version %s or later is required. Current version is %s.", minVersion, currentVersion);
     globalLogOutput.warn(content);
     showMessageWithOpenSettingsAction(client, formatMessage(title, content), JRE,
       client::openJavaHomeSettings);
   }
 
-  private void handleMissingNodeRuntimeRequirement(SkipReason.UnsatisfiedRuntimeRequirement runtimeRequirement, String title) {
+  private void handleMissingNodeRuntimeRequirement(String minVersion, @Nullable String currentVersion, String title) {
     var content = String.format(
-      "Node.js runtime version %s or later is required.", runtimeRequirement.getMinVersion());
-    if (runtimeRequirement.getCurrentVersion() != null) {
-      content += String.format(" Current version is %s.", runtimeRequirement.getCurrentVersion());
+      "Node.js runtime version %s or later is required.", minVersion);
+    if (currentVersion != null) {
+      content += String.format(" Current version is %s.", currentVersion);
     }
     var isNotificationAllowed = client.canShowMissingRequirementsNotification().join();
     globalLogOutput.warn(content);

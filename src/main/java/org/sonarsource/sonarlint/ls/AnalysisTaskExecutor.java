@@ -68,7 +68,6 @@ import org.sonarsource.sonarlint.ls.progress.ProgressFacade;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
-import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.util.FileUtils;
 
@@ -96,8 +95,6 @@ public class AnalysisTaskExecutor {
   private final IssuesCache securityHotspotsCache;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final SonarLintTelemetry telemetry;
-  private final SkippedPluginsNotifier skippedPluginsNotifier;
-  private final StandaloneEngineManager standaloneEngineManager;
   private final DiagnosticPublisher diagnosticPublisher;
   private final SonarLintExtendedLanguageClient lsClient;
   private final OpenNotebooksCache openNotebooksCache;
@@ -109,7 +106,7 @@ public class AnalysisTaskExecutor {
   public AnalysisTaskExecutor(ScmIgnoredCache filesIgnoredByScmCache, LanguageClientLogger clientLogger, LanguageClientLogOutput logOutput,
     WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, JavaConfigCache javaConfigCache, SettingsManager settingsManager,
     FileTypeClassifier fileTypeClassifier, IssuesCache issuesCache, IssuesCache securityHotspotsCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
-    SonarLintTelemetry telemetry, SkippedPluginsNotifier skippedPluginsNotifier, StandaloneEngineManager standaloneEngineManager, DiagnosticPublisher diagnosticPublisher,
+    SonarLintTelemetry telemetry, DiagnosticPublisher diagnosticPublisher,
     SonarLintExtendedLanguageClient lsClient, OpenNotebooksCache openNotebooksCache, NotebookDiagnosticPublisher notebookDiagnosticPublisher,
     ProgressManager progressManager, BackendServiceFacade backendServiceFacade) {
     this.filesIgnoredByScmCache = filesIgnoredByScmCache;
@@ -124,8 +121,6 @@ public class AnalysisTaskExecutor {
     this.securityHotspotsCache = securityHotspotsCache;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.telemetry = telemetry;
-    this.skippedPluginsNotifier = skippedPluginsNotifier;
-    this.standaloneEngineManager = standaloneEngineManager;
     this.diagnosticPublisher = diagnosticPublisher;
     this.lsClient = lsClient;
     this.openNotebooksCache = openNotebooksCache;

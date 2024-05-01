@@ -85,6 +85,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
+import org.sonarsource.sonarlint.ls.SkippedPluginsNotifier;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.AssistCreatingConnectionResponse;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.CreateConnectionParams;
@@ -149,6 +150,7 @@ class SonarLintVSCodeClientTests {
   HostInfoProvider server = mock(HostInfoProvider.class);
   ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
   OpenFilesCache openFilesCache = mock(OpenFilesCache.class);
+  SkippedPluginsNotifier skippedPluginsNotifier = mock(SkippedPluginsNotifier.class);
   ServerSentEventsHandlerService serverSentEventsHandlerService = mock(ServerSentEventsHandlerService.class);
   @Captor
   ArgumentCaptor<ShowAllLocationsCommand.Param> paramCaptor;
@@ -198,7 +200,7 @@ class SonarLintVSCodeClientTests {
 
   @BeforeEach
   public void setup() throws IOException {
-    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, openFilesCache);
+    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, openFilesCache, skippedPluginsNotifier);
     underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);
     underTest.setBindingManager(bindingManager);
