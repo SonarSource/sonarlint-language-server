@@ -27,6 +27,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -649,5 +650,10 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public void promoteExtraEnabledLanguagesInConnectedMode(String configurationScopeId, Set<Language> languagesToPromote) {
     promotionalNotifications.promoteExtraEnabledLanguagesInConnectedMode(languagesToPromote);
+  }
+
+  @Override
+  public Path getBaseDir(String configurationScopeId) {
+    return Paths.get(URI.create(configurationScopeId));
   }
 }
