@@ -490,10 +490,12 @@ public class AnalysisTaskExecutor {
 
   public void didRaiseIssue(RawIssueDto rawIssueDto, UUID analysisId) {
     URI uri = rawIssueDto.getFileUri();
-    var delegatingIssue = new DelegatingIssue(rawIssueDto, UUID.randomUUID(), false, true);
-    var task = analysisMetaDataCache.get(analysisId).analysisTask();
-    var filesToAnalyze = task.getFilesToAnalyze().stream().collect(Collectors.toMap(VersionedOpenFile::getUri, Function.identity()));
-    handleIssue(filesToAnalyze, task, delegatingIssue, uri);
+    if (uri != null) {
+      var task = analysisMetaDataCache.get(analysisId).analysisTask();
+      var delegatingIssue = new DelegatingIssue(rawIssueDto, UUID.randomUUID(), false, true);
+      var filesToAnalyze = task.getFilesToAnalyze().stream().collect(Collectors.toMap(VersionedOpenFile::getUri, Function.identity()));
+      handleIssue(filesToAnalyze, task, delegatingIssue, uri);
+    }
   }
 
   private CompletableFuture<AnalyzeFilesResponse> analyzeConnected(AnalysisTask task, ProjectBinding binding, WorkspaceFolderSettings settings, URI folderUri,
