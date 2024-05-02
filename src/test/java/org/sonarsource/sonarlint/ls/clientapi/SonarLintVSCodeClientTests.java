@@ -107,6 +107,7 @@ import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
+import org.sonarsource.sonarlint.ls.standalone.notifications.PromotionalNotifications;
 import org.sonarsource.sonarlint.ls.util.URIUtils;
 import testutils.SonarLintLogTester;
 
@@ -160,6 +161,7 @@ class SonarLintVSCodeClientTests {
   TaintVulnerabilitiesCache taintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
   AnalysisScheduler analysisScheduler = mock(AnalysisScheduler.class);
   DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
+  PromotionalNotifications promotionalNotifications = mock(PromotionalNotifications.class);
 
   private static final String PEM = """
     subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH
@@ -200,7 +202,7 @@ class SonarLintVSCodeClientTests {
 
   @BeforeEach
   public void setup() throws IOException {
-    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, openFilesCache, skippedPluginsNotifier);
+    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, openFilesCache, skippedPluginsNotifier, promotionalNotifications);
     underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);
     underTest.setBindingManager(bindingManager);

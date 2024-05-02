@@ -111,6 +111,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.standalone.notifications.PromotionalNotifications;
 import org.sonarsource.sonarlint.ls.util.URIUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
@@ -136,18 +137,20 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private DiagnosticPublisher diagnosticPublisher;
   private final ScheduledExecutorService bindingSuggestionsHandler;
   private final SkippedPluginsNotifier skippedPluginsNotifier;
+  private final PromotionalNotifications promotionalNotifications;
 
 
   private AnalysisTaskExecutor analysisTaskExecutor;
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider,
-    LanguageClientLogOutput logOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, OpenFilesCache openFilesCache, SkippedPluginsNotifier skippedPluginsNotifier) {
+    LanguageClientLogOutput logOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, OpenFilesCache openFilesCache, SkippedPluginsNotifier skippedPluginsNotifier, PromotionalNotifications promotionalNotifications) {
     this.client = client;
     this.hostInfoProvider = hostInfoProvider;
     this.logOutput = logOutput;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.openFilesCache = openFilesCache;
     this.skippedPluginsNotifier = skippedPluginsNotifier;
+    this.promotionalNotifications = promotionalNotifications;
     var bindingSuggestionsThreadFactory = Utils.threadFactory("Binding suggestion handler", false);
     bindingSuggestionsHandler = Executors.newSingleThreadScheduledExecutor(bindingSuggestionsThreadFactory);
     initializeDefaultProxyAuthenticator();
@@ -641,5 +644,10 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public void didDetectSecret() {
     diagnosticPublisher.didDetectSecret();
+  }
+
+  @Override
+  public void promoteExtraEnabledLanguagesInConnectedMode(String configurationScopeId, Set<Language> languagesToPromote) {
+    promotionalNotifications.promoteExtraEnabledLanguagesInConnectedMode(languagesToPromote);
   }
 }
