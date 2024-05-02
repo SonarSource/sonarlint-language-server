@@ -27,7 +27,6 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
-import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
@@ -177,15 +176,17 @@ public class DiagnosticPublisher {
     }
   }
 
+  public void didDetectSecret() {
+    if (!firstSecretIssueDetected) {
+      client.showFirstSecretDetectionNotification();
+      firstSecretIssueDetected = true;
+    }
+  }
+
   private PublishDiagnosticsParams createPublishDiagnosticsParams(URI newUri) {
     var p = new PublishDiagnosticsParams();
 
     Map<String, VersionedIssue> localIssues = issuesCache.get(newUri);
-
-    if (!firstSecretIssueDetected && localIssues.values().stream().anyMatch(v -> v.issue().getRuleKey().startsWith(SonarLanguage.SECRETS.getSonarLanguageKey()))) {
-      client.showFirstSecretDetectionNotification();
-      firstSecretIssueDetected = true;
-    }
 
     var localDiagnostics = localIssues.entrySet()
       .stream()
