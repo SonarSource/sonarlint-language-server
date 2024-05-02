@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -233,7 +234,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.progressManager = new ProgressManager(client, globalLogOutput);
     this.hostInfoProvider = new HostInfoProvider();
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client, globalLogOutput);
-    var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, globalLogOutput, taintVulnerabilitiesCache, openFilesCache, skippedPluginsNotifier);
+    this.promotionalNotifications = new PromotionalNotifications(client);
+    var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, globalLogOutput, taintVulnerabilitiesCache, openFilesCache, skippedPluginsNotifier, promotionalNotifications);
     this.backendServiceFacade = new BackendServiceFacade(vsCodeClient, lsLogOutput, client);
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
     this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, globalLogOutput);
@@ -287,7 +289,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       diagnosticPublisher, globalLogOutput);
     var cleanAsYouCodeManager = new CleanAsYouCodeManager(diagnosticPublisher, openFilesCache, backendServiceFacade);
     this.settingsManager.addListener(cleanAsYouCodeManager);
-    this.promotionalNotifications = new PromotionalNotifications(client, settingsManager);
     this.shutdownLatch = new CountDownLatch(1);
     launcher.startListening();
   }
@@ -489,7 +490,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
       analysisScheduler.didOpen(file);
       taintIssuesUpdater.updateTaintIssuesAsync(uri);
-      promotionalNotifications.didOpen(params);
     });
   }
 
@@ -504,7 +504,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         var relativePath = baseDir.relativize(fsPath);
         var folderUri = folder.getUri().toString();
         var isTest = isTestFile(fileUri, settings);
-        filesToNotify.add(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(), fsPath, content, Language.valueOf(AnalysisClientInputFile.toSqLanguage(languageId).getSonarLanguageKey().toUpperCase())));
+        SonarLanguage sqLanguage = AnalysisClientInputFile.toSqLanguage(languageId.toLowerCase(Locale.ROOT));
+        filesToNotify.add(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(),
+          fsPath, content, sqLanguage != null ? Language.valueOf(sqLanguage
+          .getSonarLanguageKey()
+          .toUpperCase(Locale.ROOT)) : null));
       });
     backendServiceFacade.getBackendService().updateFileSystem(List.of(), filesToNotify);
   }

@@ -19,40 +19,25 @@
  */
 package org.sonarsource.sonarlint.ls.standalone.notifications;
 
-import java.util.List;
-import java.util.Locale;
-import org.eclipse.lsp4j.DidOpenTextDocumentParams;
-import org.sonarsource.sonarlint.core.client.utils.Language;
-import org.sonarsource.sonarlint.ls.AnalysisClientInputFile;
+import java.util.Set;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
-import org.sonarsource.sonarlint.ls.settings.SettingsManager;
-
-import static org.sonarsource.sonarlint.ls.EnginesFactory.isConnectedLanguage;
 
 public class PromotionalNotifications {
   private final SonarLintExtendedLanguageClient client;
-  private final SettingsManager settingsManager;
 
-  public PromotionalNotifications(SonarLintExtendedLanguageClient client, SettingsManager settingsManager) {
+  public PromotionalNotifications(SonarLintExtendedLanguageClient client) {
     this.client = client;
-    this.settingsManager = settingsManager;
   }
 
-  public void didOpen(DidOpenTextDocumentParams didOpenTextDocumentParams) {
-    var clientLanguageIdLowerCase = didOpenTextDocumentParams.getTextDocument().getLanguageId().toLowerCase(Locale.ENGLISH);
-    var isConnected = settingsManager.hasConnectionDefined();
-    if (!isConnected) {
-      var sonarLanguage = AnalysisClientInputFile
-        .toSqLanguage(clientLanguageIdLowerCase);
-      var didOpenSQLFile = clientLanguageIdLowerCase.contains("sql");
-
-      var rpcLanguage = sonarLanguage == null ? null : org.sonarsource.sonarlint.core.rpc.protocol.common.Language.valueOf(sonarLanguage.name());
-      if (isConnectedLanguage(rpcLanguage)) {
-        client.maybeShowWiderLanguageSupportNotification(List.of(Language.fromDto(rpcLanguage).getLabel()));
-      } else if (didOpenSQLFile) {
-        client.maybeShowWiderLanguageSupportNotification(List.of(Language.PLSQL.getLabel(), Language.TSQL.getLabel()));
-      }
-    }
+  public void promoteExtraEnabledLanguagesInConnectedMode(Set<Language> languagesToPromote) {
+    // TODO no notif coming for COBOL files
+    client.maybeShowWiderLanguageSupportNotification(
+      languagesToPromote
+        .stream()
+        .map(l -> org.sonarsource.sonarlint.core.client.utils.Language.valueOf(l.name())
+          .getLabel())
+        .toList());
   }
 
 }

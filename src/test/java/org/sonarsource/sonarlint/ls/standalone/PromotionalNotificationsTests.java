@@ -20,76 +20,37 @@
 package org.sonarsource.sonarlint.ls.standalone;
 
 import java.util.List;
-import org.eclipse.lsp4j.DidOpenTextDocumentParams;
-import org.eclipse.lsp4j.TextDocumentItem;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
-import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.notifications.PromotionalNotifications;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 class PromotionalNotificationsTests {
   private final SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
-  private final SettingsManager settingsManager = mock(SettingsManager.class);
-  private final PromotionalNotifications underTest = new PromotionalNotifications(client, settingsManager);
+  private final PromotionalNotifications underTest = new PromotionalNotifications(client);
 
   @Test
   void shouldSendNotification_notConnected_commercialLanguage() {
-    var didOpenTextDocumentParams = new DidOpenTextDocumentParams(new TextDocumentItem("file:///1/2/3.cbl", "COBOL", 1, ""));
-
-    when(settingsManager.hasConnectionDefined()).thenReturn(false);
-
-    underTest.didOpen(didOpenTextDocumentParams);
+    underTest.promoteExtraEnabledLanguagesInConnectedMode(Set.of(Language.COBOL));
 
     verify(client).maybeShowWiderLanguageSupportNotification(List.of("COBOL"));
   }
 
   @Test
   void shouldSendNotification_notConnected_sql() {
-    var didOpenTextDocumentParams = new DidOpenTextDocumentParams(new TextDocumentItem("file:///1/2/3.sql", "sql", 1, ""));
-
-    when(settingsManager.hasConnectionDefined()).thenReturn(false);
-
-    underTest.didOpen(didOpenTextDocumentParams);
+    underTest.promoteExtraEnabledLanguagesInConnectedMode(Set.of(Language.PLSQL, Language.TSQL));
 
     verify(client).maybeShowWiderLanguageSupportNotification(List.of("PL/SQL", "T-SQL"));
   }
 
   @Test
   void shouldSendNotification_notConnected_oraclesql() {
-    var didOpenTextDocumentParams = new DidOpenTextDocumentParams(new TextDocumentItem("file:///1/2/3.sql", "oraclesql", 1, ""));
-
-    when(settingsManager.hasConnectionDefined()).thenReturn(false);
-
-    underTest.didOpen(didOpenTextDocumentParams);
+    underTest.promoteExtraEnabledLanguagesInConnectedMode(Set.of(Language.PLSQL));
 
     verify(client).maybeShowWiderLanguageSupportNotification(List.of("PL/SQL"));
-  }
-
-  @Test
-  void shouldNotSendNotification_connected_commercialLanguage() {
-    var didOpenTextDocumentParams = new DidOpenTextDocumentParams(new TextDocumentItem("file:///1/2/3.cls", "apex", 1, ""));
-
-    when(settingsManager.hasConnectionDefined()).thenReturn(true);
-
-    underTest.didOpen(didOpenTextDocumentParams);
-
-    verify(client, never()).maybeShowWiderLanguageSupportNotification(any());
-  }
-
-  @Test
-  void shouldNotSendNotification_notConnected_normalLanguage() {
-    var didOpenTextDocumentParams = new DidOpenTextDocumentParams(new TextDocumentItem("file:///1/2/3.py", "python", 1, ""));
-
-    when(settingsManager.hasConnectionDefined()).thenReturn(false);
-
-    underTest.didOpen(didOpenTextDocumentParams);
-
-    verify(client, never()).maybeShowWiderLanguageSupportNotification(any());
   }
 }
