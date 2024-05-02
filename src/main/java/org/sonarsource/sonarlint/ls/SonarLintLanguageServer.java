@@ -477,7 +477,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didOpen(DidOpenTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
-    notifyBackendWithFileLanguageAndContent(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText());
+    CompletableFutures.computeAsync(cancelChecker -> {
+      notifyBackendWithFileLanguageAndContent(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText());
+      return null;
+    });
     if (openNotebooksCache.isNotebook(uri)) {
       lsLogOutput.debug(String.format("Skipping text document analysis of notebook \"%s\"", uri));
       return;
@@ -487,8 +490,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       analysisScheduler.didOpen(file);
       taintIssuesUpdater.updateTaintIssuesAsync(uri);
       promotionalNotifications.didOpen(params);
-//      var configScope = workspaceFoldersManager.findFolderForFile(uri).isEmpty() ? null : workspaceFoldersManager.findFolderForFile(uri).get().getUri().toString();
-//      backendServiceFacade.getBackendService().analyzeFiles(configScope, UUID.randomUUID(), List.of(uri), Map.of());
     });
   }
 
@@ -514,13 +515,20 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void didChange(DidChangeTextDocumentParams params) {
-    // TODO notify backend that the content changed
     var uri = create(params.getTextDocument().getUri());
-    // VSCode sends us full file content in the change event
-    runIfAnalysisNeeded(params.getTextDocument().getUri(), () -> {
-      openFilesCache.didChange(uri, params.getContentChanges().get(0).getText(), params.getTextDocument().getVersion());
-      analysisScheduler.didChange(uri);
-    });
+    openFilesCache.didChange(uri, params.getContentChanges().get(0).getText(), params.getTextDocument().getVersion());
+    Optional<VersionedOpenFile> file = openFilesCache.getFile(uri);
+    if (file.isEmpty()) {
+      lsLogOutput.warn("Illegal state: trying to update file that was not open");
+    } else {
+      var languageId = file.get().getLanguageId();
+      // VSCode sends us full file content in the change event
+      CompletableFutures.computeAsync(cancelChecker -> {
+        notifyBackendWithFileLanguageAndContent(uri, languageId, file.get().getContent());
+        return null;
+      });
+      runIfAnalysisNeeded(params.getTextDocument().getUri(), () -> analysisScheduler.didChange(uri));
+    }
   }
 
   @Override

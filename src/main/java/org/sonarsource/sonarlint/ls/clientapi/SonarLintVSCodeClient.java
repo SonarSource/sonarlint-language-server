@@ -629,7 +629,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public void didRaiseIssue(String configurationScopeId, UUID analysisId, RawIssueDto rawIssue) {
-    client.showMessage(new MessageParams(MessageType.Info, "I discovered issue!"));
     analysisTaskExecutor.didRaiseIssue(rawIssue, analysisId);
   }
 

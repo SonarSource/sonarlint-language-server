@@ -25,10 +25,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
@@ -187,29 +185,19 @@ public final class ShowAllLocationsCommand {
   }
 
   static class Location {
-    private TextRangeWithHashDto textRange;
+    private final TextRangeWithHashDto textRange;
     private URI uri;
-    private String filePath;
+    private final String filePath;
     private final String message;
     private boolean exists = false;
     private boolean codeMatches = false;
 
     private Location(RawIssueLocationDto location) {
       var locationTextRange = location.getTextRange();
-      String locationTextRangeHash;
-//      try {
-//        var inputFile = location.getInputFile();
-//        List<String> fileLines = inputFile != null ? inputFile.contents().lines().toList() : Collections.emptyList();
-//        var fileTextRange = FileUtils.getTextRangeContentOfFile(fileLines,
-//          TextRangeUtils.textRangeDtoFromTextRange(locationTextRange));
-//        locationTextRangeHash = fileTextRange != null ? Utils.hash(fileTextRange) : "";
-//      } catch (IOException e) {
-//      }
-      locationTextRangeHash = "";
       this.textRange = locationTextRange != null ? new TextRangeWithHashDto(locationTextRange.getStartLine(),
         locationTextRange.getStartLineOffset(),
         locationTextRange.getEndLine(),
-        locationTextRange.getEndLineOffset(), locationTextRangeHash) : null;
+        locationTextRange.getEndLineOffset(), "") : null;
       this.uri = location.getFileUri();
       this.filePath = this.uri == null ? null : this.uri.getPath();
       this.message = location.getMessage();
@@ -309,8 +297,4 @@ public final class ShowAllLocationsCommand {
     return new Param(issue, connectionId, new HashMap<>());
   }
 
-  @CheckForNull
-  private static URI nullableUri(@Nullable ClientInputFile inputFile) {
-    return Optional.ofNullable(inputFile).map(ClientInputFile::uri).orElse(null);
-  }
 }
