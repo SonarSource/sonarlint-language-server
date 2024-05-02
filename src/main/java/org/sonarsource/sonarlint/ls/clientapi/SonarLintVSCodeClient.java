@@ -633,7 +633,13 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   }
 
   @Override
-  public void didSkipLoadingPlugin(String configurationScopeId, Language language, DidSkipLoadingPluginParams.SkipReason reason, String minVersion, @Nullable String currentVersion) {
+  public void didSkipLoadingPlugin(String configurationScopeId, Language language,
+    DidSkipLoadingPluginParams.SkipReason reason, String minVersion, @Nullable String currentVersion) {
     skippedPluginsNotifier.notifyOnceForSkippedPlugins(language, reason, minVersion, currentVersion);
+  }
+
+  @Override
+  public void didDetectSecret() {
+    diagnosticPublisher.didDetectSecret();
   }
 }
