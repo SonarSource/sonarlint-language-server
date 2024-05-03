@@ -21,10 +21,12 @@ package org.sonarsource.sonarlint.ls;
 
 import java.util.Set;
 import java.util.concurrent.Future;
+import java.util.function.Consumer;
 import org.sonarsource.sonarlint.core.commons.api.progress.CanceledException;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 
-class AnalysisTask {
+public class AnalysisTask {
 
   private final Set<VersionedOpenFile> filesToAnalyze;
   private final boolean shouldFetchServerIssues;
@@ -32,7 +34,11 @@ class AnalysisTask {
   private final boolean shouldShowProgress;
   private Future<?> future;
 
-  public AnalysisTask(Set<VersionedOpenFile> filesToAnalyze, boolean shouldFetchServerIssues, boolean shouldKeepHotspotsOnly, boolean shouldShowProgress) {
+
+  private Consumer<RawIssueDto> issueRaisedListener;
+
+  public AnalysisTask(Set<VersionedOpenFile> filesToAnalyze, boolean shouldFetchServerIssues, boolean shouldKeepHotspotsOnly,
+    boolean shouldShowProgress) {
     this.filesToAnalyze = filesToAnalyze;
     this.shouldFetchServerIssues = shouldFetchServerIssues;
     this.shouldKeepHotspotsOnly = shouldKeepHotspotsOnly;
@@ -68,6 +74,14 @@ class AnalysisTask {
   public AnalysisTask setFuture(Future<?> future) {
     this.future = future;
     return this;
+  }
+
+  public void setIssueRaisedListener(Consumer<RawIssueDto> issueRaisedListener) {
+    this.issueRaisedListener = issueRaisedListener;
+  }
+
+  public Consumer<RawIssueDto> getIssueRaisedListener() {
+    return issueRaisedListener;
   }
 
   public Future<?> getFuture() {

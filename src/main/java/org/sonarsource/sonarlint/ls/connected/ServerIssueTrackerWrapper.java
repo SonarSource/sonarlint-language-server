@@ -33,28 +33,35 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ClientTrackedFindingDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.LineWithHashDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.LocalOnlyIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.MatchWithServerSecurityHotspotsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ServerMatchedIssueDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TrackWithServerIssuesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.function.Predicate.not;
 import static org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus.FIXED;
 import static org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus.SAFE;
 import static org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType.SECURITY_HOTSPOT;
+import static org.sonarsource.sonarlint.ls.util.FileUtils.getTextRangeContentOfFile;
 
 public class ServerIssueTrackerWrapper {
 
   private final BackendServiceFacade backend;
   private final WorkspaceFoldersManager workspaceFoldersManager;
+  private final OpenFilesCache openFilesCache;
 
-  ServerIssueTrackerWrapper(BackendServiceFacade backend, WorkspaceFoldersManager workspaceFoldersManager) {
+  ServerIssueTrackerWrapper(BackendServiceFacade backend, WorkspaceFoldersManager workspaceFoldersManager, OpenFilesCache openFilesCache) {
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.backend = backend;
+    this.openFilesCache = openFilesCache;
   }
 
   public void matchAndTrack(String filePath, Collection<RawIssueDto> issues, Consumer<DelegatingIssue> issueListener, boolean shouldFetchServerIssues) {
@@ -133,8 +140,8 @@ public class ServerIssueTrackerWrapper {
 
 
   @NotNull
-  private static Map<Path, List<ClientTrackedFindingDto>> getClientTrackedIssuesByIdeRelativePath(String filePath, Collection<RawIssueDto> rawIssues) {
-    var clientTrackedIssueDtos = rawIssues.stream().map(ServerIssueTrackerWrapper::createClientTrackedIssueDto).toList();
+  private Map<Path, List<ClientTrackedFindingDto>> getClientTrackedIssuesByIdeRelativePath(String filePath, Collection<RawIssueDto> rawIssues) {
+    var clientTrackedIssueDtos = rawIssues.stream().map(this::createClientTrackedIssueDto).toList();
     return Map.of(Path.of(filePath), clientTrackedIssueDtos);
   }
 
@@ -150,20 +157,23 @@ public class ServerIssueTrackerWrapper {
   }
 
   @NotNull
-  private static ClientTrackedFindingDto createClientTrackedIssueDto(RawIssueDto issue) {
-//    TextRangeWithHashDto textRangeWithHashDto = null;
-//    LineWithHashDto lineWithHashDto = null;
-//    var textRange = issue.getTextRange();
-//    if (issue.getFileUri() != null && textRange != null && inputFile != null) {
-//      var fileLines = inputFile.contents().lines().toList();
-//      var textRangeContent = getTextRangeContentOfFile(fileLines, textRange);
-//      var lineContent = fileLines.get(textRange.getStartLine() - 1);
-//      textRangeWithHashDto = new TextRangeWithHashDto(textRange.getStartLine(), textRange.getStartLineOffset(),
-//        textRange.getEndLine(), textRange.getEndLineOffset(), Utils.hash(textRangeContent));
-//      lineWithHashDto = new LineWithHashDto(textRange.getStartLine(), Utils.hash(lineContent));
-//    }
-//    return new ClientTrackedFindingDto(null, issue.getSeverity().toString(), textRangeWithHashDto, lineWithHashDto, issue.getRuleKey(), issue.getMessage());
-    return null;
+  private ClientTrackedFindingDto createClientTrackedIssueDto(RawIssueDto issue) {
+    TextRangeWithHashDto textRangeWithHashDto = null;
+    LineWithHashDto lineWithHashDto = null;
+    var textRange = issue.getTextRange();
+    var fileUri = issue.getFileUri();
+    if (fileUri != null && textRange != null) {
+      var inputFile = this.openFilesCache.getFile(fileUri);
+      if (inputFile.isPresent()) {
+        var fileLines = inputFile.get().getContent().lines().toList();
+        var textRangeContent = getTextRangeContentOfFile(fileLines, textRange);
+        var lineContent = fileLines.get(textRange.getStartLine() - 1);
+        textRangeWithHashDto = new TextRangeWithHashDto(textRange.getStartLine(), textRange.getStartLineOffset(),
+          textRange.getEndLine(), textRange.getEndLineOffset(), Utils.hash(textRangeContent));
+        lineWithHashDto = new LineWithHashDto(textRange.getStartLine(), Utils.hash(lineContent));
+      }
+    }
+    return new ClientTrackedFindingDto(null, issue.getSeverity().toString(), textRangeWithHashDto, lineWithHashDto, issue.getRuleKey(), issue.getPrimaryMessage());
   }
 
 }
