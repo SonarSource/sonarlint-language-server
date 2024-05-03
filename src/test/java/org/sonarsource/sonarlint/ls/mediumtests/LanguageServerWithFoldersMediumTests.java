@@ -55,10 +55,10 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     folder1BaseDir = makeStaticTempDir();
     folder2BaseDir = makeStaticTempDir();
     initialize(Map.of(
-      "telemetryStorage", "not/exists",
-      "productName", "SLCORE tests",
-      "productVersion", "0.1",
-      "productKey", "productKey"),
+        "telemetryStorage", "not/exists",
+        "productName", "SLCORE tests",
+        "productVersion", "0.1",
+        "productKey", "productKey"),
       new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
   }
 
@@ -142,7 +142,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   }
 
   @Test
-  void shouldNotBatchAnalysisFromDifferentFolders() throws Exception {
+  void shouldNotBatchAnalysisFromDifferentFolders() {
     // Simulate opening of a second workspace folder
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(
       new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folder2BaseDir.toUri().toString(), "My Folder 2")), List.of())));
@@ -150,8 +150,14 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     var file1InFolder1 = folder1BaseDir.resolve("file1.py").toUri().toString();
     var file2InFolder2 = folder2BaseDir.resolve("file2.py").toUri().toString();
 
-    didOpen(file1InFolder1, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
-    didOpen(file2InFolder2, "python", "def foo():\n  toto2 = 0\n  plouf2 = 0\n");
+    didOpen(file1InFolder1, "python", "def foo():\n  toto = 0\n");
+    didOpen(file2InFolder2, "python", "def foo():\n  toto2 = 0\n");
+
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .containsSubsequence(
+        "[Info] Found 1 issue",
+        "[Info] Found 1 issue"));
 
     client.logs.clear();
 

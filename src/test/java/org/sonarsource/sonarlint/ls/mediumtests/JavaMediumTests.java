@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,6 +31,7 @@ import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
+import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,12 +53,14 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
   private static Path module1Path;
 
   private static Path module2Path;
+  private static Path analysisDir;
 
   private static String MODULE_1_ROOT_URI;
   private static String MODULE_2_ROOT_URI;
 
   @BeforeAll
   static void initialize() throws Exception {
+    analysisDir = makeStaticTempDir();
     module1Path = makeStaticTempDir();
     module2Path = makeStaticTempDir();
     MODULE_1_ROOT_URI = module1Path.toUri().toString();
@@ -66,7 +70,13 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
       "productVersion", "0.1",
-      "productKey", "productKey"));
+      "productKey", "productKey"), new WorkspaceFolder(analysisDir.toUri().toString(), "AnalysisDir"));
+  }
+
+  @BeforeEach
+  void setup() throws IOException {
+    getFolderSettings(analysisDir.toUri().toString());
+    org.apache.commons.io.FileUtils.cleanDirectory(analysisDir.toFile());
   }
 
   @Override
@@ -86,7 +96,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyseJavaFilesAsNonJavaIfNoClasspath() throws Exception {
-    var uri = getUri("skipJavaIfNoClasspath.java");
+    var uri = getUri("skipJavaIfNoClasspath.java", analysisDir);
 
     client.javaConfigs.put(uri, null);
 
@@ -107,7 +117,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleJavaFileReuseCachedClasspath() throws Exception {
-    var uri = getUri("analyzeSimpleJavaFileOnOpen.java");
+    var uri = getUri("analyzeSimpleJavaFileOnOpen.java", analysisDir);
 
     var javaConfigResponse = new GetJavaConfigResponse();
     javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
@@ -147,7 +157,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleJavaFileWithFlows() throws Exception {
-    var uri = getUri("AnalyzeSimpleJavaFileWithFlows.java");
+    var uri = getUri("AnalyzeSimpleJavaFileWithFlows.java", analysisDir);
 
     var javaConfigResponse = new GetJavaConfigResponse();
     javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
@@ -188,7 +198,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     setShowAnalyzerLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
 
-    var uri = getUri("analyzeSimpleJavaFileOnOpen.java");
+    var uri = getUri("analyzeSimpleJavaFileOnOpen.java", analysisDir);
 
     var javaConfigResponse = new GetJavaConfigResponse();
     javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
@@ -218,7 +228,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleJavaTestFileOnOpen() throws Exception {
-    var uri = getUri("analyzeSimpleJavaTestFileOnOpen.java");
+    var uri = getUri("analyzeSimpleJavaTestFileOnOpen.java", analysisDir);
 
     var javaConfigResponse = new GetJavaConfigResponse();
     javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
@@ -238,7 +248,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void testClassPathUpdateEvictCacheAndTriggersNewAnalysis(@TempDir Path projectRoot) throws Exception {
-    var uri = getUri("testClassPathUpdate.java");
+    var uri = getUri("testClassPathUpdate.java", analysisDir);
 
     var projectRootUri = projectRoot.toUri().toString();
     // Emulate vscode-java that returns URI with different format in GetJavaConfigResponse and didClasspathUpdate
@@ -280,7 +290,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void testJavaServerModeUpdateToStandardTriggersNewAnalysis() throws Exception {
-    var uri = getUri("testJavaServerModeUpdate.java");
+    var uri = getUri("testJavaServerModeUpdate.java", analysisDir);
 
     // Simulate null Java config response due to serverMode=LightWeight
     client.javaConfigs.put(uri, null);
@@ -320,9 +330,9 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldBatchAnalysisFromTheSameModule() throws Exception {
-    var file1module1 = getUri("Foo1.java");
-    var file2module1 = getUri("Foo2.java");
-    var nonJavaFilemodule1 = getUri("Another.py");
+    var file1module1 = getUri("Foo1.java", analysisDir);
+    var file2module1 = getUri("Foo2.java", analysisDir);
+    var nonJavaFilemodule1 = getUri("Another.py", analysisDir);
 
     // Prepare config response
     var javaConfigResponse = new GetJavaConfigResponse();
@@ -366,8 +376,8 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldNotBatchAnalysisFromDifferentModules() throws Exception {
-    var file1module1 = getUri("file1.java");
-    var file2module2 = getUri("file2.java");
+    var file1module1 = getUri("file1.java", analysisDir);
+    var file2module2 = getUri("file2.java", analysisDir);
 
     // Prepare config response
     var javaConfigResponse1 = new GetJavaConfigResponse();

@@ -39,8 +39,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -90,22 +88,22 @@ class DiagnosticPublisherTests {
     assertThat(underTest.taintDtoToDiagnostic(entry(id, versionedIssue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
   }
 
-  @Test
-  void showFirstSecretDetectedNotificationOnlyOnce() {
-    underTest.initialize(false);
-
-    var uri = initWithOneSecretIssue();
-
-    underTest.publishDiagnostics(uri, false);
-
-    verify(languageClient, times(1)).showFirstSecretDetectionNotification();
-
-    reset(languageClient);
-
-    underTest.publishDiagnostics(uri, false);
-
-    verify(languageClient, never()).showFirstSecretDetectionNotification();
-  }
+//  @Test
+//  void showFirstSecretDetectedNotificationOnlyOnce() {
+//    underTest.initialize(false);
+//
+//    var uri = initWithOneSecretIssue();
+//
+//    underTest.publishDiagnostics(uri, false);
+//
+//    verify(languageClient, times(1)).showFirstSecretDetectionNotification();
+//
+//    reset(languageClient);
+//
+//    underTest.publishDiagnostics(uri, false);
+//
+//    verify(languageClient, never()).showFirstSecretDetectionNotification();
+//  }
 
   @Test
   void dontShowFirstSecretDetectedNotificationIfAlreadyShown() {

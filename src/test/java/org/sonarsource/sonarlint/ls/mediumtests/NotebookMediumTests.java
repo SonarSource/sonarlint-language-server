@@ -19,13 +19,16 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import java.util.List;
 import java.net.URI;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.TextDocumentItem;
+import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -37,9 +40,11 @@ import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
 
 class NotebookMediumTests extends AbstractLanguageServerMediumTests {
+  private static Path analysisDir;
 
   @BeforeAll
   static void initialize() throws Exception {
+    analysisDir = makeStaticTempDir();
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE notebook tests",
@@ -47,7 +52,12 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
       "showVerboseLogs", false,
       "enableNotebooks", true,
       "productKey", "productKey"
-    ));
+    ), new WorkspaceFolder(analysisDir.toUri().toString(), "AnalysisDir"));
+  }
+
+  @BeforeEach
+  void setup() {
+    getFolderSettings(analysisDir.toUri().toString());
   }
 
   @Override
@@ -57,7 +67,7 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeNotebookOnOpen() throws Exception {
-    var uri = getUri("analyzeNotebookOnOpen.ipynb");
+    var uri = getUri("analyzeNotebookOnOpen.ipynb", analysisDir);
 
     didOpenNotebook(uri,
       // First cell has no issue
@@ -105,7 +115,7 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void analyseOpenNotebookIgnoringExcludes() {
     var fileName = "analyseOpenNotebookIgnoringExcludes.ipynb";
-    var fileUri = temp.resolve(fileName).toUri().toString();
+    var fileUri = analysisDir.resolve(fileName).toUri().toString();
 
     lsProxy.analyseOpenFileIgnoringExcludes(new SonarLintExtendedLanguageServer.AnalyseOpenFileIgnoringExcludesParams(
       null, fileUri, 0,

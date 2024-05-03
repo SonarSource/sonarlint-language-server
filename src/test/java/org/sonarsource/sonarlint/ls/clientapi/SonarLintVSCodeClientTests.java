@@ -104,6 +104,7 @@ import org.sonarsource.sonarlint.ls.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
@@ -152,6 +153,7 @@ class SonarLintVSCodeClientTests {
   HostInfoProvider server = mock(HostInfoProvider.class);
   ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
   OpenFilesCache openFilesCache = mock(OpenFilesCache.class);
+  OpenNotebooksCache openNotebooksCache = mock(OpenNotebooksCache.class);
   SkippedPluginsNotifier skippedPluginsNotifier = mock(SkippedPluginsNotifier.class);
   ServerSentEventsHandlerService serverSentEventsHandlerService = mock(ServerSentEventsHandlerService.class);
   @Captor
@@ -204,7 +206,7 @@ class SonarLintVSCodeClientTests {
 
   @BeforeEach
   public void setup() throws IOException {
-    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, openFilesCache,
+    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, openFilesCache, openNotebooksCache,
       skippedPluginsNotifier, promotionalNotifications, analysisTasksCache);
     underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);

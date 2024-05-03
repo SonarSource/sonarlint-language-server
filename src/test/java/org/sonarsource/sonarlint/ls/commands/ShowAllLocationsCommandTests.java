@@ -28,7 +28,6 @@ import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueLocationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueDetailsDto;
@@ -68,12 +67,11 @@ class ShowAllLocationsCommandTests {
   @Test
   void shouldBuildCommandParamsFromIssue() {
     var issue = mock(Issue.class);
-    var file = mock(ClientInputFile.class);
     var fileUri = URI.create("file:///tmp/plop");
-    when(file.uri()).thenReturn(fileUri);
     when(issue.getMessage()).thenReturn("message");
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getRuleKey()).thenReturn("ruleKey");
+    when(issue.getFileUri()).thenReturn(fileUri);
 
     var flow1 = mock(RawIssueFlowDto.class);
     var loc11 = mock(RawIssueLocationDto.class);

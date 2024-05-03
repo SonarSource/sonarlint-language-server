@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import org.sonarsource.sonarlint.core.commons.api.progress.CanceledException;
@@ -28,6 +29,8 @@ import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 
 public class AnalysisTask {
 
+
+  private final UUID analysisId;
   private final Set<VersionedOpenFile> filesToAnalyze;
   private final boolean shouldFetchServerIssues;
   private final boolean shouldKeepHotspotsOnly;
@@ -39,10 +42,15 @@ public class AnalysisTask {
 
   public AnalysisTask(Set<VersionedOpenFile> filesToAnalyze, boolean shouldFetchServerIssues, boolean shouldKeepHotspotsOnly,
     boolean shouldShowProgress) {
+    this.analysisId = UUID.randomUUID();
     this.filesToAnalyze = filesToAnalyze;
     this.shouldFetchServerIssues = shouldFetchServerIssues;
     this.shouldKeepHotspotsOnly = shouldKeepHotspotsOnly;
     this.shouldShowProgress = shouldShowProgress;
+  }
+  
+  public UUID getAnalysisId() {
+    return analysisId;
   }
 
   public Set<VersionedOpenFile> getFilesToAnalyze() {
