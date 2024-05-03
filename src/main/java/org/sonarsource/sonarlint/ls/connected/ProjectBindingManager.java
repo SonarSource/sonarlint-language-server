@@ -51,6 +51,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
@@ -87,17 +88,18 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private AnalysisScheduler analysisManager;
   private final BackendServiceFacade backendServiceFacade;
   private final OpenNotebooksCache openNotebooksCache;
+  private final OpenFilesCache openFilesCache;
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
-    LanguageClientLogOutput globalLogOutput, BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache) {
+    LanguageClientLogOutput globalLogOutput, BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache, OpenFilesCache openFilesCache) {
     this(enginesFactory, foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput, new ConcurrentHashMap<>(),
-      backendServiceFacade, openNotebooksCache);
+      backendServiceFacade, openNotebooksCache, openFilesCache);
   }
 
   public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
     ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache, LanguageClientLogOutput globalLogOutput,
     ConcurrentMap<String, Optional<SonarLintAnalysisEngine>> connectedEngineCacheByConnectionId, BackendServiceFacade backendServiceFacade,
-    OpenNotebooksCache openNotebooksCache) {
+    OpenNotebooksCache openNotebooksCache, OpenFilesCache openFilesCache) {
     this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
@@ -107,6 +109,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     this.connectedEngineCacheByConnectionId = connectedEngineCacheByConnectionId;
     this.backendServiceFacade = backendServiceFacade;
     this.openNotebooksCache = openNotebooksCache;
+    this.openFilesCache = openFilesCache;
   }
 
   // Can't use constructor injection because of cyclic dependency
@@ -192,7 +195,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var engine = engineOpt.get();
     var projectKey = requireNonNull(settings.getProjectKey());
     globalLogOutput.debug("Resolved binding %s for folder %s", projectKey, folderRoot);
-    var issueTrackerWrapper = new ServerIssueTrackerWrapper(backendServiceFacade, foldersManager);
+    var issueTrackerWrapper = new ServerIssueTrackerWrapper(backendServiceFacade, foldersManager, openFilesCache);
     return new ProjectBinding(connectionId, projectKey, engine, issueTrackerWrapper);
   }
 

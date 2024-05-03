@@ -19,7 +19,26 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
 
-record AnalysisMetaData(UUID analysisId, AnalysisTask analysisTask) {
+public class AnalysisTasksCache {
+  private final Map<UUID, AnalysisTask> analysisTaskByAnalysisId = new ConcurrentHashMap<>();
+
+  public void didRaiseIssue(UUID analysisId, RawIssueDto rawIssueDto) {
+    var task = analysisTaskByAnalysisId.get(analysisId);
+    if (task != null) {
+      task.getIssueRaisedListener().accept(rawIssueDto);
+    }
+  }
+
+  public void analyze(UUID analysisId, AnalysisTask analysisTask) {
+    analysisTaskByAnalysisId.put(analysisId, analysisTask);
+  }
+
+  public AnalysisTask getAnalysisTasks(UUID analysisId) {
+    return analysisTaskByAnalysisId.get(analysisId);
+  }
 }

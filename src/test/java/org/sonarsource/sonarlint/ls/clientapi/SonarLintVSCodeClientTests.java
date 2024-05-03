@@ -84,6 +84,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
+import org.sonarsource.sonarlint.ls.AnalysisTasksCache;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.SkippedPluginsNotifier;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -162,6 +163,7 @@ class SonarLintVSCodeClientTests {
   AnalysisScheduler analysisScheduler = mock(AnalysisScheduler.class);
   DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
   PromotionalNotifications promotionalNotifications = mock(PromotionalNotifications.class);
+  AnalysisTasksCache analysisTasksCache = mock(AnalysisTasksCache.class);
 
   private static final String PEM = """
     subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH
@@ -202,7 +204,8 @@ class SonarLintVSCodeClientTests {
 
   @BeforeEach
   public void setup() throws IOException {
-    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, openFilesCache, skippedPluginsNotifier, promotionalNotifications);
+    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, openFilesCache,
+      skippedPluginsNotifier, promotionalNotifications, analysisTasksCache);
     underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);
     underTest.setBindingManager(bindingManager);

@@ -90,7 +90,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TokenDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.UsernamePasswordDto;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
-import org.sonarsource.sonarlint.ls.AnalysisTaskExecutor;
+import org.sonarsource.sonarlint.ls.AnalysisTasksCache;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SkippedPluginsNotifier;
@@ -141,10 +141,11 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private final PromotionalNotifications promotionalNotifications;
 
 
-  private AnalysisTaskExecutor analysisTaskExecutor;
+  private AnalysisTasksCache analysisTasksCache;
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider,
-    LanguageClientLogOutput logOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, OpenFilesCache openFilesCache, SkippedPluginsNotifier skippedPluginsNotifier, PromotionalNotifications promotionalNotifications) {
+    LanguageClientLogOutput logOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, OpenFilesCache openFilesCache,
+    SkippedPluginsNotifier skippedPluginsNotifier, PromotionalNotifications promotionalNotifications, AnalysisTasksCache analysisTasksCache) {
     this.client = client;
     this.hostInfoProvider = hostInfoProvider;
     this.logOutput = logOutput;
@@ -152,6 +153,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     this.openFilesCache = openFilesCache;
     this.skippedPluginsNotifier = skippedPluginsNotifier;
     this.promotionalNotifications = promotionalNotifications;
+    this.analysisTasksCache = analysisTasksCache;
     var bindingSuggestionsThreadFactory = Utils.threadFactory("Binding suggestion handler", false);
     bindingSuggestionsHandler = Executors.newSingleThreadScheduledExecutor(bindingSuggestionsThreadFactory);
     initializeDefaultProxyAuthenticator();
@@ -159,10 +161,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   private static void initializeDefaultProxyAuthenticator() {
     Authenticator.setDefault(new SystemPropertiesAuthenticator());
-  }
-
-  public void setAnalysisTaskExecutor(AnalysisTaskExecutor analysisTaskExecutor) {
-    this.analysisTaskExecutor = analysisTaskExecutor;
   }
 
   @Override
@@ -633,7 +631,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public void didRaiseIssue(String configurationScopeId, UUID analysisId, RawIssueDto rawIssue) {
-    analysisTaskExecutor.didRaiseIssue(rawIssue, analysisId);
+    analysisTasksCache.didRaiseIssue(analysisId, rawIssue);
   }
 
   @Override

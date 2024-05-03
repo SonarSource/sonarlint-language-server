@@ -51,6 +51,7 @@ import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
@@ -116,6 +117,7 @@ class ProjectBindingManagerTests {
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   private final DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
   private final OpenNotebooksCache openNotebooksCache = mock(OpenNotebooksCache.class);
+  private final OpenFilesCache openFilesCache = mock(OpenFilesCache.class);
 
   @BeforeEach
   public void prepare() throws IOException, ExecutionException, InterruptedException {
@@ -147,7 +149,7 @@ class ProjectBindingManagerTests {
     when(openNotebooksCache.getFile(any(URI.class))).thenReturn(Optional.empty());
 
     underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, folderBindingCache, logTester.getLogger(),
-      connectedEngineCacheByConnectionId, backendServiceFacade, openNotebooksCache);
+      connectedEngineCacheByConnectionId, backendServiceFacade, openNotebooksCache, openFilesCache);
     underTest.setAnalysisManager(analysisManager);
   }
 

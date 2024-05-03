@@ -43,6 +43,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.ls.Issue;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -141,13 +142,14 @@ class ServerIssueTrackerWrapperTests {
     var workspaceFolderWrapper = mock(WorkspaceFolderWrapper.class);
     var settingsManager = mock(SettingsManager.class);
     var workspaceSettings = mock(WorkspaceSettings.class);
+    var openFilesCache = mock(OpenFilesCache.class);
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     when(backendService.matchIssues(any())).thenReturn(trackIssuesResponse);
     when(workspaceFolderWrapper.getUri()).thenReturn(URI.create("dummy"));
     when(workspaceFoldersManager.findFolderForFile(any())).thenReturn(Optional.of(workspaceFolderWrapper));
     when(workspaceSettings.isFocusOnNewCode()).thenReturn(true);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
-    return new ServerIssueTrackerWrapper(backendServiceFacade, workspaceFoldersManager);
+    return new ServerIssueTrackerWrapper(backendServiceFacade, workspaceFoldersManager, openFilesCache);
   }
 
   private RawIssueDto mockRawIssue(RuleType type, IssueSeverity severity) {
