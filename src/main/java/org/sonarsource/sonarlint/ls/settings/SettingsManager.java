@@ -160,10 +160,6 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     throw new IllegalStateException("Unable to get settings in time");
   }
 
-  public boolean hasConnectionDefined() {
-    return !currentSettings.getServerConnections().isEmpty();
-  }
-
   public void didChangeConfiguration() {
     executor.execute(() -> {
       try {
@@ -197,7 +193,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private void notifyChangeClientNodeJsPathIfNeeded(WorkspaceSettings oldWorkspaceSettings, WorkspaceSettings newWorkspaceSettings) {
     var hasNodeJsPathChanged = !Objects.equals(oldWorkspaceSettings.pathToNodeExecutable(), newWorkspaceSettings.pathToNodeExecutable());
-    if(hasNodeJsPathChanged) {
+    if (hasNodeJsPathChanged) {
       backendServiceFacade.getBackendService().didChangeClientNodeJsPath(new DidChangeClientNodeJsPathParams(Path.of(newWorkspaceSettings.pathToNodeExecutable())));
     }
   }

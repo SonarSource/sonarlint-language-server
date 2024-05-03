@@ -297,6 +297,12 @@ public abstract class AbstractLanguageServerMediumTests {
     return file.toUri().toString();
   }
 
+  protected String getUri(String filename, Path tempDir) throws IOException {
+    var file = tempDir.resolve(filename);
+    Files.createFile(file);
+    return file.toUri().toString();
+  }
+
   protected static void awaitLatch(CountDownLatch latch) {
     try {
       assertTrue(latch.await(15, TimeUnit.SECONDS));

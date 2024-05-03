@@ -41,4 +41,8 @@ public class AnalysisTasksCache {
   public AnalysisTask getAnalysisTasks(UUID analysisId) {
     return analysisTaskByAnalysisId.get(analysisId);
   }
+
+  public void didFinishAnalysis(UUID analysisId) {
+    analysisTaskByAnalysisId.remove(analysisId);
+  }
 }

@@ -45,6 +45,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import nl.altindag.ssl.util.CertificateUtils;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -110,6 +111,8 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.notifications.PromotionalNotifications;
@@ -133,6 +136,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private WorkspaceFolderBranchManager branchManager;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final OpenFilesCache openFilesCache;
+  private final OpenNotebooksCache openNotebooksCache;
   private WorkspaceFoldersManager workspaceFoldersManager;
   private AnalysisScheduler analysisScheduler;
   private DiagnosticPublisher diagnosticPublisher;
@@ -144,13 +148,14 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private AnalysisTasksCache analysisTasksCache;
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider,
-    LanguageClientLogOutput logOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, OpenFilesCache openFilesCache,
+    LanguageClientLogOutput logOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, OpenFilesCache openFilesCache, OpenNotebooksCache openNotebooksCache,
     SkippedPluginsNotifier skippedPluginsNotifier, PromotionalNotifications promotionalNotifications, AnalysisTasksCache analysisTasksCache) {
     this.client = client;
     this.hostInfoProvider = hostInfoProvider;
     this.logOutput = logOutput;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.openFilesCache = openFilesCache;
+    this.openNotebooksCache = openNotebooksCache;
     this.skippedPluginsNotifier = skippedPluginsNotifier;
     this.promotionalNotifications = promotionalNotifications;
     this.analysisTasksCache = analysisTasksCache;
@@ -524,9 +529,10 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       all.forEach(folderWrapper -> {
         var folderUri = folderWrapper.getUri();
         Collection<VersionedOpenFile> openFiles = openFilesCache.getAll();
-        for (var openFile : openFiles) {
+        Collection<VersionedOpenFile> allOpenItems = Stream.concat(openNotebooksCache.getAll().stream().map(VersionedOpenNotebook::asVersionedOpenFile), openFiles.stream()).toList();
+        for (var openFile : allOpenItems) {
           Optional<WorkspaceFolderWrapper> folderForFileOpt = workspaceFoldersManager.findFolderForFile(openFile.getUri());
-          if (folderForFileOpt.isPresent() && folderForFileOpt.get().getUri().equals(folderUri)) {
+          if (folderForFileOpt.isPresent() && folderForFileOpt.get().getUri().equals(folderUri)) { // TODO why do we need this check?
             analysisScheduler.didOpen(openFile);
           }
         }

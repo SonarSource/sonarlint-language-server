@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -97,10 +98,12 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   public static final String TERRAFORM_S6273 = "terraform:S6273";
   public static final String ARM_S4423 = "azureresourcemanager:S4423";
   private static Path omnisharpDir;
+  private static Path analysisDir;
 
   @BeforeAll
   static void initialize() throws Exception {
     omnisharpDir = makeStaticTempDir();
+    analysisDir = makeStaticTempDir();
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
@@ -111,12 +114,13 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
         "extra", "value",
         "omnisharpDirectory", omnisharpDir.toString()
       )
-    ));
+    ), new WorkspaceFolder(analysisDir.toUri().toString(), "AnalysisDir"));
   }
 
   @BeforeEach
-  void prepare() {
+  void prepare() throws IOException {
     client.isIgnoredByScm = false;
+    org.apache.commons.io.FileUtils.cleanDirectory(analysisDir.toFile());
   }
 
   @BeforeEach
@@ -129,7 +133,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void analyzeSimpleJsFileOnOpen() throws Exception {
     setShowVerboseLogs(client.globalSettings, true);
-    var uri = getUri("analyzeSimpleJsFileOnOpen.js");
+    var uri = getUri("analyzeSimpleJsFileOnOpen.js", analysisDir);
     didOpen(uri, "javascript", "function foo() {\n  let toto = 0;\n  let plouf = 0;\n}");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
@@ -143,7 +147,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void analyzeSimpleTsFileOnOpen() throws Exception {
     var tsconfig = temp.resolve("tsconfig.json");
     Files.write(tsconfig, "{}".getBytes(StandardCharsets.UTF_8));
-    var uri = getUri("analyzeSimpleTsFileOnOpen.ts");
+    var uri = getUri("analyzeSimpleTsFileOnOpen.ts", analysisDir);
 
     didOpen(uri, "typescript", "function foo() {\n if(bar() && bar()) { return 42; }\n}");
 
@@ -158,7 +162,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     setRulesConfig(client.globalSettings, GO_S1862, "on"); //NB: make sure the tested rule is enabled
     notifyConfigurationChangeOnClient();
 
-    var uri = getUri("analyzeSimpleGoFileOnOpen.go");
+    var uri = getUri("analyzeSimpleGoFileOnOpen.go", analysisDir);
 
     didOpen(uri, "go", "package main\n" +
       "import \"fmt\"\n" +
@@ -179,7 +183,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     setRulesConfig(client.globalSettings, CLOUDFORMATION_S6273, "on"); //NB: make sure the tested rule is enabled
     notifyConfigurationChangeOnClient();
 
-    var uri = getUri("sampleCloudFormation.yaml");
+    var uri = getUri("sampleCloudFormation.yaml", analysisDir);
 
     didOpen(uri, "yaml", "AWSTemplateFormatVersion: 2010-09-09\n" +
       "Resources:\n" +
@@ -209,7 +213,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     setRulesConfig(client.globalSettings, DOCKER_S6476, "on"); //NB: make sure the tested rule is enabled
     notifyConfigurationChangeOnClient();
 
-    var uri = getUri("Dockerfile");
+    var uri = getUri("Dockerfile", analysisDir);
 
     didOpen(uri, "docker", "from ubuntu:22.04 as jammy\n");
 
@@ -225,7 +229,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     setRulesConfig(client.globalSettings, TERRAFORM_S6273, "on"); //NB: make sure the tested rule is enabled
     notifyConfigurationChangeOnClient();
 
-    var uri = getUri("sampleTerraform.tf");
+    var uri = getUri("sampleTerraform.tf", analysisDir);
 
     didOpen(uri, "terraform", "resource \"aws_s3_bucket\" \"mynoncompliantbucket\" {\n" +
       "  bucket = \"mybucketname\"\n" +
@@ -247,7 +251,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     setRulesConfig(client.globalSettings, ARM_S4423, "on");
     notifyConfigurationChangeOnClient();
 
-    var uri = getUri("sampleBicep.bicep");
+    var uri = getUri("sampleBicep.bicep", analysisDir);
 
     didOpen(uri, "bicep", """
       resource mysqlDbServer 'Microsoft.DBforMySQL/servers@2017-12-01' = {
@@ -270,7 +274,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     setRulesConfig(client.globalSettings, ARM_S4423, "on");
     notifyConfigurationChangeOnClient();
 
-    var uri = getUri("sampleArm.json");
+    var uri = getUri("sampleArm.json", analysisDir);
 
     didOpen(uri, "json", """
       {
@@ -298,7 +302,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimplePythonFileOnOpen() throws Exception {
-    var uri = getUri("analyzeSimplePythonFileOnOpen.py");
+    var uri = getUri("analyzeSimplePythonFileOnOpen.py", analysisDir);
 
     didOpen(uri, "python", "def foo():\n  print 'toto'\n");
 
@@ -313,7 +317,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
 
-    var uri = getUri("analyzeSimplePythonFileOnOpen.py");
+    var uri = getUri("analyzeSimplePythonFileOnOpen.py", analysisDir);
 
     client.shouldAnalyseFile = false;
     didOpen(uri, "python", "def foo():\n  print 'toto'\n");
@@ -326,7 +330,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimplePythonFileWithCustomRuleConfig() throws Exception {
-    var uri = getUri("analyzeSimplePyFileWithCustomRuleConfig.py");
+    var uri = getUri("analyzeSimplePyFileWithCustomRuleConfig.py", analysisDir);
     var pySource = "def foo():\n  toto = 0\n  plouf = 0   # This is a trailing comment that can be very very long\n";
 
     // Default configuration should result in 2 issues for rule S1481
@@ -354,7 +358,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzePythonFileWithDuplicatedStringOnOpen() throws Exception {
-    var uri = getUri("analyzePythonFileWithDuplicatedStringOnOpen.py");
+    var uri = getUri("analyzePythonFileWithDuplicatedStringOnOpen.py", analysisDir);
 
     didOpen(uri, "python", "def foo():\n  print('/toto')\n  print('/toto')\n  print('/toto')\n");
 
@@ -374,7 +378,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimplePhpFileOnOpen() throws Exception {
-    var uri = getUri("foo.php");
+    var uri = getUri("foo.php", analysisDir);
 
     didOpen(uri, "php", "<?php\nfunction foo() {\n  echo(\"Hello\");\n}\n?>");
 
@@ -389,7 +393,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleHtmlFileOnOpen() throws Exception {
-    var uri = getUri("foo.html");
+    var uri = getUri("foo.html", analysisDir);
 
     didOpen(uri, "html", "<html><body></body></html>");
 
@@ -405,7 +409,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleJspFileOnOpen() throws Exception {
-    var uri = getUri("foo.html");
+    var uri = getUri("foo.html", analysisDir);
 
     didOpen(uri, "jsp", "<html><body></body></html>");
 
@@ -421,15 +425,12 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void noIssueOnTestJSFiles() throws Exception {
-    setTestFilePattern(client.globalSettings, "{**/*Test*}");
+    setTestFilePattern(getFolderSettings(analysisDir.toUri().toString()), "{**/*Test*}");
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
 
-    assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.file.suffixes=.cs, sonar.cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern={**/*Test*}]");
-
     var jsContent = "function foo() {\n  let toto = 0;\n}";
-    var fooTestUri = getUri("fooTest.js");
+    var fooTestUri = getUri("fooTest.js", analysisDir);
     didOpen(fooTestUri, "javascript", jsContent);
 
     awaitUntilAsserted(() -> assertThat(client.logs)
@@ -438,18 +439,18 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.getDiagnostics(fooTestUri)).isEmpty();
     client.clear();
 
-    setTestFilePattern(client.globalSettings, "{**/*MyTest*}");
-    setShowVerboseLogs(client.globalSettings, true);
+    setTestFilePattern(getFolderSettings(analysisDir.toUri().toString()), "{**/*MyTest*}");
     notifyConfigurationChangeOnClient();
-    assertLogContains(
-      "Default settings updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.file.suffixes=.cs, sonar.cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern={**/*MyTest*}]");
 
     didChange(fooTestUri, jsContent);
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains("[Info] Found 1 issue"));
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fooTestUri)).hasSize(1));
 
     client.logs.clear();
 
-    var fooMyTestUri = getUri("fooMyTest.js");
+    var fooMyTestUri = getUri("fooMyTest.js", analysisDir);
     didOpen(fooMyTestUri, "javascript", jsContent);
 
     awaitUntilAsserted(() -> assertThat(client.logs)
@@ -461,7 +462,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimplePythonFileOnChange() throws Exception {
-    var uri = getUri("analyzeSimplePythonFileOnChange.py");
+    var uri = getUri("analyzeSimplePythonFileOnChange.py", analysisDir);
 
     didOpen(uri, "python", "def foo():\n  # Empty\n");
 
@@ -476,10 +477,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void cleanUpDiagnosticsOnFileClose() throws IOException {
-    var uri = getUri("foo.html");
+    var uri = getUri("foo.html", analysisDir);
 
     didOpen(uri, "html", "<html><body></body></html>");
-
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
@@ -496,7 +496,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleXmlFileOnOpen() throws Exception {
-    var uri = getUri("analyzeSimpleXmlFileOnOpen.xml");
+    var uri = getUri("analyzeSimpleXmlFileOnOpen.xml", analysisDir);
 
     didOpen(uri, "xml", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
       "<root>\n" +
@@ -511,7 +511,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleCssFileOnOpen() throws Exception {
-    var uri = getUri("analyzeSimpleCssFileOnOpen.css");
+    var uri = getUri("analyzeSimpleCssFileOnOpen.css", analysisDir);
 
     didOpen(uri, "css", "* {}\n");
 
@@ -526,7 +526,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
 
-    var uri = getUri("foo.py");
+    var uri = getUri("foo.py", analysisDir);
 
     didOpen(uri, "python", "def foo():\n  print('Error code %d' % '42')\n");
 
@@ -564,7 +564,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
 
-    var uri = getUri("foo.py");
+    var uri = getUri("foo.py", analysisDir);
     // SLVSCODE-157 - Open/Close/Open/Close triggers a race condition that nullifies content
     lsProxy.getTextDocumentService()
       .didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "python", 1, "# Nothing to see here\n")));
@@ -588,7 +588,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     notifyConfigurationChangeOnClient();
     client.logs.clear();
 
-    var uri = getUri("foo.py");
+    var uri = getUri("foo.py", analysisDir);
     client.isIgnoredByScm = true;
 
     didOpen(uri, "python", "# Nothing to see here\n");
@@ -777,16 +777,17 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void test_analysis_logs_disabled() throws Exception {
+    client.folderSettings.computeIfAbsent(analysisDir.toUri().toString(), f -> new HashMap<>());
     Thread.sleep(1000);
     client.logs.clear();
 
-    var uri = getUri("testAnalysisLogsDisabled.py");
+    var uri = getUri("testAnalysisLogsDisabled.py", analysisDir);
     didOpen(uri, "python", "def foo():\n  toto = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestamp())
-      .containsExactly(
+      .contains(
         "[Info] Analyzing file \"" + uri + "\"...",
         "[Info] Found 1 issue"));
   }
@@ -798,7 +799,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     Thread.sleep(1000);
     client.logs.clear();
 
-    var uri = getUri("testAnalysisLogsDebugEnabled.py");
+    var uri = getUri("testAnalysisLogsDebugEnabled.py", analysisDir);
     didOpen(uri, "python", "def foo():\n  toto = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
@@ -817,7 +818,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     Thread.sleep(1000);
     client.logs.clear();
 
-    var uri = getUri("testAnalysisLogsEnabled.py");
+    var uri = getUri("testAnalysisLogsEnabled.py", analysisDir);
     didOpen(uri, "python", "def foo():\n  toto = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
@@ -839,7 +840,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     Thread.sleep(1000);
     client.logs.clear();
 
-    var uri = getUri("testAnalysisLogsWithDebugEnabled.py");
+    var uri = getUri("testAnalysisLogsWithDebugEnabled.py", analysisDir);
     didOpen(uri, "python", "def foo():\n  toto = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
@@ -859,7 +860,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     setShowVerboseLogs(client.globalSettings, true);
     setShowAnalyzerLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
-    var uri = getUri("parsingError.py");
+    var uri = getUri("parsingError.py", analysisDir);
 
     didOpen(uri, "python", "def foo():\n  print 'toto'\n");
 
@@ -1060,7 +1061,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void shouldRespectAnalysisExcludes() {
     var fileName = "analyseOpenFileIgnoringExcludes.py";
-    var fileUri = temp.resolve(fileName).toUri().toString();
+    var fileUri = analysisDir.resolve(fileName).toUri().toString();
     client.shouldAnalyseFile = false;
 
     didOpen(fileUri, "py", "def foo():\n  toto = 0\n");
@@ -1071,7 +1072,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void analyseOpenFileIgnoringExcludes() {
     var fileName = "analyseOpenFileIgnoringExcludes.py";
-    var fileUri = temp.resolve(fileName).toUri().toString();
+    var fileUri = analysisDir.resolve(fileName).toUri().toString();
 
     lsProxy.analyseOpenFileIgnoringExcludes(new SonarLintExtendedLanguageServer.AnalyseOpenFileIgnoringExcludesParams(
       new TextDocumentItem(fileUri, "py", 1, "def foo():\n  toto = 0\n"), null, null, Collections.emptyList()));
