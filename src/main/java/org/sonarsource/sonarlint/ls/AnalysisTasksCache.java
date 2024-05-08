@@ -38,7 +38,7 @@ public class AnalysisTasksCache {
     analysisTaskByAnalysisId.put(analysisId, analysisTask);
   }
 
-  public AnalysisTask getAnalysisTasks(UUID analysisId) {
+  public AnalysisTask getAnalysisTask(UUID analysisId) {
     return analysisTaskByAnalysisId.get(analysisId);
   }
 

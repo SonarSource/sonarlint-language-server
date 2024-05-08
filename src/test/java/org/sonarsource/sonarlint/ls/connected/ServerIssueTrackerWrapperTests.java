@@ -51,6 +51,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -114,13 +115,14 @@ class ServerIssueTrackerWrapperTests {
   @Test
   void getWorkspaceFolderUriTest() {
     var noIssues = getWorkspaceFolderUri(Collections.emptyList(), mock(WorkspaceFoldersManager.class));
-    var noInputFile = getWorkspaceFolderUri(List.of(mock(RawIssueDto.class)), mock(WorkspaceFoldersManager.class));
+    List<RawIssueDto> noFileIssue = List.of(mock(RawIssueDto.class));
     var workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
     when(workspaceFoldersManager.findFolderForFile(any(URI.class))).thenReturn(Optional.empty());
-    var noFolderForFile = getWorkspaceFolderUri(List.of(mock(RawIssueDto.class)), workspaceFoldersManager);
-
+    var fakeIssue = mock(RawIssueDto.class);
+    when(fakeIssue.getFileUri()).thenReturn(URI.create("file:///I/dont/exist"));
+    var noFolderForFile = getWorkspaceFolderUri(List.of(), workspaceFoldersManager);
     assertThat(noIssues).isEmpty();
-    assertThat(noInputFile).isEmpty();
+    assertThrows(NullPointerException.class, () -> getWorkspaceFolderUri(noFileIssue, mock(WorkspaceFoldersManager.class)));
     assertThat(noFolderForFile).isEmpty();
   }
 

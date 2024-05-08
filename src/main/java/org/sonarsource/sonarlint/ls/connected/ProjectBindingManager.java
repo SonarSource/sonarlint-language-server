@@ -188,15 +188,11 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       globalLogOutput.error("Invalid binding for '%s'", folderRoot);
       return null;
     }
-    var engineOpt = getOrCreateConnectedEngine(connectionId);
-    if (engineOpt.isEmpty()) {
-      return null;
-    }
-    var engine = engineOpt.get();
+
     var projectKey = requireNonNull(settings.getProjectKey());
     globalLogOutput.debug("Resolved binding %s for folder %s", projectKey, folderRoot);
     var issueTrackerWrapper = new ServerIssueTrackerWrapper(backendServiceFacade, foldersManager, openFilesCache);
-    return new ProjectBinding(connectionId, projectKey, engine, issueTrackerWrapper);
+    return new ProjectBinding(connectionId, projectKey, issueTrackerWrapper);
   }
 
 

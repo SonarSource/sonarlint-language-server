@@ -37,14 +37,10 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.analysis.api.AnalysisResults;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.AnalysisConfiguration;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.PluginDetails;
 import org.sonarsource.sonarlint.core.commons.api.progress.CanceledException;
-import org.sonarsource.sonarlint.core.commons.api.progress.ClientProgressMonitor;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFilesResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfigResponse;
@@ -337,7 +333,7 @@ public class AnalysisTaskExecutor {
     AnalyzeFilesResponse analysisResults;
     var filesSuccessfullyAnalyzed = new HashSet<>(filesToAnalyze.keySet());
     analysisResults = binding
-      .map(projectBindingWrapper -> analyzeConnected(task, projectBindingWrapper, settings, folderUri, filesToAnalyze, javaConfigs, issueListener, progressFacade))
+      .map(projectBindingWrapper -> analyzeConnected(task, projectBindingWrapper, settings, folderUri, filesToAnalyze, javaConfigs, issueListener))
       .orElseGet(() -> analyzeStandalone(task, settings, folderUri, filesToAnalyze, javaConfigs));
 
     // Ignore files with parsing error
@@ -405,46 +401,6 @@ public class AnalysisTaskExecutor {
     }
   }
 
-  private static final class TaskProgressMonitor implements ClientProgressMonitor {
-    private final AnalysisTask task;
-
-    private TaskProgressMonitor(AnalysisTask task) {
-      this.task = task;
-    }
-
-    @Override
-    public boolean isCanceled() {
-      return task.isCanceled();
-    }
-
-    @Override
-    public void setMessage(String msg) {
-      // No-op
-    }
-
-    @Override
-    public void setIndeterminate(boolean indeterminate) {
-      // No-op
-    }
-
-    @Override
-    public void setFraction(float fraction) {
-      // No-op
-    }
-  }
-
-  static class AnalysisResultsWrapper {
-    private final AnalysisResults results;
-    private final int analysisTime;
-    private final Collection<PluginDetails> allPlugins;
-
-    AnalysisResultsWrapper(AnalysisResults results, int analysisTime, Collection<PluginDetails> allPlugins) {
-      this.results = results;
-      this.analysisTime = analysisTime;
-      this.allPlugins = allPlugins;
-    }
-  }
-
   private AnalyzeFilesResponse analyzeStandalone(AnalysisTask task, WorkspaceFolderSettings settings, URI folderUri, Map<URI, VersionedOpenFile> filesToAnalyze,
     Map<URI, GetJavaConfigResponse> javaConfigs) {
 
@@ -456,13 +412,14 @@ public class AnalysisTaskExecutor {
     clientLogger.debug(format("Analysis triggered with configuration:%n%s", configuration.toString()));
 
     analysisTasksCache.analyze(task.getAnalysisId(), task);
-    return backendServiceFacade.getBackendService().analyzeFiles(folderUri.toString(), task.getAnalysisId(), filesToAnalyze.keySet().stream().toList(), configuration.extraProperties()).join();
+    return backendServiceFacade.getBackendService().analyzeFiles(folderUri.toString(), task.getAnalysisId(),
+      filesToAnalyze.keySet().stream().toList(), configuration.extraProperties()).join();
   }
 
   public void didRaiseIssueStandalone(RawIssueDto rawIssueDto, UUID analysisId) {
     var uri = rawIssueDto.getFileUri();
     if (uri != null) {
-      var task = analysisTasksCache.getAnalysisTasks(analysisId);
+      var task = analysisTasksCache.getAnalysisTask(analysisId);
       var delegatingIssue = new DelegatingIssue(rawIssueDto, UUID.randomUUID(), false, true);
       var filesToAnalyze = task.getFilesToAnalyze().stream().collect(Collectors.toMap(VersionedOpenFile::getUri, Function.identity()));
       handleIssue(filesToAnalyze, task, delegatingIssue, uri);
@@ -471,7 +428,7 @@ public class AnalysisTaskExecutor {
 
   private AnalyzeFilesResponse analyzeConnected(AnalysisTask task, ProjectBinding binding, WorkspaceFolderSettings settings, URI folderUri,
     Map<URI, VersionedOpenFile> filesToAnalyze,
-    Map<URI, GetJavaConfigResponse> javaConfigs, Consumer<DelegatingIssue> issueListener, @Nullable ProgressFacade progressFacade) {
+    Map<URI, GetJavaConfigResponse> javaConfigs, Consumer<DelegatingIssue> issueListener) {
     var baseDir = Paths.get(folderUri);
 
     var configuration = buildCommonAnalysisConfiguration(settings, folderUri, filesToAnalyze, javaConfigs, baseDir);
@@ -496,7 +453,8 @@ public class AnalysisTaskExecutor {
     var analysisId = task.getAnalysisId();
     analysisTasksCache.analyze(analysisId, task);
     // wait for the analysis to finish before we start tracking
-    var results = backendServiceFacade.getBackendService().analyzeFiles(folderUri.toString(), analysisId, filesToAnalyze.keySet().stream().toList(), Map.of()).join();
+    var results = backendServiceFacade.getBackendService().analyzeFiles(folderUri.toString(), analysisId,
+      filesToAnalyze.keySet().stream().toList(), configuration.extraProperties()).join();
     filesToAnalyze.forEach((fileUri, openFile) -> {
       var issues = issuesPerFiles.getOrDefault(fileUri, List.of());
       serverIssueTracker.matchAndTrack(FileUtils.getFileRelativePath(baseDir, fileUri, logOutput), issues, issueListener, task.shouldFetchServerIssues());
@@ -523,17 +481,5 @@ public class AnalysisTaskExecutor {
       configBuilder.putExtraProperty("sonar.cfamily.compile-commands", pathToCompileCommands);
     }
     return configBuilder.build();
-  }
-
-  /**
-   * @param analyze          Analysis callback
-   * @param postAnalysisTask Code that will be run after the analysis, but still counted in the total analysis duration.
-   */
-  private static AnalysisResultsWrapper analyzeWithTiming(Supplier<AnalysisResults> analyze, Collection<PluginDetails> allPlugins, Runnable postAnalysisTask) {
-    long start = System.currentTimeMillis();
-    var analysisResults = analyze.get();
-    postAnalysisTask.run();
-    int analysisTime = (int) (System.currentTimeMillis() - start);
-    return new AnalysisResultsWrapper(analysisResults, analysisTime, allPlugins);
   }
 }
