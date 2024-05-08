@@ -23,14 +23,12 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nullable;
-import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.EngineConfiguration;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
@@ -47,8 +45,6 @@ public class EnginesFactory {
   public static Path sonarLintUserHomeOverride = null;
   private final LanguageClientLogOutput logOutput;
   private final Collection<Path> standaloneAnalyzers;
-  private String omnisharpDirectory;
-
 
   private static final Language[] STANDALONE_LANGUAGES = {
     Language.AZURERESOURCEMANAGER,
@@ -92,10 +88,6 @@ public class EnginesFactory {
     this.backendServiceFacade = backendServiceFacade;
   }
 
-  public void setOmnisharpDirectory(String omnisharpDirectory) {
-    this.omnisharpDirectory = omnisharpDirectory;
-  }
-
   public SonarLintAnalysisEngine createEngine(@Nullable String connectionId) {
     if (shutdown.get().equals(true)) {
       throw new IllegalStateException("Language server is shutting down, won't create engine");
@@ -107,7 +99,6 @@ public class EnginesFactory {
       var configuration = EngineConfiguration.builder()
         .setSonarLintUserHome(sonarLintUserHomeOverride)
         .setModulesProvider(modulesProvider)
-        .setExtraProperties(getExtraProperties())
         .setLogOutput(logOutput).build();
 
       return waitForBackendInit()
@@ -138,19 +129,6 @@ public class EnginesFactory {
       }
     });
     return initResult;
-  }
-
-  @NotNull
-  private Map<String, String> getExtraProperties() {
-    if (omnisharpDirectory == null) {
-      return Map.of();
-    } else {
-      return Map.of(
-        "sonar.cs.internal.omnisharpNet6Location", Path.of(omnisharpDirectory, "net6").toString(),
-        "sonar.cs.internal.omnisharpWinLocation", Path.of(omnisharpDirectory, "net472").toString(),
-        "sonar.cs.internal.omnisharpMonoLocation", Path.of(omnisharpDirectory, "mono").toString()
-      );
-    }
   }
 
   public static Set<Language> getStandaloneLanguages() {

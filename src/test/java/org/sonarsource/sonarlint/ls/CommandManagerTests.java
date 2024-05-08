@@ -151,7 +151,6 @@ class CommandManagerTests {
     mockSettingsManager = mock(SettingsManager.class);
     mockBinding = mock(ProjectBinding.class);
     mockConnectedEngine = mock(SonarLintAnalysisEngine.class);
-    when(mockBinding.getEngine()).thenReturn(mockConnectedEngine);
     when(mockBinding.getProjectKey()).thenReturn("projectKey");
 
     mockClient = mock(SonarLintExtendedLanguageClient.class);

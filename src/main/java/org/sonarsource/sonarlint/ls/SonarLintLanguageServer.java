@@ -192,7 +192,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final PromotionalNotifications promotionalNotifications;
   private final ServerSentEventsHandlerService serverSentEventsHandler;
   private final FileTypeClassifier fileTypeClassifier;
-  private final AnalysisTasksCache analysisTasksCache;
+  private final AnalysisTaskExecutor analysisTaskExecutor;
 
   private String appName;
 
@@ -237,7 +237,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.hostInfoProvider = new HostInfoProvider();
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client, globalLogOutput);
     this.promotionalNotifications = new PromotionalNotifications(client);
-    this.analysisTasksCache = new AnalysisTasksCache();
+    var analysisTasksCache = new AnalysisTasksCache();
     var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, globalLogOutput, taintVulnerabilitiesCache, openFilesCache, openNotebooksCache, skippedPluginsNotifier, promotionalNotifications, analysisTasksCache);
     this.backendServiceFacade = new BackendServiceFacade(vsCodeClient, lsLogOutput, client);
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
@@ -267,9 +267,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var smartNotifications = new SmartNotifications(client, telemetry);
     vsCodeClient.setSmartNotifications(smartNotifications);
     this.scmIgnoredCache = new ScmIgnoredCache(client, globalLogOutput);
-    this.moduleEventsProcessor = new ModuleEventsProcessor(standaloneEngineManager, workspaceFoldersManager, bindingManager, fileTypeClassifier, javaConfigCache,
-      backendServiceFacade);
-    var analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, globalLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
+    this.moduleEventsProcessor = new ModuleEventsProcessor(workspaceFoldersManager, fileTypeClassifier, javaConfigCache, backendServiceFacade);
+    this.analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, globalLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
       fileTypeClassifier, issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, telemetry, diagnosticPublisher,
       client, openNotebooksCache, notebookDiagnosticPublisher, progressManager, backendServiceFacade, analysisTasksCache);
     this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor, client);
@@ -349,7 +348,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       hostInfoProvider.initialize(clientVersion, workspaceName);
       backendServiceFacade.setTelemetryInitParams(new TelemetryInitParams(productKey, telemetryStorage,
         productName, productVersion, ideVersion, platform, architecture, additionalAttributes));
-      enginesFactory.setOmnisharpDirectory((String) additionalAttributes.get("omnisharpDirectory"));
+      backendServiceFacade.setOmnisharpDirectory((String) additionalAttributes.get("omnisharpDirectory"));
 
       var c = new ServerCapabilities();
       c.setTextDocumentSync(getTextDocumentSyncOptions());

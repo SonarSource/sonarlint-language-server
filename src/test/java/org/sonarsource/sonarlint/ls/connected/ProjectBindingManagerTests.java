@@ -36,7 +36,6 @@ import java.util.concurrent.ExecutionException;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
@@ -66,8 +65,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -209,17 +206,6 @@ class ProjectBindingManagerTests {
   }
 
   @Test
-  void get_binding_default_to_standalone_if_server_fail_to_start() {
-    mockFileInABoundWorkspaceFolder();
-
-    when(enginesFactory.createEngine(anyString())).thenThrow(new IllegalStateException("Unable to start"));
-
-    assertThat(underTest.getBinding(fileInAWorkspaceFolderPath.toUri())).isEmpty();
-
-    assertThat(logTester.logs(MessageType.Log)).anyMatch(log -> log.contains("Error starting connected SonarLint engine for '" + CONNECTION_ID + "'"));
-  }
-
-  @Test
   void get_binding_should_update_if_project_storage_missing() {
     mockFileInABoundWorkspaceFolder();
 
@@ -298,7 +284,6 @@ class ProjectBindingManagerTests {
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
     assertThat(binding).isEmpty();
-    verify(fakeEngine).stop();
     assertThat(logTester.logs()).anyMatch(log -> log.contains("Workspace 'WorkspaceFolder[name=<null>,uri=" + workspaceFolderPath.toUri() + "]' unbound"));
   }
 
@@ -319,7 +304,6 @@ class ProjectBindingManagerTests {
     binding = underTest.getBinding(fileNotInAWorkspaceFolderPath.toUri());
 
     assertThat(binding).isEmpty();
-    verify(fakeEngine).stop();
     assertThat(logTester.logs()).anyMatch(log -> log.contains("All files outside workspace are now unbound"));
   }
 
@@ -346,38 +330,6 @@ class ProjectBindingManagerTests {
   }
 
   @Test
-  void unbind_when_global_server_deleted() {
-    var settingsWithServer1 = newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS));
-    var settingsWithServer2 = newWorkspaceSettingsWithServers(Map.of(SERVER_ID2, GLOBAL_SETTINGS_DIFFERENT_SERVER_ID));
-
-    var spiedUnderTest = spy(underTest);
-    // Skip actual connection test
-    doNothing().when(spiedUnderTest).validateConnection(SERVER_ID2);
-
-    when(settingsManager.getCurrentSettings()).thenReturn(settingsWithServer1);
-
-    var folder = mockFileInABoundWorkspaceFolder();
-    when(foldersManager.getAll()).thenReturn(List.of(folder));
-
-    var binding = spiedUnderTest.getBinding(fileInAWorkspaceFolderPath.toUri());
-    assertThat(binding).isNotEmpty();
-
-    when(settingsManager.getCurrentSettings()).thenReturn(settingsWithServer2);
-    spiedUnderTest.onChange(settingsWithServer1, settingsWithServer2);
-    spiedUnderTest.onChange(settingsWithServer2, settingsWithServer2);
-    // Should validate connection only once (when changed from server1 to server2)
-    verify(spiedUnderTest, times(1)).validateConnection(SERVER_ID2);
-
-    binding = spiedUnderTest.getBinding(fileInAWorkspaceFolderPath.toUri());
-    assertThat(binding).isEmpty();
-
-    verify(fakeEngine).stop();
-    assertThat(logTester.logs())
-      .anyMatch(log -> log.contains("The specified connection id 'myServer' doesn't exist.")
-        || log.contains("Invalid binding for '" + workspaceFolderPath.toString() + "'"));
-  }
-
-  @Test
   void test_rebind_file_after_project_key_change() {
     mockFileOutsideFolder();
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(BOUND_SETTINGS);
@@ -400,93 +352,6 @@ class ProjectBindingManagerTests {
     verify(fakeEngine, never()).stop();
     assertThat(logTester.logs())
       .anyMatch(log -> log.contains("Resolved binding myProject2 for folder " + anotherFolderPath.toString()));
-  }
-
-  @Disabled("move to connected mode medium tests")
-  @Test
-  void test_rebind_folder_after_server_id_change() {
-    servers.put(SERVER_ID2, GLOBAL_SETTINGS_DIFFERENT_SERVER_ID);
-    var folder = mockFileInABoundWorkspaceFolder();
-
-    when(enginesFactory.createEngine(anyString()))
-      .thenReturn(fakeEngine)
-      .thenReturn(fakeEngine2);
-
-    var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
-    assertThat(binding).isNotEmpty();
-
-    when(folder.getSettings()).thenReturn(BOUND_SETTINGS_DIFFERENT_SERVER_ID);
-
-    underTest.onChange(folder, BOUND_SETTINGS, BOUND_SETTINGS_DIFFERENT_SERVER_ID);
-
-    binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
-
-    assertThat(binding).isNotEmpty();
-    verify(fakeEngine).stop();
-    assertThat(logTester.logs())
-      .anyMatch(log -> log.contains("Resolved binding myProject2 for folder " + workspaceFolderPath.toString()));
-  }
-
-  @Test
-  void shutdown_should_stop_all_servers() {
-    mockFileInABoundWorkspaceFolder();
-    mockFileInABoundWorkspaceFolder2();
-    when(enginesFactory.createEngine("myServer"))
-      .thenReturn(fakeEngine);
-    when(enginesFactory.createEngine("myServer2"))
-      .thenReturn(fakeEngine2);
-    var projectBinding = mock(org.sonarsource.sonarlint.core.serverconnection.ProjectBinding.class);
-    when(projectBinding.projectKey()).thenReturn(PROJECT_KEY);
-    var projectBinding2 = mock(org.sonarsource.sonarlint.core.serverconnection.ProjectBinding.class);
-    when(projectBinding2.projectKey()).thenReturn(PROJECT_KEY2);
-
-    var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
-    assertThat(binding).isNotEmpty();
-
-    assertThat(logTester.logs())
-      .anyMatch(log -> log.contains("Starting connected SonarLint engine for 'myServer'..."));
-
-    var binding2 = underTest.getBinding(fileInAWorkspaceFolderPath2.toUri());
-    assertThat(binding2).isNotEmpty();
-
-    assertThat(logTester.logs())
-      .anyMatch(log -> log.contains("Starting connected SonarLint engine for 'myServer2'..."));
-
-    verify(enginesFactory).createEngine("myServer");
-    verify(enginesFactory).createEngine("myServer2");
-
-    underTest.shutdown();
-
-    verify(fakeEngine).stop();
-    verify(fakeEngine2).stop();
-  }
-
-  @Test
-  void failure_during_stop_should_not_prevent_others_to_stop() {
-    mockFileInABoundWorkspaceFolder();
-    mockFileInABoundWorkspaceFolder2();
-
-    when(enginesFactory.createEngine(anyString()))
-      .thenReturn(fakeEngine)
-      .thenReturn(fakeEngine2);
-
-    var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
-    assertThat(binding).isNotEmpty();
-
-    var binding2 = underTest.getBinding(fileInAWorkspaceFolderPath2.toUri());
-    assertThat(binding2).isNotEmpty();
-
-    doThrow(new RuntimeException("stop error")).when(fakeEngine).stop();
-    doThrow(new RuntimeException("stop error")).when(fakeEngine2).stop();
-
-    underTest.shutdown();
-
-    assertThat(logTester.logs(MessageType.Log))
-      .anyMatch(log -> log.contains("Unable to stop engine 'myServer'"))
-      .anyMatch(log -> log.contains("Unable to stop engine 'myServer2'"));
-
-    verify(fakeEngine).stop();
-    verify(fakeEngine2).stop();
   }
 
   @Test
@@ -571,7 +436,7 @@ class ProjectBindingManagerTests {
     var result = Paths.get(URI.create(URI.create("file:///idePath").toString()))
       .resolve(Path.of("filePath"))
       .toUri();
-    folderBindingCache.put(URI.create("file:///idePath"), Optional.of(new ProjectBinding("connectionId", "projectKey", null, null)));
+    folderBindingCache.put(URI.create("file:///idePath"), Optional.of(new ProjectBinding("connectionId", "projectKey", null)));
 
     var fullFilePath = underTest.fullFilePathFromRelative(Path.of("filePath"), "connectionId", "projectKey");
 
@@ -594,7 +459,7 @@ class ProjectBindingManagerTests {
     when(foldersManager.findFolderForFile(fileUri))
       .thenReturn(Optional.of(new WorkspaceFolderWrapper(folderUri, null, null)));
     folderBindingCache.put(folderUri, Optional.of(new ProjectBinding("connectionId",
-      "projectKey", null, null)));
+      "projectKey", null)));
     var maybeBinding = underTest.getBindingIfExists(fileUri);
 
     assertThat(maybeBinding.get().getConnectionId()).isEqualTo("connectionId");

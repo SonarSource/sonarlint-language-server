@@ -39,11 +39,7 @@ import testutils.ImmediateExecutorService;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TaintIssuesUpdaterTests {
@@ -79,7 +75,6 @@ class TaintIssuesUpdaterTests {
     when(workspaceFoldersManager.findFolderForFile(FILE_URI)).thenReturn(Optional.of(workspaceFolderWrapper));
     when(workspaceFolderWrapper.getUri()).thenReturn(FOLDER_URI);
 //    when(engine.getServerBranches(PROJECT_KEY)).thenReturn(new ProjectBranches(Set.of("main", BRANCH_NAME), "main"));
-    when(bindingWrapper.getEngine()).thenReturn(engine);
     when(bindingWrapper.getConnectionId()).thenReturn(CONNECTION_ID);
     when(bindingWrapper.getProjectKey()).thenReturn(PROJECT_KEY);
     when(binding.projectKey()).thenReturn(PROJECT_KEY);

@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.rpc.client.ClientJsonRpcLauncher;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
 import org.sonarsource.sonarlint.core.rpc.impl.BackendJsonRpcLauncher;
@@ -45,6 +46,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.FeatureFla
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.HttpConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.InitializeParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.LanguageSpecificRequirements;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.OmnisharpRequirementsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarCloudAlternativeEnvironmentDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SslConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.TelemetryClientConstantAttributesDto;
@@ -72,6 +74,9 @@ public class BackendServiceFacade {
   private TelemetryInitParams telemetryInitParams;
   private SonarLintTelemetry telemetry;
   private final CountDownLatch initLatch = new CountDownLatch(1);
+
+
+  private String omnisharpDirectory;
 
   public BackendServiceFacade(SonarLintRpcClientDelegate rpcClient, LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client) {
     this(rpcClient, lsLogOutput, client, DEFAULT_INIT_TIMEOUT_SECONDS);
@@ -117,6 +122,10 @@ public class BackendServiceFacade {
     this.settingsManager = settingsManager;
   }
 
+  public void setOmnisharpDirectory(String omnisharpDirectory) {
+    this.omnisharpDirectory = omnisharpDirectory;
+  }
+
   public BackendInitParams getInitParams() {
     return initParams;
   }
@@ -141,8 +150,9 @@ public class BackendServiceFacade {
     var languageSpecificRequirements = new LanguageSpecificRequirements(
       clientNodeJsPath,
       // Omnisharp requirements are set to null since analysis is still in process
-      null
-    );
+      omnisharpDirectory != null ? new OmnisharpRequirementsDto(Path.of(omnisharpDirectory, "mono"),
+        Path.of(omnisharpDirectory, "net6"),
+        Path.of(omnisharpDirectory, "net472")) : null);
     return new InitializeParams(
       new ClientConstantInfoDto("Visual Studio Code", initParams.getUserAgent(), Integer.MIN_VALUE),
       new TelemetryClientConstantAttributesDto(initParams.getTelemetryProductKey(),
@@ -167,6 +177,19 @@ public class BackendServiceFacade {
       initParams.isFocusOnNewCode(),
       languageSpecificRequirements
     );
+  }
+
+  @NotNull
+  private Map<String, String> getOmnisharpExtraProperties() {
+    if (omnisharpDirectory == null) {
+      return Map.of();
+    } else {
+      return Map.of(
+        "sonar.cs.internal.omnisharpNet6Location", Path.of(omnisharpDirectory, "net6").toString(),
+        "sonar.cs.internal.omnisharpWinLocation", Path.of(omnisharpDirectory, "net472").toString(),
+        "sonar.cs.internal.omnisharpMonoLocation", Path.of(omnisharpDirectory, "mono").toString()
+      );
+    }
   }
 
   private static HttpConfigurationDto getHttpConfiguration() {

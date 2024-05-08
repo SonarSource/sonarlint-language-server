@@ -51,6 +51,9 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
@@ -63,6 +66,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllRespo
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.OpenUrlInBrowserParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionParams;
@@ -78,9 +82,11 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.ShowIssueParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogLevel;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.message.ShowSoonUnsupportedMessageParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidSkipLoadingPluginParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.smartnotification.ShowSmartNotificationParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
@@ -562,7 +568,7 @@ class SonarLintVSCodeClientTests {
     var showIssueParams = new ShowIssueParams(fileUri.toString(), issueDetailsDto);
 
     when(bindingManager.getBinding(fileUri))
-      .thenReturn(Optional.of(new ProjectBinding("connectionId", "projectKey", engine, serverIssueTrackerWrapper)));
+      .thenReturn(Optional.of(new ProjectBinding("connectionId", "projectKey", serverIssueTrackerWrapper)));
 
     underTest.showIssue(fileUri.toString(), issueDetailsDto);
     verify(client).showIssue(paramCaptor.capture());
@@ -601,7 +607,7 @@ class SonarLintVSCodeClientTests {
       "issueKey", FILE_PYTHON, "bb", null, "this is wrong", "29.09.2023", "print('ddd')",
       false, List.of());
     when(bindingManager.getBindingIfExists(fileUri))
-      .thenReturn(Optional.of(new ProjectBinding("connectionId", "projectKey", null, null)));
+      .thenReturn(Optional.of(new ProjectBinding("connectionId", "projectKey", null)));
 
     underTest.showIssue(fileUri.toString(), issueDetailsDto);
     verify(client).showIssue(paramCaptor.capture());
@@ -770,6 +776,62 @@ class SonarLintVSCodeClientTests {
 
     assertThat(passwordAuth.getUserName()).isEqualTo("myUser");
     assertThat(new String(passwordAuth.getPassword())).isEqualTo("myPass");
+  }
+
+  @Test
+  void shouldForwardDetectedSecretToDiagnosticPublisher() {
+    underTest.didDetectSecret();
+
+    verify(diagnosticPublisher, times(1)).didDetectSecret();
+  }
+
+  @Test
+  void shouldForwardSkippedPluginNotification() {
+    var configScopeId = "file:///my/config/scope";
+    var language = Language.TS;
+    var reason = DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_NODE_JS;
+    var minVersion = "18.18";
+
+    underTest.didSkipLoadingPlugin(configScopeId, language, reason, minVersion, null);
+
+    verify(skippedPluginsNotifier, times(1)).notifyOnceForSkippedPlugins(language, reason, minVersion, null);
+  }
+
+  @Test
+  void shouldForwardConnectedModePromotionNotification() {
+    var configScopeId = "file:///my/config/scope";
+    var languages = Set.of(Language.PLSQL, Language.TSQL);
+
+    underTest.promoteExtraEnabledLanguagesInConnectedMode(configScopeId, languages);
+
+    verify(promotionalNotifications, times(1)).promoteExtraEnabledLanguagesInConnectedMode(languages);
+  }
+
+  @Test
+  @DisabledOnOs(OS.WINDOWS)
+  void shouldReturnBaseDir() {
+    var configScopeId = "file:///my/config/scope";
+
+    assertThat(underTest.getBaseDir(configScopeId)).isEqualTo(Path.of("/my/config/scope"));
+  }
+
+
+  @Test
+  @EnabledOnOs(OS.WINDOWS)
+  void shouldReturnBaseDirOnWindows() {
+    var configScopeId = "file:///my/config/scope";
+
+    assertThat(underTest.getBaseDir(configScopeId)).isEqualTo(Path.of("\\my\\config\\scope"));
+  }
+
+  @Test
+  void shouldForwardIssueRaisedNotification() {
+    var configScopeId = "file:///my/config/scope";
+    var rawIssue = mock(RawIssueDto.class);
+    var analysisId = UUID.randomUUID();
+    underTest.didRaiseIssue(configScopeId, analysisId, rawIssue);
+
+    verify(analysisTasksCache, times(1)).didRaiseIssue(analysisId, rawIssue);
   }
 
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {

@@ -184,7 +184,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       } catch (InterruptedException e) {
         interrupted(e, logOutput);
       } catch (Exception e) {
-        logOutput.error("Unable to update configuration", e.getMessage());
+        logOutput.error("Unable to update configuration %s", e.getMessage());
       } finally {
         client.readyForTests();
       }

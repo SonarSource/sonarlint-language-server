@@ -22,16 +22,19 @@ package org.sonarsource.sonarlint.ls.standalone;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.standalone.notifications.PromotionalNotifications;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 class PromotionalNotificationsTests {
   private final SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   private final PromotionalNotifications underTest = new PromotionalNotifications(client);
+  ArgumentCaptor<List<String>> promotedLanguagesCaptor = ArgumentCaptor.forClass(List.class);
 
   @Test
   void shouldSendNotification_notConnected_commercialLanguage() {
@@ -44,7 +47,9 @@ class PromotionalNotificationsTests {
   void shouldSendNotification_notConnected_sql() {
     underTest.promoteExtraEnabledLanguagesInConnectedMode(Set.of(Language.PLSQL, Language.TSQL));
 
-    verify(client).maybeShowWiderLanguageSupportNotification(List.of("PL/SQL", "T-SQL"));
+    verify(client).maybeShowWiderLanguageSupportNotification(promotedLanguagesCaptor.capture());
+    List<String> promotedLanguages = promotedLanguagesCaptor.getValue();
+    assertThat(promotedLanguages).containsExactlyInAnyOrder("PL/SQL", "T-SQL");
   }
 
   @Test

@@ -31,11 +31,10 @@ class ProjectBindingTests {
   void test_getters() {
     var engine = mock(SonarLintAnalysisEngine.class);
     var issueTrackerWrapper = mock(ServerIssueTrackerWrapper.class);
-    var underTest = new ProjectBinding("serverId", "projectKey", engine, issueTrackerWrapper);
+    var underTest = new ProjectBinding("serverId", "projectKey", issueTrackerWrapper);
 
     assertThat(underTest.getConnectionId()).isEqualTo("serverId");
     assertThat(underTest.getProjectKey()).isEqualTo("projectKey");
-    assertThat(underTest.getEngine()).isEqualTo(engine);
     assertThat(underTest.getServerIssueTracker()).isEqualTo(issueTrackerWrapper);
   }
 

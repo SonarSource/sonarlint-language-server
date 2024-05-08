@@ -25,7 +25,6 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.BindingRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
@@ -87,8 +86,7 @@ class BackendServiceTests {
   void getConfigScopeDtoWithBinding() {
     var workspaceUri = "/workspace";
     var connectionId = "connectionId";
-    var binding = mock(org.sonarsource.sonarlint.core.serverconnection.ProjectBinding.class);
-    var bindingWrapper = new ProjectBinding(connectionId, "projectKey", mock(SonarLintAnalysisEngine.class), mock(ServerIssueTrackerWrapper.class));
+    var bindingWrapper = new ProjectBinding(connectionId, "projectKey", mock(ServerIssueTrackerWrapper.class));
     var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri), Optional.of(bindingWrapper));
 
     assertThat(result.getId()).isEqualTo(workspaceUri);
