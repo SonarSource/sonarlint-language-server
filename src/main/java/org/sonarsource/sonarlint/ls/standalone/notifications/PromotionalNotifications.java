@@ -31,7 +31,6 @@ public class PromotionalNotifications {
   }
 
   public void promoteExtraEnabledLanguagesInConnectedMode(Set<Language> languagesToPromote) {
-    // TODO no notif coming for COBOL files
     client.maybeShowWiderLanguageSupportNotification(
       languagesToPromote
         .stream()

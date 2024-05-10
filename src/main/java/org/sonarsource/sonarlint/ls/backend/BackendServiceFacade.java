@@ -34,7 +34,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.rpc.client.ClientJsonRpcLauncher;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
 import org.sonarsource.sonarlint.core.rpc.impl.BackendJsonRpcLauncher;
@@ -149,12 +148,11 @@ public class BackendServiceFacade {
     var clientNodeJsPath = StringUtils.isEmpty(initParams.getClientNodePath()) ? null : Path.of(initParams.getClientNodePath());
     var languageSpecificRequirements = new LanguageSpecificRequirements(
       clientNodeJsPath,
-      // Omnisharp requirements are set to null since analysis is still in process
       omnisharpDirectory != null ? new OmnisharpRequirementsDto(Path.of(omnisharpDirectory, "mono"),
         Path.of(omnisharpDirectory, "net6"),
         Path.of(omnisharpDirectory, "net472")) : null);
     return new InitializeParams(
-      new ClientConstantInfoDto("Visual Studio Code", initParams.getUserAgent(), Integer.MIN_VALUE),
+      new ClientConstantInfoDto("Visual Studio Code", initParams.getUserAgent(), ProcessHandle.current().pid()),
       new TelemetryClientConstantAttributesDto(initParams.getTelemetryProductKey(),
         telemetryInitParams.getProductName(),
         telemetryInitParams.getProductVersion(),
@@ -177,19 +175,6 @@ public class BackendServiceFacade {
       initParams.isFocusOnNewCode(),
       languageSpecificRequirements
     );
-  }
-
-  @NotNull
-  private Map<String, String> getOmnisharpExtraProperties() {
-    if (omnisharpDirectory == null) {
-      return Map.of();
-    } else {
-      return Map.of(
-        "sonar.cs.internal.omnisharpNet6Location", Path.of(omnisharpDirectory, "net6").toString(),
-        "sonar.cs.internal.omnisharpWinLocation", Path.of(omnisharpDirectory, "net472").toString(),
-        "sonar.cs.internal.omnisharpMonoLocation", Path.of(omnisharpDirectory, "mono").toString()
-      );
-    }
   }
 
   private static HttpConfigurationDto getHttpConfiguration() {

@@ -35,7 +35,7 @@ import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
-public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
+public class ModuleEventsProcessor {
 
   private final FileTypeClassifier fileTypeClassifier;
   private final JavaConfigCache javaConfigCache;
@@ -88,13 +88,4 @@ public class ModuleEventsProcessor implements WorkspaceFolderLifecycleListener {
     Utils.shutdownAndAwait(asyncExecutor, true);
   }
 
-  @Override
-  public void added(WorkspaceFolderWrapper added) {
-
-  }
-
-  @Override
-  public void removed(WorkspaceFolderWrapper removed) {
-    WorkspaceFolderLifecycleListener.super.removed(removed);
-  }
 }

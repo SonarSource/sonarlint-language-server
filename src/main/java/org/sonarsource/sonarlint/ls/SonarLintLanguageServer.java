@@ -27,7 +27,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -238,7 +237,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client, globalLogOutput);
     this.promotionalNotifications = new PromotionalNotifications(client);
     var analysisTasksCache = new AnalysisTasksCache();
-    var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, globalLogOutput, taintVulnerabilitiesCache, openFilesCache, openNotebooksCache, skippedPluginsNotifier, promotionalNotifications, analysisTasksCache);
+    var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, globalLogOutput, taintVulnerabilitiesCache, openFilesCache,
+      openNotebooksCache, skippedPluginsNotifier, promotionalNotifications, analysisTasksCache);
     this.backendServiceFacade = new BackendServiceFacade(vsCodeClient, lsLogOutput, client);
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
     this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, globalLogOutput);
@@ -275,7 +275,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     vsCodeClient.setAnalysisScheduler(analysisScheduler);
     this.serverSentEventsHandler = new ServerSentEventsHandler(analysisScheduler, bindingManager);
     vsCodeClient.setServerSentEventsHandlerService(serverSentEventsHandler);
-    this.workspaceFoldersManager.addListener(moduleEventsProcessor);
     bindingManager.setAnalysisManager(analysisScheduler);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) analysisScheduler);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) analysisScheduler);
@@ -497,7 +496,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private void notifyBackendWithFileLanguageAndContent(VersionedOpenFile file) {
     // TODO possibly move to OpenFilesCache
     List<ClientFileDto> filesToNotify = new ArrayList<>();
-    URI fileUri = file.getUri();
+    var fileUri = file.getUri();
     var fsPath = Paths.get(fileUri);
     SonarLanguage sqLanguage = AnalysisClientInputFile.toSqLanguage(file.getLanguageId().toLowerCase(Locale.ROOT));
     workspaceFoldersManager.findFolderForFile(fileUri)
