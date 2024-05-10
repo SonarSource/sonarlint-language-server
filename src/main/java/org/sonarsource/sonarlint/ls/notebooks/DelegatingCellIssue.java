@@ -120,12 +120,6 @@ public class DelegatingCellIssue implements Issue {
     return issue.getFlows();
   }
 
-  // TODO non interface method, ideally find a way to use the one from the interface
-  @CheckForNull
-  public TextRangeDto getCellIssueTextRange() {
-    return textRange;
-  }
-
   @Override
   public List<QuickFixDto> quickFixes() {
     return quickFixes;

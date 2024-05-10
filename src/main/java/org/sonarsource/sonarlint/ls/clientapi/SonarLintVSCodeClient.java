@@ -529,10 +529,12 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       all.forEach(folderWrapper -> {
         var folderUri = folderWrapper.getUri();
         Collection<VersionedOpenFile> openFiles = openFilesCache.getAll();
-        Collection<VersionedOpenFile> allOpenItems = Stream.concat(openNotebooksCache.getAll().stream().map(VersionedOpenNotebook::asVersionedOpenFile), openFiles.stream()).toList();
+        Collection<VersionedOpenFile> allOpenItems = Stream.concat(openNotebooksCache.getAll().stream()
+            .map(VersionedOpenNotebook::asVersionedOpenFile), openFiles.stream())
+          .toList();
         for (var openFile : allOpenItems) {
           Optional<WorkspaceFolderWrapper> folderForFileOpt = workspaceFoldersManager.findFolderForFile(openFile.getUri());
-          if (folderForFileOpt.isPresent() && folderForFileOpt.get().getUri().equals(folderUri)) { // TODO why do we need this check?
+          if (folderForFileOpt.isPresent() && folderForFileOpt.get().getUri().equals(folderUri)) {
             analysisScheduler.didOpen(openFile);
           }
         }

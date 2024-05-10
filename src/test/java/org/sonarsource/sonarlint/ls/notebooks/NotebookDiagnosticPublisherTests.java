@@ -68,7 +68,7 @@ class NotebookDiagnosticPublisherTests {
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
-    when(issue.getCellIssueTextRange()).thenReturn(textRange);
+    when(issue.getTextRange()).thenReturn(textRange);
     when(issue.getStartLine()).thenReturn(4);
     when(issue.getStartLineOffset()).thenReturn(0);
     when(issue.getEndLine()).thenReturn(5);

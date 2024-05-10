@@ -409,7 +409,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     var uriInFolder = folder1BaseDir.resolve("hotspot.py").toUri().toString();
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
+    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Merged 1 hotspots in store. Closed 0.")));
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
@@ -625,53 +625,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(Command::getCommand)
       .containsExactlyInAnyOrder("SonarLint.ResolveIssue", "SonarLint.OpenRuleDescCodeAction");
   }
-
-//  @Test
-//  void analysisConnected_matching_server_issues_on_sq_with_pull_issues() {
-//    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.6\", \"id\": \"xzy\"}");
-//
-//    mockWebServerExtension.addProtobufResponseDelimited(
-//      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-//      Issues.IssuesPullQueryTimestamp.newBuilder()
-//        .setQueryTimestamp(System.currentTimeMillis())
-//        .build(),
-//      // no user-overridden severity
-//      Issues.IssueLite.newBuilder()
-//        .setKey("xyz")
-//        .setRuleKey(PYTHON_S1481)
-//        .setType(Common.RuleType.BUG)
-//        .setMainLocation(Issues.Location.newBuilder()
-//          .setFilePath("pythonFile.py")
-//          .setMessage("Remove the declaration of the unused 'toto' variable.")
-//          .setTextRange(Issues.TextRange.newBuilder()
-//            .setStartLine(1)
-//            .setStartLineOffset(2)
-//            .setEndLine(1)
-//            .setEndLineOffset(6)
-//            .setHash(Utils.hash("toto"))
-//            .build())
-//          .build())
-//        .setClosed(true)
-//        .build());
-//    mockWebServerExtension.addProtobufResponseDelimited(
-//      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-//      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-//        .setQueryTimestamp(System.currentTimeMillis())
-//        .build());
-//    mockWebServerExtension.addProtobufResponseDelimited(
-//      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + System.currentTimeMillis(),
-//      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-//        .setQueryTimestamp(System.currentTimeMillis())
-//        .build());
-//
-//    var uriInFolder = folder1BaseDir.resolve("pythonFile.py").toUri().toString();
-//    didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
-//
-//    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
-//      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
-//        Diagnostic::getSeverity)
-//      .containsExactlyInAnyOrder(tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
-//  }
 
   @Test
   void shouldGetServerNamesForConnection() {
@@ -965,7 +918,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
+    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Merged 1 hotspots in store. Closed 0.")));
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
@@ -1154,7 +1107,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
+    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Merged 1 hotspots in store. Closed 0.")));
 
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
@@ -1329,19 +1282,22 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
   }
 
-//  @Test
-//  void shouldIgnoreRazorFile() {
-//    mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject&rules=&branch=master&ps=500&p=1",
-//      Issues.SearchWsResponse.newBuilder().addIssues(Issues.Issue.newBuilder().setKey("issueKey").build()).build());
-//    mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject&rules=&branch=master&ps=500&p=2",
-//      Issues.SearchWsResponse.newBuilder().addComponents(Issues.Component.newBuilder().setKey("componentKey").setPath("componentPath").build()).build());
-//    mockWebServerExtension.addStringResponse("/api/authentication/validate?format=json", "{\"valid\": true}");
-//    var uriInFolder = folder1BaseDir.resolve("shouldIgnore.razor").toUri().toString();
-//    didOpen(uriInFolder, "csharp", "@using System");
-//
-//    awaitUntilAsserted(() -> assertLogContains("Found 0 issues"));
-//    assertLogContains("'OmniSharp' skipped because there is no related files in the current project");
-//  }
+  @Test
+  void shouldIgnoreRazorFile() {
+    mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject&rules=&branch=master&ps=500&p=1",
+      Issues.SearchWsResponse.newBuilder().build());
+    mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject&rules=&branch=master&ps=500&p=2",
+      Issues.SearchWsResponse.newBuilder().addComponents(Issues.Component.newBuilder().setKey("componentKey").setPath("componentPath").build()).build());
+    mockWebServerExtension.addStringResponse("/api/authentication/validate?format=json", "{\"valid\": true}");
+
+    var configScopeId = folder1BaseDir.toUri().toString();
+    addConfigScope(configScopeId);
+    var uriInFolder = folder1BaseDir.resolve("shouldIgnore.razor").toUri().toString();
+    didOpen(uriInFolder, "csharp", "@using System");
+
+    awaitUntilAsserted(() -> assertLogContains("Found 0 issues"));
+    assertLogContains("'OmniSharp' skipped because there is no related files in the current project");
+  }
 
   private void assertLocalIssuesStatusChanged(String fileUri) {
     mockWebServerExtension.addResponse("/api/issues/anticipated_transitions?projectKey=myProject", new MockResponse().setResponseCode(200));
