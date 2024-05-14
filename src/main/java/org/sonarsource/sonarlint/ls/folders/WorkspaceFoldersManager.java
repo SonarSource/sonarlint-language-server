@@ -83,19 +83,13 @@ public class WorkspaceFoldersManager {
 
   public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
     logOutput.debug("Processing didChangeWorkspaceFolders event");
-    var removedFolderWrappers = new ArrayList<WorkspaceFolderWrapper>();
-    var addedFolderWrappers = new ArrayList<WorkspaceFolderWrapper>();
     for (var removed : event.getRemoved()) {
       var uri = create(removed.getUri());
-      var removedFolder = removeFolder(uri);
-      if (removedFolder != null) {
-        removedFolderWrappers.add(removedFolder);
-      }
+      removeFolder(uri);
     }
     for (var added : event.getAdded()) {
       var uri = create(added.getUri());
       var addedWrapper = addFolder(added, uri);
-      addedFolderWrappers.add(addedWrapper);
       listeners.forEach(l -> l.added(addedWrapper));
     }
     executor.submit(new CatchingRunnable(() -> {

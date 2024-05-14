@@ -1394,7 +1394,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var basedir = Paths.get("path/to/base/auto-suggest").toAbsolutePath();
     var workspaceUri = basedir.toUri().toString();
     var workspaceFolder = new WorkspaceFolder(workspaceUri);
-    foldersToRemove.add(workspaceUri);
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
       new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
 
@@ -1406,7 +1405,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void should_allow_client_to_explicitly_ask_for_binding_suggestions() throws ExecutionException, InterruptedException {
+  void should_allow_client_to_explicitly_ask_for_binding_suggestions() {
     var workspaceUri = folder1BaseDir.resolve("foo-bar").toUri().toString();
     var workspaceFolder = new WorkspaceFolder(workspaceUri, "foo-bar");
     client.folderSettings = new HashMap<>();

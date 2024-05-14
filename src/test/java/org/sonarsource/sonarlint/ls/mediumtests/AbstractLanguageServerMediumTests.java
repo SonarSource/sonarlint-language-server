@@ -351,6 +351,7 @@ public abstract class AbstractLanguageServerMediumTests {
       needCompilationDatabaseCalls.set(0);
       shouldAnalyseFile = true;
       scopeReadyForAnalysis.clear();
+      suggestedBindings = null;
     }
 
     @Override

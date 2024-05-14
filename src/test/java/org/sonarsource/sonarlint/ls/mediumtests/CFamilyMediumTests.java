@@ -31,7 +31,6 @@ import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.eclipse.lsp4j.Diagnostic;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
@@ -43,8 +42,7 @@ import static org.eclipse.lsp4j.DiagnosticSeverity.Warning;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-//@EnabledIfSystemProperty(named = "commercial", matches = ".*", disabledReason = "Commercial plugin not available")
-@Disabled("Needs to be fixed after migration to out of process analysis")
+@EnabledIfSystemProperty(named = "commercial", matches = ".*", disabledReason = "Commercial plugin not available")
 class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
   @BeforeAll
   static void initialize() throws Exception {
@@ -188,10 +186,10 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
           "file": "%s"
         }
       ]""".formatted(
-        StringEscapeUtils.escapeJson(cppProjectBaseDir.toString()),
-        StringEscapeUtils.escapeJson(mockClang.toString()),
-        StringEscapeUtils.escapeJson(cppFile.toString()),
-        StringEscapeUtils.escapeJson(cppFile.toString()));
+      StringEscapeUtils.escapeJson(cppProjectBaseDir.toString()),
+      StringEscapeUtils.escapeJson(mockClang.toString()),
+      StringEscapeUtils.escapeJson(cppFile.toString()),
+      StringEscapeUtils.escapeJson(cppFile.toString()));
 
     var compilationDatabaseFile = cppProjectBaseDir.resolve("compile_commands.json");
     FileUtils.write(compilationDatabaseFile.toFile(), compilationDatabaseContent, StandardCharsets.UTF_8);
