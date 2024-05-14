@@ -29,14 +29,11 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -104,7 +101,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.ClientFileDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
@@ -134,7 +130,6 @@ import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
-import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
@@ -154,7 +149,6 @@ import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DE
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
-import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.ROOT_CONFIGURATION_SCOPE;
 import static org.sonarsource.sonarlint.ls.util.Utils.getConnectionNameFromConnectionCheckParams;
 import static org.sonarsource.sonarlint.ls.util.Utils.getValidateConnectionParamsForNewConnection;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusOfTitle;
@@ -267,7 +261,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var smartNotifications = new SmartNotifications(client, telemetry);
     vsCodeClient.setSmartNotifications(smartNotifications);
     this.scmIgnoredCache = new ScmIgnoredCache(client, globalLogOutput);
-    this.moduleEventsProcessor = new ModuleEventsProcessor(workspaceFoldersManager, fileTypeClassifier, javaConfigCache, backendServiceFacade);
+    this.moduleEventsProcessor = new ModuleEventsProcessor(workspaceFoldersManager, fileTypeClassifier, javaConfigCache, backendServiceFacade, settingsManager);
     this.analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, globalLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
       fileTypeClassifier, issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, telemetry, diagnosticPublisher,
       client, openNotebooksCache, notebookDiagnosticPublisher, progressManager, backendServiceFacade, analysisTasksCache);
@@ -485,39 +479,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     runIfAnalysisNeeded(uri.toString(), () -> {
       var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
       CompletableFutures.computeAsync(cancelChecker -> {
-        notifyBackendWithFileLanguageAndContent(file);
+        moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(file);
         analysisScheduler.didOpen(file);
         return null;
       });
       taintIssuesUpdater.updateTaintIssuesAsync(uri);
     });
-  }
-
-  private void notifyBackendWithFileLanguageAndContent(VersionedOpenFile file) {
-    // TODO possibly move to OpenFilesCache
-    List<ClientFileDto> filesToNotify = new ArrayList<>();
-    var fileUri = file.getUri();
-    var fsPath = Paths.get(fileUri);
-    SonarLanguage sqLanguage = AnalysisClientInputFile.toSqLanguage(file.getLanguageId().toLowerCase(Locale.ROOT));
-    workspaceFoldersManager.findFolderForFile(fileUri)
-      .ifPresentOrElse(folder -> {
-        var settings = folder.getSettings();
-        var baseDir = folder.getRootPath();
-        var relativePath = baseDir.relativize(fsPath);
-        var folderUri = folder.getUri().toString();
-        var isTest = isTestFile(file, settings);
-        filesToNotify.add(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(),
-          fsPath, file.getContent(), sqLanguage != null ? Language.valueOf(sqLanguage.name()) : null));
-      }, () -> {
-        var isTest = isTestFile(file, settingsManager.getCurrentDefaultFolderSettings());
-        filesToNotify.add(new ClientFileDto(fileUri, fsPath, ROOT_CONFIGURATION_SCOPE, isTest, StandardCharsets.UTF_8.name(),
-          fsPath, file.getContent(), sqLanguage != null ? Language.valueOf(sqLanguage.name()) : null));
-      });
-    backendServiceFacade.getBackendService().updateFileSystem(List.of(), filesToNotify);
-  }
-
-  private boolean isTestFile(VersionedOpenFile file, WorkspaceFolderSettings settings) {
-    return fileTypeClassifier.isTest(settings, file.getUri(), file.isJava(), () -> javaConfigCache.getOrFetch(file.getUri()));
   }
 
   @Override
@@ -530,7 +497,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     } else {
       // VSCode sends us full file content in the change event
       CompletableFutures.computeAsync(cancelChecker -> {
-        notifyBackendWithFileLanguageAndContent(file.get());
+        moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(file.get());
         runIfAnalysisNeeded(params.getTextDocument().getUri(), () -> analysisScheduler.didChange(uri));
         return null;
       });
@@ -610,16 +577,15 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var notebookFile = openNotebooksCache.didOpen(notebookUri, params.getNotebookDocument().getVersion(), params.getCellTextDocuments());
     var versionedOpenFile = notebookFile.asVersionedOpenFile();
 
-    CompletableFutures.computeAsync(cancelChecker -> {
-      notifyBackendWithFileLanguageAndContent(versionedOpenFile);
-      return null;
-    });
-
     runIfAnalysisNeeded(params.getNotebookDocument().getUri(), () -> {
       if (openFilesCache.getFile(notebookUri).isPresent()) {
         openFilesCache.didClose(notebookUri);
       }
-      analysisScheduler.didOpen(versionedOpenFile);
+      CompletableFutures.computeAsync(cancelChecker -> {
+        moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(versionedOpenFile);
+        analysisScheduler.didOpen(versionedOpenFile);
+        return null;
+      });
     });
   }
 
@@ -632,10 +598,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     } else {
       var file = openNotebook.get().asVersionedOpenFile();
       CompletableFutures.computeAsync(cancelChecker -> {
-        notifyBackendWithFileLanguageAndContent(file);
+        moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(file);
+        runIfAnalysisNeeded(params.getNotebookDocument().getUri(), () -> analysisScheduler.didChange(create(params.getNotebookDocument().getUri())));
         return null;
       });
-      runIfAnalysisNeeded(params.getNotebookDocument().getUri(), () -> analysisScheduler.didChange(create(params.getNotebookDocument().getUri())));
     }
   }
 
@@ -1026,20 +992,20 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         notebookUri, version,
         cells, notebookDiagnosticPublisher);
       var versionedOpenFile = notebookFile.asVersionedOpenFile();
+      openNotebooksCache.didOpen(notebookUri, version, cells);
       CompletableFutures.computeAsync(cancelChecker -> {
-        notifyBackendWithFileLanguageAndContent(versionedOpenFile);
+        moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(versionedOpenFile);
+        analysisScheduler.didOpen(versionedOpenFile);
         return null;
       });
-      openNotebooksCache.didOpen(notebookUri, version, cells);
-      analysisScheduler.didOpen(versionedOpenFile);
     } else {
       var document = requireNonNull(params.getTextDocument());
       var file = openFilesCache.didOpen(create(document.getUri()), document.getLanguageId(), document.getText(), document.getVersion());
       CompletableFutures.computeAsync(cancelChecker -> {
-        notifyBackendWithFileLanguageAndContent(file);
+        moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(file);
+        analysisScheduler.didOpen(file);
         return null;
       });
-      analysisScheduler.didOpen(file);
     }
     return CompletableFuture.completedFuture(null);
   }
