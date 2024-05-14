@@ -486,9 +486,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
       CompletableFutures.computeAsync(cancelChecker -> {
         notifyBackendWithFileLanguageAndContent(file);
+        analysisScheduler.didOpen(file);
         return null;
       });
-      analysisScheduler.didOpen(file);
       taintIssuesUpdater.updateTaintIssuesAsync(uri);
     });
   }
@@ -508,8 +508,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         var isTest = isTestFile(file, settings);
         filesToNotify.add(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(),
           fsPath, file.getContent(), sqLanguage != null ? Language.valueOf(sqLanguage.name()) : null));
-      }, () -> filesToNotify.add(new ClientFileDto(fileUri, fsPath, ROOT_CONFIGURATION_SCOPE, false, StandardCharsets.UTF_8.name(),
-        fsPath, file.getContent(), sqLanguage != null ? Language.valueOf(sqLanguage.name()) : null)));
+      }, () -> {
+        var isTest = isTestFile(file, settingsManager.getCurrentDefaultFolderSettings());
+        filesToNotify.add(new ClientFileDto(fileUri, fsPath, ROOT_CONFIGURATION_SCOPE, isTest, StandardCharsets.UTF_8.name(),
+          fsPath, file.getContent(), sqLanguage != null ? Language.valueOf(sqLanguage.name()) : null));
+      });
     backendServiceFacade.getBackendService().updateFileSystem(List.of(), filesToNotify);
   }
 
@@ -528,9 +531,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       // VSCode sends us full file content in the change event
       CompletableFutures.computeAsync(cancelChecker -> {
         notifyBackendWithFileLanguageAndContent(file.get());
+        runIfAnalysisNeeded(params.getTextDocument().getUri(), () -> analysisScheduler.didChange(uri));
         return null;
       });
-      runIfAnalysisNeeded(params.getTextDocument().getUri(), () -> analysisScheduler.didChange(uri));
     }
   }
 

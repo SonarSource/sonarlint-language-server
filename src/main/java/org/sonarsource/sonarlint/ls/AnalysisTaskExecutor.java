@@ -73,6 +73,7 @@ import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.partitioningBy;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
+import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.ROOT_CONFIGURATION_SCOPE;
 import static org.sonarsource.sonarlint.ls.util.Utils.pluralize;
 
 public class AnalysisTaskExecutor {
@@ -280,16 +281,17 @@ public class AnalysisTaskExecutor {
     Map<URI, VersionedOpenFile> filesToAnalyze,
     Map<URI, GetJavaConfigResponse> javaConfigs) {
 
-    var folderUri = workspaceFolder.map(WorkspaceFolderWrapper::getUri)
-      // if files are not part of any workspace folder, take the common ancestor of all files (assume all files will have the same root)
-      .orElse(findCommonPrefix(filesToAnalyze.keySet().stream().map(Paths::get).toList()).toUri());
+    var folderUri = workspaceFolder.map(WorkspaceFolderWrapper::getUri).orElse(null);
+    // if files are not part of any workspace folder, take the common ancestor of all files (assume all files will have the same root)
+    var baseDir = folderUri != null ? Paths.get(folderUri) : findCommonPrefix(filesToAnalyze.keySet().stream().map(Paths::get).toList());
+
 
     if (task.shouldShowProgress()) {
       progressManager.doWithProgress(String.format("SonarLint scanning %d files for hotspots", task.getFilesToAnalyze().size()), null, () -> {
         },
-        progressFacade -> analyzeSingleModuleNonExcluded(task, settings, binding, filesToAnalyze, folderUri, javaConfigs, progressFacade));
+        progressFacade -> analyzeSingleModuleNonExcluded(task, settings, binding, filesToAnalyze, folderUri, javaConfigs, progressFacade, baseDir));
     } else {
-      analyzeSingleModuleNonExcluded(task, settings, binding, filesToAnalyze, folderUri, javaConfigs, null);
+      analyzeSingleModuleNonExcluded(task, settings, binding, filesToAnalyze, folderUri, javaConfigs, null, baseDir);
     }
 
   }
@@ -307,7 +309,7 @@ public class AnalysisTaskExecutor {
   }
 
   private void analyzeSingleModuleNonExcluded(AnalysisTask task, WorkspaceFolderSettings settings, Optional<ProjectBinding> binding,
-    Map<URI, VersionedOpenFile> filesToAnalyze, URI folderUri, Map<URI, GetJavaConfigResponse> javaConfigs, @Nullable ProgressFacade progressFacade) {
+    Map<URI, VersionedOpenFile> filesToAnalyze, @Nullable URI folderUri, Map<URI, GetJavaConfigResponse> javaConfigs, @Nullable ProgressFacade progressFacade, Path baseDir) {
     checkCanceled(task, progressFacade);
     if (filesToAnalyze.size() == 1) {
       clientLogger.info(format("Analyzing file \"%s\"...", filesToAnalyze.keySet().iterator().next()));
@@ -333,8 +335,8 @@ public class AnalysisTaskExecutor {
     AnalyzeFilesResponse analysisResults;
     var filesSuccessfullyAnalyzed = new HashSet<>(filesToAnalyze.keySet());
     analysisResults = binding
-      .map(projectBindingWrapper -> analyzeConnected(task, projectBindingWrapper, settings, folderUri, filesToAnalyze, javaConfigs, issueListener))
-      .orElseGet(() -> analyzeStandalone(task, settings, folderUri, filesToAnalyze, javaConfigs));
+      .map(projectBindingWrapper -> analyzeConnected(task, projectBindingWrapper, settings, folderUri, filesToAnalyze, javaConfigs, issueListener, baseDir))
+      .orElseGet(() -> analyzeStandalone(task, settings, folderUri, filesToAnalyze, javaConfigs, baseDir));
 
     // Ignore files with parsing error
     analysisResults.getFailedAnalysisFiles()
@@ -401,18 +403,17 @@ public class AnalysisTaskExecutor {
     }
   }
 
-  private AnalyzeFilesResponse analyzeStandalone(AnalysisTask task, WorkspaceFolderSettings settings, URI folderUri, Map<URI, VersionedOpenFile> filesToAnalyze,
-    Map<URI, GetJavaConfigResponse> javaConfigs) {
+  private AnalyzeFilesResponse analyzeStandalone(AnalysisTask task, WorkspaceFolderSettings settings, @Nullable URI folderUri, Map<URI, VersionedOpenFile> filesToAnalyze,
+    Map<URI, GetJavaConfigResponse> javaConfigs, Path baseDir) {
 
     task.setIssueRaisedListener(rawIssueDto -> didRaiseIssueStandalone(rawIssueDto, task.getAnalysisId()));
-    var baseDir = Paths.get(folderUri);
 
     var configuration = buildCommonAnalysisConfiguration(settings, folderUri, filesToAnalyze, javaConfigs, baseDir);
 
     clientLogger.debug(format("Analysis triggered with configuration:%n%s", configuration.toString()));
 
     analysisTasksCache.analyze(task.getAnalysisId(), task);
-    return backendServiceFacade.getBackendService().analyzeFiles(folderUri.toString(), task.getAnalysisId(),
+    return backendServiceFacade.getBackendService().analyzeFiles(folderUri != null ? folderUri.toString() : ROOT_CONFIGURATION_SCOPE, task.getAnalysisId(),
       filesToAnalyze.keySet().stream().toList(), configuration.extraProperties()).join();
   }
 
@@ -426,11 +427,9 @@ public class AnalysisTaskExecutor {
     }
   }
 
-  private AnalyzeFilesResponse analyzeConnected(AnalysisTask task, ProjectBinding binding, WorkspaceFolderSettings settings, URI folderUri,
+  private AnalyzeFilesResponse analyzeConnected(AnalysisTask task, ProjectBinding binding, WorkspaceFolderSettings settings, @Nullable URI folderUri,
     Map<URI, VersionedOpenFile> filesToAnalyze,
-    Map<URI, GetJavaConfigResponse> javaConfigs, Consumer<DelegatingIssue> issueListener) {
-    var baseDir = Paths.get(folderUri);
-
+    Map<URI, GetJavaConfigResponse> javaConfigs, Consumer<DelegatingIssue> issueListener, Path baseDir) {
     var configuration = buildCommonAnalysisConfiguration(settings, folderUri, filesToAnalyze, javaConfigs, baseDir);
 
     if (settingsManager.getCurrentSettings().hasLocalRuleConfiguration()) {
@@ -453,7 +452,7 @@ public class AnalysisTaskExecutor {
     var analysisId = task.getAnalysisId();
     analysisTasksCache.analyze(analysisId, task);
     // wait for the analysis to finish before we start tracking
-    var results = backendServiceFacade.getBackendService().analyzeFiles(folderUri.toString(), analysisId,
+    var results = backendServiceFacade.getBackendService().analyzeFiles(folderUri != null ? folderUri.toString() : ROOT_CONFIGURATION_SCOPE, analysisId,
       filesToAnalyze.keySet().stream().toList(), configuration.extraProperties()).join();
     filesToAnalyze.forEach((fileUri, openFile) -> {
       var issues = issuesPerFiles.getOrDefault(fileUri, List.of());
@@ -462,8 +461,8 @@ public class AnalysisTaskExecutor {
     return results;
   }
 
-  private AnalysisConfiguration buildCommonAnalysisConfiguration(WorkspaceFolderSettings settings, URI folderUri,
-    Map<URI, VersionedOpenFile> filesToAnalyze, Map<URI, GetJavaConfigResponse> javaConfigs, Path baseDir) {
+  private AnalysisConfiguration buildCommonAnalysisConfiguration(WorkspaceFolderSettings settings, @Nullable URI folderUri,
+    Map<URI, VersionedOpenFile> filesToAnalyze, Map<URI, GetJavaConfigResponse> javaConfigs, @Nullable Path baseDir) {
     var configBuilder = AnalysisConfiguration.builder()
       .putAllExtraProperties(settings.getAnalyzerProperties())
       .putAllExtraProperties(javaConfigCache.configureJavaProperties(filesToAnalyze.keySet(), javaConfigs))

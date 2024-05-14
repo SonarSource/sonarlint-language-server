@@ -660,6 +660,10 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public Path getBaseDir(String configurationScopeId) {
-    return Paths.get(URI.create(configurationScopeId));
+    try {
+      return Paths.get(URI.create(configurationScopeId));
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
   }
 }
