@@ -74,7 +74,6 @@ class TaintIssuesUpdaterTests {
     when(bindingManager.resolveBranchNameForFolder(FOLDER_URI)).thenReturn(Optional.of(BRANCH_NAME));
     when(workspaceFoldersManager.findFolderForFile(FILE_URI)).thenReturn(Optional.of(workspaceFolderWrapper));
     when(workspaceFolderWrapper.getUri()).thenReturn(FOLDER_URI);
-//    when(engine.getServerBranches(PROJECT_KEY)).thenReturn(new ProjectBranches(Set.of("main", BRANCH_NAME), "main"));
     when(bindingWrapper.getConnectionId()).thenReturn(CONNECTION_ID);
     when(bindingWrapper.getProjectKey()).thenReturn(PROJECT_KEY);
     when(binding.projectKey()).thenReturn(PROJECT_KEY);
@@ -83,29 +82,6 @@ class TaintIssuesUpdaterTests {
     when(serverConnectionSettings.getEndpointParams()).thenReturn(mock(EndpointParams.class));
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
   }
-
-//  @Test
-//  void should_sync_and_download_taints() {
-//    underTest.updateTaintIssuesAsync(FILE_URI);
-//
-//    verify(engine).downloadAllServerTaintIssuesForFile(any(), any(), any(), anyString(), eq(BRANCH_NAME), isNull());
-//    verify(engine).getServerTaintIssues(any(), eq(BRANCH_NAME), anyString(), any());
-//    verify(diagnosticPublisher).publishDiagnostics(FILE_URI, false);
-//    verify(diagnosticPublisher).isFocusOnNewCode();
-//    verifyNoMoreInteractions(diagnosticPublisher);
-//    verifyNoMoreInteractions(engine);
-//  }
-//
-//  @Test
-//  void should_log_number_of_downloaded_taints() {
-//    var taint1 = new ServerTaintIssue("taint1", false, "ruleKey1", "message", "filePath", Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY, new TextRangeWithHash(1, 1, 1, 1, ""), null,null, null);
-//    var taint2 = new ServerTaintIssue("taint2", false, "ruleKey2", "message", "filePath", Instant.now(), IssueSeverity.CRITICAL, RuleType.VULNERABILITY, new TextRangeWithHash(1, 1, 1, 1, ""), null,null, null);
-//    when(engine.getServerTaintIssues(any(), any(), anyString(), any())).thenReturn(List.of(taint1, taint2));
-//
-//    underTest.updateTaintIssuesAsync(FILE_URI);
-//
-//    assertThat(logTester.logs()).containsExactly("Fetched 2 vulnerabilities from Connection ID");
-//  }
 
   @Test
   void should_stop_executor_on_shutdown() {
