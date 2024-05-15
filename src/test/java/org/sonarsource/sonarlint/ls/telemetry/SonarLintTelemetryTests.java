@@ -30,7 +30,6 @@ import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.GetStatusResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixAppliedForRuleParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddReportedRulesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisDoneOnSingleLanguageParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificationsClickedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
@@ -72,7 +71,7 @@ class SonarLintTelemetryTests {
   }
 
   private SonarLintTelemetry createTelemetry() {
-    return  new SonarLintTelemetry(backendServiceFacade, logTester.getLogger());
+    return new SonarLintTelemetry(backendServiceFacade, logTester.getLogger());
   }
 
   @Test
@@ -269,17 +268,6 @@ class SonarLintTelemetryTests {
     telemetry.addedManualBindings();
 
     verify(telemetryService, never()).addedManualBindings();
-  }
-
-  @Test
-  void addReportedRules() {
-    var rule = "ruleKey";
-    var reportedRuleKeys = Collections.singleton(rule);
-    ArgumentCaptor<AddReportedRulesParams> argument = ArgumentCaptor.forClass(AddReportedRulesParams.class);
-    telemetry.addReportedRules(reportedRuleKeys);
-
-    verify(telemetryService).addReportedRules(argument.capture());
-    assertThat(argument.getValue().getRuleKeys()).containsOnly("ruleKey");
   }
 
   private static WorkspaceSettings newWorkspaceSettingsWithTelemetrySetting(boolean disableTelemetry) {
