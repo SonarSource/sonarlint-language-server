@@ -39,7 +39,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.AnalysisConfiguration;
 import org.sonarsource.sonarlint.core.commons.api.progress.CanceledException;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFilesResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
@@ -336,7 +335,7 @@ public class AnalysisTaskExecutor {
     var filesSuccessfullyAnalyzed = new HashSet<>(filesToAnalyze.keySet());
     analysisResults = binding
       .map(projectBindingWrapper -> analyzeConnected(task, projectBindingWrapper, settings, folderUri, filesToAnalyze, javaConfigs, issueListener, baseDir))
-      .orElseGet(() -> analyzeStandalone(task, settings, folderUri, filesToAnalyze, javaConfigs, baseDir));
+      .orElseGet(() -> analyzeStandalone(task, settings, folderUri, filesToAnalyze, javaConfigs));
 
     // Ignore files with parsing error
     analysisResults.getFailedAnalysisFiles()
@@ -362,7 +361,6 @@ public class AnalysisTaskExecutor {
         notebookDiagnosticPublisher.cleanupDiagnosticsForCellsWithoutIssues(f);
         openNotebooksCache.getFile(f).ifPresent(notebook -> notebookDiagnosticPublisher.publishNotebookDiagnostics(f, notebook));
       });
-      telemetry.addReportedRules(ruleKeys);
       if (!task.shouldKeepHotspotsOnly()) {
         clientLogger.info(format("Found %s %s", totalIssueCount.get(), pluralize(totalIssueCount.get(), "issue")));
       }
@@ -404,17 +402,15 @@ public class AnalysisTaskExecutor {
   }
 
   private AnalyzeFilesResponse analyzeStandalone(AnalysisTask task, WorkspaceFolderSettings settings, @Nullable URI folderUri, Map<URI, VersionedOpenFile> filesToAnalyze,
-    Map<URI, GetJavaConfigResponse> javaConfigs, Path baseDir) {
+    Map<URI, GetJavaConfigResponse> javaConfigs) {
 
     task.setIssueRaisedListener(rawIssueDto -> didRaiseIssueStandalone(rawIssueDto, task.getAnalysisId()));
 
-    var configuration = buildCommonAnalysisConfiguration(settings, folderUri, filesToAnalyze, javaConfigs, baseDir);
-
-    clientLogger.debug(format("Analysis triggered with configuration:%n%s", configuration.toString()));
+    var extraProperties = buildExtraPropertiesMap(settings, filesToAnalyze, javaConfigs);
 
     analysisTasksCache.analyze(task.getAnalysisId(), task);
     return backendServiceFacade.getBackendService().analyzeFiles(folderUri != null ? folderUri.toString() : ROOT_CONFIGURATION_SCOPE, task.getAnalysisId(),
-      filesToAnalyze.keySet().stream().toList(), configuration.extraProperties()).join();
+      filesToAnalyze.keySet().stream().toList(), extraProperties).join();
   }
 
   public void didRaiseIssueStandalone(RawIssueDto rawIssueDto, UUID analysisId) {
@@ -430,12 +426,11 @@ public class AnalysisTaskExecutor {
   private AnalyzeFilesResponse analyzeConnected(AnalysisTask task, ProjectBinding binding, WorkspaceFolderSettings settings, @Nullable URI folderUri,
     Map<URI, VersionedOpenFile> filesToAnalyze,
     Map<URI, GetJavaConfigResponse> javaConfigs, Consumer<DelegatingIssue> issueListener, Path baseDir) {
-    var configuration = buildCommonAnalysisConfiguration(settings, folderUri, filesToAnalyze, javaConfigs, baseDir);
+    var extraPropertiesMap = buildExtraPropertiesMap(settings, filesToAnalyze, javaConfigs);
 
     if (settingsManager.getCurrentSettings().hasLocalRuleConfiguration()) {
       clientLogger.debug("Local rules settings are ignored, using quality profile from server");
     }
-    clientLogger.debug(format("Analysis triggered with configuration:%n%s", configuration.toString()));
 
     var serverIssueTracker = binding.getServerIssueTracker();
     var issuesPerFiles = new HashMap<URI, List<RawIssueDto>>();
@@ -453,7 +448,7 @@ public class AnalysisTaskExecutor {
     analysisTasksCache.analyze(analysisId, task);
     // wait for the analysis to finish before we start tracking
     var results = backendServiceFacade.getBackendService().analyzeFiles(folderUri != null ? folderUri.toString() : ROOT_CONFIGURATION_SCOPE, analysisId,
-      filesToAnalyze.keySet().stream().toList(), configuration.extraProperties()).join();
+      filesToAnalyze.keySet().stream().toList(), extraPropertiesMap).join();
     filesToAnalyze.forEach((fileUri, openFile) -> {
       var issues = issuesPerFiles.getOrDefault(fileUri, List.of());
       serverIssueTracker.matchAndTrack(FileUtils.getFileRelativePath(baseDir, fileUri, logOutput), issues, issueListener, task.shouldFetchServerIssues());
@@ -461,24 +456,15 @@ public class AnalysisTaskExecutor {
     return results;
   }
 
-  private AnalysisConfiguration buildCommonAnalysisConfiguration(WorkspaceFolderSettings settings, @Nullable URI folderUri,
-    Map<URI, VersionedOpenFile> filesToAnalyze, Map<URI, GetJavaConfigResponse> javaConfigs, @Nullable Path baseDir) {
-    var configBuilder = AnalysisConfiguration.builder()
-      .putAllExtraProperties(settings.getAnalyzerProperties())
-      .putAllExtraProperties(javaConfigCache.configureJavaProperties(filesToAnalyze.keySet(), javaConfigs))
-      .setBaseDir(baseDir)
-      .setModuleKey(folderUri);
-
-    filesToAnalyze.forEach((uri, openFile) -> configBuilder
-      .addInputFiles(
-        new AnalysisClientInputFile(uri, FileUtils.getFileRelativePath(baseDir, uri, logOutput), openFile.getContent(),
-          fileTypeClassifier.isTest(settings, uri, openFile.isJava(), () -> ofNullable(javaConfigs.get(uri))),
-          openFile.getLanguageId())));
+  private Map<String, String> buildExtraPropertiesMap(WorkspaceFolderSettings settings, Map<URI, VersionedOpenFile> filesToAnalyze, Map<URI, GetJavaConfigResponse> javaConfigs) {
+    var extraProperties = new HashMap<String, String>();
+    extraProperties.putAll(settings.getAnalyzerProperties());
+    extraProperties.putAll(javaConfigCache.configureJavaProperties(filesToAnalyze.keySet(), javaConfigs));
 
     var pathToCompileCommands = settings.getPathToCompileCommands();
     if (pathToCompileCommands != null) {
-      configBuilder.putExtraProperty("sonar.cfamily.compile-commands", pathToCompileCommands);
+      extraProperties.put("sonar.cfamily.compile-commands", pathToCompileCommands);
     }
-    return configBuilder.build();
+    return extraProperties;
   }
 }

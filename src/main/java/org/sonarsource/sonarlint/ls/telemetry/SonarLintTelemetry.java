@@ -19,14 +19,12 @@
  */
 package org.sonarsource.sonarlint.ls.telemetry;
 
-import java.util.Set;
 import java.util.function.Consumer;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixAppliedForRuleParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddReportedRulesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisDoneOnSingleLanguageParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificationsClickedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
@@ -79,10 +77,6 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   public void analysisDoneOnSingleLanguage(@Nullable SonarLanguage language, int analysisTimeMs) {
     if (language == null) return;
     actIfEnabled(telemetryService -> telemetryService.analysisDoneOnSingleLanguage(new AnalysisDoneOnSingleLanguageParams(Language.valueOf(language.name()), analysisTimeMs)));
-  }
-
-  public void addReportedRules(Set<String> ruleKeys) {
-    actIfEnabled(telemetryService -> telemetryService.addReportedRules(new AddReportedRulesParams(ruleKeys)));
   }
 
   public void devNotificationsClicked(String eventType) {
