@@ -24,17 +24,47 @@ import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
 class BackendServiceFacadeTests {
 
+  public static final String SONARLINT_HTTP_CONNECTION_TIMEOUT = "sonarlint.http.connectTimeout";
+  public static final String SONARLINT_HTTP_SOCKET_TIMEOUT = "sonarlint.http.socketTimeout";
   SonarLintRpcClientDelegate backend = mock(SonarLintRpcClientDelegate.class);
   BackendServiceFacade underTest = new BackendServiceFacade(backend, mock(LanguageClientLogger.class), mock(SonarLintExtendedLanguageClient.class), 0);
 
   @Test
   void shouldFailIfBackendNotInitialized() {
     assertThrows(IllegalStateException.class, () -> underTest.getBackendService());
+  }
+
+  @Test
+  void shouldReturnDurationInMinutes() {
+    System.setProperty(SONARLINT_HTTP_CONNECTION_TIMEOUT, "3");
+
+    var result = BackendServiceFacade.getTimeoutProperty(SONARLINT_HTTP_CONNECTION_TIMEOUT);
+
+    assertThat(result).isNotNull();
+    assertThat(result.toMinutes()).isEqualTo(3);
+  }
+
+  @Test
+  void shouldReturnDurationInSeconds() {
+    System.setProperty(SONARLINT_HTTP_CONNECTION_TIMEOUT, "PT3S");
+
+    var result = BackendServiceFacade.getTimeoutProperty(SONARLINT_HTTP_CONNECTION_TIMEOUT);
+
+    assertThat(result).isNotNull();
+    assertThat(result.toSeconds()).isEqualTo(3);
+  }
+
+  @Test
+  void shouldReturnNullTimeout() {
+    var result = BackendServiceFacade.getTimeoutProperty(SONARLINT_HTTP_SOCKET_TIMEOUT);
+
+    assertThat(result).isNull();
   }
 
 }

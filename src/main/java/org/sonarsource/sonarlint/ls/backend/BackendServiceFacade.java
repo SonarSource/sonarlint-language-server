@@ -28,6 +28,7 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -203,9 +204,16 @@ public class BackendServiceFacade {
   }
 
   @Nullable
-  private static Duration getTimeoutProperty(String propertyName) {
+  public static Duration getTimeoutProperty(String propertyName) {
     var property = System.getProperty(propertyName);
-    return property == null ? null : Duration.parse(property);
+    return Optional.ofNullable(property)
+      .map(s -> {
+        try {
+          return Duration.ofMinutes(Integer.parseInt(s));
+        } catch (NumberFormatException e) {
+          return Duration.parse(s);
+        }
+      }).orElse(null);
   }
 
   public void shutdown() {
