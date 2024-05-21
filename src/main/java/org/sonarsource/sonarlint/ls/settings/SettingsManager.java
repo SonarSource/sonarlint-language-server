@@ -312,7 +312,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     } catch (InterruptedException e) {
       interrupted(e, logOutput);
     } catch (Exception e) {
-      logOutput.error("Unable to update configuration of folder " + f.getUri(), e);
+      logOutput.error("Unable to update configuration of folder " + f.getUri() + ". %s", e);
     }
   }
 
@@ -394,10 +394,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       return client.getTokenForServer(serverUrlOrOrganization).get();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logOutput.error("Can't get token for server " + serverUrlOrOrganization, e);
+      logOutput.error("Can't get token for server " + serverUrlOrOrganization + ". %s", e);
       return null;
     } catch (ExecutionException e) {
-      logOutput.error("Can't get token for server " + serverUrlOrOrganization, e);
+      logOutput.error("Can't get token for server " + serverUrlOrOrganization + ". %s", e);
       return null;
     }
   }
