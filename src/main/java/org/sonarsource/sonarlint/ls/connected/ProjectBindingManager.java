@@ -235,7 +235,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     try {
       engine = enginesFactory.createEngine(connectionId);
     } catch (Exception e) {
-      globalLogOutput.error("Error starting connected SonarLint engine for '" + connectionId + "'", e);
+      globalLogOutput.error("Error starting connected SonarLint engine for '" + connectionId + "'. %s", e);
       return null;
     }
     return engine;
@@ -391,7 +391,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       try {
         e.stop();
       } catch (Exception ex) {
-        globalLogOutput.error("Unable to stop engine '" + connectionId + "'", ex);
+        globalLogOutput.error("Unable to stop engine '" + connectionId + "'. %s", ex);
       }
     });
   }

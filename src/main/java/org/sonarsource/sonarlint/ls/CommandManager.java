@@ -339,7 +339,7 @@ public class CommandManager {
     backendServiceFacade.getBackendService().getStandaloneRuleDetails(ruleKey)
       .thenAccept(detailsResponse -> showStandaloneRuleDescription(ruleKey, detailsResponse))
       .exceptionally(e -> {
-        var message = "Can't show rule details for unknown rule with key: " + ruleKey;
+        var message = "Can't show rule details for unknown rule with key: " + ruleKey + ". Error: %s";
         client.showMessage(new MessageParams(MessageType.Error, message));
         logOutput.error(message, e);
         return null;
@@ -360,7 +360,7 @@ public class CommandManager {
         return createShowRuleDescriptionParams(ruleDetailsDto, Collections.emptyMap(), ruleDetailsDto.getDescription().getLsp4jEither(), ruleKey,
           ruleContextKey);
       }).exceptionally(e -> {
-        var message = "Can't show rule details for unknown rule with key: " + ruleKey;
+        var message = "Can't show rule details for unknown rule with key: " + ruleKey + ". Error: %s";
         client.showMessage(new MessageParams(MessageType.Error, message));
         logOutput.error(message, e);
         return null;

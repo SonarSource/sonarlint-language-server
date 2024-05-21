@@ -399,7 +399,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       sha1fingerprint = Utils.formatSha1Fingerprint(DigestUtils.sha1Hex(untrustedCert.getEncoded()));
       sha256fingerprint = Utils.formatSha256Fingerprint(DigestUtils.sha256Hex(untrustedCert.getEncoded()));
     } catch (CertificateEncodingException | IndexOutOfBoundsException e) {
-      logOutput.error("Certificate encoding is malformed, SHA fingerprints will not be displayed", e);
+      logOutput.error("Certificate encoding is malformed, SHA fingerprints will not be displayed: %s", e);
     }
     var actualSonarLintUserHome = Optional.ofNullable(EnginesFactory.sonarLintUserHomeOverride).orElse(SonarLintUserHome.get());
     var confirmationParams = new SonarLintExtendedLanguageClient.SslCertificateConfirmationParams(
