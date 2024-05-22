@@ -20,31 +20,15 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.nio.file.Path;
-import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.EngineConfiguration;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
-import org.sonarsource.sonarlint.core.client.utils.ClientLogOutput;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
-import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
-
-import static java.lang.String.format;
-import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 
 public class EnginesFactory {
 
   public static Path sonarLintUserHomeOverride = null;
-  private final LanguageClientLogOutput logOutput;
-  private final Collection<Path> standaloneAnalyzers;
 
   private static final Language[] STANDALONE_LANGUAGES = {
     Language.AZURERESOURCEMANAGER,
@@ -76,60 +60,7 @@ public class EnginesFactory {
     Language.PLSQL,
     Language.TSQL
   };
-  private final ClientModulesProvider modulesProvider;
-  private BackendServiceFacade backendServiceFacade;
   private final AtomicReference<Boolean> shutdown = new AtomicReference<>(false);
-
-  public EnginesFactory(Collection<Path> standaloneAnalyzers, LanguageClientLogOutput globalLogOutput,
-    ClientModulesProvider modulesProvider, BackendServiceFacade backendServiceFacade) {
-    this.standaloneAnalyzers = standaloneAnalyzers;
-    this.logOutput = globalLogOutput;
-    this.modulesProvider = modulesProvider;
-    this.backendServiceFacade = backendServiceFacade;
-  }
-
-  public SonarLintAnalysisEngine createEngine(@Nullable String connectionId) {
-    if (shutdown.get().equals(true)) {
-      throw new IllegalStateException("Language server is shutting down, won't create engine");
-    }
-
-    logOutput.log("Starting standalone SonarLint engine...", ClientLogOutput.Level.DEBUG);
-    logOutput.log(format("Using %d analyzers", standaloneAnalyzers.size()), ClientLogOutput.Level.DEBUG);
-    try {
-      var configuration = EngineConfiguration.builder()
-        .setSonarLintUserHome(sonarLintUserHomeOverride)
-        .setModulesProvider(modulesProvider)
-        .setLogOutput(logOutput).build();
-
-      return waitForBackendInit()
-        .thenApply(unused -> {
-          var engine = new SonarLintAnalysisEngine(configuration, backendServiceFacade.getBackendService().getBackend(), connectionId);
-          logOutput.log("Standalone SonarLint engine started", ClientLogOutput.Level.DEBUG);
-          return engine;
-        }).join();
-    } catch (Exception e) {
-      logOutput.log(format("Error starting standalone SonarLint engine %s", e), ClientLogOutput.Level.ERROR);
-      throw new IllegalStateException(e);
-    }
-  }
-
-  private CompletableFuture<Void> waitForBackendInit() {
-    var initResult = new CompletableFuture<Void>();
-    Executors.newSingleThreadExecutor().submit(() -> {
-      var initialized = false;
-      try {
-        initialized = backendServiceFacade.getInitLatch().await(1, TimeUnit.MINUTES);
-      } catch (InterruptedException e) {
-        interrupted(e, logOutput);
-      }
-      if (initialized) {
-        initResult.complete(null);
-      } else {
-        initResult.completeExceptionally(new IllegalStateException("Backend wasn't initialized in expected time"));
-      }
-    });
-    return initResult;
-  }
 
   public static Set<Language> getStandaloneLanguages() {
     return EnumSet.copyOf(List.of(STANDALONE_LANGUAGES));
@@ -137,10 +68,6 @@ public class EnginesFactory {
 
   public static Set<Language> getConnectedLanguages() {
     return Set.of(CONNECTED_ADDITIONAL_LANGUAGES);
-  }
-
-  public static boolean isConnectedLanguage(@Nullable Language language) {
-    return language != null && getConnectedLanguages().contains(language);
   }
 
   public void shutdown() {
