@@ -29,17 +29,17 @@ import javax.annotation.CheckForNull;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.eclipse.lsp4j.WorkspaceFolder;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 
 public class WorkspaceFolderWrapper {
   private final URI uri;
   private final WorkspaceFolder lspFolder;
-  private final LanguageClientLogOutput logOutput;
+  private final LanguageClientLogger logOutput;
   private WorkspaceFolderSettings settings;
   private final CountDownLatch initLatch = new CountDownLatch(1);
 
-  public WorkspaceFolderWrapper(URI uri, WorkspaceFolder lspFolder, LanguageClientLogOutput logOutput) {
+  public WorkspaceFolderWrapper(URI uri, WorkspaceFolder lspFolder, LanguageClientLogger logOutput) {
     this.uri = uri;
     this.lspFolder = lspFolder;
     this.logOutput = logOutput;

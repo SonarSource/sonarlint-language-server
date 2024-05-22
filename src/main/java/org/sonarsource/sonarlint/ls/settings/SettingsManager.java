@@ -51,7 +51,7 @@ import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
@@ -103,15 +103,15 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private final List<WorkspaceSettingsChangeListener> globalListeners = new ArrayList<>();
   private final List<WorkspaceFolderSettingsChangeListener> folderListeners = new ArrayList<>();
   private final BackendServiceFacade backendServiceFacade;
-  private final LanguageClientLogOutput logOutput;
+  private final LanguageClientLogger logOutput;
 
   public SettingsManager(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager foldersManager,
-    BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
+    BackendServiceFacade backendServiceFacade, LanguageClientLogger logOutput) {
     this(client, foldersManager, Executors.newCachedThreadPool(Utils.threadFactory("SonarLint settings manager", false)), backendServiceFacade, logOutput);
   }
 
   SettingsManager(SonarLintExtendedLanguageClient client, WorkspaceFoldersManager foldersManager,
-    ExecutorService executor, BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
+    ExecutorService executor, BackendServiceFacade backendServiceFacade, LanguageClientLogger logOutput) {
     this.client = client;
     this.foldersManager = foldersManager;
     this.executor = executor;
@@ -184,7 +184,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       } catch (InterruptedException e) {
         interrupted(e, logOutput);
       } catch (Exception e) {
-        logOutput.error("Unable to update configuration %s", e.getMessage());
+        logOutput.error("Unable to update configuration %s", e);
       } finally {
         client.readyForTests();
       }
@@ -213,7 +213,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   // Visible for testing
   CompletableFuture<Map<String, Object>> requestSonarLintAndOmnisharpConfigurationAsync(@Nullable URI uri) {
     if (uri != null) {
-      logOutput.debug("Fetching configuration for folder '%s'", uri.toString());
+      logOutput.debug(format("Fetching configuration for folder '%s'", uri.toString()));
     } else {
       logOutput.debug("Fetching global configuration");
     }
@@ -228,7 +228,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     return client.configuration(params)
       .handle((r, t) -> {
         if (t != null) {
-          logOutput.error("Unable to fetch configuration of folder %s %s", uri != null ? uri.toString() : "null", t.getMessage());
+          logOutput.error(format("Unable to fetch configuration of folder %s %s", uri != null ? uri.toString() : "null", t.getMessage()));
         }
         return r;
       })
@@ -304,7 +304,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       var old = f.getRawSettings();
       if (!Objects.equals(old, newSettings)) {
         f.setSettings(newSettings);
-        logOutput.debug("Workspace folder '%s' configuration updated: %s", f, newSettings);
+        logOutput.debug(format("Workspace folder '%s' configuration updated: %s", f, newSettings));
         if (notifyOnChange) {
           folderListeners.forEach(l -> l.onChange(f, old, newSettings));
         }
@@ -405,7 +405,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private boolean checkRequiredAttribute(Map<String, Object> map, String label, String... requiredAttributes) {
     var missing = stream(requiredAttributes).filter(att -> isBlank((String) map.get(att))).toList();
     if (!missing.isEmpty()) {
-      logOutput.error("Incomplete %s connection configuration. Required parameters must not be blank: %s.", label, String.join(",", missing));
+      logOutput.error(format("Incomplete %s connection configuration. Required parameters must not be blank: %s.", label, String.join(",", missing)));
       return false;
     }
     return true;
@@ -416,7 +416,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       if (DEFAULT_CONNECTION_ID.equals(connectionId)) {
         logOutput.error("Please specify a unique 'connectionId' in your settings for each of the SonarQube/SonarCloud connections.");
       } else {
-        logOutput.error("Multiple server connections with the same identifier '%s'. Fix your settings.", connectionId);
+        logOutput.error(format("Multiple server connections with the same identifier '%s'. Fix your settings.", connectionId));
       }
     } else {
       serverConnections.put(connectionId, connectionSettings);
@@ -445,12 +445,12 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
           } else if (currentSettings.getServerConnections().size() == 1) {
             connectionId = currentSettings.getServerConnections().keySet().iterator().next();
           } else {
-            logOutput.error("Multiple connections defined in your settings. Please specify a 'connectionId' in your binding with one of [%s] to disambiguate.",
-              String.join(",", currentSettings.getServerConnections().keySet()));
+            logOutput.error(format("Multiple connections defined in your settings. Please specify a 'connectionId' in your binding with one of [%s] to disambiguate.",
+              String.join(",", currentSettings.getServerConnections().keySet())));
             connectionId = null;
           }
         } else if (!currentSettings.getServerConnections().containsKey(connectionId)) {
-          logOutput.error("No SonarQube/SonarCloud connections defined for your binding with id '%s'. Please update your settings.", connectionId);
+          logOutput.error(format("No SonarQube/SonarCloud connections defined for your binding with id '%s'. Please update your settings.", connectionId));
         }
       }
     }

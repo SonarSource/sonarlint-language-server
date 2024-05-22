@@ -51,7 +51,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.UsernamePasswordDto;
 import org.sonarsource.sonarlint.ls.IssuesCache;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+
+import static java.lang.String.format;
 
 public class Utils {
 
@@ -83,8 +85,8 @@ public class Utils {
     };
   }
 
-  public static void interrupted(InterruptedException e, LanguageClientLogOutput logOutput) {
-    logOutput.debug("Interrupted!", e);
+  public static void interrupted(InterruptedException e, LanguageClientLogger logOutput) {
+    logOutput.debug("Interrupted! %s", e);
     Thread.currentThread().interrupt();
   }
 
@@ -111,7 +113,7 @@ public class Utils {
   }
 
   public static String buildMessageWithPluralizedSuffix(@Nullable String issueMessage, long nbItems, String itemName) {
-    return String.format(MESSAGE_WITH_PLURALIZED_SUFFIX, issueMessage, nbItems, pluralize(nbItems, itemName));
+    return format(MESSAGE_WITH_PLURALIZED_SUFFIX, issueMessage, nbItems, pluralize(nbItems, itemName));
   }
 
   public static boolean uriHasFileScheme(URI uri) {
@@ -166,7 +168,7 @@ public class Utils {
     return str.toUpperCase(Locale.ROOT).split("(?<=\\G.{2})");
   }
 
-  public static <T> Optional<T> safelyGetCompletableFuture(CompletableFuture<T> future, LanguageClientLogOutput logOutput) {
+  public static <T> Optional<T> safelyGetCompletableFuture(CompletableFuture<T> future, LanguageClientLogger logOutput) {
     try {
       return Optional.of(future.get());
     } catch (InterruptedException e) {

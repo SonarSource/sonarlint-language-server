@@ -20,24 +20,10 @@
 package org.sonarsource.sonarlint.ls.standalone;
 
 import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
-import org.sonarsource.sonarlint.ls.EnginesFactory;
 
 public class StandaloneEngineManager {
 
-  private final EnginesFactory enginesFactory;
-
   private SonarLintAnalysisEngine standaloneEngine;
-
-  public StandaloneEngineManager(EnginesFactory enginesFactory) {
-    this.enginesFactory = enginesFactory;
-  }
-
-  public synchronized SonarLintAnalysisEngine getOrCreateAnalysisEngine() {
-    if (standaloneEngine == null) {
-      standaloneEngine = enginesFactory.createEngine(null);
-    }
-    return standaloneEngine;
-  }
 
   public synchronized void shutdown() {
     if (standaloneEngine != null) {

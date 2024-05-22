@@ -41,10 +41,11 @@ import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.util.CatchingRunnable;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
+import static java.lang.String.format;
 import static java.net.URI.create;
 
 public class WorkspaceFoldersManager {
@@ -53,14 +54,14 @@ public class WorkspaceFoldersManager {
   private final List<WorkspaceFolderLifecycleListener> listeners = new ArrayList<>();
   private ProjectBindingManager bindingManager;
   private final BackendServiceFacade backendServiceFacade;
-  private final LanguageClientLogOutput logOutput;
+  private final LanguageClientLogger logOutput;
   private final ExecutorService executor;
 
-  public WorkspaceFoldersManager(BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
+  public WorkspaceFoldersManager(BackendServiceFacade backendServiceFacade, LanguageClientLogger logOutput) {
     this(Executors.newCachedThreadPool(Utils.threadFactory("SonarLint folders manager", false)), backendServiceFacade, logOutput);
   }
 
-  WorkspaceFoldersManager(ExecutorService executor, BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
+  WorkspaceFoldersManager(ExecutorService executor, BackendServiceFacade backendServiceFacade, LanguageClientLogger logOutput) {
     this.executor = executor;
     this.backendServiceFacade = backendServiceFacade;
     this.logOutput = logOutput;
@@ -106,7 +107,7 @@ public class WorkspaceFoldersManager {
       logOutput.warn("Unregistered workspace folder was missing: " + uri);
       return null;
     }
-    logOutput.debug("Folder %s removed", removed);
+    logOutput.debug(format("Folder %s removed", removed));
     listeners.forEach(l -> l.removed(removed));
     return removed;
   }
@@ -114,9 +115,9 @@ public class WorkspaceFoldersManager {
   private WorkspaceFolderWrapper addFolder(WorkspaceFolder added, URI uri) {
     var addedWrapper = new WorkspaceFolderWrapper(uri, added, logOutput);
     if (folders.put(uri, addedWrapper) != null) {
-      logOutput.warn("Registered workspace folder %s was already added", addedWrapper);
+      logOutput.warn(format("Registered workspace folder %s was already added", addedWrapper));
     } else {
-      logOutput.debug("Folder %s added", addedWrapper);
+      logOutput.debug(format("Folder %s added", addedWrapper));
     }
     return addedWrapper;
   }
@@ -139,7 +140,7 @@ public class WorkspaceFoldersManager {
       return Optional.empty();
     }
     if (folderUriCandidates.size() > 1) {
-      logOutput.debug("Multiple candidates workspace folders to contains %s. Default to the deepest one.", uri);
+      logOutput.debug(format("Multiple candidates workspace folders to contains %s. Default to the deepest one.", uri));
     }
     return Optional.of(folders.get(folderUriCandidates.get(0)));
   }
@@ -188,7 +189,7 @@ public class WorkspaceFoldersManager {
   }
 
   public void updateAnalysisReadiness(Set<String> configurationScopeIds, boolean areReadyForAnalysis) {
-    configurationScopeIds.forEach(s -> logOutput.debug("Analysis readiness changed for config scope `%s` to %b", s, areReadyForAnalysis));
+    configurationScopeIds.forEach(s -> logOutput.debug(format("Analysis readiness changed for config scope `%s` to %b", s, areReadyForAnalysis)));
     configurationScopeIds.forEach(folderUri -> analysisReadiness.put(folderUri, areReadyForAnalysis));
   }
 

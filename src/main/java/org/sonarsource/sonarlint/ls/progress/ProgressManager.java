@@ -31,18 +31,18 @@ import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.commons.api.progress.CanceledException;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 
 public class ProgressManager {
   private final LanguageClient client;
-  private final LanguageClientLogOutput globalLogOutput;
+  private final LanguageClientLogger globalLogOutput;
   private final Map<Either<String, Integer>, LSProgressMonitor> liveProgress = new ConcurrentHashMap<>();
 
   private boolean workDoneProgressSupportedByClient;
 
-  public ProgressManager(LanguageClient client, LanguageClientLogOutput globalLogOutput) {
+  public ProgressManager(LanguageClient client, LanguageClientLogger globalLogOutput) {
     this.client = client;
     this.globalLogOutput = globalLogOutput;
   }

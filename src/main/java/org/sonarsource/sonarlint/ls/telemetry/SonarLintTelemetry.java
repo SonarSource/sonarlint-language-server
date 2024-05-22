@@ -30,16 +30,16 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificat
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
 public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   public static final String DISABLE_PROPERTY_KEY = "sonarlint.telemetry.disabled";
   private final BackendServiceFacade backendServiceFacade;
-  private final LanguageClientLogOutput logOutput;
+  private final LanguageClientLogger logOutput;
 
-  public SonarLintTelemetry(BackendServiceFacade backendServiceFacade, LanguageClientLogOutput logOutput) {
+  public SonarLintTelemetry(BackendServiceFacade backendServiceFacade, LanguageClientLogger logOutput) {
     this.backendServiceFacade = backendServiceFacade;
     this.logOutput = logOutput;
   }

@@ -31,10 +31,9 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-class LanguageClientLogOutputTests {
+class LanguageClientLoggerTests {
 
   private LanguageClientLogger underTest;
   private final SonarLintExtendedLanguageClient languageClient = mock(SonarLintExtendedLanguageClient.class);
@@ -53,8 +52,8 @@ class LanguageClientLogOutputTests {
     underTest.trace("trace");
 
     verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Error - 03:25:45.678] error"));
-    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Warn  - 03:25:45.678] warn"));
-    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Info  - 03:25:45.678] info"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Warn - 03:25:45.678] warn"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Info - 03:25:45.678] info"));
     verifyNoMoreInteractions(languageClient);
   }
 
@@ -69,37 +68,10 @@ class LanguageClientLogOutputTests {
     underTest.trace("trace");
 
     verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Error - 03:25:45.678] error"));
-    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Warn  - 03:25:45.678] warn"));
-    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Info  - 03:25:45.678] info"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Warn - 03:25:45.678] warn"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Info - 03:25:45.678] info"));
     verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Debug - 03:25:45.678] debug"));
     verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Trace - 03:25:45.678] trace"));
-    verifyNoMoreInteractions(languageClient);
-  }
-
-  @Test
-  void no_analyzer_logs_by_default() {
-    underTest.error("error", true);
-    underTest.warn("warn", true);
-    underTest.info("info", true);
-    underTest.debug("debug", true);
-    underTest.trace("trace", true);
-
-    verifyNoInteractions(languageClient);
-  }
-
-  @Test
-  void enable_analyzer_logs() {
-    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, null, true, false, null, false));
-
-    underTest.error("error", true);
-    underTest.warn("warn", true);
-    underTest.info("info", true);
-    underTest.debug("debug", true);
-    underTest.trace("trace", true);
-
-    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Error - 03:25:45.678] error"));
-    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Warn  - 03:25:45.678] warn"));
-    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Info  - 03:25:45.678] info"));
     verifyNoMoreInteractions(languageClient);
   }
 
@@ -107,15 +79,15 @@ class LanguageClientLogOutputTests {
   void enable_analyzer_debug_logs() {
     underTest.onChange(null, new WorkspaceSettings(false, null, null, null, null, true, true, null, false));
 
-    underTest.error("error", true);
-    underTest.warn("warn", true);
-    underTest.info("info", true);
-    underTest.debug("debug", true);
-    underTest.trace("trace", true);
+    underTest.error("error");
+    underTest.warn("warn");
+    underTest.info("info");
+    underTest.debug("debug");
+    underTest.trace("trace");
 
     verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Error - 03:25:45.678] error"));
-    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Warn  - 03:25:45.678] warn"));
-    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Info  - 03:25:45.678] info"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Warn - 03:25:45.678] warn"));
+    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Info - 03:25:45.678] info"));
     verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Debug - 03:25:45.678] debug"));
     verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Trace - 03:25:45.678] trace"));
     verifyNoMoreInteractions(languageClient);

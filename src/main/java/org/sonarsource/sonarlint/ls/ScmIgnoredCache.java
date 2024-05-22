@@ -25,8 +25,8 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import org.sonarsource.sonarlint.core.client.utils.ClientLogOutput;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogLevel;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
@@ -34,10 +34,10 @@ import static java.util.Optional.ofNullable;
 
 public class ScmIgnoredCache {
   private final SonarLintExtendedLanguageClient client;
-  private final LanguageClientLogOutput logOutput;
+  private final LanguageClientLogger logOutput;
   public final Map<URI, Optional<Boolean>> filesIgnoredByUri = new ConcurrentHashMap<>();
 
-  public ScmIgnoredCache(SonarLintExtendedLanguageClient client, LanguageClientLogOutput logOutput) {
+  public ScmIgnoredCache(SonarLintExtendedLanguageClient client, LanguageClientLogger logOutput) {
     this.client = client;
     this.logOutput = logOutput;
   }
@@ -54,7 +54,7 @@ public class ScmIgnoredCache {
       Utils.interrupted(e, logOutput);
       isIgnored = Optional.empty();
     } catch (Exception e) {
-      logOutput.log(format("Unable to get SCM ignore status %s", e), ClientLogOutput.Level.WARN);
+      logOutput.log(format("Unable to get SCM ignore status %s", e), LogLevel.WARN);
       isIgnored = Optional.empty();
     }
     return isIgnored;
@@ -67,7 +67,7 @@ public class ScmIgnoredCache {
     return client.isIgnoredByScm(fileUri.toString())
       .handle((r, t) -> {
         if (t != null) {
-          logOutput.log(format("Unable to check if file %s is SCM ignored %s", fileUri, t), ClientLogOutput.Level.ERROR);
+          logOutput.error(format("Unable to check if file %s is SCM ignored", fileUri), t);
         }
         return r;
       })
@@ -75,8 +75,8 @@ public class ScmIgnoredCache {
         var ignoredOpt = ofNullable(ignored);
         filesIgnoredByUri.put(fileUri, ignoredOpt);
         logOutput.log(format("Cached SCM ignore status for file \"%s\": %s", fileUri,
-          ignoredOpt.map(b -> Boolean.TRUE.equals(b) ? "Ignored" : "Not ignored").orElse("Unknown")),
-          ClientLogOutput.Level.DEBUG);
+            ignoredOpt.map(b -> Boolean.TRUE.equals(b) ? "Ignored" : "Not ignored").orElse("Unknown")),
+          LogLevel.DEBUG);
         return ignoredOpt;
       });
   }

@@ -29,7 +29,9 @@ import java.util.List;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+
+import static java.lang.String.format;
 
 public class FileUtils {
   private static final String PATH_SEPARATOR_PATTERN = Pattern.quote(File.separator);
@@ -65,13 +67,13 @@ public class FileUtils {
     }
   }
 
-  public static String getFileRelativePath(Path baseDir, URI uri, LanguageClientLogOutput logOutput) {
+  public static String getFileRelativePath(Path baseDir, URI uri, LanguageClientLogger logOutput) {
     var path = Paths.get(uri);
     try {
       return baseDir.relativize(path).toString();
     } catch (IllegalArgumentException e) {
       // Possibly the file has not the same root as baseDir
-      logOutput.debug("Unable to relativize " + uri + " to " + baseDir);
+      logOutput.debug(format("Unable to relativize %s to %s", uri, baseDir));
       return path.toString();
     }
   }

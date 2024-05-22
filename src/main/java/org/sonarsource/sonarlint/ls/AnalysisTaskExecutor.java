@@ -48,12 +48,10 @@ import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
-import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
@@ -61,7 +59,6 @@ import org.sonarsource.sonarlint.ls.progress.ProgressFacade;
 import org.sonarsource.sonarlint.ls.progress.ProgressManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
-import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.util.FileUtils;
 
 import static java.lang.String.format;
@@ -79,16 +76,14 @@ public class AnalysisTaskExecutor {
 
   private final ScmIgnoredCache filesIgnoredByScmCache;
   private final LanguageClientLogger clientLogger;
-  private final LanguageClientLogOutput logOutput;
+  private final LanguageClientLogger logOutput;
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final ProjectBindingManager bindingManager;
   private final JavaConfigCache javaConfigCache;
   private final SettingsManager settingsManager;
-  private final FileTypeClassifier fileTypeClassifier;
   private final IssuesCache issuesCache;
   private final IssuesCache securityHotspotsCache;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
-  private final SonarLintTelemetry telemetry;
   private final DiagnosticPublisher diagnosticPublisher;
   private final SonarLintExtendedLanguageClient lsClient;
   private final OpenNotebooksCache openNotebooksCache;
@@ -97,10 +92,9 @@ public class AnalysisTaskExecutor {
   private final BackendServiceFacade backendServiceFacade;
   private final AnalysisTasksCache analysisTasksCache;
 
-  public AnalysisTaskExecutor(ScmIgnoredCache filesIgnoredByScmCache, LanguageClientLogger clientLogger, LanguageClientLogOutput logOutput,
+  public AnalysisTaskExecutor(ScmIgnoredCache filesIgnoredByScmCache, LanguageClientLogger clientLogger, LanguageClientLogger logOutput,
     WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, JavaConfigCache javaConfigCache, SettingsManager settingsManager,
-    FileTypeClassifier fileTypeClassifier, IssuesCache issuesCache, IssuesCache securityHotspotsCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
-    SonarLintTelemetry telemetry, DiagnosticPublisher diagnosticPublisher,
+    IssuesCache issuesCache, IssuesCache securityHotspotsCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher,
     SonarLintExtendedLanguageClient lsClient, OpenNotebooksCache openNotebooksCache, NotebookDiagnosticPublisher notebookDiagnosticPublisher,
     ProgressManager progressManager, BackendServiceFacade backendServiceFacade, AnalysisTasksCache analysisTasksCache) {
     this.filesIgnoredByScmCache = filesIgnoredByScmCache;
@@ -110,11 +104,9 @@ public class AnalysisTaskExecutor {
     this.bindingManager = bindingManager;
     this.javaConfigCache = javaConfigCache;
     this.settingsManager = settingsManager;
-    this.fileTypeClassifier = fileTypeClassifier;
     this.issuesCache = issuesCache;
     this.securityHotspotsCache = securityHotspotsCache;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
-    this.telemetry = telemetry;
     this.diagnosticPublisher = diagnosticPublisher;
     this.lsClient = lsClient;
     this.openNotebooksCache = openNotebooksCache;

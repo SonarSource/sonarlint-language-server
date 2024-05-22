@@ -34,7 +34,7 @@ import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.RevWalkUtils;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 import static java.util.Comparator.naturalOrder;
 
@@ -45,7 +45,7 @@ public class GitUtils {
   }
 
   @CheckForNull
-  public static Repository getRepositoryForDir(Path projectDir, LanguageClientLogOutput logOutput) {
+  public static Repository getRepositoryForDir(Path projectDir, LanguageClientLogger logOutput) {
     try {
       var builder = new RepositoryBuilder()
         .findGitDir(projectDir.toFile())
@@ -63,7 +63,7 @@ public class GitUtils {
 
   @CheckForNull
   public static String electBestMatchingServerBranchForCurrentHead(Repository repo, Set<String> serverCandidateNames,
-    @Nullable String serverMainBranch, LanguageClientLogOutput logOutput) {
+    @Nullable String serverMainBranch, LanguageClientLogger logOutput) {
     try {
 
       String currentBranch = repo.getBranch();

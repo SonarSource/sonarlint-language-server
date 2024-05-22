@@ -24,7 +24,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
@@ -36,17 +36,17 @@ public class TaintIssuesUpdater {
   private final ProjectBindingManager bindingManager;
   private final DiagnosticPublisher diagnosticPublisher;
   private final ExecutorService asyncExecutor;
-  private final LanguageClientLogOutput logOutput;
+  private final LanguageClientLogger logOutput;
 
   public TaintIssuesUpdater(ProjectBindingManager bindingManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
-    WorkspaceFoldersManager workspaceFoldersManager,DiagnosticPublisher diagnosticPublisher, LanguageClientLogOutput logOutput) {
+    WorkspaceFoldersManager workspaceFoldersManager, DiagnosticPublisher diagnosticPublisher, LanguageClientLogger logOutput) {
     this(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager, diagnosticPublisher,
       Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Analysis Scheduler", false)), logOutput);
   }
 
   TaintIssuesUpdater(ProjectBindingManager bindingManager, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
     WorkspaceFoldersManager workspaceFoldersManager, DiagnosticPublisher diagnosticPublisher, ExecutorService asyncExecutor,
-    LanguageClientLogOutput logOutput) {
+    LanguageClientLogger logOutput) {
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.bindingManager = bindingManager;
@@ -57,11 +57,11 @@ public class TaintIssuesUpdater {
 
   public void updateTaintIssuesAsync(URI fileUri) {
     workspaceFoldersManager.findFolderForFile(fileUri)
-        .ifPresent(workspaceFolderWrapper -> {
-          if (workspaceFoldersManager.isReadyForAnalysis(workspaceFolderWrapper.getUri().toString())) {
-            asyncExecutor.submit(() -> updateTaintIssues(fileUri));
-          }
-        });
+      .ifPresent(workspaceFolderWrapper -> {
+        if (workspaceFoldersManager.isReadyForAnalysis(workspaceFolderWrapper.getUri().toString())) {
+          asyncExecutor.submit(() -> updateTaintIssues(fileUri));
+        }
+      });
   }
 
   private void updateTaintIssues(URI fileUri) {
