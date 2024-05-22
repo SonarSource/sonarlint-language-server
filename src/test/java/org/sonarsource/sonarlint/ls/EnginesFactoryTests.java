@@ -19,37 +19,16 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.List;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
-import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
 
 class EnginesFactoryTests {
   @RegisterExtension
   SonarLintLogTester logTester = new SonarLintLogTester();
-  private EnginesFactory underTest;
-
-  @BeforeEach
-  void prepare() {
-    var standaloneAnalysers = List.of(
-      Paths.get("plugin1.jar"),
-      Paths.get("plugin2.jar"),
-      Paths.get("sonarjs.jar"),
-      Paths.get("sonarhtml.jar"),
-      Paths.get("sonarxml.jar"));
-    underTest = new EnginesFactory(standaloneAnalysers, logTester.getLogger(), mock(ClientModulesProvider.class), mock(BackendServiceFacade.class));
-    underTest = spy(underTest);
-  }
 
   @Test
   void get_standalone_languages() {

@@ -38,15 +38,14 @@ import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
-import org.sonarsource.sonarlint.core.client.utils.ClientLogOutput;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpdateBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.SonarProjectDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogLevel;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
-import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
@@ -54,7 +53,7 @@ import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -65,6 +64,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.util.URIUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 import static org.sonarsource.sonarlint.ls.util.Utils.fixWindowsURIEncoding;
@@ -80,27 +80,25 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final SettingsManager settingsManager;
   private final ConcurrentMap<URI, CountDownLatch> bindingUpdateQueue = new ConcurrentHashMap<>();
   private final ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache;
-  private final LanguageClientLogOutput globalLogOutput;
+  private final LanguageClientLogger globalLogOutput;
   private final ConcurrentMap<URI, Optional<ProjectBinding>> fileBindingCache = new ConcurrentHashMap<>();
   private final ConcurrentMap<String, Optional<SonarLintAnalysisEngine>> connectedEngineCacheByConnectionId;
   private final SonarLintExtendedLanguageClient client;
-  private final EnginesFactory enginesFactory;
   private AnalysisScheduler analysisManager;
   private final BackendServiceFacade backendServiceFacade;
   private final OpenNotebooksCache openNotebooksCache;
   private final OpenFilesCache openFilesCache;
 
-  public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
-    LanguageClientLogOutput globalLogOutput, BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache, OpenFilesCache openFilesCache) {
-    this(enginesFactory, foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput, new ConcurrentHashMap<>(),
+  public ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
+    LanguageClientLogger globalLogOutput, BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache, OpenFilesCache openFilesCache) {
+    this(foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput, new ConcurrentHashMap<>(),
       backendServiceFacade, openNotebooksCache, openFilesCache);
   }
 
-  public ProjectBindingManager(EnginesFactory enginesFactory, WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
-    ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache, LanguageClientLogOutput globalLogOutput,
+  public ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
+    ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache, LanguageClientLogger globalLogOutput,
     ConcurrentMap<String, Optional<SonarLintAnalysisEngine>> connectedEngineCacheByConnectionId, BackendServiceFacade backendServiceFacade,
     OpenNotebooksCache openNotebooksCache, OpenFilesCache openFilesCache) {
-    this.enginesFactory = enginesFactory;
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
     this.client = client;
@@ -141,7 +139,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private boolean isUriValidAndNotNotebook(URI fileUri) {
     if (!uriHasFileScheme(fileUri) || openNotebooksCache.isNotebook(fileUri)) {
       if (globalLogOutput != null) {
-        globalLogOutput.log("Ignoring connected mode settings for unsupported URI: " + fileUri, ClientLogOutput.Level.DEBUG);
+        globalLogOutput.log("Ignoring connected mode settings for unsupported URI: " + fileUri, LogLevel.DEBUG);
       }
       return false;
     }
@@ -185,12 +183,12 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var connectionId = requireNonNull(settings.getConnectionId());
     var endpointParams = getEndpointParamsFor(connectionId);
     if (endpointParams == null) {
-      globalLogOutput.error("Invalid binding for '%s'", folderRoot);
+      globalLogOutput.error(format("Invalid binding for '%s'", folderRoot));
       return null;
     }
 
     var projectKey = requireNonNull(settings.getProjectKey());
-    globalLogOutput.debug("Resolved binding %s for folder %s", projectKey, folderRoot);
+    globalLogOutput.debug(format("Resolved binding %s for folder %s", projectKey, folderRoot));
     var issueTrackerWrapper = new ServerIssueTrackerWrapper(backendServiceFacade, foldersManager, openFilesCache);
     return new ProjectBinding(connectionId, projectKey, issueTrackerWrapper);
   }
@@ -216,29 +214,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var allConnections = settingsManager.getCurrentSettings().getServerConnections();
     var serverConnectionSettings = allConnections.get(connectionId);
     if (serverConnectionSettings == null) {
-      globalLogOutput.error("The specified connection id '%s' doesn't exist.", connectionId);
+      globalLogOutput.error(format("The specified connection id '%s' doesn't exist.", connectionId));
       return null;
     }
     return serverConnectionSettings;
-  }
-
-  public Optional<SonarLintAnalysisEngine> getOrCreateConnectedEngine(String connectionId) {
-    return connectedEngineCacheByConnectionId.computeIfAbsent(connectionId,
-      s -> Optional.ofNullable(createConnectedEngine(connectionId)));
-  }
-
-  @CheckForNull
-  private SonarLintAnalysisEngine createConnectedEngine(String connectionId) {
-    globalLogOutput.debug("Starting connected SonarLint engine for '%s'...", connectionId);
-
-    SonarLintAnalysisEngine engine;
-    try {
-      engine = enginesFactory.createEngine(connectionId);
-    } catch (Exception e) {
-      globalLogOutput.error("Error starting connected SonarLint engine for '" + connectionId + "'. %s", e);
-      return null;
-    }
-    return engine;
   }
 
   public boolean usesConnectedMode() {
@@ -316,7 +295,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private void unbindFolder(WorkspaceFolderWrapper folder) {
     folderBindingCache.put(folder.getUri(), Optional.empty());
-    globalLogOutput.debug("Workspace '%s' unbound", folder);
+    globalLogOutput.debug(format("Workspace '%s' unbound", folder));
     stopUnusedEngines();
     analysisManager.analyzeAllOpenFilesInFolder(folder);
     var bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
@@ -406,7 +385,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     var connectionId = SettingsManager.connectionIdOrDefault(maybeConnectionId);
     var endpointParams = getEndpointParamsFor(connectionId);
     if (endpointParams == null) {
-      throw new IllegalArgumentException(String.format("No server configuration found with ID '%s'", connectionId));
+      throw new IllegalArgumentException(format("No server configuration found with ID '%s'", connectionId));
     }
     try {
       var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
@@ -416,7 +395,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       var allProjectsResponse = backendServiceFacade.getBackendService().getAllProjects(connectionParams.getTransientConnection()).get();
       return allProjectsResponse.getSonarProjects().stream().collect(Collectors.toMap(SonarProjectDto::getKey, SonarProjectDto::getName));
     } catch (DownloadException downloadFailed) {
-      throw new IllegalStateException(String.format("Failed to fetch list of projects from '%s'", connectionId), downloadFailed);
+      throw new IllegalStateException(format("Failed to fetch list of projects from '%s'", connectionId), downloadFailed);
     } catch (ExecutionException e) {
       throw new IllegalStateException(e);
     } catch (InterruptedException e) {
