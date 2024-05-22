@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidSkipLoadingPluginParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -45,7 +45,7 @@ class SkippedPluginsNotifierTests {
   @BeforeEach
   void initClient() {
     languageClient = mock(SonarLintExtendedLanguageClient.class);
-    underTest = new SkippedPluginsNotifier(languageClient, mock(LanguageClientLogOutput.class));
+    underTest = new SkippedPluginsNotifier(languageClient, mock(LanguageClientLogger.class));
     when(languageClient.canShowMissingRequirementsNotification()).thenReturn(CompletableFuture.completedFuture(true));
   }
 

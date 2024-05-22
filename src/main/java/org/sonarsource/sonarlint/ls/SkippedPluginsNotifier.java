@@ -31,7 +31,7 @@ import org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidSkipLoadingPluginParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.domain.LSLanguage;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 import static org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.JRE;
 import static org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement.NODEJS;
@@ -44,9 +44,9 @@ public class SkippedPluginsNotifier {
   public static final MessageActionItem ACTION_DONT_SHOW_AGAIN = new MessageActionItem("Don't Show Again");
 
   private final SonarLintExtendedLanguageClient client;
-  private final LanguageClientLogOutput globalLogOutput;
+  private final LanguageClientLogger globalLogOutput;
 
-  public SkippedPluginsNotifier(SonarLintExtendedLanguageClient client, LanguageClientLogOutput globalLogOutput) {
+  public SkippedPluginsNotifier(SonarLintExtendedLanguageClient client, LanguageClientLogger globalLogOutput) {
     this.client = client;
     this.globalLogOutput = globalLogOutput;
   }

@@ -29,6 +29,7 @@ import javax.annotation.CheckForNull;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.services.LanguageClient;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogLevel;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
@@ -53,7 +54,6 @@ public class LanguageClientLogger implements WorkspaceSettingsChangeListener {
     .toFormatter();
 
   private final LanguageClient client;
-  private boolean showAnalyzerLogs;
   private boolean showVerboseLogs;
   private final Clock clock;
 
@@ -71,8 +71,26 @@ public class LanguageClientLogger implements WorkspaceSettingsChangeListener {
     this.showVerboseLogs = showVerboseLogs;
   }
 
-  private void log(String prefix, String formattedMessage, boolean isDebugOrTrace, boolean isFromAnalysis) {
-    if ((!isFromAnalysis || showAnalyzerLogs) && (showVerboseLogs || !isDebugOrTrace)) {
+  public void log(String formattedMessage, LogLevel level) {
+    log(getLogPrefix(level), formattedMessage, isDebugOrTrace(level));
+  }
+
+  private static boolean isDebugOrTrace(LogLevel level) {
+    return level == LogLevel.DEBUG || level == LogLevel.TRACE;
+  }
+
+  private static String getLogPrefix(LogLevel level) {
+    return switch (level) {
+      case DEBUG -> "Debug";
+      case TRACE -> "Trace";
+      case INFO -> "Info";
+      case WARN -> "Warn";
+      case ERROR -> "Error";
+    };
+  }
+
+  private void log(String prefix, String formattedMessage, boolean isDebugOrTrace) {
+    if (showVerboseLogs || !isDebugOrTrace) {
       client.logMessage(new MessageParams(MessageType.Log, prefix(prefix, formattedMessage)));
     }
   }
@@ -80,19 +98,14 @@ public class LanguageClientLogger implements WorkspaceSettingsChangeListener {
   @Override
   public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
     this.showVerboseLogs = newValue.showVerboseLogs();
-    this.showAnalyzerLogs = newValue.showAnalyzerLogs();
   }
 
   private String prefix(String prefix, String formattedMessage) {
     return "[" + prefix + " - " + LocalTime.now(clock).format(LOG_DATE_FORMAT) + "] " + formattedMessage;
   }
 
-  void error(String formattedMessage, boolean isFromAnalysis) {
-    log("Error", formattedMessage, false, isFromAnalysis);
-  }
-
   public void error(String formattedMessage) {
-    error(formattedMessage, false);
+    log("Error", formattedMessage, false);
   }
 
   public void error(String formattedMessage, Throwable t) {
@@ -100,39 +113,39 @@ public class LanguageClientLogger implements WorkspaceSettingsChangeListener {
     var pw = new PrintWriter(sw);
     t.printStackTrace(pw);
     var sStackTrace = sw.toString();
-    error(formattedMessage + "\n" + sStackTrace, false);
-  }
-
-  void warn(String formattedMessage, boolean isFromAnalysis) {
-    log("Warn ", formattedMessage, false, isFromAnalysis);
+    error(formattedMessage + "\n" + sStackTrace);
   }
 
   public void warn(String formattedMessage) {
-    warn(formattedMessage, false);
+    log("Warn", formattedMessage, false);
   }
 
-  void info(String formattedMessage, boolean isFromAnalysis) {
-    log("Info ", formattedMessage, false, isFromAnalysis);
+  public void warn(String formattedMessage, Throwable t) {
+    var sw = new StringWriter();
+    var pw = new PrintWriter(sw);
+    t.printStackTrace(pw);
+    var sStackTrace = sw.toString();
+    warn(formattedMessage + "\n" + sStackTrace);
   }
 
   public void info(String formattedMessage) {
-    info(formattedMessage, false);
-  }
-
-  void debug(String formattedMessage, boolean isFromAnalysis) {
-    log("Debug", formattedMessage, true, isFromAnalysis);
+    log("Info", formattedMessage, false);
   }
 
   public void debug(String formattedMessage) {
-    debug(formattedMessage, false);
+    log("Debug", formattedMessage, true);
   }
 
-  void trace(String formattedMessage, boolean isFromAnalysis) {
-    log("Trace", formattedMessage, true, isFromAnalysis);
+  public void debug(String formattedMessage, Throwable t) {
+    var sw = new StringWriter();
+    var pw = new PrintWriter(sw);
+    t.printStackTrace(pw);
+    var sStackTrace = sw.toString();
+    debug(formattedMessage + "\n" + sStackTrace);
   }
 
   public void trace(String formattedMessage) {
-    trace(formattedMessage, false);
+    log("Trace", formattedMessage, true);
   }
 
 }

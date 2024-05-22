@@ -35,7 +35,6 @@ import org.eclipse.lsp4j.services.LanguageClient;
 import org.junit.jupiter.api.extension.AfterTestExecutionCallback;
 import org.junit.jupiter.api.extension.BeforeTestExecutionCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 
@@ -68,13 +67,12 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
  *   }
  * }
  * </pre>
- *
  */
 public class SonarLintLogTester implements BeforeTestExecutionCallback, AfterTestExecutionCallback {
 
   private final Queue<String> logs = new ConcurrentLinkedQueue<>();
   private final Map<MessageType, Queue<String>> logsByLevel = new ConcurrentHashMap<>();
-  private final LanguageClientLogOutput LOG;
+  private final LanguageClientLogger LOG;
 
   public SonarLintLogTester() {
     var client = new LanguageClient() {
@@ -106,7 +104,7 @@ public class SonarLintLogTester implements BeforeTestExecutionCallback, AfterTes
     };
     var logger = new LanguageClientLogger(client);
     logger.initialize(true);
-    LOG = new LanguageClientLogOutput(logger, false);
+    LOG = logger;
   }
 
 
@@ -119,6 +117,7 @@ public class SonarLintLogTester implements BeforeTestExecutionCallback, AfterTes
   public void afterTestExecution(ExtensionContext context) throws Exception {
     clear();
   }
+
   /**
    * Logs in chronological order (item at index 0 is the oldest one)
    */
@@ -139,7 +138,7 @@ public class SonarLintLogTester implements BeforeTestExecutionCallback, AfterTes
     logsByLevel.clear();
   }
 
-  public LanguageClientLogOutput getLogger() {
+  public LanguageClientLogger getLogger() {
     return LOG;
   }
 }

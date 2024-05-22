@@ -64,7 +64,6 @@ import testutils.SonarLintLogTester;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -136,7 +135,6 @@ class ProjectBindingManagerTests {
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(UNBOUND_SETTINGS);
 
 
-    when(enginesFactory.createEngine(anyString())).thenReturn(fakeEngine);
     when(backendServiceFacade.getBackendService()).thenReturn(mock(BackendService.class));
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token"));
 
@@ -145,7 +143,7 @@ class ProjectBindingManagerTests {
 
     when(openNotebooksCache.getFile(any(URI.class))).thenReturn(Optional.empty());
 
-    underTest = new ProjectBindingManager(enginesFactory, foldersManager, settingsManager, client, folderBindingCache, logTester.getLogger(),
+    underTest = new ProjectBindingManager(foldersManager, settingsManager, client, folderBindingCache, logTester.getLogger(),
       connectedEngineCacheByConnectionId, backendServiceFacade, openNotebooksCache, openFilesCache);
     underTest.setAnalysisManager(analysisManager);
   }
@@ -358,8 +356,6 @@ class ProjectBindingManagerTests {
   void update_all_project_bindings_on_get_binding() {
     var folder1 = mockFileInABoundWorkspaceFolder();
     when(foldersManager.getAll()).thenReturn(List.of(folder1));
-    when(enginesFactory.createEngine(anyString()))
-      .thenReturn(fakeEngine);
 
     var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 

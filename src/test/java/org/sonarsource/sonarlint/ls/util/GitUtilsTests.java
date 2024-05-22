@@ -32,7 +32,7 @@ import org.eclipse.jgit.lib.RefDatabase;
 import org.eclipse.jgit.lib.Repository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 import static java.lang.String.format;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -42,7 +42,7 @@ import static org.mockito.Mockito.when;
 
 class GitUtilsTests {
 
-  private final LanguageClientLogOutput fakeClientLogger = mock(LanguageClientLogOutput.class);
+  private final LanguageClientLogger fakeClientLogger = mock(LanguageClientLogger.class);
 
   @Test
   void noGitRepoShouldBeNull(@TempDir File projectDir) throws IOException {

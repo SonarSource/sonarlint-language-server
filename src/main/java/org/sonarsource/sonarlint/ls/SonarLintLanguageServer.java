@@ -120,9 +120,7 @@ import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.ModuleEventsProcessor;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersProvider;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
@@ -132,7 +130,6 @@ import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
-import org.sonarsource.sonarlint.ls.standalone.StandaloneEngineManager;
 import org.sonarsource.sonarlint.ls.standalone.notifications.PromotionalNotifications;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.telemetry.TelemetryInitParams;
@@ -166,8 +163,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final OpenFilesCache openFilesCache;
   private final OpenNotebooksCache openNotebooksCache;
-  private final EnginesFactory enginesFactory;
-  private final StandaloneEngineManager standaloneEngineManager;
   private final CommandManager commandManager;
   private final ProgressManager progressManager;
   private final ExecutorService lspThreadPool;
@@ -217,7 +212,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.analyzers = analyzers;
     this.client = launcher.getRemoteProxy();
     this.lsLogOutput = new LanguageClientLogger(this.client);
-    var globalLogOutput = new LanguageClientLogOutput(lsLogOutput, false);
     this.openFilesCache = new OpenFilesCache(lsLogOutput);
 
     this.issuesCache = new IssuesCache();
@@ -226,33 +220,30 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.notebookDiagnosticPublisher = new NotebookDiagnosticPublisher(client, issuesCache);
     this.openNotebooksCache = new OpenNotebooksCache(lsLogOutput, notebookDiagnosticPublisher);
     this.notebookDiagnosticPublisher.setOpenNotebooksCache(openNotebooksCache);
-    this.progressManager = new ProgressManager(client, globalLogOutput);
+    this.progressManager = new ProgressManager(client, lsLogOutput);
     this.hostInfoProvider = new HostInfoProvider();
-    var skippedPluginsNotifier = new SkippedPluginsNotifier(client, globalLogOutput);
+    var skippedPluginsNotifier = new SkippedPluginsNotifier(client, lsLogOutput);
     this.promotionalNotifications = new PromotionalNotifications(client);
     var analysisTasksCache = new AnalysisTasksCache();
-    var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, globalLogOutput, taintVulnerabilitiesCache, openFilesCache,
+    var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, lsLogOutput, taintVulnerabilitiesCache, openFilesCache,
       openNotebooksCache, skippedPluginsNotifier, promotionalNotifications, analysisTasksCache);
     this.backendServiceFacade = new BackendServiceFacade(vsCodeClient, lsLogOutput, client);
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
-    this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, globalLogOutput);
+    this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, lsLogOutput);
     this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache,
       securityHotspotsCache, openNotebooksCache);
     vsCodeClient.setDiagnosticPublisher(diagnosticPublisher);
-    this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, backendServiceFacade, globalLogOutput);
+    this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, backendServiceFacade, lsLogOutput);
     vsCodeClient.setSettingsManager(settingsManager);
     vsCodeClient.setWorkspaceFoldersManager(workspaceFoldersManager);
     backendServiceFacade.setSettingsManager(settingsManager);
-    this.fileTypeClassifier = new FileTypeClassifier(globalLogOutput);
-    javaConfigCache = new JavaConfigCache(client, openFilesCache, globalLogOutput);
-    this.enginesFactory = new EnginesFactory(analyzers, globalLogOutput,
-      new WorkspaceFoldersProvider(workspaceFoldersManager, this.fileTypeClassifier, javaConfigCache), backendServiceFacade);
-    this.standaloneEngineManager = new StandaloneEngineManager(enginesFactory);
+    this.fileTypeClassifier = new FileTypeClassifier(lsLogOutput);
+    javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
     this.settingsManager.addListener(lsLogOutput);
-    this.bindingManager = new ProjectBindingManager(enginesFactory, workspaceFoldersManager, settingsManager,
-      client, globalLogOutput, backendServiceFacade, openNotebooksCache, openFilesCache);
+    this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager,
+      client, lsLogOutput, backendServiceFacade, openNotebooksCache, openFilesCache);
     vsCodeClient.setBindingManager(bindingManager);
-    this.telemetry = new SonarLintTelemetry(backendServiceFacade, globalLogOutput);
+    this.telemetry = new SonarLintTelemetry(backendServiceFacade, lsLogOutput);
     this.backendServiceFacade.setTelemetry(telemetry);
     this.settingsManager.addListener(telemetry);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) bindingManager);
@@ -260,10 +251,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.workspaceFoldersManager.addListener(settingsManager);
     var smartNotifications = new SmartNotifications(client, telemetry);
     vsCodeClient.setSmartNotifications(smartNotifications);
-    this.scmIgnoredCache = new ScmIgnoredCache(client, globalLogOutput);
+    this.scmIgnoredCache = new ScmIgnoredCache(client, lsLogOutput);
     this.moduleEventsProcessor = new ModuleEventsProcessor(workspaceFoldersManager, fileTypeClassifier, javaConfigCache, backendServiceFacade, settingsManager);
-    this.analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, globalLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
-      fileTypeClassifier, issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, telemetry, diagnosticPublisher,
+    this.analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
+      issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, diagnosticPublisher,
       client, openNotebooksCache, notebookDiagnosticPublisher, progressManager, backendServiceFacade, analysisTasksCache);
     this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor, client);
     vsCodeClient.setAnalysisScheduler(analysisScheduler);
@@ -273,14 +264,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) analysisScheduler);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) analysisScheduler);
     this.commandManager = new CommandManager(client, settingsManager, bindingManager, telemetry, taintVulnerabilitiesCache,
-      issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, openNotebooksCache, globalLogOutput);
+      issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, openNotebooksCache, lsLogOutput);
 
-    this.branchManager = new WorkspaceFolderBranchManager(backendServiceFacade, globalLogOutput);
+    this.branchManager = new WorkspaceFolderBranchManager(backendServiceFacade, lsLogOutput);
     vsCodeClient.setBranchManager(branchManager);
     this.workspaceFoldersManager.addListener(this.branchManager);
     this.workspaceFoldersManager.setBindingManager(bindingManager);
     this.taintIssuesUpdater = new TaintIssuesUpdater(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager,
-      diagnosticPublisher, globalLogOutput);
+      diagnosticPublisher, lsLogOutput);
     var cleanAsYouCodeManager = new CleanAsYouCodeManager(diagnosticPublisher, openFilesCache, backendServiceFacade);
     this.settingsManager.addListener(cleanAsYouCodeManager);
     this.shutdownLatch = new CountDownLatch(1);
@@ -408,7 +399,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<Object> shutdown() {
     List.<Runnable>of(
         // prevent creation of new engines
-        enginesFactory::shutdown,
         analysisScheduler::shutdown,
         branchManager::shutdown,
         settingsManager::shutdown,
@@ -418,7 +408,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         branchChangeEventExecutor::shutdown,
         // shutdown engines after the rest so that no operations remain on them, and they won't be recreated accidentally
         bindingManager::shutdown,
-        standaloneEngineManager::shutdown,
         backendServiceFacade::shutdown)
       // Do last
       .forEach(this::invokeQuietly);

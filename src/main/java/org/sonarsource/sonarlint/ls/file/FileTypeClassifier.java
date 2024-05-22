@@ -25,14 +25,14 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 
 public class FileTypeClassifier {
 
-  private final LanguageClientLogOutput globalLogOutput;
+  private final LanguageClientLogger globalLogOutput;
 
-  public FileTypeClassifier(LanguageClientLogOutput globalLogOutput) {
+  public FileTypeClassifier(LanguageClientLogger globalLogOutput) {
 
     this.globalLogOutput = globalLogOutput;
   }

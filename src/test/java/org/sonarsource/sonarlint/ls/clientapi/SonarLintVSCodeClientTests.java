@@ -780,7 +780,7 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void shouldForwardDetectedSecretToDiagnosticPublisher() {
-    underTest.didDetectSecret();
+    underTest.didDetectSecret("configScope");
 
     verify(diagnosticPublisher, times(1)).didDetectSecret();
   }

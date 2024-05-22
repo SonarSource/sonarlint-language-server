@@ -1296,7 +1296,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(uriInFolder, "csharp", "@using System");
 
     awaitUntilAsserted(() -> assertLogContains("Found 0 issues"));
-    assertLogContains("'OmniSharp' skipped because there is no related files in the current project");
+    assertLogContains("'OmniSharp' skipped because there are no related files in the current project");
   }
 
   private void assertLocalIssuesStatusChanged(String fileUri) {

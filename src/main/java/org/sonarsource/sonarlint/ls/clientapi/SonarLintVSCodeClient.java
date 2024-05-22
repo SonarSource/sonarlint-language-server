@@ -55,7 +55,6 @@ import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.jetbrains.annotations.NotNull;
-import org.sonarsource.sonarlint.core.client.utils.ClientLogOutput;
 import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
 import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintCancelChecker;
@@ -77,7 +76,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.http.ProxyDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.X509CertificateDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.ShowIssueParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogLevel;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.message.ShowSoonUnsupportedMessageParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidSkipLoadingPluginParams;
@@ -110,7 +108,7 @@ import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
@@ -129,7 +127,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private SettingsManager settingsManager;
   private SmartNotifications smartNotifications;
   private final HostInfoProvider hostInfoProvider;
-  private final LanguageClientLogOutput logOutput;
+  private final LanguageClientLogger logOutput;
   private ProjectBindingManager bindingManager;
   private ServerSentEventsHandlerService serverSentEventsHandlerService;
   private BackendServiceFacade backendServiceFacade;
@@ -148,7 +146,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private AnalysisTasksCache analysisTasksCache;
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider,
-    LanguageClientLogOutput logOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, OpenFilesCache openFilesCache, OpenNotebooksCache openNotebooksCache,
+    LanguageClientLogger logOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, OpenFilesCache openFilesCache, OpenNotebooksCache openNotebooksCache,
     SkippedPluginsNotifier skippedPluginsNotifier, PromotionalNotifications promotionalNotifications, AnalysisTasksCache analysisTasksCache) {
     this.client = client;
     this.hostInfoProvider = hostInfoProvider;
@@ -199,33 +197,12 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   public void log(LogParams params) {
     var rawMessage = params.getMessage();
     var sanitizedMessage = rawMessage != null ? rawMessage : "null";
-    var level = convertLogLevel(params.getLevel());
+    var level = params.getLevel();
     logOutput.log(sanitizedMessage, level);
     var stackTrace = params.getStackTrace();
     if (stackTrace != null) {
       logOutput.log(stackTrace, level);
     }
-  }
-
-  private static ClientLogOutput.Level convertLogLevel(LogLevel level) {
-    switch (level) {
-      case ERROR -> {
-        return ClientLogOutput.Level.ERROR;
-      }
-      case WARN -> {
-        return ClientLogOutput.Level.WARN;
-      }
-      case INFO -> {
-        return ClientLogOutput.Level.INFO;
-      }
-      case DEBUG -> {
-        return ClientLogOutput.Level.DEBUG;
-      }
-      case TRACE -> {
-        return ClientLogOutput.Level.TRACE;
-      }
-    }
-    throw new IllegalArgumentException("Unknown log level");
   }
 
   @Override
@@ -649,7 +626,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   }
 
   @Override
-  public void didDetectSecret() {
+  public void didDetectSecret(String configScopeId) {
     diagnosticPublisher.didDetectSecret();
   }
 

@@ -26,23 +26,23 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintCancelChecker;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogOutput;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.util.GitUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleListener {
   private final ExecutorService executorService;
-  private final LanguageClientLogOutput logOutput;
+  private final LanguageClientLogger logOutput;
   private final BackendServiceFacade backendServiceFacade;
 
   public WorkspaceFolderBranchManager(BackendServiceFacade backendServiceFacade,
-    LanguageClientLogOutput logOutput) {
+    LanguageClientLogger logOutput) {
     this(backendServiceFacade, Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Branch Manager",
       false)), logOutput);
   }
 
   WorkspaceFolderBranchManager(BackendServiceFacade backendServiceFacade,
-    ExecutorService executorService, LanguageClientLogOutput logOutput) {
+    ExecutorService executorService, LanguageClientLogger logOutput) {
     this.backendServiceFacade = backendServiceFacade;
     this.executorService = executorService;
     this.logOutput = logOutput;

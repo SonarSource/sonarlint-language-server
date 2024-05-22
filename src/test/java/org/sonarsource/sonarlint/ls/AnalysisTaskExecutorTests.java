@@ -50,7 +50,7 @@ class AnalysisTaskExecutorTests {
   @BeforeEach
   public void init() {
     lsLogOutput = mock(LanguageClientLogger.class);
-    underTest = new AnalysisTaskExecutor(null, lsLogOutput, logTester.getLogger(), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, analysisTasksCache);
+    underTest = new AnalysisTaskExecutor(null, lsLogOutput, logTester.getLogger(), null, null, null, null, null, null, null, null, null, null, null, null, null, analysisTasksCache);
     executor = Executors.newSingleThreadExecutor();
   }
 
