@@ -19,16 +19,15 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import java.nio.file.Path;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 
-public class EnginesFactory {
-
-  public static Path sonarLintUserHomeOverride = null;
+public class EnabledLanguages {
+  private EnabledLanguages() {
+    throw new IllegalStateException("Utility class");
+  }
 
   private static final Language[] STANDALONE_LANGUAGES = {
     Language.AZURERESOURCEMANAGER,
@@ -60,7 +59,7 @@ public class EnginesFactory {
     Language.PLSQL,
     Language.TSQL
   };
-  private final AtomicReference<Boolean> shutdown = new AtomicReference<>(false);
+
 
   public static Set<Language> getStandaloneLanguages() {
     return EnumSet.copyOf(List.of(STANDALONE_LANGUAGES));
@@ -68,10 +67,6 @@ public class EnginesFactory {
 
   public static Set<Language> getConnectedLanguages() {
     return Set.of(CONNECTED_ADDITIONAL_LANGUAGES);
-  }
-
-  public void shutdown() {
-    shutdown.set(true);
   }
 
 }

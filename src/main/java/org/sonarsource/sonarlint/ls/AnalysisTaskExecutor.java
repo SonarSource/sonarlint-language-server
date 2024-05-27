@@ -76,7 +76,6 @@ public class AnalysisTaskExecutor {
 
   private final ScmIgnoredCache filesIgnoredByScmCache;
   private final LanguageClientLogger clientLogger;
-  private final LanguageClientLogger logOutput;
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final ProjectBindingManager bindingManager;
   private final JavaConfigCache javaConfigCache;
@@ -92,14 +91,13 @@ public class AnalysisTaskExecutor {
   private final BackendServiceFacade backendServiceFacade;
   private final AnalysisTasksCache analysisTasksCache;
 
-  public AnalysisTaskExecutor(ScmIgnoredCache filesIgnoredByScmCache, LanguageClientLogger clientLogger, LanguageClientLogger logOutput,
+  public AnalysisTaskExecutor(ScmIgnoredCache filesIgnoredByScmCache, LanguageClientLogger clientLogger,
     WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, JavaConfigCache javaConfigCache, SettingsManager settingsManager,
     IssuesCache issuesCache, IssuesCache securityHotspotsCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher,
     SonarLintExtendedLanguageClient lsClient, OpenNotebooksCache openNotebooksCache, NotebookDiagnosticPublisher notebookDiagnosticPublisher,
     ProgressManager progressManager, BackendServiceFacade backendServiceFacade, AnalysisTasksCache analysisTasksCache) {
     this.filesIgnoredByScmCache = filesIgnoredByScmCache;
     this.clientLogger = clientLogger;
-    this.logOutput = logOutput;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.bindingManager = bindingManager;
     this.javaConfigCache = javaConfigCache;
@@ -123,7 +121,7 @@ public class AnalysisTaskExecutor {
     } catch (CanceledException e) {
       clientLogger.debug("Analysis canceled");
     } catch (Exception e) {
-      clientLogger.error("Analysis failed", e);
+      clientLogger.errorWithStackTrace("Analysis failed", e);
     }
   }
 
@@ -443,7 +441,7 @@ public class AnalysisTaskExecutor {
       filesToAnalyze.keySet().stream().toList(), extraPropertiesMap).join();
     filesToAnalyze.forEach((fileUri, openFile) -> {
       var issues = issuesPerFiles.getOrDefault(fileUri, List.of());
-      serverIssueTracker.matchAndTrack(FileUtils.getFileRelativePath(baseDir, fileUri, logOutput), issues, issueListener, task.shouldFetchServerIssues());
+      serverIssueTracker.matchAndTrack(FileUtils.getFileRelativePath(baseDir, fileUri, clientLogger), issues, issueListener, task.shouldFetchServerIssues());
     });
     return results;
   }

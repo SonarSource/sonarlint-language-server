@@ -108,23 +108,24 @@ public class LanguageClientLogger implements WorkspaceSettingsChangeListener {
     log("Error", formattedMessage, false);
   }
 
-  public void error(String formattedMessage, Throwable t) {
+  public void errorWithStackTrace(String formattedMessage, Throwable t) {
+    var sStackTrace = getsStackTrace(t);
+    error(formattedMessage + "\n" + sStackTrace);
+  }
+
+  private static String getsStackTrace(Throwable t) {
     var sw = new StringWriter();
     var pw = new PrintWriter(sw);
     t.printStackTrace(pw);
-    var sStackTrace = sw.toString();
-    error(formattedMessage + "\n" + sStackTrace);
+    return sw.toString();
   }
 
   public void warn(String formattedMessage) {
     log("Warn", formattedMessage, false);
   }
 
-  public void warn(String formattedMessage, Throwable t) {
-    var sw = new StringWriter();
-    var pw = new PrintWriter(sw);
-    t.printStackTrace(pw);
-    var sStackTrace = sw.toString();
+  public void warnWithStackTrace(String formattedMessage, Throwable t) {
+    var sStackTrace = getsStackTrace(t);
     warn(formattedMessage + "\n" + sStackTrace);
   }
 
@@ -136,11 +137,8 @@ public class LanguageClientLogger implements WorkspaceSettingsChangeListener {
     log("Debug", formattedMessage, true);
   }
 
-  public void debug(String formattedMessage, Throwable t) {
-    var sw = new StringWriter();
-    var pw = new PrintWriter(sw);
-    t.printStackTrace(pw);
-    var sStackTrace = sw.toString();
+  public void debugWithStackTrace(String formattedMessage, Throwable t) {
+    var sStackTrace = getsStackTrace(t);
     debug(formattedMessage + "\n" + sStackTrace);
   }
 

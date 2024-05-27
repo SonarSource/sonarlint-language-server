@@ -220,19 +220,19 @@ public class BackendServiceFacade {
     try {
       backendService.shutdown().get(10, TimeUnit.SECONDS);
     } catch (ExecutionException | TimeoutException e) {
-      lsLogOutput.error("Unable to shutdown the SonartLint backend", e);
+      lsLogOutput.errorWithStackTrace("Unable to shutdown the SonartLint backend", e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     } finally {
       try {
         serverLauncher.close();
       } catch (Exception e) {
-        lsLogOutput.error("Unable to stop the SonartLint server launcher", e);
+        lsLogOutput.errorWithStackTrace("Unable to stop the SonartLint server launcher", e);
       }
       try {
         clientLauncher.close();
       } catch (Exception e) {
-        lsLogOutput.error("Unable to stop the SonartLint client launcher", e);
+        lsLogOutput.errorWithStackTrace("Unable to stop the SonartLint client launcher", e);
       }
     }
   }

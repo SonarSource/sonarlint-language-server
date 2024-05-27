@@ -86,7 +86,7 @@ public class Utils {
   }
 
   public static void interrupted(InterruptedException e, LanguageClientLogger logOutput) {
-    logOutput.debug("Interrupted! %s", e);
+    logOutput.debugWithStackTrace("Interrupted!", e);
     Thread.currentThread().interrupt();
   }
 
@@ -174,7 +174,7 @@ public class Utils {
     } catch (InterruptedException e) {
       interrupted(e, logOutput);
     } catch (ExecutionException e) {
-      logOutput.warn("Future computation completed with an exception", e);
+      logOutput.warnWithStackTrace("Future computation completed with an exception", e);
     }
     return Optional.empty();
   }

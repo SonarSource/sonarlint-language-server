@@ -50,7 +50,7 @@ class AnalysisTaskExecutorTests {
   @BeforeEach
   public void init() {
     lsLogOutput = mock(LanguageClientLogger.class);
-    underTest = new AnalysisTaskExecutor(null, lsLogOutput, logTester.getLogger(), null, null, null, null, null, null, null, null, null, null, null, null, null, analysisTasksCache);
+    underTest = new AnalysisTaskExecutor(null, lsLogOutput, null, null, null, null, null, null, null, null, null, null, null, null, null, analysisTasksCache);
     executor = Executors.newSingleThreadExecutor();
   }
 
@@ -79,7 +79,7 @@ class AnalysisTaskExecutorTests {
 
     errorTask.setFuture(future);
 
-    verify(lsLogOutput, timeout(1000)).error(eq("Analysis failed"), any());
+    verify(lsLogOutput, timeout(1000)).errorWithStackTrace(eq("Analysis failed"), any());
     assertThat(errorTask.getFuture().isDone()).isTrue();
   }
 

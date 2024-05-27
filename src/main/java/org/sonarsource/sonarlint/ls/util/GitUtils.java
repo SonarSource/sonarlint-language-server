@@ -56,7 +56,7 @@ public class GitUtils {
       }
       return builder.build();
     } catch (IOException e) {
-      logOutput.error("Couldn't access repository for path " + projectDir + ". %s", e);
+      logOutput.errorWithStackTrace("Couldn't access repository for path " + projectDir, e);
     }
     return null;
   }
@@ -104,7 +104,7 @@ public class GitUtils {
           return bestCandidates.iterator().next();
         }).orElse(null);
     } catch (IOException e) {
-      logOutput.error("Couldn't find best matching branch. %s", e);
+      logOutput.errorWithStackTrace("Couldn't find best matching branch.", e);
       return null;
     }
   }
