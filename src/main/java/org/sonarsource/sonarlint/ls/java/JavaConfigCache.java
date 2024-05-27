@@ -67,7 +67,7 @@ public class JavaConfigCache {
       Utils.interrupted(e, logOutput);
       javaConfigOpt = empty();
     } catch (Exception e) {
-      logOutput.error("Unable to get Java config. %s", e);
+      logOutput.errorWithStackTrace("Unable to get Java config.", e);
       javaConfigOpt = empty();
     }
     return javaConfigOpt;
@@ -87,7 +87,7 @@ public class JavaConfigCache {
     return client.getJavaConfig(fileUri.toString())
       .handle((r, t) -> {
         if (t != null) {
-          logOutput.error("Unable to fetch Java configuration of file " + fileUri + ". %s", t);
+          logOutput.errorWithStackTrace("Unable to fetch Java configuration of file " + fileUri, t);
         }
         return r;
       })

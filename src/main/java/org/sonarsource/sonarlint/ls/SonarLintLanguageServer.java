@@ -253,7 +253,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     vsCodeClient.setSmartNotifications(smartNotifications);
     this.scmIgnoredCache = new ScmIgnoredCache(client, lsLogOutput);
     this.moduleEventsProcessor = new ModuleEventsProcessor(workspaceFoldersManager, fileTypeClassifier, javaConfigCache, backendServiceFacade, settingsManager);
-    this.analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
+    this.analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
       issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, diagnosticPublisher,
       client, openNotebooksCache, notebookDiagnosticPublisher, progressManager, backendServiceFacade, analysisTasksCache);
     this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor, client);
@@ -406,8 +406,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         moduleEventsProcessor::shutdown,
         taintIssuesUpdater::shutdown,
         branchChangeEventExecutor::shutdown,
-        // shutdown engines after the rest so that no operations remain on them, and they won't be recreated accidentally
-        bindingManager::shutdown,
         backendServiceFacade::shutdown)
       // Do last
       .forEach(this::invokeQuietly);
@@ -435,7 +433,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     try {
       call.run();
     } catch (Exception e) {
-      lsLogOutput.error("Unable to properly shutdown", e);
+      lsLogOutput.errorWithStackTrace("Unable to properly shutdown", e);
     }
   }
 
@@ -638,7 +636,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       return;
     }
     branchChangeEventExecutor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().notifyBackendOnVcsChange(folderUri),
-      t -> lsLogOutput.error("Failed to notify backend on VCS change", t)));
+      t -> lsLogOutput.errorWithStackTrace("Failed to notify backend on VCS change", t)));
   }
 
   @Override
@@ -776,7 +774,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   void provideBackendInitData(String productKey, String userAgent, String clientNodePath) {
     BackendInitParams params = backendServiceFacade.getInitParams();
     params.setTelemetryProductKey(productKey);
-    var actualSonarLintUserHome = Optional.ofNullable(EnginesFactory.sonarLintUserHomeOverride).orElse(SonarLintUserHome.get());
+    var actualSonarLintUserHome = Optional.ofNullable(SettingsManager.getSonarLintUserHomeOverride()).orElse(SonarLintUserHome.get());
     params.setStorageRoot(actualSonarLintUserHome.resolve("storage"));
     params.setSonarlintUserHome(actualSonarLintUserHome.toString());
 
@@ -784,9 +782,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     params.setConnectedModeEmbeddedPluginPathsByKey(getEmbeddedPluginsToPath());
     params.setEnableSecurityHotspots(true);
 
-    params.setEnabledLanguagesInStandaloneMode(EnginesFactory.getStandaloneLanguages().stream()
+    params.setEnabledLanguagesInStandaloneMode(EnabledLanguages.getStandaloneLanguages().stream()
       .map(l -> Language.valueOf(l.name())).collect(Collectors.toSet()));
-    params.setExtraEnabledLanguagesInConnectedMode(EnginesFactory.getConnectedLanguages().stream()
+    params.setExtraEnabledLanguagesInConnectedMode(EnabledLanguages.getConnectedLanguages().stream()
       .map(l -> Language.valueOf(l.name())).collect(Collectors.toSet()));
     params.setUserAgent(userAgent);
     params.setClientNodePath(clientNodePath);
@@ -869,7 +867,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       diagnosticPublisher.publishDiagnostics(create(params.getFileUri()), false);
       client.showMessage(new MessageParams(MessageType.Info, "Issue status was changed"));
     }).exceptionally(t -> {
-      lsLogOutput.error("Error changing issue status", t);
+      lsLogOutput.errorWithStackTrace("Error changing issue status", t);
       client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the issue. Look at the SonarLint output for details."));
       return null;
     }).thenAccept(unused -> {
@@ -918,7 +916,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       diagnosticPublisher.publishDiagnostics(create(params.getFileUri()), true);
       client.showMessage(new MessageParams(MessageType.Info, "Hotspot status was changed"));
     }).exceptionally(t -> {
-      lsLogOutput.error("Error changing hotspot status", t);
+      lsLogOutput.errorWithStackTrace("Error changing hotspot status", t);
       client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarLint output for details."));
       return null;
     });
@@ -944,7 +942,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         r.getNotPermittedReason(),
         statuses);
     }).exceptionally(t -> {
-      lsLogOutput.error("Error changing hotspot status", t);
+      lsLogOutput.errorWithStackTrace("Error changing hotspot status", t);
       client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarLint output for details."));
       return null;
     });
@@ -963,7 +961,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       }
       return r;
     }).exceptionally(e -> {
-      lsLogOutput.error("Error while reopening resolved local issues", e);
+      lsLogOutput.errorWithStackTrace("Error while reopening resolved local issues", e);
       client.showMessage(new MessageParams(MessageType.Error, "Could not reopen resolved local issues. Look at the SonarLint output for details."));
       return null;
     });

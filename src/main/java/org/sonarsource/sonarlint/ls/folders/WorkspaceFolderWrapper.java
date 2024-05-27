@@ -85,7 +85,7 @@ public class WorkspaceFolderWrapper {
         return settings;
       }
     } catch (InterruptedException e) {
-      logOutput.debug("Interrupted!", e);
+      logOutput.debugWithStackTrace("Interrupted!", e);
       Thread.currentThread().interrupt();
     }
     throw new IllegalStateException("Unable to get settings in time");

@@ -635,7 +635,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void test_command_open_standalone_rule_desc_with_unknown_diagnostic_rule() throws ExecutionException, InterruptedException {
     lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", List.of("unknown:rule"))).get();
     await().atMost(10, SECONDS).untilAsserted(() -> assertThat(client.shownMessages)
-      .contains(new MessageParams(MessageType.Error, "Can't show rule details for unknown rule with key: unknown:rule. Error: %s")));
+      .contains(new MessageParams(MessageType.Error, "Can't show rule details for unknown rule with key: unknown:rule")));
   }
 
   @Test

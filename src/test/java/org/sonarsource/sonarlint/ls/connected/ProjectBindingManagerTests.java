@@ -46,7 +46,7 @@ import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
 import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
-import org.sonarsource.sonarlint.ls.EnginesFactory;
+import org.sonarsource.sonarlint.ls.EnabledLanguages;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -106,7 +106,7 @@ class ProjectBindingManagerTests {
   private final SettingsManager settingsManager = mock(SettingsManager.class);
   private final WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
   private final Map<String, ServerConnectionSettings> servers = new HashMap<>();
-  private final EnginesFactory enginesFactory = mock(EnginesFactory.class);
+  private final EnabledLanguages enginesFactory = mock(EnabledLanguages.class);
   private final SonarLintAnalysisEngine fakeEngine = mock(SonarLintAnalysisEngine.class);
   private final SonarLintAnalysisEngine fakeEngine2 = mock(SonarLintAnalysisEngine.class);
   private final AnalysisScheduler analysisManager = mock(AnalysisScheduler.class);

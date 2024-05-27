@@ -62,6 +62,8 @@ import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 
 public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
+  private static Path sonarLintUserHomeOverride = null;
+
   private static final String ORGANIZATION_KEY = "organizationKey";
   private static final String DISABLE_NOTIFICATIONS = "disableNotifications";
   private static final String PROJECT = "project";
@@ -117,6 +119,14 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     this.executor = executor;
     this.backendServiceFacade = backendServiceFacade;
     this.logOutput = logOutput;
+  }
+
+  public static void setSonarLintUserHomeOverride(Path sonarLintUserHomeOverride) {
+    SettingsManager.sonarLintUserHomeOverride = sonarLintUserHomeOverride;
+  }
+
+  public static Path getSonarLintUserHomeOverride() {
+    return sonarLintUserHomeOverride;
   }
 
   /**
@@ -184,7 +194,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       } catch (InterruptedException e) {
         interrupted(e, logOutput);
       } catch (Exception e) {
-        logOutput.error("Unable to update configuration %s", e);
+        logOutput.errorWithStackTrace("Unable to update configuration.", e);
       } finally {
         client.readyForTests();
       }
@@ -312,7 +322,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     } catch (InterruptedException e) {
       interrupted(e, logOutput);
     } catch (Exception e) {
-      logOutput.error("Unable to update configuration of folder " + f.getUri() + ". %s", e);
+      logOutput.errorWithStackTrace("Unable to update configuration of folder " + f.getUri(), e);
     }
   }
 
@@ -394,10 +404,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       return client.getTokenForServer(serverUrlOrOrganization).get();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logOutput.error("Can't get token for server " + serverUrlOrOrganization + ". %s", e);
+      logOutput.errorWithStackTrace("Can't get token for server " + serverUrlOrOrganization, e);
       return null;
     } catch (ExecutionException e) {
-      logOutput.error("Can't get token for server " + serverUrlOrOrganization + ". %s", e);
+      logOutput.errorWithStackTrace("Can't get token for server " + serverUrlOrOrganization, e);
       return null;
     }
   }

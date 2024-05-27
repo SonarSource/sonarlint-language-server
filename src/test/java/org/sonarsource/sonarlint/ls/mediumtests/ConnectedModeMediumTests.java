@@ -101,7 +101,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
 
   private static final String CONNECTION_ID = "mediumTests";
-  private static final String CONFIG_SCOPE_ID = "mediumTests_config_scope";
 
   private static final String PROJECT_KEY1 = "project:key1";
   private static final String PROJECT_NAME1 = "Project One";

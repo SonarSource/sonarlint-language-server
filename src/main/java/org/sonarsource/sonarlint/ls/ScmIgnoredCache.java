@@ -67,7 +67,7 @@ public class ScmIgnoredCache {
     return client.isIgnoredByScm(fileUri.toString())
       .handle((r, t) -> {
         if (t != null) {
-          logOutput.error(format("Unable to check if file %s is SCM ignored", fileUri), t);
+          logOutput.errorWithStackTrace(format("Unable to check if file %s is SCM ignored", fileUri), t);
         }
         return r;
       })

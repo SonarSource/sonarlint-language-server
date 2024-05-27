@@ -264,7 +264,7 @@ public class BackendService {
       .thenApply(result -> new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedResponse(result.isPermitted(),
         result.getNotPermittedReason(), result.getAllowedStatuses().stream().map(EnumLabelsMapper::resolutionStatusToLabel).toList()))
       .exceptionally(t -> {
-        logOutput.error("Error getting issue status change permissions", t);
+        logOutput.errorWithStackTrace("Error getting issue status change permissions", t);
         client.logMessage(new MessageParams(MessageType.Error, "Could not get issue status change for issue \""
           + issueKey + "\". Look at the SonarLint output for details."));
         return null;
@@ -278,7 +278,7 @@ public class BackendService {
   public CompletableFuture<Void> addIssueComment(AddIssueCommentParams params) {
     return initializedBackend().getIssueService().addComment(params)
       .exceptionally(t -> {
-        logOutput.error("Error adding issue comment", t);
+        logOutput.errorWithStackTrace("Error adding issue comment", t);
         client.showMessage(new MessageParams(MessageType.Error, "Could not add a new issue comment. Look at the SonarLint output for " +
           "details."));
         return null;

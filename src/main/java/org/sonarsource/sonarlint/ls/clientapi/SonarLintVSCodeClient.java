@@ -91,7 +91,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.UsernamePasswordDto;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.AnalysisTasksCache;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
-import org.sonarsource.sonarlint.ls.EnginesFactory;
 import org.sonarsource.sonarlint.ls.SkippedPluginsNotifier;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.CreateConnectionParams;
@@ -119,6 +118,7 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
+import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.ROOT_CONFIGURATION_SCOPE;
 
 public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
@@ -376,9 +376,9 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       sha1fingerprint = Utils.formatSha1Fingerprint(DigestUtils.sha1Hex(untrustedCert.getEncoded()));
       sha256fingerprint = Utils.formatSha256Fingerprint(DigestUtils.sha256Hex(untrustedCert.getEncoded()));
     } catch (CertificateEncodingException | IndexOutOfBoundsException e) {
-      logOutput.error("Certificate encoding is malformed, SHA fingerprints will not be displayed: %s", e);
+      logOutput.errorWithStackTrace("Certificate encoding is malformed, SHA fingerprints will not be displayed.", e);
     }
-    var actualSonarLintUserHome = Optional.ofNullable(EnginesFactory.sonarLintUserHomeOverride).orElse(SonarLintUserHome.get());
+    var actualSonarLintUserHome = SonarLintUserHome.get();
     var confirmationParams = new SonarLintExtendedLanguageClient.SslCertificateConfirmationParams(
       untrustedCert == null ? "" : untrustedCert.getSubjectX500Principal().getName(),
       untrustedCert == null ? "" : untrustedCert.getIssuerX500Principal().getName(),
@@ -523,6 +523,9 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   private void initializeTaintCache(Set<String> configurationScopeIds) {
     configurationScopeIds.forEach(configurationScopeId -> {
+      if (Objects.equals(configurationScopeId, ROOT_CONFIGURATION_SCOPE)) {
+        return;
+      }
       var binding = bindingManager.getBinding(URI.create(configurationScopeId));
       if (binding.isPresent()) {
         var isSonarCloud = Objects.requireNonNull(bindingManager.getServerConnectionSettingsFor(binding.get().getConnectionId())).isSonarCloudAlias();

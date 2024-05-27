@@ -22,11 +22,9 @@ package org.sonarsource.sonarlint.ls.connected;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
@@ -66,7 +64,6 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
-import static java.util.function.Predicate.not;
 import static org.sonarsource.sonarlint.ls.util.Utils.fixWindowsURIEncoding;
 import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 import static org.sonarsource.sonarlint.ls.util.Utils.uriHasFileScheme;
@@ -276,59 +273,32 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
    */
   private void clearFilesBindingCache() {
     fileBindingCache.clear();
-    stopUnusedEngines();
     analysisManager.analyzeAllOpenFilesInFolder(null);
   }
 
   private void clearFolderBindingCache(WorkspaceFolderWrapper folder) {
     folderBindingCache.remove(folder.getUri());
-    stopUnusedEngines();
     analysisManager.analyzeAllOpenFilesInFolder(folder);
   }
 
   private void unbindFiles() {
     fileBindingCache.replaceAll((uri, binding) -> Optional.empty());
     globalLogOutput.debug("All files outside workspace are now unbound");
-    stopUnusedEngines();
     analysisManager.analyzeAllOpenFilesInFolder(null);
   }
 
   private void unbindFolder(WorkspaceFolderWrapper folder) {
     folderBindingCache.put(folder.getUri(), Optional.empty());
     globalLogOutput.debug(format("Workspace '%s' unbound", folder));
-    stopUnusedEngines();
     analysisManager.analyzeAllOpenFilesInFolder(folder);
     var bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
     var params = new DidUpdateBindingParams(folder.getUri().toString(), bindingConfigurationDto);
     backendServiceFacade.getBackendService().updateBinding(params);
   }
 
-  private void stopUnusedEngines() {
-    var usedServerIds = new HashSet<String>();
-    var folderSettings = settingsManager.getCurrentDefaultFolderSettings();
-    collectUsedServerId(usedServerIds, folderSettings);
-    foldersManager.getAll().forEach(w -> collectUsedServerId(usedServerIds, w.getSettings()));
-    var startedEngines = new HashSet<>(connectedEngineCacheByConnectionId.keySet());
-    startedEngines.stream()
-      .filter(not(usedServerIds::contains))
-      .forEach(this::clearCachesAndStopEngine);
-  }
-
-  private void clearCachesAndStopEngine(String connectionId) {
+  private void clearCaches(String connectionId) {
     folderBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().getConnectionId().equals(connectionId));
     fileBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().getConnectionId().equals(connectionId));
-    if (connectedEngineCacheByConnectionId.containsKey(connectionId)) {
-      tryStopServer(connectionId, connectedEngineCacheByConnectionId.remove(connectionId));
-    }
-  }
-
-  private void collectUsedServerId(Set<String> usedConnectionIds, WorkspaceFolderSettings folderSettings) {
-    if (folderSettings.hasBinding()) {
-      var connectionId = folderSettings.getConnectionId();
-      if (connectionId != null && settingsManager.getCurrentSettings().getServerConnections().containsKey(connectionId)) {
-        usedConnectionIds.add(connectionId);
-      }
-    }
   }
 
   @Override
@@ -341,7 +311,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         var oldConnection = oldValue.getServerConnections().get(id);
         if (oldConnection != null && !oldConnection.equals(value)) {
           // Settings of the connection have been changed. Remove all cached bindings and force close the engine
-          clearCachesAndStopEngine(id);
+          clearCaches(id);
         }
         if (oldConnection == null || !oldConnection.equals(value)) {
           // New connection or changed settings. Validate connection
@@ -349,7 +319,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         }
       }
     });
-    stopUnusedEngines();
   }
 
   public void validateConnection(String id) {
@@ -360,21 +329,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         client.reportConnectionCheckResult(connectionCheckResult);
       }));
   }
-
-  public void shutdown() {
-    connectedEngineCacheByConnectionId.forEach(this::tryStopServer);
-  }
-
-  private void tryStopServer(String connectionId, Optional<SonarLintAnalysisEngine> engine) {
-    engine.ifPresent(e -> {
-      try {
-        e.stop();
-      } catch (Exception ex) {
-        globalLogOutput.error("Unable to stop engine '" + connectionId + "'. %s", ex);
-      }
-    });
-  }
-
 
   public Optional<String> resolveBranchNameForFolder(URI folder) {
     var matchedSonarProjectBranch = backendServiceFacade.getBackendService().getMatchedSonarProjectBranch(folder.toString()).join().getMatchedSonarProjectBranch();
