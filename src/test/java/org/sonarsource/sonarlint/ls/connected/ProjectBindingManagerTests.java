@@ -141,12 +141,11 @@ class ProjectBindingManagerTests {
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token"));
 
     folderBindingCache = new ConcurrentHashMap<>();
-    connectedEngineCacheByConnectionId = new ConcurrentHashMap<>();
 
     when(openNotebooksCache.getFile(any(URI.class))).thenReturn(Optional.empty());
 
     underTest = new ProjectBindingManager(foldersManager, settingsManager, client, folderBindingCache, logTester.getLogger(),
-      connectedEngineCacheByConnectionId, backendServiceFacade, openNotebooksCache, openFilesCache);
+      backendServiceFacade, openNotebooksCache, openFilesCache);
     underTest.setAnalysisManager(analysisManager);
   }
 

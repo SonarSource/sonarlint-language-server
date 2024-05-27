@@ -507,16 +507,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     globalListeners.add(listener);
   }
 
-  public void removeListener(WorkspaceSettingsChangeListener listener) {
-    globalListeners.remove(listener);
-  }
-
   public void addListener(WorkspaceFolderSettingsChangeListener listener) {
     folderListeners.add(listener);
-  }
-
-  public void removeListener(WorkspaceFolderSettingsChangeListener listener) {
-    folderListeners.remove(listener);
   }
 
   @Override

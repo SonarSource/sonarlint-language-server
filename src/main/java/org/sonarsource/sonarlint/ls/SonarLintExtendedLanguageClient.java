@@ -72,6 +72,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/openConnectionSettings")
   void openConnectionSettings(boolean isSonarCloud);
 
+  @JsonNotification("sonarlint/removeBindingsForDeletedConnections")
+  void removeBindingsForDeletedConnections(List<String> connectionIds);
+
   @JsonRequest("sonarlint/assistCreatingConnection")
   CompletableFuture<AssistCreatingConnectionResponse> assistCreatingConnection(CreateConnectionParams params);
 

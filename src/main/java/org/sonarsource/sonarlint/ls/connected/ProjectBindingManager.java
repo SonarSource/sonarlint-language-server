@@ -37,7 +37,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpdateBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.common.TransientSonarCloudConnectionDto;
@@ -85,7 +84,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache;
   private final LanguageClientLogger globalLogOutput;
   private final ConcurrentMap<URI, Optional<ProjectBinding>> fileBindingCache = new ConcurrentHashMap<>();
-  private final ConcurrentMap<String, Optional<SonarLintAnalysisEngine>> connectedEngineCacheByConnectionId;
   private final SonarLintExtendedLanguageClient client;
   private AnalysisScheduler analysisManager;
   private final BackendServiceFacade backendServiceFacade;
@@ -94,20 +92,18 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   public ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
     LanguageClientLogger globalLogOutput, BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache, OpenFilesCache openFilesCache) {
-    this(foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput, new ConcurrentHashMap<>(),
+    this(foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput,
       backendServiceFacade, openNotebooksCache, openFilesCache);
   }
 
   public ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
-    ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache, LanguageClientLogger globalLogOutput,
-    ConcurrentMap<String, Optional<SonarLintAnalysisEngine>> connectedEngineCacheByConnectionId, BackendServiceFacade backendServiceFacade,
+    ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache, LanguageClientLogger globalLogOutput, BackendServiceFacade backendServiceFacade,
     OpenNotebooksCache openNotebooksCache, OpenFilesCache openFilesCache) {
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
     this.client = client;
     this.folderBindingCache = folderBindingCache;
     this.globalLogOutput = globalLogOutput;
-    this.connectedEngineCacheByConnectionId = connectedEngineCacheByConnectionId;
     this.backendServiceFacade = backendServiceFacade;
     this.openNotebooksCache = openNotebooksCache;
     this.openFilesCache = openFilesCache;
@@ -309,6 +305,13 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   @Override
   public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
+    if (oldValue != null && oldValue.getServerConnections().size() > newValue.getServerConnections().size()) {
+      // connection(s) were deleted
+      var deletedConnections = oldValue.getServerConnections().keySet().stream()
+        .filter(id -> !newValue.getServerConnections().containsKey(id))
+        .toList();
+      client.removeBindingsForDeletedConnections(deletedConnections);
+    }
     newValue.getServerConnections().forEach((id, value) -> {
       if (oldValue == null) {
         // initial sync
