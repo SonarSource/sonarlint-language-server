@@ -544,6 +544,11 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
+    public void removeBindingsForDeletedConnections(List<String> connectionIds) {
+
+    }
+
+    @Override
     public CompletableFuture<AssistCreatingConnectionResponse> assistCreatingConnection(CreateConnectionParams params) {
       return CompletableFuture.completedFuture(new AssistCreatingConnectionResponse("connectionId"));
     }
@@ -572,6 +577,7 @@ public abstract class AbstractLanguageServerMediumTests {
     public CompletableFuture<String> getTokenForServer(String serverId) {
       return CompletableFutures.computeAsync(server -> "token");
     }
+
   }
 
   protected static void notifyConfigurationChangeOnClient() {

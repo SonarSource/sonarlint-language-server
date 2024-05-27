@@ -398,7 +398,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<Object> shutdown() {
     List.<Runnable>of(
-        // prevent creation of new engines
         analysisScheduler::shutdown,
         branchManager::shutdown,
         settingsManager::shutdown,
