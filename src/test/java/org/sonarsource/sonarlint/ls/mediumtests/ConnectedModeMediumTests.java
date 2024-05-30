@@ -42,7 +42,6 @@ import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
-import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
@@ -75,7 +74,6 @@ import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Qualityprofil
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Rules;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Settings;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
-import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.GetRemoteProjectsNamesParams;
 import org.sonarsource.sonarlint.ls.util.Utils;
 import testutils.MockWebServerExtension;
 
@@ -134,6 +132,13 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .addComponents(Components.Component.newBuilder().setKey(PROJECT_KEY1).setName(PROJECT_NAME1).build())
         .addComponents(Components.Component.newBuilder().setKey(PROJECT_KEY2).setName(PROJECT_NAME2).build())
         .setPaging(Common.Paging.newBuilder().setTotal(2).build())
+        .build());
+    mockWebServerExtension.addProtobufResponse("/api/components/show.protobuf?component=project%3Akey1",
+      Components.ShowWsResponse.newBuilder()
+        .setComponent(Components.Component.newBuilder()
+          .setKey(PROJECT_KEY1)
+          .setName(PROJECT_NAME1)
+          .build())
         .build());
     mockWebServerExtension.addProtobufResponse("/api/components/tree.protobuf?qualifiers=FIL,UTS&component=myProject&ps=500&p=1",
       Components.TreeWsResponse.newBuilder().build());
@@ -626,24 +631,18 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void shouldGetServerNamesForConnection() {
-    // Trigger a binding update to fetch projects in connected mode storage
-    ExecuteCommandParams updateBindings = new ExecuteCommandParams();
-    updateBindings.setCommand("SonarLint.UpdateAllBindings");
-    lsProxy.getWorkspaceService().executeCommand(updateBindings);
+  void shouldGetServerNamesForConnection() throws ExecutionException, InterruptedException {
+    var params = new SonarLintExtendedLanguageServer.GetRemoteProjectNamesByKeysParams(CONNECTION_ID, List.of(PROJECT_KEY1, "unknown"));
 
-    var params = new GetRemoteProjectsNamesParams(CONNECTION_ID, List.of(PROJECT_KEY1, "unknown"));
-
-    // Update of storage is asynchronous, eventually we get the right data in the storage :)
-    awaitUntilAsserted(() -> assertThat(lsProxy.getRemoteProjectNames(params).get()).containsExactly(Map.entry(PROJECT_KEY1,
-      PROJECT_NAME1)));
+    assertThat(lsProxy.getRemoteProjectNamesByProjectKeys(params).get()).containsExactly(Map.entry(PROJECT_KEY1,
+      PROJECT_NAME1));
   }
 
   @Test
   void shouldThrowGettingServerNamesForUnknownConnection() {
-    var params = new GetRemoteProjectsNamesParams("unknown connection", List.of("unknown-project"));
+    var params = new SonarLintExtendedLanguageServer.GetRemoteProjectsForConnectionParams("unknown connection");
 
-    var future = lsProxy.getRemoteProjectNames(params);
+    var future = lsProxy.getRemoteProjectsForConnection(params);
     awaitUntilAsserted(() -> assertThat(future).isCompletedExceptionally());
   }
 
@@ -688,6 +687,14 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     SonarLintExtendedLanguageServer.GetRemoteProjectsForConnectionParams testParams =
       new SonarLintExtendedLanguageServer.GetRemoteProjectsForConnectionParams("random_string");
     var future = lsProxy.getRemoteProjectsForConnection(testParams);
+
+    awaitUntilAsserted(() -> assertThat(future).isCompletedExceptionally());
+  }
+
+  @Test
+  void shouldThrowExceptionForUnknownProjectKey() {
+    SonarLintExtendedLanguageServer.GetRemoteProjectNamesByKeysParams testParams = new SonarLintExtendedLanguageServer.GetRemoteProjectNamesByKeysParams("random_string", List.of("unknown_project_key"));
+    var future = lsProxy.getRemoteProjectNamesByProjectKeys(testParams);
 
     awaitUntilAsserted(() -> assertThat(future).isCompletedExceptionally());
   }

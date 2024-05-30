@@ -22,9 +22,11 @@ package org.sonarsource.sonarlint.ls.connected;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
@@ -38,9 +40,13 @@ import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpdateBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.common.TransientSonarCloudConnectionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.common.TransientSonarQubeConnectionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.GetProjectNamesByKeyResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.SonarProjectDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogLevel;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
@@ -335,18 +341,22 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return matchedSonarProjectBranch == null ? Optional.empty() : Optional.of(matchedSonarProjectBranch);
   }
 
-  public Map<String, String> getRemoteProjects(@Nullable String maybeConnectionId) {
-    var connectionId = SettingsManager.connectionIdOrDefault(maybeConnectionId);
+  private Either<TransientSonarQubeConnectionDto, TransientSonarCloudConnectionDto> getTransientConnection(String connectionId) {
     var endpointParams = getEndpointParamsFor(connectionId);
     if (endpointParams == null) {
       throw new IllegalArgumentException(format("No server configuration found with ID '%s'", connectionId));
     }
+    var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
+    var connectionParams = Utils.getValidateConnectionParamsForNewConnection(
+      new SonarLintExtendedLanguageServer.ConnectionCheckParams(connectionSettings.getToken(),
+        connectionSettings.getOrganizationKey(), connectionSettings.getServerUrl()));
+    return connectionParams.getTransientConnection();
+  }
+
+  public Map<String, String> getRemoteProjects(String connectionId) {
+    var transientConnection = getTransientConnection(connectionId);
     try {
-      var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
-      var connectionParams = Utils.getValidateConnectionParamsForNewConnection(
-        new SonarLintExtendedLanguageServer.ConnectionCheckParams(connectionSettings.getToken(),
-          connectionSettings.getOrganizationKey(), connectionSettings.getServerUrl()));
-      var allProjectsResponse = backendServiceFacade.getBackendService().getAllProjects(connectionParams.getTransientConnection()).get();
+      var allProjectsResponse = backendServiceFacade.getBackendService().getAllProjects(transientConnection).get();
       return allProjectsResponse.getSonarProjects().stream().collect(Collectors.toMap(SonarProjectDto::getKey, SonarProjectDto::getName));
     } catch (DownloadException downloadFailed) {
       throw new IllegalStateException(format("Failed to fetch list of projects from '%s'", connectionId), downloadFailed);
@@ -356,6 +366,16 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       interrupted(e, globalLogOutput);
     }
     return Map.of();
+  }
+
+  public CompletableFuture<Map<String, String>> getRemoteProjectsByKeys(String connectionId, List<String> projectKeys) {
+    var transientConnection = getTransientConnection(connectionId);
+    try {
+      return backendServiceFacade.getBackendService().getProjectNamesByKeys(transientConnection, projectKeys)
+        .thenApply(GetProjectNamesByKeyResponse::getProjectNamesByKey);
+    } catch (DownloadException downloadFailed) {
+      throw new IllegalStateException(format("Failed to fetch list of projects from '%s'", connectionId), downloadFailed);
+    }
   }
 
   public Optional<URI> fullFilePathFromRelative(Path ideFilePath, String connectionId, String projectKey) {

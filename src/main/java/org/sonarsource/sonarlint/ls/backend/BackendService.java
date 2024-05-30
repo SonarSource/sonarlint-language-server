@@ -59,6 +59,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.Son
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarQubeConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.GetAllProjectsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.GetAllProjectsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.GetProjectNamesByKeyParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.GetProjectNamesByKeyResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.file.DidUpdateFileSystemParams;
@@ -345,14 +347,6 @@ public class BackendService {
     initializedBackend().getTelemetryService().disableTelemetry();
   }
 
-  public void didAddConfigurationScopes(DidAddConfigurationScopesParams params) {
-    initializedBackend().getConfigurationService().didAddConfigurationScopes(params);
-  }
-
-  public void didRemoveConfigurationScope(DidRemoveConfigurationScopeParams params) {
-    initializedBackend().getConfigurationService().didRemoveConfigurationScope(params);
-  }
-
   public TelemetryRpcService getTelemetryService() {
     return initializedBackend().getTelemetryService();
   }
@@ -373,6 +367,12 @@ public class BackendService {
   public CompletableFuture<AnalyzeFilesResponse> analyzeFiles(String configScopeId, UUID analysisId, List<URI> filesToAnalyze, Map<String, String> extraProps) {
     var params = new AnalyzeFilesParams(configScopeId, analysisId, filesToAnalyze, extraProps, System.currentTimeMillis());
     return backend.getAnalysisService().analyzeFiles(params);
+  }
+
+  public CompletableFuture<GetProjectNamesByKeyResponse> getProjectNamesByKeys(Either<TransientSonarQubeConnectionDto, TransientSonarCloudConnectionDto> transientConnection,
+    List<String> projectKeys) {
+    var params = new GetProjectNamesByKeyParams(transientConnection, projectKeys);
+    return initializedBackend().getConnectionService().getProjectNamesByKey(params);
   }
 
   public SonarLintRpcServer getBackend() {
