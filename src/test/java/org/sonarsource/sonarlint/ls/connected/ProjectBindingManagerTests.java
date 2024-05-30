@@ -41,6 +41,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.GetAllProjectsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.GetProjectNamesByKeyResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.SonarProjectDto;
 import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
 import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
@@ -64,6 +65,7 @@ import testutils.SonarLintLogTester;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -332,13 +334,11 @@ class ProjectBindingManagerTests {
     mockFileOutsideFolder();
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(BOUND_SETTINGS);
     servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
-//    when(fakeEngine.calculatePathPrefixes(eq(PROJECT_KEY), any())).thenReturn(FAKE_BINDING);
 
     var binding = underTest.getBinding(fileNotInAWorkspaceFolderPath.toUri());
     assertThat(binding).isNotEmpty();
 
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
-//    when(fakeEngine.calculatePathPrefixes(eq(PROJECT_KEY2), any())).thenReturn(FAKE_BINDING2);
 
     underTest.onChange(null, BOUND_SETTINGS, BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
 
@@ -387,6 +387,35 @@ class ProjectBindingManagerTests {
   }
 
   @Test
+  void should_get_project_names_for_projects() throws ExecutionException, InterruptedException {
+    var key1 = "key1";
+    var key2 = "key2";
+    var name1 = "name1";
+    var name2 = "name2";
+    when(backendServiceFacade.getBackendService().getProjectNamesByKeys(any(), eq(List.of(key1, key2))))
+      .thenReturn(CompletableFuture.completedFuture(new GetProjectNamesByKeyResponse(Map.of(
+        key1, name1,
+        key2, name2
+      ))));
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+    assertThat(underTest.getRemoteProjectsByKeys(CONNECTION_ID, List.of(key1, key2)).get()).containsExactlyInAnyOrderEntriesOf(Map.of(
+      key1, name1,
+      key2, name2
+    ));
+  }
+
+  @Test
+  void should_throw_on_download_exception_when_getting_project_names_for_projects() {
+    when(backendServiceFacade.getBackendService().getProjectNamesByKeys(any(), any()))
+      .thenThrow(DownloadException.class);
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+    var projectList = List.of("key1", "key2");
+    assertThatThrownBy(() -> underTest.getRemoteProjectsByKeys(CONNECTION_ID, projectList))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessage("Failed to fetch list of projects from '" + CONNECTION_ID + "'");
+  }
+
+  @Test
   void should_get_all_projects_for_default_connection() {
     var key1 = "key1";
     var key2 = "key2";
@@ -398,7 +427,7 @@ class ProjectBindingManagerTests {
         new SonarProjectDto(key2, name2)
       ))));
     servers.put(SettingsManager.connectionIdOrDefault(null), GLOBAL_SETTINGS);
-    assertThat(underTest.getRemoteProjects(null)).containsExactlyInAnyOrderEntriesOf(Map.of(
+    assertThat(underTest.getRemoteProjects("<default>")).containsExactlyInAnyOrderEntriesOf(Map.of(
       key1, name1,
       key2, name2
     ));

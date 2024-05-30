@@ -683,16 +683,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<Map<String, String>> getRemoteProjectNames(GetRemoteProjectsNamesParams params) {
+  public CompletableFuture<Map<String, String>> getRemoteProjectNamesByProjectKeys(GetRemoteProjectNamesByKeysParams params) {
     try {
-      return CompletableFuture.completedFuture(
-        bindingManager.getRemoteProjects(params.getConnectionId())
-          .entrySet()
-          .stream()
-          .filter(e -> params.getProjectKeys().contains(e.getKey()))
-          .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+      return bindingManager.getRemoteProjectsByKeys(params.connectionId(), params.projectKeys());
     } catch (IllegalStateException | IllegalArgumentException failed) {
-      var responseError = new ResponseError(ResponseErrorCode.InternalError, "Could not get remote project names", failed);
+      var responseError = new ResponseError(ResponseErrorCode.InternalError, "Could not get remote project name", failed);
       return CompletableFuture.failedFuture(new ResponseErrorException(responseError));
     }
   }

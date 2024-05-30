@@ -263,8 +263,11 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
   }
 
-  @JsonRequest("sonarlint/getRemoteProjectNames")
-  CompletableFuture<Map<String, String>> getRemoteProjectNames(GetRemoteProjectsNamesParams params);
+  record GetRemoteProjectNamesByKeysParams(String connectionId, List<String> projectKeys) {
+  }
+
+  @JsonRequest("sonarlint/getRemoteProjectNamesByProjectKeys")
+  CompletableFuture<Map<String, String>> getRemoteProjectNamesByProjectKeys(GetRemoteProjectNamesByKeysParams params);
 
   class GenerateTokenParams {
     String baseServerUrl;
