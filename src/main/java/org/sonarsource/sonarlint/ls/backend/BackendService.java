@@ -62,8 +62,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.G
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.file.DidUpdateFileSystemParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.file.GetFilesStatusParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.file.GetFilesStatusResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.ChangeHotspotStatusParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.CheckLocalDetectionSupportedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.CheckLocalDetectionSupportedResponse;
@@ -361,10 +359,6 @@ public class BackendService {
 
   public CompletableFuture<GetAllProjectsResponse> getAllProjects(Either<TransientSonarQubeConnectionDto, TransientSonarCloudConnectionDto> transientConnection) {
     return initializedBackend().getConnectionService().getAllProjects(new GetAllProjectsParams(transientConnection));
-  }
-
-  public CompletableFuture<GetFilesStatusResponse> getFilesStatus(Map<String, List<URI>> fileUrisByFolderUri) {
-    return initializedBackend().getFileService().getFilesStatus(new GetFilesStatusParams(fileUrisByFolderUri));
   }
 
   public void updateFileSystem(List<URI> deletedFileUris, List<ClientFileDto> addedOrChangedFiles) {
