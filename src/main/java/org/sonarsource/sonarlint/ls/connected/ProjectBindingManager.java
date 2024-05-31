@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.connected;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -303,15 +304,25 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     fileBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().getConnectionId().equals(connectionId));
   }
 
+  private void handleDeletedConnections(@Nullable WorkspaceSettings oldValue, WorkspaceSettings newValue) {
+    if (oldValue != null && !oldValue.getServerConnections().isEmpty()) {
+      List<String> deletedConnectionIds = new ArrayList<>();
+      // there used to be connections
+      oldValue.getServerConnections().forEach((id, value) -> {
+        if (!newValue.getServerConnections().containsKey(id)) {
+          // connection was deleted
+          deletedConnectionIds.add(id);
+        }
+      });
+      if (!deletedConnectionIds.isEmpty()) {
+        client.removeBindingsForDeletedConnections(deletedConnectionIds);
+      }
+    }
+  }
+
   @Override
   public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
-    if (oldValue != null && oldValue.getServerConnections().size() > newValue.getServerConnections().size()) {
-      // connection(s) were deleted
-      var deletedConnections = oldValue.getServerConnections().keySet().stream()
-        .filter(id -> !newValue.getServerConnections().containsKey(id))
-        .toList();
-      client.removeBindingsForDeletedConnections(deletedConnections);
-    }
+    handleDeletedConnections(oldValue, newValue);
     newValue.getServerConnections().forEach((id, value) -> {
       if (oldValue == null) {
         // initial sync
