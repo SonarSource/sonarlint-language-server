@@ -75,13 +75,13 @@ public class TaintIssuesUpdater {
       return;
     }
     var bindingWrapper = bindingWrapperOptional.get();
-    var connectionId = bindingWrapper.getConnectionId();
+    var connectionId = bindingWrapper.connectionId();
     long foundVulnerabilities = taintVulnerabilitiesCache.getAsDiagnostics(fileUri, diagnosticPublisher.isFocusOnNewCode()).count();
     if (foundVulnerabilities > 0) {
       logOutput.info(format("Fetched %s %s from %s", foundVulnerabilities,
         pluralize(foundVulnerabilities, "vulnerability", "vulnerabilities"), connectionId));
     }
-    diagnosticPublisher.publishDiagnostics(fileUri, false);
+    diagnosticPublisher.publishDiagnostics(fileUri, true);
   }
 
   public void shutdown() {

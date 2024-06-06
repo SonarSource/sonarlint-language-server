@@ -29,9 +29,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnera
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
-import org.sonarsource.sonarlint.ls.Issue;
-
-import static java.util.Objects.requireNonNull;
+import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 
 public class TextRangeUtils {
 
@@ -39,20 +37,18 @@ public class TextRangeUtils {
     // util class
   }
 
-  public static Range convert(Issue issue) {
-    if (issue.getStartLine() == null) {
+  public static Range convert(DelegatingFinding issue) {
+    var textRange = issue.getTextRange();
+    if (textRange == null || textRange.getStartLine() == 0) {
       return new Range(new Position(0, 0), new Position(0, 0));
     }
-    requireNonNull(issue.getStartLineOffset());
-    requireNonNull(issue.getEndLine());
-    requireNonNull(issue.getEndLineOffset());
     return new Range(
       new Position(
-        issue.getStartLine() - 1,
-        issue.getStartLineOffset()),
+        textRange.getStartLine() - 1,
+        textRange.getStartLineOffset()),
       new Position(
-        issue.getEndLine() - 1,
-        issue.getEndLineOffset()));
+        textRange.getEndLine() - 1,
+        textRange.getEndLineOffset()));
   }
 
   public static Range convert(TaintVulnerabilityDto issue) {

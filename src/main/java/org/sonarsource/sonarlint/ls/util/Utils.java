@@ -48,9 +48,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TokenDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.UsernamePasswordDto;
-import org.sonarsource.sonarlint.ls.IssuesCache;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
-import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
+import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 import static java.lang.String.format;
@@ -179,9 +178,8 @@ public class Utils {
     return Optional.empty();
   }
 
-  public static boolean isDelegatingIssueWithServerIssueKey(String serverIssueKey, Map.Entry<String, IssuesCache.VersionedIssue> issueEntry) {
-    return issueEntry.getValue().issue() instanceof DelegatingIssue delegatingIssue
-      && (serverIssueKey.equals(delegatingIssue.getServerIssueKey()));
+  public static boolean isDelegatingIssueWithServerIssueKey(String serverIssueKey, DelegatingFinding issueEntry) {
+    return serverIssueKey.equals(issueEntry.getServerIssueKey());
   }
 
   /**

@@ -31,13 +31,14 @@ import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueFlowDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.IssuesCache;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -61,21 +62,16 @@ class NotebookDiagnosticPublisherTests {
 
   @Test
   void shouldConvertCellIssue() {
-    DelegatingCellIssue issue = mock(DelegatingCellIssue.class);
+    RaisedIssueDto raisedFindingDto = mock(RaisedIssueDto.class);
+    DelegatingCellIssue cellIssue = mock(DelegatingCellIssue.class);
     TextRangeDto textRange = new TextRangeDto(4, 0, 5, 5);
 
     var issueKey = UUID.randomUUID().toString();
-    when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
-    when(issue.getMessage()).thenReturn("don't do this");
-    when(issue.getRuleKey()).thenReturn("squid:123");
-    when(issue.getTextRange()).thenReturn(textRange);
-    when(issue.getStartLine()).thenReturn(4);
-    when(issue.getStartLineOffset()).thenReturn(0);
-    when(issue.getEndLine()).thenReturn(5);
-    when(issue.getEndLineOffset()).thenReturn(5);
-    when(issue.flows()).thenReturn(List.of(mock(RawIssueFlowDto.class)));
+    when(cellIssue.getIssue()).thenReturn(raisedFindingDto);
+    when(cellIssue.getMessage()).thenReturn("don't do this");
+    when(cellIssue.getTextRange()).thenReturn(textRange);
 
-    var diagnostic = convertCellIssue(new AbstractMap.SimpleImmutableEntry<>(issueKey, issue));
+    var diagnostic = convertCellIssue(new AbstractMap.SimpleImmutableEntry<>(issueKey, cellIssue));
 
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     assertThat(diagnostic.getRange().getStart().getLine()).isEqualTo(textRange.getStartLine() - 1);
@@ -110,8 +106,8 @@ class NotebookDiagnosticPublisherTests {
 
     var issue1 = createFakeBlockerIssue();
     var issue2 = createFakeMinorIssue();
-    var localIssues = Map.of(UUID.randomUUID().toString(), new IssuesCache.VersionedIssue(issue1, 1),
-      UUID.randomUUID().toString(), new IssuesCache.VersionedIssue(issue2, 1));
+    var localIssues = Map.of(UUID.randomUUID().toString(), issue1,
+      UUID.randomUUID().toString(), issue2);
 
 
     when(issuesCache.get(notebookUri)).thenReturn(localIssues);
@@ -137,8 +133,8 @@ class NotebookDiagnosticPublisherTests {
 
     var issue1 = createFakeBlockerIssue();
     var issue2 = createFakeMinorIssue();
-    var localIssues = Map.of(UUID.randomUUID().toString(), new IssuesCache.VersionedIssue(issue1, 1),
-      UUID.randomUUID().toString(), new IssuesCache.VersionedIssue(issue2, 1));
+    var localIssues = Map.of(UUID.randomUUID().toString(), issue1,
+      UUID.randomUUID().toString(), issue2);
 
 
     when(issuesCache.get(notebookUri)).thenReturn(localIssues);
@@ -172,8 +168,8 @@ class NotebookDiagnosticPublisherTests {
 
     var issue1 = createFakeBlockerIssue();
     var issue2 = createFakeMinorIssue();
-    var localIssues = Map.of(UUID.randomUUID().toString(), new IssuesCache.VersionedIssue(issue1, 1),
-      UUID.randomUUID().toString(), new IssuesCache.VersionedIssue(issue2, 1));
+    var localIssues = Map.of(UUID.randomUUID().toString(), issue1,
+      UUID.randomUUID().toString(), issue2);
 
 
     when(issuesCache.get(notebookUri)).thenReturn(localIssues);
@@ -191,21 +187,21 @@ class NotebookDiagnosticPublisherTests {
     verify(client, times(1)).publishDiagnostics(p1);
   }
 
-  private DelegatingCellIssue createFakeBlockerIssue() {
-    var issue = mock(RawIssueDto.class);
+  private DelegatingFinding createFakeBlockerIssue() {
+    var issue = mock(RaisedIssueDto.class);
     TextRangeDto textRangeDto = new TextRangeDto(2, 0, 2, 5);
     TextRangeDto textRange = new TextRangeDto(2, 0, 2, 5);
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getPrimaryMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
     when(issue.getTextRange()).thenReturn(textRangeDto);
-    when(issue.getFlows()).thenReturn(List.of(mock(RawIssueFlowDto.class)));
+    when(issue.getFlows()).thenReturn(List.of(mock(IssueFlowDto.class)));
 
-    return new DelegatingCellIssue(issue, textRange, Collections.emptyList());
+    return new DelegatingCellIssue(issue, URI.create("file:///my/folder/notebook.ipynb"), textRange, Collections.emptyList());
   }
 
-  private DelegatingCellIssue createFakeMinorIssue() {
-    var issue = mock(RawIssueDto.class);
+  private DelegatingFinding createFakeMinorIssue() {
+    var issue = mock(RaisedIssueDto.class);
     TextRangeDto textRangeDto = new TextRangeDto(1, 0, 1, 3);
     TextRangeDto textRange = new TextRangeDto(1, 0, 1, 3);
 
@@ -213,8 +209,8 @@ class NotebookDiagnosticPublisherTests {
     when(issue.getPrimaryMessage()).thenReturn("don't do this please");
     when(issue.getRuleKey()).thenReturn("squid:122");
     when(issue.getTextRange()).thenReturn(textRangeDto);
-    when(issue.getFlows()).thenReturn(List.of(mock(RawIssueFlowDto.class)));
+    when(issue.getFlows()).thenReturn(List.of(mock(IssueFlowDto.class)));
 
-    return new DelegatingCellIssue(issue, textRange, Collections.emptyList());
+    return new DelegatingCellIssue(issue, URI.create("file:///my/folder/notebook.ipynb"), textRange, Collections.emptyList());
   }
 }

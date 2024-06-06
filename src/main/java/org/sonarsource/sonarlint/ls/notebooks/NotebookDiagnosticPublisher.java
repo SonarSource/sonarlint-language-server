@@ -29,8 +29,8 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.IssuesCache;
-import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 
 import static java.util.stream.Collectors.groupingBy;
 import static org.sonarsource.sonarlint.ls.DiagnosticPublisher.prepareDiagnostic;
@@ -59,18 +59,18 @@ public class NotebookDiagnosticPublisher {
   public void publishNotebookDiagnostics(URI uri, VersionedOpenNotebook versionedOpenNotebook) {
     var p = new PublishDiagnosticsParams();
 
-    Map<String, VersionedIssue> localIssues = issuesCache.get(uri);
+    Map<String, DelegatingFinding> localIssues = issuesCache.get(uri);
 
     var localDiagnostics = localIssues.entrySet()
       .stream()
-      .map(entry -> Map.entry(entry.getKey(), versionedOpenNotebook.toCellIssue(entry.getValue().issue().getRawIssue())))
+      .map(entry -> Map.entry(entry.getKey(), versionedOpenNotebook.toCellIssue(entry.getValue())))
       .map(NotebookDiagnosticPublisher::convertCellIssue)
       .collect(groupingBy(diagnostic -> {
         var localIssue = localIssues.get(((DiagnosticPublisher.DiagnosticData) diagnostic.getData()).getEntryKey());
         var cellUri = URI.create("");
-        if (localIssue != null && localIssue.issue() != null && localIssue.issue().getStartLine() != null) {
+        if (localIssue != null && localIssue.getTextRange() != null) {
           // Better to not publish any diagnostics than to publish for wrong location
-          cellUri = versionedOpenNotebook.getCellUri(localIssue.issue().getStartLine()).orElse(URI.create(""));
+          cellUri = versionedOpenNotebook.getCellUri(localIssue.getTextRange().getStartLine()).orElse(URI.create(""));
         }
 
         var cellsWithIssues = notebookCellsWithIssues.get(uri);

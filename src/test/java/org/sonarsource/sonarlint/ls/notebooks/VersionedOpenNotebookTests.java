@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.notebooks;
 import java.net.URI;
 import java.util.Collections;
 import java.util.List;
+import javax.annotation.Nullable;
 import org.eclipse.lsp4j.NotebookCellArrayChange;
 import org.eclipse.lsp4j.NotebookDocumentChangeEvent;
 import org.eclipse.lsp4j.NotebookDocumentChangeEventCellStructure;
@@ -35,13 +36,14 @@ import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.FileEditDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.QuickFixDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.TextEditDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.FileEditDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueFlowDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.TextEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
+import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -126,14 +128,17 @@ public class VersionedOpenNotebookTests {
 
   @Test
   void shouldConvertToCellIssue() {
-    RawIssueDto issue = mock(RawIssueDto.class);
+    DelegatingFinding issue = mock(DelegatingFinding.class);
     TextRangeDto textRange = new TextRangeDto(5, 0, 6, 5);
 
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
-    when(issue.getPrimaryMessage()).thenReturn("don't do this");
+    when(issue.getMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
     when(issue.getTextRange()).thenReturn(textRange);
-    when(issue.getFlows()).thenReturn(List.of(mock(RawIssueFlowDto.class)));
+    when(issue.flows()).thenReturn(List.of(mock(IssueFlowDto.class)));
+
+    var raisedFinding = mockRaisedFinding(textRange);
+    when(issue.getFinding()).thenReturn(raisedFinding);
 
     var tmpUri = URI.create("file:///some/notebook.ipynb");
     var underTest = createTestNotebookWithThreeCells(tmpUri);
@@ -141,7 +146,7 @@ public class VersionedOpenNotebookTests {
     var cellIssue = underTest.toCellIssue(issue);
 
     assertThat(cellIssue.getRuleKey()).isEqualTo(issue.getRuleKey());
-    assertThat(cellIssue.getMessage()).isEqualTo(issue.getPrimaryMessage());
+    assertThat(cellIssue.getMessage()).isEqualTo(issue.getMessage());
     assertThat(cellIssue.getSeverity()).isEqualTo(issue.getSeverity());
     assertThat(cellIssue.getStartLine()).isEqualTo(1);
     assertThat(cellIssue.getStartLineOffset()).isZero();
@@ -149,9 +154,21 @@ public class VersionedOpenNotebookTests {
     assertThat(cellIssue.getEndLineOffset()).isEqualTo(5);
   }
 
+  private static RaisedFindingDto mockRaisedFinding(@Nullable TextRangeDto textRange) {
+    RaisedFindingDto raisedFinding = mock(RaisedFindingDto.class);
+
+    when(raisedFinding.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(raisedFinding.getPrimaryMessage()).thenReturn("don't do this");
+    when(raisedFinding.getRuleKey()).thenReturn("squid:123");
+    when(raisedFinding.getTextRange()).thenReturn(textRange);
+    when(raisedFinding.getFlows()).thenReturn(List.of(mock(IssueFlowDto.class)));
+
+    return raisedFinding;
+  }
+
   @Test
   void shouldConvertQuickFixWithSingleFileEdit() {
-    var issue = mock(RawIssueDto.class);
+    var issue = mock(DelegatingFinding.class);
     var tmpUri = URI.create("file:///some/notebook.ipynb");
     var fakeNotebook = createTestNotebookWithThreeCells(tmpUri);
     var quickFixTextRange = new TextRangeDto(9, 0, 9, 2);
@@ -165,7 +182,9 @@ public class VersionedOpenNotebookTests {
     var fix = mock(QuickFixDto.class);
     when(fix.message()).thenReturn("Fix the issue!");
     when(fix.fileEdits()).thenReturn(List.of(edit));
-    when(issue.getQuickFixes()).thenReturn(List.of(fix));
+    when(issue.quickFixes()).thenReturn(List.of(fix));
+    var raisedFinding = mockRaisedFinding(null);
+    when(issue.getFinding()).thenReturn(raisedFinding);
 
     var delegatingCellIssue = fakeNotebook.toCellIssue(issue);
 
@@ -186,13 +205,13 @@ public class VersionedOpenNotebookTests {
 
   @Test
   void shouldConvertQuickFixWithMultipleFileEdits() {
-    var issue = mock(RawIssueDto.class);
+    var issue = mock(DelegatingFinding.class);
     var tmpUri = URI.create("file:///some/notebook.ipynb");
     var fakeNotebook = createTestNotebookWithThreeCells(tmpUri);
     var quickFixTextRange1 = new TextRangeDto(9, 0, 9, 2);
     var quickFixTextRange2 = new TextRangeDto(5, 0, 6, 2);
 
-    var textEdit1 = mock(TextEditDto.class);
+    var textEdit1 = mock(org.sonarsource.sonarlint.core.rpc.protocol.client.issue.TextEditDto.class);
     when(textEdit1.newText()).thenReturn("");
     when(textEdit1.range()).thenReturn(quickFixTextRange1);
     var textEdit2 = mock(TextEditDto.class);
@@ -207,7 +226,9 @@ public class VersionedOpenNotebookTests {
     var fix = mock(QuickFixDto.class);
     when(fix.message()).thenReturn("Fix the issue!");
     when(fix.fileEdits()).thenReturn(List.of(edit1, edit2));
-    when(issue.getQuickFixes()).thenReturn(List.of(fix));
+    when(issue.quickFixes()).thenReturn(List.of(fix));
+    var raisedFinding = mockRaisedFinding(null);
+    when(issue.getFinding()).thenReturn(raisedFinding);
 
     var delegatingCellIssue = fakeNotebook.toCellIssue(issue);
 
@@ -240,13 +261,15 @@ public class VersionedOpenNotebookTests {
 
   @Test
   void shouldConvertToCellIssueWhenIssueTextRangeIsNull() {
-    RawIssueDto issue = mock(RawIssueDto.class);
+    DelegatingFinding issue = mock(DelegatingFinding.class);
 
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
-    when(issue.getPrimaryMessage()).thenReturn("don't do this");
+    when(issue.getMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
     when(issue.getTextRange()).thenReturn(null);
-    when(issue.getFlows()).thenReturn(List.of(mock(RawIssueFlowDto.class)));
+    when(issue.flows()).thenReturn(List.of(mock(IssueFlowDto.class)));
+    var raisedFinding = mockRaisedFinding(null);
+    when(issue.getFinding()).thenReturn(raisedFinding);
 
     var tmpUri = URI.create("file:///some/notebook.ipynb");
     var underTest = createTestNotebookWithThreeCells(tmpUri);
@@ -254,7 +277,7 @@ public class VersionedOpenNotebookTests {
     var cellIssue = underTest.toCellIssue(issue);
 
     assertThat(cellIssue.getRuleKey()).isEqualTo(issue.getRuleKey());
-    assertThat(cellIssue.getMessage()).isEqualTo(issue.getPrimaryMessage());
+    assertThat(cellIssue.getMessage()).isEqualTo(issue.getMessage());
     assertThat(cellIssue.getSeverity()).isEqualTo(issue.getSeverity());
     assertThat(cellIssue.getStartLine()).isNull();
     assertThat(cellIssue.getStartLineOffset()).isNull();

@@ -22,9 +22,7 @@ package org.sonarsource.sonarlint.ls;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Future;
-import java.util.function.Consumer;
 import org.sonarsource.sonarlint.core.commons.api.progress.CanceledException;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 
 public class AnalysisTask {
@@ -37,9 +35,6 @@ public class AnalysisTask {
   private final boolean shouldShowProgress;
   private Future<?> future;
 
-
-  private Consumer<RawIssueDto> issueRaisedListener;
-
   public AnalysisTask(Set<VersionedOpenFile> filesToAnalyze, boolean shouldFetchServerIssues, boolean shouldKeepHotspotsOnly,
     boolean shouldShowProgress) {
     this.analysisId = UUID.randomUUID();
@@ -48,7 +43,7 @@ public class AnalysisTask {
     this.shouldKeepHotspotsOnly = shouldKeepHotspotsOnly;
     this.shouldShowProgress = shouldShowProgress;
   }
-  
+
   public UUID getAnalysisId() {
     return analysisId;
   }
@@ -82,14 +77,6 @@ public class AnalysisTask {
   public AnalysisTask setFuture(Future<?> future) {
     this.future = future;
     return this;
-  }
-
-  public void setIssueRaisedListener(Consumer<RawIssueDto> issueRaisedListener) {
-    this.issueRaisedListener = issueRaisedListener;
-  }
-
-  public Consumer<RawIssueDto> getIssueRaisedListener() {
-    return issueRaisedListener;
   }
 
   public Future<?> getFuture() {

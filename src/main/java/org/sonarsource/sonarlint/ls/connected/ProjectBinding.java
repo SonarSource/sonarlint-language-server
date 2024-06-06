@@ -23,29 +23,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
 
-public class ProjectBinding {
-
-  private final String connectionId;
-  private final String projectKey;
-  private final ServerIssueTrackerWrapper issueTrackerWrapper;
-
-  public ProjectBinding(String connectionId, String projectKey, ServerIssueTrackerWrapper issueTrackerWrapper) {
-    this.connectionId = connectionId;
-    this.projectKey = projectKey;
-    this.issueTrackerWrapper = issueTrackerWrapper;
-  }
-
-  public String getConnectionId() {
-    return connectionId;
-  }
-
-  public String getProjectKey() {
-    return projectKey;
-  }
-
-  public ServerIssueTrackerWrapper getServerIssueTracker() {
-    return issueTrackerWrapper;
-  }
+public record ProjectBinding(String connectionId, String projectKey) {
 
   @Override
   public String toString() {

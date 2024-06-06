@@ -34,7 +34,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotRpcSer
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
-import org.sonarsource.sonarlint.ls.connected.ServerIssueTrackerWrapper;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -86,7 +85,7 @@ class BackendServiceTests {
   void getConfigScopeDtoWithBinding() {
     var workspaceUri = "/workspace";
     var connectionId = "connectionId";
-    var bindingWrapper = new ProjectBinding(connectionId, "projectKey", mock(ServerIssueTrackerWrapper.class));
+    var bindingWrapper = new ProjectBinding(connectionId, "projectKey");
     var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri), Optional.of(bindingWrapper));
 
     assertThat(result.getId()).isEqualTo(workspaceUri);

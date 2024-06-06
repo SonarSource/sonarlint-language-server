@@ -46,8 +46,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.S
 import org.sonarsource.sonarlint.core.serverapi.component.ServerProject;
 import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
-import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
-import org.sonarsource.sonarlint.ls.EnabledLanguages;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -103,22 +101,18 @@ class ProjectBindingManagerTests {
   private Path fileInAWorkspaceFolderPath2;
   private Path fileNotInAWorkspaceFolderPath;
   ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache;
-  ConcurrentMap<String, Optional<SonarLintAnalysisEngine>> connectedEngineCacheByConnectionId;
   private ProjectBindingManager underTest;
   private final SettingsManager settingsManager = mock(SettingsManager.class);
   private final WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
   private final Map<String, ServerConnectionSettings> servers = new HashMap<>();
-  private final EnabledLanguages enginesFactory = mock(EnabledLanguages.class);
   private final SonarLintAnalysisEngine fakeEngine = mock(SonarLintAnalysisEngine.class);
-  private final SonarLintAnalysisEngine fakeEngine2 = mock(SonarLintAnalysisEngine.class);
   private final AnalysisScheduler analysisManager = mock(AnalysisScheduler.class);
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
-  private final DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
   private final OpenNotebooksCache openNotebooksCache = mock(OpenNotebooksCache.class);
   private final OpenFilesCache openFilesCache = mock(OpenFilesCache.class);
 
   @BeforeEach
-  public void prepare() throws IOException, ExecutionException, InterruptedException {
+  public void prepare() throws IOException {
     workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
     Files.createDirectories(workspaceFolderPath);
     workspaceFolderPath2 = basedir.resolve("myWorkspaceFolder2");
@@ -460,7 +454,7 @@ class ProjectBindingManagerTests {
     var result = Paths.get(URI.create(URI.create("file:///idePath").toString()))
       .resolve(Path.of("filePath"))
       .toUri();
-    folderBindingCache.put(URI.create("file:///idePath"), Optional.of(new ProjectBinding("connectionId", "projectKey", null)));
+    folderBindingCache.put(URI.create("file:///idePath"), Optional.of(new ProjectBinding("connectionId", "projectKey")));
 
     var fullFilePath = underTest.fullFilePathFromRelative(Path.of("filePath"), "connectionId", "projectKey");
 
@@ -483,11 +477,11 @@ class ProjectBindingManagerTests {
     when(foldersManager.findFolderForFile(fileUri))
       .thenReturn(Optional.of(new WorkspaceFolderWrapper(folderUri, null, null)));
     folderBindingCache.put(folderUri, Optional.of(new ProjectBinding("connectionId",
-      "projectKey", null)));
+      "projectKey")));
     var maybeBinding = underTest.getBindingIfExists(fileUri);
 
-    assertThat(maybeBinding.get().getConnectionId()).isEqualTo("connectionId");
-    assertThat(maybeBinding.get().getProjectKey()).isEqualTo("projectKey");
+    assertThat(maybeBinding.get().connectionId()).isEqualTo("connectionId");
+    assertThat(maybeBinding.get().projectKey()).isEqualTo("projectKey");
   }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {
@@ -495,13 +489,6 @@ class ProjectBindingManagerTests {
     folder.setSettings(BOUND_SETTINGS);
     servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
     return folder;
-  }
-
-  private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder2() {
-    var folder2 = mockFileInAFolder2();
-    folder2.setSettings(BOUND_SETTINGS2);
-    servers.put(SERVER_ID2, GLOBAL_SETTINGS_DIFFERENT_SERVER_ID);
-    return folder2;
   }
 
   private void mockFileOutsideFolder() {

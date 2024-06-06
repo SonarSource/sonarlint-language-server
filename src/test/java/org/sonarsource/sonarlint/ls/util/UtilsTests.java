@@ -20,16 +20,14 @@
 package org.sonarsource.sonarlint.ls.util;
 
 import java.net.URI;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.MessageType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.sonarsource.sonarlint.ls.IssuesCache;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.ConnectionCheckParams;
-import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
+import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 import org.sonarsource.sonarlint.ls.notebooks.DelegatingCellIssue;
 import testutils.SonarLintLogTester;
 
@@ -64,7 +62,6 @@ class UtilsTests {
   void shouldPluralizeIssue(long nbItems, String expected) {
     assertThat(Utils.pluralize(nbItems, "issue")).isEqualTo(expected);
   }
-
 
 
   @Test
@@ -116,14 +113,14 @@ class UtilsTests {
 
   @Test
   void isDelegatingIssueWithServerIssueKeyTest() {
-    var delegatingIssueWithServerKey = mock(DelegatingIssue.class);
+    var delegatingIssueWithServerKey = mock(DelegatingFinding.class);
     when(delegatingIssueWithServerKey.getServerIssueKey()).thenReturn("serverIssueKey");
-    var delegatingIssueWithoutServerKey = mock(DelegatingIssue.class);
+    var delegatingIssueWithoutServerKey = mock(DelegatingFinding.class);
     var delegatingCellIssue = mock(DelegatingCellIssue.class);
 
-    var delegatingIssueWithServerKeyResult = isDelegatingIssueWithServerIssueKey("serverIssueKey", Map.entry("", new IssuesCache.VersionedIssue(delegatingIssueWithServerKey, 1)));
-    var delegatingIssueWithoutServerKeyResult = isDelegatingIssueWithServerIssueKey("serverIssueKey", Map.entry("", new IssuesCache.VersionedIssue(delegatingIssueWithoutServerKey, 1)));
-    var delegatingCellIssueResult = isDelegatingIssueWithServerIssueKey("serverIssueKey", Map.entry("", new IssuesCache.VersionedIssue(delegatingIssueWithoutServerKey, 1)));
+    var delegatingIssueWithServerKeyResult = isDelegatingIssueWithServerIssueKey("serverIssueKey", delegatingIssueWithServerKey);
+    var delegatingIssueWithoutServerKeyResult = isDelegatingIssueWithServerIssueKey("serverIssueKey", delegatingIssueWithoutServerKey);
+    var delegatingCellIssueResult = isDelegatingIssueWithServerIssueKey("serverIssueKey", delegatingCellIssue);
 
     assertThat(delegatingIssueWithServerKeyResult).isTrue();
     assertThat(delegatingIssueWithoutServerKeyResult).isFalse();
@@ -131,7 +128,7 @@ class UtilsTests {
   }
 
   @Test
-  void getValidateConnectionParamsForNewSonarCloudConnection(){
+  void getValidateConnectionParamsForNewSonarCloudConnection() {
     var myScOrganization = "my SC organization";
     var token = "token";
     var validateConnectionParams =
@@ -145,7 +142,7 @@ class UtilsTests {
   }
 
   @Test
-  void getValidateConnectionParamsForNewSonarQubeConnection(){
+  void getValidateConnectionParamsForNewSonarQubeConnection() {
     var token = "token";
     var serverUrl = "http://localhost:8080";
     var validateConnectionParams =

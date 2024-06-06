@@ -106,7 +106,6 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCh
 import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient;
-import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintIssuesUpdater;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -170,7 +169,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final WorkspaceFolderBranchManager branchManager;
   private final JavaConfigCache javaConfigCache;
   private final IssuesCache issuesCache;
-  private final IssuesCache securityHotspotsCache;
+  private final HotspotsCache securityHotspotsCache;
   private final DiagnosticPublisher diagnosticPublisher;
   private final ScmIgnoredCache scmIgnoredCache;
   private final LanguageClientLogger lsLogOutput;
@@ -215,7 +214,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.openFilesCache = new OpenFilesCache(lsLogOutput);
 
     this.issuesCache = new IssuesCache();
-    this.securityHotspotsCache = new IssuesCache();
+    this.securityHotspotsCache = new HotspotsCache();
     this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
     this.notebookDiagnosticPublisher = new NotebookDiagnosticPublisher(client, issuesCache);
     this.openNotebooksCache = new OpenNotebooksCache(lsLogOutput, notebookDiagnosticPublisher);
@@ -224,9 +223,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.hostInfoProvider = new HostInfoProvider();
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client, lsLogOutput);
     this.promotionalNotifications = new PromotionalNotifications(client);
-    var analysisTasksCache = new AnalysisTasksCache();
     var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, lsLogOutput, taintVulnerabilitiesCache, openFilesCache,
-      openNotebooksCache, skippedPluginsNotifier, promotionalNotifications, analysisTasksCache);
+      openNotebooksCache, skippedPluginsNotifier, promotionalNotifications);
     this.backendServiceFacade = new BackendServiceFacade(vsCodeClient, lsLogOutput, client);
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
     this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, lsLogOutput);
@@ -255,7 +253,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.moduleEventsProcessor = new ModuleEventsProcessor(workspaceFoldersManager, fileTypeClassifier, javaConfigCache, backendServiceFacade, settingsManager);
     this.analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
       issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, diagnosticPublisher,
-      client, openNotebooksCache, notebookDiagnosticPublisher, progressManager, backendServiceFacade, analysisTasksCache);
+      client, openNotebooksCache, notebookDiagnosticPublisher, progressManager, backendServiceFacade);
+    vsCodeClient.setAnalysisTaskExecutor(analysisTaskExecutor);
     this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor, client);
     vsCodeClient.setAnalysisScheduler(analysisScheduler);
     this.serverSentEventsHandler = new ServerSentEventsHandler(analysisScheduler, bindingManager);
@@ -718,9 +717,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       client.showMessage(new MessageParams(MessageType.Error, message));
       return;
     }
-    var versionedIssue = securityHotspotsCache.get(fileUri).get(hotspotId);
-    var delegatingIssue = (DelegatingIssue) versionedIssue.issue();
-    var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(workspaceFolderUri.toString(), delegatingIssue.getServerIssueKey());
+    var raisedHotspotDto = requireNonNull(securityHotspotsCache.get(fileUri).get(hotspotId));
+    var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(workspaceFolderUri.toString(), requireNonNull(raisedHotspotDto.getServerIssueKey()));
     backendServiceFacade.getBackendService().openHotspotInBrowser(openHotspotInBrowserParams);
   }
 
@@ -729,7 +727,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var fileUri = params.fileUri;
     var ruleKey = params.ruleKey;
     var issue = securityHotspotsCache.get(create(fileUri)).get(params.getHotspotId());
-    var ruleContextKey = Objects.isNull(issue) ? "" : issue.issue().getRuleDescriptionContextKey();
+    var ruleContextKey = Objects.isNull(issue) ? "" : issue.getRuleDescriptionContextKey();
     var showHotspotCommandParams = new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
       List.of(new JsonPrimitive(ruleKey), new JsonPrimitive(fileUri), new JsonPrimitive(ruleContextKey != null ? ruleContextKey : "")));
     return CompletableFutures.computeAsync(cancelToken -> {
@@ -814,7 +812,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   public CompletableFuture<Void> forgetFolderHotspots() {
     var filesToForget = securityHotspotsCache.keepOnly(openFilesCache.getAll());
-    filesToForget.forEach(f -> diagnosticPublisher.publishDiagnostics(f, true));
+    filesToForget.forEach(diagnosticPublisher::publishHotspots);
     return null;
   }
 
@@ -844,7 +842,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       return CompletableFuture.completedFuture(
         new CheckIssueStatusChangePermittedResponse(false, "There is no binding for the folder: " + params.getFolderUri(), List.of()));
     }
-    var connectionId = bindingWrapperOpt.get().getConnectionId();
+    var connectionId = bindingWrapperOpt.get().connectionId();
     return backendServiceFacade.getBackendService().checkStatusChangePermitted(connectionId, params.getIssueKey());
   }
 
@@ -855,7 +853,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return backendServiceFacade.getBackendService().changeIssueStatus(coreParams).thenAccept(nothing -> {
       var key = params.getIssueId();
       if (!params.isTaintIssue()) {
-        issuesCache.removeIssueWithServerKey(params.getFileUri(), key);
+        issuesCache.removeFindingWithServerKey(params.getFileUri(), key);
       }
 
       diagnosticPublisher.publishDiagnostics(create(params.getFileUri()), false);
@@ -888,7 +886,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var fileUri = params.fileUri;
     var ruleKey = params.ruleKey;
     var issue = securityHotspotsCache.get(create(fileUri)).get(params.getHotspotId());
-    var ruleContextKey = Objects.isNull(issue) ? "" : issue.issue().getRuleDescriptionContextKey();
+    var ruleContextKey = Objects.isNull(issue) ? "" : issue.getRuleDescriptionContextKey();
     return commandManager.getShowRuleDescriptionParams(fileUri, ruleKey, ruleContextKey != null ? ruleContextKey : "");
   }
 
@@ -903,11 +901,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return backendServiceFacade.getBackendService().changeHotspotStatus(coreParams).thenAccept(nothing -> {
       var key = params.getHotspotKey();
       if (hotspotStatus != HotspotStatus.TO_REVIEW && hotspotStatus != HotspotStatus.ACKNOWLEDGED) {
-        securityHotspotsCache.removeIssueWithServerKey(params.getFileUri(), key);
+        securityHotspotsCache.removeFindingWithServerKey(params.getFileUri(), key);
       } else {
-        securityHotspotsCache.updateIssueStatus(params.getFileUri(), key, hotspotStatus);
+        securityHotspotsCache.updateHotspotStatus(params.getFileUri(), key, hotspotStatus);
       }
-      diagnosticPublisher.publishDiagnostics(create(params.getFileUri()), true);
+      diagnosticPublisher.publishHotspots(create(params.getFileUri()));
       client.showMessage(new MessageParams(MessageType.Info, "Hotspot status was changed"));
     }).exceptionally(t -> {
       lsLogOutput.errorWithStackTrace("Error changing hotspot status", t);
@@ -923,12 +921,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     if (bindingOptional.isEmpty()) {
       return CompletableFuture.completedFuture(null);
     }
-    var connectionId = bindingOptional.get().getConnectionId();
+    var connectionId = bindingOptional.get().connectionId();
     var checkStatusChangePermittedParams = new CheckStatusChangePermittedParams(connectionId, params.getHotspotKey());
     return backendServiceFacade.getBackendService().getAllowedHotspotStatuses(checkStatusChangePermittedParams).thenApply(r -> {
-      var delegatingIssue = (DelegatingIssue) securityHotspotsCache
-        .findIssuePerId(params.getFileUri(), params.getHotspotKey()).get().getValue().issue();
-      var reviewStatus = delegatingIssue.getReviewStatus();
+      var delegatingHotspot = securityHotspotsCache
+        .findHotspotPerId(params.getFileUri(), params.getHotspotKey()).get().getValue();
+      var reviewStatus = delegatingHotspot.getStatus();
       var statuses = r.getAllowedStatuses().stream().filter(s -> s != reviewStatus)
         .map(Enum::name).toList();
       return new GetAllowedHotspotStatusesResponse(

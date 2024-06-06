@@ -60,13 +60,11 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.OpenUrlInBrowserParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionParams;
@@ -78,6 +76,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.http.ProxyDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.X509CertificateDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.info.GetClientLiveInfoResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueDetailsDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.ShowIssueParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogLevel;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogParams;
@@ -90,7 +90,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
-import org.sonarsource.sonarlint.ls.AnalysisTasksCache;
+import org.sonarsource.sonarlint.ls.AnalysisTaskExecutor;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.SkippedPluginsNotifier;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -101,7 +101,6 @@ import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.ServerIssueTrackerWrapper;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
@@ -164,14 +163,12 @@ class SonarLintVSCodeClientTests {
   ServerSentEventsHandlerService serverSentEventsHandlerService = mock(ServerSentEventsHandlerService.class);
   @Captor
   ArgumentCaptor<ShowAllLocationsCommand.Param> paramCaptor;
-  SonarLintAnalysisEngine engine = mock(SonarLintAnalysisEngine.class);
-  ServerIssueTrackerWrapper serverIssueTrackerWrapper = mock(ServerIssueTrackerWrapper.class);
   BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   TaintVulnerabilitiesCache taintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
   AnalysisScheduler analysisScheduler = mock(AnalysisScheduler.class);
   DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
   PromotionalNotifications promotionalNotifications = mock(PromotionalNotifications.class);
-  AnalysisTasksCache analysisTasksCache = mock(AnalysisTasksCache.class);
+  AnalysisTaskExecutor analysisTaskExecutor = mock(AnalysisTaskExecutor.class);
 
   private static final String PEM = """
     subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH
@@ -213,7 +210,7 @@ class SonarLintVSCodeClientTests {
   @BeforeEach
   public void setup() throws IOException {
     underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, openFilesCache, openNotebooksCache,
-      skippedPluginsNotifier, promotionalNotifications, analysisTasksCache);
+      skippedPluginsNotifier, promotionalNotifications);
     underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);
     underTest.setBindingManager(bindingManager);
@@ -221,6 +218,7 @@ class SonarLintVSCodeClientTests {
     underTest.setBackendServiceFacade(backendServiceFacade);
     underTest.setDiagnosticPublisher(diagnosticPublisher);
     underTest.setAnalysisScheduler(analysisScheduler);
+    underTest.setAnalysisTaskExecutor(analysisTaskExecutor);
     workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
     Files.createDirectories(workspaceFolderPath);
     fileInAWorkspaceFolderPath = workspaceFolderPath.resolve(FILE_PYTHON);
@@ -568,7 +566,7 @@ class SonarLintVSCodeClientTests {
     var showIssueParams = new ShowIssueParams(fileUri.toString(), issueDetailsDto);
 
     when(bindingManager.getBinding(fileUri))
-      .thenReturn(Optional.of(new ProjectBinding("connectionId", "projectKey", serverIssueTrackerWrapper)));
+      .thenReturn(Optional.of(new ProjectBinding("connectionId", "projectKey")));
 
     underTest.showIssue(fileUri.toString(), issueDetailsDto);
     verify(client).showIssue(paramCaptor.capture());
@@ -607,7 +605,7 @@ class SonarLintVSCodeClientTests {
       "issueKey", FILE_PYTHON, "bb", null, "this is wrong", "29.09.2023", "print('ddd')",
       false, List.of());
     when(bindingManager.getBindingIfExists(fileUri))
-      .thenReturn(Optional.of(new ProjectBinding("connectionId", "projectKey", null)));
+      .thenReturn(Optional.of(new ProjectBinding("connectionId", "projectKey")));
 
     underTest.showIssue(fileUri.toString(), issueDetailsDto);
     verify(client).showIssue(paramCaptor.capture());
@@ -681,7 +679,7 @@ class SonarLintVSCodeClientTests {
     var fakeBinding = mock(ProjectBinding.class);
     when(bindingManager.getBinding(workspaceFolderPath.toUri()))
       .thenReturn(Optional.of(fakeBinding));
-    when(fakeBinding.getConnectionId()).thenReturn("connectionId");
+    when(fakeBinding.connectionId()).thenReturn("connectionId");
     underTest.setWorkspaceFoldersManager(workspaceFoldersManager);
     when(workspaceFoldersManager.getAll()).thenReturn(List.of(workspaceFolderWrapper));
     var uuid1 = UUID.randomUUID();
@@ -704,7 +702,7 @@ class SonarLintVSCodeClientTests {
     assertThat(taintIssues).hasSize(2);
     assertThat(((TaintIssue) taintIssues.get(0)).getId()).isEqualTo(uuid1);
     assertThat(((TaintIssue) taintIssues.get(1)).getId()).isEqualTo(uuid2);
-    verify(diagnosticPublisher).publishDiagnostics(URIUtils.getFullFileUriFromFragments(workspaceFolderPath.toUri().toString(), filePath), false);
+    verify(diagnosticPublisher).publishDiagnostics(URIUtils.getFullFileUriFromFragments(workspaceFolderPath.toUri().toString(), filePath), true);
   }
 
   @Test
@@ -827,11 +825,16 @@ class SonarLintVSCodeClientTests {
   @Test
   void shouldForwardIssueRaisedNotification() {
     var configScopeId = "file:///my/config/scope";
-    var rawIssue = mock(RawIssueDto.class);
+    var raisedIssue = mock(RaisedIssueDto.class);
     var analysisId = UUID.randomUUID();
-    underTest.didRaiseIssue(configScopeId, analysisId, rawIssue);
+    var fileUri = URI.create("fileUri");
+    var issuesByFileUri = Map.of(fileUri, List.of(raisedIssue));
+    underTest.raiseIssues(configScopeId, issuesByFileUri, false, analysisId);
+    ArgumentCaptor<Map<URI, List<RaisedFindingDto>>> argumentCaptor = ArgumentCaptor.forClass(Map.class);
 
-    verify(analysisTasksCache, times(1)).didRaiseIssue(analysisId, rawIssue);
+    verify(analysisTaskExecutor, times(1)).handleIssues(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue().get(fileUri)).isNotNull();
+    assertThat(argumentCaptor.getValue().get(fileUri)).hasSize(1);
   }
 
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {

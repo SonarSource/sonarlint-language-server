@@ -64,9 +64,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleDescription
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleMonolithicDescriptionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleParamDefinitionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleSplitDescriptionDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.FileEditDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.QuickFixDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.TextEditDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.FileEditDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.TextEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
@@ -75,7 +75,7 @@ import org.sonarsource.sonarlint.core.serverapi.UrlUtils;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
-import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
+import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -121,7 +121,7 @@ public class CommandManager {
   private final SonarLintTelemetry telemetry;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final IssuesCache issuesCache;
-  private final IssuesCache securityHotspotsCache;
+  private final HotspotsCache securityHotspotsCache;
   private final BackendServiceFacade backendServiceFacade;
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final OpenNotebooksCache openNotebooksCache;
@@ -129,7 +129,7 @@ public class CommandManager {
 
   CommandManager(SonarLintExtendedLanguageClient client, SettingsManager settingsManager, ProjectBindingManager bindingManager,
     SonarLintTelemetry telemetry, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache,
-    IssuesCache securityHotspotsCache, BackendServiceFacade backendServiceFacade, WorkspaceFoldersManager workspaceFoldersManager,
+    HotspotsCache securityHotspotsCache, BackendServiceFacade backendServiceFacade, WorkspaceFoldersManager workspaceFoldersManager,
     OpenNotebooksCache openNotebooksCache, LanguageClientLogger logOutput) {
     this.client = client;
     this.settingsManager = settingsManager;
@@ -168,29 +168,30 @@ public class CommandManager {
     var issueForDiagnostic = isNotebookCellUri ?
       issuesCache.getIssueForDiagnostic(openNotebooksCache.getNotebookUriFromCellUri(uri), diagnostic) :
       issuesCache.getIssueForDiagnostic(uri, diagnostic);
+    var hotspotForDiagnostic = issueForDiagnostic.isPresent() ? Optional.empty() : securityHotspotsCache.getHotspotForDiagnostic(uri, diagnostic);
     Optional<VersionedOpenNotebook> versionedOpenNotebook = isNotebookCellUri ?
       openNotebooksCache.getFile(openNotebooksCache.getNotebookUriFromCellUri(uri)) :
       Optional.empty();
     var hasBinding = binding.isPresent();
-    if (issueForDiagnostic.isPresent()) {
-      var versionedIssue = issueForDiagnostic.get();
-      ruleContextKey = versionedIssue.issue().getRuleDescriptionContextKey();
+    if (issueForDiagnostic.isPresent() || hotspotForDiagnostic.isPresent()) {
+      var finding = issueForDiagnostic.orElseGet(() -> (DelegatingFinding) hotspotForDiagnostic.get());
+      ruleContextKey = finding.getRuleDescriptionContextKey();
       var quickFixes = isNotebookCellUri && versionedOpenNotebook.isPresent() ?
-        versionedOpenNotebook.get().toCellIssue(versionedIssue.issue().getRawIssue()).quickFixes() :
-        versionedIssue.issue().quickFixes();
+        versionedOpenNotebook.get().toCellIssue(finding).quickFixes() :
+        finding.quickFixes();
       cancelToken.checkCanceled();
       quickFixes.forEach(fix -> {
         var newCodeAction = new CodeAction(SONARLINT_ACTION_PREFIX + fix.message());
         newCodeAction.setKind(CodeActionKind.QuickFix);
         newCodeAction.setDiagnostics(List.of(diagnostic));
-        newCodeAction.setEdit(newWorkspaceEdit(fix, versionedIssue.documentVersion()));
+        newCodeAction.setEdit(newWorkspaceEdit(fix, null));
         newCodeAction.setCommand(new Command(fix.message(), SONARLINT_QUICK_FIX_APPLIED, List.of(ruleKey)));
         codeActions.add(Either.forRight(newCodeAction));
       });
 
       if (hasBinding) {
         var projectBindingWrapper = binding.get();
-        var resolveIssueCodeAction = createResolveIssueCodeAction(diagnostic, uri, projectBindingWrapper, ruleKey, versionedIssue);
+        var resolveIssueCodeAction = createResolveIssueCodeAction(diagnostic, uri, projectBindingWrapper, ruleKey, finding);
         resolveIssueCodeAction.ifPresent(ca -> codeActions.add(Either.forRight(ca)));
       }
     }
@@ -203,16 +204,14 @@ public class CommandManager {
   }
 
   private Optional<CodeAction> createResolveIssueCodeAction(Diagnostic diagnostic, URI uri, ProjectBinding binding, String ruleKey,
-    IssuesCache.VersionedIssue versionedIssue) {
-    var isDelegatingIssue = versionedIssue.issue() instanceof DelegatingIssue;
-    var delegatingIssue = isDelegatingIssue ? ((DelegatingIssue) versionedIssue.issue()) : null;
-    if (delegatingIssue != null && delegatingIssue.getIssueId() != null) {
-      var issueId = delegatingIssue.getIssueId();
-      var serverIssueKey = delegatingIssue.getServerIssueKey();
+    DelegatingFinding raisedFindingDto) {
+    if (raisedFindingDto.getIssueId() != null) {
+      var issueId = raisedFindingDto.getIssueId();
+      var serverIssueKey = raisedFindingDto.getServerIssueKey();
       var key = serverIssueKey == null ? issueId.toString() : serverIssueKey;
       var changeStatusPermittedResponse =
         Utils.safelyGetCompletableFuture(backendServiceFacade.getBackendService().checkChangeIssueStatusPermitted(
-          new CheckStatusChangePermittedParams(binding.getConnectionId(), key)
+          new CheckStatusChangePermittedParams(binding.connectionId(), key)
         ), logOutput);
       if (changeStatusPermittedResponse.isPresent() && changeStatusPermittedResponse.get().isPermitted()) {
         return Optional.of(createResolveIssueCodeAction(diagnostic, ruleKey, key, uri, false));
@@ -232,11 +231,11 @@ public class CommandManager {
     return resolveIssueAction;
   }
 
-  private static void addShowAllLocationsCodeAction(IssuesCache.VersionedIssue versionedIssue,
+  private static void addShowAllLocationsCodeAction(DelegatingFinding versionedIssue,
     List<Either<Command, CodeAction>> codeActions, Diagnostic diagnostic, String ruleKey, boolean isNotebook) {
-    if (!versionedIssue.issue().flows().isEmpty() && !isNotebook) {
+    if (!versionedIssue.flows().isEmpty() && !isNotebook) {
       var titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
-      codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(versionedIssue.issue()))));
+      codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(versionedIssue))));
     }
   }
 
@@ -252,11 +251,11 @@ public class CommandManager {
       var issueKey = issue.getSonarServerKey();
       if (!issue.getFlows().isEmpty()) {
         var titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", ruleKey);
-        codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(issueKey, actualBinding.getConnectionId())));
+        codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(issueKey, actualBinding.connectionId())));
       }
-      var title = String.format("Open taint vulnerability '%s' on '%s'", ruleKey, actualBinding.getConnectionId());
-      var serverUrl = settingsManager.getCurrentSettings().getServerConnections().get(actualBinding.getConnectionId()).getServerUrl();
-      var projectKey = UrlUtils.urlEncode(actualBinding.getProjectKey());
+      var title = String.format("Open taint vulnerability '%s' on '%s'", ruleKey, actualBinding.connectionId());
+      var serverUrl = settingsManager.getCurrentSettings().getServerConnections().get(actualBinding.connectionId()).getServerUrl();
+      var projectKey = UrlUtils.urlEncode(actualBinding.projectKey());
       var issueUrl = String.format("%s/project/issues?id=%s&issues=%s&open=%s", serverUrl, projectKey, issueKey, issueKey);
       codeActions.add(newQuickFix(diagnostic, title, SONARLINT_BROWSE_TAINT_VULNERABILITY, List.of(issueUrl)));
       codeActions.add(Either.forRight(createResolveIssueCodeAction(diagnostic, ruleKey, issueKey, uri, true)));
@@ -462,13 +461,12 @@ public class CommandManager {
 
   private void handleShowHotspotFlows(ExecuteCommandParams params) {
     var fileUri = getAsString(params.getArguments().get(0));
-    var issueKey = getAsString(params.getArguments().get(1));
-    var issue = securityHotspotsCache.get(create(fileUri)).get(issueKey);
-    if (issue == null) {
+    var hotspotKey = getAsString(params.getArguments().get(1));
+    var hotspot = securityHotspotsCache.get(create(fileUri)).get(hotspotKey);
+    if (hotspot == null) {
       logOutput.error("Hotspot is not found during showing flows");
       return;
     }
-    var hotspot = issue.issue();
     client.showIssueOrHotspot(ShowAllLocationsCommand.params(hotspot));
   }
 
