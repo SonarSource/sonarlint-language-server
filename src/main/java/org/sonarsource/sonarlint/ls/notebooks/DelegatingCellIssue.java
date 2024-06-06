@@ -21,114 +21,63 @@ package org.sonarsource.sonarlint.ls.notebooks;
 
 import java.net.URI;
 import java.util.List;
-import java.util.UUID;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.QuickFixDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
-import org.sonarsource.sonarlint.ls.Issue;
+import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 
-public class DelegatingCellIssue implements Issue {
-  private final RawIssueDto issue;
-  private final RuleType type;
-  private final IssueSeverity severity;
-  private final TextRangeDto textRange;
-  private final List<QuickFixDto> quickFixes;
+public class DelegatingCellIssue extends DelegatingFinding {
+  private final RaisedFindingDto issue;
+  private final TextRangeDto cellTextRange;
+  private final List<QuickFixDto> cellQuickFixes;
 
-  DelegatingCellIssue(RawIssueDto issue, @Nullable TextRangeDto textRange, List<QuickFixDto> quickFixes) {
-    var userSeverity = issue.getSeverity();
+  DelegatingCellIssue(RaisedFindingDto issue, URI fileUri, @Nullable TextRangeDto textRange, List<QuickFixDto> quickFixes) {
+    super(issue, fileUri);
     this.issue = issue;
-    this.severity = userSeverity != null ? userSeverity : this.issue.getSeverity();
-    this.type = issue.getType();
-    this.textRange = textRange;
-    this.quickFixes = quickFixes;
+    this.cellTextRange = textRange;
+    this.cellQuickFixes = quickFixes;
   }
 
-  @Override
-  public UUID getIssueId() {
-    return UUID.randomUUID();
-  }
-
-  @Override
-  public IssueSeverity getSeverity() {
-    return severity;
-  }
-
-  @CheckForNull
-  @Override
-  public RuleType getType() {
-    return type;
-  }
-
-  @CheckForNull
-  @Override
-  public String getMessage() {
-    return issue.getPrimaryMessage();
-  }
-
-  @CheckForNull
   @Override
   public TextRangeDto getTextRange() {
-    return textRange;
+    return cellTextRange;
   }
 
   @Override
-  public URI getFileUri() {
-    return issue.getFileUri();
-  }
-
-  @Override
-  public RawIssueDto getRawIssue() {
-    return issue;
-  }
-
-  @Override
-  public String getRuleKey() {
-    return issue.getRuleKey();
-  }
-
   @CheckForNull
-  @Override
   public Integer getStartLine() {
-    return textRange != null ? textRange.getStartLine() : null;
+    return cellTextRange != null ? cellTextRange.getStartLine() : null;
   }
 
-  @CheckForNull
   @Override
+  @CheckForNull
   public Integer getStartLineOffset() {
-    return textRange != null ? textRange.getStartLineOffset() : null;
+    return cellTextRange != null ? cellTextRange.getStartLineOffset() : null;
   }
 
-  @CheckForNull
   @Override
+  @CheckForNull
   public Integer getEndLine() {
-    return textRange != null ? textRange.getEndLine() : null;
+    return cellTextRange != null ? cellTextRange.getEndLine() : null;
   }
 
+  @Override
   @CheckForNull
-  @Override
   public Integer getEndLineOffset() {
-    return textRange != null ? textRange.getEndLineOffset() : null;
+    return cellTextRange != null ? cellTextRange.getEndLineOffset() : null;
   }
 
-  @Override
-  public List<RawIssueFlowDto> flows() {
-    return issue.getFlows();
+  public RaisedIssueDto getIssue() {
+    return new RaisedIssueDto(issue.getId(), issue.getServerKey(), issue.getRuleKey(), issue.getPrimaryMessage(),
+      issue.getSeverity(), issue.getType(), issue.getCleanCodeAttribute(), issue.getImpacts(), issue.getIntroductionDate(),
+      issue.isOnNewCode(), issue.isResolved(), cellTextRange, issue.getFlows(), cellQuickFixes, issue.getRuleDescriptionContextKey());
   }
 
   @Override
   public List<QuickFixDto> quickFixes() {
-    return quickFixes;
+    return cellQuickFixes;
   }
-
-  @Override
-  @CheckForNull
-  public String getRuleDescriptionContextKey() {
-    return issue.getRuleDescriptionContextKey();
-  }
-
 }

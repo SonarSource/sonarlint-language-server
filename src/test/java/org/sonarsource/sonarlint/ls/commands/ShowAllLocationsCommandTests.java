@@ -28,15 +28,15 @@ import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueLocationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueDetailsDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueFlowDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueLocationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.ShowIssueParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.FlowDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.LocationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
-import org.sonarsource.sonarlint.ls.Issue;
+import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -66,22 +66,22 @@ class ShowAllLocationsCommandTests {
 
   @Test
   void shouldBuildCommandParamsFromIssue() {
-    var issue = mock(Issue.class);
+    var issue = mock(DelegatingFinding.class);
     var fileUri = URI.create("file:///tmp/plop");
     when(issue.getMessage()).thenReturn("message");
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getRuleKey()).thenReturn("ruleKey");
     when(issue.getFileUri()).thenReturn(fileUri);
 
-    var flow1 = mock(RawIssueFlowDto.class);
-    var loc11 = mock(RawIssueLocationDto.class);
+    var flow1 = mock(IssueFlowDto.class);
+    var loc11 = mock(IssueLocationDto.class);
     when(loc11.getTextRange()).thenReturn(new TextRangeDto(0, 0, 0, 7));
-    var loc12 = mock(RawIssueLocationDto.class);
+    var loc12 = mock(IssueLocationDto.class);
     when(loc12.getTextRange()).thenReturn(new TextRangeDto(2, 2, 2, 9));
     var locations1 = List.of(loc11, loc12);
     when(flow1.getLocations()).thenReturn(locations1);
-    var flow2 = mock(RawIssueFlowDto.class);
-    var loc2 = mock(RawIssueLocationDto.class);
+    var flow2 = mock(IssueFlowDto.class);
+    var loc2 = mock(IssueLocationDto.class);
     when(loc2.getTextRange()).thenReturn(new TextRangeDto(4, 0, 4, 7));
     var locations2 = List.of(loc2);
     when(flow2.getLocations()).thenReturn(locations2);
@@ -90,6 +90,7 @@ class ShowAllLocationsCommandTests {
     when(issue.getTextRange()).thenReturn(new TextRangeDto(1, 2, 3, 4));
 
     var params = ShowAllLocationsCommand.params(issue);
+
     assertThat(params).extracting(
       "fileUri",
       "message",

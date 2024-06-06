@@ -23,9 +23,8 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import javax.annotation.CheckForNull;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.QuickFixDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueFlowDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
@@ -40,7 +39,7 @@ public interface Issue {
 
   String getRuleKey();
 
-  List<RawIssueFlowDto> flows();
+  List<IssueFlowDto> flows();
 
   List<QuickFixDto> quickFixes();
 
@@ -54,8 +53,6 @@ public interface Issue {
   TextRangeDto getTextRange();
 
   URI getFileUri();
-
-  RawIssueDto getRawIssue();
 
   @CheckForNull
   default Integer getStartLine() {

@@ -189,8 +189,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
     var projectKey = requireNonNull(settings.getProjectKey());
     globalLogOutput.debug(format("Resolved binding %s for folder %s", projectKey, folderRoot));
-    var issueTrackerWrapper = new ServerIssueTrackerWrapper(backendServiceFacade, foldersManager, openFilesCache);
-    return new ProjectBinding(connectionId, projectKey, issueTrackerWrapper);
+    return new ProjectBinding(connectionId, projectKey);
   }
 
 
@@ -231,7 +230,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private boolean hasAnyBindingThatMatch(Predicate<ServerConnectionSettings> predicate) {
     return Stream.concat(folderBindingCache.values().stream(), fileBindingCache.values().stream())
       .flatMap(Optional::stream)
-      .map(binding -> settingsManager.getCurrentSettings().getServerConnections().get(binding.getConnectionId()))
+      .map(binding -> settingsManager.getCurrentSettings().getServerConnections().get(binding.connectionId()))
       .anyMatch(predicate);
   }
 
@@ -300,8 +299,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   private void clearCaches(String connectionId) {
-    folderBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().getConnectionId().equals(connectionId));
-    fileBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().getConnectionId().equals(connectionId));
+    folderBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().connectionId().equals(connectionId));
+    fileBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().connectionId().equals(connectionId));
   }
 
   private void handleDeletedConnections(@Nullable WorkspaceSettings oldValue, WorkspaceSettings newValue) {
@@ -397,8 +396,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     AtomicReference<URI> folderUri = new AtomicReference<>();
     folderBindingCache.forEach((f, b) -> {
       if (b.isPresent()
-        && b.get().getProjectKey().equals(projectKey)
-        && b.get().getConnectionId().equals(connectionId)) {
+        && b.get().projectKey().equals(projectKey)
+        && b.get().connectionId().equals(connectionId)) {
         binding.set(b.get());
         folderUri.set(f);
       }

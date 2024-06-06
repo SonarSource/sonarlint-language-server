@@ -29,8 +29,8 @@ import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
-import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
-import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
+import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
+import org.sonarsource.sonarlint.ls.connected.DelegatingHotspot;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 
@@ -49,14 +49,14 @@ public class DiagnosticPublisher {
   private boolean firstSecretIssueDetected;
 
   private final IssuesCache issuesCache;
-  private final IssuesCache hotspotsCache;
+  private final HotspotsCache hotspotsCache;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final OpenNotebooksCache openNotebooksCache;
 
   private boolean focusOnNewCode;
 
   public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
-    IssuesCache issuesCache, IssuesCache hotspotsCache, OpenNotebooksCache openNotebooksCache) {
+    IssuesCache issuesCache, HotspotsCache hotspotsCache, OpenNotebooksCache openNotebooksCache) {
     this.client = client;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.issuesCache = issuesCache;
@@ -69,18 +69,22 @@ public class DiagnosticPublisher {
     this.firstSecretIssueDetected = firstSecretDetected;
   }
 
-  public void publishDiagnostics(URI f, boolean onlyHotspots) {
+  public void publishDiagnostics(URI f, boolean onlyIssues) {
     if (openNotebooksCache.isNotebook(f)) {
       return;
     }
-    if (!onlyHotspots) {
-      client.publishDiagnostics(createPublishDiagnosticsParams(f));
+    if (!onlyIssues) {
+      client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
     }
+    client.publishDiagnostics(createPublishDiagnosticsParams(f));
+  }
+
+  public void publishHotspots(URI f) {
     client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
   }
 
-  Diagnostic taintDtoToDiagnostic(Map.Entry<String, VersionedIssue> entry) {
-    var issue = entry.getValue().issue();
+  Diagnostic taintDtoToDiagnostic(Map.Entry<String, DelegatingFinding> entry) {
+    var issue = entry.getValue();
     return prepareDiagnostic(issue, entry.getKey(), false, focusOnNewCode);
   }
 
@@ -92,7 +96,7 @@ public class DiagnosticPublisher {
     return focusOnNewCode;
   }
 
-  public static Diagnostic prepareDiagnostic(Issue issue, String entryKey, boolean ignoreSecondaryLocations, boolean focusOnNewCode) {
+  public static Diagnostic prepareDiagnostic(DelegatingFinding issue, String entryKey, boolean ignoreSecondaryLocations, boolean focusOnNewCode) {
     var diagnostic = new Diagnostic();
 
     setSeverity(diagnostic, issue, focusOnNewCode);
@@ -106,9 +110,9 @@ public class DiagnosticPublisher {
     return diagnostic;
   }
 
-  static void setSeverity(Diagnostic diagnostic, Issue issue, boolean focusOnNewCode) {
-    if (focusOnNewCode && issue instanceof DelegatingIssue delegatingIssue) {
-      var newCodeSeverity = delegatingIssue.isOnNewCode() ? DiagnosticSeverity.Warning : DiagnosticSeverity.Hint;
+  static void setSeverity(Diagnostic diagnostic, DelegatingFinding issue, boolean focusOnNewCode) {
+    if (focusOnNewCode) {
+      var newCodeSeverity = issue.isOnNewCode() ? DiagnosticSeverity.Warning : DiagnosticSeverity.Hint;
       diagnostic.setSeverity(newCodeSeverity);
     } else {
       diagnostic.setSeverity(DiagnosticSeverity.Warning);
@@ -142,27 +146,29 @@ public class DiagnosticPublisher {
 
   }
 
-  public static void setSource(Diagnostic diagnostic, Issue issue) {
-    if (issue instanceof DelegatingIssue delegatedIssue) {
-      var isKnown = delegatedIssue.getServerIssueKey() != null;
-      var isHotspot = delegatedIssue.getType() == RuleType.SECURITY_HOTSPOT;
+  public static void setSource(Diagnostic diagnostic, DelegatingFinding issue) {
+    if (issue instanceof DelegatingHotspot hotspotDto) {
+      var isKnown = hotspotDto.getServerIssueKey() != null;
+      var isHotspot = hotspotDto.getType() == RuleType.SECURITY_HOTSPOT;
       diagnostic.setSource(isKnown && isHotspot ? REMOTE_SOURCE : SONARLINT_SOURCE);
     } else {
       diagnostic.setSource(SONARLINT_SOURCE);
     }
   }
 
-  private static void setData(Diagnostic diagnostic, Issue issue, String entryKey) {
+  private static void setData(Diagnostic diagnostic, DelegatingFinding issue, String entryKey) {
     var data = new DiagnosticData();
-    if (issue instanceof DelegatingIssue delegatedIssue) {
-      data.setStatus(delegatedIssue.getReviewStatus());
-      data.setServerIssueKey(delegatedIssue.getServerIssueKey());
+    if (issue.getServerIssueKey() != null) {
+      data.setServerIssueKey(issue.getServerIssueKey());
+    }
+    if (issue instanceof DelegatingHotspot raisedHotspotDto) {
+      data.setStatus(raisedHotspotDto.getReviewStatus());
     }
     data.setEntryKey(entryKey);
     diagnostic.setData(data);
   }
 
-  public static String message(Issue issue, boolean ignoreSecondaryLocations) {
+  public static String message(DelegatingFinding issue, boolean ignoreSecondaryLocations) {
     if (issue.flows().isEmpty() || ignoreSecondaryLocations) {
       return issue.getMessage();
     } else if (issue.flows().size() == 1) {
@@ -186,10 +192,11 @@ public class DiagnosticPublisher {
   private PublishDiagnosticsParams createPublishDiagnosticsParams(URI newUri) {
     var p = new PublishDiagnosticsParams();
 
-    Map<String, VersionedIssue> localIssues = issuesCache.get(newUri);
+    Map<String, DelegatingFinding> localIssues = issuesCache.get(newUri);
 
     var localDiagnostics = localIssues.entrySet()
       .stream()
+      .filter(e -> !e.getValue().isResolved())
       .map(this::taintDtoToDiagnostic);
     var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostics(newUri, focusOnNewCode);
 
@@ -207,7 +214,8 @@ public class DiagnosticPublisher {
 
     p.setDiagnostics(hotspotsCache.get(newUri).entrySet()
       .stream()
-      .map(this::taintDtoToDiagnostic)
+      .filter(e -> !e.getValue().isResolved())
+      .map(e -> prepareDiagnostic(e.getValue(), e.getKey(), false, focusOnNewCode))
       .sorted(DiagnosticPublisher.byLineNumber())
       .toList());
     p.setUri(newUri.toString());

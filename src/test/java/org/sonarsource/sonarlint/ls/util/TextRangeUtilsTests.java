@@ -26,7 +26,7 @@ import org.sonarsource.sonarlint.core.commons.api.TextRange;
 import org.sonarsource.sonarlint.core.commons.api.TextRangeWithHash;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
-import org.sonarsource.sonarlint.ls.Issue;
+import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,11 +37,11 @@ class TextRangeUtilsTests {
 
   @Test
   void testConvertIssue() {
-    Issue issue1 = mockIssueWithTextRange(null, 5, 15, 8);
+    DelegatingFinding issue1 = mockIssueWithTextRange(0, 5, 15, 8);
     Range result1 = TextRangeUtils.convert(issue1);
     assertEquals(new Range(new Position(0, 0), new Position(0, 0)), result1);
 
-    Issue issue2 = mockIssueWithTextRange(5, 2, 10, 7);
+    DelegatingFinding issue2 = mockIssueWithTextRange(5, 2, 10, 7);
     Range result2 = TextRangeUtils.convert(issue2);
     assertEquals(new Range(new Position(4, 2), new Position(9, 7)), result2);
   }
@@ -112,13 +112,10 @@ class TextRangeUtilsTests {
     assertThat(result2.getEndLineOffset()).isEqualTo(7);
   }
 
-  private Issue mockIssueWithTextRange(Integer startLine, int startLineOffset, int endLine, int endLineOffset) {
-    var issue = mock(Issue.class);
-
-    when(issue.getStartLine()).thenReturn(startLine);
-    when(issue.getStartLineOffset()).thenReturn(startLineOffset);
-    when(issue.getEndLine()).thenReturn(endLine);
-    when(issue.getEndLineOffset()).thenReturn(endLineOffset);
+  private DelegatingFinding mockIssueWithTextRange(Integer startLine, int startLineOffset, int endLine, int endLineOffset) {
+    var issue = mock(DelegatingFinding.class);
+    var textRange = new TextRangeDto(startLine, startLineOffset, endLine, endLineOffset);
+    when(issue.getTextRange()).thenReturn(textRange);
 
     return issue;
   }

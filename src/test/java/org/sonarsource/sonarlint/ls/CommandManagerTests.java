@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import javax.annotation.CheckForNull;
 import org.eclipse.lsp4j.CodeActionContext;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Diagnostic;
@@ -39,7 +38,6 @@ import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -49,9 +47,9 @@ import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
 import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.commons.api.TextRange;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRuleDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetEffectiveRuleDetailsResponse;
@@ -63,11 +61,12 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleMonolithicD
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleNonContextualSectionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleSplitDescriptionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.FileEditDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.QuickFixDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.TextEditDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.FileEditDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueFlowDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.TextEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
@@ -76,11 +75,11 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
-import org.sonarsource.sonarlint.ls.IssuesCache.VersionedIssue;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
+import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
+import org.sonarsource.sonarlint.ls.connected.DelegatingHotspot;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -133,13 +132,12 @@ class CommandManagerTests {
   private CommandManager underTest;
   private ProjectBindingManager bindingManager;
   private ProjectBinding mockBinding;
-  private SonarLintAnalysisEngine mockConnectedEngine;
   private SonarLintExtendedLanguageClient mockClient;
   private TaintVulnerabilitiesCache mockTaintVulnerabilitiesCache;
   private IssuesCache issuesCache;
   private SettingsManager mockSettingsManager;
   private SonarLintTelemetry mockTelemetry;
-  private IssuesCache securityHotspotsCache;
+  private HotspotsCache securityHotspotsCache;
   private BackendServiceFacade backendServiceFacade;
   private BackendService backendService;
   private WorkspaceFoldersManager workspaceFoldersManager;
@@ -150,14 +148,13 @@ class CommandManagerTests {
     bindingManager = mock(ProjectBindingManager.class);
     mockSettingsManager = mock(SettingsManager.class);
     mockBinding = mock(ProjectBinding.class);
-    mockConnectedEngine = mock(SonarLintAnalysisEngine.class);
-    when(mockBinding.getProjectKey()).thenReturn("projectKey");
+    when(mockBinding.projectKey()).thenReturn("projectKey");
 
     mockClient = mock(SonarLintExtendedLanguageClient.class);
     mockTaintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
     issuesCache = mock(IssuesCache.class);
     mockTelemetry = mock(SonarLintTelemetry.class);
-    securityHotspotsCache = mock(IssuesCache.class);
+    securityHotspotsCache = mock(HotspotsCache.class);
     backendServiceFacade = mock(BackendServiceFacade.class);
     workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
     openNotebooksCache = mock(OpenNotebooksCache.class);
@@ -191,9 +188,8 @@ class CommandManagerTests {
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
-    var issue = mock(Issue.class);
-    var versionedIssue = new VersionedIssue(issue, 1);
-    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionedIssue));
+    var issue = mock(DelegatingFinding.class);
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
@@ -211,9 +207,8 @@ class CommandManagerTests {
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
-    var issue = mock(Issue.class);
-    var versionedIssue = new VersionedIssue(issue, 1);
-    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionedIssue));
+    var issue = mock(DelegatingFinding.class);
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
     var textEdit = mock(TextEditDto.class);
     when(textEdit.newText()).thenReturn("");
@@ -244,7 +239,7 @@ class CommandManagerTests {
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
-    var issue = mock(Issue.class);
+    var issue = mock(RaisedFindingDto.class);
     var textEdit = mock(TextEditDto.class);
     when(textEdit.newText()).thenReturn("");
     when(textEdit.range()).thenReturn(new TextRangeDto(1, 0, 1, 1));
@@ -254,15 +249,14 @@ class CommandManagerTests {
     var fix = mock(QuickFixDto.class);
     when(fix.message()).thenReturn("Fix the issue!");
     when(fix.fileEdits()).thenReturn(List.of(edit));
-    when(issue.quickFixes()).thenReturn(List.of(fix));
-    var rawIssue = mock(RawIssueDto.class);
-    when(issue.getRawIssue()).thenReturn(rawIssue);
-    when(rawIssue.getQuickFixes()).thenReturn(List.of(fix));
-    var versionedIssue = new VersionedIssue(issue, 1);
+    when(issue.getQuickFixes()).thenReturn(List.of(fix));
+    var rawIssue = mock(DelegatingFinding.class);
+    when(rawIssue.quickFixes()).thenReturn(List.of(fix));
+    when(rawIssue.getFinding()).thenReturn(issue);
     when(openNotebooksCache.getFile(notebookUri)).thenReturn(Optional.of(fakeNotebook));
     when(openNotebooksCache.getNotebookUriFromCellUri(URI.create(CELL_URI))).thenReturn(fakeNotebook.getUri());
     when(openNotebooksCache.isKnownCellUri(URI.create(CELL_URI))).thenReturn(true);
-    when(issuesCache.getIssueForDiagnostic(fakeNotebook.getUri(), d)).thenReturn(Optional.of(versionedIssue));
+    when(issuesCache.getIssueForDiagnostic(fakeNotebook.getUri(), d)).thenReturn(Optional.of(rawIssue));
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_NOTEBOOK_CELL_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
@@ -278,7 +272,7 @@ class CommandManagerTests {
   @ValueSource(strings = {SONARQUBE_TAINT_SOURCE, SONARCLOUD_TAINT_SOURCE})
   void codeActionsForTaintWithContext(String taintSource) {
     var connId = "connectionId";
-    when(mockBinding.getConnectionId()).thenReturn(connId);
+    when(mockBinding.connectionId()).thenReturn(connId);
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
     var mockWorkspacesettings = mock(WorkspaceSettings.class);
     var serverSettings = mock(ServerConnectionSettings.class);
@@ -324,7 +318,7 @@ class CommandManagerTests {
   @Test
   void codeActionsForTaintNoContext() {
     var connId = "connectionId";
-    when(mockBinding.getConnectionId()).thenReturn(connId);
+    when(mockBinding.connectionId()).thenReturn(connId);
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
     var mockWorkspacesettings = mock(WorkspaceSettings.class);
     var serverSettings = mock(ServerConnectionSettings.class);
@@ -354,12 +348,11 @@ class CommandManagerTests {
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
-    var flow = mock(RawIssueFlowDto.class);
+    var flow = mock(IssueFlowDto.class);
     var flows = List.of(flow);
-    var issue = mock(Issue.class);
-    var versionedIssue = new VersionedIssue(issue, 1);
+    var issue = mock(DelegatingFinding.class);
     when(issue.flows()).thenReturn(flows);
-    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionedIssue));
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
@@ -458,98 +451,32 @@ class CommandManagerTests {
 
   @Test
   void showHotspotFlowsCommandSuccess() {
-    var issueKey = "someIssueKey";
+    var issueKey = UUID.randomUUID();
     var fileUri = "fileUri";
-    var issue = new Issue() {
+    var hotspot = new RaisedHotspotDto(
+      issueKey,
+      null,
+      "rule",
+      "ruleName",
+      IssueSeverity.BLOCKER,
+      RuleType.SECURITY_HOTSPOT,
+      CleanCodeAttribute.COMPLETE,
+      List.of(new ImpactDto(SoftwareQuality.SECURITY, ImpactSeverity.HIGH)),
+      Instant.now(),
+      true,
+      false,
+      null,
+      List.of(),
+      List.of(),
+      null,
+      null,
+      HotspotStatus.ACKNOWLEDGED
+    );
 
-      @Nullable
-      @Override
-      public TextRangeDto getTextRange() {
-        return null;
-      }
+    var delegatingHotspot = new DelegatingHotspot(hotspot, URI.create("fileUri"), HotspotStatus.TO_REVIEW, null);
+    when(securityHotspotsCache.get(URI.create("fileUri"))).thenReturn(Map.of(issueKey.toString(), delegatingHotspot));
 
-      @Override
-      public RawIssueDto getRawIssue() {
-        return null;
-      }
-
-      @Nullable
-      @Override
-      public Integer getStartLine() {
-        return Issue.super.getStartLine();
-      }
-
-      @Nullable
-      @Override
-      public Integer getStartLineOffset() {
-        return Issue.super.getStartLineOffset();
-      }
-
-      @Nullable
-      @Override
-      public Integer getEndLine() {
-        return Issue.super.getEndLine();
-      }
-
-      @Nullable
-      @Override
-      public Integer getEndLineOffset() {
-        return Issue.super.getEndLineOffset();
-      }
-
-      @Nullable
-      @Override
-      public String getMessage() {
-        return "";
-      }
-
-      @Nullable
-      @Override
-      public URI getFileUri() {
-        return null;
-      }
-
-      @Override
-      public UUID getIssueId() {
-        return null;
-      }
-
-      @Override
-      public IssueSeverity getSeverity() {
-        return IssueSeverity.BLOCKER;
-      }
-
-      @Override
-      public RuleType getType() {
-        return RuleType.SECURITY_HOTSPOT;
-      }
-
-      @Override
-      public String getRuleKey() {
-        return "";
-      }
-
-      @Override
-      public List<RawIssueFlowDto> flows() {
-        return emptyList();
-      }
-
-      @Override
-      public List<QuickFixDto> quickFixes() {
-        return null;
-      }
-
-      @Override
-      @CheckForNull
-      public String getRuleDescriptionContextKey() {
-        return null;
-      }
-
-    };
-    var versionedIssue = new VersionedIssue(issue, 1);
-    when(securityHotspotsCache.get(URI.create("fileUri"))).thenReturn(Map.of(issueKey, versionedIssue));
-
-    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS, List.of(new JsonPrimitive(fileUri), new JsonPrimitive(issueKey))), NOP_CANCEL_TOKEN);
+    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS, List.of(new JsonPrimitive(fileUri), new JsonPrimitive(issueKey.toString()))), NOP_CANCEL_TOKEN);
 
     verify(securityHotspotsCache).get(URI.create("fileUri"));
     verify(mockClient).showIssueOrHotspot(any());
@@ -664,17 +591,16 @@ class CommandManagerTests {
     when(backendService.checkChangeIssueStatusPermitted(any()))
       .thenReturn(CompletableFuture.completedFuture(new CheckStatusChangePermittedResponse(true, null, Collections.emptyList())));
     var connId = "connectionId";
-    when(mockBinding.getConnectionId()).thenReturn(connId);
+    when(mockBinding.connectionId()).thenReturn(connId);
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
     var fileUri = URI.create(FILE_URI);
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
-    var issue = mock(DelegatingIssue.class);
-    var versionedIssue = new VersionedIssue(issue, 1);
+    var issue = mock(DelegatingFinding.class);
     when(issue.getServerIssueKey()).thenReturn("qwerty");
     when(issue.getIssueId()).thenReturn(UUID.randomUUID());
-    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionedIssue));
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
     var textEdit = mock(TextEdit.class);
     when(textEdit.newText()).thenReturn("");
@@ -702,15 +628,14 @@ class CommandManagerTests {
     when(backendService.checkChangeIssueStatusPermitted(any()))
       .thenReturn(CompletableFuture.completedFuture(new CheckStatusChangePermittedResponse(false, null, Collections.emptyList())));
     var connId = "connectionId";
-    when(mockBinding.getConnectionId()).thenReturn(connId);
+    when(mockBinding.connectionId()).thenReturn(connId);
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
     var fileUri = URI.create(FILE_URI);
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
-    var issue = mock(DelegatingIssue.class);
-    var versionedIssue = new VersionedIssue(issue, 1);
-    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionedIssue));
+    var issue = mock(DelegatingFinding.class);
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
     var textEdit = mock(TextEdit.class);
     when(textEdit.newText()).thenReturn("");
@@ -737,15 +662,14 @@ class CommandManagerTests {
     when(backendService.checkChangeIssueStatusPermitted(any()))
       .thenReturn(CompletableFuture.completedFuture(new CheckStatusChangePermittedResponse(true, null, Collections.emptyList())));
     var connId = "connectionId";
-    when(mockBinding.getConnectionId()).thenReturn(connId);
+    when(mockBinding.connectionId()).thenReturn(connId);
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
     var fileUri = URI.create(FILE_URI);
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
-    var issue = mock(DelegatingIssue.class);
-    var versionedIssue = new VersionedIssue(issue, 1);
-    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(versionedIssue));
+    var issue = mock(DelegatingFinding.class);
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
     var textEdit = mock(TextEdit.class);
     when(textEdit.newText()).thenReturn("");

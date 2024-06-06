@@ -33,7 +33,7 @@ import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFilesParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFilesAndTrackParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFilesResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeClientNodeJsPathParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
@@ -172,8 +172,8 @@ public class BackendService {
     BindingConfigurationDto bindingConfigurationDto;
     if (bindingOptional.isPresent()) {
       ProjectBinding bindingWrapper = bindingOptional.get();
-      bindingConfigurationDto = new BindingConfigurationDto(bindingWrapper.getConnectionId(),
-        bindingWrapper.getProjectKey(), true);
+      bindingConfigurationDto = new BindingConfigurationDto(bindingWrapper.connectionId(),
+        bindingWrapper.projectKey(), true);
     } else {
       bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
     }
@@ -364,11 +364,6 @@ public class BackendService {
     return backend.getTaintVulnerabilityTrackingService().listAll(params);
   }
 
-  public CompletableFuture<AnalyzeFilesResponse> analyzeFiles(String configScopeId, UUID analysisId, List<URI> filesToAnalyze, Map<String, String> extraProps) {
-    var params = new AnalyzeFilesParams(configScopeId, analysisId, filesToAnalyze, extraProps, System.currentTimeMillis());
-    return backend.getAnalysisService().analyzeFiles(params);
-  }
-
   public CompletableFuture<GetProjectNamesByKeyResponse> getProjectNamesByKeys(Either<TransientSonarQubeConnectionDto, TransientSonarCloudConnectionDto> transientConnection,
     List<String> projectKeys) {
     var params = new GetProjectNamesByKeyParams(transientConnection, projectKeys);
@@ -377,5 +372,12 @@ public class BackendService {
 
   public SonarLintRpcServer getBackend() {
     return backend;
+  }
+
+  public CompletableFuture<AnalyzeFilesResponse> analyzeFilesAndTrack(String configScopeId, UUID analysisId, List<URI> filesToAnalyze,
+    Map<String, String> extraProps, boolean shouldFetchServerIssues) {
+    var params = new AnalyzeFilesAndTrackParams(configScopeId, analysisId, filesToAnalyze, extraProps,
+      shouldFetchServerIssues, System.currentTimeMillis());
+    return backend.getAnalysisService().analyzeFilesAndTrack(params);
   }
 }

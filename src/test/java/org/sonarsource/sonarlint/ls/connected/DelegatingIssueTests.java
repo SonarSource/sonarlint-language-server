@@ -19,12 +19,12 @@
  */
 package org.sonarsource.sonarlint.ls.connected;
 
+import java.net.URI;
 import java.util.List;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueFlowDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 
@@ -35,8 +35,8 @@ import static org.mockito.Mockito.when;
 class DelegatingIssueTests {
 
   private final TextRangeDto textRange = mock(TextRangeDto.class);
-  private final RawIssueDto issue = mock(RawIssueDto.class);
-  private DelegatingIssue delegatingIssue;
+  private final RaisedFindingDto issue = mock(RaisedFindingDto.class);
+  private DelegatingFinding delegatingFinding;
 
   @BeforeEach
   public void prepare() {
@@ -48,65 +48,65 @@ class DelegatingIssueTests {
     when(textRange.getStartLineOffset()).thenReturn(3);
     when(textRange.getEndLine()).thenReturn(4);
     when(textRange.getEndLineOffset()).thenReturn(5);
-    when(issue.getFlows()).thenReturn(List.of(mock(RawIssueFlowDto.class)));
-    delegatingIssue = new DelegatingIssue(issue, UUID.randomUUID(), false, false);
+    when(issue.getFlows()).thenReturn(List.of(mock(IssueFlowDto.class)));
+    delegatingFinding = new DelegatingFinding(issue, URI.create("file:///myFile.py"));
   }
 
   @Test
   void testGetSeverity() {
-    assertThat(delegatingIssue.getSeverity()).isEqualTo(issue.getSeverity());
+    assertThat(delegatingFinding.getSeverity()).isEqualTo(issue.getSeverity());
   }
 
   @Test
   void testGetUserSeverity() {
     when(issue.getSeverity()).thenReturn(IssueSeverity.INFO);
-    var delegatingIssueWithUserSeverity = new DelegatingIssue(issue, UUID.randomUUID(), false, false);
+    var delegatingIssueWithUserSeverity = new DelegatingFinding(issue, URI.create("file:///myFile.py"));
 
     assertThat(delegatingIssueWithUserSeverity.getSeverity()).isEqualTo(IssueSeverity.INFO);
   }
 
   @Test
   void testGetType() {
-    assertThat(delegatingIssue.getType()).isEqualTo(issue.getType());
+    assertThat(delegatingFinding.getType()).isEqualTo(issue.getType());
   }
 
   @Test
   void testGetMessage() {
-    assertThat(delegatingIssue.getMessage()).isNotEmpty().isEqualTo(issue.getPrimaryMessage());
+    assertThat(delegatingFinding.getMessage()).isNotEmpty().isEqualTo(issue.getPrimaryMessage());
   }
 
   @Test
   void testGetRuleKey() {
-    assertThat(delegatingIssue.getRuleKey()).isNotEmpty().isEqualTo(issue.getRuleKey());
+    assertThat(delegatingFinding.getRuleKey()).isNotEmpty().isEqualTo(issue.getRuleKey());
   }
 
   @Test
   void testGetStartLine() {
-    assertThat(delegatingIssue.getStartLine()).isPositive().isEqualTo(issue.getTextRange().getStartLine());
+    assertThat(delegatingFinding.getStartLine()).isPositive().isEqualTo(issue.getTextRange().getStartLine());
   }
 
   @Test
   void testGetStartLineOffset() {
-    assertThat(delegatingIssue.getStartLineOffset()).isPositive().isEqualTo(issue.getTextRange().getStartLineOffset());
+    assertThat(delegatingFinding.getStartLineOffset()).isPositive().isEqualTo(issue.getTextRange().getStartLineOffset());
   }
 
   @Test
   void testGetEndLine() {
-    assertThat(delegatingIssue.getEndLine()).isPositive().isEqualTo(issue.getTextRange().getEndLine());
+    assertThat(delegatingFinding.getEndLine()).isPositive().isEqualTo(issue.getTextRange().getEndLine());
   }
 
   @Test
   void testGetEndLineOffset() {
-    assertThat(delegatingIssue.getEndLineOffset()).isPositive().isEqualTo(issue.getTextRange().getEndLineOffset());
+    assertThat(delegatingFinding.getEndLineOffset()).isPositive().isEqualTo(issue.getTextRange().getEndLineOffset());
   }
 
   @Test
   void testFlows() {
-    assertThat(delegatingIssue.flows()).isNotEmpty().isEqualTo(issue.getFlows());
+    assertThat(delegatingFinding.flows()).isNotEmpty().isEqualTo(issue.getFlows());
   }
 
   @Test
   void testGetTextRange() {
-    assertThat(delegatingIssue.getTextRange()).isNotNull().isEqualTo(issue.getTextRange());
+    assertThat(delegatingFinding.getTextRange()).isNotNull().isEqualTo(issue.getTextRange());
   }
 }

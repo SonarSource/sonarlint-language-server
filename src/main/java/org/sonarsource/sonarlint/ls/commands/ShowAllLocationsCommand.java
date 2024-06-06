@@ -29,14 +29,14 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueFlowDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.analysis.RawIssueLocationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueFlowDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueLocationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.ShowIssueParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.FlowDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.LocationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
-import org.sonarsource.sonarlint.ls.Issue;
 import org.sonarsource.sonarlint.ls.LocalCodeFile;
+import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
@@ -64,7 +64,7 @@ public final class ShowAllLocationsCommand {
     private boolean codeMatches = false;
 
 
-    private Param(Issue issue) {
+    private Param(DelegatingFinding issue) {
       this.fileUri = issue.getFileUri();
       this.message = issue.getMessage();
       this.severity = issue.getSeverity().toString();
@@ -167,7 +167,7 @@ public final class ShowAllLocationsCommand {
   static class Flow {
     private final List<Location> locations;
 
-    private Flow(RawIssueFlowDto flow) {
+    private Flow(IssueFlowDto flow) {
       this.locations = flow.getLocations().stream().map(Location::new).toList();
     }
 
@@ -192,7 +192,7 @@ public final class ShowAllLocationsCommand {
     private boolean exists = false;
     private boolean codeMatches = false;
 
-    private Location(RawIssueLocationDto location) {
+    private Location(IssueLocationDto location) {
       var locationTextRange = location.getTextRange();
       this.textRange = locationTextRange != null ? new TextRangeWithHashDto(locationTextRange.getStartLine(),
         locationTextRange.getStartLineOffset(),
@@ -289,7 +289,7 @@ public final class ShowAllLocationsCommand {
     }
   }
 
-  public static Param params(Issue issue) {
+  public static Param params(DelegatingFinding issue) {
     return new Param(issue);
   }
 
