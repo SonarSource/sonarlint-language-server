@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -79,12 +80,13 @@ public class AnalysisTaskExecutor {
   private final NotebookDiagnosticPublisher notebookDiagnosticPublisher;
   private final ProgressManager progressManager;
   private final BackendServiceFacade backendServiceFacade;
+  private final AnalysisTasksCache analysisTasksCache;
 
   public AnalysisTaskExecutor(ScmIgnoredCache filesIgnoredByScmCache, LanguageClientLogger clientLogger,
     WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, JavaConfigCache javaConfigCache, SettingsManager settingsManager,
     IssuesCache issuesCache, HotspotsCache securityHotspotsCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher,
     SonarLintExtendedLanguageClient lsClient, OpenNotebooksCache openNotebooksCache, NotebookDiagnosticPublisher notebookDiagnosticPublisher,
-    ProgressManager progressManager, BackendServiceFacade backendServiceFacade) {
+    ProgressManager progressManager, BackendServiceFacade backendServiceFacade, AnalysisTasksCache analysisTasksCache) {
     this.filesIgnoredByScmCache = filesIgnoredByScmCache;
     this.clientLogger = clientLogger;
     this.workspaceFoldersManager = workspaceFoldersManager;
@@ -100,6 +102,7 @@ public class AnalysisTaskExecutor {
     this.notebookDiagnosticPublisher = notebookDiagnosticPublisher;
     this.progressManager = progressManager;
     this.backendServiceFacade = backendServiceFacade;
+    this.analysisTasksCache = analysisTasksCache;
   }
 
   public void run(AnalysisTask task) {
@@ -301,7 +304,12 @@ public class AnalysisTaskExecutor {
     }
   }
 
-  public void handleIssues(Map<URI, List<RaisedFindingDto>> issuesByFileUri) {
+  public void handleIssues(Map<URI, List<RaisedFindingDto>> issuesByFileUri, @Nullable UUID analysisId) {
+    if (analysisId != null &&
+      analysisTasksCache.getAnalysisTask(analysisId) != null &&
+      analysisTasksCache.getAnalysisTask(analysisId).shouldKeepHotspotsOnly()) {
+      return;
+    }
     var totalIssueCount = new AtomicInteger();
     issuesCache.reportIssues(issuesByFileUri);
     issuesByFileUri.forEach((uri, issues) -> {
@@ -331,6 +339,7 @@ public class AnalysisTaskExecutor {
 
     var extraProperties = buildExtraPropertiesMap(settings, filesToAnalyze, javaConfigs);
 
+    analysisTasksCache.analyze(task.getAnalysisId(), task);
     backendServiceFacade.getBackendService().analyzeFilesAndTrack(folderUri != null ? folderUri.toString() : ROOT_CONFIGURATION_SCOPE, task.getAnalysisId(),
       filesToAnalyze.keySet().stream().toList(), extraProperties, true).join();
   }
