@@ -830,11 +830,13 @@ class SonarLintVSCodeClientTests {
     var fileUri = URI.create("fileUri");
     var issuesByFileUri = Map.of(fileUri, List.of(raisedIssue));
     underTest.raiseIssues(configScopeId, issuesByFileUri, false, analysisId);
-    ArgumentCaptor<Map<URI, List<RaisedFindingDto>>> argumentCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Map<URI, List<RaisedFindingDto>>> findingsPerFileCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<UUID> analysisIdCaptor = ArgumentCaptor.forClass(UUID.class);
 
-    verify(analysisTaskExecutor, times(1)).handleIssues(argumentCaptor.capture());
-    assertThat(argumentCaptor.getValue().get(fileUri)).isNotNull();
-    assertThat(argumentCaptor.getValue().get(fileUri)).hasSize(1);
+    verify(analysisTaskExecutor, times(1)).handleIssues(findingsPerFileCaptor.capture(), analysisIdCaptor.capture());
+    assertThat(findingsPerFileCaptor.getValue().get(fileUri)).isNotNull();
+    assertThat(findingsPerFileCaptor.getValue().get(fileUri)).hasSize(1);
+    assertThat(analysisIdCaptor.getValue()).isEqualTo(analysisId);
   }
 
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {

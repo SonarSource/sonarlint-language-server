@@ -180,6 +180,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ServerSentEventsHandlerService serverSentEventsHandler;
   private final FileTypeClassifier fileTypeClassifier;
   private final AnalysisTaskExecutor analysisTaskExecutor;
+  private final AnalysisTasksCache analysisTasksCache;
 
   private String appName;
 
@@ -250,10 +251,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var smartNotifications = new SmartNotifications(client, telemetry);
     vsCodeClient.setSmartNotifications(smartNotifications);
     this.scmIgnoredCache = new ScmIgnoredCache(client, lsLogOutput);
+    this.analysisTasksCache = new AnalysisTasksCache();
     this.moduleEventsProcessor = new ModuleEventsProcessor(workspaceFoldersManager, fileTypeClassifier, javaConfigCache, backendServiceFacade, settingsManager);
     this.analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
       issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, diagnosticPublisher,
-      client, openNotebooksCache, notebookDiagnosticPublisher, progressManager, backendServiceFacade);
+      client, openNotebooksCache, notebookDiagnosticPublisher, progressManager, backendServiceFacade, analysisTasksCache);
     vsCodeClient.setAnalysisTaskExecutor(analysisTaskExecutor);
     this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor, client);
     vsCodeClient.setAnalysisScheduler(analysisScheduler);
