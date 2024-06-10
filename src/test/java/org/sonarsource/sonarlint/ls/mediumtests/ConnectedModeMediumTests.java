@@ -22,6 +22,8 @@ package org.sonarsource.sonarlint.ls.mediumtests;
 import com.google.gson.JsonObject;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
@@ -45,6 +47,7 @@ import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
+import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
@@ -52,6 +55,7 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonar.api.utils.DateUtils;
@@ -250,7 +254,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     mockNoIssuesNoHotspotsForProject();
 
     addConfigScope(folder1BaseDir.toUri().toString());
-    var uriInFolder = folder1BaseDir.resolve("hotspot.py").toUri().toString();
+    var uriInFolder = folder1BaseDir.resolve("analysisConnected_find_hotspot.py").toUri().toString();
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
@@ -424,84 +428,85 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           DiagnosticSeverity.Warning)));
   }
 
-  //  @Disabled("SLCORE-396 - engine restart issue")
-//  @Test
-//  void analysisConnected_scan_all_hotspot_then_forget() throws IOException {
-//    var file1 = "hotspot1.py";
-//    var file2 = "hotspot2.py";
-//    mockNoIssuesNoHotspotsForProject();
-//    mockWebServerExtension.addProtobufResponse("/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + file1 + "&branch=master&ps=500&ps=1",
-//      Hotspots.SearchWsResponse.newBuilder().build());
-//    mockWebServerExtension.addProtobufResponse("/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + file2 + "&branch=master&ps=500&ps=1",
-//      Hotspots.SearchWsResponse.newBuilder().build());
-//
-//    var uri1InFolder = folder1BaseDir.resolve(file1).toUri().toString();
-//    var doc1 = new TextDocumentItem();
-//    doc1.setUri(uri1InFolder);
-//    String doc1Content = "def foo():\n  id_address = '12.34.56.78'\n";
-//    doc1.setText(doc1Content);
-//    doc1.setVersion(0);
-//    doc1.setLanguageId("[unknown]");
-//    Path doc1Path = Path.of(URI.create(uri1InFolder).getPath());
-//    Files.createFile(doc1Path);
-//    Files.writeString(doc1Path, doc1Content);
-//
-//    var uri2InFolder = folder1BaseDir.resolve(file2).toUri().toString();
-//    var doc2 = new TextDocumentItem();
-//    doc2.setUri(uri2InFolder);
-//    String doc2Content = "def foo():\n  id_address = '23.45.67.89'\n";
-//    doc2.setText(doc2Content);
-//    doc2.setVersion(0);
-//    doc2.setLanguageId("[unknown]");
-//    Path doc2Path = Path.of(URI.create(uri2InFolder).getPath());
-//    Files.createFile(doc2Path);
-//    Files.writeString(doc2Path, doc2Content);
-//
-//    List<TextDocumentItem> documents = List.of(doc1, doc2);
-//    var scanParams = new SonarLintExtendedLanguageServer.ScanFolderForHotspotsParams(folder1BaseDir.toUri().toString(), documents);
-//
-//    addConfigScope(folder1BaseDir.toUri().toString());
-//    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
-//    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
-//
-//    lsProxy.scanFolderForHotspots(scanParams);
-//
-//    awaitUntilAsserted(() -> {
-//      assertThat(client.getHotspots(uri1InFolder))
-//        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
-//          Diagnostic::getSeverity)
-//        .containsExactly(
-//          tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
-//            DiagnosticSeverity.Warning));
-//      assertThat(client.getDiagnostics(uri1InFolder)).isEmpty();
-//
-//      assertThat(client.getHotspots(uri2InFolder))
-//        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
-//          Diagnostic::getSeverity)
-//        .containsExactly(
-//          tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"23.45.67.89\" is safe here.",
-//            DiagnosticSeverity.Warning));
-//      assertThat(client.getDiagnostics(uri2InFolder)).isEmpty();
-//    });
-//
-//    // Simulate that file 1 is open, should not be cleaned
-//    didOpen(uri1InFolder, "python", doc1Content);
-//
-//    lsProxy.forgetFolderHotspots();
-//
-//    awaitUntilAsserted(() -> {
-//      // File 1 is still open, keeping hotspots
-//      assertThat(client.getHotspots(uri1InFolder))
-//        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
-//          Diagnostic::getSeverity)
-//        .containsExactly(
-//          tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
-//            DiagnosticSeverity.Warning));
-//
-//      // File 2 is not open, cleaning hotspots
-//      assertThat(client.getHotspots(uri2InFolder)).isEmpty();
-//    });
-//  }
+  @Disabled("SLCORE-396 - engine restart issue")
+  @Test
+  void analysisConnected_scan_all_hotspot_then_forget() throws IOException {
+    // TODO somehow provide the two files as a response to listFilesInFolder request
+    var file1 = "hotspot1.py";
+    var file2 = "hotspot2.py";
+    mockNoIssuesNoHotspotsForProject();
+    mockWebServerExtension.addProtobufResponse("/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + file1 + "&branch=master&ps=500&ps=1",
+      Hotspots.SearchWsResponse.newBuilder().build());
+    mockWebServerExtension.addProtobufResponse("/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + file2 + "&branch=master&ps=500&ps=1",
+      Hotspots.SearchWsResponse.newBuilder().build());
+
+    var uri1InFolder = folder1BaseDir.resolve(file1).toUri().toString();
+    var doc1 = new TextDocumentItem();
+    doc1.setUri(uri1InFolder);
+    String doc1Content = "def foo():\n  id_address = '12.34.56.78'\n";
+    doc1.setText(doc1Content);
+    doc1.setVersion(0);
+    doc1.setLanguageId("python");
+    Path doc1Path = Path.of(URI.create(uri1InFolder).getPath());
+    Files.createFile(doc1Path);
+    Files.writeString(doc1Path, doc1Content);
+
+    var uri2InFolder = folder1BaseDir.resolve(file2).toUri().toString();
+    var doc2 = new TextDocumentItem();
+    doc2.setUri(uri2InFolder);
+    String doc2Content = "def foo():\n  id_address = '23.45.67.89'\n";
+    doc2.setText(doc2Content);
+    doc2.setVersion(0);
+    doc2.setLanguageId("python");
+    Path doc2Path = Path.of(URI.create(uri2InFolder).getPath());
+    Files.createFile(doc2Path);
+    Files.writeString(doc2Path, doc2Content);
+
+    List<TextDocumentItem> documents = List.of(doc1, doc2);
+    var scanParams = new SonarLintExtendedLanguageServer.ScanFolderForHotspotsParams(folder1BaseDir.toUri().toString(), documents);
+
+    addConfigScope(folder1BaseDir.toUri().toString());
+    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
+    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
+
+    lsProxy.scanFolderForHotspots(scanParams);
+
+    awaitUntilAsserted(() -> {
+      assertThat(client.getHotspots(uri1InFolder))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+          Diagnostic::getSeverity)
+        .containsExactly(
+          tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
+            DiagnosticSeverity.Warning));
+      assertThat(client.getDiagnostics(uri1InFolder)).isEmpty();
+
+      assertThat(client.getHotspots(uri2InFolder))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+          Diagnostic::getSeverity)
+        .containsExactly(
+          tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"23.45.67.89\" is safe here.",
+            DiagnosticSeverity.Warning));
+      assertThat(client.getDiagnostics(uri2InFolder)).isEmpty();
+    });
+
+    // Simulate that file 1 is open, should not be cleaned
+    didOpen(uri1InFolder, "python", doc1Content);
+
+    lsProxy.forgetFolderHotspots();
+
+    awaitUntilAsserted(() -> {
+      // File 1 is still open, keeping hotspots
+      assertThat(client.getHotspots(uri1InFolder))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+          Diagnostic::getSeverity)
+        .containsExactly(
+          tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
+            DiagnosticSeverity.Warning));
+
+      // File 2 is not open, cleaning hotspots
+      assertThat(client.getHotspots(uri2InFolder)).isEmpty();
+    });
+  }
 
   @Test
   void analysisConnected_no_matching_server_issues() {
@@ -1307,7 +1312,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var uriInFolder = folder1BaseDir.resolve("shouldIgnore.razor").toUri().toString();
     didOpen(uriInFolder, "csharp", "@using System");
 
-    awaitUntilAsserted(() -> assertLogContains("Found 0 issues"));
+    awaitUntilAsserted(() -> assertLogContains("Analysis detected 0 issues and 0 Security Hotspots"));
     assertLogContains("'OmniSharp' skipped because there are no related files in the current project");
   }
 

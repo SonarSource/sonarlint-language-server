@@ -29,7 +29,6 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.commons.api.progress.CanceledException;
@@ -61,7 +60,6 @@ import static java.util.stream.Collectors.partitioningBy;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.ROOT_CONFIGURATION_SCOPE;
-import static org.sonarsource.sonarlint.ls.util.Utils.pluralize;
 
 public class AnalysisTaskExecutor {
 
@@ -310,28 +308,21 @@ public class AnalysisTaskExecutor {
       analysisTasksCache.getAnalysisTask(analysisId).shouldKeepHotspotsOnly()) {
       return;
     }
-    var totalIssueCount = new AtomicInteger();
     issuesCache.reportIssues(issuesByFileUri);
     issuesByFileUri.forEach((uri, issues) -> {
-      var foundIssues = issuesCache.count(uri);
-      totalIssueCount.addAndGet(foundIssues);
       diagnosticPublisher.publishDiagnostics(uri, true);
       notebookDiagnosticPublisher.cleanupDiagnosticsForCellsWithoutIssues(uri);
       openNotebooksCache.getFile(uri).ifPresent(notebook -> notebookDiagnosticPublisher.publishNotebookDiagnostics(uri, notebook));
     });
-    clientLogger.info(format("Found %s %s", totalIssueCount.get(), pluralize(totalIssueCount.get(), "issue")));
   }
 
   public void handleHotspots(Map<URI, List<RaisedHotspotDto>> hotspotsByFileUri) {
-    var totalHotspotCount = new AtomicInteger();
     securityHotspotsCache.reportHotspots(hotspotsByFileUri);
     hotspotsByFileUri.forEach((uri, issues) -> {
-      totalHotspotCount.addAndGet(securityHotspotsCache.count(uri));
       diagnosticPublisher.publishHotspots(uri);
       notebookDiagnosticPublisher.cleanupDiagnosticsForCellsWithoutIssues(uri);
       openNotebooksCache.getFile(uri).ifPresent(notebook -> notebookDiagnosticPublisher.publishNotebookDiagnostics(uri, notebook));
     });
-    clientLogger.info(format("Found %s %s", totalHotspotCount.get(), pluralize(totalHotspotCount.get(), "security hotspot")));
   }
 
   private void analyzeAndTrack(AnalysisTask task, WorkspaceFolderSettings settings, @Nullable URI folderUri, Map<URI, VersionedOpenFile> filesToAnalyze,

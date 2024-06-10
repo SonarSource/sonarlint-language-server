@@ -69,6 +69,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingP
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.ConnectionSuggestionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SonarQubeConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.CheckServerTrustedParams;
@@ -432,7 +433,7 @@ class SonarLintVSCodeClientTests {
   @Test
   void assistCreateConnectionShouldCallClientMethod() {
     String serverUrl = "http://localhost:9000";
-    var assistCreatingConnectionParams = new AssistCreatingConnectionParams(serverUrl, "tokenName", "tokenValue");
+    var assistCreatingConnectionParams = new AssistCreatingConnectionParams(new SonarQubeConnectionParams(serverUrl, "tokenName", "tokenValue"));
     when(client.workspaceFolders()).thenReturn(CompletableFuture.completedFuture(List.of()));
     when(client.assistCreatingConnection(any()))
       .thenReturn(CompletableFuture.completedFuture(new AssistCreatingConnectionResponse("newConnectionId")));
@@ -453,7 +454,7 @@ class SonarLintVSCodeClientTests {
   @Test
   void assistCreateConnectionShouldCallClientMethod_noTokenCase() {
     String serverUrl = "http://localhost:9000";
-    var assistCreatingConnectionParams = new AssistCreatingConnectionParams(serverUrl, null, null);
+    var assistCreatingConnectionParams = new AssistCreatingConnectionParams(new SonarQubeConnectionParams(serverUrl, null, null));
     when(client.workspaceFolders()).thenReturn(CompletableFuture.completedFuture(List.of()));
     when(client.assistCreatingConnection(any())).thenReturn(CompletableFuture.completedFuture(
       new AssistCreatingConnectionResponse(null)

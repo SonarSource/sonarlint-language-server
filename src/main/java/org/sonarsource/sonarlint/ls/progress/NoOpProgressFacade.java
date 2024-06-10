@@ -41,7 +41,27 @@ public class NoOpProgressFacade implements ProgressFacade {
   }
 
   @Override
+  public void executeNonCancelableSection(Runnable nonCancelable) {
+    // No-op
+  }
+
+  @Override
+  public void setMessage(String msg) {
+    // No-op
+  }
+
+  @Override
+  public void setFraction(float fraction) {
+    // No-op
+  }
+
+  @Override
   public void checkCanceled() {
+    // No-op
+  }
+
+  @Override
+  public void setIndeterminate(boolean b) {
     // No-op
   }
 

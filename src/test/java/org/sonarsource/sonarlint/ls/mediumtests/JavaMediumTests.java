@@ -269,8 +269,8 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       "import org.junit.Test;\npublic class FooTest {\n  @Test\n  public void test() {\n String s = \"foo\";\n}\n}");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestamp())
-      .contains("[Info] Found 0 issues"));
+      .extracting(withoutTimestampAndMillis())
+      .contains("[Info] Analysis detected 0 issues and 0 Security Hotspots in XXXms"));
     client.logs.clear();
 
     // Update classpath
@@ -343,17 +343,32 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     client.javaConfigs.put(file1module1, javaConfigResponse);
     client.javaConfigs.put(file2module1, javaConfigResponse);
 
+
     didOpen(file1module1, "java", "public class Foo1 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
     didOpen(file2module1, "java", "public class Foo2 {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
     didOpen(nonJavaFilemodule1, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestamp())
-      .contains("[Info] Found 3 issues",
-        "[Info] Found 3 issues",
-        "[Info] Found 2 issues"));
+    awaitUntilAsserted(() -> {
+      assertThat(client.getDiagnostics(file1module1))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+        .containsExactlyInAnyOrder(
+          tuple(0, 13, 0, 17, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
 
-    client.logs.clear();
+      assertThat(client.getDiagnostics(file2module1))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+        .containsExactlyInAnyOrder(
+          tuple(0, 13, 0, 17, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+
+      assertThat(client.getDiagnostics(nonJavaFilemodule1))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+        .containsExactlyInAnyOrder(
+          tuple(1, 2, 1, 6, "python:S1481", "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+          tuple(2, 2, 2, 7, "python:S1481", "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning));
+    });
 
     // consecutive changes should be batched
     lsProxy.getTextDocumentService()
@@ -366,12 +381,27 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(nonJavaFilemodule1, 2),
         List.of(new TextDocumentContentChangeEvent("def foo():\n  toto = 0\n  plouf = 0\n"))));
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestamp())
-      .containsSubsequence(
-        "[Debug] Queuing analysis of 3 files",
-        "[Info] Analyzing 3 files...",
-        "[Info] Found 8 issues"));
+    awaitUntilAsserted(() -> {
+      assertThat(client.getDiagnostics(file1module1))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+        .containsExactlyInAnyOrder(
+          tuple(0, 13, 0, 17, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+
+      assertThat(client.getDiagnostics(file2module1))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+        .containsExactlyInAnyOrder(
+          tuple(0, 13, 0, 17, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+
+      assertThat(client.getDiagnostics(nonJavaFilemodule1))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+        .containsExactlyInAnyOrder(
+          tuple(1, 2, 1, 6, "python:S1481", "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+          tuple(2, 2, 2, 7, "python:S1481", "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning));
+    });
   }
 
   @Test
@@ -398,10 +428,21 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(file1module1, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
     didOpen(file2module2, "java", "public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}");
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestamp())
-      .containsSubsequence("[Info] Found 3 issues",
-        "[Info] Found 3 issues"));
+    awaitUntilAsserted(() -> {
+      assertThat(client.getDiagnostics(file1module1))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+        .containsExactlyInAnyOrder(
+          tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+
+      assertThat(client.getDiagnostics(file2module2))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+        .containsExactlyInAnyOrder(
+          tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+    });
 
     client.logs.clear();
 
@@ -413,14 +454,20 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2module2, 2),
         List.of(new TextDocumentContentChangeEvent("public class Foo {\n  public static void main() {\n  // System.out.println(\"foo\");\n}\n}"))));
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestamp())
-      .containsSubsequence(
-        "[Info] Found 3 issues",
-        "[Info] Found 3 issues")
-      // We don't know the order of analysis for the 2 files, so we can't have a single assertion
-      .contains(
-        "[Info] Analyzing file \"" + file1module1 + "\"...",
-        "[Info] Analyzing file \"" + file2module2 + "\"..."));
+    awaitUntilAsserted(() -> {
+      assertThat(client.getDiagnostics(file1module1))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+        .containsExactlyInAnyOrder(
+          tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+
+      assertThat(client.getDiagnostics(file2module2))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+        .containsExactlyInAnyOrder(
+          tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+    });
   }
 }

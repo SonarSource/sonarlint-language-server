@@ -106,7 +106,6 @@ import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import picocli.CommandLine;
 import testutils.LogTestStartAndEnd;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -284,7 +283,7 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected static void assertLogContains(String msg) {
-    assertLogContainsPattern("\\[.*\\] " + Pattern.quote(msg));
+    assertLogContainsPattern("\\[.*\\] " + Pattern.quote(msg) + ".*");
   }
 
   protected static void assertLogContainsPattern(String msgPattern) {
@@ -718,6 +717,10 @@ public abstract class AbstractLanguageServerMediumTests {
     return p -> p.getMessage().replaceAll("\\[(\\w*)\\s+-\\s[\\d:.]*\\]", "[$1]");
   }
 
+  protected ThrowingExtractor<? super MessageParams, String, RuntimeException> withoutTimestampAndMillis() {
+    return p -> p.getMessage().replaceAll("\\[(\\w*)\\s+-\\s[\\d:.]*\\]", "[$1]").replaceAll("\\d{2,4}ms", "XXXms");
+  }
+
   protected Function<? super Diagnostic, ?> code() {
     return d -> d.getCode().getLeft();
   }
@@ -739,7 +742,7 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected void awaitUntilAsserted(ThrowingRunnable assertion) {
-    await().atMost(2, MINUTES).untilAsserted(assertion);
+    await().atMost(20, SECONDS).untilAsserted(assertion);
   }
 
   protected Map<String, Object> getFolderSettings(String folderUri) {

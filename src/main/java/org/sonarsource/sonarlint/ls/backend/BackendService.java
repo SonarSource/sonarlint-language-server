@@ -88,10 +88,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.GetStatusRe
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllResponse;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.MatchWithServerSecurityHotspotsParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.MatchWithServerSecurityHotspotsResponse;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TrackWithServerIssuesParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TrackWithServerIssuesResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.ClientFileDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
@@ -197,12 +193,6 @@ public class BackendService {
     addConfigurationScopes(params);
   }
 
-  public void addWorkspaceFolder(WorkspaceFolder added, Optional<ProjectBinding> bindingWrapperOptional) {
-    ConfigurationScopeDto dto = getConfigScopeDto(added, bindingWrapperOptional);
-    var params = new DidAddConfigurationScopesParams(List.of(dto));
-    addConfigurationScopes(params);
-  }
-
   void addConfigurationScopes(DidAddConfigurationScopesParams params) {
     initializedBackend().getConfigurationService().didAddConfigurationScopes(params);
   }
@@ -304,14 +294,6 @@ public class BackendService {
   public CompletableFuture<HelpGenerateUserTokenResponse> helpGenerateUserToken(String serverUrl, boolean isSonarCloud) {
     var params = new HelpGenerateUserTokenParams(serverUrl, isSonarCloud);
     return initializedBackend().getConnectionService().helpGenerateUserToken(params);
-  }
-
-  public CompletableFuture<TrackWithServerIssuesResponse> matchIssues(TrackWithServerIssuesParams params) {
-    return initializedBackend().getIssueTrackingService().trackWithServerIssues(params);
-  }
-
-  public CompletableFuture<MatchWithServerSecurityHotspotsResponse> matchHotspots(MatchWithServerSecurityHotspotsParams params) {
-    return initializedBackend().getSecurityHotspotMatchingService().matchWithServerSecurityHotspots(params);
   }
 
   public CompletableFuture<org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedResponse>
