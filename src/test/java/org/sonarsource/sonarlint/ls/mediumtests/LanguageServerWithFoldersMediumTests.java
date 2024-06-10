@@ -103,8 +103,8 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     didOpen(uriOutsideFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestamp())
-      .contains("[Info] Found 0 issues"));
+      .extracting(withoutTimestampAndMillis())
+      .contains("[Info] Analysis detected 0 issues and 0 Security Hotspots in XXXms"));
 
     // File is considered as test file
     assertThat(client.getDiagnostics(uriOutsideFolder)).isEmpty();
@@ -119,9 +119,9 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     didOpen(file2InFolder, "python", "def foo():\n  return\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestamp())
-      .contains("[Info] Found 0 issues",
-        "[Info] Found 0 issues"));
+      .extracting(withoutTimestampAndMillis())
+      .contains("[Info] Analysis detected 0 issues and 0 Security Hotspots in XXXms",
+        "[Info] Analysis detected 0 issues and 0 Security Hotspots in XXXms"));
 
     client.logs.clear();
 
@@ -134,11 +134,11 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
         List.of(new TextDocumentContentChangeEvent("def foo():\n  toto2 = 0\n  plouf2 = 0\n"))));
 
     awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestamp())
+      .extracting(withoutTimestampAndMillis())
       .containsSubsequence(
         "[Debug] Queuing analysis of 2 files",
         "[Info] Analyzing 2 files...",
-        "[Info] Found 4 issues"));
+        "[Info] Analysis detected 4 issues and 0 Security Hotspots in XXXms"));
   }
 
   @Test
@@ -154,10 +154,10 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     didOpen(file2InFolder2, "python", "def foo():\n  toto2 = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestamp())
+      .extracting(withoutTimestampAndMillis())
       .containsSubsequence(
-        "[Info] Found 1 issue",
-        "[Info] Found 1 issue"));
+        "[Info] Analysis detected 1 issue and 0 Security Hotspots in XXXms",
+        "[Info] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
 
     client.logs.clear();
 
@@ -170,11 +170,11 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
         List.of(new TextDocumentContentChangeEvent("def foo():\n  toto2 = 0\n  plouf2 = 0\n"))));
 
     awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestamp())
+      .extracting(withoutTimestampAndMillis())
       .containsSubsequence(
         "[Debug] Queuing analysis of 2 files",
-        "[Info] Found 2 issues",
-        "[Info] Found 2 issues")
+        "[Info] Analysis detected 2 issues and 0 Security Hotspots in XXXms",
+        "[Info] Analysis detected 2 issues and 0 Security Hotspots in XXXms")
       // We don't know the order of analysis for the 2 files, so we can't have a single assertion
       .contains(
         "[Info] Analyzing file \"" + file1InFolder1 + "\"...",

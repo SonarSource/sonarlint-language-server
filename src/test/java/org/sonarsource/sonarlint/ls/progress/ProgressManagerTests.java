@@ -218,22 +218,21 @@ class ProgressManagerTests {
   @Test
   void test_sub_progress() {
     underTest.doWithProgress("Title", FAKE_CLIENT_TOKEN, mock(CancelChecker.class), p -> {
-      p.asCoreMonitor().setMessage("Working");
+      p.setMessage("Working");
       // Report 10%
-      p.asCoreMonitor().setFraction(0.1f);
+      p.setFraction(0.1f);
       // From 10 to 60%
       p.doInSubProgress("Sub", 0.5f, subP -> {
         // From 10 to 15%
         subP.doInSubProgress("SubSub1", 0.1f, subSub -> {
-          // Should report 12.5% (or 12 if rounded)
-          subSub.asCoreMonitor().setFraction(0.5f);
+          subSub.setFraction(0.5f);
           // Reports 15%
           subSub.end("Sub sub ended");
         });
         // From 15 to 20%
         subP.doInSubProgress("SubSub2", 0.1f, subSub -> {
           // Should report 17.5% (or 17 if rounded)
-          subSub.asCoreMonitor().setFraction(0.5f);
+          subSub.setFraction(0.5f);
         }); // Automatically reports 20%
       });
       // Automatically reports 60%
@@ -268,7 +267,7 @@ class ProgressManagerTests {
   void test_non_cancelable_section() {
     underTest.doWithProgress("Title", FAKE_CLIENT_TOKEN, mock(CancelChecker.class), p -> {
       p.doInSubProgress("Sub", 0.5f, subP -> {
-        subP.asCoreMonitor().executeNonCancelableSection(() -> subP.asCoreMonitor().setMessage("Non cancelable"));
+        subP.executeNonCancelableSection(() -> subP.setMessage("Non cancelable"));
       });
     });
 
@@ -308,11 +307,13 @@ class ProgressManagerTests {
   @Test
   void doWithProgressExecutionException() throws ExecutionException, InterruptedException {
     var future = mock(CompletableFuture.class);
-    when(future.get()).thenThrow(new ExecutionException() {});
+    when(future.get()).thenThrow(new ExecutionException() {
+    });
     when(client.createProgress(any())).thenReturn(future);
     underTest.setWorkDoneProgressSupportedByClient(true);
 
-    assertThatThrownBy(() ->  underTest.doWithProgress("Title", null, mock(CancelChecker.class), p -> {}))
+    assertThatThrownBy(() -> underTest.doWithProgress("Title", null, mock(CancelChecker.class), p -> {
+    }))
       .isInstanceOf(IllegalStateException.class);
   }
 

@@ -43,16 +43,17 @@ public class IssuesCache {
   }
 
   public void analysisStarted(VersionedOpenFile versionedOpenFile) {
-    issuesPerIdPerFileURI.remove(versionedOpenFile.getUri());
+//    issuesPerIdPerFileURI.remove(versionedOpenFile.getUri());
   }
 
   public void reportIssues(Map<URI, List<RaisedFindingDto>> issuesByFileUri) {
-    issuesByFileUri.forEach((fileUri, issues) -> issuesPerIdPerFileURI.computeIfAbsent(fileUri, u -> new ConcurrentHashMap<>())
-      .putAll(issues.stream().collect(Collectors.toMap(i -> i.getId().toString(), i -> new DelegatingIssue(i, fileUri)))));
-  }
-
-  public int count(URI f) {
-    return get(f).size();
+    issuesByFileUri.forEach((fileUri, issues) -> {
+      if (issuesPerIdPerFileURI.containsKey(fileUri)) {
+        issuesPerIdPerFileURI.get(fileUri).clear();
+      }
+      issuesPerIdPerFileURI.computeIfAbsent(fileUri, a -> new ConcurrentHashMap<>())
+        .putAll(issues.stream().collect(Collectors.toMap(i -> i.getId().toString(), i -> new DelegatingIssue(i, fileUri))));
+    });
   }
 
   public void removeFindingWithServerKey(String fileUriStr, String key) {

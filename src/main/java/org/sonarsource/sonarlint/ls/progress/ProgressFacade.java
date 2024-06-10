@@ -33,6 +33,13 @@ public interface ProgressFacade {
 
   void doInSubProgress(String title, float fraction, Consumer<ProgressFacade> subRunnable);
 
+  void executeNonCancelableSection(Runnable nonCancelable);
+
+  void setMessage(String msg);
+
+  void setFraction(float fraction);
+
   void checkCanceled();
 
+  void setIndeterminate(boolean b);
 }

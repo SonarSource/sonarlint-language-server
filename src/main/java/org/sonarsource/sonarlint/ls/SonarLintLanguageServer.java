@@ -224,6 +224,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.hostInfoProvider = new HostInfoProvider();
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client, lsLogOutput);
     this.promotionalNotifications = new PromotionalNotifications(client);
+    this.analysisTasksCache = new AnalysisTasksCache();
     var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, lsLogOutput, taintVulnerabilitiesCache, openFilesCache,
       openNotebooksCache, skippedPluginsNotifier, promotionalNotifications);
     this.backendServiceFacade = new BackendServiceFacade(vsCodeClient, lsLogOutput, client);
@@ -251,7 +252,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var smartNotifications = new SmartNotifications(client, telemetry);
     vsCodeClient.setSmartNotifications(smartNotifications);
     this.scmIgnoredCache = new ScmIgnoredCache(client, lsLogOutput);
-    this.analysisTasksCache = new AnalysisTasksCache();
     this.moduleEventsProcessor = new ModuleEventsProcessor(workspaceFoldersManager, fileTypeClassifier, javaConfigCache, backendServiceFacade, settingsManager);
     this.analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
       issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, diagnosticPublisher,
@@ -887,8 +887,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<SonarLintExtendedLanguageClient.ShowRuleDescriptionParams> getHotspotDetails(ShowHotspotRuleDescriptionParams params) {
     var fileUri = params.fileUri;
     var ruleKey = params.ruleKey;
-    var issue = securityHotspotsCache.get(create(fileUri)).get(params.getHotspotId());
-    var ruleContextKey = Objects.isNull(issue) ? "" : issue.getRuleDescriptionContextKey();
+    var hotspot = securityHotspotsCache.get(create(fileUri)).get(params.getHotspotId());
+    var ruleContextKey = Objects.isNull(hotspot) ? "" : hotspot.getRuleDescriptionContextKey();
     return commandManager.getShowRuleDescriptionParams(fileUri, ruleKey, ruleContextKey != null ? ruleContextKey : "");
   }
 

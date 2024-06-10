@@ -60,16 +60,17 @@ public class HotspotsCache {
   }
 
   public void analysisStarted(VersionedOpenFile versionedOpenFile) {
-    hotspotsPerIdPerFileURI.remove(versionedOpenFile.getUri());
+//    hotspotsPerIdPerFileURI.remove(versionedOpenFile.getUri());
   }
 
   public void reportHotspots(Map<URI, List<RaisedHotspotDto>> hotspotsByFileUri) {
-    hotspotsByFileUri.forEach((fileUri, hotspots) -> hotspotsPerIdPerFileURI.computeIfAbsent(fileUri, u -> new ConcurrentHashMap<>())
-      .putAll(hotspots.stream().collect(Collectors.toMap(i -> i.getId().toString(), i -> new DelegatingHotspot(i, fileUri, i.getStatus(), i.getVulnerabilityProbability())))));
-  }
-
-  public int count(URI f) {
-    return get(f).size();
+    hotspotsByFileUri.forEach((fileUri, hotspots) -> {
+      if (hotspotsPerIdPerFileURI.containsKey(fileUri)) {
+        hotspotsPerIdPerFileURI.get(fileUri).clear();
+      }
+      hotspotsPerIdPerFileURI.computeIfAbsent(fileUri, a -> new ConcurrentHashMap<>())
+        .putAll(hotspots.stream().collect(Collectors.toMap(i -> i.getId().toString(), i -> new DelegatingHotspot(i, fileUri, i.getStatus(), i.getVulnerabilityProbability()))));
+    });
   }
 
   public void removeFindingWithServerKey(String fileUriStr, String key) {
