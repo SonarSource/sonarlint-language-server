@@ -322,7 +322,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public void didSynchronizeConfigurationScopes(Set<String> configurationScopeIds) {
-    configurationScopeIds.forEach(this::getNewCodeDefinitionAndSubmitToClient);
+    // no-op
   }
 
   @Nullable
@@ -503,6 +503,12 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       Collection<WorkspaceFolderWrapper> all = workspaceFoldersManager.getAll();
       all.forEach(folderWrapper -> {
         var folderUri = folderWrapper.getUri();
+
+        CompletableFutures.computeAsync(cancelChecker -> {
+          getNewCodeDefinitionAndSubmitToClient(folderUri.toString());
+          return null;
+        });
+
         Collection<VersionedOpenFile> openFiles = openFilesCache.getAll();
         Collection<VersionedOpenFile> allOpenItems = Stream.concat(openNotebooksCache.getAll().stream()
             .map(VersionedOpenNotebook::asVersionedOpenFile), openFiles.stream())

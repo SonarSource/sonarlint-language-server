@@ -34,7 +34,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
-import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.notebooks.DelegatingCellIssue;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 
@@ -154,8 +153,6 @@ class DiagnosticPublisherTests {
 
     var uri = URI.create("file://foo");
 
-    VersionedOpenFile versionedOpenFile = new VersionedOpenFile(uri, null, 1, null);
-    issuesCache.analysisStarted(versionedOpenFile);
     issuesCache.reportIssues(Map.of(uri, List.of(issue)));
     return uri;
   }
