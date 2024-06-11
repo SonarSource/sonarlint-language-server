@@ -576,7 +576,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void analysisConnected_matching_server_issues() throws Exception {
     mockWebServerExtension.addProtobufResponseDelimited(
-      "/batch/issues?key=myProject%3AinFolder.py&branch=master",
+      "/batch/issues?key=myProject%3AinFolderToo.py&branch=master",
       ScannerInput.ServerIssue.newBuilder()
         .setKey("xyz")
         .setRuleRepository("python")
@@ -585,7 +585,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setMsg("Remove the unused local variable \"toto\".")
         .setSeverity(Severity.INFO)
         .setManualSeverity(true)
-        .setPath("inFolder.py")
+        .setPath("inFolderToo.py")
         .setLine(2)
         .build());
     mockWebServerExtension.addProtobufResponse(
@@ -618,7 +618,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     addConfigScope(folder1BaseDir.toUri().toString());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
-    var uriInFolder = folder1BaseDir.resolve("inFolder.py").toUri().toString();
+    var uriInFolder = folder1BaseDir.resolve("inFolderToo.py").toUri().toString();
     didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
@@ -839,7 +839,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   void shouldNotChangeStatusWhenServerIsDown() throws IOException {
     var issueKey = "qwerty";
     mockWebServerExtension.addProtobufResponseDelimited(
-      "/batch/issues?key=myProject%3AchangeIssueStatus.py&branch=master",
+      "/batch/issues?key=myProject%3AshouldNotChangeStatusWhenServerIsDown.py&branch=master",
       ScannerInput.ServerIssue.newBuilder()
         .setKey(issueKey)
         .setRuleRepository("python")
@@ -848,14 +848,14 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setMsg("Remove the unused local variable \"toto\".")
         .setSeverity(Severity.INFO)
         .setManualSeverity(true)
-        .setPath("changeIssueStatus.py")
+        .setPath("shouldNotChangeStatusWhenServerIsDown.py")
         .setLine(2)
         .build());
     mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
 
     addConfigScope(folder1BaseDir.toUri().toString());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
-    var fileUri = folder1BaseDir.resolve("changeIssueStatus.py").toUri().toString();
+    var fileUri = folder1BaseDir.resolve("shouldNotChangeStatusWhenServerIsDown.py").toUri().toString();
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";
     didOpen(fileUri, "python", content);
 
@@ -1146,7 +1146,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   void change_issue_status_permission_check() throws ExecutionException, InterruptedException {
     var issueKey = UUID.randomUUID().toString();
     mockWebServerExtension.addProtobufResponseDelimited(
-      "/batch/issues?key=myProject%3AchangeIssueStatus.py&branch=master",
+      "/batch/issues?key=myProject%3Achange_issue_status_permission_check.py&branch=master",
       ScannerInput.ServerIssue.newBuilder()
         .setKey(issueKey)
         .setRuleRepository("python")
@@ -1155,7 +1155,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setMsg("Remove the unused local variable \"toto\".")
         .setSeverity(Severity.INFO)
         .setManualSeverity(true)
-        .setPath("changeIssueStatus.py")
+        .setPath("change_issue_status_permission_check.py")
         .setLine(2)
         .build());
     mockWebServerExtension.addProtobufResponse(
@@ -1169,7 +1169,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .build())
         .build());
     mockWebServerExtension.addProtobufResponse(
-      "/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject%3AchangeIssueStatus.py&rules=&branch=master&ps=500&p=1",
+      "/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject%3Achange_issue_status_permission_check.py&rules=&branch=master&ps=500&p=1",
       Issues.SearchWsResponse.newBuilder()
         .addIssues(Issues.Issue.newBuilder()
           .setKey("xyz")
@@ -1178,14 +1178,14 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
             .build())
           .build())
         .build());
-    mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject%3AchangeIssueStatus.py&rules=&branch=master&ps=500&p=2",
+    mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject%3Achange_issue_status_permission_check.py&rules=&branch=master&ps=500&p=2",
       Issues.SearchWsResponse.newBuilder().addComponents(Issues.Component.newBuilder().setKey("componentKey").setPath("componentPath").build()).build());
 
     mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
     addConfigScope(folder1BaseDir.toUri().toString());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
-    var fileUri = folder1BaseDir.resolve("changeIssueStatus.py").toUri().toString();
+    var fileUri = folder1BaseDir.resolve("change_issue_status_permission_check.py").toUri().toString();
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";
     didOpen(fileUri, "python", content);
 

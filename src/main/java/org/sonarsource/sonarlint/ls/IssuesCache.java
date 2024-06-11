@@ -30,7 +30,6 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
-import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 
 import static org.sonarsource.sonarlint.ls.util.Utils.isDelegatingIssueWithServerIssueKey;
 
@@ -40,10 +39,6 @@ public class IssuesCache {
 
   public void clear(URI fileUri) {
     issuesPerIdPerFileURI.remove(fileUri);
-  }
-
-  public void analysisStarted(VersionedOpenFile versionedOpenFile) {
-//    issuesPerIdPerFileURI.remove(versionedOpenFile.getUri());
   }
 
   public void reportIssues(Map<URI, List<RaisedFindingDto>> issuesByFileUri) {

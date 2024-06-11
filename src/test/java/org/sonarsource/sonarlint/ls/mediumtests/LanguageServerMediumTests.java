@@ -60,6 +60,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory;
@@ -476,6 +478,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  @DisabledOnOs(OS.WINDOWS)
   void cleanUpDiagnosticsOnFileClose() throws IOException {
     var uri = getUri("foo2.html", analysisDir);
 

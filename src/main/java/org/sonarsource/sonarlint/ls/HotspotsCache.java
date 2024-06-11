@@ -59,10 +59,6 @@ public class HotspotsCache {
     return keysBeforeRemoval;
   }
 
-  public void analysisStarted(VersionedOpenFile versionedOpenFile) {
-//    hotspotsPerIdPerFileURI.remove(versionedOpenFile.getUri());
-  }
-
   public void reportHotspots(Map<URI, List<RaisedHotspotDto>> hotspotsByFileUri) {
     hotspotsByFileUri.forEach((fileUri, hotspots) -> {
       if (hotspotsPerIdPerFileURI.containsKey(fileUri)) {
