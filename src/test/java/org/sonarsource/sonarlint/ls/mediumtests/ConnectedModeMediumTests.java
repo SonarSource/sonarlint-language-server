@@ -430,10 +430,9 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Disabled("SLCORE-396 - engine restart issue")
   @Test
-  void analysisConnected_scan_all_hotspot_then_forget() throws IOException {
-    // TODO somehow provide the two files as a response to listFilesInFolder request
-    var file1 = "hotspot1.py";
-    var file2 = "hotspot2.py";
+  void analysisConnected_scan_all_hotspot_then_forget() throws IOException, InterruptedException {
+    var file1 = "analysisConnected_scan_all_hotspot_then_forget_hotspot1.py";
+    var file2 = "analysisConnected_scan_all_hotspot_then_forget_hotspot2.py";
     mockNoIssuesNoHotspotsForProject();
     mockWebServerExtension.addProtobufResponse("/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + file1 + "&branch=master&ps=500&ps=1",
       Hotspots.SearchWsResponse.newBuilder().build());
@@ -491,6 +490,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     // Simulate that file 1 is open, should not be cleaned
     didOpen(uri1InFolder, "python", doc1Content);
+    // allow enough time for the file opening to be reflected
+    Thread.sleep(2000);
 
     lsProxy.forgetFolderHotspots();
 

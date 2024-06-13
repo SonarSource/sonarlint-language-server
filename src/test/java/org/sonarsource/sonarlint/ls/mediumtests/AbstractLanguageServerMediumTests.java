@@ -24,11 +24,11 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -458,7 +458,12 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public CompletableFuture<FindFileByNamesInScopeResponse> listFilesInFolder(FolderUriParams params) {
-      return CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(Collections.emptyList()));
+      // needed for ConnectedModeMediumTests.analysisConnected_scan_all_hotspot_then_forget test
+      var fileName1 = "analysisConnected_scan_all_hotspot_then_forget_hotspot1.py";
+      var fileName2 = "analysisConnected_scan_all_hotspot_then_forget_hotspot2.py";
+      var file1 = new FoundFileDto(fileName1, Paths.get(URI.create(params.getFolderUri())).resolve(fileName1).toFile().getAbsolutePath(), "def foo():\n  id_address = '12.34.56.78'\n");
+      var file2 = new FoundFileDto(fileName2, Paths.get(URI.create(params.getFolderUri())).resolve(fileName2).toFile().getAbsolutePath(), "def foo():\n  id_address = '23.45.67.89'\n");
+      return CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(List.of(file1, file2)));
     }
 
     @Override

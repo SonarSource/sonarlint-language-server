@@ -653,7 +653,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream()
         .map(i -> (RaisedFindingDto) i)
         .toList()));
-    analysisTaskExecutor.handleIssues(findings);
+    analysisTaskExecutor.handleIssues(findings, analysisId);
   }
 
   @Override
