@@ -24,7 +24,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -133,6 +132,7 @@ public abstract class AbstractLanguageServerMediumTests {
   private static ServerSocket serverSocket;
   protected static SonarLintExtendedLanguageServer lsProxy;
   protected static FakeLanguageClient client;
+  private static List<SonarLintExtendedLanguageClient.FoundFileDto> foundFileDtos = List.of();
 
   @BeforeAll
   static void startServer() throws Exception {
@@ -252,6 +252,10 @@ public abstract class AbstractLanguageServerMediumTests {
 
     notifyConfigurationChangeOnClient();
     verifyConfigurationChangeOnClient();
+  }
+
+  protected static void setUpFindFilesInFolderResponse(List<SonarLintExtendedLanguageClient.FoundFileDto> foundFileDtos) {
+    AbstractLanguageServerMediumTests.foundFileDtos = foundFileDtos;
   }
 
   protected void setupGlobalSettings(Map<String, Object> globalSettings) {
@@ -458,12 +462,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public CompletableFuture<FindFileByNamesInScopeResponse> listFilesInFolder(FolderUriParams params) {
-      // needed for ConnectedModeMediumTests.analysisConnected_scan_all_hotspot_then_forget test
-      var fileName1 = "analysisConnected_scan_all_hotspot_then_forget_hotspot1.py";
-      var fileName2 = "analysisConnected_scan_all_hotspot_then_forget_hotspot2.py";
-      var file1 = new FoundFileDto(fileName1, Paths.get(URI.create(params.getFolderUri())).resolve(fileName1).toFile().getAbsolutePath(), "def foo():\n  id_address = '12.34.56.78'\n");
-      var file2 = new FoundFileDto(fileName2, Paths.get(URI.create(params.getFolderUri())).resolve(fileName2).toFile().getAbsolutePath(), "def foo():\n  id_address = '23.45.67.89'\n");
-      return CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(List.of(file1, file2)));
+      return CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(foundFileDtos));
     }
 
     @Override

@@ -75,6 +75,7 @@ import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.ProjectBranch
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Qualityprofiles;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Rules;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Settings;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.util.Utils;
 import testutils.MockWebServerExtension;
@@ -123,6 +124,13 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           "omnisharpDirectory", omnisharpDir.toString()
         )),
       new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
+
+    var fileName1 = "analysisConnected_scan_all_hotspot_then_forget_hotspot1.py";
+    var fileName2 = "analysisConnected_scan_all_hotspot_then_forget_hotspot2.py";
+    var file1 = new SonarLintExtendedLanguageClient.FoundFileDto(fileName1, folder1BaseDir.resolve(fileName1).toFile().getAbsolutePath(), "def foo():\n  id_address = '12.34.56.78'\n");
+    var file2 = new SonarLintExtendedLanguageClient.FoundFileDto(fileName2, folder1BaseDir.resolve(fileName2).toFile().getAbsolutePath(), "def foo():\n  id_address = '23.45.67.89'\n");
+
+    setUpFindFilesInFolderResponse(List.of(file1, file2));
 
   }
 
@@ -237,6 +245,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @AfterAll
   public static void cleanUp() {
     FileUtils.deleteQuietly(folder1BaseDir.toFile());
+    setUpFindFilesInFolderResponse(List.of());
   }
 
   @Test
@@ -430,7 +439,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Disabled("SLCORE-396 - engine restart issue")
   @Test
-  void analysisConnected_scan_all_hotspot_then_forget() throws IOException, InterruptedException {
+  void analysisConnected_scan_all_hotspot_then_forget() throws IOException {
     var file1 = "analysisConnected_scan_all_hotspot_then_forget_hotspot1.py";
     var file2 = "analysisConnected_scan_all_hotspot_then_forget_hotspot2.py";
     mockNoIssuesNoHotspotsForProject();
@@ -491,7 +500,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     // Simulate that file 1 is open, should not be cleaned
     didOpen(uri1InFolder, "python", doc1Content);
     // allow enough time for the file opening to be reflected
-    Thread.sleep(2000);
+    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Language of file \"" + doc1.getUri() + "\" is set to \"PYTHON\"")));
 
     lsProxy.forgetFolderHotspots();
 
