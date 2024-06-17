@@ -28,7 +28,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -133,6 +132,7 @@ public abstract class AbstractLanguageServerMediumTests {
   private static ServerSocket serverSocket;
   protected static SonarLintExtendedLanguageServer lsProxy;
   protected static FakeLanguageClient client;
+  private static List<SonarLintExtendedLanguageClient.FoundFileDto> foundFileDtos = List.of();
 
   @BeforeAll
   static void startServer() throws Exception {
@@ -252,6 +252,10 @@ public abstract class AbstractLanguageServerMediumTests {
 
     notifyConfigurationChangeOnClient();
     verifyConfigurationChangeOnClient();
+  }
+
+  protected static void setUpFindFilesInFolderResponse(List<SonarLintExtendedLanguageClient.FoundFileDto> foundFileDtos) {
+    AbstractLanguageServerMediumTests.foundFileDtos = foundFileDtos;
   }
 
   protected void setupGlobalSettings(Map<String, Object> globalSettings) {
@@ -458,7 +462,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public CompletableFuture<FindFileByNamesInScopeResponse> listFilesInFolder(FolderUriParams params) {
-      return CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(Collections.emptyList()));
+      return CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(foundFileDtos));
     }
 
     @Override
