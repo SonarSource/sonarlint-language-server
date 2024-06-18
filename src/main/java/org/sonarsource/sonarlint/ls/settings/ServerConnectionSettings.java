@@ -35,7 +35,7 @@ import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 
 @Immutable
 public class ServerConnectionSettings {
-  static final String SONARCLOUD_URL = "https://sonarcloud.io";
+  public static final String SONARCLOUD_URL = "https://sonarcloud.io";
   static final String[] SONARCLOUD_ALIAS = {"https://sonarqube.com", "https://www.sonarqube.com", "https://www.sonarcloud.io", SONARCLOUD_URL};
 
   private final String connectionId;

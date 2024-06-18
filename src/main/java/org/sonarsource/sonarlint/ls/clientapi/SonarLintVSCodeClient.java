@@ -118,9 +118,11 @@ import org.sonarsource.sonarlint.ls.standalone.notifications.PromotionalNotifica
 import org.sonarsource.sonarlint.ls.util.URIUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
+import static java.lang.String.format;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.ROOT_CONFIGURATION_SCOPE;
+import static org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings.SONARCLOUD_URL;
 
 public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
@@ -257,12 +259,16 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   public AssistCreatingConnectionResponse assistCreatingConnection(AssistCreatingConnectionParams params, SonarLintCancelChecker cancelChecker) {
     var tokenValue = params.getTokenValue();
     var workspaceFoldersFuture = client.workspaceFolders();
-    var assistCreatingConnectionFuture = client.assistCreatingConnection(new CreateConnectionParams(false, params.getServerUrl(), tokenValue));
+    var isSonarCloud = params.getConnectionParams().isRight();
+    var assistCreatingConnectionFuture = client.assistCreatingConnection(new CreateConnectionParams(isSonarCloud,
+      isSonarCloud ? params.getConnectionParams().getRight().getOrganizationKey() : params.getConnectionParams().getLeft().getServerUrl(),
+      tokenValue));
     return workspaceFoldersFuture.thenCombine(assistCreatingConnectionFuture, (workspaceFolders, assistCreatingConnectionResponse) -> {
       var currentConnections = getCurrentConnections(params, assistCreatingConnectionResponse);
       var newConnectionId = assistCreatingConnectionResponse.getNewConnectionId();
       if (newConnectionId != null) {
-        client.showMessage(new MessageParams(MessageType.Info, "Connection to SonarQube was successfully created."));
+        var serverProductName = isSonarCloud ? "SonarCloud" : "SonarQube";
+        client.showMessage(new MessageParams(MessageType.Info, format("Connection to %s was successfully created.", serverProductName)));
         backendServiceFacade.getBackendService().didChangeConnections(currentConnections);
       }
       return new AssistCreatingConnectionResponse(newConnectionId);
@@ -275,7 +281,9 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     if (assistCreatingConnectionResponse == null) {
       throw new CancellationException("Automatic connection setup was cancelled");
     }
-    var newConnection = new ServerConnectionSettings(assistCreatingConnectionResponse.getNewConnectionId(), params.getServerUrl(), params.getTokenValue(), null, false);
+    var serverUrl = params.getConnectionParams().isLeft() ? params.getConnectionParams().getLeft().getServerUrl() : SONARCLOUD_URL;
+    var organisationKey = params.getConnectionParams().isRight() ? params.getConnectionParams().getRight().getOrganizationKey() : null;
+    var newConnection = new ServerConnectionSettings(assistCreatingConnectionResponse.getNewConnectionId(), serverUrl, params.getTokenValue(), organisationKey, false);
     var currentConnections = new HashMap<>(settingsManager.getCurrentSettings().getServerConnections());
     currentConnections.put(assistCreatingConnectionResponse.getNewConnectionId(), newConnection);
     return currentConnections;
