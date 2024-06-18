@@ -645,29 +645,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
   }
 
-  class CreateConnectionParams {
-    private final boolean isSonarCloud;
-
-    private final String serverUrl;
-    private final String token;
-
-    public CreateConnectionParams(boolean isSonarCloud, String serverUrl, @Nullable String token) {
-      this.isSonarCloud = isSonarCloud;
-      this.serverUrl = serverUrl;
-      this.token = token;
-    }
-
-    public boolean isSonarCloud() {
-      return isSonarCloud;
-    }
-
-    public String getServerUrl() {
-      return serverUrl;
-    }
-
-    public String getToken() {
-      return token;
-    }
+  record CreateConnectionParams(boolean isSonarCloud, String serverUrlOrOrganisationKey, String token) {
   }
 
   /**

@@ -56,8 +56,8 @@ class HostInfoProviderTests {
     var token = "squ_123";
     var createConnectionParams = new SonarLintExtendedLanguageClient.CreateConnectionParams(false, serverUrl, token);
 
-    assertThat(createConnectionParams.getServerUrl()).isEqualTo(serverUrl);
+    assertThat(createConnectionParams.serverUrlOrOrganisationKey()).isEqualTo(serverUrl);
     assertThat(createConnectionParams.isSonarCloud()).isFalse();
-    assertThat(createConnectionParams.getToken()).isEqualTo(token);
+    assertThat(createConnectionParams.token()).isEqualTo(token);
   }
 }

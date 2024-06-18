@@ -69,10 +69,10 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingP
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.ConnectionSuggestionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SonarCloudConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SonarQubeConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.http.CheckServerTrustedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.ProxyDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.X509CertificateDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.info.GetClientLiveInfoResponse;
@@ -431,7 +431,7 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void assistCreateConnectionShouldCallClientMethod() {
+  void assistCreateConnectionShouldCallClientMethodForSonarQube() {
     String serverUrl = "http://localhost:9000";
     var assistCreatingConnectionParams = new AssistCreatingConnectionParams(new SonarQubeConnectionParams(serverUrl, "tokenName", "tokenValue"));
     when(client.workspaceFolders()).thenReturn(CompletableFuture.completedFuture(List.of()));
@@ -444,11 +444,32 @@ class SonarLintVSCodeClientTests {
     var argCaptor = ArgumentCaptor.forClass(CreateConnectionParams.class);
     verify(client).assistCreatingConnection(argCaptor.capture());
     var sentParams = argCaptor.getValue();
-    assertThat(sentParams.getServerUrl()).isEqualTo(serverUrl);
+    assertThat(sentParams.serverUrlOrOrganisationKey()).isEqualTo(serverUrl);
     assertThat(sentParams.isSonarCloud()).isFalse();
-    assertThat(sentParams.getToken()).isEqualTo("tokenValue");
+    assertThat(sentParams.token()).isEqualTo("tokenValue");
 
     verify(client).showMessage((new MessageParams(MessageType.Info, "Connection to SonarQube was successfully created.")));
+  }
+
+  @Test
+  void assistCreateConnectionShouldCallClientMethodForSonarCloud() {
+    String organisationKey = "myOrg";
+    var assistCreatingConnectionParams = new AssistCreatingConnectionParams(new SonarCloudConnectionParams(organisationKey, "tokenName", "tokenValue"));
+    when(client.workspaceFolders()).thenReturn(CompletableFuture.completedFuture(List.of()));
+    when(client.assistCreatingConnection(any()))
+      .thenReturn(CompletableFuture.completedFuture(new AssistCreatingConnectionResponse("newConnectionId")));
+    when(settingsManager.getCurrentSettings()).thenReturn(mock(WorkspaceSettings.class));
+    when(backendServiceFacade.getBackendService()).thenReturn(mock(BackendService.class));
+    underTest.assistCreatingConnection(assistCreatingConnectionParams, null);
+
+    var argCaptor = ArgumentCaptor.forClass(CreateConnectionParams.class);
+    verify(client).assistCreatingConnection(argCaptor.capture());
+    var sentParams = argCaptor.getValue();
+    assertThat(sentParams.serverUrlOrOrganisationKey()).isEqualTo(organisationKey);
+    assertThat(sentParams.isSonarCloud()).isTrue();
+    assertThat(sentParams.token()).isEqualTo("tokenValue");
+
+    verify(client).showMessage((new MessageParams(MessageType.Info, "Connection to SonarCloud was successfully created.")));
   }
 
   @Test
@@ -466,9 +487,9 @@ class SonarLintVSCodeClientTests {
     var argCaptor = ArgumentCaptor.forClass(CreateConnectionParams.class);
     verify(client).assistCreatingConnection(argCaptor.capture());
     var sentParams = argCaptor.getValue();
-    assertThat(sentParams.getServerUrl()).isEqualTo(serverUrl);
+    assertThat(sentParams.serverUrlOrOrganisationKey()).isEqualTo(serverUrl);
     assertThat(sentParams.isSonarCloud()).isFalse();
-    assertThat(sentParams.getToken()).isNull();
+    assertThat(sentParams.token()).isNull();
 
     verify(client, never()).showMessage(any());
   }
@@ -506,7 +527,6 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void checkServerTrusted() {
-    var params = new CheckServerTrustedParams(List.of(new X509CertificateDto(PEM)), "authType");
     when(client.askSslCertificateConfirmation(any())).thenReturn(CompletableFuture.completedFuture(true));
 
     var response = underTest.checkServerTrusted(List.of(new X509CertificateDto(PEM)), "authType");
@@ -539,7 +559,6 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void checkServerTrustedMalformedCert() {
-    var params = new CheckServerTrustedParams(List.of(new X509CertificateDto("malformed")), "authType");
     when(client.askSslCertificateConfirmation(any())).thenReturn(CompletableFuture.completedFuture(true));
 
     var response = underTest.checkServerTrusted(List.of(new X509CertificateDto("malformed")), "authType");
