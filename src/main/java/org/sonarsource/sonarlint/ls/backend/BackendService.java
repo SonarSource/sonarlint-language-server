@@ -57,6 +57,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.Did
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.DidUpdateConnectionsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarCloudConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarQubeConnectionConfigurationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.ListUserOrganizationsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.ListUserOrganizationsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.GetAllProjectsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.GetAllProjectsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.GetProjectNamesByKeyParams;
@@ -91,6 +93,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllRespo
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.ClientFileDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.TokenDto;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
@@ -361,5 +364,10 @@ public class BackendService {
     var params = new AnalyzeFilesAndTrackParams(configScopeId, analysisId, filesToAnalyze, extraProps,
       shouldFetchServerIssues, System.currentTimeMillis());
     return backend.getAnalysisService().analyzeFilesAndTrack(params);
+  }
+
+  public CompletableFuture<ListUserOrganizationsResponse> listUserOrganizations(String token) {
+    var params = new ListUserOrganizationsParams(Either.forLeft(new TokenDto(token)));
+    return initializedBackend().getConnectionService().listUserOrganizations(params);
   }
 }

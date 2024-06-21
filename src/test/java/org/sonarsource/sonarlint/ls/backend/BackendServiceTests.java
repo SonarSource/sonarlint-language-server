@@ -25,11 +25,14 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.BindingRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.ConfigurationRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpdateBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.ConnectionRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.ListUserOrganizationsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -48,6 +51,7 @@ class BackendServiceTests {
   HotspotRpcService hotspotService = mock(HotspotRpcService.class);
   ConfigurationRpcService configurationService = mock(ConfigurationRpcService.class);
   BindingRpcService bindingRpcService = mock(BindingRpcService.class);
+  ConnectionRpcService connectionRpcService = mock(ConnectionRpcService.class);
   static LanguageClientLogger lsLogOutput = mock(LanguageClientLogger.class);
   static SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   static BackendService underTest = new BackendService(backend, lsLogOutput, client);
@@ -63,6 +67,7 @@ class BackendServiceTests {
     when(backend.getHotspotService()).thenReturn(hotspotService);
     when(backend.getConfigurationService()).thenReturn(configurationService);
     when(backend.getBindingService()).thenReturn(bindingRpcService);
+    when(backend.getConnectionService()).thenReturn(connectionRpcService);
   }
 
   @Test
@@ -112,6 +117,18 @@ class BackendServiceTests {
     underTest.getSharedConnectedModeConfigFileContents(params);
 
     verify(bindingRpcService).getSharedConnectedModeConfigFileContents(params);
+  }
+
+  @Test
+  void shouldListUserOrganizations() {
+    var argumentCaptor = ArgumentCaptor.forClass(ListUserOrganizationsParams.class);
+    var token = "token";
+    underTest.listUserOrganizations(token);
+
+    verify(connectionRpcService).listUserOrganizations(argumentCaptor.capture());
+
+    assertThat(argumentCaptor.getValue().getCredentials().isLeft()).isTrue();
+    assertThat(argumentCaptor.getValue().getCredentials().getLeft().getToken()).isEqualTo(token);
   }
 
 }
