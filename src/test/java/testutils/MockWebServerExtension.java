@@ -40,12 +40,20 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 public class MockWebServerExtension implements BeforeEachCallback, AfterEachCallback {
 
+  private final Integer port;
   private MockWebServer server;
   protected final Map<String, MockResponse> responsesByPath = new HashMap<>();
 
   public MockWebServerExtension() {
     this.server = new MockWebServer();
+    this.port = null;
   }
+
+  public MockWebServerExtension(int port) {
+    this.server = new MockWebServer();
+    this.port = port;
+  }
+
   @Override
   public void beforeEach(ExtensionContext context) throws Exception {
     server = new MockWebServer();
@@ -60,7 +68,11 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterEachCall
       }
     };
     server.setDispatcher(dispatcher);
-    server.start();
+    if (this.port != null) {
+      server.start(this.port);
+    } else {
+      server.start();
+    }
   }
 
   @Override

@@ -35,6 +35,10 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonarsource.sonarlint.core.serverapi.proto.sonarcloud.ws.Organizations;
+import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
+import testutils.MockWebServerExtension;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,9 +53,13 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   private static Path folder1BaseDir;
 
   private static Path folder2BaseDir;
+  @RegisterExtension
+  private static final MockWebServerExtension sonarCloudWebServer = new MockWebServerExtension(40000);
 
   @BeforeAll
   public static void initialize() throws Exception {
+    System.setProperty("sonarlint.internal.sonarcloud.url", "http://localhost:40000");
+    System.setProperty("sonarlint.internal.sonarcloud.websocket.url", "http://localhost:40000");
     folder1BaseDir = makeStaticTempDir();
     folder2BaseDir = makeStaticTempDir();
     initialize(Map.of(
@@ -203,6 +211,28 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
       "contributing to unnecessary complexity and leading to confusion when reading the code.");
     assertThat(client.ruleDesc.getType()).isEqualTo("CODE_SMELL");
     assertThat(client.ruleDesc.getSeverity()).isEqualTo("MINOR");
+  }
+
+  @Test
+  void list_user_organizations() {
+    var paging = Common.Paging.newBuilder()
+      .setPageSize(500)
+      .setTotal(1)
+      .setPageIndex(1)
+      .build();
+    var organization = Organizations.Organization.newBuilder()
+      .setKey("key")
+      .setName("name")
+      .build();
+    sonarCloudWebServer.addProtobufResponse("/api/organizations/search.protobuf?member=true&ps=500&p=1",
+      Organizations.SearchWsResponse.newBuilder()
+        .addAllOrganizations(List.of(organization))
+        .setPaging(paging)
+        .build());
+    var token = "123456";
+    var result = lsProxy.listUserOrganizations(token).join();
+    assertThat(result).hasSize(1);
+    assertThat(result.get(0).getKey()).isEqualTo("key");
   }
 
 }

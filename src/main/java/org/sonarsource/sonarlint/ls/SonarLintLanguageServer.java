@@ -95,6 +95,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSug
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpGenerateUserTokenResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.ListUserOrganizationsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.OrganizationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.CheckStatusChangePermittedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
@@ -835,6 +837,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       case IMPORTED -> telemetry.addedImportedBindings();
       case MANUAL -> telemetry.addedManualBindings();
     }
+  }
+
+  @Override
+  public CompletableFuture<List<OrganizationDto>> listUserOrganizations(String token) {
+    return backendServiceFacade.getBackendService().listUserOrganizations(token)
+      .thenApply(ListUserOrganizationsResponse::getUserOrganizations);
   }
 
   @Override

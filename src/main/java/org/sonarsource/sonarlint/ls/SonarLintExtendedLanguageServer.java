@@ -36,6 +36,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSug
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpGenerateUserTokenResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.OrganizationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 
 public interface SonarLintExtendedLanguageServer extends LanguageServer {
@@ -704,5 +705,8 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/didCreateBinding")
   void didCreateBinding(BindingCreationMode creationMode);
+
+  @JsonRequest("sonarlint/listUserOrganizations")
+  CompletableFuture<List<OrganizationDto>> listUserOrganizations(String token);
 
 }
