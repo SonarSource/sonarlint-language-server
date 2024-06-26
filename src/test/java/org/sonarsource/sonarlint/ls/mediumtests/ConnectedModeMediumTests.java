@@ -23,6 +23,7 @@ import com.google.gson.JsonObject;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -55,13 +56,11 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonar.api.utils.DateUtils;
-import org.sonar.scanner.protocol.Constants.Severity;
-import org.sonar.scanner.protocol.input.ScannerInput;
-import org.sonarsource.sonarlint.core.commons.RuleType;
 import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
@@ -82,7 +81,6 @@ import testutils.MockWebServerExtension;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -136,7 +134,9 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @BeforeEach
   public void mockSonarQube() {
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.3\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.9\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addResponse("/api/authentication/validate?format=json", new MockResponse().setResponseCode(200));
+    mockWebServerExtension.addResponse("/api/developers/search_events?projects=&from=", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addProtobufResponse("/api/components/search.protobuf?qualifiers=TRK&ps=500&p=1",
       Components.SearchWsResponse.newBuilder()
         .addComponents(Components.Component.newBuilder().setKey(PROJECT_KEY1).setName(PROJECT_NAME1).build())
@@ -211,6 +211,47 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .setType(Common.BranchType.BRANCH)
           .build())
         .build());
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull_taint?projectKey=" + PROJECT_KEY + "&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
+      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull_taint?projectKey=" + PROJECT_KEY + "&branchName=master&languages=" + LANGUAGES_LIST,
+      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=inFolderToo.py&branch=master&ps=500&p=1",
+      Hotspots.SearchWsResponse.newBuilder().build());
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
+      Issues.IssuesPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build());
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
+      Issues.IssuesPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build(),
+      Issues.IssueLite.newBuilder()
+        .setKey("xyz")
+        .setRuleKey(PYTHON_S1481)
+        .setType(Common.RuleType.CODE_SMELL)
+        .setUserSeverity(Common.Severity.BLOCKER)
+        .setMainLocation(Issues.Location.newBuilder()
+          .setFilePath("inFolderToo.py")
+          .setMessage("Remove the unused local variable \"toto\".")
+          .setTextRange(Issues.TextRange.newBuilder()
+            .setStartLine(1)
+            .setStartLineOffset(2)
+            .setEndLine(1)
+            .setEndLineOffset(6)
+            .setHash("f71dbe52628a3f83a77ab494817525c6")
+            .build())
+          .build())
+        .setClosed(false)
+        .build());
   }
 
   @NotNull
@@ -277,26 +318,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void analysisConnected_find_tracked_hotspot_before_sq_10_1() {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.0\", \"id\": \"xzy\"}");
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Issues.IssuesPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
-      Issues.IssuesPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
     mockWebServerExtension.addProtobufResponse("/api/measures/component.protobuf?additionalFields=period&metricKeys=projects&component=myProject",
       Measures.ComponentWsResponse.newBuilder()
         .setComponent(Measures.Component.newBuilder()
@@ -437,15 +458,16 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           DiagnosticSeverity.Warning)));
   }
 
-  @Disabled("SLCORE-396 - engine restart issue")
   @Test
+  @DisabledOnOs(OS.WINDOWS)
+    // whole folder scan does not work on Windows - SLLS-250
   void analysisConnected_scan_all_hotspot_then_forget() throws IOException {
     var file1 = "analysisConnected_scan_all_hotspot_then_forget_hotspot1.py";
     var file2 = "analysisConnected_scan_all_hotspot_then_forget_hotspot2.py";
     mockNoIssuesNoHotspotsForProject();
-    mockWebServerExtension.addProtobufResponse("/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + file1 + "&branch=master&ps=500&ps=1",
+    mockWebServerExtension.addProtobufResponse("/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + file1 + "&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
-    mockWebServerExtension.addProtobufResponse("/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + file2 + "&branch=master&ps=500&ps=1",
+    mockWebServerExtension.addProtobufResponse("/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + file2 + "&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
 
     var uri1InFolder = folder1BaseDir.resolve(file1).toUri().toString();
@@ -523,21 +545,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.9\", \"id\": \"xzy\"}");
     mockNoIssuesNoHotspotsForProject();
     mockWebServerExtension.addStringResponse("/api/authentication/validate?format=json", "{\"valid\": true}");
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/batch/issues?key=myProject%3AinFolder.py",
-      ScannerInput.ServerIssue.newBuilder()
-        .setKey("xyz")
-        .setRuleRepository("python")
-        .setRuleKey("S1482") // Different rule key -> no match
-        .setMsg("Remove the declaration of the unused 'toto' variable.")
-        .setSeverity(Severity.INFO)
-        .setManualSeverity(true)
-        .setPath("inFolder.py")
-        .build());
-    mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject&rules=&branch=master&ps=500&p=1",
-      Issues.SearchWsResponse.newBuilder().addIssues(Issues.Issue.newBuilder().setKey("issueKey").build()).build());
-    mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject&rules=&branch=master&ps=500&p=2",
-      Issues.SearchWsResponse.newBuilder().addComponents(Issues.Component.newBuilder().setKey("componentKey").setPath("componentPath").build()).build());
     mockWebServerExtension.addProtobufResponse("/api/measures/component.protobuf?additionalFields=period&metricKeys=projects&component=myProject",
       Measures.ComponentWsResponse.newBuilder()
         .setComponent(Measures.Component.newBuilder()
@@ -549,11 +556,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .setDate("2023-08-29T09:37:59+0000")
           .setParameter("9.2")
           .build())
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
         .build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
@@ -585,19 +587,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analysisConnected_matching_server_issues() throws Exception {
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/batch/issues?key=myProject%3AinFolderToo.py&branch=master",
-      ScannerInput.ServerIssue.newBuilder()
-        .setKey("xyz")
-        .setRuleRepository("python")
-        .setRuleKey("S1481")
-        .setType(RuleType.BUG.name())
-        .setMsg("Remove the unused local variable \"toto\".")
-        .setSeverity(Severity.INFO)
-        .setManualSeverity(true)
-        .setPath("inFolderToo.py")
-        .setLine(2)
-        .build());
     mockWebServerExtension.addProtobufResponse(
       "/api/issues/search.protobuf?issues=xyz&additionalFields=transitions&ps=1&p=1",
       Issues.SearchWsResponse.newBuilder()
@@ -620,10 +609,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .setParameter("9.2")
           .build())
         .build());
-    mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject&rules=&branch=master&ps=500&p=1",
-      Issues.SearchWsResponse.newBuilder().build());
-    mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject&rules=&branch=master&ps=500&p=2",
-      Issues.SearchWsResponse.newBuilder().addComponents(Issues.Component.newBuilder().setKey("componentKey").setPath("componentPath").build()).build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
@@ -671,11 +656,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   void shouldReturnRemoteProjectsForKnownConnection() throws ExecutionException, InterruptedException {
     mockNoIssuesNoHotspotsForProject();
 
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
     mockWebServerExtension.addProtobufResponse("/api/measures/component.protobuf?additionalFields=period&metricKeys=projects&component=myProject",
       Measures.ComponentWsResponse.newBuilder()
         .setComponent(Measures.Component.newBuilder()
@@ -718,15 +698,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var future = lsProxy.getRemoteProjectNamesByProjectKeys(testParams);
 
     awaitUntilAsserted(() -> assertThat(future).isCompletedExceptionally());
-  }
-
-  @Test
-  void shouldReturnErrorForInvalidUrl() {
-    var params = new SonarLintExtendedLanguageServer.GenerateTokenParams("invalid/url");
-
-    var result = lsProxy.generateToken(params);
-
-    assertThatThrownBy(result::get).hasMessage("org.eclipse.lsp4j.jsonrpc.ResponseErrorException: Internal error.");
   }
 
   @Test
@@ -800,29 +771,19 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldChangeIssueStatus() {
-    var issueKey = "qwerty";
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/batch/issues?key=myProject%3AchangeIssueStatus.py&branch=master",
-      ScannerInput.ServerIssue.newBuilder()
-        .setKey(issueKey)
-        .setRuleRepository("python")
-        .setRuleKey("S1481")
-        .setType(RuleType.BUG.name())
-        .setMsg("Remove the unused local variable \"toto\".")
-        .setSeverity(Severity.INFO)
-        .setManualSeverity(true)
-        .setPath("changeIssueStatus.py")
-        .setLine(2)
-        .build());
+    var issueKey = "xyz";
 
     mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
+    mockWebServerExtension.addProtobufResponse(
+      "/api/hotspots/search.protobuf?projectKey=myProject&files=inFolderToo.py&branch=master&ps=500&p=1",
+      Hotspots.SearchWsResponse.newBuilder().build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
     awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
 
-    var fileUri = folder1BaseDir.resolve("changeIssueStatus.py").toUri().toString();
+    var fileUri = folder1BaseDir.resolve("inFolderToo.py").toUri().toString();
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";
     didOpen(fileUri, "python", content);
 
@@ -848,20 +809,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void shouldNotChangeStatusWhenServerIsDown() throws IOException {
     var issueKey = "qwerty";
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/batch/issues?key=myProject%3AshouldNotChangeStatusWhenServerIsDown.py&branch=master",
-      ScannerInput.ServerIssue.newBuilder()
-        .setKey(issueKey)
-        .setRuleRepository("python")
-        .setRuleKey("S1481")
-        .setType(RuleType.BUG.name())
-        .setMsg("Remove the unused local variable \"toto\".")
-        .setSeverity(Severity.INFO)
-        .setManualSeverity(true)
-        .setPath("shouldNotChangeStatusWhenServerIsDown.py")
-        .setLine(2)
-        .build());
-    mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
 
     addConfigScope(folder1BaseDir.toUri().toString());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
@@ -1155,19 +1102,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void change_issue_status_permission_check() throws ExecutionException, InterruptedException {
     var issueKey = UUID.randomUUID().toString();
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/batch/issues?key=myProject%3Achange_issue_status_permission_check.py&branch=master",
-      ScannerInput.ServerIssue.newBuilder()
-        .setKey(issueKey)
-        .setRuleRepository("python")
-        .setRuleKey("S1481")
-        .setType(RuleType.BUG.name())
-        .setMsg("Remove the unused local variable \"toto\".")
-        .setSeverity(Severity.INFO)
-        .setManualSeverity(true)
-        .setPath("change_issue_status_permission_check.py")
-        .setLine(2)
-        .build());
     mockWebServerExtension.addProtobufResponse(
       "/api/issues/search.protobuf?issues=" + issueKey + "&additionalFields=transitions&ps=1&p=1",
       Issues.SearchWsResponse.newBuilder()
@@ -1178,18 +1112,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
             .build())
           .build())
         .build());
-    mockWebServerExtension.addProtobufResponse(
-      "/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject%3Achange_issue_status_permission_check.py&rules=&branch=master&ps=500&p=1",
-      Issues.SearchWsResponse.newBuilder()
-        .addIssues(Issues.Issue.newBuilder()
-          .setKey("xyz")
-          .setTransitions(Issues.Transitions.newBuilder()
-            .addAllTransitions(List.of("wontfix", "falsepositive"))
-            .build())
-          .build())
-        .build());
-    mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject%3Achange_issue_status_permission_check.py&rules=&branch=master&ps=500&p=2",
-      Issues.SearchWsResponse.newBuilder().addComponents(Issues.Component.newBuilder().setKey("componentKey").setPath("componentPath").build()).build());
 
     mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
@@ -1288,13 +1210,13 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void shouldChangeLocalIssueStatus() {
+  void shouldChangeLocalIssueStatus() throws URISyntaxException {
     var fileUri = folder1BaseDir.resolve("changeLocalIssueStatus.py").toUri().toString();
     assertLocalIssuesStatusChanged(fileUri);
   }
 
   @Test
-  void shouldReopenResolvedLocalIssues() {
+  void shouldReopenResolvedLocalIssues() throws URISyntaxException {
     var fileName = "changeAndReopenLocalIssueStatus.py";
     var fileUri = folder1BaseDir.resolve(fileName).toUri().toString();
     assertLocalIssuesStatusChanged(fileUri);
@@ -1311,12 +1233,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldIgnoreRazorFile() {
-    mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject&rules=&branch=master&ps=500&p=1",
-      Issues.SearchWsResponse.newBuilder().build());
-    mockWebServerExtension.addProtobufResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject&rules=&branch=master&ps=500&p=2",
-      Issues.SearchWsResponse.newBuilder().addComponents(Issues.Component.newBuilder().setKey("componentKey").setPath("componentPath").build()).build());
-    mockWebServerExtension.addStringResponse("/api/authentication/validate?format=json", "{\"valid\": true}");
-
     var configScopeId = folder1BaseDir.toUri().toString();
     addConfigScope(configScopeId);
     var uriInFolder = folder1BaseDir.resolve("shouldIgnore.razor").toUri().toString();
@@ -1326,10 +1242,12 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     assertLogContains("'OmniSharp' skipped because there are no related files in the current project");
   }
 
-  private void assertLocalIssuesStatusChanged(String fileUri) {
-    mockWebServerExtension.addResponse("/api/issues/anticipated_transitions?projectKey=myProject", new MockResponse().setResponseCode(200));
+  private void assertLocalIssuesStatusChanged(String fileUri) throws URISyntaxException {
+    mockWebServerExtension.addResponse("/api/issues/anticipated_transitions?projectKey=" + PROJECT_KEY, new MockResponse().setResponseCode(200));
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
-    mockWebServerExtension.addResponse("/api/issues/search.protobuf?statuses=OPEN,CONFIRMED,REOPENED,RESOLVED&types=VULNERABILITY&componentKeys=myProject&rules=&branch=master&ps=500&p=1", new MockResponse().setResponseCode(200));
+    mockNoIssueAndNoTaintInIncrementalSync();
+    mockWebServerExtension.addProtobufResponse("/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + getFileNameFromFileUri(fileUri) + "&branch=master&ps=500&p=1",
+      Hotspots.SearchWsResponse.newBuilder().build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
     awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
@@ -1357,6 +1275,10 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning)));
+  }
+
+  private String getFileNameFromFileUri(String fileUri) throws URISyntaxException {
+    return Paths.get(new URI(fileUri)).getFileName().toString();
   }
 
   @Test

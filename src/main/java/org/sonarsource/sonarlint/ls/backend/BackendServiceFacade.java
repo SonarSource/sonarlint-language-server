@@ -168,6 +168,7 @@ public class BackendServiceFacade {
       initParams.getConnectedModeEmbeddedPluginPathsByKey(),
       initParams.getEnabledLanguagesInStandaloneMode(),
       initParams.getExtraEnabledLanguagesInConnectedMode(),
+      null,
       initParams.getSonarQubeConnections(),
       initParams.getSonarCloudConnections(),
       initParams.getSonarlintUserHome(),
