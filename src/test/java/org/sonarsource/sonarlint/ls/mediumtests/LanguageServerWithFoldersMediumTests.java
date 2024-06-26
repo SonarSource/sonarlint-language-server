@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
+import java.net.ServerSocket;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,7 @@ import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -53,13 +55,26 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   private static Path folder1BaseDir;
 
   private static Path folder2BaseDir;
+
+  private static final int SONAR_CLOUD_PORT = findAvailablePort();
   @RegisterExtension
-  private static final MockWebServerExtension sonarCloudWebServer = new MockWebServerExtension(40000);
+  private static final MockWebServerExtension sonarCloudWebServer = new MockWebServerExtension(SONAR_CLOUD_PORT);
+
+  private static int findAvailablePort() {
+    try {
+      ServerSocket socket = new ServerSocket(0);
+      int port = socket.getLocalPort();
+      socket.close();
+      return port;
+    } catch(Throwable t) {
+      throw new IllegalStateException(t);
+    }
+  }
 
   @BeforeAll
   public static void initialize() throws Exception {
-    System.setProperty("sonarlint.internal.sonarcloud.url", "http://localhost:40000");
-    System.setProperty("sonarlint.internal.sonarcloud.websocket.url", "http://localhost:40000");
+    System.setProperty("sonarlint.internal.sonarcloud.url", "http://localhost:" + SONAR_CLOUD_PORT);
+    System.setProperty("sonarlint.internal.sonarcloud.websocket.url", "http://localhost:40000" + SONAR_CLOUD_PORT);
     folder1BaseDir = makeStaticTempDir();
     folder2BaseDir = makeStaticTempDir();
     initialize(Map.of(
@@ -68,6 +83,12 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
         "productVersion", "0.1",
         "productKey", "productKey"),
       new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
+  }
+
+  @AfterAll
+  public static void resetSonarCloud() {
+    System.clearProperty("sonarlint.internal.sonarcloud.websocket.url");
+    System.clearProperty("sonarlint.internal.sonarcloud.url");
   }
 
   @Override
