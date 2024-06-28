@@ -67,7 +67,6 @@ public class BackendServiceFacade {
   private final BackendService backendService;
   private final BackendInitParams initParams;
   private final ConfigurationScopeDto rootConfigurationScope;
-  private final BackendJsonRpcLauncher serverLauncher;
   private final ClientJsonRpcLauncher clientLauncher;
   private final LanguageClientLogger lsLogOutput;
   private SettingsManager settingsManager;
@@ -91,7 +90,7 @@ public class BackendServiceFacade {
       clientToServerInputStream = new PipedInputStream(clientToServerOutputStream);
       var serverToClientOutputStream = new PipedOutputStream();
       var serverToClientInputStream = new PipedInputStream(serverToClientOutputStream);
-      serverLauncher = new BackendJsonRpcLauncher(clientToServerInputStream, serverToClientOutputStream);
+      new BackendJsonRpcLauncher(clientToServerInputStream, serverToClientOutputStream);
       clientLauncher = new ClientJsonRpcLauncher(serverToClientInputStream, clientToServerOutputStream, rpcClient);
       this.backendService = new BackendService(clientLauncher.getServerProxy(), lsLogOutput, client);
     } catch (IOException e) {
@@ -224,11 +223,6 @@ public class BackendServiceFacade {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     } finally {
-      try {
-        serverLauncher.close();
-      } catch (Exception e) {
-        lsLogOutput.errorWithStackTrace("Unable to stop the SonartLint server launcher", e);
-      }
       try {
         clientLauncher.close();
       } catch (Exception e) {
