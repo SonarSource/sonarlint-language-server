@@ -11,6 +11,7 @@ env:
   SONAR_HOST_URL: VAULT[development/kv/data/next data.url]
   SONAR_TOKEN: VAULT[development/kv/data/next data.token]
   SLACK_TOKEN: VAULT[development/kv/data/slack data.token]
+  SLACK_CHANNEL: squad-ide-vscode-bots
   NPM_CONFIG_//repox.jfrog.io/artifactory/api/npm/:_authToken: VAULT[development/artifactory/token/${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-private-reader access_token]
   NPM_CONFIG_registry: https://repox.jfrog.io/artifactory/api/npm/npm
 
@@ -75,7 +76,7 @@ build_task:
   cleanup_before_cache_script: cleanup_maven_repository
   on_failure:
     slack_notification_script: |
-      .cirrus/slack-notification.sh
+      source slack_notification_failure
 
 qa_linux_task:
   # name: "Run unit tests on Linux with Java 17 and SonarQube analysis on Next"
@@ -97,7 +98,7 @@ qa_linux_task:
       path: '**/target/surefire-reports/TEST-*.xml'
       format: junit
     slack_notification_script: |
-      .cirrus/slack-notification.sh
+      source slack_notification_failure
 
 qa_windows_task:
   # name: "Run unit tests on Windows with Java 17"
@@ -118,7 +119,7 @@ qa_windows_task:
       path: '**/target/surefire-reports/TEST-*.xml'
       format: junit
     slack_notification_script: |
-      .cirrus/slack-notification.sh
+      source slack_notification_failure
 
 mend_scan_task:
   # name: "Mend scan"
@@ -145,8 +146,7 @@ mend_scan_task:
       path: "whitesource/**/*"
   on_failure:
     slack_notification_script: |
-      .cirrus/slack-notification.sh
-
+      source slack_notification_failure
 promote_task:
   depends_on:
     - build
@@ -172,4 +172,4 @@ promote_task:
   cleanup_before_cache_script: cleanup_maven_repository
   on_failure:
     slack_notification_script: |
-      .cirrus/slack-notification.sh
+      source slack_notification_failure
