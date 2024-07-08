@@ -44,9 +44,11 @@ public class WorkspaceSettings {
   private final String pathToNodeExecutable;
   private final boolean focusOnNewCode;
 
+  private final String analysisExcludes;
+
   public WorkspaceSettings(boolean disableTelemetry, Map<String, ServerConnectionSettings> connections,
     Collection<RuleKey> excludedRules, Collection<RuleKey> includedRules, Map<RuleKey, Map<String, String>> ruleParameters,
-    boolean showAnalyzerLogs, boolean showVerboseLogs, String pathToNodeExecutable, boolean focusOnNewCode) {
+    boolean showAnalyzerLogs, boolean showVerboseLogs, String pathToNodeExecutable, boolean focusOnNewCode, String analysisExcludes) {
     this.disableTelemetry = disableTelemetry;
     this.connections = connections;
     this.excludedRules = excludedRules;
@@ -56,6 +58,7 @@ public class WorkspaceSettings {
     this.showVerboseLogs = showVerboseLogs;
     this.pathToNodeExecutable = pathToNodeExecutable;
     this.focusOnNewCode = focusOnNewCode;
+    this.analysisExcludes = analysisExcludes;
   }
 
   public boolean isDisableTelemetry() {
@@ -96,6 +99,10 @@ public class WorkspaceSettings {
 
   public boolean isFocusOnNewCode() {
     return focusOnNewCode;
+  }
+
+  public String getAnalysisExcludes() {
+    return analysisExcludes;
   }
 
   @Override

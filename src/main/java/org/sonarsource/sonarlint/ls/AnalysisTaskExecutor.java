@@ -20,8 +20,6 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +29,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.sonarsource.sonarlint.core.commons.api.progress.CanceledException;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
@@ -39,6 +38,7 @@ import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
+import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
@@ -59,7 +59,6 @@ import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.partitioningBy;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
-import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.ROOT_CONFIGURATION_SCOPE;
 
 public class AnalysisTaskExecutor {
 
@@ -79,12 +78,13 @@ public class AnalysisTaskExecutor {
   private final ProgressManager progressManager;
   private final BackendServiceFacade backendServiceFacade;
   private final AnalysisTasksCache analysisTasksCache;
+  private final OpenFilesCache openFilesCache;
 
   public AnalysisTaskExecutor(ScmIgnoredCache filesIgnoredByScmCache, LanguageClientLogger clientLogger,
     WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, JavaConfigCache javaConfigCache, SettingsManager settingsManager,
     IssuesCache issuesCache, HotspotsCache securityHotspotsCache, TaintVulnerabilitiesCache taintVulnerabilitiesCache, DiagnosticPublisher diagnosticPublisher,
     SonarLintExtendedLanguageClient lsClient, OpenNotebooksCache openNotebooksCache, NotebookDiagnosticPublisher notebookDiagnosticPublisher,
-    ProgressManager progressManager, BackendServiceFacade backendServiceFacade, AnalysisTasksCache analysisTasksCache) {
+    ProgressManager progressManager, BackendServiceFacade backendServiceFacade, AnalysisTasksCache analysisTasksCache, OpenFilesCache openFilesCache) {
     this.filesIgnoredByScmCache = filesIgnoredByScmCache;
     this.clientLogger = clientLogger;
     this.workspaceFoldersManager = workspaceFoldersManager;
@@ -101,12 +101,13 @@ public class AnalysisTaskExecutor {
     this.progressManager = progressManager;
     this.backendServiceFacade = backendServiceFacade;
     this.analysisTasksCache = analysisTasksCache;
+    this.openFilesCache = openFilesCache;
   }
 
   public void run(AnalysisTask task) {
     try {
       task.checkCanceled();
-      analyze(task);
+//      analyze(task);
     } catch (CanceledException e) {
       clientLogger.debug("Analysis canceled");
     } catch (Exception e) {
@@ -191,7 +192,7 @@ public class AnalysisTaskExecutor {
     var settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
       .orElse(settingsManager.getCurrentDefaultFolderSettings());
 
-    nonJavaFiles = excludeCAndCppFilesIfMissingCompilationDatabase(nonJavaFiles, settings);
+//    nonJavaFiles = excludeCAndCppFilesIfMissingCompilationDatabase(nonJavaFiles, settings);
 
     if (nonJavaFiles.isEmpty() && javaFilesWithConfig.isEmpty()) {
       return;
@@ -218,24 +219,24 @@ public class AnalysisTaskExecutor {
     }
   }
 
-  private Map<URI, VersionedOpenFile> excludeCAndCppFilesIfMissingCompilationDatabase(Map<URI, VersionedOpenFile> nonJavaFiles, WorkspaceFolderSettings settings) {
-    Map<Boolean, Map<URI, VersionedOpenFile>> splitCppAndNonCppFiles = nonJavaFiles.entrySet().stream().collect(partitioningBy(
-      entry -> entry.getValue().isCOrCpp(),
-      toMap(Entry::getKey, Entry::getValue)));
-    Map<URI, VersionedOpenFile> cOrCppFiles = ofNullable(splitCppAndNonCppFiles.get(true)).orElse(Map.of());
-    Map<URI, VersionedOpenFile> nonCNOrCppFiles = ofNullable(splitCppAndNonCppFiles.get(false)).orElse(Map.of());
-    if (!cOrCppFiles.isEmpty() && (settings.getPathToCompileCommands() == null || !Files.isRegularFile(Paths.get(settings.getPathToCompileCommands())))) {
-      if (settings.getPathToCompileCommands() == null) {
-        clientLogger.debug("Skipping analysis of C and C++ file(s) because no compilation database was configured");
-      } else {
-        clientLogger.debug("Skipping analysis of C and C++ file(s) because configured compilation database does not exist: " + settings.getPathToCompileCommands());
-      }
-      cOrCppFiles.keySet().forEach(this::clearIssueCacheAndPublishEmptyDiagnostics);
-      lsClient.needCompilationDatabase();
-      return nonCNOrCppFiles;
-    }
-    return nonJavaFiles;
-  }
+//  private Map<URI, VersionedOpenFile> excludeCAndCppFilesIfMissingCompilationDatabase(Map<URI, VersionedOpenFile> nonJavaFiles, WorkspaceFolderSettings settings) {
+//    Map<Boolean, Map<URI, VersionedOpenFile>> splitCppAndNonCppFiles = nonJavaFiles.entrySet().stream().collect(partitioningBy(
+//      entry -> entry.getValue().isCOrCpp(),
+//      toMap(Entry::getKey, Entry::getValue)));
+//    Map<URI, VersionedOpenFile> cOrCppFiles = ofNullable(splitCppAndNonCppFiles.get(true)).orElse(Map.of());
+//    Map<URI, VersionedOpenFile> nonCNOrCppFiles = ofNullable(splitCppAndNonCppFiles.get(false)).orElse(Map.of());
+//    if (!cOrCppFiles.isEmpty() && (settings.getPathToCompileCommands() == null || !Files.isRegularFile(Paths.get(settings.getPathToCompileCommands())))) {
+//      if (settings.getPathToCompileCommands() == null) {
+//        clientLogger.debug("Skipping analysis of C and C++ file(s) because no compilation database was configured");
+//      } else {
+//        clientLogger.debug("Skipping analysis of C and C++ file(s) because configured compilation database does not exist: " + settings.getPathToCompileCommands());
+//      }
+//      cOrCppFiles.keySet().forEach(this::clearIssueCacheAndPublishEmptyDiagnostics);
+//      lsClient.needCompilationDatabase();
+//      return nonCNOrCppFiles;
+//    }
+//    return nonJavaFiles;
+//  }
 
   private Map<URI, GetJavaConfigResponse> collectJavaFilesWithConfig(Map<URI, VersionedOpenFile> javaFiles) {
     Map<URI, GetJavaConfigResponse> javaFilesWithConfig = new HashMap<>();
@@ -324,17 +325,26 @@ public class AnalysisTaskExecutor {
   private void analyzeAndTrack(AnalysisTask task, WorkspaceFolderSettings settings, @Nullable URI folderUri, Map<URI, VersionedOpenFile> filesToAnalyze,
     Map<URI, GetJavaConfigResponse> javaConfigs) {
 
-    var extraProperties = buildExtraPropertiesMap(settings, filesToAnalyze, javaConfigs);
+//    var extraProperties = buildExtraPropertiesMap(settings, filesToAnalyze, javaConfigs);
 
     analysisTasksCache.analyze(task.getAnalysisId(), task);
-    backendServiceFacade.getBackendService().analyzeFilesAndTrack(folderUri != null ? folderUri.toString() : ROOT_CONFIGURATION_SCOPE, task.getAnalysisId(),
-      filesToAnalyze.keySet().stream().toList(), extraProperties, true).join();
+//    backendServiceFacade.getBackendService().analyzeFilesAndTrack(folderUri != null ? folderUri.toString() : ROOT_CONFIGURATION_SCOPE, task.getAnalysisId(),
+//      filesToAnalyze.keySet().stream().toList(), extraProperties, true).join();
   }
 
-  private Map<String, String> buildExtraPropertiesMap(WorkspaceFolderSettings settings, Map<URI, VersionedOpenFile> filesToAnalyze, Map<URI, GetJavaConfigResponse> javaConfigs) {
+  public Map<String, String> getInferredAnalysisProperties(String configurationScopeId, Set<URI> filesToAnalyzeUris) {
+    var workspaceFolder = workspaceFoldersManager.getFolder(URI.create(configurationScopeId));
+    var settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
+      .orElseGet(() -> CompletableFutures.computeAsync(c -> settingsManager.getCurrentDefaultFolderSettings()).join());
+
+    var javaFiles = filesToAnalyzeUris.stream().map(openFilesCache::getFile).filter(Optional::isPresent).map(Optional::get)
+      .filter(VersionedOpenFile::isJava).collect(Collectors.toMap(VersionedOpenFile::getUri, identity()));
+
+    var javaConfigs = collectJavaFilesWithConfig(javaFiles);
+
     var extraProperties = new HashMap<String, String>();
     extraProperties.putAll(settings.getAnalyzerProperties());
-    extraProperties.putAll(javaConfigCache.configureJavaProperties(filesToAnalyze.keySet(), javaConfigs));
+    extraProperties.putAll(javaConfigCache.configureJavaProperties(filesToAnalyzeUris, javaConfigs));
 
     var pathToCompileCommands = settings.getPathToCompileCommands();
     if (pathToCompileCommands != null) {

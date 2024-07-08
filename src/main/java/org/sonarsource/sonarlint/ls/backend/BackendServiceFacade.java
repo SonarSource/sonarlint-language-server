@@ -152,7 +152,7 @@ public class BackendServiceFacade {
         Path.of(omnisharpDirectory, "net6"),
         Path.of(omnisharpDirectory, "net472")) : null);
     return new InitializeParams(
-      new ClientConstantInfoDto("Visual Studio Code", initParams.getUserAgent()),
+      new ClientConstantInfoDto("Visual Studio Code", initParams.getUserAgent(), ProcessHandle.current().pid()),
       new TelemetryClientConstantAttributesDto(initParams.getTelemetryProductKey(),
         telemetryInitParams.getProductName(),
         telemetryInitParams.getProductVersion(),
@@ -161,7 +161,7 @@ public class BackendServiceFacade {
       getHttpConfiguration(),
       getSonarCloudAlternativeEnvironment(),
       new FeatureFlagsDto(true, true, true,
-        true, initParams.isEnableSecurityHotspots(), true, true, true, telemetryEnabled, true),
+        true, initParams.isEnableSecurityHotspots(), true, true, true, telemetryEnabled),
       initParams.getStorageRoot(),
       Path.of(initParams.getSonarlintUserHome()),
       initParams.getEmbeddedPluginPaths(),
@@ -175,7 +175,7 @@ public class BackendServiceFacade {
       initParams.getStandaloneRuleConfigByKey(),
       initParams.isFocusOnNewCode(),
       languageSpecificRequirements,
-      false
+      true
     );
   }
 

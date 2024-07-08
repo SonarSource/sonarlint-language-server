@@ -548,14 +548,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 3),
         List.of(new TextDocumentContentChangeEvent("def foo():\n  toto = 0\n  plouf = 0\n"))));
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestamp())
-      .contains("[Debug] Queuing analysis of file \"" + uri + "\" (version 3)"));
-
-    assertThat(client.logs)
-      .extracting(withoutTimestamp())
-      .doesNotContain("[Debug] Queuing analysis of file \"" + uri + "\" (version 2)");
-
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
@@ -617,7 +609,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     notifyConfigurationChangeOnClient();
 
     assertLogContains(
-      String.format("Global settings updated: WorkspaceSettings[connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false,organizationKey=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=true]",
+      String.format("Global settings updated: WorkspaceSettings[analysisExcludes=,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false,organizationKey=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=true]",
         CONNECTION_ID, CONNECTION_ID, mockWebServerExtension.url("/")));
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder( "Telemetry enabled");
@@ -799,7 +791,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestampAndMillis())
       .contains(
-        "[Info] Analyzing file \"" + uri + "\"...",
         "[Info] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
   }
 
@@ -817,8 +808,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestampAndMillis())
       .containsSubsequence(
-        "[Debug] Queuing analysis of file \"" + uri + "\" (version 1)",
-        "[Info] Analyzing file \"" + uri + "\"...",
         "[Info] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
   }
 
@@ -836,7 +825,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestampAndMillis())
       .contains(
-        "[Info] Analyzing file \"" + uri + "\"...",
         "[Info] Index files",
         "[Info] 1 file indexed",
         "[Info] 1 source file to be analyzed",
@@ -858,7 +846,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestampAndMillis())
       .contains(
-        "[Info] Analyzing file \"" + uri + "\"...",
         "[Info] Index files",
         "[Debug] Language of file \"" + uri + "\" is set to \"PYTHON\"",
         "[Info] 1 file indexed",

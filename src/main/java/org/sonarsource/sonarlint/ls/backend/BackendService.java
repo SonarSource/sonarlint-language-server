@@ -35,6 +35,7 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFilesAndTrackParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFilesResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAnalysisPropertiesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeClientNodeJsPathParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
@@ -65,6 +66,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.G
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.GetProjectNamesByKeyResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.file.DidCloseFileParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.file.DidOpenFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.file.DidUpdateFileSystemParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.ChangeHotspotStatusParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.CheckLocalDetectionSupportedParams;
@@ -294,8 +297,8 @@ public class BackendService {
     return initializedBackend().getSonarProjectBranchService().getMatchedSonarProjectBranch(new GetMatchedSonarProjectBranchParams(configurationScopeId));
   }
 
-  public CompletableFuture<HelpGenerateUserTokenResponse> helpGenerateUserToken(String serverUrl, boolean isSonarCloud) {
-    var params = new HelpGenerateUserTokenParams(serverUrl, isSonarCloud);
+  public CompletableFuture<HelpGenerateUserTokenResponse> helpGenerateUserToken(String serverUrl) {
+    var params = new HelpGenerateUserTokenParams(serverUrl);
     return initializedBackend().getConnectionService().helpGenerateUserToken(params);
   }
 
@@ -369,5 +372,20 @@ public class BackendService {
   public CompletableFuture<ListUserOrganizationsResponse> listUserOrganizations(String token) {
     var params = new ListUserOrganizationsParams(Either.forLeft(new TokenDto(token)));
     return initializedBackend().getConnectionService().listUserOrganizations(params);
+  }
+
+  public void didOpenFile(String configScopeId, URI fileUri) {
+    var params = new DidOpenFileParams(configScopeId, fileUri);
+    initializedBackend().getFileService().didOpenFile(params);
+  }
+
+  public void didCloseFile(String configScopeId, URI fileUri) {
+    var params = new DidCloseFileParams(configScopeId, fileUri);
+    initializedBackend().getFileService().didCloseFile(params);
+  }
+
+  public void didSetUserAnalysisProperties(String configScopeId, Map<String, String> properties) {
+    var params = new DidChangeAnalysisPropertiesParams(configScopeId, properties);
+    initializedBackend().getAnalysisService().didSetUserAnalysisProperties(params);
   }
 }

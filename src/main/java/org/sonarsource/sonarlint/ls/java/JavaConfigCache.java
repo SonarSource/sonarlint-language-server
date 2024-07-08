@@ -184,4 +184,8 @@ public class JavaConfigCache {
   public void didClose(URI fileUri) {
     javaConfigPerFileURI.remove(fileUri);
   }
+
+  public void didOpen(URI fileUri) {
+    getOrFetch(fileUri);
+  }
 }
