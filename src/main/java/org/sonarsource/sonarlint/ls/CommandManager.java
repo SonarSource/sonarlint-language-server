@@ -34,6 +34,8 @@ import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.eclipse.lsp4j.AnnotatedTextEdit;
+import org.eclipse.lsp4j.ChangeAnnotation;
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionKind;
 import org.eclipse.lsp4j.CodeActionParams;
@@ -114,6 +116,7 @@ public class CommandManager {
   static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
   static final String RESOLVE_ISSUE = "SonarLint.ResolveIssue";
   static final String SONARLINT_ACTION_PREFIX = "SonarLint: ";
+  static final String SONARLINT_ANNOTATION_ID = "SonarLint.AnnotationId";
 
   private final SonarLintExtendedLanguageClient client;
   private final SettingsManager settingsManager;
@@ -268,6 +271,11 @@ public class CommandManager {
       fix.fileEdits().stream()
         .map(fileEdit -> newLspDocumentEdit(fileEdit, documentVersion))
         .toList());
+    var changeAnnotation = new ChangeAnnotation();
+    changeAnnotation.setLabel("SonarLint Quick Fix");
+    changeAnnotation.setNeedsConfirmation(true);
+    changeAnnotation.setDescription(fix.message());
+    edit.setChangeAnnotations(Map.of(SONARLINT_ANNOTATION_ID, changeAnnotation));
     return edit;
   }
 
@@ -281,10 +289,11 @@ public class CommandManager {
   }
 
   private static TextEdit newLspTextEdit(TextEditDto textEdit) {
-    var lspEdit = new TextEdit();
+    var lspEdit = new AnnotatedTextEdit();
     lspEdit.setNewText(textEdit.newText());
     var lspRange = newLspRange(textEdit.range());
     lspEdit.setRange(lspRange);
+    lspEdit.setAnnotationId(SONARLINT_ANNOTATION_ID);
     return lspEdit;
   }
 
