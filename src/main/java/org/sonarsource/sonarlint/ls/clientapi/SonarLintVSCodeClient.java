@@ -31,7 +31,9 @@ import java.nio.file.Paths;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +47,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import nl.altindag.ssl.util.CertificateUtils;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -106,13 +107,11 @@ import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerServ
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
-import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
-import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.notifications.PromotionalNotifications;
@@ -149,6 +148,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private final PromotionalNotifications promotionalNotifications;
 
   private AnalysisTaskExecutor analysisTaskExecutor;
+
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider,
     LanguageClientLogger logOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, OpenFilesCache openFilesCache, OpenNotebooksCache openNotebooksCache,
@@ -525,16 +525,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
           return null;
         });
 
-        Collection<VersionedOpenFile> openFiles = openFilesCache.getAll();
-        Collection<VersionedOpenFile> allOpenItems = Stream.concat(openNotebooksCache.getAll().stream()
-            .map(VersionedOpenNotebook::asVersionedOpenFile), openFiles.stream())
-          .toList();
-        for (var openFile : allOpenItems) {
-          Optional<WorkspaceFolderWrapper> folderForFileOpt = workspaceFoldersManager.findFolderForFile(openFile.getUri());
-          if (folderForFileOpt.isPresent() && folderForFileOpt.get().getUri().equals(folderUri)) {
-            analysisScheduler.didOpen(openFile);
-          }
-        }
         analysisScheduler.analyzeAllUnboundOpenFiles();
       });
       initializeTaintCache(configurationScopeIds);
@@ -676,5 +666,17 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   public void raiseHotspots(String configurationScopeId, Map<URI, List<RaisedHotspotDto>> hotspotsByFileUri,
     boolean isIntermediatePublication, @Nullable UUID analysisId) {
     analysisTaskExecutor.handleHotspots(hotspotsByFileUri);
+  }
+
+  @Override
+  public Set<String> getFileExclusions(String configurationScopeId) {
+    var excludes = settingsManager.getCurrentSettings().getAnalysisExcludes();
+    return excludes.isEmpty() ? Collections.emptySet() : Arrays.stream(excludes.split(","))
+      .collect(Collectors.toSet());
+  }
+
+  @Override
+  public Map<String, String> getInferredAnalysisProperties(String configurationScopeId) {
+    return analysisTaskExecutor.getInferredAnalysisProperties(configurationScopeId, Collections.emptySet());
   }
 }

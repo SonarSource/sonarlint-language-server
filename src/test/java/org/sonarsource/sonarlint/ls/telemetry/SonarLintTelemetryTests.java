@@ -292,6 +292,6 @@ class SonarLintTelemetryTests {
 
   private static WorkspaceSettings newWorkspaceSettingsWithTelemetrySetting(boolean disableTelemetry) {
     return new WorkspaceSettings(disableTelemetry, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(),
-      Collections.emptyMap(), false, false, "/path/to/node", false);
+      Collections.emptyMap(), false, false, "/path/to/node", false, "");
   }
 }

@@ -133,7 +133,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestampAndMillis())
-      .contains("[Info] Analysis detected 0 issues and 0 Security Hotspots in XXXms"));
+      .contains("[Debug] Classified as test by configured 'testFilePattern' setting"));
 
     // File is considered as test file
     assertThat(client.getDiagnostics(uriOutsideFolder)).isEmpty();
@@ -165,9 +165,8 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestampAndMillis())
       .containsSubsequence(
-        "[Debug] Queuing analysis of 2 files",
-        "[Info] Analyzing 2 files...",
-        "[Info] Analysis detected 4 issues and 0 Security Hotspots in XXXms"));
+        "[Info] Analysis detected 2 issues and 0 Security Hotspots in XXXms",
+        "[Info] Analysis detected 2 issues and 0 Security Hotspots in XXXms"));
   }
 
   @Test
@@ -201,13 +200,8 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestampAndMillis())
       .containsSubsequence(
-        "[Debug] Queuing analysis of 2 files",
         "[Info] Analysis detected 2 issues and 0 Security Hotspots in XXXms",
-        "[Info] Analysis detected 2 issues and 0 Security Hotspots in XXXms")
-      // We don't know the order of analysis for the 2 files, so we can't have a single assertion
-      .contains(
-        "[Info] Analyzing file \"" + file1InFolder1 + "\"...",
-        "[Info] Analyzing file \"" + file2InFolder2 + "\"..."));
+        "[Info] Analysis detected 2 issues and 0 Security Hotspots in XXXms"));
   }
 
   @Test

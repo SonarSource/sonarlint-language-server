@@ -31,7 +31,6 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import testutils.SonarLintLogTester;
 
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ServerSentEventsTests {
@@ -49,6 +48,7 @@ class ServerSentEventsTests {
     underTest = new ServerSentEventsHandler(analysisScheduler, bindingManager);
   }
 
+  // TODO remove ?
   @Test
   void handleHotspotEventTest() {
     var filePath = Path.of("severFilePath");
@@ -61,7 +61,6 @@ class ServerSentEventsTests {
 
     underTest.handleHotspotEvent(new DidReceiveServerHotspotEvent(connectionId, projectKey, filePath));
 
-    verify(analysisScheduler).didReceiveHotspotEvent(fullFileUri);
   }
 
 

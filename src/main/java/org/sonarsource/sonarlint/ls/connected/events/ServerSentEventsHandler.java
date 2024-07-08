@@ -23,6 +23,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.event.DidReceiveServer
 import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 
+// TODO remove class
 public class ServerSentEventsHandler implements ServerSentEventsHandlerService {
   private final AnalysisScheduler analysisScheduler;
   private final ProjectBindingManager projectBindingManager;
@@ -33,8 +34,8 @@ public class ServerSentEventsHandler implements ServerSentEventsHandlerService {
   }
 
   public void handleHotspotEvent(DidReceiveServerHotspotEvent event) {
-    var fileUri = projectBindingManager.fullFilePathFromRelative(event.getIdeFilePath(), event.getConnectionId(), event.getSonarProjectKey());
-    fileUri.ifPresent(analysisScheduler::didReceiveHotspotEvent);
+//    var fileUri = projectBindingManager.fullFilePathFromRelative(event.getIdeFilePath(), event.getConnectionId(), event.getSonarProjectKey());
+//    fileUri.ifPresent(analysisScheduler::didReceiveHotspotEvent);
   }
 
 }

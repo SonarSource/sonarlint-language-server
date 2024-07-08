@@ -78,6 +78,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   public static final String OMNISHARP_LOAD_PROJECT_ON_DEMAND = "omnisharp.enableMsBuildLoadProjectsOnDemand";
   public static final String OMNISHARP_PROJECT_LOAD_TIMEOUT = "omnisharp.projectLoadTimeout";
   private static final String DISABLE_TELEMETRY = "disableTelemetry";
+  private static final String ANALYSIS_EXCLUDES = "analysisExcludesStandalone";
   private static final String RULES = "rules";
   private static final String TEST_FILE_PATTERN = "testFilePattern";
   static final String ANALYZER_PROPERTIES = "analyzerProperties";
@@ -208,6 +209,19 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     }
   }
 
+  private void notifyAnalyzerPropertiesChangeIfNeeded(@Nullable WorkspaceFolderSettings oldDefaultSettings,
+    WorkspaceFolderSettings newDefaultSettings, WorkspaceFolderWrapper folderWrapper) {
+    var hasAnalyzerPropertiesChanged = oldDefaultSettings != null && !Objects.equals(oldDefaultSettings.getAnalyzerProperties(), newDefaultSettings.getAnalyzerProperties());
+    var hasPathToCompileCommandsChanged = oldDefaultSettings != null
+      && !Objects.equals(oldDefaultSettings.getPathToCompileCommands(), newDefaultSettings.getPathToCompileCommands());
+    if (hasPathToCompileCommandsChanged) {
+      newDefaultSettings.getAnalyzerProperties().put("sonar.cfamily.compile-commands", newDefaultSettings.getPathToCompileCommands());
+    }
+    if (hasAnalyzerPropertiesChanged || hasPathToCompileCommandsChanged) {
+      backendServiceFacade.getBackendService().didSetUserAnalysisProperties(folderWrapper.getUri().toString(), newDefaultSettings.getAnalyzerProperties());
+    }
+  }
+
   private void notifyListeners(WorkspaceSettings newWorkspaceSettings, WorkspaceSettings oldWorkspaceSettings, WorkspaceFolderSettings newDefaultFolderSettings,
     WorkspaceFolderSettings oldDefaultFolderSettings) {
     if (!Objects.equals(oldWorkspaceSettings, newWorkspaceSettings)) {
@@ -312,6 +326,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       var folderSettingsMap = requestSonarLintAndOmnisharpConfigurationAsync(f.getUri()).get();
       var newSettings = parseFolderSettings(folderSettingsMap, f.getUri());
       var old = f.getRawSettings();
+      notifyAnalyzerPropertiesChangeIfNeeded(old, newSettings, f);
       if (!Objects.equals(old, newSettings)) {
         f.setSettings(newSettings);
         logOutput.debug(format("Workspace folder '%s' configuration updated: %s", f, newSettings));
@@ -330,6 +345,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     var disableTelemetry = (Boolean) params.getOrDefault(DISABLE_TELEMETRY, false);
     var pathToNodeExecutable = (String) params.get(PATH_TO_NODE_EXECUTABLE);
     var focusOnNewCode = (Boolean) params.getOrDefault(FOCUS_ON_NEW_CODE, false);
+    var analysisExcludesStandalone = (String) params.getOrDefault(ANALYSIS_EXCLUDES, "");
     var serverConnections = parseServerConnections(params);
     @SuppressWarnings("unchecked")
     var rulesConfiguration = RulesConfiguration.parse(((Map<String, Object>) params.getOrDefault(RULES, Collections.emptyMap())));
@@ -338,7 +354,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     var showAnalyzerLogs = (Boolean) consoleParams.getOrDefault(SHOW_ANALYZER_LOGS, false);
     var showVerboseLogs = (Boolean) consoleParams.getOrDefault(SHOW_VERBOSE_LOGS, false);
     return new WorkspaceSettings(disableTelemetry, serverConnections, rulesConfiguration.excludedRules(), rulesConfiguration.includedRules(), rulesConfiguration.ruleParameters(),
-      showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable, focusOnNewCode);
+      showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable, focusOnNewCode, analysisExcludesStandalone);
   }
 
   private Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params) {
