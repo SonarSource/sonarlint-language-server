@@ -190,11 +190,6 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
     analyseNotIgnoredFiles(openedCorCppFileUrisInFolder);
   }
 
-  public void scanForHotspotsInFiles(List<VersionedOpenFile> files) {
-//    analyzeAsync(AnalysisParams.newAnalysisParams(files));
-    // TODO force analysis
-  }
-
   public void analyzeAllUnboundOpenFiles() {
     var openedUnboundFileUris = openFilesCache.getAll().stream()
       .filter(f -> bindingManager.getBinding(f.getUri()).isEmpty())

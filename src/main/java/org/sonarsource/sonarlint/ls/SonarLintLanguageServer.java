@@ -818,10 +818,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   private void runScan(ScanFolderForHotspotsParams params) {
-    var filesToAnalyze = params.getDocuments().stream()
-      .map(d -> new VersionedOpenFile(create(d.getUri()), d.getLanguageId(), d.getVersion(), d.getText()))
-      .toList();
-    analysisScheduler.scanForHotspotsInFiles(filesToAnalyze);
+    backendServiceFacade.getBackendService().analyzeFullProject(params.getFolderUri(), true);
   }
 
   public CompletableFuture<Void> forgetFolderHotspots() {
