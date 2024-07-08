@@ -35,8 +35,10 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFilesAndTrackParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFilesResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFullProjectParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAnalysisPropertiesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeClientNodeJsPathParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.ForceAnalyzeResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
@@ -387,5 +389,10 @@ public class BackendService {
   public void didSetUserAnalysisProperties(String configScopeId, Map<String, String> properties) {
     var params = new DidChangeAnalysisPropertiesParams(configScopeId, properties);
     initializedBackend().getAnalysisService().didSetUserAnalysisProperties(params);
+  }
+
+  public CompletableFuture<ForceAnalyzeResponse> analyzeFullProject(String configScopeId, boolean hotspotsOnly) {
+    var params = new AnalyzeFullProjectParams(configScopeId, hotspotsOnly);
+    return initializedBackend().getAnalysisService().analyzeFullProject(params);
   }
 }
