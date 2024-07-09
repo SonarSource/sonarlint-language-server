@@ -19,40 +19,27 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import com.google.common.annotations.VisibleForTesting;
 import java.net.URI;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
-import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.util.stream.Collectors.groupingBy;
 
-/**
- * Responsible to manage all analyses scheduling
- */
-public class AnalysisScheduler implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
-
-  private static final CompletableFuture<Void> COMPLETED_FUTURE = CompletableFuture.completedFuture(null);
-  private static final int DEFAULT_TIMER_MS = 2000;
+public class ForcedAnalysisCoordinator implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
 
   public static final String ITEM_LOCATION = "location";
   public static final String ITEM_FLOW = "flow";
@@ -60,62 +47,19 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
   private final OpenFilesCache openFilesCache;
   private final OpenNotebooksCache openNotebooksCache;
 
-  // entries in this set mean that the file is "dirty"
-  private final Set<URI> events = new HashSet<>();
-
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final ProjectBindingManager bindingManager;
-  private final LanguageClientLogger lsLogOutput;
-  private final AnalysisTaskExecutor analysisTaskExecutor;
   private final SonarLintExtendedLanguageClient client;
+  private final BackendServiceFacade backendServiceFacade;
 
-  private final ExecutorService asyncExecutor;
-
-  public AnalysisScheduler(LanguageClientLogger lsLogOutput, WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
-    OpenNotebooksCache openNotebooksCache, AnalysisTaskExecutor analysisTaskExecutor, SonarLintExtendedLanguageClient client) {
-    this(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor, DEFAULT_TIMER_MS, client);
-  }
-
-  @VisibleForTesting
-  AnalysisScheduler(LanguageClientLogger lsLogOutput, WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
-    OpenNotebooksCache openNotebooksCache, AnalysisTaskExecutor analysisTaskExecutor, long analysisTimerMs, SonarLintExtendedLanguageClient client) {
-    this.lsLogOutput = lsLogOutput;
+  public ForcedAnalysisCoordinator(WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
+    OpenNotebooksCache openNotebooksCache, SonarLintExtendedLanguageClient client, BackendServiceFacade backendServiceFacade) {
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.bindingManager = bindingManager;
     this.openFilesCache = openFilesCache;
     this.openNotebooksCache = openNotebooksCache;
-    this.analysisTaskExecutor = analysisTaskExecutor;
-    this.asyncExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint Language Server Analysis Scheduler", false));
+    this.backendServiceFacade = backendServiceFacade;
     this.client = client;
-  }
-
-  public static class AnalysisParams {
-    private final List<VersionedOpenFile> files;
-    private final boolean shouldFetchServerIssues;
-    private final boolean shouldKeepHotspotsOnly;
-    private final boolean shouldShowProgress;
-
-    private AnalysisParams(
-      List<VersionedOpenFile> files,
-      boolean shouldFetchServerIssues,
-      boolean shouldKeepHotspotsOnly,
-      boolean shouldShowProgress
-    ) {
-      this.files = List.copyOf(files);
-      this.shouldFetchServerIssues = shouldFetchServerIssues;
-      this.shouldKeepHotspotsOnly = shouldKeepHotspotsOnly;
-      this.shouldShowProgress = shouldShowProgress;
-    }
-
-    static AnalysisParams newAnalysisParams(List<VersionedOpenFile> files) {
-      return new AnalysisParams(files, false, false, false);
-    }
-
-  }
-
-  public void shutdown() {
-    events.clear();
-    Utils.shutdownAndAwait(asyncExecutor, true);
   }
 
   public void analyzeAllOpenFilesInFolder(@Nullable WorkspaceFolderWrapper folder) {
@@ -136,17 +80,10 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
         var filesByMaybeFolderUri = notIgnoredFiles.stream().collect(groupingBy(f -> workspaceFoldersManager.findFolderForFile(f.getUri())));
         for (var entry : filesByMaybeFolderUri.entrySet()) {
           var maybeFolderUri = entry.getKey();
-          var filesToAnalyse = entry.getValue();
+          var filesToAnalyse = entry.getValue().stream().map(VersionedOpenFile::getUri).toList();
           if (maybeFolderUri.isPresent()) {
             var folderUri = maybeFolderUri.get().getUri();
-            if (workspaceFoldersManager.isReadyForAnalysis(folderUri.toString())) {
-//              analyzeAsync(AnalysisParams.newAnalysisParams(filesToAnalyse));
-              // TODO force analysis
-            }
-          }
-          if (bindingManager.getBindingIfExists(filesToAnalyse.get(0).getUri()).isEmpty()) {
-//            analyzeAsync(AnalysisParams.newAnalysisParams(filesToAnalyse));
-            // TODO force analysis
+            backendServiceFacade.getBackendService().analyzeFilesList(folderUri.toString(), filesToAnalyse);
           }
         }
       });
@@ -213,6 +150,11 @@ public class AnalysisScheduler implements WorkspaceSettingsChangeListener, Works
 
   public void didClasspathUpdate() {
     analyzeAllOpenJavaFiles();
+  }
+
+  public void didReceiveHotspotEvent(URI fileUri) {
+    var folder = workspaceFoldersManager.findFolderForFile(fileUri);
+    folder.ifPresent(f -> backendServiceFacade.getBackendService().analyzeFilesList(f.getUri().toString(), List.of(fileUri)));
   }
 
   public void didServerModeChange(SonarLintExtendedLanguageServer.ServerMode serverMode) {

@@ -33,6 +33,7 @@ import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFileListParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFilesAndTrackParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFilesResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFullProjectParams;
@@ -394,5 +395,10 @@ public class BackendService {
   public CompletableFuture<ForceAnalyzeResponse> analyzeFullProject(String configScopeId, boolean hotspotsOnly) {
     var params = new AnalyzeFullProjectParams(configScopeId, hotspotsOnly);
     return initializedBackend().getAnalysisService().analyzeFullProject(params);
+  }
+
+  public CompletableFuture<ForceAnalyzeResponse> analyzeFilesList(String configScopeId, List<URI> filesToAnalyze) {
+    var params = new AnalyzeFileListParams(configScopeId, filesToAnalyze);
+    return initializedBackend().getAnalysisService().analyzeFileList(params);
   }
 }

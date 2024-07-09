@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -160,7 +161,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
-  private final AnalysisScheduler analysisScheduler;
+  private final ForcedAnalysisCoordinator forcedAnalysisCoordinator;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final OpenFilesCache openFilesCache;
   private final OpenNotebooksCache openNotebooksCache;
@@ -181,8 +182,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final PromotionalNotifications promotionalNotifications;
   private final ServerSentEventsHandlerService serverSentEventsHandler;
   private final FileTypeClassifier fileTypeClassifier;
-  private final AnalysisTaskExecutor analysisTaskExecutor;
-  private final AnalysisTasksCache analysisTasksCache;
+  private final AnalysisHelper analysisHelper;
 
   private String appName;
 
@@ -226,7 +226,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.hostInfoProvider = new HostInfoProvider();
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client, lsLogOutput);
     this.promotionalNotifications = new PromotionalNotifications(client);
-    this.analysisTasksCache = new AnalysisTasksCache();
     var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, lsLogOutput, taintVulnerabilitiesCache, openFilesCache,
       openNotebooksCache, skippedPluginsNotifier, promotionalNotifications);
     this.backendServiceFacade = new BackendServiceFacade(vsCodeClient, lsLogOutput, client);
@@ -255,17 +254,17 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     vsCodeClient.setSmartNotifications(smartNotifications);
     this.scmIgnoredCache = new ScmIgnoredCache(client, lsLogOutput);
     this.moduleEventsProcessor = new ModuleEventsProcessor(workspaceFoldersManager, fileTypeClassifier, javaConfigCache, backendServiceFacade, settingsManager);
-    this.analysisTaskExecutor = new AnalysisTaskExecutor(scmIgnoredCache, lsLogOutput, workspaceFoldersManager, bindingManager, javaConfigCache, settingsManager,
-      issuesCache, securityHotspotsCache, taintVulnerabilitiesCache, diagnosticPublisher,
-      client, openNotebooksCache, notebookDiagnosticPublisher, progressManager, backendServiceFacade, analysisTasksCache, openFilesCache);
-    vsCodeClient.setAnalysisTaskExecutor(analysisTaskExecutor);
-    this.analysisScheduler = new AnalysisScheduler(lsLogOutput, workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, analysisTaskExecutor, client);
-    vsCodeClient.setAnalysisScheduler(analysisScheduler);
-    this.serverSentEventsHandler = new ServerSentEventsHandler(analysisScheduler, bindingManager);
+    this.analysisHelper = new AnalysisHelper(lsLogOutput, workspaceFoldersManager, javaConfigCache, settingsManager,
+      issuesCache, securityHotspotsCache, diagnosticPublisher,
+      openNotebooksCache, notebookDiagnosticPublisher, openFilesCache);
+    vsCodeClient.setAnalysisTaskExecutor(analysisHelper);
+    this.forcedAnalysisCoordinator = new ForcedAnalysisCoordinator(workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, client, backendServiceFacade);
+    vsCodeClient.setAnalysisScheduler(forcedAnalysisCoordinator);
+    this.serverSentEventsHandler = new ServerSentEventsHandler(forcedAnalysisCoordinator, bindingManager);
     vsCodeClient.setServerSentEventsHandlerService(serverSentEventsHandler);
-    bindingManager.setAnalysisManager(analysisScheduler);
-    this.settingsManager.addListener((WorkspaceSettingsChangeListener) analysisScheduler);
-    this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) analysisScheduler);
+    bindingManager.setAnalysisManager(forcedAnalysisCoordinator);
+    this.settingsManager.addListener((WorkspaceSettingsChangeListener) forcedAnalysisCoordinator);
+    this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) forcedAnalysisCoordinator);
     this.commandManager = new CommandManager(client, settingsManager, bindingManager, telemetry, taintVulnerabilitiesCache,
       issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, openNotebooksCache, lsLogOutput);
 
@@ -400,7 +399,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<Object> shutdown() {
     List.<Runnable>of(
-        analysisScheduler::shutdown,
         branchManager::shutdown,
         settingsManager::shutdown,
         workspaceFoldersManager::shutdown,
@@ -628,14 +626,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public void didClasspathUpdate(DidClasspathUpdateParams params) {
     var projectUri = create(params.getProjectUri());
     javaConfigCache.didClasspathUpdate(projectUri);
-    analysisScheduler.didClasspathUpdate();
+    forcedAnalysisCoordinator.didClasspathUpdate();
   }
 
   @Override
   public void didJavaServerModeChange(DidJavaServerModeChangeParams params) {
     var serverModeEnum = ServerMode.of(params.getServerMode());
     javaConfigCache.didServerModeChange();
-    analysisScheduler.didServerModeChange(serverModeEnum);
+    forcedAnalysisCoordinator.didServerModeChange(serverModeEnum);
   }
 
   @Override
@@ -984,9 +982,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public CompletableFuture<Void> analyseOpenFileIgnoringExcludes(AnalyseOpenFileIgnoringExcludesParams params) {
-    // TODO force analysis of that single file
     var notebookUriStr = params.getNotebookUri();
+    URI documentUri;
+    VersionedOpenFile versionedOpenFile;
     if (notebookUriStr != null) {
+      documentUri = create(notebookUriStr);
       var version = params.getNotebookVersion();
       var notebookUri = create(notebookUriStr);
       requireNonNull(version);
@@ -994,17 +994,18 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var notebookFile = VersionedOpenNotebook.create(
         notebookUri, version,
         cells, notebookDiagnosticPublisher);
-      var versionedOpenFile = notebookFile.asVersionedOpenFile();
+      versionedOpenFile = notebookFile.asVersionedOpenFile();
       openNotebooksCache.didOpen(notebookUri, version, cells);
-      CompletableFutures.computeAsync(cancelChecker -> {
-        moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(versionedOpenFile);
-        return null;
-      });
     } else {
       var document = requireNonNull(params.getTextDocument());
-      var file = openFilesCache.didOpen(create(document.getUri()), document.getLanguageId(), document.getText(), document.getVersion());
+      documentUri = create(document.getUri());
+      versionedOpenFile = openFilesCache.didOpen(create(document.getUri()), document.getLanguageId(), document.getText(), document.getVersion());
+    }
+    if (versionedOpenFile != null) {
+      var workspaceFolder = workspaceFoldersManager.findFolderForFile(documentUri);
       CompletableFutures.computeAsync(cancelChecker -> {
-        moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(file);
+        moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(versionedOpenFile);
+        workspaceFolder.ifPresent(folder -> backendServiceFacade.getBackendService().analyzeFilesList(folder.getUri().toString(), List.of(documentUri)));
         return null;
       });
     }

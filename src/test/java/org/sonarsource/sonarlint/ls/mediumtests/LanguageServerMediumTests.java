@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -36,6 +37,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import org.apache.commons.lang3.ArrayUtils;
+import org.eclipse.jgit.api.Git;
 import org.eclipse.lsp4j.CodeActionContext;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Diagnostic;
@@ -584,13 +586,21 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     notifyConfigurationChangeOnClient();
     client.logs.clear();
 
+    // Initialize git repository
+    Git git = Git.init().setDirectory(analysisDir.toFile()).call();
+    // avoid NoHeadException
+    git.commit().setMessage("First snow").call();
+
     var uri = getUri("foo.py", analysisDir);
-    client.isIgnoredByScm = true;
+    var gitignorePath = analysisDir.resolve(".gitignore");
+    var gitignoreContent = "foo.py";
+
+    Files.writeString(gitignorePath, gitignoreContent, StandardOpenOption.CREATE);
 
     didOpen(uri, "python", "# Nothing to see here\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs).extracting(withoutTimestamp())
-      .contains("[Debug] Skip analysis for SCM ignored file: \"" + uri + "\""));
+      .contains("[Error] No file to analyze"));
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
