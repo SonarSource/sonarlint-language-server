@@ -26,11 +26,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.event.DidReceiveServerHotspotEvent;
-import org.sonarsource.sonarlint.ls.AnalysisScheduler;
+import org.sonarsource.sonarlint.ls.ForcedAnalysisCoordinator;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import testutils.SonarLintLogTester;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ServerSentEventsTests {
@@ -40,15 +41,14 @@ class ServerSentEventsTests {
 
   private ServerSentEventsHandlerService underTest;
 
-  AnalysisScheduler analysisScheduler = mock(AnalysisScheduler.class);
+  ForcedAnalysisCoordinator forcedAnalysisCoordinator = mock(ForcedAnalysisCoordinator.class);
   ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
 
   @BeforeEach
   void init() {
-    underTest = new ServerSentEventsHandler(analysisScheduler, bindingManager);
+    underTest = new ServerSentEventsHandler(forcedAnalysisCoordinator, bindingManager);
   }
 
-  // TODO remove ?
   @Test
   void handleHotspotEventTest() {
     var filePath = Path.of("severFilePath");
@@ -61,6 +61,7 @@ class ServerSentEventsTests {
 
     underTest.handleHotspotEvent(new DidReceiveServerHotspotEvent(connectionId, projectKey, filePath));
 
+    verify(forcedAnalysisCoordinator).didReceiveHotspotEvent(fullFileUri);
   }
 
 

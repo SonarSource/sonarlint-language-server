@@ -94,9 +94,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
-import org.sonarsource.sonarlint.ls.AnalysisScheduler;
-import org.sonarsource.sonarlint.ls.AnalysisTaskExecutor;
+import org.sonarsource.sonarlint.ls.AnalysisHelper;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
+import org.sonarsource.sonarlint.ls.ForcedAnalysisCoordinator;
 import org.sonarsource.sonarlint.ls.SkippedPluginsNotifier;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.AssistCreatingConnectionResponse;
@@ -169,10 +169,10 @@ class SonarLintVSCodeClientTests {
   ArgumentCaptor<ShowAllLocationsCommand.Param> paramCaptor;
   BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   TaintVulnerabilitiesCache taintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
-  AnalysisScheduler analysisScheduler = mock(AnalysisScheduler.class);
+  ForcedAnalysisCoordinator forcedAnalysisCoordinator = mock(ForcedAnalysisCoordinator.class);
   DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
   PromotionalNotifications promotionalNotifications = mock(PromotionalNotifications.class);
-  AnalysisTaskExecutor analysisTaskExecutor = mock(AnalysisTaskExecutor.class);
+  AnalysisHelper analysisHelper = mock(AnalysisHelper.class);
 
   private static final String PEM = """
     subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH
@@ -221,8 +221,8 @@ class SonarLintVSCodeClientTests {
     underTest.setServerSentEventsHandlerService(serverSentEventsHandlerService);
     underTest.setBackendServiceFacade(backendServiceFacade);
     underTest.setDiagnosticPublisher(diagnosticPublisher);
-    underTest.setAnalysisScheduler(analysisScheduler);
-    underTest.setAnalysisTaskExecutor(analysisTaskExecutor);
+    underTest.setAnalysisScheduler(forcedAnalysisCoordinator);
+    underTest.setAnalysisTaskExecutor(analysisHelper);
     workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
     Files.createDirectories(workspaceFolderPath);
     fileInAWorkspaceFolderPath = workspaceFolderPath.resolve(FILE_PYTHON);
@@ -719,7 +719,7 @@ class SonarLintVSCodeClientTests {
     when(fakeBackend.getAllTaints(workspaceFolderPath.toUri().toString()))
       .thenReturn(CompletableFuture.completedFuture(new ListAllResponse(List.of(getTaintDto(uuid1), getTaintDto(uuid2)))));
     when(taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile()).thenReturn(Map.of());
-    doNothing().when(analysisScheduler).analyzeAllUnboundOpenFiles();
+    doNothing().when(forcedAnalysisCoordinator).analyzeAllUnboundOpenFiles();
 
     underTest.didChangeAnalysisReadiness(Set.of(workspaceFolderPath.toUri().toString()), true);
 
@@ -932,12 +932,10 @@ class SonarLintVSCodeClientTests {
     var issuesByFileUri = Map.of(fileUri, List.of(raisedIssue));
     underTest.raiseIssues(configScopeId, issuesByFileUri, false, analysisId);
     ArgumentCaptor<Map<URI, List<RaisedFindingDto>>> findingsPerFileCaptor = ArgumentCaptor.forClass(Map.class);
-    ArgumentCaptor<UUID> analysisIdCaptor = ArgumentCaptor.forClass(UUID.class);
 
-    verify(analysisTaskExecutor, times(1)).handleIssues(findingsPerFileCaptor.capture(), analysisIdCaptor.capture());
+    verify(analysisHelper, times(1)).handleIssues(findingsPerFileCaptor.capture());
     assertThat(findingsPerFileCaptor.getValue().get(fileUri)).isNotNull();
     assertThat(findingsPerFileCaptor.getValue().get(fileUri)).hasSize(1);
-    assertThat(analysisIdCaptor.getValue()).isEqualTo(analysisId);
   }
 
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {

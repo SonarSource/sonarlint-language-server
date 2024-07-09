@@ -30,7 +30,7 @@ import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
-import org.sonarsource.sonarlint.ls.AnalysisScheduler;
+import org.sonarsource.sonarlint.ls.ForcedAnalysisCoordinator;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.util.TextRangeUtils;
 
@@ -101,9 +101,9 @@ public class TaintVulnerabilitiesCache {
     if (issue.getFlows().isEmpty()) {
       return issue.getMessage();
     } else if (issue.getFlows().size() == 1) {
-      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.getFlows().get(0).getLocations().size(), AnalysisScheduler.ITEM_LOCATION);
+      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.getFlows().get(0).getLocations().size(), ForcedAnalysisCoordinator.ITEM_LOCATION);
     } else {
-      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.getFlows().size(), AnalysisScheduler.ITEM_FLOW);
+      return buildMessageWithPluralizedSuffix(issue.getMessage(), issue.getFlows().size(), ForcedAnalysisCoordinator.ITEM_FLOW);
     }
   }
 

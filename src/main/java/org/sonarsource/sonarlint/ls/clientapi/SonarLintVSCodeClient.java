@@ -70,7 +70,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreat
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.ConnectionSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.event.DidReceiveServerHotspotEvent;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.FixSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.GetProxyPasswordAuthenticationResponse;
@@ -92,9 +91,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TokenDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.UsernamePasswordDto;
-import org.sonarsource.sonarlint.ls.AnalysisScheduler;
-import org.sonarsource.sonarlint.ls.AnalysisTaskExecutor;
+import org.sonarsource.sonarlint.ls.AnalysisHelper;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
+import org.sonarsource.sonarlint.ls.ForcedAnalysisCoordinator;
 import org.sonarsource.sonarlint.ls.SkippedPluginsNotifier;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.CreateConnectionParams;
@@ -115,6 +114,7 @@ import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.notifications.PromotionalNotifications;
+import org.sonarsource.sonarlint.ls.util.URIUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
@@ -122,8 +122,6 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.ROOT_CONFIGURATION_SCOPE;
 import static org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings.SONARCLOUD_URL;
-import static org.sonarsource.sonarlint.ls.util.URIUtils.getFullFileUriFromFragments;
-import static org.sonarsource.sonarlint.ls.util.Utils.convertMessageType;
 
 public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
@@ -141,13 +139,14 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private final OpenFilesCache openFilesCache;
   private final OpenNotebooksCache openNotebooksCache;
   private WorkspaceFoldersManager workspaceFoldersManager;
-  private AnalysisScheduler analysisScheduler;
+  private ForcedAnalysisCoordinator forcedAnalysisCoordinator;
   private DiagnosticPublisher diagnosticPublisher;
   private final ScheduledExecutorService bindingSuggestionsHandler;
   private final SkippedPluginsNotifier skippedPluginsNotifier;
   private final PromotionalNotifications promotionalNotifications;
 
-  private AnalysisTaskExecutor analysisTaskExecutor;
+
+  private AnalysisHelper analysisHelper;
 
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider,
@@ -193,7 +192,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public void showMessage(org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType type, String text) {
-    client.showMessage(new MessageParams(convertMessageType(type), text));
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -254,13 +253,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       logOutput.debug("Show issue without description");
       client.showIssue(new ShowAllLocationsCommand.Param(new ShowIssueParams(folderUri, issueDetails), null, false));
     }
-  }
-
-  @Override
-  public void showFixSuggestion(String configurationScopeId, String issueKey, FixSuggestionDto fixSuggestion) {
-    var textEdits = fixSuggestion.fileEdit().changes();
-    var fullFileUri = getFullFileUriFromFragments(configurationScopeId, fixSuggestion.fileEdit().idePath());
-    client.showFixSuggestion(new SonarLintExtendedLanguageClient.ShowFixSuggestionParams(fixSuggestion.suggestionId(), textEdits, fullFileUri.toString()));
   }
 
   @Override
@@ -428,15 +420,15 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   public void didChangeTaintVulnerabilities(String folderUri, Set<UUID> closedTaintVulnerabilityIds,
     List<TaintVulnerabilityDto> addedTaintVulnerabilities, List<TaintVulnerabilityDto> updatedTaintVulnerabilities) {
     var addedTaintVulnerabilitiesByFile = addedTaintVulnerabilities.stream()
-      .collect(groupingBy(taintVulnerabilityDto -> getFullFileUriFromFragments(folderUri, taintVulnerabilityDto.getIdeFilePath()), toList()));
+      .collect(groupingBy(taintVulnerabilityDto -> URIUtils.getFullFileUriFromFragments(folderUri, taintVulnerabilityDto.getIdeFilePath()), toList()));
     var updatedTaintVulnerabilitiesByFile = updatedTaintVulnerabilities.stream()
-      .collect(groupingBy(taintVulnerabilityDto -> getFullFileUriFromFragments(folderUri, taintVulnerabilityDto.getIdeFilePath()), toList()));
+      .collect(groupingBy(taintVulnerabilityDto -> URIUtils.getFullFileUriFromFragments(folderUri, taintVulnerabilityDto.getIdeFilePath()), toList()));
 
     // Remove taints that were closed
     taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().values().stream().flatMap(Collection::stream)
       .filter(taintIssue -> closedTaintVulnerabilityIds.contains(taintIssue.getId()))
       .forEach(taintIssue -> taintVulnerabilitiesCache.removeTaintIssue(
-        getFullFileUriFromFragments(folderUri, taintIssue.getIdeFilePath()).toString(), taintIssue.getSonarServerKey()));
+        URIUtils.getFullFileUriFromFragments(folderUri, taintIssue.getIdeFilePath()).toString(), taintIssue.getSonarServerKey()));
 
     workspaceFoldersManager.getFolder(URI.create(folderUri))
       .map(workspaceFolderWrapper -> Objects.requireNonNull(bindingManager
@@ -525,7 +517,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
           return null;
         });
 
-        analysisScheduler.analyzeAllUnboundOpenFiles();
+        forcedAnalysisCoordinator.analyzeAllUnboundOpenFiles();
       });
       initializeTaintCache(configurationScopeIds);
     }
@@ -545,7 +537,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
           var taintsByFile = taints.getTaintVulnerabilities()
             .stream()
             .collect(groupingBy(taintVulnerabilityDto ->
-              getFullFileUriFromFragments(configurationScopeId, taintVulnerabilityDto.getIdeFilePath()), toList()));
+              URIUtils.getFullFileUriFromFragments(configurationScopeId, taintVulnerabilityDto.getIdeFilePath()), toList()));
 
           taintsByFile.forEach((fileUri, t) -> {
             var vulnerabilities = dtosToTaintIssues(configurationScopeId, t, isSonarCloud);
@@ -611,16 +603,16 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     this.branchManager = branchManager;
   }
 
-  public void setAnalysisTaskExecutor(AnalysisTaskExecutor analysisTaskExecutor) {
-    this.analysisTaskExecutor = analysisTaskExecutor;
+  public void setAnalysisTaskExecutor(AnalysisHelper analysisTaskExecutor) {
+    this.analysisHelper = analysisTaskExecutor;
   }
 
   public void setWorkspaceFoldersManager(WorkspaceFoldersManager workspaceFoldersManager) {
     this.workspaceFoldersManager = workspaceFoldersManager;
   }
 
-  public void setAnalysisScheduler(AnalysisScheduler analysisScheduler) {
-    this.analysisScheduler = analysisScheduler;
+  public void setAnalysisScheduler(ForcedAnalysisCoordinator analysisScheduler) {
+    this.forcedAnalysisCoordinator = analysisScheduler;
   }
 
   public void setDiagnosticPublisher(DiagnosticPublisher diagnosticPublisher) {
@@ -665,7 +657,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public void raiseHotspots(String configurationScopeId, Map<URI, List<RaisedHotspotDto>> hotspotsByFileUri,
     boolean isIntermediatePublication, @Nullable UUID analysisId) {
-    analysisTaskExecutor.handleHotspots(hotspotsByFileUri);
+    analysisHelper.handleHotspots(hotspotsByFileUri);
   }
 
   @Override
@@ -677,6 +669,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public Map<String, String> getInferredAnalysisProperties(String configurationScopeId) {
-    return analysisTaskExecutor.getInferredAnalysisProperties(configurationScopeId, Collections.emptySet());
+    return analysisHelper.getInferredAnalysisProperties(configurationScopeId, Collections.emptySet());
   }
 }

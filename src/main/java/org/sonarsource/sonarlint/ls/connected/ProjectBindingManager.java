@@ -49,7 +49,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogLevel;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
-import org.sonarsource.sonarlint.ls.AnalysisScheduler;
+import org.sonarsource.sonarlint.ls.ForcedAnalysisCoordinator;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
@@ -85,7 +85,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final LanguageClientLogger globalLogOutput;
   private final ConcurrentMap<URI, Optional<ProjectBinding>> fileBindingCache = new ConcurrentHashMap<>();
   private final SonarLintExtendedLanguageClient client;
-  private AnalysisScheduler analysisManager;
+  private ForcedAnalysisCoordinator analysisManager;
   private final BackendServiceFacade backendServiceFacade;
   private final OpenNotebooksCache openNotebooksCache;
 
@@ -108,7 +108,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   // Can't use constructor injection because of cyclic dependency
-  public void setAnalysisManager(AnalysisScheduler analysisManager) {
+  public void setAnalysisManager(ForcedAnalysisCoordinator analysisManager) {
     this.analysisManager = analysisManager;
   }
 
