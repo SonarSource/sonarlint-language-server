@@ -147,6 +147,7 @@ mend_scan_task:
   on_failure:
     slack_notification_script: |
       source slack_notification_failure
+
 promote_task:
   depends_on:
     - build
@@ -164,11 +165,7 @@ promote_task:
     # artifacts which will have downloadable links in burgr
     ARTIFACTS: org.sonarsource.sonarlint.ls:sonarlint-language-server:jar
   <<: *MAVEN_CACHE
-  promote_script:
-    - source cirrus-env PROMOTE
-    - source set_maven_build_version "$BUILD_NUMBER"
-    - cirrus_jfrog_promote
-    - burgr-notify-promotion
+  promote_script: cirrus_promote_maven
   cleanup_before_cache_script: cleanup_maven_repository
   on_failure:
     slack_notification_script: |
