@@ -388,6 +388,7 @@ public class BackendService {
   }
 
   public void didSetUserAnalysisProperties(String configScopeId, Map<String, String> properties) {
+    // TODO is this needed? Because for each analysis we will be asked for inferred props anyways
     var params = new DidChangeAnalysisPropertiesParams(configScopeId, properties);
     initializedBackend().getAnalysisService().didSetUserAnalysisProperties(params);
   }
