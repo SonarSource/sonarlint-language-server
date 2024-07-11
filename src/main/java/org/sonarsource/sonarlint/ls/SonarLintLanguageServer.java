@@ -148,6 +148,7 @@ import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DE
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
+import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.ROOT_CONFIGURATION_SCOPE;
 import static org.sonarsource.sonarlint.ls.util.Utils.getConnectionNameFromConnectionCheckParams;
 import static org.sonarsource.sonarlint.ls.util.Utils.getValidateConnectionParamsForNewConnection;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusOfTitle;
@@ -463,14 +464,19 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       return;
     }
     var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
-    javaConfigCache.didOpen(uri);
+    if (file.isJava()) {
+      javaConfigCache.didOpen(uri);
+    }
     CompletableFutures.computeAsync(cancelChecker -> {
+      String configScopeId;
       moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(file);
       var maybeWorkspaceFolder = workspaceFoldersManager.findFolderForFile(uri);
       if (maybeWorkspaceFolder.isPresent()) {
-        var configScopeId = maybeWorkspaceFolder.get().getUri().toString();
-        backendServiceFacade.getBackendService().didOpenFile(configScopeId, uri);
+        configScopeId = maybeWorkspaceFolder.get().getUri().toString();
+      } else {
+        configScopeId = ROOT_CONFIGURATION_SCOPE;
       }
+      backendServiceFacade.getBackendService().didOpenFile(configScopeId, uri);
       taintIssuesUpdater.updateTaintIssuesAsync(uri);
       return null;
     });

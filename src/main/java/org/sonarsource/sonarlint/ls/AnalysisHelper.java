@@ -42,6 +42,7 @@ import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 import static java.lang.String.format;
 import static java.util.function.Function.identity;
+import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.ROOT_CONFIGURATION_SCOPE;
 
 public class AnalysisHelper {
 
@@ -113,8 +114,10 @@ public class AnalysisHelper {
   }
 
   public Map<String, String> getInferredAnalysisProperties(String configurationScopeId, Set<URI> filesToAnalyzeUris) {
-    var workspaceFolder = workspaceFoldersManager.getFolder(URI.create(configurationScopeId));
-    var settings = workspaceFolder.map(WorkspaceFolderWrapper::getSettings)
+    // Need to analyze files outside any workspace folder as well
+    var workspaceFolder = configurationScopeId.equals(ROOT_CONFIGURATION_SCOPE) ?
+      Optional.empty() : workspaceFoldersManager.getFolder(URI.create(configurationScopeId));
+    var settings = workspaceFolder.map(f -> ((WorkspaceFolderWrapper) f).getSettings())
       .orElseGet(() -> CompletableFutures.computeAsync(c -> settingsManager.getCurrentDefaultFolderSettings()).join());
 
     var javaFiles = filesToAnalyzeUris.stream().map(openFilesCache::getFile).filter(Optional::isPresent).map(Optional::get)

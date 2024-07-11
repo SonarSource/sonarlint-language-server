@@ -21,7 +21,7 @@ package org.sonarsource.sonarlint.ls.settings;
 
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import javax.annotation.CheckForNull;
@@ -57,7 +57,7 @@ public class WorkspaceFolderSettings {
   }
 
   public Map<String, String> getAnalyzerProperties() {
-    return Collections.unmodifiableMap(analyzerProperties);
+    return new HashMap<>(analyzerProperties);
   }
 
   public PathMatcher getTestMatcher() {
