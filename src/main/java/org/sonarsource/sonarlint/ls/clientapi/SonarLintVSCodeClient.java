@@ -105,12 +105,11 @@ import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
-import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
-import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.progress.LSProgressMonitor;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.notifications.PromotionalNotifications;
@@ -136,30 +135,28 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private BackendServiceFacade backendServiceFacade;
   private WorkspaceFolderBranchManager branchManager;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
-  private final OpenFilesCache openFilesCache;
-  private final OpenNotebooksCache openNotebooksCache;
   private WorkspaceFoldersManager workspaceFoldersManager;
   private ForcedAnalysisCoordinator forcedAnalysisCoordinator;
   private DiagnosticPublisher diagnosticPublisher;
   private final ScheduledExecutorService bindingSuggestionsHandler;
   private final SkippedPluginsNotifier skippedPluginsNotifier;
   private final PromotionalNotifications promotionalNotifications;
+  private final LSProgressMonitor progressMonitor;
 
 
   private AnalysisHelper analysisHelper;
 
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider,
-    LanguageClientLogger logOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache, OpenFilesCache openFilesCache, OpenNotebooksCache openNotebooksCache,
-    SkippedPluginsNotifier skippedPluginsNotifier, PromotionalNotifications promotionalNotifications) {
+    LanguageClientLogger logOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
+    SkippedPluginsNotifier skippedPluginsNotifier, PromotionalNotifications promotionalNotifications, LSProgressMonitor progressMonitor) {
     this.client = client;
     this.hostInfoProvider = hostInfoProvider;
     this.logOutput = logOutput;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
-    this.openFilesCache = openFilesCache;
-    this.openNotebooksCache = openNotebooksCache;
     this.skippedPluginsNotifier = skippedPluginsNotifier;
     this.promotionalNotifications = promotionalNotifications;
+    this.progressMonitor = progressMonitor;
     var bindingSuggestionsThreadFactory = Utils.threadFactory("Binding suggestion handler", false);
     bindingSuggestionsHandler = Executors.newSingleThreadScheduledExecutor(bindingSuggestionsThreadFactory);
     initializeDefaultProxyAuthenticator();
@@ -320,12 +317,16 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public void startProgress(StartProgressParams startProgressParams) {
-    // no-op
+    progressMonitor.createAndStartProgress(startProgressParams);
   }
 
   @Override
   public void reportProgress(ReportProgressParams reportProgressParams) {
-    // no-op
+    if (reportProgressParams.getNotification().isLeft()) {
+      progressMonitor.reportProgress(reportProgressParams);
+    } else if (reportProgressParams.getNotification().isRight()) {
+      progressMonitor.end(reportProgressParams);
+    }
   }
 
   @Override

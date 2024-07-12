@@ -19,149 +19,50 @@
  */
 package org.sonarsource.sonarlint.ls.progress;
 
-import java.util.function.Consumer;
-import javax.annotation.Nullable;
 import org.eclipse.lsp4j.ProgressParams;
 import org.eclipse.lsp4j.WorkDoneProgressBegin;
+import org.eclipse.lsp4j.WorkDoneProgressCreateParams;
 import org.eclipse.lsp4j.WorkDoneProgressEnd;
 import org.eclipse.lsp4j.WorkDoneProgressReport;
-import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.sonarsource.sonarlint.core.commons.api.progress.CanceledException;
 import org.sonarsource.sonarlint.core.commons.api.progress.ClientProgressMonitor;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.progress.ReportProgressParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.progress.StartProgressParams;
 
-public class LSProgressMonitor implements ClientProgressMonitor, ProgressFacade {
+public class LSProgressMonitor implements ClientProgressMonitor {
 
-  private final Either<String, Integer> progressToken;
-  private final CancelChecker cancelToken;
   private final LanguageClient client;
-  private boolean cancelled;
-  private boolean ended;
-  private String lastMessage = null;
-  private float lastPercentage = 0.0f;
 
-  public LSProgressMonitor(LanguageClient client, Either<String, Integer> progressToken, CancelChecker cancelToken) {
+  public LSProgressMonitor(LanguageClient client) {
     this.client = client;
-    this.cancelToken = cancelToken;
-    this.progressToken = progressToken;
   }
 
-  public void start(String title) {
+  public void createAndStartProgress(StartProgressParams startProgressParams) {
+    client.createProgress(new WorkDoneProgressCreateParams(org.eclipse.lsp4j.jsonrpc.messages.Either.forLeft(startProgressParams.getTaskId())));
+    start(startProgressParams.getTitle(), startProgressParams.getTaskId(), startProgressParams.isCancellable());
+  }
+
+  public void reportProgress(ReportProgressParams reportProgressParams) {
+    var progressReport = new WorkDoneProgressReport();
+    progressReport.setMessage(reportProgressParams.getNotification().getLeft().getMessage());
+    progressReport.setCancellable(false);
+    progressReport.setPercentage(reportProgressParams.getNotification().getLeft().getPercentage());
+    client.notifyProgress(new ProgressParams(org.eclipse.lsp4j.jsonrpc.messages.Either.forLeft(reportProgressParams.getTaskId()), org.eclipse.lsp4j.jsonrpc.messages.Either.forLeft(progressReport)));
+  }
+
+  public void start(String title, String taskId, boolean isCancellable) {
     var progressBegin = new WorkDoneProgressBegin();
     progressBegin.setTitle(title);
-    progressBegin.setCancellable(true);
+    progressBegin.setCancellable(isCancellable);
     progressBegin.setPercentage(0);
-    client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressBegin)));
+    client.notifyProgress(new ProgressParams(Either.forLeft(taskId), Either.forLeft(progressBegin)));
   }
 
-  boolean ended() {
-    return ended;
-  }
-
-  @Override
-  public void end(@Nullable String message) {
+  public void end(ReportProgressParams reportProgressParams) {
     var progressEnd = new WorkDoneProgressEnd();
-    progressEnd.setMessage(message);
-    client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressEnd)));
-    this.ended = true;
+    client.notifyProgress(new ProgressParams(org.eclipse.lsp4j.jsonrpc.messages.Either.forLeft(reportProgressParams.getTaskId()),
+      org.eclipse.lsp4j.jsonrpc.messages.Either.forLeft(progressEnd)));
   }
 
-  @Override
-  public ClientProgressMonitor asCoreMonitor() {
-    return this;
-  }
-
-  @Override
-  public void executeNonCancelableSection(Runnable nonCancelable) {
-    disableCancellation();
-    try {
-      nonCancelable.run();
-    } finally {
-      enableCancellation();
-    }
-  }
-
-  void enableCancellation() {
-    var progressReport = prepareProgressReport();
-    progressReport.setCancellable(true);
-    client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressReport)));
-  }
-
-  void disableCancellation() {
-    var progressReport = prepareProgressReport();
-    progressReport.setCancellable(false);
-    client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressReport)));
-  }
-
-  private WorkDoneProgressReport prepareProgressReport() {
-    var progressReport = new WorkDoneProgressReport();
-    // Repeat the last message and percentage in every notification, because contrary to what is documented, VSCode doesn't preserve
-    // the previous one
-    // if you send a progress without message/percentage
-    if (lastMessage != null) {
-      progressReport.setMessage(lastMessage);
-    }
-    progressReport.setPercentage((int) lastPercentage);
-    return progressReport;
-  }
-
-  void cancel() {
-    this.cancelled = true;
-  }
-
-  @Override
-  public boolean isCanceled() {
-    return cancelled || cancelToken.isCanceled();
-  }
-
-  @Override
-  public void setMessage(String msg) {
-    sendReport(msg, null);
-  }
-
-  @Override
-  public void setFraction(float fraction) {
-    sendReport(null, 100.0f * fraction);
-  }
-
-  void sendReport(@Nullable String message, @Nullable Float percentage) {
-    if (percentage != null) {
-      this.lastPercentage = percentage;
-    }
-    if (message != null) {
-      this.lastMessage = message;
-    }
-    var progressReport = prepareProgressReport();
-    client.notifyProgress(new ProgressParams(progressToken, Either.forLeft(progressReport)));
-  }
-
-  @Override
-  public void checkCanceled() {
-    if (isCanceled()) {
-      throw new CanceledException();
-    }
-  }
-
-  @Override
-  public void doInSubProgress(String title, float fraction, Consumer<ProgressFacade> subRunnable) {
-    this.checkCanceled();
-
-    var subProgressMonitor = new SubProgressMonitor(this, title, fraction);
-    subRunnable.accept(subProgressMonitor);
-
-    if (!subProgressMonitor.ended) {
-      // Automatic end
-      subProgressMonitor.sendReport("Completed", 100.0f);
-    }
-  }
-
-  float getLastPercentage() {
-    return lastPercentage;
-  }
-
-  @Override
-  public void setIndeterminate(boolean b) {
-    // Not supported
-  }
 }
