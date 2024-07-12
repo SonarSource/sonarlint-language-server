@@ -33,6 +33,7 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -42,7 +43,7 @@ import static org.eclipse.lsp4j.DiagnosticSeverity.Warning;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-//@EnabledIfSystemProperty(named = "commercial", matches = ".*", disabledReason = "Commercial plugin not available")
+@EnabledIfSystemProperty(named = "commercial", matches = ".*", disabledReason = "Commercial plugin not available")
 class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
   @BeforeAll
   static void initialize() throws Exception {

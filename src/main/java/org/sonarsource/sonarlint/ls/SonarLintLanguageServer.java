@@ -75,8 +75,6 @@ import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.SetTraceParams;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.TextDocumentSyncOptions;
-import org.eclipse.lsp4j.WindowClientCapabilities;
-import org.eclipse.lsp4j.WorkDoneProgressCancelParams;
 import org.eclipse.lsp4j.WorkspaceFoldersOptions;
 import org.eclipse.lsp4j.WorkspaceServerCapabilities;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
@@ -128,7 +126,7 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
-import org.sonarsource.sonarlint.ls.progress.ProgressManager;
+import org.sonarsource.sonarlint.ls.progress.LSProgressMonitor;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
@@ -167,8 +165,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final OpenFilesCache openFilesCache;
   private final OpenNotebooksCache openNotebooksCache;
   private final CommandManager commandManager;
-  private final ProgressManager progressManager;
   private final ExecutorService lspThreadPool;
+  private final LSProgressMonitor progressMonitor;
   private final HostInfoProvider hostInfoProvider;
   private final WorkspaceFolderBranchManager branchManager;
   private final JavaConfigCache javaConfigCache;
@@ -223,12 +221,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.notebookDiagnosticPublisher = new NotebookDiagnosticPublisher(client, issuesCache);
     this.openNotebooksCache = new OpenNotebooksCache(lsLogOutput, notebookDiagnosticPublisher);
     this.notebookDiagnosticPublisher.setOpenNotebooksCache(openNotebooksCache);
-    this.progressManager = new ProgressManager(client, lsLogOutput);
     this.hostInfoProvider = new HostInfoProvider();
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client, lsLogOutput);
     this.promotionalNotifications = new PromotionalNotifications(client);
-    var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, lsLogOutput, taintVulnerabilitiesCache, openFilesCache,
-      openNotebooksCache, skippedPluginsNotifier, promotionalNotifications);
+    this.progressMonitor = new LSProgressMonitor(client);
+    var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, lsLogOutput, taintVulnerabilitiesCache,
+      skippedPluginsNotifier, promotionalNotifications, progressMonitor);
     this.backendServiceFacade = new BackendServiceFacade(vsCodeClient, lsLogOutput, client);
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
     this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, lsLogOutput);
@@ -295,12 +293,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
       this.traceLevel = parseTraceLevel(params.getTrace());
-
-      boolean workDoneSupportedByClient = ofNullable(params.getCapabilities())
-        .flatMap(capabilities -> ofNullable(capabilities.getWindow()))
-        .map(WindowClientCapabilities::getWorkDoneProgress)
-        .orElse(false);
-      progressManager.setWorkDoneProgressSupportedByClient(workDoneSupportedByClient);
 
       var options = Utils.parseToMap(params.getInitializationOptions());
       if (options == null) {
@@ -654,11 +646,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     }
     branchChangeEventExecutor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().notifyBackendOnVcsChange(folderUri),
       t -> lsLogOutput.errorWithStackTrace("Failed to notify backend on VCS change", t)));
-  }
-
-  @Override
-  public void cancelProgress(WorkDoneProgressCancelParams params) {
-    progressManager.cancelProgress(params);
   }
 
   @Override

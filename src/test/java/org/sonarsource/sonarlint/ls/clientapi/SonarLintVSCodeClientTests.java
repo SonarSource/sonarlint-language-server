@@ -115,6 +115,7 @@ import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.progress.LSProgressMonitor;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
@@ -173,6 +174,7 @@ class SonarLintVSCodeClientTests {
   DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
   PromotionalNotifications promotionalNotifications = mock(PromotionalNotifications.class);
   AnalysisHelper analysisHelper = mock(AnalysisHelper.class);
+  LSProgressMonitor progressMonitor = mock(LSProgressMonitor.class);
 
   private static final String PEM = """
     subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH
@@ -213,8 +215,8 @@ class SonarLintVSCodeClientTests {
 
   @BeforeEach
   public void setup() throws IOException {
-    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, openFilesCache, openNotebooksCache,
-      skippedPluginsNotifier, promotionalNotifications);
+    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache,
+      skippedPluginsNotifier, promotionalNotifications, progressMonitor);
     underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);
     underTest.setBindingManager(bindingManager);
