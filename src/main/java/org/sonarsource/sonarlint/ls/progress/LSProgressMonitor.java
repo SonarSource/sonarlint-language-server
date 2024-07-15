@@ -39,7 +39,7 @@ public class LSProgressMonitor implements ClientProgressMonitor {
   }
 
   public void createAndStartProgress(StartProgressParams startProgressParams) {
-    client.createProgress(new WorkDoneProgressCreateParams(org.eclipse.lsp4j.jsonrpc.messages.Either.forLeft(startProgressParams.getTaskId())));
+    client.createProgress(new WorkDoneProgressCreateParams(Either.forLeft(startProgressParams.getTaskId())));
     start(startProgressParams.getTitle(), startProgressParams.getTaskId(), startProgressParams.isCancellable());
   }
 
@@ -48,7 +48,7 @@ public class LSProgressMonitor implements ClientProgressMonitor {
     progressReport.setMessage(reportProgressParams.getNotification().getLeft().getMessage());
     progressReport.setCancellable(false);
     progressReport.setPercentage(reportProgressParams.getNotification().getLeft().getPercentage());
-    client.notifyProgress(new ProgressParams(org.eclipse.lsp4j.jsonrpc.messages.Either.forLeft(reportProgressParams.getTaskId()), org.eclipse.lsp4j.jsonrpc.messages.Either.forLeft(progressReport)));
+    client.notifyProgress(new ProgressParams(Either.forLeft(reportProgressParams.getTaskId()), Either.forLeft(progressReport)));
   }
 
   public void start(String title, String taskId, boolean isCancellable) {
@@ -61,8 +61,8 @@ public class LSProgressMonitor implements ClientProgressMonitor {
 
   public void end(ReportProgressParams reportProgressParams) {
     var progressEnd = new WorkDoneProgressEnd();
-    client.notifyProgress(new ProgressParams(org.eclipse.lsp4j.jsonrpc.messages.Either.forLeft(reportProgressParams.getTaskId()),
-      org.eclipse.lsp4j.jsonrpc.messages.Either.forLeft(progressEnd)));
+    client.notifyProgress(new ProgressParams(Either.forLeft(reportProgressParams.getTaskId()),
+      Either.forLeft(progressEnd)));
   }
 
 }

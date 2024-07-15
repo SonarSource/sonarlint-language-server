@@ -39,7 +39,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFiles
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFullProjectParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAnalysisPropertiesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeClientNodeJsPathParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.ForceAnalyzeResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangePathToCompileCommandsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
@@ -388,18 +388,22 @@ public class BackendService {
   }
 
   public void didSetUserAnalysisProperties(String configScopeId, Map<String, String> properties) {
-    // TODO is this needed? Because for each analysis we will be asked for inferred props anyways
     var params = new DidChangeAnalysisPropertiesParams(configScopeId, properties);
     initializedBackend().getAnalysisService().didSetUserAnalysisProperties(params);
   }
 
-  public CompletableFuture<ForceAnalyzeResponse> analyzeFullProject(String configScopeId, boolean hotspotsOnly) {
+  public void analyzeFullProject(String configScopeId, boolean hotspotsOnly) {
     var params = new AnalyzeFullProjectParams(configScopeId, hotspotsOnly);
-    return initializedBackend().getAnalysisService().analyzeFullProject(params);
+    initializedBackend().getAnalysisService().analyzeFullProject(params);
   }
 
-  public CompletableFuture<ForceAnalyzeResponse> analyzeFilesList(String configScopeId, List<URI> filesToAnalyze) {
+  public void analyzeFilesList(String configScopeId, List<URI> filesToAnalyze) {
     var params = new AnalyzeFileListParams(configScopeId, filesToAnalyze);
-    return initializedBackend().getAnalysisService().analyzeFileList(params);
+    initializedBackend().getAnalysisService().analyzeFileList(params);
+  }
+
+  public void didChangePathToCompileCommands(String configScopeId, @Nullable String pathToCompileCommands) {
+    var params = new DidChangePathToCompileCommandsParams(configScopeId, pathToCompileCommands);
+    initializedBackend().getAnalysisService().didChangePathToCompileCommands(params);
   }
 }

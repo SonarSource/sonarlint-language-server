@@ -726,7 +726,7 @@ class SettingsManagerTests {
       new JsonPrimitive("600"));
     Map<String, Object> settingsMap = new HashMap<>(Map.of("disableTelemetry", false, "focusOnNewCode", true));
 
-    var result = SettingsManager.updateAnalyzerProperties(workspaceUri, response, settingsMap);
+    var result = SettingsManager.updateProperties(workspaceUri, response, settingsMap);
 
     assertThat(result).containsKey(ANALYZER_PROPERTIES);
     var analyzerProperties = (Map<String, String>) result.get(ANALYZER_PROPERTIES);
@@ -742,7 +742,7 @@ class SettingsManagerTests {
     List<Object> response = List.of("{\"disableTelemetry\": false,\"focusOnNewCode\": true, \"analyzerProperties\":{\"sonar.cs.file.suffixes\":\".cs\",\".razor\"}");
     Map<String, Object> settingsMap = new HashMap<>(Map.of("disableTelemetry", false, "focusOnNewCode", true, "analyzerProperties", new HashMap<>(Map.of("sonar.cs.file.suffixes", ".cs,.razor"))));
 
-    var result = SettingsManager.updateAnalyzerProperties(workspaceUri, response, settingsMap);
+    var result = SettingsManager.updateProperties(workspaceUri, response, settingsMap);
 
     assertThat(result).containsKey(ANALYZER_PROPERTIES);
     var analyzerProperties = (Map<String, String>) result.get(ANALYZER_PROPERTIES);
@@ -750,7 +750,7 @@ class SettingsManagerTests {
   }
 
   @Test
-  void shouldNotifyAboutNodeJsChange(){
+  void shouldNotifyAboutNodeJsChange() {
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     underTest.didChangeConfiguration();
 
@@ -766,7 +766,7 @@ class SettingsManagerTests {
   }
 
   @Test
-  void shouldNotNotifyAboutNodeJsChange(){
+  void shouldNotNotifyAboutNodeJsChange() {
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     underTest.didChangeConfiguration();
 

@@ -319,6 +319,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  @Disabled("We lost the ability to exclude preview files")
   void doNotAnalyzePythonFileOnPreview() throws Exception {
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
