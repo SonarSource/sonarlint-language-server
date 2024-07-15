@@ -31,7 +31,6 @@ import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.eclipse.lsp4j.Diagnostic;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
@@ -115,7 +114,6 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
         """);
 
     awaitUntilAsserted(() -> assertLogContains("Error executing sensor: 'CFamily'"));
-//    awaitUntilAsserted(() -> assertThat(client.needCompilationDatabaseCalls.get()).isEqualTo(1));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
   }
 
@@ -138,12 +136,10 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
         """);
 
     awaitUntilAsserted(() -> assertLogContains("\"sonar.cfamily.compile-commands\" is not set to a valid file: non/existing/file"));
-//    awaitUntilAsserted(() -> assertThat(client.needCompilationDatabaseCalls.get()).isEqualTo(1));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
   }
 
   @Test
-  @Disabled("Does not work with analysis triggering")
   void analyzeCppFileOnCompileCommandsSettingChanged(@TempDir Path cppProjectBaseDir) throws IOException {
     var mockClang = mockClangCompiler();
 
@@ -165,7 +161,6 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
         """);
 
     awaitUntilAsserted(() -> assertLogContains("Error executing sensor: 'CFamily'"));
-//    awaitUntilAsserted(() -> assertThat(client.needCompilationDatabaseCalls.getAndSet(0)).isEqualTo(1));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
 
     setPathToCompileCommands(client.globalSettings, compilationDatabaseFile.toString());
@@ -205,7 +200,6 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
     } else {
       fileExt = "sh";
     }
-    var mockClang = Paths.get("src/test/assets/cfamily/clang-test." + fileExt).toAbsolutePath();
-    return mockClang;
+    return Paths.get("src/test/assets/cfamily/clang-test." + fileExt).toAbsolutePath();
   }
 }
