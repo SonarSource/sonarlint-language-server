@@ -38,6 +38,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleParamDefini
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.ChangesDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
@@ -107,6 +108,18 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
   }
 
+  class ShowFixSuggestionParams {
+    List<ChangesDto> textEdits;
+    String fileUri;
+
+    public ShowFixSuggestionParams(List<ChangesDto> textEdits, String fileUri) {
+      this.textEdits = textEdits;
+      this.fileUri = fileUri;
+    }
+  }
+
+  @JsonNotification("sonarlint/showFixSuggestion")
+  void showFixSuggestion(ShowFixSuggestionParams params);
 
   @JsonNotification("sonarlint/showRuleDescription")
   void showRuleDescription(ShowRuleDescriptionParams params);

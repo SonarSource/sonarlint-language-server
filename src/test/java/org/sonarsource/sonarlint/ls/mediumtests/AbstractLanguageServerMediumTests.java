@@ -563,6 +563,11 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
+    public void showFixSuggestion(ShowFixSuggestionParams params) {
+
+    }
+
+    @Override
     public void setReferenceBranchNameForFolder(ReferenceBranchForFolder newReferenceBranch) {
       referenceBranchNameByFolder.put(newReferenceBranch.getFolderUri(), newReferenceBranch.getBranchName());
     }

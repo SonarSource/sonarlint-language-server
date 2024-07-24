@@ -69,6 +69,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreat
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.ConnectionSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.event.DidReceiveServerHotspotEvent;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.FixSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.GetProxyPasswordAuthenticationResponse;
@@ -145,7 +146,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private final ScheduledExecutorService bindingSuggestionsHandler;
   private final SkippedPluginsNotifier skippedPluginsNotifier;
   private final PromotionalNotifications promotionalNotifications;
-
+  static final String SONARLINT_ANNOTATION_ID = "SonarLint.AnnotationId";
 
   private AnalysisTaskExecutor analysisTaskExecutor;
 
@@ -253,6 +254,12 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       logOutput.debug("Show issue without description");
       client.showIssue(new ShowAllLocationsCommand.Param(new ShowIssueParams(folderUri, issueDetails), null, false));
     }
+  }
+
+  @Override
+  public void showFixSuggestion(String configurationScopeId, String issueKey, String branch, FixSuggestionDto fixSuggestion) {
+    var textEdits = fixSuggestion.fileEdit().changes();
+    client.showFixSuggestion(new SonarLintExtendedLanguageClient.ShowFixSuggestionParams(textEdits, fixSuggestion.fileEdit().path().toString()));
   }
 
   @Override
