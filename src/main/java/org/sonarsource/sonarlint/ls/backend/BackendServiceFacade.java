@@ -161,7 +161,7 @@ public class BackendServiceFacade {
       getHttpConfiguration(),
       getSonarCloudAlternativeEnvironment(),
       new FeatureFlagsDto(true, true, true,
-        true, initParams.isEnableSecurityHotspots(), true, true, true, telemetryEnabled),
+        true, initParams.isEnableSecurityHotspots(), true, true, true, telemetryEnabled, true),
       initParams.getStorageRoot(),
       Path.of(initParams.getSonarlintUserHome()),
       initParams.getEmbeddedPluginPaths(),
