@@ -27,6 +27,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRp
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixAppliedForRuleParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisDoneOnSingleLanguageParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificationsClickedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -109,6 +110,10 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
   public void addedManualBindings() {
     actIfEnabled(TelemetryRpcService::addedManualBindings);
+  }
+
+  public void fixSuggestionResolved(FixSuggestionResolvedParams params) {
+    actIfEnabled(telemetryRpcService -> telemetryRpcService.fixSuggestionResolved(params));
   }
 
   private void actIfEnabled(Consumer<TelemetryRpcService> action) {

@@ -66,7 +66,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
       int port = socket.getLocalPort();
       socket.close();
       return port;
-    } catch(Throwable t) {
+    } catch (Throwable t) {
       throw new IllegalStateException(t);
     }
   }

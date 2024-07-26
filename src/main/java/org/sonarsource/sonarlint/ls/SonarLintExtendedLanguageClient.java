@@ -108,14 +108,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
   }
 
-  class ShowFixSuggestionParams {
-    List<ChangesDto> textEdits;
-    String fileUri;
-
-    public ShowFixSuggestionParams(List<ChangesDto> textEdits, String fileUri) {
-      this.textEdits = textEdits;
-      this.fileUri = fileUri;
-    }
+  record ShowFixSuggestionParams(String suggestionId, List<ChangesDto> textEdits, String fileUri) {
   }
 
   @JsonNotification("sonarlint/showFixSuggestion")

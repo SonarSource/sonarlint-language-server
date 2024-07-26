@@ -103,6 +103,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
@@ -843,6 +844,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<List<OrganizationDto>> listUserOrganizations(String token) {
     return backendServiceFacade.getBackendService().listUserOrganizations(token)
       .thenApply(ListUserOrganizationsResponse::getUserOrganizations);
+  }
+
+  @Override
+  public CompletableFuture<Void> fixSuggestionResolved(FixSuggestionResolvedParams params) {
+    telemetry.fixSuggestionResolved(new org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams(params.suggestionId(),
+      params.accepted() ? FixSuggestionStatus.ACCEPTED : FixSuggestionStatus.DECLINED, null));
+    return CompletableFuture.completedFuture(null);
   }
 
   @Override

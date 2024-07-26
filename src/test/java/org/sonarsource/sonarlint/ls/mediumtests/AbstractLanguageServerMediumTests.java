@@ -331,6 +331,7 @@ public abstract class AbstractLanguageServerMediumTests {
     CountDownLatch suggestBindingLatch = new CountDownLatch(0);
     CountDownLatch readyForTestsLatch = new CountDownLatch(0);
     ShowAllLocationsCommand.Param showIssueParams;
+    ShowFixSuggestionParams showFixSuggestionParams;
     SuggestBindingParams suggestedBindings;
     ShowRuleDescriptionParams ruleDesc;
     boolean isIgnoredByScm = false;
@@ -564,7 +565,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void showFixSuggestion(ShowFixSuggestionParams params) {
-
+      this.showFixSuggestionParams = params;
     }
 
     @Override

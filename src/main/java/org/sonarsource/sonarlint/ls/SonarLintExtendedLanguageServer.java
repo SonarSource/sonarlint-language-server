@@ -709,4 +709,9 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonRequest("sonarlint/listUserOrganizations")
   CompletableFuture<List<OrganizationDto>> listUserOrganizations(String token);
 
+  record FixSuggestionResolvedParams(String suggestionId, boolean accepted) {
+  }
+
+  @JsonNotification("sonarlint/fixSuggestionResolved")
+  CompletableFuture<Void> fixSuggestionResolved(FixSuggestionResolvedParams params);
 }
