@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.telemetry;
 
 import java.util.Collections;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +33,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRp
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixAppliedForRuleParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisDoneOnSingleLanguageParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificationsClickedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
@@ -209,7 +212,7 @@ class SonarLintTelemetryTests {
   }
 
   @Test
-  void helpAndFeedbackLinkClicked_when_disabled() {
+  void helpAndFeedbackLinkClicked_when_enabled() {
     ArgumentCaptor<HelpAndFeedbackClickedParams> argument = ArgumentCaptor.forClass(HelpAndFeedbackClickedParams.class);
     telemetry.helpAndFeedbackLinkClicked("docs");
 
@@ -218,7 +221,7 @@ class SonarLintTelemetryTests {
   }
 
   @Test
-  void helpAndFeedbackLinkClicked_when_enabled() {
+  void helpAndFeedbackLinkClicked_when_disabled() {
     System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
     telemetry.helpAndFeedbackLinkClicked("docs");
 
@@ -226,14 +229,14 @@ class SonarLintTelemetryTests {
   }
 
   @Test
-  void addedAutomaticBindings_when_disabled() {
+  void addedAutomaticBindings_when_enabled() {
     telemetry.addedAutomaticBindings();
 
     verify(telemetryService).addedAutomaticBindings();
   }
 
   @Test
-  void addedAutomaticBindings_when_enabled() {
+  void addedAutomaticBindings_when_disabled() {
     System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
     telemetry.addedAutomaticBindings();
 
@@ -241,14 +244,14 @@ class SonarLintTelemetryTests {
   }
 
   @Test
-  void addedImportedBindings_when_disabled() {
+  void addedImportedBindings_when_enabled() {
     telemetry.addedImportedBindings();
 
     verify(telemetryService).addedImportedBindings();
   }
 
   @Test
-  void addedImportedBindings_when_enabled() {
+  void addedImportedBindings_when_disabled() {
     System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
     telemetry.addedImportedBindings();
 
@@ -256,18 +259,35 @@ class SonarLintTelemetryTests {
   }
 
   @Test
-  void addedManualBindings_when_disabled() {
+  void addedManualBindings_when_enabled() {
     telemetry.addedManualBindings();
 
     verify(telemetryService).addedManualBindings();
   }
 
   @Test
-  void addedManualBindings_when_enabled() {
+  void addedManualBindings_when_disabled() {
     System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
     telemetry.addedManualBindings();
 
     verify(telemetryService, never()).addedManualBindings();
+  }
+
+  @Test
+  void fixSuggestionResolved_when_enabled() {
+    var params = new FixSuggestionResolvedParams(UUID.randomUUID().toString(), FixSuggestionStatus.ACCEPTED, null);
+    telemetry.fixSuggestionResolved(params);
+
+    verify(telemetryService).fixSuggestionResolved(params);
+  }
+
+  @Test
+  void fixSuggestionResolved_when_disabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+    var params = new FixSuggestionResolvedParams(UUID.randomUUID().toString(), FixSuggestionStatus.ACCEPTED, null);
+    telemetry.fixSuggestionResolved(params);
+
+    verify(telemetryService, never()).fixSuggestionResolved(any());
   }
 
   private static WorkspaceSettings newWorkspaceSettingsWithTelemetrySetting(boolean disableTelemetry) {

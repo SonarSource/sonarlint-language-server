@@ -32,6 +32,7 @@ import org.sonarsource.sonarlint.ls.notebooks.DelegatingCellIssue;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -172,5 +173,13 @@ class UtilsTests {
     assertThat(Utils.fixWindowsURIEncoding(URI.create("file:///c:/work/sonarlint-language-server"))).isEqualTo(URI.create("file:///c%3A/work/sonarlint-language-server"));
     assertThat(Utils.fixWindowsURIEncoding(URI.create("file:///c%3A/work/sonarlint-language-server"))).isEqualTo(URI.create("file:///c%3A/work/sonarlint-language-server"));
     assertThat(Utils.fixWindowsURIEncoding(URI.create("file:///path/work/sonarlint-language-server"))).isEqualTo(URI.create("file:///path/work/sonarlint-language-server"));
+  }
+
+  @Test
+  void testConvertShowMessageSeverity() {
+    assertThat(Utils.convertMessageType(org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType.ERROR)).isEqualTo(MessageType.Error);
+    assertThat(Utils.convertMessageType(org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType.WARNING)).isEqualTo(MessageType.Warning);
+    assertThat(Utils.convertMessageType(org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType.INFO)).isEqualTo(MessageType.Info);
+    assertThrows(NullPointerException.class, () -> Utils.convertMessageType(null));
   }
 }

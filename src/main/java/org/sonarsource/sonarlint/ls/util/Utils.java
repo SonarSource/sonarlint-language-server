@@ -37,6 +37,7 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
@@ -194,5 +195,13 @@ public class Utils {
     }
     var encodedUriString = originalUriString.substring(0, indexToReplace) + "%3A" + originalUriString.substring(indexToReplace + 1);
     return URI.create(encodedUriString);
+  }
+
+  public static MessageType convertMessageType(org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType messageType) {
+    return switch (messageType) {
+      case INFO -> MessageType.Info;
+      case WARNING -> MessageType.Warning;
+      case ERROR -> MessageType.Error;
+    };
   }
 }

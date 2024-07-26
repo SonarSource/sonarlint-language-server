@@ -72,6 +72,10 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.ConnectionS
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SonarCloudConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SonarQubeConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.ChangesDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.FileEditDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.FixSuggestionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.LineRangeDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.ProxyDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.X509CertificateDto;
@@ -123,7 +127,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -315,9 +318,15 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void shouldThrowForShowMessage() {
-    assertThrows(UnsupportedOperationException.class, () -> underTest.showMessage(mock(
-      org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType.class), ""));
+  void shouldForwardShowMessage() {
+    var message = "Something went wrong";
+    underTest.showMessage(org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType.ERROR, message);
+
+    var argCaptor = ArgumentCaptor.forClass(MessageParams.class);
+
+    verify(client).showMessage(argCaptor.capture());
+    assertThat(argCaptor.getValue().getMessage()).isEqualTo(message);
+    assertThat(argCaptor.getValue().getType()).isEqualTo(MessageType.Error);
   }
 
   @Test
@@ -823,6 +832,78 @@ class SonarLintVSCodeClientTests {
     underTest.promoteExtraEnabledLanguagesInConnectedMode(configScopeId, languages);
 
     verify(promotionalNotifications, times(1)).promoteExtraEnabledLanguagesInConnectedMode(languages);
+  }
+
+  @Test
+  @DisabledOnOs(OS.WINDOWS)
+  void shouldForwardShowFixSuggestionRequestToClient() {
+    var configScope = "file:///Users/sonarlint-user/project/";
+    var issueKey = "AbC235fVfd";
+    var suggestionId = UUID.randomUUID().toString();
+    var fixSuggestion = new FixSuggestionDto(
+      suggestionId,
+      "You should really reconsider this",
+      new FileEditDto(
+        Path.of("src/main/java/com/sonarsource/MyClass.java"),
+        List.of(
+          new ChangesDto(
+            new LineRangeDto(1, 1),
+            "System.out.println(\"Hello, World!\");",
+            ""
+          ),
+          new ChangesDto(
+            new LineRangeDto(2, 2),
+            "System.out.println(\"Hello, World!\");",
+            ""
+          )
+        )
+      ));
+
+    underTest.showFixSuggestion(configScope, issueKey, fixSuggestion);
+
+    var argumentCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.ShowFixSuggestionParams.class);
+
+    verify(client).showFixSuggestion(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue().suggestionId()).isEqualTo(suggestionId);
+    assertThat(argumentCaptor.getValue().fileUri()).isEqualTo("file:///Users/sonarlint-user/project/src/main/java/com/sonarsource/MyClass.java");
+    assertThat(argumentCaptor.getValue().textEdits().get(0).after()).isEmpty();
+    assertThat(argumentCaptor.getValue().textEdits().get(1).before()).isEqualTo("System.out.println(\"Hello, World!\");");
+  }
+
+  @Test
+  @EnabledOnOs(OS.WINDOWS)
+  void shouldForwardShowFixSuggestionRequestToClient_windows() {
+    var configScope = "file:///Users/sonarlint-user/project/";
+    var issueKey = "AbC235fVfd";
+    var suggestionId = UUID.randomUUID().toString();
+    var fixSuggestion = new FixSuggestionDto(
+      suggestionId,
+      "You should really reconsider this",
+      new FileEditDto(
+        Path.of("src/main/java/com/sonarsource/MyClass.java"),
+        List.of(
+          new ChangesDto(
+            new LineRangeDto(1, 1),
+            "System.out.println(\"Hello, World!\");",
+            ""
+          ),
+          new ChangesDto(
+            new LineRangeDto(2, 2),
+            "System.out.println(\"Hello, World!\");",
+            ""
+          )
+        )
+      ));
+
+    underTest.showFixSuggestion(configScope, issueKey, fixSuggestion);
+
+    var argumentCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.ShowFixSuggestionParams.class);
+
+    verify(client).showFixSuggestion(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue().suggestionId()).isEqualTo(suggestionId);
+    assertThat(argumentCaptor.getValue().fileUri()).isEqualTo("file:///C:/Users/sonarlint-user/project/src/main/java/com/sonarsource/MyClass.java");
+    assertThat(argumentCaptor.getValue().textEdits().get(0).after()).isEmpty();
+    assertThat(argumentCaptor.getValue().textEdits().get(1).before()).isEqualTo("System.out.println(\"Hello, World!\");");
   }
 
   @Test
