@@ -84,7 +84,7 @@ public class ModuleEventsProcessor {
             var relativePath = baseDir.relativize(fsPath);
             var folderUri = folder.getUri().toString();
             var isTest = isTestFile(fileUri, settings);
-            addedOrChangedFiles.add(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(), fsPath, null, null));
+            addedOrChangedFiles.add(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(), fsPath, null, null, true));
           });
       }
     });
@@ -104,11 +104,11 @@ public class ModuleEventsProcessor {
         var folderUri = folder.getUri().toString();
         var isTest = isTestFile(file, settings);
         filesToNotify.add(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(),
-          fsPath, file.getContent(), sqLanguage != null ? Language.valueOf(sqLanguage.name()) : null));
+          fsPath, file.getContent(), sqLanguage != null ? Language.valueOf(sqLanguage.name()) : null, true));
       }, () -> {
         var isTest = isTestFile(file, settingsManager.getCurrentDefaultFolderSettings());
         filesToNotify.add(new ClientFileDto(fileUri, fsPath, ROOT_CONFIGURATION_SCOPE, isTest, StandardCharsets.UTF_8.name(),
-          fsPath, file.getContent(), sqLanguage != null ? Language.valueOf(sqLanguage.name()) : null));
+          fsPath, file.getContent(), sqLanguage != null ? Language.valueOf(sqLanguage.name()) : null, true));
       });
     backendServiceFacade.getBackendService().updateFileSystem(List.of(), filesToNotify);
   }
