@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
@@ -113,7 +112,7 @@ public class AnalysisHelper {
     });
   }
 
-  public Map<String, String> getInferredAnalysisProperties(String configurationScopeId, Set<URI> filesToAnalyzeUris) {
+  public Map<String, String> getInferredAnalysisProperties(String configurationScopeId, List<URI> filesToAnalyzeUris) {
     // Need to analyze files outside any workspace folder as well
     var workspaceFolder = configurationScopeId.equals(ROOT_CONFIGURATION_SCOPE) ?
       Optional.empty() : workspaceFoldersManager.getFolder(URI.create(configurationScopeId));

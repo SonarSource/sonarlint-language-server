@@ -541,9 +541,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public CompletableFuture<GetJavaConfigResponse> getJavaConfig(String fileUri) {
-      return CompletableFutures.computeAsync(cancelToken -> {
-        return javaConfigs.get(fileUri);
-      });
+      return CompletableFutures.computeAsync(cancelToken -> javaConfigs.get(fileUri));
     }
 
     @Override

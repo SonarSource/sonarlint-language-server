@@ -456,9 +456,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       return;
     }
     var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
-    if (file.isJava()) {
-      javaConfigCache.didOpen(uri);
-    }
     CompletableFutures.computeAsync(cancelChecker -> {
       String configScopeId;
       moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(file);

@@ -70,6 +70,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreat
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.ConnectionSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.event.DidReceiveServerHotspotEvent;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.FixSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.GetProxyPasswordAuthenticationResponse;
@@ -113,7 +114,6 @@ import org.sonarsource.sonarlint.ls.progress.LSProgressMonitor;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.notifications.PromotionalNotifications;
-import org.sonarsource.sonarlint.ls.util.URIUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
@@ -121,6 +121,8 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.ROOT_CONFIGURATION_SCOPE;
 import static org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings.SONARCLOUD_URL;
+import static org.sonarsource.sonarlint.ls.util.URIUtils.getFullFileUriFromFragments;
+import static org.sonarsource.sonarlint.ls.util.Utils.convertMessageType;
 
 public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
@@ -189,7 +191,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public void showMessage(org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType type, String text) {
-    throw new UnsupportedOperationException();
+    client.showMessage(new MessageParams(convertMessageType(type), text));
   }
 
   @Override
@@ -250,6 +252,13 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       logOutput.debug("Show issue without description");
       client.showIssue(new ShowAllLocationsCommand.Param(new ShowIssueParams(folderUri, issueDetails), null, false));
     }
+  }
+
+  @Override
+  public void showFixSuggestion(String configurationScopeId, String issueKey, FixSuggestionDto fixSuggestion) {
+    var textEdits = fixSuggestion.fileEdit().changes();
+    var fullFileUri = getFullFileUriFromFragments(configurationScopeId, fixSuggestion.fileEdit().idePath());
+    client.showFixSuggestion(new SonarLintExtendedLanguageClient.ShowFixSuggestionParams(fixSuggestion.suggestionId(), textEdits, fullFileUri.toString()));
   }
 
   @Override
@@ -421,15 +430,15 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   public void didChangeTaintVulnerabilities(String folderUri, Set<UUID> closedTaintVulnerabilityIds,
     List<TaintVulnerabilityDto> addedTaintVulnerabilities, List<TaintVulnerabilityDto> updatedTaintVulnerabilities) {
     var addedTaintVulnerabilitiesByFile = addedTaintVulnerabilities.stream()
-      .collect(groupingBy(taintVulnerabilityDto -> URIUtils.getFullFileUriFromFragments(folderUri, taintVulnerabilityDto.getIdeFilePath()), toList()));
+      .collect(groupingBy(taintVulnerabilityDto -> getFullFileUriFromFragments(folderUri, taintVulnerabilityDto.getIdeFilePath()), toList()));
     var updatedTaintVulnerabilitiesByFile = updatedTaintVulnerabilities.stream()
-      .collect(groupingBy(taintVulnerabilityDto -> URIUtils.getFullFileUriFromFragments(folderUri, taintVulnerabilityDto.getIdeFilePath()), toList()));
+      .collect(groupingBy(taintVulnerabilityDto -> getFullFileUriFromFragments(folderUri, taintVulnerabilityDto.getIdeFilePath()), toList()));
 
     // Remove taints that were closed
     taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().values().stream().flatMap(Collection::stream)
       .filter(taintIssue -> closedTaintVulnerabilityIds.contains(taintIssue.getId()))
       .forEach(taintIssue -> taintVulnerabilitiesCache.removeTaintIssue(
-        URIUtils.getFullFileUriFromFragments(folderUri, taintIssue.getIdeFilePath()).toString(), taintIssue.getSonarServerKey()));
+        getFullFileUriFromFragments(folderUri, taintIssue.getIdeFilePath()).toString(), taintIssue.getSonarServerKey()));
 
     workspaceFoldersManager.getFolder(URI.create(folderUri))
       .map(workspaceFolderWrapper -> Objects.requireNonNull(bindingManager
@@ -538,7 +547,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
           var taintsByFile = taints.getTaintVulnerabilities()
             .stream()
             .collect(groupingBy(taintVulnerabilityDto ->
-              URIUtils.getFullFileUriFromFragments(configurationScopeId, taintVulnerabilityDto.getIdeFilePath()), toList()));
+              getFullFileUriFromFragments(configurationScopeId, taintVulnerabilityDto.getIdeFilePath()), toList()));
 
           taintsByFile.forEach((fileUri, t) -> {
             var vulnerabilities = dtosToTaintIssues(configurationScopeId, t, isSonarCloud);
@@ -652,7 +661,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream()
         .map(i -> (RaisedFindingDto) i)
         .toList()));
-    analysisTaskExecutor.handleIssues(findings, analysisId);
+    analysisHelper.handleIssues(findings);
   }
 
   @Override
@@ -669,7 +678,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   }
 
   @Override
-  public Map<String, String> getInferredAnalysisProperties(String configurationScopeId) {
-    return analysisHelper.getInferredAnalysisProperties(configurationScopeId, Collections.emptySet());
+  public Map<String, String> getInferredAnalysisProperties(String configurationScopeId, List<URI> filesToAnalyze) {
+    return analysisHelper.getInferredAnalysisProperties(configurationScopeId, filesToAnalyze);
   }
 }
