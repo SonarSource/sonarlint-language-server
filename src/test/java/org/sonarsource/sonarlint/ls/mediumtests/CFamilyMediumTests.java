@@ -31,13 +31,14 @@ import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.eclipse.lsp4j.Diagnostic;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.tuple;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.eclipse.lsp4j.DiagnosticSeverity.Warning;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -51,6 +52,11 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
       "productName", "SLCORE tests",
       "productVersion", "0.1",
       "productKey", "productKey"));
+  }
+
+  @BeforeEach
+  void clean() {
+    setPathToCompileCommands(client.globalSettings, "");
   }
 
   @Override
@@ -113,7 +119,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
         }
         """);
 
-    awaitUntilAsserted(() -> assertLogContains("Error executing sensor: 'CFamily'"));
+    awaitUntilAsserted(() -> assertLogContains("Specify the \"sonar.cfamily.compile-commands\" option to configure the C and C++ analysis"));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
   }
 
@@ -160,7 +166,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
         }
         """);
 
-    awaitUntilAsserted(() -> assertLogContains("Error executing sensor: 'CFamily'"));
+    awaitUntilAsserted(() -> assertLogContains("Specify the \"sonar.cfamily.compile-commands\" option to configure the C and C++ analysis"));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
 
     setPathToCompileCommands(client.globalSettings, compilationDatabaseFile.toString());

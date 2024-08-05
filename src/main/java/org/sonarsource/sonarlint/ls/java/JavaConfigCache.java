@@ -28,7 +28,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -101,7 +100,7 @@ public class JavaConfigCache {
       });
   }
 
-  public Map<String, String> configureJavaProperties(Set<URI> fileInTheSameModule, Map<URI, GetJavaConfigResponse> javaConfigs) {
+  public Map<String, String> configureJavaProperties(List<URI> fileInTheSameModule, Map<URI, GetJavaConfigResponse> javaConfigs) {
     var partitionMainTest = fileInTheSameModule.stream().filter(javaConfigs::containsKey).collect(groupingBy(f -> javaConfigs.get(f).isTest()));
     var mainFiles = ofNullable(partitionMainTest.get(false)).orElse(List.of());
     var testFiles = ofNullable(partitionMainTest.get(true)).orElse(List.of());
@@ -185,7 +184,4 @@ public class JavaConfigCache {
     javaConfigPerFileURI.remove(fileUri);
   }
 
-  public void didOpen(URI fileUri) {
-    getOrFetch(fileUri);
-  }
 }

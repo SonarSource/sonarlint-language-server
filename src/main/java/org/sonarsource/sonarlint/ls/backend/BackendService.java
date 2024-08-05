@@ -403,7 +403,7 @@ public class BackendService {
   }
 
   public void didChangePathToCompileCommands(String configScopeId, @Nullable String pathToCompileCommands) {
-    var params = new DidChangePathToCompileCommandsParams(configScopeId, pathToCompileCommands);
+    var params = new DidChangePathToCompileCommandsParams(configScopeId, pathToCompileCommands == null ? "" : pathToCompileCommands);
     initializedBackend().getAnalysisService().didChangePathToCompileCommands(params);
   }
 }
