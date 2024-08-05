@@ -39,7 +39,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
-import org.sonarsource.sonarlint.core.client.legacy.analysis.SonarLintAnalysisEngine;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.GetAllProjectsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.GetProjectNamesByKeyResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.SonarProjectDto;
@@ -49,7 +48,6 @@ import org.sonarsource.sonarlint.ls.AnalysisScheduler;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
@@ -65,7 +63,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -77,51 +74,40 @@ class ProjectBindingManagerTests {
   private static final String FILE_PHP = "fileInAWorkspaceFolderPath.php";
   private static final String PROJECT_KEY = "myProject";
   private static final String PROJECT_KEY2 = "myProject2";
-  private static final org.sonarsource.sonarlint.core.serverconnection.ProjectBinding FAKE_BINDING = new org.sonarsource.sonarlint.core.serverconnection.ProjectBinding(PROJECT_KEY, "sqPrefix", "idePrefix");
-  private static final org.sonarsource.sonarlint.core.serverconnection.ProjectBinding FAKE_BINDING2 = new org.sonarsource.sonarlint.core.serverconnection.ProjectBinding(PROJECT_KEY2, "sqPrefix2", "idePrefix2");
   private static final String CONNECTION_ID = "myServer";
-  private static final String SERVER_ID2 = "myServer2";
   private static final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   private static final ServerConnectionSettings GLOBAL_SETTINGS = new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, true);
-  private static final ServerConnectionSettings GLOBAL_SETTINGS_DIFFERENT_SERVER_ID = new ServerConnectionSettings(SERVER_ID2, "http://foo2", "token2", null, true);
   private static final WorkspaceFolderSettings UNBOUND_SETTINGS = new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null, null);
   private static final WorkspaceFolderSettings BOUND_SETTINGS = new WorkspaceFolderSettings(CONNECTION_ID, PROJECT_KEY, Collections.emptyMap(), null, null);
-  private static final WorkspaceFolderSettings BOUND_SETTINGS2 = new WorkspaceFolderSettings(SERVER_ID2, PROJECT_KEY2, Collections.emptyMap(), null, null);
   private static final WorkspaceFolderSettings BOUND_SETTINGS_DIFFERENT_PROJECT_KEY = new WorkspaceFolderSettings(CONNECTION_ID, PROJECT_KEY2, Collections.emptyMap(), null, null);
-  private static final WorkspaceFolderSettings BOUND_SETTINGS_DIFFERENT_SERVER_ID = new WorkspaceFolderSettings(SERVER_ID2, PROJECT_KEY, Collections.emptyMap(), null, null);
-  private static final String BRANCH_NAME = "main";
   @RegisterExtension
   SonarLintLogTester logTester = new SonarLintLogTester();
   @TempDir
   Path basedir;
   private Path workspaceFolderPath;
-  private Path workspaceFolderPath2;
   private Path anotherFolderPath;
   private Path fileInAWorkspaceFolderPath;
-  private Path fileInAWorkspaceFolderPath2;
   private Path fileNotInAWorkspaceFolderPath;
   ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache;
   private ProjectBindingManager underTest;
   private final SettingsManager settingsManager = mock(SettingsManager.class);
   private final WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
   private final Map<String, ServerConnectionSettings> servers = new HashMap<>();
-  private final SonarLintAnalysisEngine fakeEngine = mock(SonarLintAnalysisEngine.class);
   private final AnalysisScheduler analysisManager = mock(AnalysisScheduler.class);
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   private final OpenNotebooksCache openNotebooksCache = mock(OpenNotebooksCache.class);
-  private final OpenFilesCache openFilesCache = mock(OpenFilesCache.class);
 
   @BeforeEach
   public void prepare() throws IOException {
     workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
     Files.createDirectories(workspaceFolderPath);
-    workspaceFolderPath2 = basedir.resolve("myWorkspaceFolder2");
+    var workspaceFolderPath2 = basedir.resolve("myWorkspaceFolder2");
     Files.createDirectories(workspaceFolderPath2);
     anotherFolderPath = basedir.resolve("anotherFolder");
     Files.createDirectories(anotherFolderPath);
     fileInAWorkspaceFolderPath = workspaceFolderPath.resolve(FILE_PHP);
     Files.createFile(fileInAWorkspaceFolderPath);
-    fileInAWorkspaceFolderPath2 = workspaceFolderPath2.resolve(FILE_PHP);
+    var fileInAWorkspaceFolderPath2 = workspaceFolderPath2.resolve(FILE_PHP);
     Files.createFile(fileInAWorkspaceFolderPath2);
     fileNotInAWorkspaceFolderPath = anotherFolderPath.resolve(FILE_PHP);
     Files.createFile(fileNotInAWorkspaceFolderPath);
@@ -139,7 +125,7 @@ class ProjectBindingManagerTests {
     when(openNotebooksCache.getFile(any(URI.class))).thenReturn(Optional.empty());
 
     underTest = new ProjectBindingManager(foldersManager, settingsManager, client, folderBindingCache, logTester.getLogger(),
-      backendServiceFacade, openNotebooksCache, openFilesCache);
+      backendServiceFacade, openNotebooksCache);
     underTest.setAnalysisManager(analysisManager);
   }
 
@@ -231,7 +217,7 @@ class ProjectBindingManagerTests {
   @Test
   void ignore_first_change_event() {
     underTest.onChange(null, null, UNBOUND_SETTINGS);
-    verifyNoInteractions(settingsManager, fakeEngine);
+    verifyNoInteractions(settingsManager);
     assertThat(logTester.logs()).isEmpty();
   }
 
@@ -239,7 +225,7 @@ class ProjectBindingManagerTests {
   void ignore_change_if_same_binding() {
     underTest.onChange(null, UNBOUND_SETTINGS, UNBOUND_SETTINGS);
     underTest.onChange(null, BOUND_SETTINGS, BOUND_SETTINGS);
-    verifyNoInteractions(settingsManager, fakeEngine);
+    verifyNoInteractions(settingsManager);
     assertThat(logTester.logs()).isEmpty();
   }
 
@@ -249,7 +235,7 @@ class ProjectBindingManagerTests {
     when(folder.getSettings()).thenReturn(UNBOUND_SETTINGS);
 
     underTest.onChange(folder, BOUND_SETTINGS, UNBOUND_SETTINGS);
-    verifyNoInteractions(settingsManager, fakeEngine);
+    verifyNoInteractions(settingsManager);
     assertThat(logTester.logs()).isEmpty();
   }
 
@@ -258,7 +244,7 @@ class ProjectBindingManagerTests {
     mockFileOutsideFolder();
 
     underTest.onChange(null, BOUND_SETTINGS, UNBOUND_SETTINGS);
-    verifyNoInteractions(settingsManager, fakeEngine);
+    verifyNoInteractions(settingsManager);
     assertThat(logTester.logs()).isEmpty();
   }
 
@@ -317,7 +303,6 @@ class ProjectBindingManagerTests {
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
     assertThat(binding).isNotEmpty();
-    verify(fakeEngine, never()).stop();
     assertThat(logTester.logs())
       .anyMatch(log -> log.contains("Resolved binding myProject2 for folder " + workspaceFolderPath.toString()));
   }
@@ -340,7 +325,6 @@ class ProjectBindingManagerTests {
     binding = underTest.getBinding(fileNotInAWorkspaceFolderPath.toUri());
 
     assertThat(binding).isNotEmpty();
-    verify(fakeEngine, never()).stop();
     assertThat(logTester.logs())
       .anyMatch(log -> log.contains("Resolved binding myProject2 for folder " + anotherFolderPath.toString()));
   }
@@ -462,7 +446,7 @@ class ProjectBindingManagerTests {
   }
 
   @Test
-  void should_get_binding_if_existis_empty() {
+  void should_get_binding_if_exist_is_empty() {
     var uri = URI.create("file:///folderUri");
 
     var maybeBinding = underTest.getBindingIfExists(uri);
@@ -499,11 +483,5 @@ class ProjectBindingManagerTests {
     var folderWrapper = spy(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(), new WorkspaceFolder(workspaceFolderPath.toUri().toString()), logTester.getLogger()));
     when(foldersManager.findFolderForFile(fileInAWorkspaceFolderPath.toUri())).thenReturn(Optional.of(folderWrapper));
     return folderWrapper;
-  }
-
-  private WorkspaceFolderWrapper mockFileInAFolder2() {
-    var folderWrapper2 = spy(new WorkspaceFolderWrapper(workspaceFolderPath2.toUri(), new WorkspaceFolder(workspaceFolderPath2.toUri().toString()), logTester.getLogger()));
-    when(foldersManager.findFolderForFile(fileInAWorkspaceFolderPath2.toUri())).thenReturn(Optional.of(folderWrapper2));
-    return folderWrapper2;
   }
 }

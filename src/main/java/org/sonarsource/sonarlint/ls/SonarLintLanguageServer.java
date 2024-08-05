@@ -244,7 +244,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager,
-      client, lsLogOutput, backendServiceFacade, openNotebooksCache, openFilesCache);
+      client, lsLogOutput, backendServiceFacade, openNotebooksCache);
     vsCodeClient.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(backendServiceFacade, lsLogOutput);
     this.backendServiceFacade.setTelemetry(telemetry);
