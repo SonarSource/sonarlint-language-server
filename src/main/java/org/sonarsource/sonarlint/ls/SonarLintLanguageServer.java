@@ -147,6 +147,7 @@ import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURIT
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
 import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.ROOT_CONFIGURATION_SCOPE;
+import static org.sonarsource.sonarlint.ls.util.URIUtils.getFullFileUriFromFragments;
 import static org.sonarsource.sonarlint.ls.util.Utils.getConnectionNameFromConnectionCheckParams;
 import static org.sonarsource.sonarlint.ls.util.Utils.getValidateConnectionParamsForNewConnection;
 import static org.sonarsource.sonarlint.ls.util.Utils.hotspotStatusOfTitle;
@@ -958,6 +959,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       params.getConfigurationScopeId(), Path.of(params.getRelativePath()));
     backendServiceFacade.getBackendService().reopenAllIssuesForFile(reopenAllIssuesParams).thenApply(r -> {
       if (r.isSuccess()) {
+        var fullFileUri = getFullFileUriFromFragments(params.getConfigurationScopeId(), Path.of(params.getRelativePath()));
+        // re-trigger analysis for the file
+        backendServiceFacade.getBackendService().analyzeFilesList(params.getConfigurationScopeId(), List.of(fullFileUri));
         client.showMessage(new MessageParams(MessageType.Info, "Reopened local issues for " + params.getRelativePath()));
       } else {
         client.showMessage(new MessageParams(MessageType.Info, "There are no resolved issues in file " + params.getRelativePath()));

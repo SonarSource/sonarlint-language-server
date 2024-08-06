@@ -152,7 +152,7 @@ public class BackendServiceFacade {
         Path.of(omnisharpDirectory, "net6"),
         Path.of(omnisharpDirectory, "net472")) : null);
     return new InitializeParams(
-      new ClientConstantInfoDto("Visual Studio Code", initParams.getUserAgent(), ProcessHandle.current().pid()),
+      new ClientConstantInfoDto("Visual Studio Code", initParams.getUserAgent()),
       new TelemetryClientConstantAttributesDto(initParams.getTelemetryProductKey(),
         telemetryInitParams.getProductName(),
         telemetryInitParams.getProductVersion(),
@@ -175,7 +175,8 @@ public class BackendServiceFacade {
       initParams.getStandaloneRuleConfigByKey(),
       initParams.isFocusOnNewCode(),
       languageSpecificRequirements,
-      true
+      true,
+      null
     );
   }
 
