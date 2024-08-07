@@ -20,6 +20,8 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,13 +40,14 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 
 import static java.lang.String.format;
 import static java.util.function.Function.identity;
 import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.ROOT_CONFIGURATION_SCOPE;
 
 public class AnalysisHelper {
-
+  private final SonarLintExtendedLanguageClient client;
   private final LanguageClientLogger clientLogger;
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final JavaConfigCache javaConfigCache;
@@ -56,11 +59,12 @@ public class AnalysisHelper {
   private final NotebookDiagnosticPublisher notebookDiagnosticPublisher;
   private final OpenFilesCache openFilesCache;
 
-  public AnalysisHelper(LanguageClientLogger clientLogger,
+  public AnalysisHelper(SonarLintExtendedLanguageClient client, LanguageClientLogger clientLogger,
     WorkspaceFoldersManager workspaceFoldersManager, JavaConfigCache javaConfigCache, SettingsManager settingsManager,
     IssuesCache issuesCache, HotspotsCache securityHotspotsCache, DiagnosticPublisher diagnosticPublisher,
     OpenNotebooksCache openNotebooksCache, NotebookDiagnosticPublisher notebookDiagnosticPublisher,
     OpenFilesCache openFilesCache) {
+    this.client = client;
     this.clientLogger = clientLogger;
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.javaConfigCache = javaConfigCache;
@@ -119,19 +123,36 @@ public class AnalysisHelper {
     var settings = workspaceFolder.map(f -> ((WorkspaceFolderWrapper) f).getSettings())
       .orElseGet(() -> CompletableFutures.computeAsync(c -> settingsManager.getCurrentDefaultFolderSettings()).join());
 
+    var extraProperties = new HashMap<>(settings.getAnalyzerProperties());
+
+    populateJavaProperties(filesToAnalyzeUris, extraProperties);
+
+    populateCfamilyProperties(filesToAnalyzeUris, extraProperties, settings);
+
+    return extraProperties;
+  }
+
+  private void populateJavaProperties(List<URI> filesToAnalyzeUris, Map<String, String> extraProperties) {
     var javaFiles = filesToAnalyzeUris.stream().map(openFilesCache::getFile).filter(Optional::isPresent).map(Optional::get)
       .filter(VersionedOpenFile::isJava).collect(Collectors.toMap(VersionedOpenFile::getUri, identity()));
 
     var javaConfigs = collectJavaFilesWithConfig(javaFiles);
 
-    var extraProperties = new HashMap<String, String>();
-    extraProperties.putAll(settings.getAnalyzerProperties());
     extraProperties.putAll(javaConfigCache.configureJavaProperties(filesToAnalyzeUris, javaConfigs));
+  }
+
+  private void populateCfamilyProperties(List<URI> filesToAnalyzeUris, Map<String,
+    String> extraProperties,
+    WorkspaceFolderSettings settings) {
+    var cOrCppFiles = filesToAnalyzeUris.stream().map(openFilesCache::getFile).filter(Optional::isPresent).map(Optional::get)
+      .filter(VersionedOpenFile::isCOrCpp).collect(Collectors.toMap(VersionedOpenFile::getUri, identity()));
 
     var pathToCompileCommands = settings.getPathToCompileCommands();
+    if (!cOrCppFiles.isEmpty() && (pathToCompileCommands == null || !Files.isRegularFile(Paths.get(pathToCompileCommands)))) {
+      client.needCompilationDatabase();
+    }
     if (pathToCompileCommands != null) {
       extraProperties.put("sonar.cfamily.compile-commands", pathToCompileCommands);
     }
-    return extraProperties;
   }
 }
