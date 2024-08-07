@@ -143,6 +143,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
 
     awaitUntilAsserted(() -> assertLogContains("\"sonar.cfamily.compile-commands\" is not set to a valid file: non/existing/file"));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
+    assertThat(client.needCompilationDatabaseCalls.get()).isEqualTo(1);
   }
 
   @Test
@@ -176,7 +177,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(tuple(1, 8, 1, 9, "cpp:S1481", "sonarlint", "unused variable 'i'", Warning)));
 
-    assertThat(client.needCompilationDatabaseCalls.get()).isZero();
+    assertThat(client.needCompilationDatabaseCalls.get()).isEqualTo(1);
 
   }
 
