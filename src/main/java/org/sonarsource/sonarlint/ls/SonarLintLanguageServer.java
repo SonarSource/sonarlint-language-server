@@ -254,7 +254,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     vsCodeClient.setSmartNotifications(smartNotifications);
     this.scmIgnoredCache = new ScmIgnoredCache(client, lsLogOutput);
     this.moduleEventsProcessor = new ModuleEventsProcessor(workspaceFoldersManager, fileTypeClassifier, javaConfigCache, backendServiceFacade, settingsManager);
-    this.analysisHelper = new AnalysisHelper(lsLogOutput, workspaceFoldersManager, javaConfigCache, settingsManager,
+    this.analysisHelper = new AnalysisHelper(client, lsLogOutput, workspaceFoldersManager, javaConfigCache, settingsManager,
       issuesCache, securityHotspotsCache, diagnosticPublisher,
       openNotebooksCache, notebookDiagnosticPublisher, openFilesCache);
     vsCodeClient.setAnalysisTaskExecutor(analysisHelper);
