@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
@@ -41,10 +40,6 @@ import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralized
 public class TaintVulnerabilitiesCache {
 
   private final Map<URI, List<TaintIssue>> taintVulnerabilitiesPerFile = new ConcurrentHashMap<>();
-
-  public void didClose(URI fileUri) {
-    clear(fileUri);
-  }
 
   public void clear(URI fileUri) {
     taintVulnerabilitiesPerFile.remove(fileUri);
@@ -122,10 +117,6 @@ public class TaintVulnerabilitiesCache {
       var issueToRemove = issues.stream().filter(taintIssue -> taintIssue.getSonarServerKey().equals(key) || taintIssue.getId().toString().equals(key)).findFirst();
       issueToRemove.ifPresent(issues::remove);
     }
-  }
-
-  public Set<URI> getAllFilesWithTaintIssues() {
-    return taintVulnerabilitiesPerFile.keySet();
   }
 
   public Map<URI, List<TaintIssue>> getTaintVulnerabilitiesPerFile() {

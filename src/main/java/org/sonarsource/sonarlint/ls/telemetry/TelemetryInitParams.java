@@ -22,63 +22,6 @@ package org.sonarsource.sonarlint.ls.telemetry;
 import java.util.Map;
 import javax.annotation.Nullable;
 
-public class TelemetryInitParams {
-
-  @Nullable
-  private final String productKey;
-  @Nullable
-  private final String telemetryStorage;
-  private final String productName;
-  private final String productVersion;
-  private final String ideVersion;
-  private final String platform;
-  private final String architecture;
-  private final Map<String, Object> additionalAttributes;
-
-  public TelemetryInitParams(@Nullable String productKey, String telemetryStorage,
-    String productName, String productVersion, String ideVersion,
-    String platform, String architecture, Map<String, Object> additionalAttributes) {
-    this.productKey = productKey;
-    this.telemetryStorage = telemetryStorage;
-    this.productName = productName;
-    this.productVersion = productVersion;
-    this.ideVersion = ideVersion;
-    this.platform = platform;
-    this.architecture = architecture;
-    this.additionalAttributes = additionalAttributes;
-  }
-
-  @Nullable
-  public String getProductKey() {
-    return productKey;
-  }
-
-  @Nullable
-  public String getTelemetryStorage() {
-    return telemetryStorage;
-  }
-
-  public String getProductName() {
-    return productName;
-  }
-
-  public String getProductVersion() {
-    return productVersion;
-  }
-
-  public String getIdeVersion() {
-    return ideVersion;
-  }
-
-  public String getPlatform() {
-    return platform;
-  }
-
-  public String getArchitecture() {
-    return architecture;
-  }
-
-  public Map<String, Object> getAdditionalAttributes() {
-    return additionalAttributes;
-  }
+public record TelemetryInitParams(@Nullable String productKey, @Nullable String telemetryStorage, String productName, String productVersion,
+                                  String ideVersion, String platform, String architecture, Map<String, Object> additionalAttributes) {
 }
