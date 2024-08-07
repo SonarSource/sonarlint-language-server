@@ -109,7 +109,6 @@ import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.TaintIssuesUpdater;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
 import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandler;
@@ -174,10 +173,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final IssuesCache issuesCache;
   private final HotspotsCache securityHotspotsCache;
   private final DiagnosticPublisher diagnosticPublisher;
-  private final ScmIgnoredCache scmIgnoredCache;
   private final LanguageClientLogger lsLogOutput;
 
-  private final TaintIssuesUpdater taintIssuesUpdater;
   private final NotebookDiagnosticPublisher notebookDiagnosticPublisher;
   private final PromotionalNotifications promotionalNotifications;
   private final ServerSentEventsHandlerService serverSentEventsHandler;
@@ -252,7 +249,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.workspaceFoldersManager.addListener(settingsManager);
     var smartNotifications = new SmartNotifications(client, telemetry);
     vsCodeClient.setSmartNotifications(smartNotifications);
-    this.scmIgnoredCache = new ScmIgnoredCache(client, lsLogOutput);
     this.moduleEventsProcessor = new ModuleEventsProcessor(workspaceFoldersManager, fileTypeClassifier, javaConfigCache, backendServiceFacade, settingsManager);
     this.analysisHelper = new AnalysisHelper(client, lsLogOutput, workspaceFoldersManager, javaConfigCache, settingsManager,
       issuesCache, securityHotspotsCache, diagnosticPublisher,
@@ -272,8 +268,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     vsCodeClient.setBranchManager(branchManager);
     this.workspaceFoldersManager.addListener(this.branchManager);
     this.workspaceFoldersManager.setBindingManager(bindingManager);
-    this.taintIssuesUpdater = new TaintIssuesUpdater(bindingManager, taintVulnerabilitiesCache, workspaceFoldersManager,
-      diagnosticPublisher, lsLogOutput);
     var cleanAsYouCodeManager = new CleanAsYouCodeManager(diagnosticPublisher, openFilesCache, backendServiceFacade);
     this.settingsManager.addListener(cleanAsYouCodeManager);
     this.shutdownLatch = new CountDownLatch(1);
@@ -397,7 +391,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         settingsManager::shutdown,
         workspaceFoldersManager::shutdown,
         moduleEventsProcessor::shutdown,
-        taintIssuesUpdater::shutdown,
         branchChangeEventExecutor::shutdown,
         backendServiceFacade::shutdown)
       // Do last
@@ -467,7 +460,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         configScopeId = ROOT_CONFIGURATION_SCOPE;
       }
       backendServiceFacade.getBackendService().didOpenFile(configScopeId, uri);
-      taintIssuesUpdater.updateTaintIssuesAsync(uri);
       return null;
     });
   }
@@ -493,7 +485,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var uri = create(params.getTextDocument().getUri());
     openFilesCache.didClose(uri);
     javaConfigCache.didClose(uri);
-    scmIgnoredCache.didClose(uri);
     issuesCache.clear(uri);
     securityHotspotsCache.clear(uri);
     diagnosticPublisher.publishDiagnostics(uri, false);

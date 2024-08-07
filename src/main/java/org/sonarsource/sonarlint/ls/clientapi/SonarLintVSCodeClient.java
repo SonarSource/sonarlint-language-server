@@ -354,7 +354,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public TelemetryClientLiveAttributesResponse getTelemetryLiveAttributes() {
-    return new TelemetryClientLiveAttributesResponse(backendServiceFacade.getTelemetryInitParams().getAdditionalAttributes());
+    return new TelemetryClientLiveAttributesResponse(backendServiceFacade.getTelemetryInitParams().additionalAttributes());
   }
 
   @Override
