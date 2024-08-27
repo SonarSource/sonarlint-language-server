@@ -295,8 +295,13 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     var vscodeFilesExcludeMap = tryGetSettingMap(response, 5, Map.of());
     var globPatterns = new StringBuilder();
     for (var entry : vscodeFilesExcludeMap.entrySet()) {
-      if (entry.getValue().equals(true)) {
-        globPatterns.append(entry.getKey()).append(",");
+      try {
+        var excluded = entry.getValue().equals(true);
+        if (excluded) {
+          globPatterns.append(entry.getKey()).append(",");
+        }
+      } catch (ClassCastException e) {
+        // ignore
       }
     }
     var resultingStringWithTrailingComma = sonarLintExcludes.concat(",").concat(globPatterns.toString());
