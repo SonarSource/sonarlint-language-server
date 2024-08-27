@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.settings;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import java.io.File;
 import java.net.URI;
@@ -32,6 +33,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import javax.annotation.Nullable;
+import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,7 +63,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.ANALYSIS_EXCLUDES;
 import static org.sonarsource.sonarlint.ls.settings.SettingsManager.ANALYZER_PROPERTIES;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.DOTNET_DEFAULT_SOLUTION_PATH;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.OMNISHARP_LOAD_PROJECT_ON_DEMAND;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.OMNISHARP_PROJECT_LOAD_TIMEOUT;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.OMNISHARP_USE_MODERN_NET;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.SONARLINT_CONFIGURATION_NAMESPACE;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.VSCODE_FILE_EXCLUDES;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.getConfigurationItem;
 
 class SettingsManagerTests {
 
@@ -718,6 +728,12 @@ class SettingsManagerTests {
 
   @Test
   void shouldUpdateAnalyzerProperties() {
+    var sonarLintConfigurationItem = getConfigurationItem(SONARLINT_CONFIGURATION_NAMESPACE, FOLDER_URI);
+    var defaultSolutionItem = getConfigurationItem(DOTNET_DEFAULT_SOLUTION_PATH, FOLDER_URI);
+    var modernDotnetItem = getConfigurationItem(OMNISHARP_USE_MODERN_NET, FOLDER_URI);
+    var loadProjectsOnDemandItem = getConfigurationItem(OMNISHARP_LOAD_PROJECT_ON_DEMAND, FOLDER_URI);
+    var projectLoadTimeoutItem = getConfigurationItem(OMNISHARP_PROJECT_LOAD_TIMEOUT, FOLDER_URI);
+    var filesExcludes = getConfigurationItem(VSCODE_FILE_EXCLUDES, FOLDER_URI);
     var workspaceUri = URI.create("file:///User/user/documents/project");
     List<Object> response = List.of("{\"disableTelemetry\": false,\"focusOnNewCode\": true}",
       new JsonPrimitive("Roslyn.sln"),
@@ -725,8 +741,15 @@ class SettingsManagerTests {
       new JsonPrimitive("false"),
       new JsonPrimitive("600"));
     Map<String, Object> settingsMap = new HashMap<>(Map.of("disableTelemetry", false, "focusOnNewCode", true));
+    var params = new ConfigurationParams(
+      List.of(sonarLintConfigurationItem,
+        defaultSolutionItem,
+        modernDotnetItem,
+        loadProjectsOnDemandItem,
+        projectLoadTimeoutItem,
+        filesExcludes));
 
-    var result = SettingsManager.updateProperties(workspaceUri, response, settingsMap);
+    var result = SettingsManager.updateProperties(workspaceUri, params, response, settingsMap);
 
     assertThat(result).containsKey(ANALYZER_PROPERTIES);
     var analyzerProperties = (Map<String, String>) result.get(ANALYZER_PROPERTIES);
@@ -737,12 +760,52 @@ class SettingsManagerTests {
   }
 
   @Test
+  void shouldAddVSCodeExcludesInFileExclusions() {
+    var sonarLintConfigurationItem = getConfigurationItem(SONARLINT_CONFIGURATION_NAMESPACE, FOLDER_URI);
+    var defaultSolutionItem = getConfigurationItem(DOTNET_DEFAULT_SOLUTION_PATH, FOLDER_URI);
+    var modernDotnetItem = getConfigurationItem(OMNISHARP_USE_MODERN_NET, FOLDER_URI);
+    var loadProjectsOnDemandItem = getConfigurationItem(OMNISHARP_LOAD_PROJECT_ON_DEMAND, FOLDER_URI);
+    var projectLoadTimeoutItem = getConfigurationItem(OMNISHARP_PROJECT_LOAD_TIMEOUT, FOLDER_URI);
+    var filesExcludes = getConfigurationItem(VSCODE_FILE_EXCLUDES, FOLDER_URI);
+    var workspaceUri = URI.create("file:///User/user/documents/project");
+
+    var vscodeExclusions = new JsonObject();
+    var extraCondition = new JsonObject();
+    extraCondition.add("when", new JsonPrimitive("$(basename).ext"));
+    // "{\"**/.git\":true,\"**/.DS_Store\":true,\"**/Thumbs.db\":{\"when\":\"$(basename).ext\"}}")
+    vscodeExclusions.add("**/.git", new JsonPrimitive(true));
+    vscodeExclusions.add("**/.DS_Store", new JsonPrimitive(true));
+    vscodeExclusions.add("**/Thumbs.db", extraCondition);
+
+    List<Object> response = List.of("{\"disableTelemetry\": false,\"focusOnNewCode\": true}",
+      new JsonPrimitive("Roslyn.sln"),
+      new JsonPrimitive("true"),
+      new JsonPrimitive("false"),
+      new JsonPrimitive("600"),
+      vscodeExclusions);
+    Map<String, Object> settingsMap = new HashMap<>(Map.of("disableTelemetry", false, "focusOnNewCode", true));
+    var params = new ConfigurationParams(
+      List.of(sonarLintConfigurationItem,
+        defaultSolutionItem,
+        modernDotnetItem,
+        loadProjectsOnDemandItem,
+        projectLoadTimeoutItem,
+        filesExcludes));
+
+    var result = SettingsManager.updateProperties(workspaceUri, params, response, settingsMap);
+
+    assertThat(result).containsKey(ANALYSIS_EXCLUDES);
+    var exclusions = (String) result.get(ANALYSIS_EXCLUDES);
+    assertThat(exclusions).isEqualTo("**/.git,**/.DS_Store");
+  }
+
+  @Test
   void shouldIgnoreRazorFiles() {
     var workspaceUri = URI.create("file:///User/user/documents/project");
     List<Object> response = List.of("{\"disableTelemetry\": false,\"focusOnNewCode\": true, \"analyzerProperties\":{\"sonar.cs.file.suffixes\":\".cs\",\".razor\"}");
     Map<String, Object> settingsMap = new HashMap<>(Map.of("disableTelemetry", false, "focusOnNewCode", true, "analyzerProperties", new HashMap<>(Map.of("sonar.cs.file.suffixes", ".cs,.razor"))));
 
-    var result = SettingsManager.updateProperties(workspaceUri, response, settingsMap);
+    var result = SettingsManager.updateProperties(workspaceUri, new ConfigurationParams(List.of()), response, settingsMap);
 
     assertThat(result).containsKey(ANALYZER_PROPERTIES);
     var analyzerProperties = (Map<String, String>) result.get(ANALYZER_PROPERTIES);

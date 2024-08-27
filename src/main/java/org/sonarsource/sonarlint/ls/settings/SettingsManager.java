@@ -80,7 +80,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   public static final String OMNISHARP_PROJECT_LOAD_TIMEOUT = "omnisharp.projectLoadTimeout";
   public static final String VSCODE_FILE_EXCLUDES = "files.exclude";
   private static final String DISABLE_TELEMETRY = "disableTelemetry";
-  private static final String ANALYSIS_EXCLUDES = "analysisExcludesStandalone";
+  public static final String ANALYSIS_EXCLUDES = "analysisExcludesStandalone";
   private static final String RULES = "rules";
   private static final String TEST_FILE_PATTERN = "testFilePattern";
   static final String ANALYZER_PROPERTIES = "analyzerProperties";
@@ -264,35 +264,42 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         if (response != null) {
           var settingsMap = Utils.parseToMap(response.get(0));
           if (settingsMap != null) {
-            return updateProperties(uri, response, settingsMap);
+            return updateProperties(uri, params, response, settingsMap);
           }
         }
         return Collections.emptyMap();
       });
   }
 
-  static Map<String, Object> updateProperties(@org.jetbrains.annotations.Nullable URI workspaceUri, List<Object> response, Map<String, Object> settingsMap) {
+  static Map<String, Object> updateProperties(@org.jetbrains.annotations.Nullable URI workspaceUri, ConfigurationParams params,
+    List<Object> response, Map<String, Object> settingsMap) {
     var analyzerProperties = (Map<String, String>) settingsMap.getOrDefault(ANALYZER_PROPERTIES, Maps.newHashMap());
     var analysisExcludes = (String) settingsMap.getOrDefault(ANALYSIS_EXCLUDES, "");
     forceIgnoreRazorFiles(analyzerProperties);
-    var solutionRelativePath = tryGetSetting(response, 1, "");
+    var solutionRelativePath = tryGetSetting(response, getIndexOf(DOTNET_DEFAULT_SOLUTION_PATH, params), "");
     if (!solutionRelativePath.isEmpty() && workspaceUri != null) {
       // uri: file:///Users/me/Documents/Sonar/roslyn
       // solutionPath: Roslyn.sln
       // we want: /Users/me/Documents/Sonar/roslyn/Roslyn.sln
       analyzerProperties.put("sonar.cs.internal.solutionPath", Path.of(workspaceUri).resolve(solutionRelativePath).toAbsolutePath().toString());
     }
-    analyzerProperties.put("sonar.cs.internal.useNet6", tryGetSetting(response, 2, "true"));
-    analyzerProperties.put("sonar.cs.internal.loadProjectOnDemand", tryGetSetting(response, 3, "false"));
-    analyzerProperties.put("sonar.cs.internal.loadProjectsTimeout", tryGetSetting(response, 4, "60"));
+    analyzerProperties.put("sonar.cs.internal.useNet6", tryGetSetting(response, getIndexOf(OMNISHARP_USE_MODERN_NET, params), "true"));
+    analyzerProperties.put("sonar.cs.internal.loadProjectOnDemand", tryGetSetting(response, getIndexOf(OMNISHARP_LOAD_PROJECT_ON_DEMAND, params), "false"));
+    analyzerProperties.put("sonar.cs.internal.loadProjectsTimeout", tryGetSetting(response, getIndexOf(OMNISHARP_PROJECT_LOAD_TIMEOUT, params), "60"));
     settingsMap.put(ANALYZER_PROPERTIES, analyzerProperties);
-    settingsMap.put(ANALYSIS_EXCLUDES, addVscodeExcludesToSonarLintExcludes(analysisExcludes, response));
+    settingsMap.put(ANALYSIS_EXCLUDES, addVscodeExcludesToSonarLintExcludes(analysisExcludes, params, response));
 
     return settingsMap;
   }
 
-  private static String addVscodeExcludesToSonarLintExcludes(String sonarLintExcludes, List<Object> response) {
-    var vscodeFilesExcludeMap = tryGetSettingMap(response, 5, Map.of());
+  private static int getIndexOf(String section, ConfigurationParams params) {
+    var configItem =
+      params.getItems().stream().filter(configurationItem -> configurationItem.getSection().equals(section)).findFirst();
+    return configItem.map(configurationItem -> params.getItems().indexOf(configurationItem)).orElse(-1);
+  }
+
+  private static String addVscodeExcludesToSonarLintExcludes(String sonarLintExcludes, ConfigurationParams params, List<Object> response) {
+    var vscodeFilesExcludeMap = tryGetSettingMap(response, getIndexOf(VSCODE_FILE_EXCLUDES, params), Map.of());
     var globPatterns = new StringBuilder();
     for (var entry : vscodeFilesExcludeMap.entrySet()) {
       try {
@@ -304,8 +311,11 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         // ignore
       }
     }
-    var resultingStringWithTrailingComma = sonarLintExcludes.concat(",").concat(globPatterns.toString());
-    return resultingStringWithTrailingComma.substring(0, resultingStringWithTrailingComma.length() - 1);
+    var resultingStringWithTrailingComma = sonarLintExcludes.isBlank() ?
+      globPatterns.toString() :
+      sonarLintExcludes.concat(",").concat(globPatterns.toString());
+    return resultingStringWithTrailingComma.isBlank() ?
+      "" : resultingStringWithTrailingComma.substring(0, resultingStringWithTrailingComma.length() - 1);
   }
 
   private static void forceIgnoreRazorFiles(Map<String, String> analyzerProperties) {
@@ -324,10 +334,12 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   }
 
   private static String tryGetSetting(List<Object> response, int index, String defaultValue) {
-    if (response.size() > index && response.get(index) != null) {
+    if (response.size() > index) {
       try {
-        var maybeSetting = new Gson().fromJson((JsonElement) response.get(index), String.class);
-        return maybeSetting == null ? defaultValue : maybeSetting;
+        if (response.get(index) != null) {
+          var maybeSetting = new Gson().fromJson((JsonElement) response.get(index), String.class);
+          return maybeSetting == null ? defaultValue : maybeSetting;
+        }
       } catch (Exception e) {
         return defaultValue;
       }
@@ -336,10 +348,12 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   }
 
   private static Map<String, Boolean> tryGetSettingMap(List<Object> response, int index, Map<String, Boolean> defaultValue) {
-    if (response.size() > index && response.get(index) != null) {
+    if (response.size() > index) {
       try {
-        var maybeSetting = new Gson().fromJson((JsonElement) response.get(index), Map.class);
-        return maybeSetting == null ? defaultValue : maybeSetting;
+        if (response.get(index) != null) {
+          var maybeSetting = new Gson().fromJson((JsonElement) response.get(index), Map.class);
+          return maybeSetting == null ? defaultValue : maybeSetting;
+        }
       } catch (Exception e) {
         return defaultValue;
       }
@@ -347,7 +361,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     return defaultValue;
   }
 
-  private static ConfigurationItem getConfigurationItem(String section, @Nullable URI uri) {
+  static ConfigurationItem getConfigurationItem(String section, @Nullable URI uri) {
     var configItem = new ConfigurationItem();
     configItem.setSection(section);
     if (uri != null) {
