@@ -40,6 +40,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
@@ -128,6 +129,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -489,11 +491,11 @@ class SonarLintVSCodeClientTests {
     var assistCreatingConnectionParams = new AssistCreatingConnectionParams(new SonarQubeConnectionParams(serverUrl, null, null));
     when(client.workspaceFolders()).thenReturn(CompletableFuture.completedFuture(List.of()));
     when(client.assistCreatingConnection(any())).thenReturn(CompletableFuture.completedFuture(
-      new AssistCreatingConnectionResponse(null)
+      null
     ));
     when(settingsManager.getCurrentSettings()).thenReturn(mock(WorkspaceSettings.class));
     when(backendServiceFacade.getBackendService()).thenReturn(mock(BackendService.class));
-    underTest.assistCreatingConnection(assistCreatingConnectionParams, null);
+    assertThrows(CompletionException.class, () -> underTest.assistCreatingConnection(assistCreatingConnectionParams, null));
 
     var argCaptor = ArgumentCaptor.forClass(CreateConnectionParams.class);
     verify(client).assistCreatingConnection(argCaptor.capture());
