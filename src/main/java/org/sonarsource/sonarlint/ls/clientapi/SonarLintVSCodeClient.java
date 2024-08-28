@@ -397,7 +397,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     } catch (CertificateEncodingException | IndexOutOfBoundsException e) {
       logOutput.errorWithStackTrace("Certificate encoding is malformed, SHA fingerprints will not be displayed.", e);
     }
-    var actualSonarLintUserHome = SonarLintUserHome.get();
+    var pathToActualTrustStore = SonarLintUserHome.get().resolve("ssl/truststore.p12");
     var confirmationParams = new SonarLintExtendedLanguageClient.SslCertificateConfirmationParams(
       untrustedCert == null ? "" : untrustedCert.getSubjectX500Principal().getName(),
       untrustedCert == null ? "" : untrustedCert.getIssuerX500Principal().getName(),
@@ -405,7 +405,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       untrustedCert == null ? "" : untrustedCert.getNotAfter().toString(),
       sha1fingerprint,
       sha256fingerprint,
-      actualSonarLintUserHome.toString()
+      pathToActualTrustStore.toString()
     );
 
     return client.askSslCertificateConfirmation(confirmationParams).join();
