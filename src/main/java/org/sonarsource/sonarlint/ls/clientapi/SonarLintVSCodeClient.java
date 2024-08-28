@@ -276,8 +276,10 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
         var serverProductName = isSonarCloud ? "SonarCloud" : "SonarQube";
         client.showMessage(new MessageParams(MessageType.Info, format("Connection to %s was successfully created.", serverProductName)));
         backendServiceFacade.getBackendService().didChangeConnections(currentConnections);
+        return new AssistCreatingConnectionResponse(newConnectionId);
+      } else {
+        throw new CancellationException("Automatic connection setup was cancelled");
       }
-      return new AssistCreatingConnectionResponse(newConnectionId);
     }).join();
   }
 
