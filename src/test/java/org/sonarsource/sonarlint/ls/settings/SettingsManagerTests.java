@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.settings;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import java.io.File;
 import java.net.URI;
@@ -61,7 +62,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.ANALYSIS_EXCLUDES;
 import static org.sonarsource.sonarlint.ls.settings.SettingsManager.ANALYZER_PROPERTIES;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.DOTNET_DEFAULT_SOLUTION_PATH;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.OMNISHARP_LOAD_PROJECT_ON_DEMAND;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.OMNISHARP_PROJECT_LOAD_TIMEOUT;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.OMNISHARP_USE_MODERN_NET;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.SONARLINT_CONFIGURATION_NAMESPACE;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.VSCODE_FILE_EXCLUDES;
 
 class SettingsManagerTests {
 
@@ -719,14 +727,16 @@ class SettingsManagerTests {
   @Test
   void shouldUpdateAnalyzerProperties() {
     var workspaceUri = URI.create("file:///User/user/documents/project");
-    List<Object> response = List.of("{\"disableTelemetry\": false,\"focusOnNewCode\": true}",
-      new JsonPrimitive("Roslyn.sln"),
-      new JsonPrimitive("true"),
-      new JsonPrimitive("false"),
-      new JsonPrimitive("600"));
-    Map<String, Object> settingsMap = new HashMap<>(Map.of("disableTelemetry", false, "focusOnNewCode", true));
+    var sonarLintSettings = new JsonObject();
+    sonarLintSettings.add("disableTelemetry", new JsonPrimitive(false));
+    sonarLintSettings.add("focusOnNewCode", new JsonPrimitive(true));
+    Map<String, Object> settingsMap = new HashMap<>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
+      DOTNET_DEFAULT_SOLUTION_PATH, "Roslyn.sln",
+      OMNISHARP_USE_MODERN_NET, "true",
+      OMNISHARP_LOAD_PROJECT_ON_DEMAND, "false",
+      OMNISHARP_PROJECT_LOAD_TIMEOUT, "600"));
 
-    var result = SettingsManager.updateProperties(workspaceUri, response, settingsMap);
+    var result = SettingsManager.updateProperties(workspaceUri, settingsMap);
 
     assertThat(result).containsKey(ANALYZER_PROPERTIES);
     var analyzerProperties = (Map<String, String>) result.get(ANALYZER_PROPERTIES);
@@ -737,12 +747,46 @@ class SettingsManagerTests {
   }
 
   @Test
+  void shouldAddVSCodeExcludesInFileExclusions() {
+    var workspaceUri = URI.create("file:///User/user/documents/project");
+
+    var vscodeExclusions = new JsonObject();
+    var extraCondition = new JsonObject();
+    extraCondition.add("when", new JsonPrimitive("$(basename).ext"));
+    // "{\"**/.git\":true,\"**/.DS_Store\":true,\"**/Thumbs.db\":{\"when\":\"$(basename).ext\"}}")
+    vscodeExclusions.add("**/.git", new JsonPrimitive(true));
+    vscodeExclusions.add("**/.DS_Store", new JsonPrimitive(true));
+    vscodeExclusions.add("**/Thumbs.db", extraCondition);
+
+    var sonarLintSettings = new JsonObject();
+    sonarLintSettings.add("disableTelemetry", new JsonPrimitive(false));
+    sonarLintSettings.add("focusOnNewCode", new JsonPrimitive(true));
+    Map<String, Object> settingsMap = new HashMap<>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
+      DOTNET_DEFAULT_SOLUTION_PATH, "Roslyn.sln",
+      OMNISHARP_USE_MODERN_NET, "true",
+      OMNISHARP_LOAD_PROJECT_ON_DEMAND, "false",
+      OMNISHARP_PROJECT_LOAD_TIMEOUT, "600",
+      VSCODE_FILE_EXCLUDES, vscodeExclusions));
+
+    var result = SettingsManager.updateProperties(workspaceUri, settingsMap);
+
+    assertThat(result).containsKey(ANALYSIS_EXCLUDES);
+    var exclusions = (String) result.get(ANALYSIS_EXCLUDES);
+    assertThat(exclusions).isEqualTo("**/.git,**/.DS_Store");
+  }
+
+  @Test
   void shouldIgnoreRazorFiles() {
     var workspaceUri = URI.create("file:///User/user/documents/project");
-    List<Object> response = List.of("{\"disableTelemetry\": false,\"focusOnNewCode\": true, \"analyzerProperties\":{\"sonar.cs.file.suffixes\":\".cs\",\".razor\"}");
-    Map<String, Object> settingsMap = new HashMap<>(Map.of("disableTelemetry", false, "focusOnNewCode", true, "analyzerProperties", new HashMap<>(Map.of("sonar.cs.file.suffixes", ".cs,.razor"))));
+    var sonarLintSettings = new JsonObject();
+    sonarLintSettings.add("disableTelemetry", new JsonPrimitive(false));
+    sonarLintSettings.add("focusOnNewCode", new JsonPrimitive(true));
+    JsonObject initalAnalyzerProperties = new JsonObject();
+    initalAnalyzerProperties.add("sonar.cs.file.suffixes", new JsonPrimitive(".cs,.razor"));
+    sonarLintSettings.add("analyzerProperties", initalAnalyzerProperties);
+    Map<String, Object> settingsMap = new HashMap<>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings));
 
-    var result = SettingsManager.updateProperties(workspaceUri, response, settingsMap);
+    var result = SettingsManager.updateProperties(workspaceUri, settingsMap);
 
     assertThat(result).containsKey(ANALYZER_PROPERTIES);
     var analyzerProperties = (Map<String, String>) result.get(ANALYZER_PROPERTIES);

@@ -20,8 +20,7 @@
 package org.sonarsource.sonarlint.ls.settings;
 
 import com.google.common.collect.Maps;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -80,7 +79,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   public static final String OMNISHARP_PROJECT_LOAD_TIMEOUT = "omnisharp.projectLoadTimeout";
   public static final String VSCODE_FILE_EXCLUDES = "files.exclude";
   private static final String DISABLE_TELEMETRY = "disableTelemetry";
-  private static final String ANALYSIS_EXCLUDES = "analysisExcludesStandalone";
+  public static final String ANALYSIS_EXCLUDES = "analysisExcludesStandalone";
   private static final String RULES = "rules";
   private static final String TEST_FILE_PATTERN = "testFilePattern";
   static final String ANALYZER_PROPERTIES = "analyzerProperties";
@@ -262,45 +261,63 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       })
       .thenApply(response -> {
         if (response != null) {
-          var settingsMap = Utils.parseToMap(response.get(0));
-          if (settingsMap != null) {
-            return updateProperties(uri, response, settingsMap);
+          var settingsMap = new HashMap<String, Object>();
+          for (var i = 0; i < response.size(); i++) {
+            settingsMap.put(params.getItems().get(i).getSection(), response.get(i));
+          }
+          if (!settingsMap.isEmpty()) {
+            var updatedProperties = updateProperties(uri, settingsMap);
+            updatedProperties.putAll(Utils.parseToMap(settingsMap.get(SONARLINT_CONFIGURATION_NAMESPACE)));
+            updatedProperties.remove(SONARLINT_CONFIGURATION_NAMESPACE);
+            return updatedProperties;
           }
         }
         return Collections.emptyMap();
       });
   }
 
-  static Map<String, Object> updateProperties(@org.jetbrains.annotations.Nullable URI workspaceUri, List<Object> response, Map<String, Object> settingsMap) {
-    var analyzerProperties = (Map<String, String>) settingsMap.getOrDefault(ANALYZER_PROPERTIES, Maps.newHashMap());
+  static Map<String, Object> updateProperties(@org.jetbrains.annotations.Nullable URI workspaceUri, Map<String, Object> settingsMap) {
+    var sonarLintSettingsMap = Utils.parseToMap(settingsMap.get(SONARLINT_CONFIGURATION_NAMESPACE));
+    var analyzerProperties = (Map<String, String>) (sonarLintSettingsMap == null ?
+      Maps.newHashMap() :
+      sonarLintSettingsMap.getOrDefault(ANALYZER_PROPERTIES, Maps.newHashMap()));
     var analysisExcludes = (String) settingsMap.getOrDefault(ANALYSIS_EXCLUDES, "");
     forceIgnoreRazorFiles(analyzerProperties);
-    var solutionRelativePath = tryGetSetting(response, 1, "");
+    var solutionRelativePath = settingsMap.getOrDefault(DOTNET_DEFAULT_SOLUTION_PATH, "").toString();
     if (!solutionRelativePath.isEmpty() && workspaceUri != null) {
       // uri: file:///Users/me/Documents/Sonar/roslyn
       // solutionPath: Roslyn.sln
       // we want: /Users/me/Documents/Sonar/roslyn/Roslyn.sln
       analyzerProperties.put("sonar.cs.internal.solutionPath", Path.of(workspaceUri).resolve(solutionRelativePath).toAbsolutePath().toString());
     }
-    analyzerProperties.put("sonar.cs.internal.useNet6", tryGetSetting(response, 2, "true"));
-    analyzerProperties.put("sonar.cs.internal.loadProjectOnDemand", tryGetSetting(response, 3, "false"));
-    analyzerProperties.put("sonar.cs.internal.loadProjectsTimeout", tryGetSetting(response, 4, "60"));
+    analyzerProperties.put("sonar.cs.internal.useNet6", settingsMap.getOrDefault(OMNISHARP_USE_MODERN_NET, "true").toString());
+    analyzerProperties.put("sonar.cs.internal.loadProjectOnDemand", settingsMap.getOrDefault(OMNISHARP_LOAD_PROJECT_ON_DEMAND, "false").toString());
+    analyzerProperties.put("sonar.cs.internal.loadProjectsTimeout", settingsMap.getOrDefault(OMNISHARP_PROJECT_LOAD_TIMEOUT, "60").toString());
     settingsMap.put(ANALYZER_PROPERTIES, analyzerProperties);
-    settingsMap.put(ANALYSIS_EXCLUDES, addVscodeExcludesToSonarLintExcludes(analysisExcludes, response));
+    settingsMap.put(ANALYSIS_EXCLUDES, addVscodeExcludesToSonarLintExcludes(analysisExcludes, settingsMap));
 
     return settingsMap;
   }
 
-  private static String addVscodeExcludesToSonarLintExcludes(String sonarLintExcludes, List<Object> response) {
-    var vscodeFilesExcludeMap = tryGetSettingMap(response, 5, Map.of());
+  private static String addVscodeExcludesToSonarLintExcludes(String sonarLintExcludes, Map<String, Object> settingsMap) {
+    var vscodeFilesExcludeMap = Utils.parseToMap(settingsMap.getOrDefault(VSCODE_FILE_EXCLUDES, new JsonObject()));
     var globPatterns = new StringBuilder();
+    assert vscodeFilesExcludeMap != null;
     for (var entry : vscodeFilesExcludeMap.entrySet()) {
-      if (entry.getValue().equals(true)) {
-        globPatterns.append(entry.getKey()).append(",");
+      try {
+        var excluded = entry.getValue().equals(true);
+        if (excluded) {
+          globPatterns.append(entry.getKey()).append(",");
+        }
+      } catch (ClassCastException e) {
+        // ignore
       }
     }
-    var resultingStringWithTrailingComma = sonarLintExcludes.concat(",").concat(globPatterns.toString());
-    return resultingStringWithTrailingComma.substring(0, resultingStringWithTrailingComma.length() - 1);
+    var resultingStringWithTrailingComma = sonarLintExcludes.isBlank() ?
+      globPatterns.toString() :
+      sonarLintExcludes.concat(",").concat(globPatterns.toString());
+    return resultingStringWithTrailingComma.isBlank() ?
+      "" : resultingStringWithTrailingComma.substring(0, resultingStringWithTrailingComma.length() - 1);
   }
 
   private static void forceIgnoreRazorFiles(Map<String, String> analyzerProperties) {
@@ -318,31 +335,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     }
   }
 
-  private static String tryGetSetting(List<Object> response, int index, String defaultValue) {
-    if (response.size() > index && response.get(index) != null) {
-      try {
-        var maybeSetting = new Gson().fromJson((JsonElement) response.get(index), String.class);
-        return maybeSetting == null ? defaultValue : maybeSetting;
-      } catch (Exception e) {
-        return defaultValue;
-      }
-    }
-    return defaultValue;
-  }
-
-  private static Map<String, Boolean> tryGetSettingMap(List<Object> response, int index, Map<String, Boolean> defaultValue) {
-    if (response.size() > index && response.get(index) != null) {
-      try {
-        var maybeSetting = new Gson().fromJson((JsonElement) response.get(index), Map.class);
-        return maybeSetting == null ? defaultValue : maybeSetting;
-      } catch (Exception e) {
-        return defaultValue;
-      }
-    }
-    return defaultValue;
-  }
-
-  private static ConfigurationItem getConfigurationItem(String section, @Nullable URI uri) {
+  static ConfigurationItem getConfigurationItem(String section, @Nullable URI uri) {
     var configItem = new ConfigurationItem();
     configItem.setSection(section);
     if (uri != null) {
