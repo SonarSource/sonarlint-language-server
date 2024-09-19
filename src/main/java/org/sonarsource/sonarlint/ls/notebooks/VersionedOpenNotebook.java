@@ -69,9 +69,6 @@ public class VersionedOpenNotebook {
   }
 
   private void indexCellsByLineNumber() {
-    if (notebookVersion.equals(indexedNotebookVersion)) {
-      return;
-    }
     var lineCount = 1;
     var cellCount = 1;
     for (var cell : orderedCells) {
@@ -117,7 +114,6 @@ public class VersionedOpenNotebook {
   }
 
   public Optional<URI> getCellUri(int lineNumber) {
-    indexCellsByLineNumber();
     return Optional.ofNullable(fileLineToCell.get(lineNumber))
       .map(TextDocumentItem::getUri)
       .map(URI::create);
