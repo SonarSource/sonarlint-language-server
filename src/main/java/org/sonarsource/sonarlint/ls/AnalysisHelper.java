@@ -102,8 +102,12 @@ public class AnalysisHelper {
     issuesCache.reportIssues(issuesByFileUri);
     issuesByFileUri.forEach((uri, issues) -> {
       diagnosticPublisher.publishDiagnostics(uri, true);
-      notebookDiagnosticPublisher.cleanupDiagnosticsForCellsWithoutIssues(uri);
-      openNotebooksCache.getFile(uri).ifPresent(notebook -> notebookDiagnosticPublisher.publishNotebookDiagnostics(uri, notebook));
+      openNotebooksCache.getFile(uri).ifPresent(notebook -> {
+        // clean up old diagnostics
+        notebookDiagnosticPublisher.cleanupCellsList(uri);
+        notebookDiagnosticPublisher.cleanupDiagnosticsForCellsWithoutIssues(uri);
+        notebookDiagnosticPublisher.publishNotebookDiagnostics(uri, notebook);
+      });
     });
   }
 

@@ -20,8 +20,10 @@
 package org.sonarsource.sonarlint.ls.notebooks;
 
 import java.net.URI;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.NotebookCellArrayChange;
 import org.eclipse.lsp4j.NotebookDocumentChangeEvent;
@@ -40,10 +42,14 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.FileEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueFlowDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.TextEditDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
+import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -110,6 +116,8 @@ public class VersionedOpenNotebookTests {
     var tmpUri = URI.create("file:///some/notebook.ipynb");
     var underTest = createTestNotebookWithThreeCells(tmpUri);
 
+    manuallyReindexCellLines(underTest);
+
     assertThat(underTest.getCellUri(1)).contains(URI.create(tmpUri + "#cell1"));
     assertThat(underTest.getCellUri(2)).contains(URI.create(tmpUri + "#cell1"));
     assertThat(underTest.getCellUri(3)).contains(URI.create(tmpUri + "#cell1"));
@@ -173,6 +181,8 @@ public class VersionedOpenNotebookTests {
     var fakeNotebook = createTestNotebookWithThreeCells(tmpUri);
     var quickFixTextRange = new TextRangeDto(9, 0, 9, 2);
 
+    manuallyReindexCellLines(fakeNotebook);
+
     var textEdit = mock(TextEditDto.class);
     when(textEdit.newText()).thenReturn("");
     when(textEdit.range()).thenReturn(quickFixTextRange);
@@ -210,6 +220,8 @@ public class VersionedOpenNotebookTests {
     var fakeNotebook = createTestNotebookWithThreeCells(tmpUri);
     var quickFixTextRange1 = new TextRangeDto(9, 0, 9, 2);
     var quickFixTextRange2 = new TextRangeDto(5, 0, 6, 2);
+
+    manuallyReindexCellLines(fakeNotebook);
 
     var textEdit1 = mock(org.sonarsource.sonarlint.core.rpc.protocol.client.issue.TextEditDto.class);
     when(textEdit1.newText()).thenReturn("");
@@ -308,6 +320,8 @@ public class VersionedOpenNotebookTests {
 
     underTest.didChange(2, changeEvent);
 
+    manuallyReindexCellLines(underTest);
+
     assertThat(underTest.getNotebookVersion()).isEqualTo(2);
     assertThat(underTest.getCellUris()).hasSize(4);
     assertThat(underTest.getContent()).isEqualTo("" +
@@ -350,6 +364,8 @@ public class VersionedOpenNotebookTests {
 
     underTest.didChange(2, changeEvent);
 
+    manuallyReindexCellLines(underTest);
+
     assertThat(underTest.getNotebookVersion()).isEqualTo(2);
     assertThat(underTest.getCellUris()).hasSize(2);
     assertThat(underTest.getContent()).isEqualTo("" +
@@ -382,6 +398,7 @@ public class VersionedOpenNotebookTests {
     changeEvent.setCells(changeEventCells);
 
     underTest.didChange(2, changeEvent);
+    manuallyReindexCellLines(underTest);
 
     assertThat(underTest.getNotebookVersion()).isEqualTo(2);
     assertThat(underTest.getCellUris()).hasSize(3);
@@ -492,6 +509,27 @@ public class VersionedOpenNotebookTests {
     cell3.setText("cell3 line1\ncell3 line2\n");
 
     return VersionedOpenNotebook.create(tmpUri, 1, List.of(cell1, cell2, cell3), mock(NotebookDiagnosticPublisher.class));
+  }
+
+  private void manuallyReindexCellLines(VersionedOpenNotebook underTest) {
+    var fakeFindingDto = new RaisedIssueDto(
+      UUID.randomUUID(),
+      null,
+      "ruleKey",
+      "message",
+      IssueSeverity.BLOCKER,
+      RuleType.BUG,
+      CleanCodeAttribute.TRUSTWORTHY,
+      List.of(),
+      Instant.now(),
+      true,
+      false,
+      new TextRangeDto(1, 0, 1, 0),
+      List.of(),
+      List.of(),
+      null
+    );
+    underTest.toCellIssue(new DelegatingIssue(fakeFindingDto, URI.create("")));
   }
 
 }
