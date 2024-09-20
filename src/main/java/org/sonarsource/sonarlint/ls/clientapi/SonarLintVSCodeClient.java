@@ -64,6 +64,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.Bindin
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.NoBindingSuggestionFoundParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionResponse;
@@ -311,9 +312,9 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   }
 
   @Override
-  public void noBindingSuggestionFound(String projectKey) {
+  public void noBindingSuggestionFound(NoBindingSuggestionFoundParams params) {
     var messageRequestParams = new ShowMessageRequestParams();
-    messageRequestParams.setMessage("SonarLint couldn't match the server project '" + projectKey + "' to any of the currently " +
+    messageRequestParams.setMessage("SonarLint couldn't match the server project '" + params.getProjectKey() + "' to any of the currently " +
       "open workspace folders. Please make sure the project is open in the workspace, or try configuring the binding manually.");
     messageRequestParams.setType(MessageType.Error);
     var learnMoreAction = new MessageActionItem("Learn more");
