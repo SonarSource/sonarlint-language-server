@@ -91,9 +91,11 @@ public class EnumLabelsMapper {
 
   public static String impactSeverityToLabel(ImpactSeverity softwareQuality) {
     return switch (softwareQuality) {
+      case INFO -> "Info";
       case LOW -> "Low";
       case MEDIUM -> "Medium";
       case HIGH -> "High";
+      case BLOCKER -> "Blocker";
     };
   }
 

@@ -67,6 +67,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnera
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.OpenUrlInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.NoBindingSuggestionFoundParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.ConnectionSuggestionDto;
@@ -533,7 +534,7 @@ class SonarLintVSCodeClientTests {
     var learnMoreAction = new MessageActionItem("Learn more");
     messageRequestParams.setActions(List.of(learnMoreAction));
 
-    underTest.noBindingSuggestionFound(projectKey);
+    underTest.noBindingSuggestionFound(new NoBindingSuggestionFoundParams(projectKey, false));
     verify(client).showMessageRequest(messageRequestParams);
     verify(client).browseTo("https://docs.sonarsource.com/sonarlint/vs-code/troubleshooting/#troubleshooting-connected-mode-setup");
   }
