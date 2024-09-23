@@ -51,7 +51,6 @@ public class VersionedOpenNotebook {
 
   private final URI uri;
   private Integer notebookVersion;
-  private Integer indexedNotebookVersion;
   private final LinkedHashMap<String, TextDocumentItem> cells = new LinkedHashMap<>();
   private final List<TextDocumentItem> orderedCells = new ArrayList<>();
   private final Map<Integer, TextDocumentItem> fileLineToCell = new HashMap<>();
@@ -85,7 +84,6 @@ public class VersionedOpenNotebook {
       }
       cellCount++;
     }
-    indexedNotebookVersion = notebookVersion;
   }
 
   public static VersionedOpenNotebook create(URI baseUri, int version, List<TextDocumentItem> cells, NotebookDiagnosticPublisher notebookDiagnosticPublisher) {
