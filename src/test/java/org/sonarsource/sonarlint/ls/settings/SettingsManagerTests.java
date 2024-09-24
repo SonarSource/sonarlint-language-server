@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.settings;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import java.io.File;
@@ -731,10 +732,10 @@ class SettingsManagerTests {
     sonarLintSettings.add("disableTelemetry", new JsonPrimitive(false));
     sonarLintSettings.add("focusOnNewCode", new JsonPrimitive(true));
     Map<String, Object> settingsMap = new HashMap<>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
-      DOTNET_DEFAULT_SOLUTION_PATH, "Roslyn.sln",
-      OMNISHARP_USE_MODERN_NET, "true",
-      OMNISHARP_LOAD_PROJECT_ON_DEMAND, "false",
-      OMNISHARP_PROJECT_LOAD_TIMEOUT, "600"));
+      DOTNET_DEFAULT_SOLUTION_PATH, new JsonPrimitive("Roslyn.sln"),
+      OMNISHARP_USE_MODERN_NET, new JsonPrimitive("true"),
+      OMNISHARP_LOAD_PROJECT_ON_DEMAND, new JsonPrimitive("false"),
+      OMNISHARP_PROJECT_LOAD_TIMEOUT, new JsonPrimitive("600")));
 
     var result = SettingsManager.updateProperties(workspaceUri, settingsMap);
 
@@ -762,10 +763,10 @@ class SettingsManagerTests {
     sonarLintSettings.add("disableTelemetry", new JsonPrimitive(false));
     sonarLintSettings.add("focusOnNewCode", new JsonPrimitive(true));
     Map<String, Object> settingsMap = new HashMap<>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
-      DOTNET_DEFAULT_SOLUTION_PATH, "Roslyn.sln",
-      OMNISHARP_USE_MODERN_NET, "true",
-      OMNISHARP_LOAD_PROJECT_ON_DEMAND, "false",
-      OMNISHARP_PROJECT_LOAD_TIMEOUT, "600",
+      DOTNET_DEFAULT_SOLUTION_PATH, new JsonPrimitive("Roslyn.sln"),
+      OMNISHARP_USE_MODERN_NET, new JsonPrimitive("true"),
+      OMNISHARP_LOAD_PROJECT_ON_DEMAND, new JsonPrimitive("false"),
+      OMNISHARP_PROJECT_LOAD_TIMEOUT, new JsonPrimitive("600"),
       VSCODE_FILE_EXCLUDES, vscodeExclusions));
 
     var result = SettingsManager.updateProperties(workspaceUri, settingsMap);
@@ -821,6 +822,69 @@ class SettingsManagerTests {
     underTest.didChangeConfiguration();
 
     verify(backendService, never()).didChangeClientNodeJsPath(any());
+  }
+
+  @Test
+  void shouldUpdatePropertiesWithDefaultValuesWhenNullSettings() {
+    var workspaceUri = URI.create("file:///User/user/documents/project");
+    var sonarLintSettings = new JsonObject();
+    sonarLintSettings.add("disableTelemetry", new JsonPrimitive(false));
+    sonarLintSettings.add("focusOnNewCode", new JsonPrimitive(true));
+    Map<String, Object> settingsMap = new HashMap<>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
+      DOTNET_DEFAULT_SOLUTION_PATH, JsonNull.INSTANCE,
+      OMNISHARP_USE_MODERN_NET, JsonNull.INSTANCE,
+      OMNISHARP_LOAD_PROJECT_ON_DEMAND, JsonNull.INSTANCE,
+      OMNISHARP_PROJECT_LOAD_TIMEOUT, JsonNull.INSTANCE));
+
+    var result = SettingsManager.updateProperties(workspaceUri, settingsMap);
+
+    var analyzerProperties = (Map<String, String>) result.get(ANALYZER_PROPERTIES);
+    assertThat(analyzerProperties).contains(entry("sonar.cs.internal.useNet6", "true"),
+      entry("sonar.cs.internal.loadProjectOnDemand", "false"),
+      entry("sonar.cs.internal.loadProjectsTimeout", "60"));
+    assertThat(analyzerProperties.get("sonar.cs.internal.solutionPath")).isNull();
+  }
+
+  @Test
+  void shouldUpdatePropertiesWithDefaultValuesWhenEmptySettings() {
+    var workspaceUri = URI.create("file:///User/user/documents/project");
+    var sonarLintSettings = new JsonObject();
+    sonarLintSettings.add("disableTelemetry", new JsonPrimitive(false));
+    sonarLintSettings.add("focusOnNewCode", new JsonPrimitive(true));
+    Map<String, Object> settingsMap = new HashMap<>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
+      DOTNET_DEFAULT_SOLUTION_PATH, new JsonPrimitive(""),
+      OMNISHARP_USE_MODERN_NET, new JsonPrimitive(""),
+      OMNISHARP_LOAD_PROJECT_ON_DEMAND, new JsonPrimitive(""),
+      OMNISHARP_PROJECT_LOAD_TIMEOUT, new JsonPrimitive("")));
+
+    var result = SettingsManager.updateProperties(workspaceUri, settingsMap);
+
+    var analyzerProperties = (Map<String, String>) result.get(ANALYZER_PROPERTIES);
+    assertThat(analyzerProperties).contains(entry("sonar.cs.internal.useNet6", "true"),
+      entry("sonar.cs.internal.loadProjectOnDemand", "false"),
+      entry("sonar.cs.internal.loadProjectsTimeout", "60"));
+    assertThat(analyzerProperties.get("sonar.cs.internal.solutionPath")).isNull();
+  }
+
+  @Test
+  void shouldUpdatePropertiesWithDefaultValuesWhenParsingFails() {
+    var workspaceUri = URI.create("file:///User/user/documents/project");
+    var sonarLintSettings = new JsonObject();
+    sonarLintSettings.add("disableTelemetry", new JsonPrimitive(false));
+    sonarLintSettings.add("focusOnNewCode", new JsonPrimitive(true));
+    Map<String, Object> settingsMap = new HashMap<>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
+      DOTNET_DEFAULT_SOLUTION_PATH, new JsonObject(),
+      OMNISHARP_USE_MODERN_NET, new JsonObject(),
+      OMNISHARP_LOAD_PROJECT_ON_DEMAND, new JsonObject(),
+      OMNISHARP_PROJECT_LOAD_TIMEOUT, new JsonObject()));
+
+    var result = SettingsManager.updateProperties(workspaceUri, settingsMap);
+
+    var analyzerProperties = (Map<String, String>) result.get(ANALYZER_PROPERTIES);
+    assertThat(analyzerProperties).contains(entry("sonar.cs.internal.useNet6", "true"),
+      entry("sonar.cs.internal.loadProjectOnDemand", "false"),
+      entry("sonar.cs.internal.loadProjectsTimeout", "60"));
+    assertThat(analyzerProperties.get("sonar.cs.internal.solutionPath")).isNull();
   }
 
   private static Map<String, Object> fromJsonString(String json) {

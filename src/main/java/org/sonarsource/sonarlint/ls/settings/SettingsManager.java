@@ -20,8 +20,12 @@
 package org.sonarsource.sonarlint.ls.settings;
 
 import com.google.common.collect.Maps;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import java.net.URI;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -281,22 +285,37 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     var analyzerProperties = (Map<String, String>) (sonarLintSettingsMap == null ?
       Maps.newHashMap() :
       sonarLintSettingsMap.getOrDefault(ANALYZER_PROPERTIES, Maps.newHashMap()));
-    var analysisExcludes = (String) settingsMap.getOrDefault(ANALYSIS_EXCLUDES, "");
+    var analysisExcludes = getStringValue(settingsMap, ANALYSIS_EXCLUDES, "");
     forceIgnoreRazorFiles(analyzerProperties);
-    var solutionRelativePath = settingsMap.getOrDefault(DOTNET_DEFAULT_SOLUTION_PATH, "").toString();
+    var solutionRelativePath = getStringValue(settingsMap, DOTNET_DEFAULT_SOLUTION_PATH, "");
     if (!solutionRelativePath.isEmpty() && workspaceUri != null) {
       // uri: file:///Users/me/Documents/Sonar/roslyn
       // solutionPath: Roslyn.sln
       // we want: /Users/me/Documents/Sonar/roslyn/Roslyn.sln
-      analyzerProperties.put("sonar.cs.internal.solutionPath", Path.of(workspaceUri).resolve(solutionRelativePath).toAbsolutePath().toString());
+      try {
+        analyzerProperties.put("sonar.cs.internal.solutionPath", Path.of(workspaceUri).resolve(solutionRelativePath).toAbsolutePath().toString());
+      } catch (InvalidPathException e) {
+        analyzerProperties.put("sonar.cs.internal.solutionPath", "");
+      }
     }
-    analyzerProperties.put("sonar.cs.internal.useNet6", settingsMap.getOrDefault(OMNISHARP_USE_MODERN_NET, "true").toString());
-    analyzerProperties.put("sonar.cs.internal.loadProjectOnDemand", settingsMap.getOrDefault(OMNISHARP_LOAD_PROJECT_ON_DEMAND, "false").toString());
-    analyzerProperties.put("sonar.cs.internal.loadProjectsTimeout", settingsMap.getOrDefault(OMNISHARP_PROJECT_LOAD_TIMEOUT, "60").toString());
+    analyzerProperties.put("sonar.cs.internal.useNet6", getStringValue(settingsMap, OMNISHARP_USE_MODERN_NET, "true"));
+    analyzerProperties.put("sonar.cs.internal.loadProjectOnDemand", getStringValue(settingsMap, OMNISHARP_LOAD_PROJECT_ON_DEMAND, "false"));
+    analyzerProperties.put("sonar.cs.internal.loadProjectsTimeout", getStringValue(settingsMap, OMNISHARP_PROJECT_LOAD_TIMEOUT, "60"));
     settingsMap.put(ANALYZER_PROPERTIES, analyzerProperties);
     settingsMap.put(ANALYSIS_EXCLUDES, addVscodeExcludesToSonarLintExcludes(analysisExcludes, settingsMap));
 
     return settingsMap;
+  }
+
+  private static String getStringValue(Map<String, Object> settingsMap, String key, String defaultValue) {
+    String finalValue;
+    try {
+      var string = new Gson().fromJson((JsonElement) settingsMap.get(key), String.class);
+      finalValue = string == null || string.isEmpty() ? defaultValue : string;
+    } catch (JsonParseException e) {
+      finalValue = defaultValue;
+    }
+    return finalValue;
   }
 
   private static String addVscodeExcludesToSonarLintExcludes(String sonarLintExcludes, Map<String, Object> settingsMap) {
