@@ -48,6 +48,7 @@ import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
+import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,6 +62,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.sonarsource.sonarlint.core.rpc.client.ConfigScopeNotFoundException;
+import org.sonarsource.sonarlint.core.rpc.client.SonarLintCancelChecker;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
@@ -114,6 +117,7 @@ import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerServ
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
@@ -178,6 +182,7 @@ class SonarLintVSCodeClientTests {
   PromotionalNotifications promotionalNotifications = mock(PromotionalNotifications.class);
   AnalysisHelper analysisHelper = mock(AnalysisHelper.class);
   LSProgressMonitor progressMonitor = mock(LSProgressMonitor.class);
+  WorkspaceFolderBranchManager branchManager = mock(WorkspaceFolderBranchManager.class);
 
   private static final String PEM = """
     subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH
@@ -228,6 +233,7 @@ class SonarLintVSCodeClientTests {
     underTest.setDiagnosticPublisher(diagnosticPublisher);
     underTest.setAnalysisScheduler(forcedAnalysisCoordinator);
     underTest.setAnalysisTaskExecutor(analysisHelper);
+    underTest.setBranchManager(branchManager);
     workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
     Files.createDirectories(workspaceFolderPath);
     fileInAWorkspaceFolderPath = workspaceFolderPath.resolve(FILE_PYTHON);
@@ -912,6 +918,25 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
+  void shouldMatchProjectBranch() throws ConfigScopeNotFoundException {
+    var configScopeId = "file:///Users/sonarlint-user/project/";
+    var projectBranch = "currentBranch";
+
+    ArgumentCaptor<String> configScopeIdCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> projectBranchCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<SonarLintCancelChecker> cancelCheckerArgumentCaptor = ArgumentCaptor.forClass(SonarLintCancelChecker.class);
+
+    SonarLintCancelChecker cancelChecker = new SonarLintCancelChecker(new DummyCancelChecker());
+    underTest.matchProjectBranch(configScopeId, projectBranch,
+      cancelChecker);
+
+    verify(branchManager).matchProjectBranch(configScopeIdCaptor.capture(), projectBranchCaptor.capture(), cancelCheckerArgumentCaptor.capture());
+    assertThat(configScopeIdCaptor.getValue()).isEqualTo(configScopeId);
+    assertThat(projectBranchCaptor.getValue()).isEqualTo(projectBranch);
+    assertThat(cancelCheckerArgumentCaptor.getValue()).isEqualTo(cancelChecker);
+  }
+
+  @Test
   @DisabledOnOs(OS.WINDOWS)
   void shouldReturnBaseDir() {
     var configScopeId = "file:///my/config/scope";
@@ -957,5 +982,10 @@ class SonarLintVSCodeClientTests {
       Map.of(), true), "folderUri", true);
   }
 
-
+  public class DummyCancelChecker implements CancelChecker {
+    @Override
+    public void checkCanceled() {
+      // No-op
+    }
+  }
 }

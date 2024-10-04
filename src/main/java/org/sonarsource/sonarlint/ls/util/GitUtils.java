@@ -109,6 +109,14 @@ public class GitUtils {
     }
   }
 
+  public static String getCurrentBranch(Repository repo) {
+    try {
+      return repo.getBranch();
+    } catch (IOException e) {
+      return null;
+    }
+  }
+
   private static int distance(Repository repository, Ref from, Ref to) throws IOException {
 
     try (var walk = new RevWalk(repository)) {

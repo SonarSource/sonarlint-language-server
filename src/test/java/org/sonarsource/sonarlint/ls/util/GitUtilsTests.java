@@ -142,6 +142,27 @@ class GitUtilsTests {
   }
 
   @Test
+  void getCurrentBranch_shouldReturnNullOnException() throws IOException {
+    Repository repo = mock(Repository.class);
+    when(repo.getBranch()).thenThrow(new IOException());
+
+    String branch = GitUtils.getCurrentBranch(repo);
+
+    assertThat(branch).isNull();
+  }
+
+  @Test
+  void shouldReturnCurrentBranch(@TempDir File projectDir) throws IOException {
+    javaUnzip("closest-branch.zip", projectDir);
+    Path path = Paths.get(projectDir.getPath(), "closest-branch");
+
+    try (Repository repo = GitUtils.getRepositoryForDir(path, fakeClientLogger)) {
+      String currentBranch = GitUtils.getCurrentBranch(repo);
+      assertThat(currentBranch).isEqualTo("current_branch");
+    }
+  }
+
+  @Test
   void shouldFavorCurrentBranchIfMultipleCandidates(@TempDir File projectDir) throws IOException {
     // Both main and same-as-master branches are pointing to HEAD, but same-as-master is the currently checked out branch
     javaUnzip("two-branches-for-head.zip", projectDir);
