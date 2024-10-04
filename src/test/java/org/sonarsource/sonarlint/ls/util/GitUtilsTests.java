@@ -21,31 +21,27 @@ package org.sonarsource.sonarlint.ls.util;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Enumeration;
 import java.util.Set;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 import org.eclipse.jgit.lib.RefDatabase;
 import org.eclipse.jgit.lib.Repository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
-import static java.lang.String.format;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static testutils.JavaUnzip.javaUnzip;
 
 class GitUtilsTests {
 
   private final LanguageClientLogger fakeClientLogger = mock(LanguageClientLogger.class);
 
   @Test
-  void noGitRepoShouldBeNull(@TempDir File projectDir) throws IOException {
+  void noGitRepoShouldBeNull(@TempDir File projectDir) {
     javaUnzip("no-git-repo.zip", projectDir);
     Path path = Paths.get(projectDir.getPath(), "no-git-repo");
     Repository repo = GitUtils.getRepositoryForDir(path, fakeClientLogger);
@@ -53,7 +49,7 @@ class GitUtilsTests {
   }
 
   @Test
-  void gitRepoShouldBeNotNull(@TempDir File projectDir) throws IOException {
+  void gitRepoShouldBeNotNull(@TempDir File projectDir) {
     javaUnzip("dummy-git.zip", projectDir);
     Path path = Paths.get(projectDir.getPath(), "dummy-git");
     try (Repository repo = GitUtils.getRepositoryForDir(path, fakeClientLogger)) {
@@ -65,7 +61,7 @@ class GitUtilsTests {
   }
 
   @Test
-  void shouldElectAnalyzedBranch(@TempDir File projectDir) throws IOException {
+  void shouldElectAnalyzedBranch(@TempDir File projectDir) {
     javaUnzip("analyzed-branch.zip", projectDir);
     Path path = Paths.get(projectDir.getPath(), "analyzed-branch");
     try (Repository repo = GitUtils.getRepositoryForDir(path, fakeClientLogger)) {
@@ -77,7 +73,7 @@ class GitUtilsTests {
   }
 
   @Test
-  void shouldReturnNullIfNonePresentInLocalGit(@TempDir File projectDir) throws IOException {
+  void shouldReturnNullIfNonePresentInLocalGit(@TempDir File projectDir) {
     javaUnzip("analyzed-branch.zip", projectDir);
     Path path = Paths.get(projectDir.getPath(), "analyzed-branch");
     try (Repository repo = GitUtils.getRepositoryForDir(path, fakeClientLogger)) {
@@ -89,7 +85,7 @@ class GitUtilsTests {
   }
 
   @Test
-  void shouldElectClosestBranch(@TempDir File projectDir) throws IOException {
+  void shouldElectClosestBranch(@TempDir File projectDir) {
     javaUnzip("closest-branch.zip", projectDir);
     Path path = Paths.get(projectDir.getPath(), "closest-branch");
 
@@ -103,7 +99,7 @@ class GitUtilsTests {
   }
 
   @Test
-  void shouldElectClosestBranch_even_if_no_main_branch(@TempDir File projectDir) throws IOException {
+  void shouldElectClosestBranch_even_if_no_main_branch(@TempDir File projectDir) {
     javaUnzip("closest-branch.zip", projectDir);
     Path path = Paths.get(projectDir.getPath(), "closest-branch");
 
@@ -117,7 +113,7 @@ class GitUtilsTests {
   }
 
   @Test
-  void shouldElectMainBranchForNonAnalyzedChildBranch(@TempDir File projectDir) throws IOException {
+  void shouldElectMainBranchForNonAnalyzedChildBranch(@TempDir File projectDir) {
     javaUnzip("child-from-non-analyzed.zip", projectDir);
     Path path = Paths.get(projectDir.getPath(), "child-from-non-analyzed");
     try (Repository repo = GitUtils.getRepositoryForDir(path, fakeClientLogger)) {
@@ -142,28 +138,34 @@ class GitUtilsTests {
   }
 
   @Test
-  void getCurrentBranch_shouldReturnNullOnException() throws IOException {
-    Repository repo = mock(Repository.class);
-    when(repo.getBranch()).thenThrow(new IOException());
-
-    String branch = GitUtils.getCurrentBranch(repo);
-
-    assertThat(branch).isNull();
-  }
-
-  @Test
-  void shouldReturnCurrentBranch(@TempDir File projectDir) throws IOException {
+  void isCurrentBranch_shouldReturnTrueWhenCurrentBranch(@TempDir File projectDir) {
     javaUnzip("closest-branch.zip", projectDir);
     Path path = Paths.get(projectDir.getPath(), "closest-branch");
 
-    try (Repository repo = GitUtils.getRepositoryForDir(path, fakeClientLogger)) {
-      String currentBranch = GitUtils.getCurrentBranch(repo);
-      assertThat(currentBranch).isEqualTo("current_branch");
-    }
+    boolean isCurrentBranch = GitUtils.isCurrentBranch(path.toUri().toString(), "current_branch", fakeClientLogger);
+    assertThat(isCurrentBranch).isTrue();
   }
 
   @Test
-  void shouldFavorCurrentBranchIfMultipleCandidates(@TempDir File projectDir) throws IOException {
+  void isCurrentBranch_shouldReturnFalseWhenNotCurrentBranch(@TempDir File projectDir) {
+    javaUnzip("closest-branch.zip", projectDir);
+    Path path = Paths.get(projectDir.getPath(), "closest-branch");
+
+    boolean isCurrentBranch = GitUtils.isCurrentBranch(path.toUri().toString(), "not_current_branch", fakeClientLogger);
+    assertThat(isCurrentBranch).isFalse();
+  }
+
+  @Test
+  void isCurrentBranch_shouldReturnFalseWhenNoRepo(@TempDir File projectDir) {
+    javaUnzip("closest-branch.zip", projectDir);
+    Path path = Paths.get(projectDir.getPath(), "non-existent");
+
+    boolean isCurrentBranch = GitUtils.isCurrentBranch(path.toUri().toString(), "not_current_branch", fakeClientLogger);
+    assertThat(isCurrentBranch).isFalse();
+  }
+
+  @Test
+  void shouldFavorCurrentBranchIfMultipleCandidates(@TempDir File projectDir) {
     // Both main and same-as-master branches are pointing to HEAD, but same-as-master is the currently checked out branch
     javaUnzip("two-branches-for-head.zip", projectDir);
     Path path = Paths.get(projectDir.getPath(), "two-branches-for-head");
@@ -173,40 +175,6 @@ class GitUtilsTests {
 
       String branch = GitUtils.electBestMatchingServerBranchForCurrentHead(repo, serverCandidateNames, "main", fakeClientLogger);
       assertThat(branch).isEqualTo("same-as-master");
-    }
-  }
-
-  public void javaUnzip(String zipFileName, File toDir) throws IOException {
-    File testRepos = new File("src/test/resources/test-repos");
-    File zipFile = new File(testRepos, zipFileName);
-    javaUnzip(zipFile, toDir);
-  }
-
-  private static void javaUnzip(File zip, File toDir) {
-    try {
-      try (ZipFile zipFile = new ZipFile(zip)) {
-        Enumeration<? extends ZipEntry> entries = zipFile.entries();
-        while (entries.hasMoreElements()) {
-          ZipEntry entry = entries.nextElement();
-          File to = new File(toDir, entry.getName());
-          if (entry.isDirectory()) {
-            forceMkdir(to);
-          } else {
-            File parent = to.getParentFile();
-            forceMkdir(parent);
-
-            Files.copy(zipFile.getInputStream(entry), to.toPath());
-          }
-        }
-      }
-    } catch (Exception e) {
-      throw new IllegalStateException(format("Fail to unzip %s to %s", zip, toDir), e);
-    }
-  }
-
-  private static void forceMkdir(final File directory) throws IOException {
-    if ((directory != null) && (!directory.mkdirs() && !directory.isDirectory())) {
-      throw new IOException("Cannot create directory '" + directory + "'.");
     }
   }
 
