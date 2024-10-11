@@ -71,7 +71,7 @@ public class LocalCodeFile {
 
   @Nullable
   private String getCodeAt(int lineIndex, int startLineOffset, int endLine, int endLineOffset) {
-    if (lines.size() < lineIndex) {
+    if (lines == null || lines.size() < lineIndex) {
       return null;
     } else {
       if (lines.get(lineIndex).length() < startLineOffset) {
