@@ -20,20 +20,25 @@
 package org.sonarsource.sonarlint.ls;
 
 import com.google.common.collect.ImmutableList;
+
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.jar.Manifest;
+
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.IVersionProvider;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.ParameterException;
 import picocli.CommandLine.Parameters;
 import picocli.CommandLine.Spec;
 
-@Command
+@Command(versionProvider = ServerMain.MavenVersionProvider.class, mixinStandardHelpOptions = true)
 public class ServerMain implements Callable<Integer> {
 
   @Parameters(index = "0", description = "The port to which sonarlint should connect to.", defaultValue = "-1")
@@ -98,4 +103,14 @@ public class ServerMain implements Callable<Integer> {
     System.exit(exitCode);
   }
 
+  public static class MavenVersionProvider implements IVersionProvider {
+
+    @Override
+    public String[] getVersion() throws Exception {
+      try(InputStream is = getClass().getResourceAsStream("/META-INF/MANIFEST.MF")) {
+        Manifest mf = new Manifest(is);
+        return new String[] { mf.getMainAttributes().getValue("Implementation-Version") };
+      }
+    }
+  }
 }
