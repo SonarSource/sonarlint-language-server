@@ -141,7 +141,7 @@ import static java.lang.String.format;
 import static java.net.URI.create;
 import static java.util.Objects.requireNonNull;
 import static java.util.Optional.ofNullable;
-import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND;
+import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
@@ -722,7 +722,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var ruleKey = params.ruleKey;
     var issue = securityHotspotsCache.get(create(fileUri)).get(params.getHotspotId());
     var ruleContextKey = Objects.isNull(issue) ? "" : issue.getRuleDescriptionContextKey();
-    var showHotspotCommandParams = new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
+    var showHotspotCommandParams = new ExecuteCommandParams(SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND,
       List.of(new JsonPrimitive(ruleKey), new JsonPrimitive(fileUri), new JsonPrimitive(ruleContextKey != null ? ruleContextKey : "")));
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
@@ -891,7 +891,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var ruleKey = params.ruleKey;
     var hotspot = securityHotspotsCache.get(create(fileUri)).get(params.getHotspotId());
     var ruleContextKey = Objects.isNull(hotspot) ? "" : hotspot.getRuleDescriptionContextKey();
-    return commandManager.getShowRuleDescriptionParams(fileUri, ruleKey, ruleContextKey != null ? ruleContextKey : "");
+    // TODO change to get issue details
+    return commandManager.getShowRuleDescriptionParams(fileUri, params.getHotspotId());
   }
 
   @Override

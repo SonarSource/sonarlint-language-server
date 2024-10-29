@@ -72,7 +72,7 @@ public class DelegatingCellIssue extends DelegatingFinding {
 
   public RaisedIssueDto getIssue() {
     return new RaisedIssueDto(issue.getId(), issue.getServerKey(), issue.getRuleKey(), issue.getPrimaryMessage(),
-      issue.getSeverity(), issue.getType(), issue.getCleanCodeAttribute(), issue.getImpacts(), issue.getIntroductionDate(),
+      issue.getSeverityMode(), issue.getSeverity(), issue.getType(), issue.getCleanCodeAttribute(), issue.getImpacts(), issue.getIntroductionDate(),
       issue.isOnNewCode(), issue.isResolved(), cellTextRange, issue.getFlows(), cellQuickFixes, issue.getRuleDescriptionContextKey());
   }
 
