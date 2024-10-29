@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.settings;
 import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import java.net.URI;
@@ -267,7 +268,11 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         if (response != null) {
           var settingsMap = new HashMap<String, Object>();
           for (var i = 0; i < response.size(); i++) {
-            settingsMap.put(params.getItems().get(i).getSection(), response.get(i));
+            var value = response.get(i);
+            if (JsonNull.INSTANCE.equals(value)) {
+               continue;
+            }
+            settingsMap.put(params.getItems().get(i).getSection(), value);
           }
           if (!settingsMap.isEmpty()) {
             var updatedProperties = updateProperties(uri, settingsMap);
