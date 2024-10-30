@@ -31,7 +31,7 @@ only_main_branches: &ONLY_MAIN_BRANCHES
   skip: "changesIncludeOnly('README.md')"
   only_if: $CIRRUS_USER_COLLABORATOR == 'true' && $CIRRUS_TAG == "" && ($CIRRUS_BRANCH == $CIRRUS_DEFAULT_BRANCH || $CIRRUS_BRANCH =~ "branch-.*")
 
-eks_container: &CONTAINER_DEFINITION
+container_definition: &CONTAINER_DEFINITION
   image: ${CIRRUS_AWS_ACCOUNT}.dkr.ecr.eu-central-1.amazonaws.com/base:j17-latest
   region: eu-central-1
   cluster_name: ${CIRRUS_CLUSTER_NAME}
@@ -39,12 +39,11 @@ eks_container: &CONTAINER_DEFINITION
   cpu: 4
   memory: 4G
 
-ec2_instance: &WINVM_DEFINITION
+ec2_instance_definition: &WINVM_DEFINITION
   experimental: true
   image: base-windows-jdk17-v*
   platform: windows
   region: eu-central-1
-  subnet_id: ${CIRRUS_AWS_SUBNET}
   type: t3.large
 
 maven_cache: &MAVEN_CACHE
