@@ -222,14 +222,14 @@ public class BackendServiceFacade {
     try {
       backendService.shutdown().get(10, TimeUnit.SECONDS);
     } catch (ExecutionException | TimeoutException e) {
-      lsLogOutput.errorWithStackTrace("Unable to shutdown the SonartLint backend", e);
+      lsLogOutput.errorWithStackTrace("Unable to shutdown the SonarLint backend", e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     } finally {
       try {
         clientLauncher.close();
       } catch (Exception e) {
-        lsLogOutput.errorWithStackTrace("Unable to stop the SonartLint client launcher", e);
+        lsLogOutput.errorWithStackTrace("Unable to stop the SonarLint client launcher", e);
       }
     }
   }
