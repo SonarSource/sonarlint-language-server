@@ -51,8 +51,9 @@ import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.commons.api.TextRange;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.EffectiveIssueDetailsDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.GetEffectiveIssueDetailsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRuleDetailsDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetEffectiveRuleDetailsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ImpactDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleContextualSectionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleContextualSectionWithDefaultContextKeyDto;
@@ -68,10 +69,10 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.TextEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.MQRModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
@@ -96,7 +97,6 @@ import testutils.SonarLintLogTester;
 
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -113,10 +113,6 @@ import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONAR
 import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARCLOUD_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebookTests.createTestNotebookWithThreeCells;
-import static org.sonarsource.sonarlint.ls.util.EnumLabelsMapper.cleanCodeAttributeCategoryToLabel;
-import static org.sonarsource.sonarlint.ls.util.EnumLabelsMapper.cleanCodeAttributeToLabel;
-import static org.sonarsource.sonarlint.ls.util.EnumLabelsMapper.impactSeverityToLabel;
-import static org.sonarsource.sonarlint.ls.util.EnumLabelsMapper.softwareQualityToLabel;
 
 class CommandManagerTests {
 
@@ -176,11 +172,22 @@ class CommandManagerTests {
   @Test
   void noDisableRuleForBoundProject() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
+    when(mockBinding.connectionId()).thenReturn("connectionId");
+    when(backendService.checkChangeIssueStatusPermitted(any())).thenReturn(CompletableFuture.completedFuture(new CheckStatusChangePermittedResponse(true, null, List.of())));
+
+    var issue = mock(DelegatingFinding.class);
+    when(issue.getIssueId()).thenReturn(UUID.randomUUID());
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), any())).thenReturn(Optional.of(issue));
+    var folderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
+    when(issue.getFileUri()).thenReturn(URI.create(FILE_URI));
+    when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ")))), NOP_CANCEL_TOKEN);
 
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("SonarLint: Open description of rule 'XYZ'");
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("SonarLint: Show issue details for 'XYZ'",
+      "SonarLint: Resolve issue violating rule 'XYZ' as...");
   }
 
   @Test
@@ -191,13 +198,14 @@ class CommandManagerTests {
 
     var issue = mock(DelegatingFinding.class);
     when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
+    when(issue.getIssueId()).thenReturn(UUID.randomUUID());
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsOnly(
-        "SonarLint: Open description of rule 'XYZ'",
+        "SonarLint: Show issue details for 'XYZ'",
         "SonarLint: Deactivate rule 'XYZ'");
   }
 
@@ -210,6 +218,7 @@ class CommandManagerTests {
 
     var issue = mock(DelegatingFinding.class);
     when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
+    when(issue.getIssueId()).thenReturn(UUID.randomUUID());
 
     var textEdit = mock(TextEditDto.class);
     when(textEdit.newText()).thenReturn("");
@@ -228,7 +237,7 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
         "SonarLint: Fix the issue!",
-        "SonarLint: Open description of rule 'XYZ'",
+        "SonarLint: Show issue details for 'XYZ'",
         "SonarLint: Deactivate rule 'XYZ'");
   }
 
@@ -258,6 +267,7 @@ class CommandManagerTests {
     when(openNotebooksCache.getNotebookUriFromCellUri(URI.create(CELL_URI))).thenReturn(fakeNotebook.getUri());
     when(openNotebooksCache.isKnownCellUri(URI.create(CELL_URI))).thenReturn(true);
     when(issuesCache.getIssueForDiagnostic(fakeNotebook.getUri(), d)).thenReturn(Optional.of(rawIssue));
+    when(rawIssue.getIssueId()).thenReturn(UUID.randomUUID());
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_NOTEBOOK_CELL_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
@@ -265,7 +275,7 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
         "SonarLint: Fix the issue!",
-        "SonarLint: Open description of rule 'XYZ'",
+        "SonarLint: Show issue details for 'XYZ'",
         "SonarLint: Deactivate rule 'XYZ'");
   }
 
@@ -304,15 +314,14 @@ class CommandManagerTests {
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
-      "SonarLint: Open description of rule 'ruleKey'",
+      "SonarLint: Show issue details for 'ruleKey'",
       "SonarLint: Show all locations for taint vulnerability 'ruleKey'",
       "SonarLint: Open taint vulnerability 'ruleKey' on 'connectionId'",
       "SonarLint: Resolve issue violating rule 'ruleKey' as...");
 
     assertThat(codeActions.get(0).getRight().getCommand().getArguments()).containsOnly(
-      "ruleKey",
-      "file://foo.js",
-      "servlet");
+      issueId,
+      "file://foo.js");
   }
 
 
@@ -328,19 +337,30 @@ class CommandManagerTests {
     when(mockSettingsManager.getCurrentSettings()).thenReturn(mockWorkspacesettings);
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARCLOUD_TAINT_SOURCE, "ruleKey");
+    var fakeTaint = mock(TaintIssue.class);
+    var taintId = UUID.randomUUID();
+    when(fakeTaint.getId()).thenReturn(taintId);
+    when(fakeTaint.getSonarServerKey()).thenReturn("serverIssueKey");
+    when(fakeTaint.getWorkspaceFolderUri()).thenReturn("file:///my/workspace/folder");
+    var folderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
+    when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
 
-    when(mockTaintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.empty());
+    when(mockTaintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(fakeTaint));
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
-      "SonarLint: Open description of rule 'ruleKey'");
+      "SonarLint: Show issue details for 'ruleKey'",
+      "SonarLint: Open taint vulnerability 'ruleKey' on 'connectionId'",
+      "SonarLint: Resolve issue violating rule 'ruleKey' as...");
 
     assertThat(codeActions.get(0).getRight().getCommand().getArguments()).containsOnly(
-      "ruleKey",
-      "file://foo.js",
-      "");
+      taintId,
+      "file://foo.js");
+    assertThat(codeActions.get(1).getRight().getCommand().getArguments()).containsOnly(
+      "https://some.server.url/project/issues?id=projectKey&issues=serverIssueKey&open=serverIssueKey");
   }
 
   @Test
@@ -355,42 +375,38 @@ class CommandManagerTests {
     when(issue.flows()).thenReturn(flows);
     when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(issue.getIssueId()).thenReturn(UUID.randomUUID());
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsOnly(
-        "SonarLint: Open description of rule 'XYZ'",
+        "SonarLint: Show issue details for 'XYZ'",
         "SonarLint: Deactivate rule 'XYZ'",
         "SonarLint: Show all locations for issue 'XYZ'");
   }
 
   @Test
   void openRuleDescriptionForBoundProject() {
-    var response = mock(GetEffectiveRuleDetailsResponse.class);
-    when(backendService.getEffectiveRuleDetails(anyString(), anyString(), anyString())).thenReturn(CompletableFuture.completedFuture(response));
+    var response = mock(GetEffectiveIssueDetailsResponse.class);
+    when(backendService.getEffectiveIssueDetails(anyString(), any())).thenReturn(CompletableFuture.completedFuture(response));
     var folderWrapper = mock(WorkspaceFolderWrapper.class);
     when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
     when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
-    var details = mock(EffectiveRuleDetailsDto.class);
+    var details = mock(EffectiveIssueDetailsDto.class);
     when(details.getName()).thenReturn("Name");
-    when(details.getType()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType.BUG);
-    when(details.getSeverity()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity.BLOCKER);
+    Either<StandardModeDetails, MQRModeDetails> severityDetails = Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG));
+    when(details.getSeverityDetails()).thenReturn(severityDetails);
     when(details.getParams()).thenReturn(emptyList());
-    when(details.getKey()).thenReturn(FAKE_RULE_KEY);
+    when(details.getRuleKey()).thenReturn(FAKE_RULE_KEY);
     when(details.getLanguage()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.Language.JS);
-    when(details.getCleanCodeAttribute()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute.COMPLETE);
-    when(details.getCleanCodeAttributeCategory()).thenReturn(CleanCodeAttributeCategory.INTENTIONAL);
-    when(details.getDefaultImpacts()).thenReturn(
-      List.of(new ImpactDto(org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality.SECURITY, org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity.HIGH),
-        new ImpactDto(org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality.SECURITY, org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity.MEDIUM)));
     var desc = mock(RuleMonolithicDescriptionDto.class);
     when(desc.getHtmlContent()).thenReturn("Desc");
     when(details.getDescription()).thenReturn(Either.forLeft(desc));
-    when(response.details()).thenReturn(details);
+    when(response.getDetails()).thenReturn(details);
     underTest.executeCommand(
-      new ExecuteCommandParams(SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND, List.of(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI), new JsonPrimitive(""))),
+      new ExecuteCommandParams(SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND, List.of(new JsonPrimitive(UUID.randomUUID().toString()), new JsonPrimitive(FILE_URI))),
       NOP_CANCEL_TOKEN);
 
     var captor = ArgumentCaptor.forClass(ShowRuleDescriptionParams.class);
@@ -403,9 +419,6 @@ class CommandManagerTests {
     assertThat(actualParam.getSeverity()).isEqualTo(IssueSeverity.BLOCKER.name());
     assertThat(actualParam.getLanguageKey()).isEqualTo(SonarLanguage.JS.getSonarLanguageKey());
     assertThat(actualParam.getHtmlDescription()).isEqualTo("Desc");
-    assertThat(actualParam.getCleanCodeAttributeCategory()).isEqualTo(cleanCodeAttributeCategoryToLabel(CleanCodeAttributeCategory.INTENTIONAL));
-    assertThat(actualParam.getCleanCodeAttribute()).isEqualTo(cleanCodeAttributeToLabel(CleanCodeAttribute.COMPLETE));
-    assertThat(actualParam.getImpacts()).containsExactly(entry(softwareQualityToLabel(SoftwareQuality.SECURITY), impactSeverityToLabel(ImpactSeverity.MEDIUM)));
   }
 
   @Test
@@ -487,8 +500,7 @@ class CommandManagerTests {
   @Test
   void getHtmlDescriptionTabsMonolithicShouldReturnNoTabs() {
     var monolithicDesc = new RuleMonolithicDescriptionDto("monolithicHtmlContent");
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, null, null,
-      List.of(), Either.forLeft(monolithicDesc), emptyList(), null, null);
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, Either.forLeft(monolithicDesc), emptyList(), null, null);
 
     assertThat(CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription().getLsp4jEither(), "")).isEmpty();
   }
@@ -500,8 +512,7 @@ class CommandManagerTests {
     var tab1 = new RuleDescriptionTabDto("title1", Either.forLeft(section1));
     var tab2 = new RuleDescriptionTabDto("title2", Either.forLeft(section2));
     var splitDesc = new RuleSplitDescriptionDto("introHtmlContent", List.of(tab1, tab2));
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, null, null,
-      List.of(), Either.forRight(splitDesc), emptyList(), null, null);
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, Either.forRight(splitDesc), emptyList(), null, null);
 
     var descriptionTabs = CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription().getLsp4jEither(), "");
 
@@ -528,8 +539,7 @@ class CommandManagerTests {
     var tab1 = new RuleDescriptionTabDto("title1", Either.forRight(sectionDto1));
     var tab2 = new RuleDescriptionTabDto("title2", Either.forRight(sectionDto2));
     var splitDesc = new RuleSplitDescriptionDto("introHtmlContent", List.of(tab1, tab2));
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, null, null,
-      List.of(), Either.forRight(splitDesc), emptyList(), null, null);
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, Either.forRight(splitDesc), emptyList(), null, null);
 
     var descriptionTabs = CommandManager.getHtmlDescriptionTabs(ruleDetails.getDescription().getLsp4jEither(), "java");
 
@@ -556,8 +566,7 @@ class CommandManagerTests {
   @Test
   void getHtmlDescriptionMonolithic() {
     var monolithicDesc = new RuleMonolithicDescriptionDto("monolithicHtmlContent");
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, null, null,
-      List.of(), Either.forLeft(monolithicDesc), emptyList(), null, null);
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, Either.forLeft(monolithicDesc), emptyList(), null, null);
 
     assertThat(CommandManager.getHtmlDescription(ruleDetails.getDescription().getLsp4jEither())).isEqualTo("monolithicHtmlContent");
   }
@@ -567,8 +576,7 @@ class CommandManagerTests {
     var section1 = new RuleNonContextualSectionDto(null);
     var tab1 = new RuleDescriptionTabDto(null, Either.forLeft(section1));
     var splitDesc = new RuleSplitDescriptionDto("splitHtmlContent", List.of(tab1));
-    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, null, null, null,
-      List.of(), Either.forRight(splitDesc), emptyList(), null, null);
+    var ruleDetails = new EffectiveRuleDetailsDto(null, null, null, Either.forRight(splitDesc), emptyList(), null, null);
 
 
     assertThat(CommandManager.getHtmlDescription(ruleDetails.getDescription().getLsp4jEither())).isEqualTo("splitHtmlContent");
@@ -619,7 +627,7 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
         "SonarLint: Resolve issue violating rule 'XYZ' as...",
-        "SonarLint: Open description of rule 'XYZ'");
+        "SonarLint: Show issue details for 'XYZ'");
   }
 
   @Test
@@ -638,6 +646,7 @@ class CommandManagerTests {
 
     var issue = mock(DelegatingFinding.class);
     when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
+    when(issue.getIssueId()).thenReturn(UUID.randomUUID());
 
     var textEdit = mock(TextEdit.class);
     when(textEdit.newText()).thenReturn("");
@@ -653,40 +662,7 @@ class CommandManagerTests {
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
-        "SonarLint: Open description of rule 'XYZ'");
+        "SonarLint: Show issue details for 'XYZ'");
   }
 
-  @Test
-  void doesNotHaveResolveIssueActionForBoundProjectForIssueWithoutKey() {
-    var folderWrapper = mock(WorkspaceFolderWrapper.class);
-    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
-    when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
-    when(backendService.checkChangeIssueStatusPermitted(any()))
-      .thenReturn(CompletableFuture.completedFuture(new CheckStatusChangePermittedResponse(true, null, Collections.emptyList())));
-    var connId = "connectionId";
-    when(mockBinding.connectionId()).thenReturn(connId);
-    when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
-    var fileUri = URI.create(FILE_URI);
-
-    var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
-
-    var issue = mock(DelegatingFinding.class);
-    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
-
-    var textEdit = mock(TextEdit.class);
-    when(textEdit.newText()).thenReturn("");
-    when(textEdit.range()).thenReturn(new TextRange(1, 0, 1, 1));
-    var edit = mock(ClientInputFileEdit.class);
-    when(edit.textEdits()).thenReturn(List.of(textEdit));
-    var target = mock(ClientInputFile.class);
-    when(target.uri()).thenReturn(fileUri);
-    when(edit.target()).thenReturn(target);
-
-    var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
-      new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
-
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle())
-      .containsExactly(
-        "SonarLint: Open description of rule 'XYZ'");
-  }
 }

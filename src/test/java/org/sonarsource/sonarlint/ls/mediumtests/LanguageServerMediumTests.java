@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.mediumtests;
 
 
+import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -71,7 +72,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCate
 import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Components;
-import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.Rule;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
@@ -659,8 +659,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.ruleDesc.getName()).isEqualTo("Function calls should not pass extra arguments");
     assertThat(htmlContent).contains("When you call a function in JavaScript and provide more arguments than the function expects, the extra arguments are simply ignored by the\n" +
       "function.");
-    assertThat(client.ruleDesc.getType()).isEqualTo("BUG");
-    assertThat(client.ruleDesc.getSeverity()).isEqualTo("CRITICAL");
+    assertThat(client.ruleDesc.getType()).isNull();
+    assertThat(client.ruleDesc.getSeverity()).isNull();
+    assertThat(client.ruleDesc.getCleanCodeAttributeCategory()).isEqualTo("Intentionality");
+    assertThat(client.ruleDesc.getCleanCodeAttribute()).isEqualTo("Not logical");
+    assertThat(client.ruleDesc.getImpacts()).containsExactly(Map.entry("Reliability", "High"));
     assertThat(client.ruleDesc.getParameters()).isEmpty();
     assertThat(client.ruleDesc.getHtmlDescriptionTabs()).hasSize(2);
   }
@@ -689,8 +692,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.ruleDesc.getKey()).isEqualTo(PYTHON_S139);
     assertThat(client.ruleDesc.getName()).isEqualTo("Comments should not be located at the end of lines of code");
     assertThat(htmlContent).contains("This rule verifies that single-line comments are not located at the ends of lines of code.");
-    assertThat(client.ruleDesc.getType()).isEqualTo("CODE_SMELL");
-    assertThat(client.ruleDesc.getSeverity()).isEqualTo("MINOR");
+    assertThat(client.ruleDesc.getCleanCodeAttribute()).isEqualTo("Not formatted");
+    assertThat(client.ruleDesc.getImpacts()).containsEntry("Maintainability", "Low");
     assertThat(client.ruleDesc.getParameters()).hasSize(1)
       .extracting(SonarLintExtendedLanguageClient.RuleParameter::getName, SonarLintExtendedLanguageClient.RuleParameter::getDescription,
         SonarLintExtendedLanguageClient.RuleParameter::getDefaultValue)
@@ -702,25 +705,32 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void testCodeAction_with_diagnostic_rule() throws Exception {
+    var uri = getUri("analyzeSimpleJsFileOnOpen.js", analysisDir);
+    didOpen(uri, "javascript", "function sum(a, b) {\n" +
+      "  return a + b;\n" +
+      "}\n" +
+      "\n" +
+      "sum(1, 2, 3);");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
+      .hasSize(1));
+
     var range = new Range(new Position(1, 0), new Position(1, 10));
-    var d = new Diagnostic(range, "An issue");
-    d.setSource("sonarlint");
-    d.setCode("javascript:S930");
-    var diagnosticData = new DiagnosticPublisher.DiagnosticData();
-    diagnosticData.setEntryKey("uuid");
-    d.setData(diagnosticData);
-    var codeActionParams = new CodeActionParams(new TextDocumentIdentifier("file://foo.js"), range, new CodeActionContext(List.of(d)));
+    var issueId = ((JsonObject) client.getDiagnostics(uri).get(0).getData()).get("entryKey").getAsString();
+
+    var codeActionParams = new CodeActionParams(new TextDocumentIdentifier(uri), range, new CodeActionContext(List.of(client.getDiagnostics(uri).get(0))));
     var list = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
-    assertThat(list).hasSize(2);
+    assertThat(list).hasSize(3);
     var codeAction = list.get(0).getRight();
-    assertThat(codeAction.getTitle()).isEqualTo("SonarLint: Open description of rule 'javascript:S930'");
+    assertThat(codeAction.getTitle()).isEqualTo("SonarLint: Show issue details for 'javascript:S930'");
     var openRuleDesc = codeAction.getCommand();
-    assertThat(openRuleDesc.getCommand()).isEqualTo("SonarLint.OpenRuleDescCodeAction");
-    assertThat(openRuleDesc.getArguments()).hasSize(3);
-    assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(0)).getAsString()).isEqualTo("javascript:S930");
-    assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(1)).getAsString()).isEqualTo("file://foo.js");
-    assertThat((((JsonPrimitive) openRuleDesc.getArguments().get(2)).getAsString())).isEmpty();
-    var disableRuleCodeAction = list.get(1).getRight();
+    assertThat(openRuleDesc.getCommand()).isEqualTo("SonarLint.ShowIssueDetailsCodeAction");
+    assertThat(openRuleDesc.getArguments()).hasSize(2);
+    assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(0)).getAsString()).isEqualTo(issueId);
+    assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(1)).getAsString()).isEqualTo(uri);
+    var showAllLocationsCodeAction = list.get(1).getRight();
+    assertThat(showAllLocationsCodeAction.getTitle()).isEqualTo("SonarLint: Show all locations for issue 'javascript:S930'");
+    var disableRuleCodeAction = list.get(2).getRight();
     assertThat(disableRuleCodeAction.getTitle()).isEqualTo("SonarLint: Deactivate rule 'javascript:S930'");
     var disableRule = disableRuleCodeAction.getCommand();
     assertThat(disableRule.getCommand()).isEqualTo("SonarLint.DeactivateRule");
@@ -987,19 +997,27 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void test_open_rule_desc_for_file_without_workspace() throws Exception {
+    var uri = getUri("analyzeSimplePythonFileOnOpen.py", analysisDir);
+
+    didOpen(uri, "python", "def foo():\n  print 'toto'\n");
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
+      .hasSize(1));
+    var issueId = ((JsonObject) client.getDiagnostics(uri).get(0).getData()).get("entryKey");
+
     client.showRuleDescriptionLatch = new CountDownLatch(1);
-    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenRuleDescCodeAction", List.of(PYTHON_S1481, "file://foo.py", ""))).get();
+    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.ShowIssueDetailsCodeAction", List.of(issueId, uri))).get();
 
     assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
 
     var ruleDescriptionTabNonContextual = client.ruleDesc.getHtmlDescriptionTabs()[0].getRuleDescriptionTabNonContextual();
     var htmlContent = ruleDescriptionTabNonContextual != null ? ruleDescriptionTabNonContextual.getHtmlContent() : "";
-    assertThat(client.ruleDesc.getKey()).isEqualTo(PYTHON_S1481);
-    assertThat(client.ruleDesc.getName()).isEqualTo("Unused local variables should be removed");
-    assertThat(htmlContent).contains("It is dead code,\n" +
-      "contributing to unnecessary complexity and leading to confusion when reading the code.");
-    assertThat(client.ruleDesc.getType()).isEqualTo("CODE_SMELL");
-    assertThat(client.ruleDesc.getSeverity()).isEqualTo("MINOR");
+    assertThat(client.ruleDesc.getKey()).isEqualTo("python:PrintStatementUsage");
+    assertThat(client.ruleDesc.getName()).isEqualTo("The \"print\" statement should not be used");
+    assertThat(htmlContent).contains("<p>The <code>print</code> statement was removed in Python 3.0.");
+    assertThat(client.ruleDesc.getCleanCodeAttribute()).isEqualTo("Not conventional");
+    assertThat(client.ruleDesc.getCleanCodeAttributeCategory()).isEqualTo("Consistency");
+    assertThat(client.ruleDesc.getImpacts()).containsEntry("Maintainability", "Medium");
   }
 
   @Test

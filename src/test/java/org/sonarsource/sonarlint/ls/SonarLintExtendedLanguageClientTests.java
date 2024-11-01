@@ -24,9 +24,12 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRuleParamDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
+import org.sonarsource.sonarlint.ls.domain.MQRModeDetails;
+import org.sonarsource.sonarlint.ls.domain.StandardModeDetails;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute.COMPLETE;
@@ -47,8 +50,8 @@ class SonarLintExtendedLanguageClientTests {
   void test_rule_parameter_equals_hashCode() {
     var param1 = new EffectiveRuleParamDto("name", "description", "42", "50");
     var ruleDescTabs = new SonarLintExtendedLanguageClient.RuleDescriptionTab[]{new SonarLintExtendedLanguageClient.RuleDescriptionTab("ruleDescTitle", new SonarLintExtendedLanguageClient.RuleDescriptionTabNonContextual("ruleDesc"))};
-    var ruleDesc1 = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, RuleType.BUG, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.singleton(param1), cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)));
-    var ruleDescSame1 = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, RuleType.BUG, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.singleton(param1), cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)));
+    var ruleDesc1 = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.singleton(param1), Either.forRight(new MQRModeDetails(cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)))));
+    var ruleDescSame1 = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.singleton(param1), Either.forRight(new MQRModeDetails(cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)))));
 
     assertThat(ruleDesc1).hasSameHashCodeAs(ruleDescSame1)
       .isEqualTo(ruleDesc1)
@@ -56,39 +59,39 @@ class SonarLintExtendedLanguageClientTests {
       .isNotEqualTo("foo")
       .isNotEqualTo(null);
 
-    var ruleDescDiffKey = new ShowRuleDescriptionParams("key2", "name1", "desc1", ruleDescTabs, RuleType.BUG, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.singleton(param1), cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)));
+    var ruleDescDiffKey = new ShowRuleDescriptionParams("key2", "name1", "desc1", ruleDescTabs, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.singleton(param1), Either.forRight(new MQRModeDetails(cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)))));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffKey.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffKey);
 
-    var ruleDescDiffName = new ShowRuleDescriptionParams("key1", "name2", "desc1", ruleDescTabs, RuleType.BUG, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.singleton(param1), cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)));
+    var ruleDescDiffName = new ShowRuleDescriptionParams("key1", "name2", "desc1", ruleDescTabs, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.singleton(param1), Either.forRight(new MQRModeDetails(cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)))));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffName.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffName);
 
-    var ruleDescDiffDesc = new ShowRuleDescriptionParams("key1", "name1", "desc2", ruleDescTabs, RuleType.BUG, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.singleton(param1), cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)));
+    var ruleDescDiffDesc = new ShowRuleDescriptionParams("key1", "name1", "desc2", ruleDescTabs, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.singleton(param1), Either.forRight(new MQRModeDetails(cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)))));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffDesc.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffDesc);
 
-    var ruleDescDiffType = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, RuleType.VULNERABILITY, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.singleton(param1), cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)));
+    var ruleDescDiffType = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.singleton(param1), Either.forLeft(new StandardModeDetails(RuleType.VULNERABILITY.name(), IssueSeverity.BLOCKER.name())));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffType.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffType);
 
-    var ruleDescDiffSeverity = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, RuleType.BUG, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.CRITICAL, Collections.singleton(param1), cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)));
+    var ruleDescDiffSeverity = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.singleton(param1), Either.forLeft(new StandardModeDetails(RuleType.BUG.name(), IssueSeverity.CRITICAL.name())));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffSeverity.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffSeverity);
 
-    var ruleDescDiffParams = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, RuleType.BUG, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.emptyList(), cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)));
+    var ruleDescDiffParams = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.emptyList(), Either.forRight(new MQRModeDetails(cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)))));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffParams.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffParams);
 
-    var ruleDescDiffCleanCodeAttr = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, RuleType.BUG, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.singleton(param1), cleanCodeAttributeToLabel(COMPLETE), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)));
+    var ruleDescDiffCleanCodeAttr = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.singleton(param1), Either.forRight(new MQRModeDetails(cleanCodeAttributeToLabel(COMPLETE), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)))));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffCleanCodeAttr.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffCleanCodeAttr);
 
-    var ruleDescDiffCleanCodeCategory = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, RuleType.BUG, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.singleton(param1), cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(INTENTIONAL), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)));
+    var ruleDescDiffCleanCodeCategory = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.singleton(param1), Either.forRight(new MQRModeDetails(cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(INTENTIONAL), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)))));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffCleanCodeCategory.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffCleanCodeCategory);
 
-    var ruleDescDiffImpacts = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, RuleType.BUG, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.singleton(param1), cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(INTENTIONAL), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(LOW)));
+    var ruleDescDiffImpacts = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.singleton(param1), Either.forRight(new MQRModeDetails(cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(LOW)))));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffImpacts.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffImpacts);
 
@@ -96,7 +99,7 @@ class SonarLintExtendedLanguageClientTests {
       new SonarLintExtendedLanguageClient.RuleDescriptionTab("ruleDescTitle", new SonarLintExtendedLanguageClient.RuleDescriptionTabNonContextual("ruleDesc")),
       new SonarLintExtendedLanguageClient.RuleDescriptionTab("ruleDescTitle1", new SonarLintExtendedLanguageClient.RuleDescriptionTabNonContextual("ruleDesc1"))
     };
-    var ruleDescDiffDescTabs = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs2, RuleType.BUG, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.singleton(param1), cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)));
+    var ruleDescDiffDescTabs = new ShowRuleDescriptionParams("key1", "name1", "desc1", ruleDescTabs2, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.singleton(param1), Either.forRight(new MQRModeDetails(cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)))));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescDiffDescTabs.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescDiffDescTabs);
 
@@ -118,7 +121,7 @@ class SonarLintExtendedLanguageClientTests {
     assertThat(exposedParam.hashCode()).isNotEqualTo(paramDiffDefaultValue.hashCode());
     assertThat(exposedParam).isNotEqualTo(paramDiffDefaultValue);
 
-    var ruleDescTaintParams = new ShowRuleDescriptionParams("javasecurity:S1234", "name1", "desc1", ruleDescTabs, RuleType.VULNERABILITY, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.emptyList(), cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)));
+    var ruleDescTaintParams = new ShowRuleDescriptionParams("javasecurity:S1234", "name1", "desc1", ruleDescTabs, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.emptyList(), Either.forRight(new MQRModeDetails(cleanCodeAttributeToLabel(TRUSTWORTHY), cleanCodeAttributeCategoryToLabel(RESPONSIBLE), Map.of(softwareQualityToLabel(SECURITY), impactSeverityToLabel(HIGH)))));
     assertThat(ruleDesc1.hashCode()).isNotEqualTo(ruleDescTaintParams.hashCode());
     assertThat(ruleDesc1).isNotEqualTo(ruleDescTaintParams);
   }
@@ -229,19 +232,17 @@ class SonarLintExtendedLanguageClientTests {
 
   @Test
   void test_rule_description_params_is_taint() {
-    var taint = new ShowRuleDescriptionParams("javasecurity:S5168", "Rule Name", null, null, RuleType.VULNERABILITY, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.emptyList(), "", "", Collections.emptyMap());
-    var notTaint1 = new ShowRuleDescriptionParams("java:S5168", "Rule Name", null, null, RuleType.VULNERABILITY, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.emptyList(), "", "", Collections.emptyMap());
-    var notTaint2 = new ShowRuleDescriptionParams("javasecurity:S5168", "Rule Name", null, null, RuleType.BUG, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.emptyList(), "", "", Collections.emptyMap());
+    var taint = new ShowRuleDescriptionParams("javasecurity:S5168", "Rule Name", null, null, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.emptyList(), Either.forLeft(new StandardModeDetails(RuleType.VULNERABILITY.name(), IssueSeverity.BLOCKER.name())));
+    var notTaint1 = new ShowRuleDescriptionParams("java:S5168", "Rule Name", null, null, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.emptyList(), Either.forLeft(new StandardModeDetails(RuleType.VULNERABILITY.name(), IssueSeverity.BLOCKER.name())));
 
     assertThat(taint.isTaint()).isTrue();
     assertThat(notTaint1.isTaint()).isFalse();
-    assertThat(notTaint2.isTaint()).isFalse();
   }
 
   @Test
   void test_rule_description_language() {
-    var ruleDesc1 = new ShowRuleDescriptionParams("javasecurity:S5168", "Rule Name", null, null, RuleType.VULNERABILITY, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.emptyList(), "", "", Collections.emptyMap());
-    var ruleDesc2 = new ShowRuleDescriptionParams("java:S5168", "Rule Name", null, null, RuleType.VULNERABILITY, SonarLanguage.JAVA.getSonarLanguageKey(), IssueSeverity.BLOCKER, Collections.emptyList(), "", "", Collections.emptyMap());
+    var ruleDesc1 = new ShowRuleDescriptionParams("javasecurity:S5168", "Rule Name", null, null, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.emptyList(), Either.forRight(new MQRModeDetails("Trustworthy", "Not secure", Map.of())));
+    var ruleDesc2 = new ShowRuleDescriptionParams("java:S5168", "Rule Name", null, null, SonarLanguage.JAVA.getSonarLanguageKey(), Collections.emptyList(), Either.forRight(new MQRModeDetails("Trustworthy", "Not secure", Map.of())));
 
     assertThat(ruleDesc1.getLanguageKey()).isEqualTo(SonarLanguage.JAVA.getSonarLanguageKey());
     assertThat(ruleDesc2.getLanguageKey()).isEqualTo(SonarLanguage.JAVA.getSonarLanguageKey());

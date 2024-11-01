@@ -79,8 +79,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotIn
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.InitializeParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ChangeIssueStatusParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.GetIssueDetailsParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.GetIssueDetailsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.GetEffectiveIssueDetailsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.GetEffectiveIssueDetailsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.newcode.GetNewCodeDefinitionParams;
@@ -400,9 +400,9 @@ public class BackendService {
     initializedBackend().getAnalysisService().didChangePathToCompileCommands(params);
   }
 
-  public CompletableFuture<GetIssueDetailsResponse> getIssueDetails(@Nullable String workspaceFolder, UUID issueKey) {
+  public CompletableFuture<GetEffectiveIssueDetailsResponse> getEffectiveIssueDetails(@Nullable String workspaceFolder, UUID issueKey) {
     var workspaceOrRootScope = Optional.ofNullable(workspaceFolder).orElse(ROOT_CONFIGURATION_SCOPE);
-    var params = new GetIssueDetailsParams(workspaceOrRootScope, issueKey);
-    return initializedBackend().getIssueService().getIssueDetails(params);
+    var params = new GetEffectiveIssueDetailsParams(workspaceOrRootScope, issueKey);
+    return initializedBackend().getIssueService().getEffectiveIssueDetails(params);
   }
 }

@@ -41,8 +41,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBinding
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.ChangesDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.domain.MQRModeDetails;
@@ -306,43 +304,14 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     @Expose
     private final RuleDescriptionTab[] htmlDescriptionTabs;
     @Expose
-    private final String type = null;
-    @Expose
-    private final String severity = null;
-    @Expose
     private final String languageKey;
     @Expose
     private final boolean isTaint;
     @Expose
     private final RuleParameter[] parameters;
     @Expose
-    private final String cleanCodeAttribute = null;
-    @Expose
-    private final String cleanCodeAttributeCategory = null;
-    @Expose
-    private final Map<String, String> impacts = null;
-    @Expose
     @JsonAdapter(EitherStandardOrMQRAdapterFactory.class)
-    private final Either<org.sonarsource.sonarlint.ls.domain.StandardModeDetails,
-      org.sonarsource.sonarlint.ls.domain.MQRModeDetails> severityDetails;
-
-    public ShowRuleDescriptionParams(String ruleKey, String ruleName, String htmlDescription, RuleDescriptionTab[] htmlDescriptionTabs,
-      RuleType type, String languageKey, IssueSeverity severity, Collection<EffectiveRuleParamDto> params, String cleanCodeAttribute,
-      String cleanCodeAttributeCategory, Map<String, String> impacts) {
-      this.key = ruleKey;
-      this.name = ruleName;
-      this.htmlDescription = htmlDescription;
-      this.htmlDescriptionTabs = htmlDescriptionTabs;
-//      this.type = type.toString();
-      this.languageKey = languageKey;
-//      this.severity = severity.toString();
-      this.isTaint = ruleKey.contains(TAINT_RULE_REPO_SUFFIX) && type == RuleType.VULNERABILITY;
-      this.parameters = params.stream().map(p -> new RuleParameter(p.getName(), p.getDescription(), p.getDefaultValue())).toArray(RuleParameter[]::new);
-//      this.cleanCodeAttribute = cleanCodeAttribute;
-//      this.cleanCodeAttributeCategory = cleanCodeAttributeCategory;
-//      this.impacts = impacts;
-      this.severityDetails = null;
-    }
+    private final Either<StandardModeDetails, MQRModeDetails> severityDetails;
 
     public ShowRuleDescriptionParams(String ruleKey, String ruleName, String htmlDescription, RuleDescriptionTab[] htmlDescriptionTabs,
       String languageKey, Collection<EffectiveRuleParamDto> params, Either<StandardModeDetails, MQRModeDetails> severityDetails) {
@@ -351,29 +320,21 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
       this.htmlDescription = htmlDescription;
       this.htmlDescriptionTabs = htmlDescriptionTabs;
       this.languageKey = languageKey;
-//      this.isTaint = ruleKey.contains(TAINT_RULE_REPO_SUFFIX) && type == RuleType.VULNERABILITY;
-      this.isTaint = false;
+      this.isTaint = ruleKey.contains(TAINT_RULE_REPO_SUFFIX);
       this.parameters = params.stream().map(p -> new RuleParameter(p.getName(), p.getDescription(), p.getDefaultValue())).toArray(RuleParameter[]::new);
       this.severityDetails = severityDetails;
     }
 
     public ShowRuleDescriptionParams(String ruleKey, String ruleName, String htmlDescription, RuleDescriptionTab[] htmlDescriptionTabs,
-      RuleType type, String languageKey, IssueSeverity severity, Map<String, RuleParamDefinitionDto> params, String cleanCodeAttribute,
-      String cleanCodeAttributeCategory, Map<String, String> impacts) {
+      String languageKey, Map<String, RuleParamDefinitionDto> params, Either<StandardModeDetails, MQRModeDetails> severityDetails) {
       this.key = ruleKey;
       this.name = ruleName;
       this.htmlDescription = htmlDescription;
       this.htmlDescriptionTabs = htmlDescriptionTabs;
-//      this.type = type.toString();
       this.languageKey = languageKey;
-//      this.severity = severity.toString();
-      this.isTaint = ruleKey.contains(TAINT_RULE_REPO_SUFFIX) && type == RuleType.VULNERABILITY;
-      this.parameters = params.values().stream().map(ruleParamDefinitionDto -> new RuleParameter(ruleParamDefinitionDto.getName(), ruleParamDefinitionDto.getDescription(),
-        ruleParamDefinitionDto.getDefaultValue())).toArray(RuleParameter[]::new);
-//      this.cleanCodeAttributeCategory = cleanCodeAttributeCategory;
-//      this.cleanCodeAttribute = cleanCodeAttribute;
-//      this.impacts = impacts;
-      this.severityDetails = null;
+      this.isTaint = ruleKey.contains(TAINT_RULE_REPO_SUFFIX);
+      this.parameters = params.values().stream().map(v -> new RuleParameter(v.getName(), v.getDescription(), v.getDefaultValue())).toArray(RuleParameter[]::new);
+      this.severityDetails = severityDetails;
     }
 
     public String getKey() {
@@ -389,11 +350,13 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
 
     public String getType() {
-      return type;
+      return severityDetails.isLeft() ?
+        severityDetails.getLeft().getType() : null;
     }
 
     public String getSeverity() {
-      return severity;
+      return severityDetails.isLeft() ?
+        severityDetails.getLeft().getSeverity() : null;
     }
 
     public boolean isTaint() {
@@ -413,15 +376,17 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
 
     public String getCleanCodeAttribute() {
-      return cleanCodeAttribute;
+      return severityDetails.isRight() ?
+        severityDetails.getRight().getCleanCodeAttribute() : null;
     }
 
     public String getCleanCodeAttributeCategory() {
-      return cleanCodeAttributeCategory;
+      return severityDetails.isRight() ?
+        severityDetails.getRight().getCleanCodeAttributeCategory() : null;
     }
 
     public Map<String, String> getImpacts() {
-      return impacts;
+      return severityDetails.isRight() ? severityDetails.getRight().getImpacts() : Map.of();
     }
 
     @Override
@@ -434,18 +399,18 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
         && Objects.equals(name, that.name)
         && Objects.equals(htmlDescription, that.htmlDescription)
         && Objects.equals(languageKey, that.languageKey)
-        && Objects.equals(cleanCodeAttribute, that.cleanCodeAttribute)
-        && Objects.equals(cleanCodeAttributeCategory, that.cleanCodeAttributeCategory)
-        && Objects.equals(impacts, that.impacts)
+        && Objects.equals(this.getCleanCodeAttribute(), that.getCleanCodeAttribute())
+        && Objects.equals(this.getCleanCodeAttributeCategory(), that.getCleanCodeAttributeCategory())
+        && Objects.equals(this.getImpacts(), that.getImpacts())
         && Arrays.equals(htmlDescriptionTabs, that.htmlDescriptionTabs)
-        && Objects.equals(type, that.type) && Objects.equals(severity, that.severity)
+        && Objects.equals(this.getType(), that.getType()) && Objects.equals(this.getSeverity(), that.getSeverity())
         && Arrays.equals(parameters, that.parameters);
     }
 
     @Override
     public int hashCode() {
-      int result = Objects.hash(key, name, htmlDescription, type, severity, isTaint, languageKey,
-        cleanCodeAttribute, cleanCodeAttributeCategory, impacts);
+      int result = Objects.hash(key, name, htmlDescription, this.getType(), this.getSeverity(), isTaint, languageKey,
+        this.getCleanCodeAttribute(), this.getCleanCodeAttributeCategory(), this.getImpacts());
       result = 31 * result + Arrays.hashCode(htmlDescriptionTabs);
       result = 31 * result + Arrays.hashCode(parameters);
       return result;

@@ -24,7 +24,7 @@
 
   <properties>
     <jdk.min.version>17</jdk.min.version>
-    <sonarlint.core.version>10.9.0.79388</sonarlint.core.version>
+    <sonarlint.core.version>10.9.0.79409</sonarlint.core.version>
     <!-- Version used by Xodus -->
     <kotlin.version>1.6.10</kotlin.version>
     <!-- analyzers used for tests -->

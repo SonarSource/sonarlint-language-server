@@ -888,11 +888,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<SonarLintExtendedLanguageClient.ShowRuleDescriptionParams> getHotspotDetails(ShowHotspotRuleDescriptionParams params) {
     var fileUri = params.fileUri;
-    var ruleKey = params.ruleKey;
-    var hotspot = securityHotspotsCache.get(create(fileUri)).get(params.getHotspotId());
-    var ruleContextKey = Objects.isNull(hotspot) ? "" : hotspot.getRuleDescriptionContextKey();
-    // TODO change to get issue details
-    return commandManager.getShowRuleDescriptionParams(fileUri, params.getHotspotId());
+    return commandManager.getFindingDetails(fileUri, params.getHotspotId());
   }
 
   @Override
