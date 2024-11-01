@@ -322,6 +322,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       backendServiceFacade.setTelemetryInitParams(new TelemetryInitParams(productKey, telemetryStorage,
         productName, productVersion, ideVersion, platform, architecture, additionalAttributes));
       backendServiceFacade.setOmnisharpDirectory((String) additionalAttributes.get("omnisharpDirectory"));
+      backendServiceFacade.setCsharpOssPath((String) additionalAttributes.get("csharpOssPath"));
+      backendServiceFacade.setCsharpEnterprisePath((String) additionalAttributes.get("csharpEnterprisePath"));
 
       var c = new ServerCapabilities();
       c.setTextDocumentSync(getTextDocumentSyncOptions());
@@ -743,7 +745,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     addPluginPathOrWarn("text", Language.SECRETS, plugins);
     addPluginPathOrWarn("go", Language.GO, plugins);
     addPluginPathOrWarn("iac", Language.CLOUDFORMATION, plugins);
-    addPluginPathOrWarn("lintomnisharp", Language.CS, plugins);
+    analyzers.stream().filter(it -> it.toString().endsWith("sonarlintomnisharp.jar")).findFirst()
+      .ifPresent(p -> plugins.put("omnisharp", p));
     return plugins;
   }
 

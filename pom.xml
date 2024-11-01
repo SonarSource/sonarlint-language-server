@@ -24,7 +24,7 @@
 
   <properties>
     <jdk.min.version>17</jdk.min.version>
-    <sonarlint.core.version>10.9.0.79478</sonarlint.core.version>
+    <sonarlint.core.version>10.10.0.79500</sonarlint.core.version>
     <!-- Version used by Xodus -->
     <kotlin.version>1.6.10</kotlin.version>
     <!-- analyzers used for tests -->
@@ -37,7 +37,8 @@
     <sonar.text.version>2.10.0.2188</sonar.text.version>
     <sonar.go.version>1.15.0.4655</sonar.go.version>
     <sonar.iac.version>1.27.0.9518</sonar.iac.version>
-    <sonarlint.omnisharp.version>1.19.0.86083</sonarlint.omnisharp.version>
+    <sonar.csharp.version>10.2.0.103721</sonar.csharp.version>
+    <sonarlint.omnisharp.version>1.25.0.100205</sonarlint.omnisharp.version>
     <gitRepositoryName>sonarlint-language-server</gitRepositoryName>
     <!-- Release: enable publication to Bintray -->
     <artifactsToPublish>${project.groupId}:${project.artifactId}:jar</artifactsToPublish>
@@ -276,6 +277,15 @@
                   <destFileName>sonariac.jar</destFileName>
                 </artifactItem>
                 <artifactItem>
+                  <groupId>org.sonarsource.dotnet</groupId>
+                  <artifactId>sonar-csharp-plugin</artifactId>
+                  <version>${sonar.csharp.version}</version>
+                  <type>jar</type>
+                  <overWrite>false</overWrite>
+                  <outputDirectory>${project.build.directory}/plugins</outputDirectory>
+                  <destFileName>sonarcsharp.jar</destFileName>
+                </artifactItem>
+                <artifactItem>
                   <groupId>org.sonarsource.sonarlint.omnisharp</groupId>
                   <artifactId>sonarlint-omnisharp-plugin</artifactId>
                   <version>${sonarlint.omnisharp.version}</version>
@@ -417,6 +427,13 @@
                       <artifactId>sonar-cfamily-plugin</artifactId>
                       <version>6.56.0.72172</version>
                       <destFileName>cfamily.jar</destFileName>
+                      <type>jar</type>
+                    </artifactItem>
+                    <artifactItem>
+                      <groupId>com.sonarsource.dotnet</groupId>
+                      <artifactId>sonar-csharp-enterprise-plugin</artifactId>
+                      <version>${sonar.csharp.version}</version>
+                      <destFileName>csharpenterprise.jar</destFileName>
                       <type>jar</type>
                     </artifactItem>
                   </artifactItems>
