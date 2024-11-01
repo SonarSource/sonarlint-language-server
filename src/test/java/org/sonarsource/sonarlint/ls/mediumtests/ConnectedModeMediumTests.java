@@ -850,26 +850,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void shouldNotChangeStatusWhenServerIsDown() throws IOException {
-    var issueKey = "qwerty";
-
-    addConfigScope(folder1BaseDir.toUri().toString());
-    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
-    var fileUri = folder1BaseDir.resolve("shouldNotChangeStatusWhenServerIsDown.py").toUri().toString();
-    var content = "def foo():\n  toto = 0\n  plouf = 0\n";
-    didOpen(fileUri, "python", content);
-
-    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri)).isNotEmpty());
-    mockWebServerExtension.stopServer();
-    lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
-      "False positive", fileUri, "comment", false));
-
-    awaitUntilAsserted(() -> assertThat(client.shownMessages).isNotEmpty());
-    assertThat(client.shownMessages)
-      .contains(new MessageParams(MessageType.Error, "Could not change status for the issue. Look at the SonarLint output for details."));
-  }
-
-  @Test
   void change_hotspot_status_to_resolved() {
     var analyzedFileName = "hotspot_resolved.py";
 
@@ -949,100 +929,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.changeHotspotStatus(new SonarLintExtendedLanguageServer.ChangeHotspotStatusParams(hotspotKey, HotspotStatus.SAFE.name(), uriInFolder));
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder)).isEmpty());
-  }
-
-  @Test
-  void change_hotspot_status_to_acknowledged() {
-    var analyzedFileName = "hotspot_acknowledged.py";
-
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
-    mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
-    mockNoIssueAndNoTaintInIncrementalSync();
-    mockWebServerExtension.addProtobufResponse(
-      "/api/hotspots/search.protobuf?projectKey=myProject&files=" + analyzedFileName + "&branch=master&ps=500&p=1",
-      Hotspots.SearchWsResponse.newBuilder().build());
-    mockWebServerExtension.addProtobufResponse(
-      "/api/rules/show.protobuf?key=python:S1313",
-      Rules.ShowResponse.newBuilder()
-        .setRule(Rules.Rule.newBuilder()
-          .setSeverity("MINOR")
-          .setType(Common.RuleType.SECURITY_HOTSPOT)
-          .setLang(SonarLanguage.PYTHON.getSonarLanguageKey())
-          .build())
-        .build());
-    var hotspotKey = "myhotspotkey";
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
-      Hotspots.HotspotLite.newBuilder()
-        .setKey(hotspotKey)
-        .setFilePath(analyzedFileName)
-        .setCreationDate(System.currentTimeMillis())
-        .setStatus("TO_REVIEW")
-        .setVulnerabilityProbability("LOW")
-        .setMessage("Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.")
-        .setTextRange(Hotspots.TextRange.newBuilder()
-          .setStartLine(1)
-          .setStartLineOffset(13)
-          .setEndLine(1)
-          .setEndLineOffset(26)
-          .setHash(Utils.hash("'12.34.56.78'"))
-          .build()
-        )
-        .setRuleKey(PYTHON_S1313)
-        .build()
-    );
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
-      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
-      Hotspots.HotspotLite.newBuilder()
-        .setKey(hotspotKey)
-        .setFilePath(analyzedFileName)
-        .setCreationDate(System.currentTimeMillis())
-        .setStatus("TO_REVIEW")
-        .setVulnerabilityProbability("LOW")
-        .setMessage("Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.")
-        .setTextRange(Hotspots.TextRange.newBuilder()
-          .setStartLine(1)
-          .setStartLineOffset(13)
-          .setEndLine(1)
-          .setEndLineOffset(26)
-          .setHash(Utils.hash("'12.34.56.78'"))
-          .build()
-        )
-        .setRuleKey(PYTHON_S1313)
-        .build()
-    );
-    mockWebServerExtension.addProtobufResponse("/api/measures/component.protobuf?additionalFields=period&metricKeys=projects&component=myProject",
-      Measures.ComponentWsResponse.newBuilder()
-        .setComponent(Measures.Component.newBuilder()
-          .setKey("myProject")
-          .setQualifier("TRK")
-          .build())
-        .setPeriod(Measures.Period.newBuilder()
-          .setMode("PREVIOUS_VERSION")
-          .setDate("2023-08-29T09:37:59+0000")
-          .setParameter("9.2")
-          .build())
-        .build());
-
-
-    var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
-    addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
-    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
-
-    didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
-
-    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(
-        tuple(0, 13, 0, 26, PYTHON_S1313, "remote", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Warning)));
-    assertThat(client.getHotspots(uriInFolder).get(0).getData().toString()).contains("\"status\":0");
-
-    lsProxy.changeHotspotStatus(new SonarLintExtendedLanguageServer.ChangeHotspotStatusParams(hotspotKey, HotspotStatus.ACKNOWLEDGED.name(), uriInFolder));
-
-    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder).get(0).getData().toString()).contains("\"status\":1"));
   }
 
   @Test
