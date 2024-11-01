@@ -88,6 +88,7 @@ import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.launch.LSPLauncher;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -123,7 +124,9 @@ import static org.sonarsource.sonarlint.ls.settings.SettingsManager.VSCODE_FILE_
 @ExtendWith(LogTestStartAndEnd.class)
 public abstract class AbstractLanguageServerMediumTests {
 
-  protected final static boolean COMMERCIAL_ENABLED = System.getProperty("commercial") != null;
+  protected static final boolean COMMERCIAL_ENABLED = System.getProperty("commercial") != null;
+  private static final String CSHARP_OSS_PATH = fullPathToJar("sonarcsharp");
+  private static final String CSHARP_ENTERPRISE_PATH = COMMERCIAL_ENABLED ? fullPathToJar("csharpenterprise") : CSHARP_OSS_PATH;
 
   private static final Set<Path> staticTempDirs = new HashSet<>();
   private final Set<Path> instanceTempDirs = new HashSet<>();
@@ -200,19 +203,7 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected static void initialize(Map<String, Object> initializeOptions, WorkspaceFolder... initFolders) throws InterruptedException, ExecutionException {
-    var initializeParams = new InitializeParams();
-    initializeParams.setTrace("messages");
-    initializeParams.setInitializationOptions(initializeOptions);
-    initializeParams.setWorkspaceFolders(List.of(initFolders));
-    initializeParams.setClientInfo(new ClientInfo("SonarLint LS Medium tests", "1.0"));
-    var clientCapabilities = new ClientCapabilities();
-    var notebookDocument = new NotebookDocumentClientCapabilities();
-    var synchronization = new NotebookDocumentSyncClientCapabilities();
-    synchronization.setDynamicRegistration(true);
-    synchronization.setExecutionSummarySupport(true);
-    notebookDocument.setSynchronization(synchronization);
-    clientCapabilities.setNotebookDocument(notebookDocument);
-    initializeParams.setCapabilities(clientCapabilities);
+    var initializeParams = getInitializeParams(initializeOptions, initFolders);
     initializeParams.getCapabilities().setWindow(new WindowClientCapabilities());
     var initializeResult = lsProxy.initialize(initializeParams).get();
     assertThat(initializeResult.getServerInfo().getName()).isEqualTo("SonarLint Language Server");
@@ -223,6 +214,33 @@ public abstract class AbstractLanguageServerMediumTests {
       assertThat(initializeResult.getCapabilities().getNotebookDocumentSync()).isNull();
     }
     lsProxy.initialized(new InitializedParams());
+  }
+
+  @NotNull
+  private static InitializeParams getInitializeParams(Map<String, Object> initializeOptions, WorkspaceFolder[] initFolders) {
+    var initializeParams = new InitializeParams();
+    initializeParams.setTrace("messages");
+
+    var actualInitOptions = new HashMap<>(initializeOptions);
+    if (initializeOptions.containsKey("additionalAttributes")) {
+      var additionalAttributes = new HashMap<>((Map<String, String>)initializeOptions.get("additionalAttributes"));
+      additionalAttributes.put("csharpOssPath", CSHARP_OSS_PATH);
+      additionalAttributes.put("csharpEnterprisePath", CSHARP_ENTERPRISE_PATH);
+      actualInitOptions.put("additionalAttributes", additionalAttributes);
+    }
+    initializeParams.setInitializationOptions(actualInitOptions);
+
+    initializeParams.setWorkspaceFolders(List.of(initFolders));
+    initializeParams.setClientInfo(new ClientInfo("SonarLint LS Medium tests", "1.0"));
+    var clientCapabilities = new ClientCapabilities();
+    var notebookDocument = new NotebookDocumentClientCapabilities();
+    var synchronization = new NotebookDocumentSyncClientCapabilities();
+    synchronization.setDynamicRegistration(true);
+    synchronization.setExecutionSummarySupport(true);
+    notebookDocument.setSynchronization(synchronization);
+    clientCapabilities.setNotebookDocument(notebookDocument);
+    initializeParams.setCapabilities(clientCapabilities);
+    return initializeParams;
   }
 
   @AfterAll
@@ -281,10 +299,8 @@ public abstract class AbstractLanguageServerMediumTests {
     for (var uri : notebooksToBeClosed) {
       lsProxy.getNotebookDocumentService().didClose(new DidCloseNotebookDocumentParams(new NotebookDocumentIdentifier(uri), List.of()));
     }
-    foldersToRemove.forEach(folderUri -> {
-      lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
-        new WorkspaceFoldersChangeEvent(List.of(), List.of(new WorkspaceFolder(folderUri)))));
-    });
+    foldersToRemove.forEach(folderUri -> lsProxy.getWorkspaceService().didChangeWorkspaceFolders(
+      new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(List.of(), List.of(new WorkspaceFolder(folderUri))))));
     instanceTempDirs.forEach(tempDirPath -> FileUtils.deleteQuietly(tempDirPath.toFile()));
     instanceTempDirs.clear();
   }
@@ -325,7 +341,6 @@ public abstract class AbstractLanguageServerMediumTests {
     Map<String, Object> globalSettings = new HashMap<>();
     Map<String, Map<String, Object>> folderSettings = new HashMap<>();
     Map<String, GetJavaConfigResponse> javaConfigs = new HashMap<>();
-    Map<String, String> branchNameByFolder = new HashMap<>();
     Map<String, String> referenceBranchNameByFolder = new HashMap<>();
     Map<String, Boolean> scopeReadyForAnalysis = new HashMap<>();
     CountDownLatch settingsLatch = new CountDownLatch(0);
