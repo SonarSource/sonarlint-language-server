@@ -54,6 +54,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChan
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.EffectiveIssueDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.GetEffectiveIssueDetailsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRuleDetailsDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetEffectiveRuleDetailsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ImpactDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleContextualSectionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleContextualSectionWithDefaultContextKeyDto;
@@ -107,6 +108,7 @@ import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_BROWSE_TAINT_VULNERABILITY;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_QUICK_FIX_APPLIED;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND;
+import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_RULE_DESC_COMMAND;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS;
 import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARLINT_SOURCE;
@@ -407,6 +409,43 @@ class CommandManagerTests {
     when(response.getDetails()).thenReturn(details);
     underTest.executeCommand(
       new ExecuteCommandParams(SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND, List.of(new JsonPrimitive(UUID.randomUUID().toString()), new JsonPrimitive(FILE_URI))),
+      NOP_CANCEL_TOKEN);
+
+    var captor = ArgumentCaptor.forClass(ShowRuleDescriptionParams.class);
+    verify(mockClient).showRuleDescription(captor.capture());
+
+    var actualParam = captor.getValue();
+    assertThat(actualParam.getKey()).isEqualTo(FAKE_RULE_KEY);
+    assertThat(actualParam.getName()).isEqualTo("Name");
+    assertThat(actualParam.getType()).isEqualTo(RuleType.BUG.name());
+    assertThat(actualParam.getSeverity()).isEqualTo(IssueSeverity.BLOCKER.name());
+    assertThat(actualParam.getLanguageKey()).isEqualTo(SonarLanguage.JS.getSonarLanguageKey());
+    assertThat(actualParam.getHtmlDescription()).isEqualTo("Desc");
+  }
+
+  @Test
+  void shouldShowRuleDescriptionDuringOpenIssueInIDE() {
+    var response = mock(GetEffectiveRuleDetailsResponse.class);
+    when(backendService.getEffectiveRuleDetails(any(), any(), any())).thenReturn(CompletableFuture.completedFuture(response));
+
+    var folderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
+    when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
+
+    var details = mock(EffectiveRuleDetailsDto.class);
+    Either<StandardModeDetails, MQRModeDetails> severityDetails = Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG));
+    when(details.getSeverityDetails()).thenReturn(severityDetails);
+    when(details.getParams()).thenReturn(emptyList());
+    when(details.getKey()).thenReturn(FAKE_RULE_KEY);
+    when(details.getLanguage()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.Language.JS);
+    var desc = mock(RuleMonolithicDescriptionDto.class);
+    when(desc.getHtmlContent()).thenReturn("Desc");
+    when(details.getDescription()).thenReturn(Either.forLeft(desc));
+    when(response.details()).thenReturn(details);
+    when(details.getName()).thenReturn("Name");
+
+    underTest.executeCommand(
+      new ExecuteCommandParams(SONARLINT_SHOW_RULE_DESC_COMMAND, List.of(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
       NOP_CANCEL_TOKEN);
 
     var captor = ArgumentCaptor.forClass(ShowRuleDescriptionParams.class);

@@ -20,9 +20,11 @@
 package org.sonarsource.sonarlint.ls.notebooks;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ImpactDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedIssueDto;
@@ -71,8 +73,12 @@ public class DelegatingCellIssue extends DelegatingFinding {
   }
 
   public RaisedIssueDto getIssue() {
+    var severity = issue.getSeverityMode().isLeft() ? issue.getSeverityMode().getLeft().getSeverity() : null;
+    var type = issue.getSeverityMode().isLeft() ? issue.getSeverityMode().getLeft().getType() : null;
+    var cleanCodeAttribute = issue.getSeverityMode().isRight() ? issue.getSeverityMode().getRight().getCleanCodeAttribute() : null;
+    var impacts = issue.getSeverityMode().isRight() ? issue.getSeverityMode().getRight().getImpacts() : new ArrayList<ImpactDto>();
     return new RaisedIssueDto(issue.getId(), issue.getServerKey(), issue.getRuleKey(), issue.getPrimaryMessage(),
-      issue.getSeverityMode(), issue.getSeverity(), issue.getType(), issue.getCleanCodeAttribute(), issue.getImpacts(), issue.getIntroductionDate(),
+      issue.getSeverityMode(), severity, type, cleanCodeAttribute, impacts, issue.getIntroductionDate(),
       issue.isOnNewCode(), issue.isResolved(), cellTextRange, issue.getFlows(), cellQuickFixes, issue.getRuleDescriptionContextKey());
   }
 

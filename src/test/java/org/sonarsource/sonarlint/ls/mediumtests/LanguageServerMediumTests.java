@@ -170,13 +170,15 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     var uri = getUri("analyzeSimpleGoFileOnOpen.go", analysisDir);
 
-    didOpen(uri, "go", "package main\n" +
-      "import \"fmt\"\n" +
-      "func main() {\n" +
-      "\tif condition1 {\n" +
-      "\t} else if condition1 { // Noncompliant\n" +
-      "\t}\n" +
-      "}");
+    didOpen(uri, "go", """
+      package main
+      import "fmt"
+      func main() {
+      	if condition1 {
+      	} else if condition1 { // Noncompliant
+      	}
+      }
+      """);
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
@@ -191,17 +193,19 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     var uri = getUri("sampleCloudFormation.yaml", analysisDir);
 
-    didOpen(uri, "yaml", "AWSTemplateFormatVersion: 2010-09-09\n" +
-      "Resources:\n" +
-      "  S3Bucket:\n" +
-      "    Type: 'AWS::S3::Bucket'\n" +
-      "    Properties:\n" +
-      "      BucketName: \"mybucketname\"\n" +
-      "      Tags:\n" +
-      "        - Key: \"anycompany:cost-center\" # Noncompliant\n" +
-      "          Value: \"Accounting\"\n" +
-      "        - Key: \"anycompany:EnvironmentType\" # Noncompliant\n" +
-      "          Value: \"PROD\"\n");
+    didOpen(uri, "yaml", """
+      AWSTemplateFormatVersion: 2010-09-09
+      Resources:
+        S3Bucket:
+          Type: 'AWS::S3::Bucket'
+          Properties:
+            BucketName: "mybucketname"
+            Tags:
+              - Key: "anycompany:cost-center" # Noncompliant
+                Value: "Accounting"
+              - Key: "anycompany:EnvironmentType" # Noncompliant
+                Value: "PROD"
+      """);
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -237,13 +241,15 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     var uri = getUri("sampleTerraform.tf", analysisDir);
 
-    didOpen(uri, "terraform", "resource \"aws_s3_bucket\" \"mynoncompliantbucket\" {\n" +
-      "  bucket = \"mybucketname\"\n" +
-      "\n" +
-      "  tags = {\n" +
-      "    \"anycompany:cost-center\" = \"Accounting\" # Noncompliant\n" +
-      "  }\n" +
-      "}");
+    didOpen(uri, "terraform", """
+      resource "aws_s3_bucket" "mynoncompliantbucket" {
+        bucket = "mybucketname"
+
+        tags = {
+          "anycompany:cost-center" = "Accounting" # Noncompliant
+        }
+      }
+      """);
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -706,11 +712,12 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void testCodeAction_with_diagnostic_rule() throws Exception {
     var uri = getUri("analyzeSimpleJsFileOnOpen.js", analysisDir);
-    didOpen(uri, "javascript", "function sum(a, b) {\n" +
-      "  return a + b;\n" +
-      "}\n" +
-      "\n" +
-      "sum(1, 2, 3);");
+    didOpen(uri, "javascript", """
+      function sum(a, b) {
+        return a + b;
+      }
+      sum(1, 2, 3);
+      """);
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .hasSize(1));
