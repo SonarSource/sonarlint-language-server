@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.sonarsource.parent</groupId>
     <artifactId>parent</artifactId>
-    <version>79.0.0.2165</version>
+    <version>80.0.0.2205</version>
     <relativePath/>
   </parent>
   <groupId>org.sonarsource.sonarlint.ls</groupId>
@@ -50,11 +50,6 @@
       <artifactId>org.eclipse.lsp4j</artifactId>
       <!--      should be the >= than in sonarlint-rpc-java-client -->
       <version>0.21.1</version>
-    </dependency>
-    <dependency>
-      <groupId>org.sonarsource.sonarlint.core</groupId>
-      <artifactId>sonarlint-java-client-legacy</artifactId>
-      <version>${sonarlint.core.version}</version>
     </dependency>
     <dependency>
       <groupId>org.sonarsource.sonarlint.core</groupId>
