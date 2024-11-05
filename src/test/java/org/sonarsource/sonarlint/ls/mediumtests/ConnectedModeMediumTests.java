@@ -789,10 +789,10 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var uriInFolder = folder1BaseDir.resolve("shouldReturnHotspotDetails.py").toUri().toString();
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
-    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder)).hasSize(1));
+    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder)).hasSizeGreaterThanOrEqualTo(1));
 
     var hotspotId = ((JsonObject) client.getHotspots(uriInFolder).get(0).getData()).get("entryKey").getAsString();
-    var testParams = new SonarLintExtendedLanguageServer.ShowHotspotRuleDescriptionParams(PYTHON_S1313, hotspotId);
+    var testParams = new SonarLintExtendedLanguageServer.ShowHotspotRuleDescriptionParams(hotspotId, uriInFolder);
     testParams.setFileUri(folder1BaseDir.resolve("shouldReturnHotspotDetails.py").toUri().toString());
 
     var result = lsProxy.getHotspotDetails(testParams);

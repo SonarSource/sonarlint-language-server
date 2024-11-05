@@ -29,11 +29,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import org.eclipse.lsp4j.CodeActionContext;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.ExecuteCommandParams;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
@@ -478,7 +481,61 @@ class CommandManagerTests {
     when(issue.getWorkspaceFolderUri()).thenReturn("file:///user/folder");
     when(issue.getIdeFilePath()).thenReturn(filePath);
     when(issue.getIntroductionDate()).thenReturn(Instant.EPOCH);
-    when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(issue.getSeverityMode()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
+    var flow = mock(TaintVulnerabilityDto.FlowDto.class);
+    when(issue.getFlows()).thenReturn(List.of(flow));
+    var location = mock(TaintVulnerabilityDto.FlowDto.LocationDto.class);
+    when(location.getFilePath()).thenReturn(filePath);
+    when(flow.getLocations()).thenReturn(List.of(location));
+    when(mockTaintVulnerabilitiesCache.getTaintVulnerabilityByKey(issueKey)).thenReturn(Optional.of(issue));
+
+    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(new JsonPrimitive(issueKey), new JsonPrimitive(connectionId))),
+      NOP_CANCEL_TOKEN);
+    verify(mockTaintVulnerabilitiesCache).getTaintVulnerabilityByKey(issueKey);
+    verify(mockTelemetry).taintVulnerabilitiesInvestigatedLocally();
+  }
+
+  @Test
+  void showIssueDetails_issueNotFound() {
+    when(backendService.getEffectiveIssueDetails(any(), any())).thenReturn(CompletableFuture.failedFuture(new CompletionException(new IllegalStateException("Issue not found"))));
+    underTest.executeCommand(
+      new ExecuteCommandParams(SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND, List.of(new JsonPrimitive(UUID.randomUUID().toString()), new JsonPrimitive(FILE_URI))),
+      NOP_CANCEL_TOKEN);
+
+    var captor = ArgumentCaptor.forClass(MessageParams.class);
+    verify(mockClient).showMessage(captor.capture());
+
+    var actualParam = captor.getValue();
+    assertThat(actualParam.getMessage()).contains("Can't show issue details for unknown issue with key: ");
+    assertThat(actualParam.getType()).isEqualTo(MessageType.Error);
+  }
+
+  @Test
+  void showIssueDetails_ruleNotFound() {
+    when(backendService.getEffectiveRuleDetails(any(), any(), any())).thenReturn(CompletableFuture.failedFuture(new CompletionException(new IllegalStateException("Rule not found"))));
+    underTest.executeCommand(
+      new ExecuteCommandParams(SONARLINT_SHOW_RULE_DESC_COMMAND, List.of(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
+      NOP_CANCEL_TOKEN);
+
+    var captor = ArgumentCaptor.forClass(MessageParams.class);
+    verify(mockClient).showMessage(captor.capture());
+
+    var actualParam = captor.getValue();
+    assertThat(actualParam.getMessage()).contains("Can't show issue details for unknown rule with key: javascript:S1234");
+    assertThat(actualParam.getType()).isEqualTo(MessageType.Error);
+  }
+
+  @Test
+  void showTaintVulnerabilityFlows_MQR() {
+    var issueKey = "someIssueKey";
+    var connectionId = "connectionId";
+    var issue = mock(TaintIssue.class);
+    when(issue.getRuleKey()).thenReturn("ruleKey");
+    var filePath = Path.of("path");
+    when(issue.getWorkspaceFolderUri()).thenReturn("file:///user/folder");
+    when(issue.getIdeFilePath()).thenReturn(filePath);
+    when(issue.getIntroductionDate()).thenReturn(Instant.EPOCH);
+    when(issue.getSeverityMode()).thenReturn(Either.forRight(new MQRModeDetails(CleanCodeAttribute.TRUSTWORTHY, List.of())));
     var flow = mock(TaintVulnerabilityDto.FlowDto.class);
     when(issue.getFlows()).thenReturn(List.of(flow));
     var location = mock(TaintVulnerabilityDto.FlowDto.LocationDto.class);
