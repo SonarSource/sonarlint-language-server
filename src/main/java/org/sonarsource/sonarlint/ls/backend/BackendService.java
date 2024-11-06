@@ -34,8 +34,6 @@ import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFileListParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFilesAndTrackParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFilesResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFullProjectParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAnalysisPropertiesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeClientNodeJsPathParams;
@@ -81,6 +79,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotIn
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.InitializeParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ChangeIssueStatusParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.GetEffectiveIssueDetailsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.GetEffectiveIssueDetailsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.newcode.GetNewCodeDefinitionParams;
@@ -365,13 +365,6 @@ public class BackendService {
     return backend;
   }
 
-  public CompletableFuture<AnalyzeFilesResponse> analyzeFilesAndTrack(String configScopeId, UUID analysisId, List<URI> filesToAnalyze,
-    Map<String, String> extraProps, boolean shouldFetchServerIssues) {
-    var params = new AnalyzeFilesAndTrackParams(configScopeId, analysisId, filesToAnalyze, extraProps,
-      shouldFetchServerIssues, System.currentTimeMillis());
-    return backend.getAnalysisService().analyzeFilesAndTrack(params);
-  }
-
   public CompletableFuture<ListUserOrganizationsResponse> listUserOrganizations(String token) {
     var params = new ListUserOrganizationsParams(Either.forLeft(new TokenDto(token)));
     return initializedBackend().getConnectionService().listUserOrganizations(params);
@@ -405,5 +398,11 @@ public class BackendService {
   public void didChangePathToCompileCommands(String configScopeId, @Nullable String pathToCompileCommands) {
     var params = new DidChangePathToCompileCommandsParams(configScopeId, pathToCompileCommands == null ? "" : pathToCompileCommands);
     initializedBackend().getAnalysisService().didChangePathToCompileCommands(params);
+  }
+
+  public CompletableFuture<GetEffectiveIssueDetailsResponse> getEffectiveIssueDetails(@Nullable String workspaceFolder, UUID issueKey) {
+    var workspaceOrRootScope = Optional.ofNullable(workspaceFolder).orElse(ROOT_CONFIGURATION_SCOPE);
+    var params = new GetEffectiveIssueDetailsParams(workspaceOrRootScope, issueKey);
+    return initializedBackend().getIssueService().getEffectiveIssueDetails(params);
   }
 }

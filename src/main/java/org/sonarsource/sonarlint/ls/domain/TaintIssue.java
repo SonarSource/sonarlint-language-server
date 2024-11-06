@@ -19,7 +19,12 @@
  */
 package org.sonarsource.sonarlint.ls.domain;
 
+import java.util.List;
+import java.util.Map;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ImpactDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
 
 public class TaintIssue extends TaintVulnerabilityDto {
   public static final String SONARQUBE_TAINT_SOURCE = "Latest SonarQube Analysis";
@@ -29,10 +34,18 @@ public class TaintIssue extends TaintVulnerabilityDto {
 
   public TaintIssue(TaintVulnerabilityDto taintDto, String workspaceFolderUri, boolean isSonarCloud) {
     super(taintDto.getId(), taintDto.getSonarServerKey(), taintDto.isResolved(), taintDto.getRuleKey(), taintDto.getMessage(),
-      taintDto.getIdeFilePath(), taintDto.getIntroductionDate(), taintDto.getSeverity(), taintDto.getType(), taintDto.getFlows(), taintDto.getTextRange(),
-      taintDto.getRuleDescriptionContextKey(), taintDto.getCleanCodeAttribute(), taintDto.getImpacts(), taintDto.isOnNewCode());
+      taintDto.getIdeFilePath(), taintDto.getIntroductionDate(), taintDto.getSeverityMode(), taintDto.getSeverityMode().isLeft() ?
+        taintDto.getSeverityMode().getLeft().getSeverity() : null,
+      taintDto.getSeverityMode().isLeft() ? taintDto.getSeverityMode().getLeft().getType() : null, taintDto.getFlows(), taintDto.getTextRange(),
+      taintDto.getRuleDescriptionContextKey(), taintDto.getSeverityMode().isRight() ? taintDto.getSeverityMode().getRight().getCleanCodeAttribute() : null,
+      taintDto.getSeverityMode().isRight() ? impactListToMap(taintDto.getSeverityMode().getRight().getImpacts()) : Map.of(), taintDto.isOnNewCode());
     this.workspaceFolderUri = workspaceFolderUri;
     this.source = isSonarCloud ? SONARCLOUD_TAINT_SOURCE : SONARQUBE_TAINT_SOURCE;
+  }
+
+  public static Map<SoftwareQuality, ImpactSeverity> impactListToMap(List<ImpactDto> impacts) {
+    return impacts.stream().collect(
+      java.util.stream.Collectors.toMap(ImpactDto::getSoftwareQuality, ImpactDto::getImpactSeverity));
   }
 
   public String getWorkspaceFolderUri() {

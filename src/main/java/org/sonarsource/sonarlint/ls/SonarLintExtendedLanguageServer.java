@@ -339,21 +339,16 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   void openHotspotInBrowser(OpenHotspotInBrowserLsParams params);
 
   class ShowHotspotRuleDescriptionParams {
-    String ruleKey;
     String hotspotId;
     String fileUri;
 
-    public ShowHotspotRuleDescriptionParams(String ruleKey, String hotspotId) {
-      setRuleKey(ruleKey);
+    public ShowHotspotRuleDescriptionParams(String hotspotId, String fileUri) {
+      setFileUri(fileUri);
       setHotspotId(hotspotId);
     }
 
     public String getHotspotId() {
       return hotspotId;
-    }
-
-    public void setRuleKey(String ruleKey) {
-      this.ruleKey = ruleKey;
     }
 
     public void setHotspotId(String hotspotId) {

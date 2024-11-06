@@ -141,7 +141,7 @@ import static java.lang.String.format;
 import static java.net.URI.create;
 import static java.util.Objects.requireNonNull;
 import static java.util.Optional.ofNullable;
-import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND;
+import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
@@ -719,11 +719,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<Void> showHotspotRuleDescription(ShowHotspotRuleDescriptionParams params) {
     var fileUri = params.fileUri;
-    var ruleKey = params.ruleKey;
-    var issue = securityHotspotsCache.get(create(fileUri)).get(params.getHotspotId());
-    var ruleContextKey = Objects.isNull(issue) ? "" : issue.getRuleDescriptionContextKey();
-    var showHotspotCommandParams = new ExecuteCommandParams(SONARLINT_OPEN_RULE_DESCRIPTION_FROM_CODE_ACTION_COMMAND,
-      List.of(new JsonPrimitive(ruleKey), new JsonPrimitive(fileUri), new JsonPrimitive(ruleContextKey != null ? ruleContextKey : "")));
+    var showHotspotCommandParams = new ExecuteCommandParams(SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND,
+      List.of(new JsonPrimitive(params.getHotspotId()), new JsonPrimitive(fileUri)));
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
       commandManager.executeCommand(showHotspotCommandParams, cancelToken);
@@ -888,10 +885,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<SonarLintExtendedLanguageClient.ShowRuleDescriptionParams> getHotspotDetails(ShowHotspotRuleDescriptionParams params) {
     var fileUri = params.fileUri;
-    var ruleKey = params.ruleKey;
-    var hotspot = securityHotspotsCache.get(create(fileUri)).get(params.getHotspotId());
-    var ruleContextKey = Objects.isNull(hotspot) ? "" : hotspot.getRuleDescriptionContextKey();
-    return commandManager.getShowRuleDescriptionParams(fileUri, ruleKey, ruleContextKey != null ? ruleContextKey : "");
+    return commandManager.getFindingDetails(fileUri, params.getHotspotId());
   }
 
   @Override

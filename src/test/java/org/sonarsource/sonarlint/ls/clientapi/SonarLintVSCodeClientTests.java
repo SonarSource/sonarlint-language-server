@@ -98,6 +98,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.AnalysisHelper;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
@@ -970,14 +971,16 @@ class SonarLintVSCodeClientTests {
 
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
     return new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
-      Path.of("filePath"), Instant.now(), IssueSeverity.MAJOR, RuleType.BUG, List.of(),
+      Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
+      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)), IssueSeverity.MAJOR, RuleType.BUG, List.of(),
       new TextRangeWithHashDto(5, 5, 5, 5, ""), "", CleanCodeAttribute.CONVENTIONAL,
       Map.of(), true);
   }
 
   private TaintIssue getTaintIssue(UUID uuid) {
     return new TaintIssue(new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
-      Path.of("filePath"), Instant.now(), IssueSeverity.MAJOR, RuleType.BUG, List.of(),
+      Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
+      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)), IssueSeverity.MAJOR, RuleType.BUG, List.of(),
       new TextRangeWithHashDto(5, 5, 5, 5, ""), "", CleanCodeAttribute.CONVENTIONAL,
       Map.of(), true), "folderUri", true);
   }
