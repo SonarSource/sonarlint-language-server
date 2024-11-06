@@ -167,7 +167,7 @@ public class VersionedOpenNotebookTests {
   private static RaisedFindingDto mockRaisedFinding(@Nullable TextRangeDto textRange) {
     RaisedFindingDto raisedFinding = mock(RaisedFindingDto.class);
 
-    when(raisedFinding.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(raisedFinding.getSeverityMode()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
     when(raisedFinding.getPrimaryMessage()).thenReturn("don't do this");
     when(raisedFinding.getRuleKey()).thenReturn("squid:123");
     when(raisedFinding.getTextRange()).thenReturn(textRange);

@@ -265,6 +265,7 @@ class CommandManagerTests {
     when(fix.message()).thenReturn("Fix the issue!");
     when(fix.fileEdits()).thenReturn(List.of(edit));
     when(issue.getQuickFixes()).thenReturn(List.of(fix));
+    when(issue.getSeverityMode()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
     var rawIssue = mock(DelegatingFinding.class);
     when(rawIssue.quickFixes()).thenReturn(List.of(fix));
     when(rawIssue.getFinding()).thenReturn(issue);

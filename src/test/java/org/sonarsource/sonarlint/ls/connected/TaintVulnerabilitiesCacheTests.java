@@ -36,8 +36,9 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -64,13 +65,12 @@ class TaintVulnerabilitiesCacheTests {
     var issueId = UUID.randomUUID();
     when(issue.getId()).thenReturn(issueId);
     when(issue.getTextRange()).thenReturn(new TextRangeWithHashDto(1, 0, 0, 0, ""));
-    when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(issue.getSeverityMode()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
     when(issue.getRuleKey()).thenReturn("ruleKey");
     when(issue.getMessage()).thenReturn("message");
     when(issue.getSonarServerKey()).thenReturn("issueKey");
     when(issue.getFlows()).thenReturn(List.of(flow));
     when(issue.getSource()).thenReturn(taintSource);
-    when(issue.getCleanCodeAttribute()).thenReturn(CleanCodeAttribute.CONVENTIONAL);
     when(issue.isOnNewCode()).thenReturn(isOnNewCode);
 
     var diagnostic = convert(issue, focusOnNewCode).get();
@@ -117,7 +117,7 @@ class TaintVulnerabilitiesCacheTests {
     when(taint.getRuleKey()).thenReturn("key1");
     when(taint.getRuleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
     when(taint.isResolved()).thenReturn(false);
-    when(taint.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(taint.getSeverityMode()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.VULNERABILITY)));
     when(taint.getTextRange()).thenReturn(new TextRangeWithHashDto(1, 1, 1, 1, ""));
     when(taint.getMessage()).thenReturn("Boo");
 
@@ -125,7 +125,7 @@ class TaintVulnerabilitiesCacheTests {
     when(resolvedTaint.getId()).thenReturn(UUID.randomUUID());
     when(resolvedTaint.getRuleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
     when(resolvedTaint.isResolved()).thenReturn(true);
-    when(resolvedTaint.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(resolvedTaint.getSeverityMode()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.VULNERABILITY)));
     when(resolvedTaint.getTextRange()).thenReturn(new TextRangeWithHashDto(1, 1, 1, 1, ""));
     when(resolvedTaint.getMessage()).thenReturn("Foo");
 

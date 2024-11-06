@@ -25,7 +25,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueFlowDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,7 +43,7 @@ class DelegatingIssueTests {
 
   @BeforeEach
   public void prepare() {
-    when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(issue.getSeverityMode()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
     when(issue.getPrimaryMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
     when(issue.getTextRange()).thenReturn(textRange);
@@ -54,12 +57,12 @@ class DelegatingIssueTests {
 
   @Test
   void testGetSeverity() {
-    assertThat(delegatingFinding.getSeverity()).isEqualTo(issue.getSeverity());
+    assertThat(delegatingFinding.getSeverity()).isEqualTo(issue.getSeverityMode().getLeft().getSeverity());
   }
 
   @Test
   void testGetUserSeverity() {
-    when(issue.getSeverity()).thenReturn(IssueSeverity.INFO);
+    when(issue.getSeverityMode()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.INFO, RuleType.BUG)));
     var delegatingIssueWithUserSeverity = new DelegatingFinding(issue, URI.create("file:///myFile.py"));
 
     assertThat(delegatingIssueWithUserSeverity.getSeverity()).isEqualTo(IssueSeverity.INFO);
@@ -67,7 +70,7 @@ class DelegatingIssueTests {
 
   @Test
   void testGetType() {
-    assertThat(delegatingFinding.getType()).isEqualTo(issue.getType());
+    assertThat(delegatingFinding.getType()).isEqualTo(issue.getSeverityMode().getLeft().getType());
   }
 
   @Test

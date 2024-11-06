@@ -23,13 +23,14 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import javax.annotation.CheckForNull;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ImpactDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueFlowDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.MQRModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.Issue;
 
@@ -43,15 +44,17 @@ public class DelegatingFinding implements Issue {
   protected final RaisedFindingDto finding;
   protected boolean isOnNewCode;
   protected URI fileUri;
+  protected Either<StandardModeDetails, MQRModeDetails> severityDetails;
 
   private DelegatingFinding(RaisedFindingDto finding) {
     this.issueId = finding.getId();
-    this.severity = finding.getSeverity();
-    this.type = finding.getType();
+    this.severity = finding.getSeverityMode().isLeft() ? finding.getSeverityMode().getLeft().getSeverity() : null;
+    this.type = finding.getSeverityMode().isLeft() ? finding.getSeverityMode().getLeft().getType() : null;
     this.isOnNewCode = finding.isOnNewCode();
     this.finding = finding;
     this.serverIssueKey = finding.getServerKey();
     this.resolved = finding.isResolved();
+    this.severityDetails = finding.getSeverityMode();
   }
 
   public DelegatingFinding(RaisedFindingDto rawFinding, URI fileUri) {
@@ -59,21 +62,14 @@ public class DelegatingFinding implements Issue {
     this.fileUri = fileUri;
   }
 
+  @CheckForNull
   public IssueSeverity getSeverity() {
-    return severity;
+    return severityDetails.isLeft() ? severityDetails.getLeft().getSeverity() : null;
   }
 
   @CheckForNull
   public RuleType getType() {
-    return type;
-  }
-
-  public CleanCodeAttribute getCleanCodeAttribute() {
-    return finding.getCleanCodeAttribute();
-  }
-
-  public List<ImpactDto> getImpacts() {
-    return finding.getImpacts();
+    return severityDetails.isLeft() ? severityDetails.getLeft().getType() : null;
   }
 
   @CheckForNull
@@ -142,6 +138,11 @@ public class DelegatingFinding implements Issue {
 
   public UUID getIssueId() {
     return issueId;
+  }
+
+  @Override
+  public Either<StandardModeDetails, MQRModeDetails> getSeverityDetails() {
+    return severityDetails;
   }
 
   public boolean isResolved() {
