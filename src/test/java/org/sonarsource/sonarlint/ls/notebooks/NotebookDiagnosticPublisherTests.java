@@ -33,7 +33,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueFlowDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedIssueDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.IssuesCache;
@@ -191,7 +194,7 @@ class NotebookDiagnosticPublisherTests {
     var issue = mock(RaisedIssueDto.class);
     TextRangeDto textRangeDto = new TextRangeDto(2, 0, 2, 5);
     TextRangeDto textRange = new TextRangeDto(2, 0, 2, 5);
-    when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(issue.getSeverityMode()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
     when(issue.getPrimaryMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
     when(issue.getTextRange()).thenReturn(textRangeDto);
@@ -205,7 +208,7 @@ class NotebookDiagnosticPublisherTests {
     TextRangeDto textRangeDto = new TextRangeDto(1, 0, 1, 3);
     TextRangeDto textRange = new TextRangeDto(1, 0, 1, 3);
 
-    when(issue.getSeverity()).thenReturn(IssueSeverity.MINOR);
+    when(issue.getSeverityMode()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.MINOR, RuleType.BUG)));
     when(issue.getPrimaryMessage()).thenReturn("don't do this please");
     when(issue.getRuleKey()).thenReturn("squid:122");
     when(issue.getTextRange()).thenReturn(textRangeDto);

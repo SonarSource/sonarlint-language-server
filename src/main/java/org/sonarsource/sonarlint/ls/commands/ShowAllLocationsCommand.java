@@ -67,7 +67,8 @@ public final class ShowAllLocationsCommand {
     private Param(DelegatingFinding issue) {
       this.fileUri = issue.getFileUri();
       this.message = issue.getMessage();
-      this.severity = issue.getSeverity().toString();
+      var issueSeverity = issue.getSeverity();
+      this.severity = issueSeverity != null ? issueSeverity.toString() : "";
       this.ruleKey = issue.getRuleKey();
       this.flows = issue.flows().stream().map(Flow::new).toList();
       this.textRange = issue.getTextRange();

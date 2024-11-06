@@ -30,7 +30,10 @@ import org.eclipse.lsp4j.Range;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -147,7 +150,7 @@ class DiagnosticPublisherTests {
     var textRange = new TextRangeDto(1, 0, 1, 1);
     when(issue.getId()).thenReturn(UUID.randomUUID());
     when(issue.getRuleKey()).thenReturn("secrets:123");
-    when(issue.getSeverity()).thenReturn(IssueSeverity.MAJOR);
+    when(issue.getSeverityMode()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
     when(issue.getPrimaryMessage()).thenReturn("Boo");
     when(issue.getTextRange()).thenReturn(textRange);
 
