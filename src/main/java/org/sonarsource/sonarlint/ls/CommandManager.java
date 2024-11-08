@@ -120,7 +120,7 @@ public class CommandManager {
   // Client side
   static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
   static final String RESOLVE_ISSUE = "SonarLint.ResolveIssue";
-  static final String SONARLINT_ACTION_PREFIX = "SonarLint: ";
+  static final String SONARLINT_ACTION_PREFIX = "SonarQube: ";
 
   private final SonarLintExtendedLanguageClient client;
   private final SettingsManager settingsManager;

@@ -52,7 +52,7 @@ public class SkippedPluginsNotifier {
   }
 
   public void notifyOnceForSkippedPlugins(Language language, DidSkipLoadingPluginParams.SkipReason reason, String minVersion, @Nullable String currentVersion) {
-    final var title = String.format("SonarLint failed to analyze %s code", LSLanguage.valueOf(language.name()).getLabel());
+    final var title = String.format("SonarQube for VS Code failed to analyze %s code", LSLanguage.valueOf(language.name()).getLabel());
     if (reason == DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_JRE) {
       handleMissingJRERequirement(minVersion, Objects.requireNonNull(currentVersion), title);
     } else if (reason == DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_NODE_JS) {

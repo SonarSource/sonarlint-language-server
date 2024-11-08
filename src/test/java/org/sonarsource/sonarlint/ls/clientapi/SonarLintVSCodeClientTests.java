@@ -536,7 +536,7 @@ class SonarLintVSCodeClientTests {
 
     var projectKey = "projectKey";
     var messageRequestParams = new ShowMessageRequestParams();
-    messageRequestParams.setMessage("SonarLint couldn't match the server project '" + projectKey + "' to any of the currently open workspace folders. Please make sure the project is open in the workspace, or try configuring the binding manually.");
+    messageRequestParams.setMessage("SonarQube for VS Code couldn't match the server project '" + projectKey + "' to any of the currently open workspace folders. Please make sure the project is open in the workspace, or try configuring the binding manually.");
     messageRequestParams.setType(MessageType.Error);
     var learnMoreAction = new MessageActionItem("Learn more");
     messageRequestParams.setActions(List.of(learnMoreAction));

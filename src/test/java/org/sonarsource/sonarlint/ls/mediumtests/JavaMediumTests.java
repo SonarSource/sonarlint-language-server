@@ -105,10 +105,10 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
-        tuple(1, 46, 1, 66, "secrets:S6290", "sonarlint", "Make sure the access granted with this AWS access key ID is restricted", DiagnosticSeverity.Warning),
-        tuple(3, 5, 3, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
+        tuple(0, 13, 0, 16, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+        tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning),
+        tuple(1, 46, 1, 66, "secrets:S6290", "sonarqube", "Make sure the access granted with this AWS access key ID is restricted", DiagnosticSeverity.Warning),
+        tuple(3, 5, 3, 31, "java:S125", "sonarqube", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
       .contains(
@@ -131,9 +131,9 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
-        tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
+        tuple(0, 13, 0, 16, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+        tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning),
+        tuple(2, 5, 2, 31, "java:S125", "sonarqube", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
 
     var ignoredMsg = "[Debug] Classpath \"/does/not/exist\" from configuration does not exist, skipped";
     var cacheMsg = "[Debug] Cached Java config for file \"" + uri + "\"";
@@ -148,9 +148,9 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
-        tuple(3, 2, 3, 12, "java:S106", "sonarlint", "Replace this use of System.out by a logger.", DiagnosticSeverity.Warning)));
+        tuple(0, 13, 0, 16, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+        tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning),
+        tuple(3, 2, 3, 12, "java:S106", "sonarqube", "Replace this use of System.out by a logger.", DiagnosticSeverity.Warning)));
 
     assertThat(client.logs).extracting(withoutTimestamp()).doesNotContain(cacheMsg);
   }
@@ -184,9 +184,9 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(7, 11, 7, 26, "java:S2259", "sonarlint", "\"NullPointerException\" will be thrown when invoking method \"doSomeThingWith()\". [+5 locations]",
+        tuple(7, 11, 7, 26, "java:S2259", "sonarqube", "\"NullPointerException\" will be thrown when invoking method \"doSomeThingWith()\". [+5 locations]",
           DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning)));
+        tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -213,9 +213,9 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
-        tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
+        tuple(0, 13, 0, 16, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+        tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning),
+        tuple(2, 5, 2, 31, "java:S125", "sonarqube", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
 
     var jrtFsJarPath = currentJdkHome.resolve(isModular ? "lib/jrt-fs.jar" : "jre/lib/rt.jar").toString();
     assertThat(client.logs)
@@ -243,7 +243,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(3, 14, 3, 18, "java:S2699", "sonarlint", "Add at least one assertion to this test case.", DiagnosticSeverity.Warning)));
+        tuple(3, 14, 3, 18, "java:S2699", "sonarqube", "Add at least one assertion to this test case.", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -280,7 +280,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(3, 14, 3, 18, "java:S2699", "sonarlint", "Add at least one assertion to this test case.", DiagnosticSeverity.Warning)));
+        tuple(3, 14, 3, 18, "java:S2699", "sonarqube", "Add at least one assertion to this test case.", DiagnosticSeverity.Warning)));
 
     assertThat(client.logs)
       .extracting(withoutTimestamp())
@@ -304,9 +304,9 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
-        tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
+        tuple(0, 13, 0, 16, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+        tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning),
+        tuple(2, 5, 2, 31, "java:S125", "sonarqube", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
 
     // Prepare config response
     var javaConfigResponse = new GetJavaConfigResponse();
@@ -323,9 +323,9 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
-        tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
+        tuple(0, 13, 0, 16, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+        tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning),
+        tuple(2, 5, 2, 31, "java:S125", "sonarqube", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -352,22 +352,22 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       assertThat(client.getDiagnostics(file1module1))
         .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
         .containsExactlyInAnyOrder(
-          tuple(0, 13, 0, 17, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
-          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+          tuple(0, 13, 0, 17, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarqube", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
 
       assertThat(client.getDiagnostics(file2module1))
         .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
         .containsExactlyInAnyOrder(
-          tuple(0, 13, 0, 17, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
-          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+          tuple(0, 13, 0, 17, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarqube", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
 
       assertThat(client.getDiagnostics(nonJavaFilemodule1))
         .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
         .containsExactlyInAnyOrder(
-          tuple(1, 2, 1, 6, "python:S1481", "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
-          tuple(2, 2, 2, 7, "python:S1481", "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning));
+          tuple(1, 2, 1, 6, "python:S1481", "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+          tuple(2, 2, 2, 7, "python:S1481", "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning));
     });
 
     // consecutive changes should be batched
@@ -385,22 +385,22 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       assertThat(client.getDiagnostics(file1module1))
         .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
         .containsExactlyInAnyOrder(
-          tuple(0, 13, 0, 17, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
-          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+          tuple(0, 13, 0, 17, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarqube", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
 
       assertThat(client.getDiagnostics(file2module1))
         .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
         .containsExactlyInAnyOrder(
-          tuple(0, 13, 0, 17, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
-          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+          tuple(0, 13, 0, 17, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarqube", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
 
       assertThat(client.getDiagnostics(nonJavaFilemodule1))
         .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
         .containsExactlyInAnyOrder(
-          tuple(1, 2, 1, 6, "python:S1481", "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
-          tuple(2, 2, 2, 7, "python:S1481", "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning));
+          tuple(1, 2, 1, 6, "python:S1481", "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+          tuple(2, 2, 2, 7, "python:S1481", "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning));
     });
   }
 
@@ -432,16 +432,16 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       assertThat(client.getDiagnostics(file1module1))
         .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
         .containsExactlyInAnyOrder(
-          tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
-          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+          tuple(0, 13, 0, 16, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarqube", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
 
       assertThat(client.getDiagnostics(file2module2))
         .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
         .containsExactlyInAnyOrder(
-          tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
-          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+          tuple(0, 13, 0, 16, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarqube", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
     });
 
     client.logs.clear();
@@ -458,16 +458,16 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       assertThat(client.getDiagnostics(file1module1))
         .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
         .containsExactlyInAnyOrder(
-          tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
-          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+          tuple(0, 13, 0, 16, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarqube", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
 
       assertThat(client.getDiagnostics(file2module2))
         .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
         .containsExactlyInAnyOrder(
-          tuple(0, 13, 0, 16, "java:S1118", "sonarlint", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
-          tuple(0, 0, 0, 0, "java:S1220", "sonarlint", "Move this file to a named package.", DiagnosticSeverity.Warning),
-          tuple(2, 5, 2, 31, "java:S125", "sonarlint", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
+          tuple(0, 13, 0, 16, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+          tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning),
+          tuple(2, 5, 2, 31, "java:S125", "sonarqube", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning));
     });
   }
 }

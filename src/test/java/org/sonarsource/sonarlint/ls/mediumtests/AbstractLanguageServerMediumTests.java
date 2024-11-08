@@ -225,7 +225,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     var actualInitOptions = new HashMap<>(initializeOptions);
     if (initializeOptions.containsKey("additionalAttributes")) {
-      var additionalAttributes = new HashMap<>((Map<String, String>)initializeOptions.get("additionalAttributes"));
+      var additionalAttributes = new HashMap<>((Map<String, String>) initializeOptions.get("additionalAttributes"));
       additionalAttributes.put("csharpOssPath", CSHARP_OSS_PATH);
       additionalAttributes.put("csharpEnterprisePath", CSHARP_ENTERPRISE_PATH);
       actualInitOptions.put("additionalAttributes", additionalAttributes);
@@ -409,6 +409,10 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public void showMessage(MessageParams messageParams) {
       shownMessages.add(messageParams);
+    }
+
+    public Set<MessageParams> getShownMessages() {
+      return shownMessages;
     }
 
     @Override

@@ -39,7 +39,7 @@ import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralized
 
 public class DiagnosticPublisher {
 
-  static final String SONARLINT_SOURCE = "sonarlint";
+  static final String SONARLINT_SOURCE = "sonarqube";
   static final String REMOTE_SOURCE = "remote";
 
   public static final String ITEM_LOCATION = "location";

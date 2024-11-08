@@ -74,7 +74,7 @@ class SkippedPluginsNotifierTests {
     verify(languageClient, times(1)).openJavaHomeSettings();
 
     var message = messageCaptor.getValue();
-    assertThat(message.getMessage()).contains("SonarLint failed to analyze Java code")
+    assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze Java code")
       .contains("Java runtime version 17 or later is required. Current version is 11.");
     assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
   }
@@ -89,7 +89,7 @@ class SkippedPluginsNotifierTests {
     verify(languageClient, times(1)).showMessageRequest(messageCaptor.capture());
 
     var message = messageCaptor.getValue();
-    assertThat(message.getMessage()).contains("SonarLint failed to analyze Java code")
+    assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze Java code")
       .contains("Java runtime version 17 or later is required. Current version is 11.");
     assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
   }
@@ -105,7 +105,7 @@ class SkippedPluginsNotifierTests {
     verify(languageClient, times(1)).openPathToNodeSettings();
 
     var message = messageCaptor.getValue();
-    assertThat(message.getMessage()).contains("SonarLint failed to analyze JavaScript code")
+    assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze JavaScript code")
       .contains("Node.js runtime version minNodeJsVersion or later is required. Current version is currentNodeJsVersion.");
     assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS, SkippedPluginsNotifier.ACTION_DONT_SHOW_AGAIN);
   }
@@ -120,7 +120,7 @@ class SkippedPluginsNotifierTests {
     verify(languageClient, times(1)).showMessageRequest(messageCaptor.capture());
 
     var message = messageCaptor.getValue();
-    assertThat(message.getMessage()).contains("SonarLint failed to analyze JavaScript code")
+    assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze JavaScript code")
       .contains("Node.js runtime version minNodeJsVersion or later is required.")
       .doesNotContain("Current version is");
     assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS, SkippedPluginsNotifier.ACTION_DONT_SHOW_AGAIN);
@@ -138,7 +138,7 @@ class SkippedPluginsNotifierTests {
     verify(languageClient, never()).openPathToNodeSettings();
 
     var message = messageCaptor.getValue();
-    assertThat(message.getMessage()).contains("SonarLint failed to analyze JavaScript code")
+    assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze JavaScript code")
       .contains("Node.js runtime version minNodeJsVersion or later is required. Current version is currentNodeJsVersion.");
     assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS, SkippedPluginsNotifier.ACTION_DONT_SHOW_AGAIN);
   }
