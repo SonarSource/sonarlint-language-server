@@ -65,7 +65,7 @@ class SmartNotificationsTests {
     var link = "http://some.link";
     var showNotificationParams = new ShowSmartNotificationParams(message, link, Set.of(), category, "testConnection");
 
-    var browseAction = new MessageActionItem("Show on SonarQube");
+    var browseAction = new MessageActionItem("Show on SonarQube Server");
     var settingsAction = new MessageActionItem("Open Settings");
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(browseAction));
 
@@ -75,7 +75,7 @@ class SmartNotificationsTests {
     verify(client).showMessageRequest(messageCaptor.capture());
     var shownMessage = messageCaptor.getValue();
     assertThat(shownMessage).extracting(ShowMessageRequestParams::getMessage, ShowMessageRequestParams::getActions)
-      .containsExactly("SonarQube Notification: message", List.of(browseAction, settingsAction));
+      .containsExactly("SonarQube Server Notification: message", List.of(browseAction, settingsAction));
     verify(telemetry).devNotificationsClicked(category);
     verify(client).browseTo(link);
   }
@@ -87,7 +87,7 @@ class SmartNotificationsTests {
     var link = "http://some.link";
     var showNotificationParams = new ShowSmartNotificationParams(message, link, Set.of(), category, "testConnection");
 
-    var browseAction = new MessageActionItem("Show on SonarQube");
+    var browseAction = new MessageActionItem("Show on SonarQube Server");
     var settingsAction = new MessageActionItem("Open Settings");
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(settingsAction));
 
@@ -97,7 +97,7 @@ class SmartNotificationsTests {
     verify(client).showMessageRequest(messageCaptor.capture());
     var shownMessage = messageCaptor.getValue();
     assertThat(shownMessage).extracting(ShowMessageRequestParams::getMessage, ShowMessageRequestParams::getActions)
-      .containsExactly("SonarQube Notification: message", List.of(browseAction, settingsAction));
+      .containsExactly("SonarQube Server Notification: message", List.of(browseAction, settingsAction));
 
     verify(client).openConnectionSettings(false);
   }
@@ -119,7 +119,7 @@ class SmartNotificationsTests {
     verify(client).showMessageRequest(messageCaptor.capture());
     var shownMessage = messageCaptor.getValue();
     assertThat(shownMessage).extracting(ShowMessageRequestParams::getMessage, ShowMessageRequestParams::getActions)
-      .containsExactly("SonarCloud Notification: message", List.of(browseAction, settingsAction));
+      .containsExactly("SonarQube Cloud Notification: message", List.of(browseAction, settingsAction));
     verify(telemetry, never()).devNotificationsClicked(category);
   }
 }

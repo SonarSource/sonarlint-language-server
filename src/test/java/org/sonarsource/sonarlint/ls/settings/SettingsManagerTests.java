@@ -280,7 +280,7 @@ class SettingsManagerTests {
 
     var settings = underTest.getCurrentSettings();
     assertThat(settings.getServerConnections()).containsKeys("<default>");
-    assertThat(logTester.logs(MessageType.Log)).anyMatch(log -> log.contains("Please specify a unique 'connectionId' in your settings for each of the SonarQube/SonarCloud connections."));
+    assertThat(logTester.logs(MessageType.Log)).anyMatch(log -> log.contains("Please specify a unique 'connectionId' in your settings for each of the SonarQube (Server, Cloud) connections."));
   }
 
 
@@ -318,7 +318,7 @@ class SettingsManagerTests {
     assertThat(settings.getConnectionId()).isNull();
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
     assertThat(logTester.logs(MessageType.Log))
-      .anyMatch(log -> log.contains("No SonarQube/SonarCloud connections defined for your binding. Please update your settings."));
+      .anyMatch(log -> log.contains("No SonarQube (Server, Cloud) connections defined for your binding. Please update your settings."));
   }
 
 
@@ -419,7 +419,7 @@ class SettingsManagerTests {
     assertThat(settings.getConnectionId()).isEqualTo("unknown");
     assertThat(settings.getProjectKey()).isEqualTo("myProject");
     assertThat(logTester.logs(MessageType.Log))
-      .anyMatch(log -> log.contains("No SonarQube/SonarCloud connections defined for your binding with id 'unknown'. Please update your settings."));
+      .anyMatch(log -> log.contains("No SonarQube (Server, Cloud) connections defined for your binding with id 'unknown'. Please update your settings."));
   }
 
 

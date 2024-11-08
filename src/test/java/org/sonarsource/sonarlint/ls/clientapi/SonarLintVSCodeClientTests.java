@@ -469,7 +469,7 @@ class SonarLintVSCodeClientTests {
     assertThat(sentParams.isSonarCloud()).isFalse();
     assertThat(sentParams.token()).isEqualTo("tokenValue");
 
-    verify(client).showMessage((new MessageParams(MessageType.Info, "Connection to SonarQube was successfully created.")));
+    verify(client).showMessage((new MessageParams(MessageType.Info, "Connection to SonarQube Server was successfully created.")));
   }
 
   @Test
@@ -490,7 +490,7 @@ class SonarLintVSCodeClientTests {
     assertThat(sentParams.isSonarCloud()).isTrue();
     assertThat(sentParams.token()).isEqualTo("tokenValue");
 
-    verify(client).showMessage((new MessageParams(MessageType.Info, "Connection to SonarCloud was successfully created.")));
+    verify(client).showMessage((new MessageParams(MessageType.Info, "Connection to SonarQube Cloud was successfully created.")));
   }
 
   @Test

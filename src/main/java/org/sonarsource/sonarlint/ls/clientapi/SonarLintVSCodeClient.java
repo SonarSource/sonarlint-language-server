@@ -271,7 +271,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     return workspaceFoldersFuture.thenCombine(assistCreatingConnectionFuture, (workspaceFolders, assistCreatingConnectionResponse) -> {
       var newConnectionId = assistCreatingConnectionResponse.getNewConnectionId();
       if (newConnectionId != null) {
-        var serverProductName = isSonarCloud ? "SonarCloud" : "SonarQube";
+        var serverProductName = isSonarCloud ? "SonarQube Cloud" : "SonarQube Server";
         client.showMessage(new MessageParams(MessageType.Info, format("Connection to %s was successfully created.", serverProductName)));
         return new AssistCreatingConnectionResponse(newConnectionId);
       } else {

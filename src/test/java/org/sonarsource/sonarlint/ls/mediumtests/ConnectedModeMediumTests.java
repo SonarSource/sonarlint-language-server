@@ -1263,7 +1263,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
-      .contains(tuple(0, 1, 0, 2, "ruleKey", "Latest SonarQube Analysis", "message", DiagnosticSeverity.Warning)));
+      .contains(tuple(0, 1, 0, 2, "ruleKey", "Latest SonarQube Server Analysis", "message", DiagnosticSeverity.Warning)));
   }
 
   @Test
