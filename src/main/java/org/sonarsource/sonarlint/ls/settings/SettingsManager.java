@@ -492,7 +492,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private void addIfUniqueConnectionId(Map<String, ServerConnectionSettings> serverConnections, String connectionId, ServerConnectionSettings connectionSettings) {
     if (serverConnections.containsKey(connectionId)) {
       if (DEFAULT_CONNECTION_ID.equals(connectionId)) {
-        logOutput.error("Please specify a unique 'connectionId' in your settings for each of the SonarQube/SonarCloud connections.");
+        logOutput.error("Please specify a unique 'connectionId' in your settings for each of the SonarQube (Server, Cloud) connections.");
       } else {
         logOutput.error(format("Multiple server connections with the same identifier '%s'. Fix your settings.", connectionId));
       }
@@ -519,7 +519,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         connectionId = projectBinding.getOrDefault(SERVER_ID, projectBinding.get(CONNECTION_ID));
         if (isBlank(connectionId)) {
           if (currentSettings.getServerConnections().isEmpty()) {
-            logOutput.error("No SonarQube/SonarCloud connections defined for your binding. Please update your settings.");
+            logOutput.error("No SonarQube (Server, Cloud) connections defined for your binding. Please update your settings.");
           } else if (currentSettings.getServerConnections().size() == 1) {
             connectionId = currentSettings.getServerConnections().keySet().iterator().next();
           } else {
@@ -528,7 +528,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
             connectionId = null;
           }
         } else if (!currentSettings.getServerConnections().containsKey(connectionId)) {
-          logOutput.error(format("No SonarQube/SonarCloud connections defined for your binding with id '%s'. Please update your settings.", connectionId));
+          logOutput.error(format("No SonarQube (Server, Cloud) connections defined for your binding with id '%s'. Please update your settings.", connectionId));
         }
       }
     }
