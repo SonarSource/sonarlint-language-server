@@ -125,7 +125,7 @@ import static org.sonarsource.sonarlint.ls.util.Utils.convertMessageType;
 
 public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
-  public static final String SONARLINT_SOURCE = "sonarlint";
+  public static final String SONARLINT_SOURCE = "sonarqube";
   private final SonarLintExtendedLanguageClient client;
   private SettingsManager settingsManager;
   private SmartNotifications smartNotifications;
@@ -296,7 +296,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public void noBindingSuggestionFound(NoBindingSuggestionFoundParams params) {
     var messageRequestParams = new ShowMessageRequestParams();
-    messageRequestParams.setMessage("SonarLint couldn't match the server project '" + params.getProjectKey() + "' to any of the currently " +
+    messageRequestParams.setMessage("SonarQube for VS Code couldn't match the server project '" + params.getProjectKey() + "' to any of the currently " +
       "open workspace folders. Please make sure the project is open in the workspace, or try configuring the binding manually.");
     messageRequestParams.setType(MessageType.Error);
     var learnMoreAction = new MessageActionItem("Learn more");

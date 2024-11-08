@@ -145,8 +145,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 6, 1, 10, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Warning),
-        tuple(2, 6, 2, 11, "javascript:S1481", "sonarlint", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Warning)));
+        tuple(1, 6, 1, 10, "javascript:S1481", "sonarqube", "Remove the declaration of the unused 'toto' variable.", DiagnosticSeverity.Warning),
+        tuple(2, 6, 2, 11, "javascript:S1481", "sonarqube", "Remove the declaration of the unused 'plouf' variable.", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -159,7 +159,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(tuple(1, 13, 1, 18, "typescript:S1764", "sonarlint", "Correct one of the identical sub-expressions on both sides of operator \"&&\" [+1 location]",
+      .containsExactly(tuple(1, 13, 1, 18, "typescript:S1764", "sonarqube", "Correct one of the identical sub-expressions on both sides of operator \"&&\" [+1 location]",
         DiagnosticSeverity.Warning)));
   }
 
@@ -182,8 +182,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(3, 15, 4, 2, GO_S108, "sonarlint", "Either remove or fill this block of code.", DiagnosticSeverity.Warning),
-        tuple(4, 11, 4, 21, GO_S1862, "sonarlint", "This condition duplicates the one on line 4. [+1 location]", DiagnosticSeverity.Warning)));
+        tuple(3, 15, 4, 2, GO_S108, "sonarqube", "Either remove or fill this block of code.", DiagnosticSeverity.Warning),
+        tuple(4, 11, 4, 21, GO_S1862, "sonarqube", "This condition duplicates the one on line 4. [+1 location]", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -211,9 +211,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
         tuple(7, 15, 7, 39, CLOUDFORMATION_S6273,
-          "sonarlint", "Rename tag key \"anycompany:cost-center\" to match the regular expression \"^([A-Z][A-Za-z]*:)*([A-Z][A-Za-z]*)$\".",
+          "sonarqube", "Rename tag key \"anycompany:cost-center\" to match the regular expression \"^([A-Z][A-Za-z]*:)*([A-Z][A-Za-z]*)$\".",
           DiagnosticSeverity.Warning),
-        tuple(9, 15, 9, 43, CLOUDFORMATION_S6273, "sonarlint",
+        tuple(9, 15, 9, 43, CLOUDFORMATION_S6273, "sonarqube",
           "Rename tag key \"anycompany:EnvironmentType\" to match the regular expression \"^([A-Z][A-Za-z]*:)*([A-Z][A-Za-z]*)$\".",
           DiagnosticSeverity.Warning)));
   }
@@ -230,8 +230,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(0, 18, 0, 20, DOCKER_S6476, "sonarlint", "Replace `as` with upper case format `AS`.", DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 4, DOCKER_S6476, "sonarlint", "Replace `from` with upper case format `FROM`.", DiagnosticSeverity.Warning)));
+        tuple(0, 18, 0, 20, DOCKER_S6476, "sonarqube", "Replace `as` with upper case format `AS`.", DiagnosticSeverity.Warning),
+        tuple(0, 0, 0, 4, DOCKER_S6476, "sonarqube", "Replace `from` with upper case format `FROM`.", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -254,7 +254,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(4, 4, 4, 28, TERRAFORM_S6273, "sonarlint",
+        tuple(4, 4, 4, 28, TERRAFORM_S6273, "sonarqube",
           "Rename tag key \"anycompany:cost-center\" to match the regular expression \"^([A-Z][A-Za-z]*:)*([A-Z][A-Za-z]*)$\".", DiagnosticSeverity.Warning)));
   }
 
@@ -277,7 +277,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(3, 4, 3, 31, ARM_S4423, "sonarlint",
+        tuple(3, 4, 3, 31, ARM_S4423, "sonarqube",
           "Change this code to disable support of older TLS versions.", DiagnosticSeverity.Warning)));
   }
 
@@ -308,7 +308,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(9, 8, 9, 37, ARM_S4423, "sonarlint",
+        tuple(9, 8, 9, 37, ARM_S4423, "sonarqube",
           "Change this code to disable support of older TLS versions.", DiagnosticSeverity.Warning)));
   }
 
@@ -321,7 +321,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(1, 2, 1, 7, "python:PrintStatementUsage", "sonarlint", "Replace print statement by built-in function.", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 7, "python:PrintStatementUsage", "sonarqube", "Replace print statement by built-in function.", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -352,8 +352,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
-        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
 
     client.clear();
 
@@ -364,7 +364,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(2, 14, 2, 69, PYTHON_S139, "sonarlint", "Move this trailing comment on the previous empty line.", DiagnosticSeverity.Warning)
+        tuple(2, 14, 2, 69, PYTHON_S139, "sonarqube", "Move this trailing comment on the previous empty line.", DiagnosticSeverity.Warning)
         // Expected issues on python:S1481 are suppressed by rule configuration
       ));
   }
@@ -378,7 +378,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(1, 8, 1, 15, "python:S1192", "sonarlint", "Define a constant instead of duplicating this literal '/toto' 3 times. [+2 locations]", DiagnosticSeverity.Warning)));
+        tuple(1, 8, 1, 15, "python:S1192", "sonarqube", "Define a constant instead of duplicating this literal '/toto' 3 times. [+2 locations]", DiagnosticSeverity.Warning)));
 
     var d = client.getDiagnostics(uri).get(0);
     var codeActionParams = new CodeActionParams(new TextDocumentIdentifier(uri), d.getRange(), new CodeActionContext(List.of(d)));
@@ -398,9 +398,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(0, 0, 0, 0, "php:S113", "sonarlint", "Add a new line at the end of this file.", DiagnosticSeverity.Warning),
-        tuple(2, 2, 2, 15, "php:S6600", "sonarlint", "Remove the parentheses from this \"echo\" call.", DiagnosticSeverity.Warning),
-        tuple(4, 0, 4, 2, "php:S1780", "sonarlint", "Remove this closing tag \"?>\".", DiagnosticSeverity.Warning)));
+        tuple(0, 0, 0, 0, "php:S113", "sonarqube", "Add a new line at the end of this file.", DiagnosticSeverity.Warning),
+        tuple(2, 2, 2, 15, "php:S6600", "sonarqube", "Remove the parentheses from this \"echo\" call.", DiagnosticSeverity.Warning),
+        tuple(4, 0, 4, 2, "php:S1780", "sonarqube", "Remove this closing tag \"?>\".", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -412,11 +412,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(0, 0, 0, 6, "Web:DoctypePresenceCheck", "sonarlint", "Insert a <!DOCTYPE> declaration to before this <html> tag.",
+        tuple(0, 0, 0, 6, "Web:DoctypePresenceCheck", "sonarqube", "Insert a <!DOCTYPE> declaration to before this <html> tag.",
           DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 6, "Web:S5254", "sonarlint", "Add \"lang\" and/or \"xml:lang\" attributes to this \"<html>\" element",
+        tuple(0, 0, 0, 6, "Web:S5254", "sonarqube", "Add \"lang\" and/or \"xml:lang\" attributes to this \"<html>\" element",
           DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 26, "Web:PageWithoutTitleCheck", "sonarlint", "Add a <title> tag to this page.", DiagnosticSeverity.Warning)));
+        tuple(0, 0, 0, 26, "Web:PageWithoutTitleCheck", "sonarqube", "Add a <title> tag to this page.", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -428,11 +428,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(0, 0, 0, 6, "Web:DoctypePresenceCheck", "sonarlint", "Insert a <!DOCTYPE> declaration to before this <html> tag.",
+        tuple(0, 0, 0, 6, "Web:DoctypePresenceCheck", "sonarqube", "Insert a <!DOCTYPE> declaration to before this <html> tag.",
           DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 6, "Web:S5254", "sonarlint", "Add \"lang\" and/or \"xml:lang\" attributes to this \"<html>\" element",
+        tuple(0, 0, 0, 6, "Web:S5254", "sonarqube", "Add \"lang\" and/or \"xml:lang\" attributes to this \"<html>\" element",
           DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 26, "Web:PageWithoutTitleCheck", "sonarlint", "Add a <title> tag to this page.", DiagnosticSeverity.Warning)));
+        tuple(0, 0, 0, 26, "Web:PageWithoutTitleCheck", "sonarqube", "Add a <title> tag to this page.", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -484,7 +484,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning)));
+      .containsExactly(tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -496,11 +496,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(0, 0, 0, 6, "Web:DoctypePresenceCheck", "sonarlint", "Insert a <!DOCTYPE> declaration to before this <html> tag.",
+        tuple(0, 0, 0, 6, "Web:DoctypePresenceCheck", "sonarqube", "Insert a <!DOCTYPE> declaration to before this <html> tag.",
           DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 6, "Web:S5254", "sonarlint", "Add \"lang\" and/or \"xml:lang\" attributes to this \"<html>\" element",
+        tuple(0, 0, 0, 6, "Web:S5254", "sonarqube", "Add \"lang\" and/or \"xml:lang\" attributes to this \"<html>\" element",
           DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 26, "Web:PageWithoutTitleCheck", "sonarlint", "Add a <title> tag to this page.", DiagnosticSeverity.Warning)));
+        tuple(0, 0, 0, 26, "Web:PageWithoutTitleCheck", "sonarqube", "Add a <title> tag to this page.", DiagnosticSeverity.Warning)));
 
     didClose(uri);
 
@@ -519,7 +519,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(2, 2, 2, 27, "xml:S1135", "sonarlint", "Complete the task associated to this \"TODO\" comment.", DiagnosticSeverity.Warning)));
+        tuple(2, 2, 2, 27, "xml:S1135", "sonarqube", "Complete the task associated to this \"TODO\" comment.", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -531,7 +531,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(0, 0, 0, 4, "css:S4658", "sonarlint", "Unexpected empty block", DiagnosticSeverity.Warning)));
+        tuple(0, 0, 0, 4, "css:S4658", "sonarqube", "Unexpected empty block", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -560,8 +560,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
-        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -729,16 +729,16 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var list = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
     assertThat(list).hasSize(3);
     var codeAction = list.get(0).getRight();
-    assertThat(codeAction.getTitle()).isEqualTo("SonarLint: Show issue details for 'javascript:S930'");
+    assertThat(codeAction.getTitle()).isEqualTo("SonarQube: Show issue details for 'javascript:S930'");
     var openRuleDesc = codeAction.getCommand();
     assertThat(openRuleDesc.getCommand()).isEqualTo("SonarLint.ShowIssueDetailsCodeAction");
     assertThat(openRuleDesc.getArguments()).hasSize(2);
     assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(0)).getAsString()).isEqualTo(issueId);
     assertThat(((JsonPrimitive) openRuleDesc.getArguments().get(1)).getAsString()).isEqualTo(uri);
     var showAllLocationsCodeAction = list.get(1).getRight();
-    assertThat(showAllLocationsCodeAction.getTitle()).isEqualTo("SonarLint: Show all locations for issue 'javascript:S930'");
+    assertThat(showAllLocationsCodeAction.getTitle()).isEqualTo("SonarQube: Show all locations for issue 'javascript:S930'");
     var disableRuleCodeAction = list.get(2).getRight();
-    assertThat(disableRuleCodeAction.getTitle()).isEqualTo("SonarLint: Deactivate rule 'javascript:S930'");
+    assertThat(disableRuleCodeAction.getTitle()).isEqualTo("SonarQube: Deactivate rule 'javascript:S930'");
     var disableRule = disableRuleCodeAction.getCommand();
     assertThat(disableRule.getCommand()).isEqualTo("SonarLint.DeactivateRule");
     assertThat(disableRule.getArguments()).hasSize(1);
@@ -894,7 +894,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(1, 2, 1, 7, "python:PrintStatementUsage", "sonarlint", "Replace print statement by built-in function.", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 7, "python:PrintStatementUsage", "sonarqube", "Replace print statement by built-in function.", DiagnosticSeverity.Warning)));
 
     client.logs.clear();
 
@@ -909,7 +909,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(1, 2, 1, 7, "python:PrintStatementUsage", "sonarlint", "Replace print statement by built-in function.", DiagnosticSeverity.Warning));
+        tuple(1, 2, 1, 7, "python:PrintStatementUsage", "sonarqube", "Replace print statement by built-in function.", DiagnosticSeverity.Warning));
   }
 
   @Test
@@ -1128,7 +1128,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning)));
   }
 
   @Test

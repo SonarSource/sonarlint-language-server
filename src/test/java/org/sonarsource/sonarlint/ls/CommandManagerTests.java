@@ -191,8 +191,8 @@ class CommandManagerTests {
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ")))), NOP_CANCEL_TOKEN);
 
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("SonarLint: Show issue details for 'XYZ'",
-      "SonarLint: Resolve issue violating rule 'XYZ' as...");
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("SonarQube: Show issue details for 'XYZ'",
+      "SonarQube: Resolve issue violating rule 'XYZ' as...");
   }
 
   @Test
@@ -210,8 +210,8 @@ class CommandManagerTests {
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsOnly(
-        "SonarLint: Show issue details for 'XYZ'",
-        "SonarLint: Deactivate rule 'XYZ'");
+        "SonarQube: Show issue details for 'XYZ'",
+        "SonarQube: Deactivate rule 'XYZ'");
   }
 
   @Test
@@ -241,9 +241,9 @@ class CommandManagerTests {
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
-        "SonarLint: Fix the issue!",
-        "SonarLint: Show issue details for 'XYZ'",
-        "SonarLint: Deactivate rule 'XYZ'");
+        "SonarQube: Fix the issue!",
+        "SonarQube: Show issue details for 'XYZ'",
+        "SonarQube: Deactivate rule 'XYZ'");
   }
 
   @Test
@@ -280,9 +280,9 @@ class CommandManagerTests {
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
-        "SonarLint: Fix the issue!",
-        "SonarLint: Show issue details for 'XYZ'",
-        "SonarLint: Deactivate rule 'XYZ'");
+        "SonarQube: Fix the issue!",
+        "SonarQube: Show issue details for 'XYZ'",
+        "SonarQube: Deactivate rule 'XYZ'");
   }
 
   @ParameterizedTest
@@ -320,10 +320,10 @@ class CommandManagerTests {
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
-      "SonarLint: Show issue details for 'ruleKey'",
-      "SonarLint: Show all locations for taint vulnerability 'ruleKey'",
-      "SonarLint: Open taint vulnerability 'ruleKey' on 'connectionId'",
-      "SonarLint: Resolve issue violating rule 'ruleKey' as...");
+      "SonarQube: Show issue details for 'ruleKey'",
+      "SonarQube: Show all locations for taint vulnerability 'ruleKey'",
+      "SonarQube: Open taint vulnerability 'ruleKey' on 'connectionId'",
+      "SonarQube: Resolve issue violating rule 'ruleKey' as...");
 
     assertThat(codeActions.get(0).getRight().getCommand().getArguments()).containsOnly(
       issueId,
@@ -358,9 +358,9 @@ class CommandManagerTests {
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
-      "SonarLint: Show issue details for 'ruleKey'",
-      "SonarLint: Open taint vulnerability 'ruleKey' on 'connectionId'",
-      "SonarLint: Resolve issue violating rule 'ruleKey' as...");
+      "SonarQube: Show issue details for 'ruleKey'",
+      "SonarQube: Open taint vulnerability 'ruleKey' on 'connectionId'",
+      "SonarQube: Resolve issue violating rule 'ruleKey' as...");
 
     assertThat(codeActions.get(0).getRight().getCommand().getArguments()).containsOnly(
       taintId,
@@ -388,9 +388,9 @@ class CommandManagerTests {
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsOnly(
-        "SonarLint: Show issue details for 'XYZ'",
-        "SonarLint: Deactivate rule 'XYZ'",
-        "SonarLint: Show all locations for issue 'XYZ'");
+        "SonarQube: Show issue details for 'XYZ'",
+        "SonarQube: Deactivate rule 'XYZ'",
+        "SonarQube: Show all locations for issue 'XYZ'");
   }
 
   @Test
@@ -723,8 +723,8 @@ class CommandManagerTests {
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
-        "SonarLint: Resolve issue violating rule 'XYZ' as...",
-        "SonarLint: Show issue details for 'XYZ'");
+        "SonarQube: Resolve issue violating rule 'XYZ' as...",
+        "SonarQube: Show issue details for 'XYZ'");
   }
 
   @Test
@@ -759,7 +759,7 @@ class CommandManagerTests {
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
-        "SonarLint: Show issue details for 'XYZ'");
+        "SonarQube: Show issue details for 'XYZ'");
   }
 
 }

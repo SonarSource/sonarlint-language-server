@@ -109,7 +109,7 @@ class SmartNotificationsTests {
     var link = "http://some.link";
     var showNotificationParams = new ShowSmartNotificationParams(message, link, Set.of(), category, "testConnection");
 
-    var browseAction = new MessageActionItem("Show on SonarCloud");
+    var browseAction = new MessageActionItem("Show on SonarQube Cloud");
     when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(null));
     var settingsAction = new MessageActionItem("Open Settings");
 

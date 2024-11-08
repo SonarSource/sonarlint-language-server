@@ -316,7 +316,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
       .containsExactly(
-        tuple(0, 13, 0, 26, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
+        tuple(0, 13, 0, 26, PYTHON_S1313, "sonarqube", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
           DiagnosticSeverity.Warning)));
   }
 
@@ -511,7 +511,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
           Diagnostic::getSeverity)
         .containsExactly(
-          tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
+          tuple(1, 15, 1, 28, PYTHON_S1313, "sonarqube", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
             DiagnosticSeverity.Warning));
       assertThat(client.getDiagnostics(uri1InFolder)).isEmpty();
 
@@ -519,7 +519,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
           Diagnostic::getSeverity)
         .containsExactly(
-          tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"23.45.67.89\" is safe here.",
+          tuple(1, 15, 1, 28, PYTHON_S1313, "sonarqube", "Make sure using this hardcoded IP address \"23.45.67.89\" is safe here.",
             DiagnosticSeverity.Warning));
       assertThat(client.getDiagnostics(uri2InFolder)).isEmpty();
     });
@@ -537,7 +537,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
           Diagnostic::getSeverity)
         .containsExactly(
-          tuple(1, 15, 1, 28, PYTHON_S1313, "sonarlint", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
+          tuple(1, 15, 1, 28, PYTHON_S1313, "sonarqube", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
             DiagnosticSeverity.Warning));
 
       // File 2 is not open, cleaning hotspots
@@ -571,8 +571,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
-        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
   }
 
   private void addConfigScope(String configScopeId) {
@@ -625,8 +625,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
-        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
 
     var firstDiagnostic = client.getDiagnostics(uriInFolder).get(0);
     var codeActionParams = new CodeActionParams();
@@ -834,8 +834,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
-        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
 
     lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
       "False positive", fileUri, "clever comment", false));
@@ -845,8 +845,41 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
     assertThat(client.shownMessages).contains(new MessageParams(MessageType.Info, "New comment was added"));
+  }
+
+  @Test
+  void shouldNotChangeIssueStatus() {
+    var issueKey = "xyz";
+
+    mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(400));
+    mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(400));
+    mockWebServerExtension.addProtobufResponse(
+      "/api/hotspots/search.protobuf?projectKey=myProject&files=inFolderToo.py&branch=master&ps=500&p=1",
+      Hotspots.SearchWsResponse.newBuilder().build());
+
+    addConfigScope(folder1BaseDir.toUri().toString());
+    awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
+    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
+
+    var fileUri = folder1BaseDir.resolve("inFolderToo.py").toUri().toString();
+    var content = "def foo():\n  toto = 0\n  plouf = 0\n";
+    didOpen(fileUri, "python", content);
+
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+        Diagnostic::getSeverity)
+      .containsExactlyInAnyOrder(
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+
+    lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
+      "False positive", fileUri, "clever comment", false));
+
+    //Now we expect that one issue is resolved
+    awaitUntilAsserted(() -> assertThat(client.shownMessages)
+      .contains(new MessageParams(MessageType.Error, "Could not change status for the issue. Look at the SonarQube for IDE output for details.")));
   }
 
   @Test
@@ -929,6 +962,88 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.changeHotspotStatus(new SonarLintExtendedLanguageServer.ChangeHotspotStatusParams(hotspotKey, HotspotStatus.SAFE.name(), uriInFolder));
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder)).isEmpty());
+  }
+
+  @Test
+  void should_not_change_hotspot_status_to_resolved() {
+    var analyzedFileName = "hotspot_not_resolved.py";
+
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(400));
+    mockNoIssueAndNoTaintInIncrementalSync();
+    mockWebServerExtension.addProtobufResponse(
+      "/api/hotspots/search.protobuf?projectKey=myProject&files=" + analyzedFileName + "&branch=master&ps=500&p=1",
+      Hotspots.SearchWsResponse.newBuilder().build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/rules/show.protobuf?key=python:S1313",
+      Rules.ShowResponse.newBuilder()
+        .setRule(Rules.Rule.newBuilder()
+          .setSeverity("MINOR")
+          .setType(Common.RuleType.SECURITY_HOTSPOT)
+          .setLang(SonarLanguage.PYTHON.getSonarLanguageKey())
+          .build())
+        .build());
+    var hotspotKey = "myhotspotkey";
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
+      Hotspots.HotspotLite.newBuilder()
+        .setKey(hotspotKey)
+        .setFilePath(analyzedFileName)
+        .setCreationDate(System.currentTimeMillis())
+        .setStatus("TO_REVIEW")
+        .setVulnerabilityProbability("LOW")
+        .setMessage("Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.")
+        .setTextRange(Hotspots.TextRange.newBuilder()
+          .setStartLine(1)
+          .setStartLineOffset(13)
+          .setEndLine(1)
+          .setEndLineOffset(26)
+          .setHash(Utils.hash("'12.34.56.78'"))
+          .build()
+        )
+        .setRuleKey(PYTHON_S1313)
+        .build()
+    );
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
+      Hotspots.HotspotLite.newBuilder()
+        .setKey(hotspotKey)
+        .setFilePath(analyzedFileName)
+        .setCreationDate(System.currentTimeMillis())
+        .setStatus("TO_REVIEW")
+        .setVulnerabilityProbability("LOW")
+        .setMessage("Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.")
+        .setTextRange(Hotspots.TextRange.newBuilder()
+          .setStartLine(1)
+          .setStartLineOffset(13)
+          .setEndLine(1)
+          .setEndLineOffset(26)
+          .setHash(Utils.hash("'12.34.56.78'"))
+          .build()
+        )
+        .setRuleKey(PYTHON_S1313)
+        .build()
+    );
+
+
+    var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
+    addConfigScope(folder1BaseDir.toUri().toString());
+    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Merged 1 hotspots in store. Closed 0.")));
+    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
+
+    didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
+
+    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(0, 13, 0, 26, PYTHON_S1313, "remote", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Warning)));
+    assertThat(client.getHotspots(uriInFolder).get(0).getData().toString()).contains("\"status\":0");
+
+    lsProxy.changeHotspotStatus(new SonarLintExtendedLanguageServer.ChangeHotspotStatusParams(hotspotKey, HotspotStatus.SAFE.name(), uriInFolder));
+
+    awaitUntilAsserted(() -> assertThat(client.shownMessages).contains(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarQube for IDE output for details.")));
   }
 
   @Test
@@ -1029,6 +1144,29 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  void change_hotspot_status_permission_check_fail() throws ExecutionException, InterruptedException {
+    var analyzedFileName = "hotspot_no_permissions.py";
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(400));
+
+    var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
+    addConfigScope(folder1BaseDir.toUri().toString());
+    var hotspotKey = "myHotspotKey";
+
+    didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
+
+    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(
+        tuple(0, 13, 0, 26, PYTHON_S1313, "sonarqube", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Warning)));
+
+    lsProxy.getAllowedHotspotStatuses(
+      new SonarLintExtendedLanguageServer.GetAllowedHotspotStatusesParams(hotspotKey, folder1BaseDir.toUri().toString(), uriInFolder)).get();
+
+    awaitUntilAsserted(() -> assertThat(client.shownMessages).contains(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarQube for IDE output for details.")));
+  }
+
+  @Test
   void change_issue_status_permission_check() throws ExecutionException, InterruptedException {
     var issueKey = UUID.randomUUID().toString();
     mockWebServerExtension.addProtobufResponse(
@@ -1054,8 +1192,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
-        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
 
     var result = lsProxy.checkIssueStatusChangePermitted(new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedParams(folder1BaseDir.toUri().toString(), issueKey)).get();
 
@@ -1079,7 +1217,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       assertThat(client.logs)
         .extracting(withoutTimestamp())
         .contains("Could not get issue status change for issue \""
-          + issueKey + "\". Look at the SonarLint output for details.");
+          + issueKey + "\". Look at the SonarQube for IDE output for details.");
     });
   }
 
@@ -1155,8 +1293,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
-        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -1188,8 +1326,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
-        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
+        tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
 
     var diagnostics = client.getDiagnostics(fileUri);
     var issueKey = ((JsonObject) diagnostics.stream().filter(it -> it.getMessage().equals("Remove the unused local variable \"plouf\"."))
@@ -1202,7 +1340,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarlint", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning)));
+        tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning)));
   }
 
   private String getFileNameFromFileUri(String fileUri) throws URISyntaxException {

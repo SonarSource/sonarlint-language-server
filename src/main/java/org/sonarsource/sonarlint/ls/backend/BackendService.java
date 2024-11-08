@@ -265,7 +265,7 @@ public class BackendService {
       .exceptionally(t -> {
         logOutput.errorWithStackTrace("Error getting issue status change permissions", t);
         client.logMessage(new MessageParams(MessageType.Error, "Could not get issue status change for issue \""
-          + issueKey + "\". Look at the SonarLint output for details."));
+          + issueKey + "\". Look at the SonarQube for IDE output for details."));
         return null;
       });
   }
@@ -278,7 +278,7 @@ public class BackendService {
     return initializedBackend().getIssueService().addComment(params)
       .exceptionally(t -> {
         logOutput.errorWithStackTrace("Error adding issue comment", t);
-        client.showMessage(new MessageParams(MessageType.Error, "Could not add a new issue comment. Look at the SonarLint output for " +
+        client.showMessage(new MessageParams(MessageType.Error, "Could not add a new issue comment. Look at the SonarQube for IDE output for " +
           "details."));
         return null;
       });

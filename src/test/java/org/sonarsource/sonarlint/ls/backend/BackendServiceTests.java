@@ -20,12 +20,16 @@
 package org.sonarsource.sonarlint.ls.backend;
 
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.sonarsource.sonarlint.core.issue.IssueNotFoundException;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.BindingRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
@@ -35,6 +39,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.Connection
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.ListUserOrganizationsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.IssueRpcService;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -52,6 +58,7 @@ class BackendServiceTests {
   ConfigurationRpcService configurationService = mock(ConfigurationRpcService.class);
   BindingRpcService bindingRpcService = mock(BindingRpcService.class);
   ConnectionRpcService connectionRpcService = mock(ConnectionRpcService.class);
+  IssueRpcService issueService = mock(IssueRpcService.class);
   static LanguageClientLogger lsLogOutput = mock(LanguageClientLogger.class);
   static SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   static BackendService underTest = new BackendService(backend, lsLogOutput, client);
@@ -68,6 +75,7 @@ class BackendServiceTests {
     when(backend.getConfigurationService()).thenReturn(configurationService);
     when(backend.getBindingService()).thenReturn(bindingRpcService);
     when(backend.getConnectionService()).thenReturn(connectionRpcService);
+    when(backend.getIssueService()).thenReturn(issueService);
   }
 
   @Test
@@ -131,4 +139,17 @@ class BackendServiceTests {
     assertThat(argumentCaptor.getValue().getCredentials().getLeft().getToken()).isEqualTo(token);
   }
 
+  @Test
+  void shouldAddIssueComment() {
+    var issueId = UUID.randomUUID();
+    when(issueService.addComment(any())).thenReturn(CompletableFuture.failedFuture(new IssueNotFoundException("Could not find issue", issueId)));
+
+    underTest.addIssueComment(new AddIssueCommentParams("configScope", issueId.toString(), "comment"));
+
+    var messageParamsCaptor = ArgumentCaptor.forClass(MessageParams.class);
+
+    verify(client).showMessage(messageParamsCaptor.capture());
+    assertThat(messageParamsCaptor.getValue().getMessage()).contains("Could not add a new issue comment. Look at the SonarQube for IDE output for details.");
+    assertThat(messageParamsCaptor.getValue().getType()).isEqualTo(MessageType.Error);
+  }
 }

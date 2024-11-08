@@ -196,7 +196,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ExecutorService branchChangeEventExecutor;
 
   SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers) {
-    this.lspThreadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarLint LSP message processor", false));
+    this.lspThreadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarQube for VS Code LSP message processor", false));
 
     var input = new ExitingInputStream(inputStream, this);
     var launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
@@ -206,7 +206,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .setOutput(outputStream)
       .setExecutorService(lspThreadPool)
       .create();
-    this.branchChangeEventExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint branch change event handler", false));
+    this.branchChangeEventExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarQube for VS Code branch change event handler", false));
 
     this.analyzers = analyzers;
     this.client = launcher.getRemoteProxy();
@@ -864,7 +864,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       client.showMessage(new MessageParams(MessageType.Info, "Issue status was changed"));
     }).exceptionally(t -> {
       lsLogOutput.errorWithStackTrace("Error changing issue status", t);
-      client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the issue. Look at the SonarLint output for details."));
+      client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the issue. Look at the SonarQube for IDE output for details."));
       return null;
     }).thenAccept(unused -> {
       if (!StringUtils.isEmpty(params.getComment())) {
@@ -910,7 +910,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       client.showMessage(new MessageParams(MessageType.Info, "Hotspot status was changed"));
     }).exceptionally(t -> {
       lsLogOutput.errorWithStackTrace("Error changing hotspot status", t);
-      client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarLint output for details."));
+      client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarQube for IDE output for details."));
       return null;
     });
   }
@@ -936,7 +936,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         statuses);
     }).exceptionally(t -> {
       lsLogOutput.errorWithStackTrace("Error changing hotspot status", t);
-      client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarLint output for details."));
+      client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarQube for IDE output for details."));
       return null;
     });
   }
@@ -957,7 +957,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       return r;
     }).exceptionally(e -> {
       lsLogOutput.errorWithStackTrace("Error while reopening resolved local issues", e);
-      client.showMessage(new MessageParams(MessageType.Error, "Could not reopen resolved local issues. Look at the SonarLint output for details."));
+      client.showMessage(new MessageParams(MessageType.Error, "Could not reopen resolved local issues. Look at the SonarQube for IDE output for details."));
       return null;
     });
   }
