@@ -88,5 +88,11 @@ class ServerMainTests {
     var paths = underTest.getAnalyzers();
     assertThat(paths).containsExactly(Paths.get("folder/analyzer1.jar"), Paths.get("folder/analyzer2.jar"));
   }
+
+  @Test
+  void testExtractingVersionFromManifest() {
+    cmd.execute("--version");
+    assertThat(cmdOutput.toString()).isNotEmpty();
+  }
 }
 

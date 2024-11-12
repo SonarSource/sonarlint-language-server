@@ -19,9 +19,11 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
+import com.google.gson.JsonNull;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
@@ -426,7 +428,18 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void notifyProgress(ProgressParams params) {
-      System.out.println(params);
+      var progressValue = params.getValue();
+      var progressPrefix = "%%% ";
+      if (progressValue.isLeft()) {
+        try {
+          var progressMessage = progressValue.getLeft().getClass().getMethod("getMessage").invoke(progressValue);
+          System.out.println(progressPrefix + progressMessage);
+        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+          System.out.println(progressPrefix + progressValue.getLeft());
+        }
+      } else {
+        System.out.println(progressPrefix + progressValue.getRight());
+      }
     }
 
     @Override
@@ -443,8 +456,12 @@ public abstract class AbstractLanguageServerMediumTests {
             DOTNET_DEFAULT_SOLUTION_PATH, OMNISHARP_USE_MODERN_NET, OMNISHARP_LOAD_PROJECT_ON_DEMAND, OMNISHARP_PROJECT_LOAD_TIMEOUT, VSCODE_FILE_EXCLUDES);
           result = new ArrayList<>(configurationParams.getItems().size());
           for (var item : configurationParams.getItems()) {
-            if (item.getScopeUri() == null && item.getSection().equals(SONARLINT_CONFIGURATION_NAMESPACE)) {
-              result.add(globalSettings);
+            if (item.getScopeUri() == null) {
+              if (item.getSection().equals(SONARLINT_CONFIGURATION_NAMESPACE)) {
+                result.add(globalSettings);
+              } else {
+                result.add(JsonNull.INSTANCE);
+              }
             } else if (item.getScopeUri() != null && !item.getSection().equals(SONARLINT_CONFIGURATION_NAMESPACE)) {
               result
                 .add(Optional.ofNullable(folderSettings.get(item.getScopeUri()))

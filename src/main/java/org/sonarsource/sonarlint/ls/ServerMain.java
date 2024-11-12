@@ -20,15 +20,12 @@
 package org.sonarsource.sonarlint.ls;
 
 import com.google.common.collect.ImmutableList;
-
-import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
-import java.util.jar.Manifest;
-
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.IVersionProvider;
@@ -57,6 +54,7 @@ public class ServerMain implements Callable<Integer> {
   private CommandSpec spec;
 
   public ServerMain() {
+    // Empty, fields are set by picocli
   }
 
   public List<Path> getAnalyzers() {
@@ -107,9 +105,9 @@ public class ServerMain implements Callable<Integer> {
 
     @Override
     public String[] getVersion() throws Exception {
-      try(InputStream is = getClass().getResourceAsStream("/META-INF/MANIFEST.MF")) {
-        Manifest mf = new Manifest(is);
-        return new String[] { mf.getMainAttributes().getValue("Implementation-Version") };
+      try(var versionStream = getClass().getResourceAsStream("/slls-version.txt")) {
+        var version = new String(versionStream.readAllBytes(), StandardCharsets.UTF_8);
+        return new String[] { version };
       }
     }
   }
