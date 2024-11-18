@@ -223,9 +223,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setQueryTimestamp(CURRENT_TIME)
         .build());
     mockWebServerExtension.addProtobufResponse(
-      "/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=inFolderToo.py&branch=master&ps=500&p=1",
-      Hotspots.SearchWsResponse.newBuilder().build());
-    mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=analysisConnected_find_hotspot.py&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
     mockWebServerExtension.addProtobufResponseDelimited(
@@ -237,24 +234,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
       Issues.IssuesPullQueryTimestamp.newBuilder()
         .setQueryTimestamp(CURRENT_TIME)
-        .build(),
-      Issues.IssueLite.newBuilder()
-        .setKey("xyz")
-        .setRuleKey(PYTHON_S1481)
-        .setType(Common.RuleType.CODE_SMELL)
-        .setUserSeverity(Common.Severity.BLOCKER)
-        .setMainLocation(Issues.Location.newBuilder()
-          .setFilePath("inFolderToo.py")
-          .setMessage("Remove the unused local variable \"toto\".")
-          .setTextRange(Issues.TextRange.newBuilder()
-            .setStartLine(1)
-            .setStartLineOffset(2)
-            .setEndLine(1)
-            .setEndLineOffset(6)
-            .setHash("f71dbe52628a3f83a77ab494817525c6")
-            .build())
-          .build())
-        .setClosed(false)
         .build());
     client.clearHotspotsAndIssuesAndConfigScopeReadiness();
   }
@@ -394,6 +373,9 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=myProject&files=hotspot.py&branch=master&ps=500&p=1",
+      Hotspots.SearchWsResponse.newBuilder().build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/hotspots/search.protobuf?projectKey=myProject&files=analysisConnected_no_matching_server_issues.py&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
     mockWebServerExtension.addProtobufResponse(
       "/api/rules/show.protobuf?key=python:S1313",
@@ -564,7 +546,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
-    var uriInFolder = folder1BaseDir.resolve("inFolder.py").toUri().toString();
+    var uriInFolder = folder1BaseDir.resolve("hotspot.py").toUri().toString();
     didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
@@ -614,11 +596,37 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .setParameter("9.2")
           .build())
         .build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=analysisConnected_matching_server_issues.py&branch=master&ps=500&p=1",
+      Hotspots.SearchWsResponse.newBuilder().build());
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
+      Issues.IssuesPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build(),
+      Issues.IssueLite.newBuilder()
+        .setKey("xyz")
+        .setRuleKey(PYTHON_S1481)
+        .setType(Common.RuleType.CODE_SMELL)
+        .setUserSeverity(Common.Severity.BLOCKER)
+        .setMainLocation(Issues.Location.newBuilder()
+          .setFilePath("analysisConnected_matching_server_issues.py")
+          .setMessage("Remove the unused local variable \"toto\".")
+          .setTextRange(Issues.TextRange.newBuilder()
+            .setStartLine(1)
+            .setStartLineOffset(2)
+            .setEndLine(1)
+            .setEndLineOffset(6)
+            .setHash("f71dbe52628a3f83a77ab494817525c6")
+            .build())
+          .build())
+        .setClosed(false)
+        .build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
-    var uriInFolder = folder1BaseDir.resolve("inFolderToo.py").toUri().toString();
+    var uriInFolder = folder1BaseDir.resolve("analysisConnected_matching_server_issues.py").toUri().toString();
     didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
@@ -814,19 +822,18 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldChangeIssueStatus() {
-    var issueKey = "xyz";
-
     mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
+    mockWebServerExtension.addResponse("/api/issues/anticipated_transitions?projectKey=myProject", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addProtobufResponse(
-      "/api/hotspots/search.protobuf?projectKey=myProject&files=inFolderToo.py&branch=master&ps=500&p=1",
+      "/api/hotspots/search.protobuf?projectKey=myProject&files=hotspot.py&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
     awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
 
-    var fileUri = folder1BaseDir.resolve("inFolderToo.py").toUri().toString();
+    var fileUri = folder1BaseDir.resolve("hotspot.py").toUri().toString();
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";
     didOpen(fileUri, "python", content);
 
@@ -836,6 +843,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
+
+    var issueKey = ((JsonObject) client.getDiagnostics(fileUri).get(0).getData()).get("entryKey").getAsString();
 
     lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
       "False positive", fileUri, "clever comment", false));
@@ -856,14 +865,14 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(400));
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(400));
     mockWebServerExtension.addProtobufResponse(
-      "/api/hotspots/search.protobuf?projectKey=myProject&files=inFolderToo.py&branch=master&ps=500&p=1",
+      "/api/hotspots/search.protobuf?projectKey=myProject&files=shouldNotChangeIssueStatus.py&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
     awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
 
-    var fileUri = folder1BaseDir.resolve("inFolderToo.py").toUri().toString();
+    var fileUri = folder1BaseDir.resolve("shouldNotChangeIssueStatus.py").toUri().toString();
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";
     didOpen(fileUri, "python", content);
 
@@ -1178,6 +1187,32 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
             .addAllTransitions(List.of("wontfix", "falsepositive"))
             .build())
           .build())
+        .build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=change_issue_status_permission_check.py&branch=master&ps=500&p=1",
+      Hotspots.SearchWsResponse.newBuilder().build());
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
+      Issues.IssuesPullQueryTimestamp.newBuilder()
+        .setQueryTimestamp(CURRENT_TIME)
+        .build(),
+      Issues.IssueLite.newBuilder()
+        .setKey("xyz")
+        .setRuleKey(PYTHON_S1481)
+        .setType(Common.RuleType.CODE_SMELL)
+        .setUserSeverity(Common.Severity.BLOCKER)
+        .setMainLocation(Issues.Location.newBuilder()
+          .setFilePath("change_issue_status_permission_check.py")
+          .setMessage("Remove the unused local variable \"toto\".")
+          .setTextRange(Issues.TextRange.newBuilder()
+            .setStartLine(1)
+            .setStartLineOffset(2)
+            .setEndLine(1)
+            .setEndLineOffset(6)
+            .setHash("f71dbe52628a3f83a77ab494817525c6")
+            .build())
+          .build())
+        .setClosed(false)
         .build());
 
     mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
