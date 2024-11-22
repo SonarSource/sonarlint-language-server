@@ -114,11 +114,16 @@ public class JavaConfigCache {
     // Assume all files in the same module have the same vmLocation
     var commonConfig = javaConfigs.get(javaConfigs.keySet().iterator().next());
     var vmLocationStr = commonConfig.getVmLocation();
+    var sourceLevel = commonConfig.getSourceLevel();
     List<Path> jdkClassesRoots = new ArrayList<>();
     if (vmLocationStr != null) {
       var vmLocation = Paths.get(vmLocationStr);
       jdkClassesRoots = getVmClasspathFromCacheOrCompute(vmLocation);
       props.put("sonar.java.jdkHome", vmLocationStr);
+    }
+
+    if (sourceLevel != null) {
+      props.put("sonar.java.source", sourceLevel);
     }
 
     // Assume all main files have the same classpath
