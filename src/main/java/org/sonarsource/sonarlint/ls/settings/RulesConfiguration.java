@@ -86,10 +86,9 @@ class RulesConfiguration {
       }
     }
 
-    @CheckForNull
     private static String safeParseLevel(Map<String, Object> config) {
       Object levelValue = config.get("level");
-      return levelValue instanceof String actualValue ? actualValue : null;
+      return levelValue instanceof String actualValue ? actualValue : "on";
     }
 
     @SuppressWarnings("unchecked")

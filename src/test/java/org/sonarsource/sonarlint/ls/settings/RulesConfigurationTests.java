@@ -29,51 +29,57 @@ class RulesConfigurationTests {
 
   @Test
   void configuredRuleShouldHaveEqualsAndHashCode() {
-    var rule1 = parseRule("{\n" +
-      "  \"xoo:rule1\": {\n" +
-      "    \"level\": \"on\",\n" +
-      "    \"parameters\": {\n" +
-      "      \"param1\": \"value1\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}");
-    var sameAsRule1 = parseRule("{\n" +
-      "  \"xoo:rule1\": {\n" +
-      "    \"level\": \"on\",\n" +
-      "    \"parameters\": {\n" +
-      "      \"param1\": \"value1\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}");
-    var keyDiffers = parseRule("{\n" +
-      "  \"xoo:rule2\": {\n" +
-      "    \"level\": \"on\",\n" +
-      "    \"parameters\": {\n" +
-      "      \"param1\": \"value1\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}");
-    var levelDiffers = parseRule("{\n" +
-      "  \"xoo:rule1\": {\n" +
-      "    \"level\": \"off\",\n" +
-      "    \"parameters\": {\n" +
-      "      \"param1\": \"value1\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}");
-    var noParams = parseRule("{\n" +
-      "  \"xoo:rule1\": {\n" +
-      "    \"level\": \"on\"\n" +
-      "  }\n" +
-      "}");
-    var paramsDiffer = parseRule("{\n" +
-      "  \"xoo:rule1\": {\n" +
-      "    \"level\": \"on\",\n" +
-      "    \"parameters\": {\n" +
-      "      \"param1\": \"value2\"\n" +
-      "    }\n" +
-      "  }\n" +
-      "}");
+    var rule1 = parseRule("""
+      {
+        "xoo:rule1": {
+          "level": "on",
+          "parameters": {
+            "param1": "value1"
+          }
+        }
+      }""");
+    var sameAsRule1 = parseRule("""
+      {
+        "xoo:rule1": {
+          "level": "on",
+          "parameters": {
+            "param1": "value1"
+          }
+        }
+      }""");
+    var keyDiffers = parseRule("""
+      {
+        "xoo:rule2": {
+          "level": "on",
+          "parameters": {
+            "param1": "value1"
+          }
+        }
+      }""");
+    var levelDiffers = parseRule("""
+      {
+        "xoo:rule1": {
+          "level": "off",
+          "parameters": {
+            "param1": "value1"
+          }
+        }
+      }""");
+    var noParams = parseRule("""
+      {
+        "xoo:rule1": {
+          "level": "on"
+        }
+      }""");
+    var paramsDiffer = parseRule("""
+      {
+        "xoo:rule1": {
+          "level": "on",
+          "parameters": {
+            "param1": "value2"
+          }
+        }
+      }""");
 
     assertThat(rule1)
       .hasSameHashCodeAs(sameAsRule1)
@@ -84,6 +90,50 @@ class RulesConfigurationTests {
       .isNotEqualTo(levelDiffers)
       .isNotEqualTo(noParams)
       .isNotEqualTo(paramsDiffer);
+  }
+
+  @Test
+  void configuredRule_should_be_on_when_on() {
+    var rule1 = parseRule("""
+      {
+        "xoo:rule1": {
+          "level": "on",
+          "parameters": {
+            "param1": "value1"
+          }
+        }
+      }""");
+
+    assertThat(rule1.level).isEqualTo("on");
+  }
+
+  @Test
+  void configuredRule_should_be_off_when_off() {
+    var rule1 = parseRule("""
+      {
+        "xoo:rule1": {
+          "level": "off",
+          "parameters": {
+            "param1": "value1"
+          }
+        }
+      }""");
+
+    assertThat(rule1.level).isEqualTo("off");
+  }
+
+  @Test
+  void configuredRule_should_be_on_when_not_specified() {
+    var rule1 = parseRule("""
+      {
+        "xoo:rule1": {
+          "parameters": {
+            "param1": "value1"
+          }
+        }
+      }""");
+
+    assertThat(rule1.level).isEqualTo("on");
   }
 
   private static RulesConfiguration.ConfiguredRule parseRule(String ruleJson) {
