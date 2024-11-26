@@ -141,6 +141,22 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   }
 
   @Test
+  void doNotAnalyzePythonFileOnPreview() {
+    setShowVerboseLogs(client.globalSettings, true);
+    notifyConfigurationChangeOnClient();
+    client.isOpenInEditor = false;
+
+    var uri = folder1BaseDir.resolve("doNotAnalyzePythonFileOnPreview.py").toUri().toString();
+
+    didOpen(uri, "python", "def foo():\n  print 'toto'\n");
+
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestamp())
+      .contains(String.format("[Debug] Skipping analysis of file not open in the editor: \"%s\"", uri)));
+    assertThat(client.getDiagnostics(uri)).isEmpty();
+  }
+
+  @Test
   void shouldBatchAnalysisFromTheSameFolder() {
     var file1InFolder = folder1BaseDir.resolve("file1.py").toUri().toString();
     var file2InFolder = folder1BaseDir.resolve("file2.py").toUri().toString();

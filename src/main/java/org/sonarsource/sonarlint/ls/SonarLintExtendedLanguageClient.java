@@ -234,31 +234,6 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/showIssueOrHotspot")
   void showIssueOrHotspot(ShowAllLocationsCommand.Param params);
 
-  @JsonRequest("sonarlint/isIgnoredByScm")
-  CompletableFuture<Boolean> isIgnoredByScm(String fileUri);
-
-  class ShouldAnalyseFileCheckResult {
-    boolean shouldBeAnalysed;
-    String reason;
-
-    public ShouldAnalyseFileCheckResult(boolean shouldBeAnalysed, @Nullable String reason) {
-      this.shouldBeAnalysed = shouldBeAnalysed;
-      this.reason = reason;
-    }
-
-    public boolean isShouldBeAnalysed() {
-      return shouldBeAnalysed;
-    }
-
-    @CheckForNull
-    public String getReason() {
-      return reason;
-    }
-  }
-
-  @JsonRequest("sonarlint/shouldAnalyseFile")
-  CompletableFuture<ShouldAnalyseFileCheckResult> shouldAnalyseFile(SonarLintExtendedLanguageServer.UriParams fileUri);
-
   class FileUrisParams {
     Collection<String> fileUris;
 
@@ -795,6 +770,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
   @JsonNotification("sonarlint/readyForTests")
   void readyForTests();
+
+  @JsonRequest("sonarlint/isOpenInEditor")
+  CompletableFuture<Boolean> isOpenInEditor(String fileUri);
 
   class SslCertificateConfirmationParams {
 
