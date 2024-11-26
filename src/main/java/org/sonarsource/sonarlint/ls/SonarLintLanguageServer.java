@@ -447,22 +447,28 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didOpen(DidOpenTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
-    if (openNotebooksCache.isNotebook(uri)) {
-      lsLogOutput.debug(String.format("Skipping text document analysis of notebook \"%s\"", uri));
-      return;
-    }
-    var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
-    CompletableFutures.computeAsync(cancelChecker -> {
-      String configScopeId;
-      moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(file);
-      var maybeWorkspaceFolder = workspaceFoldersManager.findFolderForFile(uri);
-      if (maybeWorkspaceFolder.isPresent()) {
-        configScopeId = maybeWorkspaceFolder.get().getUri().toString();
+    client.isOpenInEditor(uri.toString()).thenAccept(isOpen -> {
+      if (Boolean.TRUE.equals(isOpen)) {
+        if (openNotebooksCache.isNotebook(uri)) {
+          lsLogOutput.debug(String.format("Skipping text document analysis of notebook \"%s\"", uri));
+          return;
+        }
+        var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
+        CompletableFutures.computeAsync(cancelChecker -> {
+          String configScopeId;
+          moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(file);
+          var maybeWorkspaceFolder = workspaceFoldersManager.findFolderForFile(uri);
+          if (maybeWorkspaceFolder.isPresent()) {
+            configScopeId = maybeWorkspaceFolder.get().getUri().toString();
+          } else {
+            configScopeId = ROOT_CONFIGURATION_SCOPE;
+          }
+          backendServiceFacade.getBackendService().didOpenFile(configScopeId, uri);
+          return null;
+        });
       } else {
-        configScopeId = ROOT_CONFIGURATION_SCOPE;
+        lsLogOutput.debug(String.format("Skipping analysis of file not open in the editor: \"%s\"", uri));
       }
-      backendServiceFacade.getBackendService().didOpenFile(configScopeId, uri);
-      return null;
     });
   }
 

@@ -355,6 +355,7 @@ public abstract class AbstractLanguageServerMediumTests {
     ShowRuleDescriptionParams ruleDesc;
     boolean isIgnoredByScm = false;
     boolean shouldAnalyseFile = true;
+    boolean isOpenInEditor = true;
     final AtomicInteger needCompilationDatabaseCalls = new AtomicInteger();
     final Set<String> openedLinks = new HashSet<>();
     final Set<MessageParams> shownMessages = new HashSet<>();
@@ -382,6 +383,7 @@ public abstract class AbstractLanguageServerMediumTests {
       shouldAnalyseFile = true;
       scopeReadyForAnalysis.clear();
       suggestedBindings = null;
+      isOpenInEditor = true;
     }
 
     @Override
@@ -487,6 +489,11 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
+    public CompletableFuture<Boolean> isOpenInEditor(String fileUri) {
+      return CompletableFuture.completedFuture(isOpenInEditor);
+    }
+
+    @Override
     public CompletableFuture<Boolean> askSslCertificateConfirmation(SslCertificateConfirmationParams params) {
       return null;
     }
@@ -556,17 +563,6 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void showIssueOrHotspot(ShowAllLocationsCommand.Param params) {
-    }
-
-    @Override
-    public CompletableFuture<Boolean> isIgnoredByScm(String fileUri) {
-      return CompletableFutures.computeAsync(cancelToken -> isIgnoredByScm);
-    }
-
-    @Override
-    public CompletableFuture<ShouldAnalyseFileCheckResult> shouldAnalyseFile(SonarLintExtendedLanguageServer.UriParams fileUri) {
-      return CompletableFutures.computeAsync(cancelToken -> new ShouldAnalyseFileCheckResult(shouldAnalyseFile, "reason"));
-
     }
 
     @Override

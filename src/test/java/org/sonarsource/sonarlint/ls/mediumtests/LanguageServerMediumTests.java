@@ -325,23 +325,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  @Disabled("We lost the ability to exclude preview files")
-  void doNotAnalyzePythonFileOnPreview() throws Exception {
-    setShowVerboseLogs(client.globalSettings, true);
-    notifyConfigurationChangeOnClient();
-
-    var uri = getUri("analyzeSimplePythonFileOnOpen.py", analysisDir);
-
-    client.shouldAnalyseFile = false;
-    didOpen(uri, "python", "def foo():\n  print 'toto'\n");
-
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestamp())
-      .contains("[Info] reason \"" + uri + "\""));
-    assertThat(client.getDiagnostics(uri)).isEmpty();
-  }
-
-  @Test
   void analyzeSimplePythonFileWithCustomRuleConfig() throws Exception {
     var uri = getUri("analyzeSimplePyFileWithCustomRuleConfig.py", analysisDir);
     var pySource = "def foo():\n  toto = 0\n  plouf = 0   # This is a trailing comment that can be very very long\n";
