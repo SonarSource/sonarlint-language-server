@@ -482,7 +482,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     } else {
       // VSCode sends us full file content in the change event
       CompletableFutures.computeAsync(cancelChecker -> {
-        moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(file.get());
+        moduleEventsProcessor.notifyBackendWithUpdatedContent(file.get());
         return null;
       });
     }
@@ -587,7 +587,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     } else {
       var file = openNotebook.get().asVersionedOpenFile();
       CompletableFutures.computeAsync(cancelChecker -> {
-        moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(file);
+        moduleEventsProcessor.notifyBackendWithUpdatedContent(file);
         return null;
       });
     }
