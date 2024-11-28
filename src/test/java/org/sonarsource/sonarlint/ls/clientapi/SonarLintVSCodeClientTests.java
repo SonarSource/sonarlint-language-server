@@ -543,7 +543,7 @@ class SonarLintVSCodeClientTests {
 
     underTest.noBindingSuggestionFound(new NoBindingSuggestionFoundParams(projectKey, false));
     verify(client).showMessageRequest(messageRequestParams);
-    verify(client).browseTo("https://docs.sonarsource.com/sonarlint/vs-code/troubleshooting/#troubleshooting-connected-mode-setup");
+    verify(client).browseTo("https://docs.sonarsource.com/sonarqube-for-ide/vs-code/troubleshooting/#troubleshooting-connected-mode-setup");
   }
 
   @Test
