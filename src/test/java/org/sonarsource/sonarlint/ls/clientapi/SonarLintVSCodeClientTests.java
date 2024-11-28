@@ -602,7 +602,7 @@ class SonarLintVSCodeClientTests {
     var fileUri = fileInAWorkspaceFolderPath.toUri();
     var textRangeDto = new TextRangeDto(1, 2, 3, 4);
     var issueDetailsDto = new IssueDetailsDto(textRangeDto, "rule:S1234",
-      "issueKey", FILE_PYTHON, "branch", "PR", "this is wrong",
+      "issueKey", FILE_PYTHON, "this is wrong",
       "29.09.2023", "print('ddd')", false, List.of());
     var showIssueParams = new ShowIssueParams(fileUri.toString(), issueDetailsDto);
 
@@ -625,7 +625,7 @@ class SonarLintVSCodeClientTests {
     var fileUri = fileInAWorkspaceFolderPath.toUri();
     var textRangeDto = new TextRangeDto(1, 2, 3, 4);
     var issueDetailsDto = new IssueDetailsDto(textRangeDto, "rule:S1234",
-      "issueKey", FILE_PYTHON, "bb", null, "this is wrong", "29.09.2023", "print('ddd')",
+      "issueKey", FILE_PYTHON, "this is wrong", "29.09.2023", "print('ddd')",
       false, List.of());
     when(bindingManager.getBindingIfExists(fileUri))
       .thenReturn(Optional.empty());
@@ -643,7 +643,7 @@ class SonarLintVSCodeClientTests {
     var fileUri = fileInAWorkspaceFolderPath.toUri();
     var textRangeDto = new TextRangeDto(1, 2, 3, 4);
     var issueDetailsDto = new IssueDetailsDto(textRangeDto, "rule:S1234",
-      "issueKey", FILE_PYTHON, "bb", null, "this is wrong", "29.09.2023", "print('ddd')",
+      "issueKey", FILE_PYTHON, "this is wrong", "29.09.2023", "print('ddd')",
       false, List.of());
     when(bindingManager.getBindingIfExists(fileUri))
       .thenReturn(Optional.of(new ProjectBinding("connectionId", "projectKey")));

@@ -346,8 +346,8 @@ public class BackendService {
     return initializedBackend().getConnectionService().getAllProjects(new GetAllProjectsParams(transientConnection));
   }
 
-  public void updateFileSystem(List<URI> deletedFileUris, List<ClientFileDto> addedOrChangedFiles) {
-    initializedBackend().getFileService().didUpdateFileSystem(new DidUpdateFileSystemParams(deletedFileUris, addedOrChangedFiles));
+  public void updateFileSystem(List<ClientFileDto> addedFiles, List<ClientFileDto> changedFiles, List<URI> deletedFileUris) {
+    initializedBackend().getFileService().didUpdateFileSystem(new DidUpdateFileSystemParams(addedFiles, changedFiles, deletedFileUris));
   }
 
   public CompletableFuture<ListAllResponse> getAllTaints(String folderUri) {
