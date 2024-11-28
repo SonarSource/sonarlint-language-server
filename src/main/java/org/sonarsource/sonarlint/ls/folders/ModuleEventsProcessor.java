@@ -79,20 +79,12 @@ public class ModuleEventsProcessor {
       if (event.getType() == FileChangeType.Deleted) {
         deletedFileUris.add(fileUri);
       } else {
-        workspaceFoldersManager.findFolderForFile(fileUri)
-          .ifPresent(folder -> {
-            var settings = folder.getSettings();
-            var baseDir = folder.getRootPath();
-            var fsPath = Paths.get(fileUri);
-            var relativePath = baseDir.relativize(fsPath);
-            var folderUri = folder.getUri().toString();
-            var isTest = isTestFile(fileUri, settings);
-            if (event.getType() == FileChangeType.Created) {
-              addedFiles.add(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(), fsPath, null, null, true));
-            } else {
-              changedFiles.add(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(), fsPath, null, null, true));
-            }
-          });
+        var clientFileDto = getClientFileDto(new VersionedOpenFile(fileUri, "", 0, ""));
+        if (event.getType() == FileChangeType.Created) {
+          addedFiles.add(clientFileDto);
+        } else {
+          changedFiles.add(clientFileDto);
+        }
       }
     });
     backendServiceFacade.getBackendService().updateFileSystem(addedFiles, changedFiles, deletedFileUris);
@@ -131,10 +123,6 @@ public class ModuleEventsProcessor {
           fsPath, file.getContent(), sqLanguage != null ? Language.valueOf(sqLanguage.name()) : null, true));
       });
     return clientFileDto.get();
-  }
-
-  private boolean isTestFile(URI fileUri, WorkspaceFolderSettings settings) {
-    return fileTypeClassifier.isTest(settings, fileUri, false, () -> javaConfigCache.getOrFetch(fileUri));
   }
 
   private boolean isTestFile(VersionedOpenFile file, WorkspaceFolderSettings settings) {

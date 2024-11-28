@@ -22,10 +22,16 @@ package org.sonarsource.sonarlint.ls.folders;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
+import org.eclipse.lsp4j.FileChangeType;
+import org.eclipse.lsp4j.FileEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.ClientFileDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
@@ -34,6 +40,7 @@ import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ModuleEventsProcessorTest {
@@ -83,5 +90,30 @@ class ModuleEventsProcessorTest {
     assertThat(clientFileDto.getConfigScopeId()).isEqualTo("file:///tmp/");
     assertThat(clientFileDto.getUri()).hasToString(testFile1.getUri().toString());
     assertThat(clientFileDto.getCharset()).isEqualTo(StandardCharsets.UTF_8.name());
+  }
+
+  @Test
+  void should_notify_backend_on_watched_files_change() {
+    var backend = mock(BackendService.class);
+    var events = List.of(
+      new FileEvent("file:///tmp/test1.py", FileChangeType.Created),
+      new FileEvent("file:///tmp/test2.py", FileChangeType.Changed),
+      new FileEvent("file:///tmp/test3.py", FileChangeType.Deleted)
+    );
+    when(backendServiceFacade.getBackendService()).thenReturn(backend);
+
+    moduleEventsProcessor.didChangeWatchedFiles(events);
+
+    var deletedFilesCaptor = ArgumentCaptor.forClass(List.class);
+    var addedFilesCaptor = ArgumentCaptor.forClass(List.class);
+    var changedFilesCaptor = ArgumentCaptor.forClass(List.class);
+
+    verify(backend).updateFileSystem(addedFilesCaptor.capture(), changedFilesCaptor.capture(), deletedFilesCaptor.capture());
+    assertThat(addedFilesCaptor.getValue()).hasSize(1);
+    assertThat(((ClientFileDto) addedFilesCaptor.getValue().get(0)).getUri()).hasToString("file:///tmp/test1.py");
+    assertThat(changedFilesCaptor.getValue()).hasSize(1);
+    assertThat(((ClientFileDto) changedFilesCaptor.getValue().get(0)).getUri()).hasToString("file:///tmp/test2.py");
+    assertThat(deletedFilesCaptor.getValue()).hasSize(1);
+    assertThat(deletedFilesCaptor.getValue().get(0)).hasToString("file:///tmp/test3.py");
   }
 }
