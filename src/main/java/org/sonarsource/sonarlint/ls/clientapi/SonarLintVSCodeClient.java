@@ -304,7 +304,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     client.showMessageRequest(messageRequestParams)
       .thenAccept(action -> {
         if (learnMoreAction.equals(action)) {
-          client.browseTo("https://docs.sonarsource.com/sonarlint/vs-code/troubleshooting/#troubleshooting-connected-mode-setup");
+          client.browseTo("https://docs.sonarsource.com/sonarqube-for-ide/vs-code/troubleshooting/#troubleshooting-connected-mode-setup");
         }
       });
   }
