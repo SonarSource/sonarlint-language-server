@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.sonarsource.parent</groupId>
     <artifactId>parent</artifactId>
-    <version>80.0.0.2205</version>
+    <version>82.0.0.2314</version>
     <relativePath/>
   </parent>
   <groupId>org.sonarsource.sonarlint.ls</groupId>
@@ -42,6 +42,7 @@
     <gitRepositoryName>sonarlint-language-server</gitRepositoryName>
     <!-- Release: enable publication to Bintray -->
     <artifactsToPublish>${project.groupId}:${project.artifactId}:jar</artifactsToPublish>
+    <license.name>GNU LGPL v3</license.name>
   </properties>
 
   <dependencies>
