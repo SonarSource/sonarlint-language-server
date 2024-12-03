@@ -66,7 +66,7 @@ class ModuleEventsProcessorTest {
     assertThat(clientFileDto).isNotNull();
     assertThat(clientFileDto.getDetectedLanguage()).isEqualTo(Language.PYTHON);
     assertThat(clientFileDto.getContent()).isEqualTo(content);
-    assertThat(clientFileDto.getConfigScopeId()).isEqualTo(BackendServiceFacade.ROOT_CONFIGURATION_SCOPE);
+    assertThat(clientFileDto.getConfigScopeId()).isEqualTo(BackendService.ROOT_CONFIGURATION_SCOPE);
     assertThat(clientFileDto.getUri()).hasToString(testFile1.getUri().toString());
     assertThat(clientFileDto.getCharset()).isEqualTo(StandardCharsets.UTF_8.name());
   }

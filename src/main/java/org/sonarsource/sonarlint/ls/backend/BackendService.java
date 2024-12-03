@@ -107,9 +107,9 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.util.EnumLabelsMapper;
 
-import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.ROOT_CONFIGURATION_SCOPE;
-
 public class BackendService {
+
+  public static final String ROOT_CONFIGURATION_SCOPE = "<root>";
 
   private final SonarLintRpcServer backend;
   private final LanguageClientLogger logOutput;

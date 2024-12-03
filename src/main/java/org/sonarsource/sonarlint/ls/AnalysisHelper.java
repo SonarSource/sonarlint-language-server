@@ -44,7 +44,7 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 
 import static java.lang.String.format;
 import static java.util.function.Function.identity;
-import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.ROOT_CONFIGURATION_SCOPE;
+import static org.sonarsource.sonarlint.ls.backend.BackendService.ROOT_CONFIGURATION_SCOPE;
 
 public class AnalysisHelper {
   private final SonarLintExtendedLanguageClient client;
