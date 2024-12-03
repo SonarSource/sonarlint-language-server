@@ -63,8 +63,6 @@ public class BackendServiceFacade {
 
   private static final int DEFAULT_INIT_TIMEOUT_SECONDS = 60;
 
-  public static final String ROOT_CONFIGURATION_SCOPE = "<root>";
-
   private final int initTimeoutSeconds;
   private final BackendService backendService;
   private final BackendInitParams initParams;
@@ -101,7 +99,7 @@ public class BackendServiceFacade {
     }
 
     this.initParams = new BackendInitParams();
-    this.rootConfigurationScope = new ConfigurationScopeDto(ROOT_CONFIGURATION_SCOPE, null, false, ROOT_CONFIGURATION_SCOPE,
+    this.rootConfigurationScope = new ConfigurationScopeDto(BackendService.ROOT_CONFIGURATION_SCOPE, null, false, BackendService.ROOT_CONFIGURATION_SCOPE,
       new BindingConfigurationDto(null, null, false)
     );
   }

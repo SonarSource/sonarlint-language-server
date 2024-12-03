@@ -102,7 +102,7 @@ class BackendServiceTests {
     var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri), Optional.of(bindingWrapper));
 
     assertThat(result.getId()).isEqualTo(workspaceUri);
-    assertThat(result.getParentId()).isEqualTo(BackendServiceFacade.ROOT_CONFIGURATION_SCOPE);
+    assertThat(result.getParentId()).isEqualTo(BackendService.ROOT_CONFIGURATION_SCOPE);
     assertThat(result.getBinding().getConnectionId()).isEqualTo(connectionId);
   }
 
@@ -112,7 +112,7 @@ class BackendServiceTests {
     var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri), Optional.empty());
 
     assertThat(result.getId()).isEqualTo(workspaceUri);
-    assertThat(result.getParentId()).isEqualTo(BackendServiceFacade.ROOT_CONFIGURATION_SCOPE);
+    assertThat(result.getParentId()).isEqualTo(BackendService.ROOT_CONFIGURATION_SCOPE);
     assertThat(result.getBinding().getConnectionId()).isNull();
     assertThat(result.getBinding().getSonarProjectKey()).isNull();
     assertThat(result.getBinding().isBindingSuggestionDisabled()).isFalse();

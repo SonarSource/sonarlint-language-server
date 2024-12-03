@@ -64,7 +64,7 @@ class WorkspaceFoldersManagerTests {
     when(bindingManager.getBinding(URI.create(""))).thenReturn(Optional.of(mock(ProjectBinding.class)));
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     when(backendService.getConfigScopeDto(any(), any()))
-      .thenReturn(new ConfigurationScopeDto("id", BackendServiceFacade.ROOT_CONFIGURATION_SCOPE, true, "name",
+      .thenReturn(new ConfigurationScopeDto("id", BackendService.ROOT_CONFIGURATION_SCOPE, true, "name",
         new BindingConfigurationDto("connectionId", "projectKey", true)));
     underTest.setBindingManager(bindingManager);
   }
