@@ -79,7 +79,7 @@ public class ModuleEventsProcessor {
       if (event.getType() == FileChangeType.Deleted) {
         deletedFileUris.add(fileUri);
       } else {
-        var clientFileDto = getClientFileDto(new VersionedOpenFile(fileUri, "", 0, ""));
+        var clientFileDto = getClientFileDto(new VersionedOpenFile(fileUri, null, 0, null));
         if (event.getType() == FileChangeType.Created) {
           addedFiles.add(clientFileDto);
         } else {
@@ -107,7 +107,8 @@ public class ModuleEventsProcessor {
     AtomicReference<ClientFileDto> clientFileDto = new AtomicReference<>();
     var fileUri = file.getUri();
     var fsPath = Paths.get(fileUri);
-    SonarLanguage sqLanguage = AnalysisClientInputFile.toSqLanguage(file.getLanguageId().toLowerCase(Locale.ROOT));
+    SonarLanguage sqLanguage = file.getLanguageId() != null ?
+      AnalysisClientInputFile.toSqLanguage(file.getLanguageId().toLowerCase(Locale.ROOT)) : null;
     workspaceFoldersManager.findFolderForFile(fileUri)
       .ifPresentOrElse(folder -> {
         var settings = folder.getSettings();
