@@ -336,8 +336,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         setNotebookSyncOptions(c);
       }
 
+      var eslintBridgeServerPath = (String) additionalAttributes.get("eslintBridgeServerPath");
       var info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
-      provideBackendInitData(productKey, userAgent, clientNodePath);
+      provideBackendInitData(productKey, userAgent, clientNodePath, eslintBridgeServerPath);
       return new InitializeResult(c, info);
     });
   }
@@ -763,7 +764,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         () -> lsLogOutput.warn(format("Embedded plugin not found: %s", SonarLanguage.valueOf(language.name()).getSonarLanguageKey())));
   }
 
-  void provideBackendInitData(String productKey, String userAgent, String clientNodePath) {
+  void provideBackendInitData(String productKey, String userAgent, String clientNodePath, String eslintBridgeServerPath) {
     BackendInitParams params = backendServiceFacade.getInitParams();
     params.setTelemetryProductKey(productKey);
     var actualSonarLintUserHome = Optional.ofNullable(SettingsManager.getSonarLintUserHomeOverride()).orElse(SonarLintUserHome.get());
@@ -780,6 +781,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .map(l -> Language.valueOf(l.name())).collect(Collectors.toSet()));
     params.setUserAgent(userAgent);
     params.setClientNodePath(clientNodePath);
+    params.setEslintBridgeServerPath(eslintBridgeServerPath);
   }
 
   public CompletableFuture<Void> showHotspotLocations(ShowHotspotLocationsParams showHotspotLocationsParams) {
