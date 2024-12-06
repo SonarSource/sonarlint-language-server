@@ -47,6 +47,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.ClientCons
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.FeatureFlagsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.HttpConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.InitializeParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.JsTsRequirementsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.LanguageSpecificRequirements;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.OmnisharpRequirementsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarCloudAlternativeEnvironmentDto;
@@ -155,7 +156,8 @@ public class BackendServiceFacade {
   private InitializeParams toInitParams(BackendInitParams initParams) {
     var telemetryEnabled = telemetry != null && telemetry.enabled();
     var clientNodeJsPath = StringUtils.isEmpty(initParams.getClientNodePath()) ? null : Path.of(initParams.getClientNodePath());
-    var languageSpecificRequirements = getLanguageSpecificRequirements(clientNodeJsPath);
+    var eslintBridgeServerBundlePath = StringUtils.isEmpty(initParams.getEslintBridgeServerPath()) ? null : Path.of(initParams.getEslintBridgeServerPath());
+    var languageSpecificRequirements = getLanguageSpecificRequirements(clientNodeJsPath, eslintBridgeServerBundlePath);
     return new InitializeParams(
       new ClientConstantInfoDto("Visual Studio Code", initParams.getUserAgent()),
       new TelemetryClientConstantAttributesDto(initParams.getTelemetryProductKey(),
@@ -186,9 +188,9 @@ public class BackendServiceFacade {
   }
 
   @NotNull
-  private LanguageSpecificRequirements getLanguageSpecificRequirements(@Nullable Path clientNodeJsPath) {
+  private LanguageSpecificRequirements getLanguageSpecificRequirements(@Nullable Path clientNodeJsPath, @Nullable Path eslintBridgeSeverPath) {
     return new LanguageSpecificRequirements(
-      clientNodeJsPath,
+      new JsTsRequirementsDto(clientNodeJsPath, eslintBridgeSeverPath),
       getOmnisharpRequirements()
     );
   }
