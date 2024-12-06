@@ -23,10 +23,10 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarCloudConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarQubeConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.StandaloneRuleConfigDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 
 public class BackendInitParams {
 
@@ -44,6 +44,7 @@ public class BackendInitParams {
   private String userAgent;
   private boolean isFocusOnNewCode;
   private String clientNodePath;
+  private String eslintBridgeServerPath;
 
   public String getTelemetryProductKey() {
     return telemetryProductKey;
@@ -155,5 +156,13 @@ public class BackendInitParams {
 
   public String getClientNodePath() {
     return clientNodePath;
+  }
+
+  public void setEslintBridgeServerPath(String eslintBridgeServerPath) {
+    this.eslintBridgeServerPath = eslintBridgeServerPath;
+  }
+
+  public String getEslintBridgeServerPath() {
+    return eslintBridgeServerPath;
   }
 }
