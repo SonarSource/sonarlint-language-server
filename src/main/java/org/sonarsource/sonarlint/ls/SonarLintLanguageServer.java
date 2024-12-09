@@ -336,7 +336,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         setNotebookSyncOptions(c);
       }
 
-      var eslintBridgeServerPath = (String) additionalAttributes.get("eslintBridgeServerPath");
+      var eslintBridgeServerPath = (String) options.get("eslintBridgeServerPath");
       var info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
       provideBackendInitData(productKey, userAgent, clientNodePath, eslintBridgeServerPath);
       return new InitializeResult(c, info);
