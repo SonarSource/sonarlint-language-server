@@ -20,14 +20,12 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
-import java.util.List;
 import org.sonarsource.sonarlint.core.analysis.api.ClientModuleInfo;
-import org.sonarsource.sonarlint.core.analysis.api.ClientModulesProvider;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.FolderFileSystem;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 
-public class WorkspaceFoldersProvider implements ClientModulesProvider {
+public class WorkspaceFoldersProvider {
 
   public static URI key(WorkspaceFolderWrapper folder) {
     return folder.getUri();
@@ -41,13 +39,6 @@ public class WorkspaceFoldersProvider implements ClientModulesProvider {
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.fileTypeClassifier = fileTypeClassifier;
     this.javaConfigCache = javaConfigCache;
-  }
-
-  @Override
-  public List<ClientModuleInfo> getModules() {
-    return workspaceFoldersManager.getAll().stream()
-      .map(this::createModuleInfo)
-      .toList();
   }
 
   private ClientModuleInfo createModuleInfo(WorkspaceFolderWrapper folder) {
