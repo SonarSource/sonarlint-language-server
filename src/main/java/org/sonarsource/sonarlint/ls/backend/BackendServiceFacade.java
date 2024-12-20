@@ -62,6 +62,8 @@ import org.sonarsource.sonarlint.ls.telemetry.TelemetryInitParams;
 
 public class BackendServiceFacade {
 
+  public static final String MONITORING_DISABLED_PROPERTY_KEY = "sonarlint.monitoring.disabled";
+
   private static final int DEFAULT_INIT_TIMEOUT_SECONDS = 60;
 
   private final int initTimeoutSeconds;
@@ -155,6 +157,7 @@ public class BackendServiceFacade {
 
   private InitializeParams toInitParams(BackendInitParams initParams) {
     var telemetryEnabled = telemetry != null && telemetry.enabled();
+    var monitoringEnabled = shouldEnableMonitoring();
     var clientNodeJsPath = StringUtils.isEmpty(initParams.getClientNodePath()) ? null : Path.of(initParams.getClientNodePath());
     var eslintBridgeServerBundlePath = StringUtils.isEmpty(initParams.getEslintBridgeServerPath()) ? null : Path.of(initParams.getEslintBridgeServerPath());
     var languageSpecificRequirements = getLanguageSpecificRequirements(clientNodeJsPath, eslintBridgeServerBundlePath);
@@ -168,7 +171,7 @@ public class BackendServiceFacade {
       getHttpConfiguration(),
       getSonarCloudAlternativeEnvironment(),
       new FeatureFlagsDto(true, true, true,
-        true, initParams.isEnableSecurityHotspots(), true, true, true, telemetryEnabled, true),
+        true, initParams.isEnableSecurityHotspots(), true, true, true, telemetryEnabled, true, monitoringEnabled),
       initParams.getStorageRoot(),
       Path.of(initParams.getSonarlintUserHome()),
       initParams.getEmbeddedPluginPaths(),
@@ -185,6 +188,14 @@ public class BackendServiceFacade {
       true,
       null
     );
+  }
+
+  private boolean shouldEnableMonitoring() {
+    var monitoringDisabledByProperty = "true".equals(System.getProperty(MONITORING_DISABLED_PROPERTY_KEY));
+    if (monitoringDisabledByProperty) {
+      lsLogOutput.debug("Monitoring is disabled by system property");
+    }
+    return !monitoringDisabledByProperty;
   }
 
   @NotNull
