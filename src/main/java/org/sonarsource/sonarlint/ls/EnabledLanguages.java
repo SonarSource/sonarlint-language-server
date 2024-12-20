@@ -57,7 +57,8 @@ public class EnabledLanguages {
     Language.APEX,
     Language.COBOL,
     Language.PLSQL,
-    Language.TSQL
+    Language.TSQL,
+    Language.ANSIBLE
   };
 
 
