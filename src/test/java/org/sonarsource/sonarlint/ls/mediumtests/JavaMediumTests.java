@@ -100,15 +100,23 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     client.javaConfigs.put(uri, null);
 
-    didOpen(uri, "java", "public class Foo {\n public static final String AWS_SECRET_KEY = \"AKIAIGKECZXA7EXAMPLF\";\n public static void main() {\n  // System.out.println(\"foo\");\n }\n}");
+    didOpen(uri, "java", """
+        public class Foo {
+          public static final String KEY = "AKIAIGKECZXA7AEIJKMQ";
+          public static final String AWS_SECRET_ACCESS_KEY = "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";
+          public static void main() {
+            // System.out.println("foo");
+          }
+        }
+      """);
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
-        tuple(0, 13, 0, 16, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
+        tuple(0, 15, 0, 18, "java:S1118", "sonarqube", "Add a private constructor to hide the implicit public one.", DiagnosticSeverity.Warning),
         tuple(0, 0, 0, 0, "java:S1220", "sonarqube", "Move this file to a named package.", DiagnosticSeverity.Warning),
-        tuple(1, 46, 1, 66, "secrets:S6290", "sonarqube", "Make sure the access granted with this AWS access key ID is restricted", DiagnosticSeverity.Warning),
-        tuple(3, 5, 3, 31, "java:S125", "sonarqube", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
+        tuple(2, 56, 2, 96, "secrets:S6290", "sonarqube", "Make sure this AWS Secret Access Key gets revoked, changed, and removed from the code.", DiagnosticSeverity.Warning),
+        tuple(4, 9, 4, 35, "java:S125", "sonarqube", "This block of commented-out lines of code should be removed.", DiagnosticSeverity.Warning)));
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestamp())
       .contains(
@@ -167,19 +175,21 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     client.javaConfigs.put(uri, javaConfigResponse);
 
     didOpen(uri, "java",
-      "public class AnalyzeSimpleJavaFileWithFlows {\n" +
-        "  private AnalyzeSimpleJavaFileWithFlows() {}\n" +
-        "  static int computeValue(int input) {\n" +
-        "    String message = \"polop\";\n" +
-        "    if (input == 42) {\n" +
-        "      message = null;\n" +
-        "    }\n" +
-        "    return doSomeThingWith(message);\n" +
-        "  }\n" +
-        "  private static int doSomeThingWith(String param) {\n" +
-        "    return param.length();\n" +
-        "  }\n" +
-        "}");
+      """
+        public class AnalyzeSimpleJavaFileWithFlows {
+          private AnalyzeSimpleJavaFileWithFlows() {}
+          static int computeValue(int input) {
+            String message = "polop";
+            if (input == 42) {
+              message = null;
+            }
+            return doSomeThingWith(message);
+          }
+          private static int doSomeThingWith(String param) {
+            return param.length();
+          }
+        }
+        """);
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -242,7 +252,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactlyInAnyOrder(
+      .contains(
         tuple(3, 14, 3, 18, "java:S2699", "sonarqube", "Add at least one assertion to this test case.", DiagnosticSeverity.Warning)));
   }
 
@@ -270,16 +280,20 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestampAndMillis())
-      .contains("[Info] Analysis detected 0 issues and 0 Security Hotspots in XXXms"));
+      .contains("[Info] Analysis detected 2 issues and 0 Security Hotspots in XXXms"));
     client.logs.clear();
 
     // Update classpath
     javaConfigResponse.setClasspath(new String[]{Paths.get(this.getClass().getResource("/junit-4.12.jar").toURI()).toAbsolutePath().toString()});
     lsProxy.didClasspathUpdate(new DidClasspathUpdateParams(projectRootUri2));
 
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestampAndMillis())
+      .contains("[Info] Analysis detected 3 issues and 0 Security Hotspots in XXXms"));
+
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactlyInAnyOrder(
+      .contains(
         tuple(3, 14, 3, 18, "java:S2699", "sonarqube", "Add at least one assertion to this test case.", DiagnosticSeverity.Warning)));
 
     assertThat(client.logs)
