@@ -230,8 +230,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(0, 18, 0, 20, DOCKER_S6476, "sonarqube", "Replace `as` with upper case format `AS`.", DiagnosticSeverity.Warning),
-        tuple(0, 0, 0, 4, DOCKER_S6476, "sonarqube", "Replace `from` with upper case format `FROM`.", DiagnosticSeverity.Warning)));
+        tuple(0, 18, 0, 20, DOCKER_S6476, "sonarqube", "Replace \"as\" with upper case format \"AS\".", DiagnosticSeverity.Warning),
+        tuple(0, 0, 0, 4, DOCKER_S6476, "sonarqube", "Replace \"from\" with upper case format \"FROM\".", DiagnosticSeverity.Warning)));
   }
 
   @Test
