@@ -1432,7 +1432,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";
     didOpen(fileUri, "python", content);
 
-    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
+    awaitUntilAsserted(() -> assertThat(client.getTaints(fileUri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
       .contains(tuple(0, 1, 0, 2, "ruleKey", "Latest SonarQube Server Analysis", "message", DiagnosticSeverity.Warning)));

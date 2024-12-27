@@ -456,7 +456,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
         addedTaintIssuesForFile.addAll(existingTaintVulnerabilitiesPerFile.get(fileUri));
       }
       taintVulnerabilitiesCache.reload(fileUri, addedTaintIssuesForFile);
-      diagnosticPublisher.publishDiagnostics(fileUri, true);
+      diagnosticPublisher.publishTaints(fileUri);
     });
   }
 
@@ -475,7 +475,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       } else {
         taintVulnerabilitiesCache.reload(fileUri, dtosToTaintIssues(folderUri, updates, isSonarCloud));
       }
-      diagnosticPublisher.publishDiagnostics(fileUri, true);
+      diagnosticPublisher.publishTaints(fileUri);
     });
   }
 
@@ -543,7 +543,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
           taintsByFile.forEach((fileUri, t) -> {
             var vulnerabilities = dtosToTaintIssues(configurationScopeId, t, isSonarCloud);
             taintVulnerabilitiesCache.reload(fileUri, vulnerabilities);
-            diagnosticPublisher.publishDiagnostics(fileUri, true);
+            diagnosticPublisher.publishTaints(fileUri);
           });
 
           return null;

@@ -336,6 +336,7 @@ public abstract class AbstractLanguageServerMediumTests {
   protected static class FakeLanguageClient implements SonarLintExtendedLanguageClient {
 
     Map<String, List<Diagnostic>> diagnostics = new ConcurrentHashMap<>();
+    Map<String, List<Diagnostic>> taints = new ConcurrentHashMap<>();
     Map<String, List<Diagnostic>> hotspots = new ConcurrentHashMap<>();
     Queue<MessageParams> logs = new ConcurrentLinkedQueue<>();
     Map<String, Object> globalSettings = new HashMap<>();
@@ -392,6 +393,10 @@ public abstract class AbstractLanguageServerMediumTests {
       return diagnostics.getOrDefault(uri, List.of());
     }
 
+    List<Diagnostic> getTaints(String uri) {
+      return taints.getOrDefault(uri, List.of());
+    }
+
     List<Diagnostic> getHotspots(String uri) {
       return hotspots.getOrDefault(uri, List.of());
     }
@@ -404,6 +409,11 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public void publishSecurityHotspots(PublishDiagnosticsParams diagnostics) {
       this.hotspots.put(diagnostics.getUri(), diagnostics.getDiagnostics());
+    }
+
+    @Override
+    public void publishTaintVulnerabilities(PublishDiagnosticsParams publishDiagnosticsParams) {
+      this.taints.put(publishDiagnosticsParams.getUri(), publishDiagnosticsParams.getDiagnostics());
     }
 
     @Override
