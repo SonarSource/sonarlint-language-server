@@ -22,7 +22,6 @@ package org.sonarsource.sonarlint.ls;
 import java.net.URI;
 import java.util.Comparator;
 import java.util.Map;
-import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
@@ -77,6 +76,10 @@ public class DiagnosticPublisher {
       client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
     }
     client.publishDiagnostics(createPublishDiagnosticsParams(f));
+  }
+
+  public void publishTaints(URI f) {
+    client.publishTaintVulnerabilities(createPublishTaintsParams(f));
   }
 
   public void publishHotspots(URI f) {
@@ -198,9 +201,22 @@ public class DiagnosticPublisher {
       .stream()
       .filter(e -> !e.getValue().isResolved())
       .map(this::taintDtoToDiagnostic);
+
+    var diagnosticList = localDiagnostics
+      .sorted(DiagnosticPublisher.byLineNumber())
+      .toList();
+    p.setDiagnostics(diagnosticList);
+    p.setUri(newUri.toString());
+
+    return p;
+  }
+
+  private PublishDiagnosticsParams createPublishTaintsParams(URI newUri) {
+    var p = new PublishDiagnosticsParams();
+
     var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostics(newUri, focusOnNewCode);
 
-    var diagnosticList = Stream.concat(localDiagnostics, taintDiagnostics)
+    var diagnosticList = taintDiagnostics
       .sorted(DiagnosticPublisher.byLineNumber())
       .toList();
     p.setDiagnostics(diagnosticList);

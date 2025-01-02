@@ -743,7 +743,7 @@ class SonarLintVSCodeClientTests {
     assertThat(taintIssues).hasSize(2);
     assertThat(((TaintIssue) taintIssues.get(0)).getId()).isEqualTo(uuid1);
     assertThat(((TaintIssue) taintIssues.get(1)).getId()).isEqualTo(uuid2);
-    verify(diagnosticPublisher).publishDiagnostics(URIUtils.getFullFileUriFromFragments(workspaceFolderPath.toUri().toString(), filePath), true);
+    verify(diagnosticPublisher).publishTaints(URIUtils.getFullFileUriFromFragments(workspaceFolderPath.toUri().toString(), filePath));
   }
 
   @Test
