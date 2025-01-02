@@ -226,12 +226,8 @@ public abstract class AbstractLanguageServerMediumTests {
     initializeParams.setTrace("messages");
 
     var actualInitOptions = new HashMap<>(initializeOptions);
-    if (initializeOptions.containsKey("additionalAttributes")) {
-      var additionalAttributes = new HashMap<>((Map<String, String>) initializeOptions.get("additionalAttributes"));
-      additionalAttributes.put("csharpOssPath", CSHARP_OSS_PATH);
-      additionalAttributes.put("csharpEnterprisePath", CSHARP_ENTERPRISE_PATH);
-      actualInitOptions.put("additionalAttributes", additionalAttributes);
-    }
+    actualInitOptions.put("csharpOssPath", CSHARP_OSS_PATH);
+    actualInitOptions.put("csharpEnterprisePath", CSHARP_ENTERPRISE_PATH);
     initializeParams.setInitializationOptions(actualInitOptions);
 
     initializeParams.setWorkspaceFolders(List.of(initFolders));

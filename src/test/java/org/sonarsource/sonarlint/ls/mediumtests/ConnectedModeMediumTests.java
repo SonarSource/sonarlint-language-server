@@ -119,9 +119,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         "productName", "SLCORE tests",
         "productVersion", "0.1",
         "productKey", "productKey",
-        "additionalAttributes", Map.of(
-          "omnisharpDirectory", omnisharpDir.toString()
-        )),
+        "omnisharpDirectory", omnisharpDir.toString()
+      ),
       new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
 
     var fileName1 = "analysisConnected_scan_all_hotspot_then_forget_hotspot1.py";
