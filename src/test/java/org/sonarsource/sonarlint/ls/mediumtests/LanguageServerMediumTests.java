@@ -117,9 +117,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "showVerboseLogs", false,
       "productKey", "productKey",
       "additionalAttributes", Map.of(
-        "extra", "value",
-        "omnisharpDirectory", omnisharpDir.toString()
-      )
+        "extra", "value"
+      ),
+      "omnisharpDirectory", omnisharpDir.toString()
     ), new WorkspaceFolder(analysisDir.toUri().toString(), "AnalysisDir"));
   }
 
