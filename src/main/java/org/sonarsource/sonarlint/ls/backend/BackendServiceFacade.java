@@ -190,7 +190,7 @@ public class BackendServiceFacade {
     );
   }
 
-  private boolean shouldEnableMonitoring() {
+  boolean shouldEnableMonitoring() {
     var monitoringDisabledByProperty = "true".equals(System.getProperty(MONITORING_DISABLED_PROPERTY_KEY));
     if (monitoringDisabledByProperty) {
       lsLogOutput.debug("Monitoring is disabled by system property");
