@@ -48,6 +48,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.sonarsource.sonarlint.ls.mediumtests.LanguageServerMediumTests.assertAnalysisLogsContains;
 
 class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -164,10 +165,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     didOpen(file1InFolder, "python", "def foo():\n  return\n");
     didOpen(file2InFolder, "python", "def foo():\n  return\n");
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestampAndMillis())
-      .contains("[Info] Analysis detected 0 issues and 0 Security Hotspots in XXXms",
-        "[Info] Analysis detected 0 issues and 0 Security Hotspots in XXXms"));
+    assertAnalysisLogsContains(0, 0);
 
     client.logs.clear();
 
@@ -179,11 +177,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder, 2),
         List.of(new TextDocumentContentChangeEvent("def foo():\n  toto2 = 0\n  plouf2 = 0\n"))));
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestampAndMillis())
-      .containsSubsequence(
-        "[Info] Analysis detected 2 issues and 0 Security Hotspots in XXXms",
-        "[Info] Analysis detected 2 issues and 0 Security Hotspots in XXXms"));
+    assertAnalysisLogsContains(2, 0);
   }
 
   @Test
@@ -198,11 +192,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     didOpen(file1InFolder1, "python", "def foo():\n  toto = 0\n");
     didOpen(file2InFolder2, "python", "def foo():\n  toto2 = 0\n");
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestampAndMillis())
-      .containsSubsequence(
-        "[Info] Analysis detected 1 issue and 0 Security Hotspots in XXXms",
-        "[Info] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
+    assertAnalysisLogsContains(1, 0);
 
     client.logs.clear();
 
@@ -214,11 +204,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder2, 2),
         List.of(new TextDocumentContentChangeEvent("def foo():\n  toto2 = 0\n  plouf2 = 0\n"))));
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestampAndMillis())
-      .containsSubsequence(
-        "[Info] Analysis detected 2 issues and 0 Security Hotspots in XXXms",
-        "[Info] Analysis detected 2 issues and 0 Security Hotspots in XXXms"));
+    assertAnalysisLogsContains(2, 0);
   }
 
   @Test

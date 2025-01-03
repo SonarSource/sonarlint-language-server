@@ -771,7 +771,7 @@ public abstract class AbstractLanguageServerMediumTests {
     return p -> p.getMessage().replaceAll("\\[(\\w*)\\s+-\\s[\\d:.]*\\]", "[$1]");
   }
 
-  protected ThrowingExtractor<? super MessageParams, String, RuntimeException> withoutTimestampAndMillis() {
+  protected static ThrowingExtractor<? super MessageParams, String, RuntimeException> withoutTimestampAndMillis() {
     return p -> p.getMessage().replaceAll("\\[(\\w*)\\s+-\\s[\\d:.]*\\]", "[$1]").replaceAll("\\d{2,4}ms", "XXXms");
   }
 
@@ -795,7 +795,7 @@ public abstract class AbstractLanguageServerMediumTests {
     return d -> d.getRange().getStart().getLine();
   }
 
-  protected void awaitUntilAsserted(ThrowingRunnable assertion) {
+  protected static void awaitUntilAsserted(ThrowingRunnable assertion) {
     await().atMost(2, MINUTES).untilAsserted(assertion);
   }
 
