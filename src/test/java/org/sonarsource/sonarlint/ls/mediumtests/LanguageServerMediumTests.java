@@ -428,9 +428,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var fooTestUri = getUri("fooTest.js", analysisDir);
     didOpen(fooTestUri, "javascript", jsContent);
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestampAndMillis())
-      .contains("[Info] Analysis detected 0 issues and 0 Security Hotspots in XXXms"));
+    assertAnalysisLogsContains(0, 0);
     assertThat(client.getDiagnostics(fooTestUri)).isEmpty();
     client.clear();
 
@@ -438,9 +436,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     notifyConfigurationChangeOnClient();
 
     didChange(fooTestUri, jsContent);
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestampAndMillis())
-      .contains("[Info] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
+    assertAnalysisLogsContains(1, 0);
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fooTestUri)).hasSize(1));
 
     client.logs.clear();
@@ -448,9 +444,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var fooMyTestUri = getUri("fooMyTest.js", analysisDir);
     didOpen(fooMyTestUri, "javascript", jsContent);
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestampAndMillis())
-      .contains("[Info] Analysis detected 0 issues and 0 Security Hotspots in XXXms"));
+    assertAnalysisLogsContains(0, 0);
 
     assertThat(client.getDiagnostics(fooMyTestUri)).isEmpty();
   }
@@ -526,9 +520,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     didOpen(uri, "python", "def foo():\n  print('Error code %d' % '42')\n");
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestampAndMillis())
-      .contains("[Info] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
+    assertAnalysisLogsContains(1, 0);
 
     client.logs.clear();
 
@@ -563,10 +555,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.getTextDocumentService()
       .didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier(uri)));
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestampAndMillis())
-      .contains("[Info] Analysis detected 0 issues and 0 Security Hotspots in XXXms",
-        "[Info] Analysis detected 0 issues and 0 Security Hotspots in XXXms"));
+    assertAnalysisLogsContains(0, 0);
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
@@ -590,7 +579,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(uri, "python", "# Nothing to see here\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs).extracting(withoutTimestamp())
-      .contains("[Error] No file to analyze"));
+      .contains("[Error] [sonarlint : SonarLint Analysis Executor] No file to analyze"));
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
@@ -798,11 +787,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("testAnalysisLogsDisabled.py", analysisDir);
     didOpen(uri, "python", "def foo():\n  toto = 0\n");
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .filteredOn(notFromContextualTSserver())
-      .extracting(withoutTimestampAndMillis())
-      .contains(
-        "[Info] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
+
+    assertAnalysisLogsContains(1, 0);
   }
 
   @Test
@@ -815,11 +801,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("testAnalysisLogsDebugEnabled.py", analysisDir);
     didOpen(uri, "python", "def foo():\n  toto = 0\n");
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .filteredOn(notFromContextualTSserver())
-      .extracting(withoutTimestampAndMillis())
-      .containsSubsequence(
-        "[Info] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
+    assertAnalysisLogsContains(1, 0);
   }
 
   @Test
@@ -836,10 +818,10 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestampAndMillis())
       .contains(
-        "[Info] Index files",
-        "[Info] 1 file indexed",
-        "[Info] 1 source file to be analyzed",
-        "[Info] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
+        "[Info] [sonarlint : sonarlint-analysis-engine] Index files",
+        "[Info] [sonarlint : Report about progress of file indexation] 1 file indexed",
+        "[Info] [sonarlint : rules execution progress] 1 source file to be analyzed",
+        "[Info] [sonarlint : sonarlint-analysis-engine] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
   }
 
   @Test
@@ -857,11 +839,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestampAndMillis())
       .contains(
-        "[Info] Index files",
-        "[Debug] Language of file \"" + uri + "\" is set to \"PYTHON\"",
-        "[Info] 1 file indexed",
-        "[Debug] Execute Sensor: Python Sensor",
-        "[Info] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
+        "[Info] [sonarlint : sonarlint-analysis-engine] Index files",
+        "[Debug] [sonarlint : sonarlint-analysis-engine] Language of file \"" + uri + "\" is set to \"PYTHON\"",
+        "[Info] [sonarlint : Report about progress of file indexation] 1 file indexed",
+        "[Debug] [sonarlint : sonarlint-analysis-engine] Execute Sensor: Python Sensor",
+        "[Info] [sonarlint : sonarlint-analysis-engine] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
   }
 
   @Test
@@ -1132,6 +1114,14 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   private Predicate<? super MessageParams> notFromContextualTSserver() {
     return m -> !m.getMessage().contains("SonarTS") && !m.getMessage().contains("Using typescript at");
+  }
+
+  public static void assertAnalysisLogsContains(int issues, int hotspots) {
+    var issuesString = issues == 1 ? "issue" : "issues";
+    var hotspotsString = hotspots == 1 ? "Security Hotspot" : "Security Hotspots";
+    awaitUntilAsserted(() -> assertThat(client.logs)
+      .extracting(withoutTimestampAndMillis())
+      .contains(String.format("[Info] [sonarlint : sonarlint-analysis-engine] Analysis detected %d %s and %d %s in XXXms", issues, issuesString, hotspots, hotspotsString)));
   }
 
 }

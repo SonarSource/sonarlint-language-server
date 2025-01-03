@@ -195,13 +195,14 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public void log(LogParams params) {
+    var prefix = String.format("[%s : %s] ", params.getLoggerName(), params.getThreadName());
     var rawMessage = params.getMessage();
-    var sanitizedMessage = rawMessage != null ? rawMessage : "null";
+    var sanitizedMessage = rawMessage != null ? prefix.concat(rawMessage) : "null";
     var level = params.getLevel();
     logOutput.log(sanitizedMessage, level);
     var stackTrace = params.getStackTrace();
     if (stackTrace != null) {
-      logOutput.log(stackTrace, level);
+      logOutput.log(prefix.concat(stackTrace), level);
     }
   }
 

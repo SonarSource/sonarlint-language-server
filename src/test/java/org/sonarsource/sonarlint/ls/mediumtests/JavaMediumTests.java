@@ -47,6 +47,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.sonarsource.sonarlint.ls.mediumtests.LanguageServerMediumTests.assertAnalysisLogsContains;
 
 class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -231,9 +232,9 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.logs)
       .extracting(withoutTimestamp())
       .containsSubsequence(
-        "[Debug] Property 'sonar.java.jdkHome' set with: " + currentJdkHome,
-        "[Debug] Property 'sonar.java.jdkHome' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]",
-        "[Debug] Property 'sonar.java.libraries' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]");
+        "[Debug] [sonarlint : sonarlint-analysis-engine] Property 'sonar.java.jdkHome' set with: " + currentJdkHome,
+        "[Debug] [sonarlint : sonarlint-analysis-engine] Property 'sonar.java.jdkHome' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]",
+        "[Debug] [sonarlint : sonarlint-analysis-engine] Property 'sonar.java.libraries' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]");
   }
 
   @Test
@@ -278,18 +279,14 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(uri, "java",
       "import org.junit.Test;\npublic class FooTest {\n  @Test\n  public void test() {\n String s = \"foo\";\n}\n}");
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestampAndMillis())
-      .contains("[Info] Analysis detected 2 issues and 0 Security Hotspots in XXXms"));
+    assertAnalysisLogsContains(2, 0);
     client.logs.clear();
 
     // Update classpath
     javaConfigResponse.setClasspath(new String[]{Paths.get(this.getClass().getResource("/junit-4.12.jar").toURI()).toAbsolutePath().toString()});
     lsProxy.didClasspathUpdate(new DidClasspathUpdateParams(projectRootUri2));
 
-    awaitUntilAsserted(() -> assertThat(client.logs)
-      .extracting(withoutTimestampAndMillis())
-      .contains("[Info] Analysis detected 3 issues and 0 Security Hotspots in XXXms"));
+    assertAnalysisLogsContains(3, 0);
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
