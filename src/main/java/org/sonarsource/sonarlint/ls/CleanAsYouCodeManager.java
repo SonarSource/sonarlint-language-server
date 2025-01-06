@@ -43,6 +43,7 @@ public class CleanAsYouCodeManager implements WorkspaceSettingsChangeListener {
     if (oldValue != null && oldValue.isFocusOnNewCode() != newValue.isFocusOnNewCode()) {
       backendServiceFacade.getBackendService().toggleCleanAsYouCode();
       openFilesCache.getAll().forEach(f -> diagnosticPublisher.publishDiagnostics(f.getUri(), false));
+      diagnosticPublisher.publishTaints();
     }
   }
 }

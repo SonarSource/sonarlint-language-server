@@ -69,5 +69,6 @@ class CleanAsYouCodeManagerTest {
     verify(backendService).toggleCleanAsYouCode();
     verify(diagnosticPublisher).publishDiagnostics(dummyFile1, false);
     verify(diagnosticPublisher).publishDiagnostics(dummyFile2, false);
+    verify(diagnosticPublisher).publishTaints();
   }
 }
