@@ -82,6 +82,10 @@ public class DiagnosticPublisher {
     client.publishTaintVulnerabilities(createPublishTaintsParams(f));
   }
 
+  public void publishTaints() {
+    taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().forEach((uri, taints) -> client.publishTaintVulnerabilities(createPublishTaintsParams(uri)));
+  }
+
   public void publishHotspots(URI f) {
     client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
   }
