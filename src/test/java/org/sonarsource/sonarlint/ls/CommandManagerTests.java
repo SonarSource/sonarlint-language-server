@@ -58,7 +58,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.EffectiveIssueD
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.GetEffectiveIssueDetailsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRuleDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetEffectiveRuleDetailsResponse;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ImpactDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleContextualSectionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleContextualSectionWithDefaultContextKeyDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleDescriptionTabDto;
@@ -74,11 +73,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.TextEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.MQRModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
@@ -570,10 +567,6 @@ class CommandManagerTests {
       "rule",
       "ruleName",
       Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)),
-      IssueSeverity.BLOCKER,
-      RuleType.SECURITY_HOTSPOT,
-      CleanCodeAttribute.COMPLETE,
-      List.of(new ImpactDto(SoftwareQuality.SECURITY, ImpactSeverity.HIGH)),
       Instant.now(),
       true,
       false,

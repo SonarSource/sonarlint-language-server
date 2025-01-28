@@ -22,7 +22,6 @@ package org.sonarsource.sonarlint.ls.domain;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -67,13 +66,9 @@ class TaintIssueTest {
       Path.of("ideFilePath"),
       Instant.now(),
       Either.forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
-      IssueSeverity.MAJOR,
-      RuleType.BUG,
       List.of(),
       null,
       "ruleDescriptionContextKey",
-      null,
-      Map.of(),
       false);
 
     var taintIssue = new TaintIssue(taintIssueDto, "workspaceFolderUri", true);
@@ -93,13 +88,9 @@ class TaintIssueTest {
       Path.of("ideFilePath"),
       Instant.now(),
       Either.forRight(new MQRModeDetails(CleanCodeAttribute.TRUSTWORTHY, List.of(new ImpactDto(SoftwareQuality.SECURITY, ImpactSeverity.HIGH)))),
-      null,
-      null,
       List.of(),
       null,
       "ruleDescriptionContextKey",
-      CleanCodeAttribute.TRUSTWORTHY,
-      Map.of(SoftwareQuality.SECURITY, ImpactSeverity.HIGH),
       false);
 
     var taintIssue = new TaintIssue(taintIssueDto, "workspaceFolderUri", true);

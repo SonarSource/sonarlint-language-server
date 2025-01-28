@@ -94,7 +94,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.message.ShowSoonUnsupportedMessageParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidSkipLoadingPluginParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.smartnotification.ShowSmartNotificationParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
@@ -972,17 +971,15 @@ class SonarLintVSCodeClientTests {
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
     return new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
-      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)), IssueSeverity.MAJOR, RuleType.BUG, List.of(),
-      new TextRangeWithHashDto(5, 5, 5, 5, ""), "", CleanCodeAttribute.CONVENTIONAL,
-      Map.of(), true);
+      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)), List.of(),
+      new TextRangeWithHashDto(5, 5, 5, 5, ""), "", true);
   }
 
   private TaintIssue getTaintIssue(UUID uuid) {
     return new TaintIssue(new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
-      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)), IssueSeverity.MAJOR, RuleType.BUG, List.of(),
-      new TextRangeWithHashDto(5, 5, 5, 5, ""), "", CleanCodeAttribute.CONVENTIONAL,
-      Map.of(), true), "folderUri", true);
+      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)), List.of(),
+      new TextRangeWithHashDto(5, 5, 5, 5, ""), "", true), "folderUri", true);
   }
 
   public class DummyCancelChecker implements CancelChecker {

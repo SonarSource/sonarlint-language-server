@@ -24,7 +24,7 @@
 
   <properties>
     <jdk.min.version>17</jdk.min.version>
-    <sonarlint.core.version>10.13.0.79996</sonarlint.core.version>
+    <sonarlint.core.version>10.14.0.80116</sonarlint.core.version>
     <!-- Version used by Xodus -->
     <kotlin.version>1.6.10</kotlin.version>
     <!-- analyzers used for tests -->
@@ -77,7 +77,7 @@
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
-      <version>2.16.1</version>
+      <version>2.18.0</version>
     </dependency>
     <dependency>
        <groupId>info.picocli</groupId>
