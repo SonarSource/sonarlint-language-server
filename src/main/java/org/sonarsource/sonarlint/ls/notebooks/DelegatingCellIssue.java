@@ -78,7 +78,7 @@ public class DelegatingCellIssue extends DelegatingFinding {
     var cleanCodeAttribute = issue.getSeverityMode().isRight() ? issue.getSeverityMode().getRight().getCleanCodeAttribute() : null;
     var impacts = issue.getSeverityMode().isRight() ? issue.getSeverityMode().getRight().getImpacts() : new ArrayList<ImpactDto>();
     return new RaisedIssueDto(issue.getId(), issue.getServerKey(), issue.getRuleKey(), issue.getPrimaryMessage(),
-      issue.getSeverityMode(), severity, type, cleanCodeAttribute, impacts, issue.getIntroductionDate(),
+      issue.getSeverityMode(), issue.getIntroductionDate(),
       issue.isOnNewCode(), issue.isResolved(), cellTextRange, issue.getFlows(), cellQuickFixes, issue.getRuleDescriptionContextKey());
   }
 

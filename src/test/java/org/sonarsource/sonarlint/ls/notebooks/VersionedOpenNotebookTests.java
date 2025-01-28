@@ -44,7 +44,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.TextEditDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
@@ -520,10 +519,6 @@ public class VersionedOpenNotebookTests {
       "ruleKey",
       "message",
       Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)),
-      IssueSeverity.BLOCKER,
-      RuleType.BUG,
-      CleanCodeAttribute.TRUSTWORTHY,
-      List.of(),
       Instant.now(),
       true,
       false,
