@@ -133,7 +133,7 @@ class UtilsTests {
     var myScOrganization = "my SC organization";
     var token = "token";
     var validateConnectionParams =
-      getValidateConnectionParamsForNewConnection(new ConnectionCheckParams(token, myScOrganization, null));
+      getValidateConnectionParamsForNewConnection(new ConnectionCheckParams(token, myScOrganization, null, "EU"));
 
     var transientConnection = validateConnectionParams.getTransientConnection();
     assertTrue(transientConnection.isRight());
@@ -147,7 +147,7 @@ class UtilsTests {
     var token = "token";
     var serverUrl = "http://localhost:8080";
     var validateConnectionParams =
-      getValidateConnectionParamsForNewConnection(new ConnectionCheckParams("token", null, serverUrl));
+      getValidateConnectionParamsForNewConnection(new ConnectionCheckParams("token", null, serverUrl, null));
 
     var transientConnection = validateConnectionParams.getTransientConnection();
     assertTrue(transientConnection.isLeft());
@@ -163,8 +163,8 @@ class UtilsTests {
     var myScOrganization = "my SC organization";
     var connectionId = "my connectionId";
 
-    assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(token, myScOrganization, null))).isEqualTo(myScOrganization);
-    assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(token, null, serverUrl))).isEqualTo(serverUrl);
+    assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(token, myScOrganization, null, "EU"))).isEqualTo(myScOrganization);
+    assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(token, null, serverUrl, null))).isEqualTo(serverUrl);
     assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(connectionId))).isEqualTo(connectionId);
   }
 

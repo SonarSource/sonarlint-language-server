@@ -357,9 +357,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       throw new IllegalArgumentException(format("No server configuration found with ID '%s'", connectionId));
     }
     var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
+    // TODO fix NullPointer
     var connectionParams = Utils.getValidateConnectionParamsForNewConnection(
       new SonarLintExtendedLanguageServer.ConnectionCheckParams(connectionSettings.getToken(),
-        connectionSettings.getOrganizationKey(), connectionSettings.getServerUrl()));
+        connectionSettings.getOrganizationKey(), connectionSettings.getServerUrl(), connectionSettings.getRegion().toString()));
     return connectionParams.getTransientConnection();
   }
 

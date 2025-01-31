@@ -60,14 +60,18 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     @Nullable
     private String serverUrl;
 
+    @Nullable
+    private String region;
+
     public ConnectionCheckParams(String connectionId) {
       this.connectionId = connectionId;
     }
 
-    public ConnectionCheckParams(@Nullable String token, @Nullable String organization, @Nullable String serverUrl) {
+    public ConnectionCheckParams(@Nullable String token, @Nullable String organization, @Nullable String serverUrl, @Nullable String region) {
       this.token = token;
       this.serverUrl = serverUrl;
       this.organization = organization;
+      this.region = region;
     }
 
     @Nullable
@@ -92,6 +96,11 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
     public void setConnectionId(String connectionId) {
       this.connectionId = connectionId;
+    }
+
+    @Nullable
+    public String getRegion() {
+      return region;
     }
   }
 

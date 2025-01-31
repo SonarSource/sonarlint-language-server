@@ -97,6 +97,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.smartnotification.Show
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.AnalysisHelper;
@@ -350,7 +351,8 @@ class SonarLintVSCodeClientTests {
         "http://localhost:9000",
         "abcdefg",
         null,
-        false
+        false,
+        null
       ));
     when(workspaceSettings.getServerConnections()).thenReturn(serverConnections);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
@@ -369,7 +371,8 @@ class SonarLintVSCodeClientTests {
         "https://sonarcloud.io",
         "abcdefg",
         "test-org",
-        false
+        false,
+        SonarCloudRegion.EU
       ));
     when(workspaceSettings.getServerConnections()).thenReturn(serverConnections);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
