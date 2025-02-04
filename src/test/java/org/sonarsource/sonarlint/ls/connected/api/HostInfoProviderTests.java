@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.connected.api;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -54,7 +55,7 @@ class HostInfoProviderTests {
   void shouldCreateConnectionParams() {
     var serverUrl = "localhost:9000";
     var token = "squ_123";
-    var createConnectionParams = new SonarLintExtendedLanguageClient.CreateConnectionParams(false, serverUrl, token);
+    var createConnectionParams = new SonarLintExtendedLanguageClient.CreateConnectionParams(false, serverUrl, token, SonarCloudRegion.EU);
 
     assertThat(createConnectionParams.serverUrlOrOrganisationKey()).isEqualTo(serverUrl);
     assertThat(createConnectionParams.isSonarCloud()).isFalse();

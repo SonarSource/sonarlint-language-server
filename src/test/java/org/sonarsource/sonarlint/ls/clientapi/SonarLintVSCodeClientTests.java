@@ -97,6 +97,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.smartnotification.Show
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.AnalysisHelper;
@@ -474,7 +475,7 @@ class SonarLintVSCodeClientTests {
   @Test
   void assistCreateConnectionShouldCallClientMethodForSonarCloud() {
     String organisationKey = "myOrg";
-    var assistCreatingConnectionParams = new AssistCreatingConnectionParams(new SonarCloudConnectionParams(organisationKey, "tokenName", "tokenValue"));
+    var assistCreatingConnectionParams = new AssistCreatingConnectionParams(new SonarCloudConnectionParams(organisationKey, "tokenName", "tokenValue", SonarCloudRegion.EU));
     when(client.workspaceFolders()).thenReturn(CompletableFuture.completedFuture(List.of()));
     when(client.assistCreatingConnection(any()))
       .thenReturn(CompletableFuture.completedFuture(new AssistCreatingConnectionResponse("newConnectionId")));
