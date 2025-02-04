@@ -351,7 +351,7 @@ class SonarLintVSCodeClientTests {
         "http://localhost:9000",
         "abcdefg",
         null,
-        false
+        false, SonarCloudRegion.EU
       ));
     when(workspaceSettings.getServerConnections()).thenReturn(serverConnections);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
@@ -370,7 +370,7 @@ class SonarLintVSCodeClientTests {
         "https://sonarcloud.io",
         "abcdefg",
         "test-org",
-        false
+        false, SonarCloudRegion.EU
       ));
     when(workspaceSettings.getServerConnections()).thenReturn(serverConnections);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);

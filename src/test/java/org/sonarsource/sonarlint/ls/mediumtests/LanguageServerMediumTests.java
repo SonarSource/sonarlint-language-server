@@ -916,7 +916,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void testCheckNewSqConnection() throws ExecutionException, InterruptedException {
     var serverUrl = mockWebServerExtension.url("/");
-    SonarLintExtendedLanguageServer.ConnectionCheckParams testParams = new SonarLintExtendedLanguageServer.ConnectionCheckParams(TOKEN, null, serverUrl);
+    SonarLintExtendedLanguageServer.ConnectionCheckParams testParams = new SonarLintExtendedLanguageServer.ConnectionCheckParams(TOKEN, null, serverUrl, null);
     CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> result = lsProxy.checkConnection(testParams);
 
     SonarLintExtendedLanguageClient.ConnectionCheckResult actual = result.get();

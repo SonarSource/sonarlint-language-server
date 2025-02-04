@@ -41,6 +41,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotRpcSer
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.IssueRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -131,7 +132,7 @@ class BackendServiceTests {
   void shouldListUserOrganizations() {
     var argumentCaptor = ArgumentCaptor.forClass(ListUserOrganizationsParams.class);
     var token = "token";
-    underTest.listUserOrganizations(token);
+    underTest.listUserOrganizations(token, SonarCloudRegion.EU.name());
 
     verify(connectionRpcService).listUserOrganizations(argumentCaptor.capture());
 

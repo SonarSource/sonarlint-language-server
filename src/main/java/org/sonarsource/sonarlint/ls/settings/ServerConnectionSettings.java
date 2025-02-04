@@ -30,6 +30,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.common.Tra
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.common.TransientSonarQubeConnectionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TokenDto;
 import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 
@@ -38,7 +39,8 @@ public class ServerConnectionSettings {
   public static final String SONARCLOUD_URL = System.getProperty("sonarlint.internal.sonarcloud.url") != null ?
     System.getProperty("sonarlint.internal.sonarcloud.url") :
     "https://sonarcloud.io";
-  static final String[] SONARCLOUD_ALIAS = {"https://sonarqube.com", "https://www.sonarqube.com", "https://www.sonarcloud.io", SONARCLOUD_URL};
+  public static final String SONARCLOUD_US_URL = "https://us.sonarcloud.io/";
+  static final String[] SONARCLOUD_ALIAS = {"https://sonarqube.com", "https://www.sonarqube.com", "https://www.sonarcloud.io", SONARCLOUD_URL, SONARCLOUD_US_URL};
 
   private final String connectionId;
   private final String serverUrl;
@@ -47,16 +49,19 @@ public class ServerConnectionSettings {
 
   @Nullable
   private final String organizationKey;
+  @Nullable
+  private final SonarCloudRegion region;
   private final EndpointParams endpointParams;
   private ValidateConnectionParams validateConnectionParams;
 
   public ServerConnectionSettings(String connectionId, String serverUrl, String token, @Nullable String organizationKey,
-    boolean disableNotifications) {
+    boolean disableNotifications, @Nullable SonarCloudRegion region) {
     this.connectionId = connectionId;
     this.serverUrl = serverUrl;
     this.token = token;
     this.organizationKey = organizationKey;
     this.disableNotifications = disableNotifications;
+    this.region = region;
     this.endpointParams = createEndpointParams();
     this.validateConnectionParams = createValidateConnectionParams();
   }
@@ -67,7 +72,7 @@ public class ServerConnectionSettings {
 
   private ValidateConnectionParams createValidateConnectionParams() {
     Either<TransientSonarQubeConnectionDto, TransientSonarCloudConnectionDto> connectionDto = isSonarCloudAlias() ?
-      Either.forRight(new TransientSonarCloudConnectionDto(getOrganizationKey(), Either.forLeft(new TokenDto(getToken())))) :
+      Either.forRight(new TransientSonarCloudConnectionDto(getOrganizationKey(), Either.forLeft(new TokenDto(getToken())), getRegion())) :
       Either.forLeft(new TransientSonarQubeConnectionDto(getServerUrl(), Either.forLeft(new TokenDto(getToken()))));
     return new ValidateConnectionParams(connectionDto);
   }
@@ -87,6 +92,11 @@ public class ServerConnectionSettings {
   @CheckForNull
   public String getOrganizationKey() {
     return organizationKey;
+  }
+
+  @Nullable
+  public SonarCloudRegion getRegion() {
+    return region;
   }
 
   public boolean isSonarCloudAlias() {

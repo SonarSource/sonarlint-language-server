@@ -20,25 +20,26 @@
 package org.sonarsource.sonarlint.ls.settings;
 
 import org.junit.jupiter.api.Test;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ServerConnectionSettingsTests {
 
-  private static final ServerConnectionSettings WITHOUT_ORG = new ServerConnectionSettings("serverId", "serverUrl", "token", null, false);
-  private static final ServerConnectionSettings WITH_ORG = new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false);
+  private static final ServerConnectionSettings WITHOUT_ORG = new ServerConnectionSettings("serverId", "serverUrl", "token", null, false, SonarCloudRegion.EU);
+  private static final ServerConnectionSettings WITH_ORG = new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false, SonarCloudRegion.EU);
 
   @Test
   void testHashCode() {
-    assertThat(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false)).hasSameHashCodeAs(WITH_ORG);
-    assertThat(new ServerConnectionSettings("serverId", "serverUrl", "token", null, false)).hasSameHashCodeAs(WITHOUT_ORG);
+    assertThat(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false, SonarCloudRegion.EU)).hasSameHashCodeAs(WITH_ORG);
+    assertThat(new ServerConnectionSettings("serverId", "serverUrl", "token", null, false, SonarCloudRegion.EU)).hasSameHashCodeAs(WITHOUT_ORG);
   }
 
   @Test
   void testSetters() {
-    var oldSetting = new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false);
+    var oldSetting = new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false, SonarCloudRegion.EU);
     oldSetting.setToken("newToken");
-    var compareTo = new ServerConnectionSettings("serverId", "serverUrl", "newToken", "myOrg", false);
+    var compareTo = new ServerConnectionSettings("serverId", "serverUrl", "newToken", "myOrg", false, SonarCloudRegion.EU);
     assertThat(oldSetting).hasSameHashCodeAs(compareTo);
   }
 
@@ -46,22 +47,22 @@ class ServerConnectionSettingsTests {
   void testEquals() {
     assertThat(WITH_ORG)
       .isEqualTo(WITH_ORG)
-      .isEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false))
+      .isEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", false, SonarCloudRegion.EU))
       .isNotEqualTo(null)
       .isNotEqualTo("foo")
-      .isNotEqualTo(new ServerConnectionSettings("serverId2", "serverUrl", "token", "myOrg", false))
-      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl2", "token", "myOrg", false))
-      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token2", "myOrg", false))
-      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2", false))
-      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2", true));
+      .isNotEqualTo(new ServerConnectionSettings("serverId2", "serverUrl", "token", "myOrg", false, SonarCloudRegion.EU))
+      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl2", "token", "myOrg", false, SonarCloudRegion.EU))
+      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token2", "myOrg", false, SonarCloudRegion.EU))
+      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2", false, SonarCloudRegion.EU))
+      .isNotEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2", true, SonarCloudRegion.EU));
     assertThat(WITHOUT_ORG)
-      .isEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", null, false))
+      .isEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", null, false, SonarCloudRegion.EU))
       .isNotEqualTo(WITH_ORG);
   }
 
   @Test
   void testToStringHidesToken() {
-    assertThat(WITH_ORG).hasToString("ServerConnectionSettings[connectionId=serverId,disableNotifications=false,organizationKey=myOrg,serverUrl=serverUrl]");
+    assertThat(WITH_ORG).hasToString("ServerConnectionSettings[connectionId=serverId,disableNotifications=false,organizationKey=myOrg,region=EU,serverUrl=serverUrl]");
   }
 
 }

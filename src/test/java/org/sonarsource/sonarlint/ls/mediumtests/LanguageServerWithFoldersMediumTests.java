@@ -39,8 +39,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonarsource.sonarlint.core.SonarCloudRegion;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarcloud.ws.Organizations;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import testutils.MockWebServerExtension;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -259,7 +261,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
         .setPaging(paging)
         .build());
     var token = "123456";
-    var result = lsProxy.listUserOrganizations(token).join();
+    var result = lsProxy.listUserOrganizations(new SonarLintExtendedLanguageServer.ListUserOrganizationsParams(token, SonarCloudRegion.EU.name())).join();
     assertThat(result).hasSize(1);
     assertThat(result.get(0).getKey()).isEqualTo("key");
   }

@@ -60,14 +60,18 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     @Nullable
     private String serverUrl;
 
+    @Nullable
+    private String region;
+
     public ConnectionCheckParams(String connectionId) {
       this.connectionId = connectionId;
     }
 
-    public ConnectionCheckParams(@Nullable String token, @Nullable String organization, @Nullable String serverUrl) {
+    public ConnectionCheckParams(@Nullable String token, @Nullable String organization, @Nullable String serverUrl, @Nullable String region) {
       this.token = token;
       this.serverUrl = serverUrl;
       this.organization = organization;
+      this.region = region;
     }
 
     @Nullable
@@ -92,6 +96,11 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
     public void setConnectionId(String connectionId) {
       this.connectionId = connectionId;
+    }
+
+    @Nullable
+    public String getRegion() {
+      return region;
     }
   }
 
@@ -701,8 +710,11 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonNotification("sonarlint/didCreateBinding")
   void didCreateBinding(BindingCreationMode creationMode);
 
+  record ListUserOrganizationsParams(String token, String region) {
+  }
+
   @JsonRequest("sonarlint/listUserOrganizations")
-  CompletableFuture<List<OrganizationDto>> listUserOrganizations(String token);
+  CompletableFuture<List<OrganizationDto>> listUserOrganizations(ListUserOrganizationsParams params);
 
   record FixSuggestionResolvedParams(String suggestionId, boolean accepted) {
   }
