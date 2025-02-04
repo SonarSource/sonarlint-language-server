@@ -41,6 +41,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBinding
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.ChangesDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.domain.MQRModeDetails;
@@ -614,7 +615,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
   }
 
-  record CreateConnectionParams(boolean isSonarCloud, String serverUrlOrOrganisationKey, String token) {
+  record CreateConnectionParams(boolean isSonarCloud, String serverUrlOrOrganisationKey, String token, @Nullable SonarCloudRegion region) {
   }
 
   /**

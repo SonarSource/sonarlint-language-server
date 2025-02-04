@@ -268,7 +268,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     var isSonarCloud = params.getConnectionParams().isRight();
     var assistCreatingConnectionFuture = client.assistCreatingConnection(new CreateConnectionParams(isSonarCloud,
       isSonarCloud ? params.getConnectionParams().getRight().getOrganizationKey() : params.getConnectionParams().getLeft().getServerUrl(),
-      tokenValue));
+      tokenValue, isSonarCloud ? params.getConnectionParams().getRight().getRegion() : null));
     return workspaceFoldersFuture.thenCombine(assistCreatingConnectionFuture, (workspaceFolders, assistCreatingConnectionResponse) -> {
       var newConnectionId = assistCreatingConnectionResponse.getNewConnectionId();
       if (newConnectionId != null) {
