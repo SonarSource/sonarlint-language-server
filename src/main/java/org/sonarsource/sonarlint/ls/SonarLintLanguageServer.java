@@ -835,8 +835,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<List<OrganizationDto>> listUserOrganizations(String token) {
-    return backendServiceFacade.getBackendService().listUserOrganizations(token)
+  public CompletableFuture<List<OrganizationDto>> listUserOrganizations(ListUserOrganizationsParams params) {
+    return backendServiceFacade.getBackendService().listUserOrganizations(params.token(), params.region())
       .thenApply(ListUserOrganizationsResponse::getUserOrganizations);
   }
 

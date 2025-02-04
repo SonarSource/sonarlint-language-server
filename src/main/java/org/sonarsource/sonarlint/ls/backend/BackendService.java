@@ -99,6 +99,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllRespo
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.ClientFileDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TokenDto;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
@@ -169,7 +170,7 @@ public class BackendService {
   public static List<SonarCloudConnectionConfigurationDto> extractSonarCloudConnections(Map<String, ServerConnectionSettings> connections) {
     return connections.entrySet().stream()
       .filter(it -> it.getValue().isSonarCloudAlias())
-      .map(it -> new SonarCloudConnectionConfigurationDto(it.getKey(), it.getValue().getOrganizationKey(), it.getValue().isSmartNotificationsDisabled()))
+      .map(it -> new SonarCloudConnectionConfigurationDto(it.getKey(), it.getValue().getOrganizationKey(), it.getValue().getRegion() != null ? it.getValue().getRegion() : SonarCloudRegion.EU, it.getValue().isSmartNotificationsDisabled()))
       .toList();
   }
 
@@ -365,8 +366,8 @@ public class BackendService {
     return backend;
   }
 
-  public CompletableFuture<ListUserOrganizationsResponse> listUserOrganizations(String token) {
-    var params = new ListUserOrganizationsParams(Either.forLeft(new TokenDto(token)));
+  public CompletableFuture<ListUserOrganizationsResponse> listUserOrganizations(String token, String region) {
+    var params = new ListUserOrganizationsParams(Either.forLeft(new TokenDto(token)), SonarCloudRegion.valueOf(region));
     return initializedBackend().getConnectionService().listUserOrganizations(params);
   }
 
