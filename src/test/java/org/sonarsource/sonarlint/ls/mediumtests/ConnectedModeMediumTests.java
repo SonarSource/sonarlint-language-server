@@ -134,7 +134,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @BeforeEach
   public void mockSonarQube() {
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.9\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/authentication/validate?format=json", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addResponse("/api/developers/search_events?projects=&from=", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addProtobufResponse("/api/components/search.protobuf?qualifiers=TRK&ps=500&p=1",
@@ -234,6 +234,10 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Issues.IssuesPullQueryTimestamp.newBuilder()
         .setQueryTimestamp(CURRENT_TIME)
         .build());
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build()
+    );
     client.clearHotspotsAndIssuesAndConfigScopeReadiness();
   }
 
@@ -368,7 +372,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analysisConnected_find_tracked_hotspot_after_sq_10_1() {
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=myProject&files=hotspot.py&branch=master&ps=500&p=1",
@@ -528,7 +532,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analysisConnected_no_matching_server_issues() {
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.9\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockNoIssuesNoHotspotsForProject();
     mockWebServerExtension.addStringResponse("/api/authentication/validate?format=json", "{\"valid\": true}");
     mockWebServerExtension.addProtobufResponse("/api/measures/component.protobuf?additionalFields=period&metricKeys=projects&component=myProject",
@@ -573,11 +577,12 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analysisConnected_matching_server_issues() throws Exception {
+    var issueKey = UUID.randomUUID().toString();
     mockWebServerExtension.addProtobufResponse(
-      "/api/issues/search.protobuf?issues=xyz&additionalFields=transitions&ps=1&p=1",
+      "/api/issues/search.protobuf?issues=" + issueKey + "&additionalFields=transitions&ps=1&p=1",
       Issues.SearchWsResponse.newBuilder()
         .addIssues(Issues.Issue.newBuilder()
-          .setKey("xyz")
+          .setKey(issueKey)
           .setTransitions(Issues.Transitions.newBuilder()
             .addAllTransitions(List.of("wontfix", "falsepositive"))
             .build())
@@ -604,7 +609,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setQueryTimestamp(CURRENT_TIME)
         .build(),
       Issues.IssueLite.newBuilder()
-        .setKey("xyz")
+        .setKey(issueKey)
         .setRuleKey(PYTHON_S1481)
         .setType(Common.RuleType.CODE_SMELL)
         .setUserSeverity(Common.Severity.BLOCKER)
@@ -859,7 +864,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldNotChangeIssueStatus() {
-    var issueKey = "xyz";
+    var issueKey = UUID.randomUUID().toString();
 
     mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(400));
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(400));
@@ -894,7 +899,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   void change_hotspot_status_to_resolved() {
     var analyzedFileName = "hotspot_resolved.py";
 
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
     mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
@@ -976,7 +981,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   void should_not_change_hotspot_status_to_resolved() {
     var analyzedFileName = "hotspot_not_resolved.py";
 
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(400));
     mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
@@ -1057,7 +1062,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void change_hotspot_status_permission_check() throws ExecutionException, InterruptedException {
     var analyzedFileName = "hotspot_permissions.py";
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
     mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
@@ -1154,7 +1159,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void change_hotspot_status_permission_check_fail() throws ExecutionException, InterruptedException {
     var analyzedFileName = "hotspot_no_permissions.py";
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.1\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(400));
 
     var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
@@ -1181,7 +1186,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       "/api/issues/search.protobuf?issues=" + issueKey + "&additionalFields=transitions&ps=1&p=1",
       Issues.SearchWsResponse.newBuilder()
         .addIssues(Issues.Issue.newBuilder()
-          .setKey("xyz")
+          .setKey(issueKey)
           .setTransitions(Issues.Transitions.newBuilder()
             .addAllTransitions(List.of("wontfix", "falsepositive"))
             .build())
@@ -1196,7 +1201,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setQueryTimestamp(CURRENT_TIME)
         .build(),
       Issues.IssueLite.newBuilder()
-        .setKey("xyz")
+        .setKey(issueKey)
         .setRuleKey(PYTHON_S1481)
         .setType(Common.RuleType.CODE_SMELL)
         .setUserSeverity(Common.Severity.BLOCKER)
@@ -1279,7 +1284,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   private void mockNoIssuesNoHotspotsForProject() {
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.9\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
       Issues.IssuesPullQueryTimestamp.newBuilder()

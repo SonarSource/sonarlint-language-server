@@ -433,8 +433,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         var token = (String) m.get(TOKEN);
         var organization = (String) m.get(ORGANIZATION_KEY);
         var region = (String) m.getOrDefault(REGION_KEY, SonarCloudRegion.EU.name());
-        // TODO check for parsing the region properly
-        var connectionSettings = new ServerConnectionSettings(connectionId, url, token, organization, false, SonarCloudRegion.valueOf(region));
+        var connectionSettings = new ServerConnectionSettings(connectionId, url, token, organization, false, parseRegion(region));
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
       }
     });
@@ -466,11 +465,19 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         var token = getTokenFromClient(organizationKey);
         var disableNotifs = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
         var region = (String) m.getOrDefault(REGION_KEY, SonarCloudRegion.EU.name());
-        // TODO check for parsing the region properly
         addIfUniqueConnectionId(serverConnections, connectionId,
-          new ServerConnectionSettings(connectionId, ServerConnectionSettings.SONARCLOUD_URL, token, organizationKey, disableNotifs, SonarCloudRegion.valueOf(region)));
+          new ServerConnectionSettings(connectionId, ServerConnectionSettings.SONARCLOUD_URL, token, organizationKey, disableNotifs, parseRegion(region)));
       }
     });
+  }
+
+  private SonarCloudRegion parseRegion(String region) {
+    try {
+      return SonarCloudRegion.valueOf(region);
+    } catch (IllegalArgumentException e) {
+      logOutput.error(format("Unknown SonarQube Cloud region '%s'. Using default region '%s'", region, SonarCloudRegion.EU.name()));
+      return SonarCloudRegion.EU;
+    }
   }
 
   private String getTokenFromClient(String serverUrlOrOrganization) {
