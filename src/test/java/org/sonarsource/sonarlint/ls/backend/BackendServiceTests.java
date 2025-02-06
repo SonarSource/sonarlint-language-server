@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.backend;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -45,6 +46,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -152,5 +154,19 @@ class BackendServiceTests {
     verify(client).showMessage(messageParamsCaptor.capture());
     assertThat(messageParamsCaptor.getValue().getMessage()).contains("Could not add a new issue comment. Look at the SonarQube for IDE output for details.");
     assertThat(messageParamsCaptor.getValue().getType()).isEqualTo(MessageType.Error);
+  }
+
+  @Test
+  void shouldExtractSonarCloudConnections() {
+    var connectionId = "connectionId";
+    var connections = Map.of(connectionId,
+      new ServerConnectionSettings(connectionId, "https://us.sonarcloud.io/", "1235", "orgKey", false, SonarCloudRegion.US));
+
+    var result = BackendService.extractSonarCloudConnections(connections);
+
+    org.assertj.core.api.AssertionsForInterfaceTypes.assertThat(result).hasSize(1);
+    assertThat(result.get(0).getRegion()).isEqualTo(SonarCloudRegion.US);
+    assertThat(result.get(0).getConnectionId()).isEqualTo(connectionId);
+
   }
 }
