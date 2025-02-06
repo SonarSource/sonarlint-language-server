@@ -471,7 +471,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     });
   }
 
-  private SonarCloudRegion parseRegion(String region) {
+  SonarCloudRegion parseRegion(String region) {
     try {
       return SonarCloudRegion.valueOf(region);
     } catch (IllegalArgumentException e) {
