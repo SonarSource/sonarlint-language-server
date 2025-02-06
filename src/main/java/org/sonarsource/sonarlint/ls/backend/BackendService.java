@@ -170,7 +170,8 @@ public class BackendService {
   public static List<SonarCloudConnectionConfigurationDto> extractSonarCloudConnections(Map<String, ServerConnectionSettings> connections) {
     return connections.entrySet().stream()
       .filter(it -> it.getValue().isSonarCloudAlias())
-      .map(it -> new SonarCloudConnectionConfigurationDto(it.getKey(), it.getValue().getOrganizationKey(), it.getValue().getRegion() != null ? it.getValue().getRegion() : SonarCloudRegion.EU, it.getValue().isSmartNotificationsDisabled()))
+      .map(it -> new SonarCloudConnectionConfigurationDto(it.getKey(), it.getValue().getOrganizationKey(),
+        it.getValue().getRegion() != null ? it.getValue().getRegion() : SonarCloudRegion.EU, it.getValue().isSmartNotificationsDisabled()))
       .toList();
   }
 
