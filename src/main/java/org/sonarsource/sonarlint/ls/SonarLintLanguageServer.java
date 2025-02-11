@@ -313,7 +313,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var platform = (String) options.get("platform");
       var architecture = (String) options.get("architecture");
       var additionalAttributes = (Map<String, Object>) options.getOrDefault("additionalAttributes", Map.of());
-      var userAgent = productName + " " + productVersion;
+      var userAgent = "SonarQube for IDE (SonarLint) - Visual Studio Code " + productVersion + " - " + clientVersion;
       var clientNodePath = (String) options.get("clientNodePath");
 
       diagnosticPublisher.initialize(firstSecretDetected);
