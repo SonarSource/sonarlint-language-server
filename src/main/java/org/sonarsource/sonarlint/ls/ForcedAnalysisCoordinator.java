@@ -152,11 +152,6 @@ public class ForcedAnalysisCoordinator implements WorkspaceSettingsChangeListene
     analyzeAllOpenJavaFiles();
   }
 
-  public void didReceiveHotspotEvent(URI fileUri) {
-    var folder = workspaceFoldersManager.findFolderForFile(fileUri);
-    folder.ifPresent(f -> backendServiceFacade.getBackendService().analyzeFilesList(f.getUri().toString(), List.of(fileUri)));
-  }
-
   public void didServerModeChange(SonarLintExtendedLanguageServer.ServerMode serverMode) {
     if (serverMode == SonarLintExtendedLanguageServer.ServerMode.STANDARD) {
       analyzeAllOpenJavaFiles();
