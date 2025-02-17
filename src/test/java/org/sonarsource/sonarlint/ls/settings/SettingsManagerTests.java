@@ -781,10 +781,24 @@ class SettingsManagerTests {
   void shouldIgnoreRazorFiles() {
     var workspaceUri = URI.create("file:///User/user/documents/project");
     var sonarLintSettings = new JsonObject();
-    sonarLintSettings.add("disableTelemetry", new JsonPrimitive(false));
-    sonarLintSettings.add("focusOnNewCode", new JsonPrimitive(true));
     JsonObject initalAnalyzerProperties = new JsonObject();
     initalAnalyzerProperties.add("sonar.cs.file.suffixes", new JsonPrimitive(".cs,.razor"));
+    sonarLintSettings.add("analyzerProperties", initalAnalyzerProperties);
+    Map<String, Object> settingsMap = new HashMap<>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings));
+
+    var result = SettingsManager.updateProperties(workspaceUri, settingsMap);
+
+    assertThat(result).containsKey(ANALYZER_PROPERTIES);
+    var analyzerProperties = (Map<String, String>) result.get(ANALYZER_PROPERTIES);
+    assertThat(analyzerProperties).contains(entry("sonar.cs.file.suffixes", ".cs"));
+  }
+
+  @Test
+  void shouldIgnoreRazorCsFiles() {
+    var workspaceUri = URI.create("file:///User/user/documents/project");
+    var sonarLintSettings = new JsonObject();
+    JsonObject initalAnalyzerProperties = new JsonObject();
+    initalAnalyzerProperties.add("sonar.cs.file.suffixes", new JsonPrimitive(".cs,.razor,.razor.cs"));
     sonarLintSettings.add("analyzerProperties", initalAnalyzerProperties);
     Map<String, Object> settingsMap = new HashMap<>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings));
 

@@ -357,7 +357,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       if (currentSetting.contains(".razor")) {
         var suffixes = currentSetting.split(",");
         var newSetting = stream(suffixes)
-          .filter(suffix -> !suffix.equals(".razor"))
+          .filter(suffix -> !suffix.contains(".razor"))
           .collect(Collectors.joining(","));
         analyzerProperties.put(SONAR_CS_FILE_SUFFIXES, newSetting);
       }
