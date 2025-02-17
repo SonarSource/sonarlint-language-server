@@ -104,7 +104,6 @@ import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
-import org.sonarsource.sonarlint.ls.connected.events.ServerSentEventsHandlerService;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
@@ -132,7 +131,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private final HostInfoProvider hostInfoProvider;
   private final LanguageClientLogger logOutput;
   private ProjectBindingManager bindingManager;
-  private ServerSentEventsHandlerService serverSentEventsHandlerService;
   private BackendServiceFacade backendServiceFacade;
   private WorkspaceFolderBranchManager branchManager;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
@@ -397,7 +395,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public void didReceiveServerHotspotEvent(DidReceiveServerHotspotEvent event) {
-    serverSentEventsHandlerService.handleHotspotEvent(event);
+    // Deprecated on SLCORE side
   }
 
   @Nullable
@@ -579,10 +577,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   public void setSmartNotifications(SmartNotifications smartNotifications) {
     this.smartNotifications = smartNotifications;
-  }
-
-  public void setServerSentEventsHandlerService(ServerSentEventsHandlerService serverSentEventsHandlerService) {
-    this.serverSentEventsHandlerService = serverSentEventsHandlerService;
   }
 
   public void setBackendServiceFacade(BackendServiceFacade backendServiceFacade) {
