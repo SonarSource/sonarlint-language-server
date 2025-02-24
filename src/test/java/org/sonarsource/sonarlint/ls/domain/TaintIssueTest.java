@@ -69,6 +69,7 @@ class TaintIssueTest {
       List.of(),
       null,
       "ruleDescriptionContextKey",
+      false,
       false);
 
     var taintIssue = new TaintIssue(taintIssueDto, "workspaceFolderUri", true);
@@ -91,6 +92,7 @@ class TaintIssueTest {
       List.of(),
       null,
       "ruleDescriptionContextKey",
+      false,
       false);
 
     var taintIssue = new TaintIssue(taintIssueDto, "workspaceFolderUri", true);
