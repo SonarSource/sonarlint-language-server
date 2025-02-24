@@ -35,7 +35,7 @@ public class TaintIssue extends TaintVulnerabilityDto {
   public TaintIssue(TaintVulnerabilityDto taintDto, String workspaceFolderUri, boolean isSonarCloud) {
     super(taintDto.getId(), taintDto.getSonarServerKey(), taintDto.isResolved(), taintDto.getRuleKey(), taintDto.getMessage(),
       taintDto.getIdeFilePath(), taintDto.getIntroductionDate(), taintDto.getSeverityMode(), taintDto.getFlows(), taintDto.getTextRange(),
-      taintDto.getRuleDescriptionContextKey(), taintDto.isOnNewCode());
+      taintDto.getRuleDescriptionContextKey(), taintDto.isOnNewCode(), false);
     this.workspaceFolderUri = workspaceFolderUri;
     this.source = isSonarCloud ? SONARCLOUD_TAINT_SOURCE : SONARQUBE_TAINT_SOURCE;
   }

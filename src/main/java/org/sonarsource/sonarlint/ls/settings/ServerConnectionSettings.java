@@ -32,7 +32,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.V
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TokenDto;
-import org.sonarsource.sonarlint.core.serverapi.EndpointParams;
 
 @Immutable
 public class ServerConnectionSettings {
