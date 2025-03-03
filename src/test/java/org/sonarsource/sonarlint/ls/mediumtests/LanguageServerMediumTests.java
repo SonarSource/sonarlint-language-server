@@ -820,10 +820,10 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .contains(
         "[Info] [sonarlint : sonarlint-analysis-engine] Index files",
         "[Info] [sonarlint : Report about progress of file indexation] 1 file indexed",
-        "[Info] [sonarlint : rules execution progress] 1 source file to be analyzed",
+        "[Info] [org.sonarsource.analyzer.commons.ProgressReport : rules execution progress] 1 source file to be analyzed",
         "[Info] [sonarlint : sonarlint-analysis-engine] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
   }
-
+  
   @Test
   void test_analysis_with_debug_logs_enabled() throws Exception {
     setShowVerboseLogs(client.globalSettings, true);
