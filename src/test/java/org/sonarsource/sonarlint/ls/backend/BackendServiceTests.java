@@ -67,7 +67,7 @@ class BackendServiceTests {
   static BackendService underTest = new BackendService(backend, lsLogOutput, client);
 
   @BeforeAll
-  public static void setup() {
+  static void setup() {
     when(backend.initialize(any())).thenReturn(CompletableFuture.completedFuture(null));
     underTest.initialize(null);
   }
@@ -102,7 +102,7 @@ class BackendServiceTests {
     var workspaceUri = "/workspace";
     var connectionId = "connectionId";
     var bindingWrapper = new ProjectBinding(connectionId, "projectKey");
-    var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri), Optional.of(bindingWrapper));
+    var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri, workspaceUri), Optional.of(bindingWrapper));
 
     assertThat(result.getId()).isEqualTo(workspaceUri);
     assertThat(result.getParentId()).isEqualTo(BackendService.ROOT_CONFIGURATION_SCOPE);
@@ -112,7 +112,7 @@ class BackendServiceTests {
   @Test
   void getConfigScopeDtoWithoutBinding() {
     var workspaceUri = "/workspace";
-    var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri), Optional.empty());
+    var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri, workspaceUri), Optional.empty());
 
     assertThat(result.getId()).isEqualTo(workspaceUri);
     assertThat(result.getParentId()).isEqualTo(BackendService.ROOT_CONFIGURATION_SCOPE);

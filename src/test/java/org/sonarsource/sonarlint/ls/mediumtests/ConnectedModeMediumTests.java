@@ -111,7 +111,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private static Path folder1BaseDir;
 
   @BeforeAll
-  public static void initialize() throws Exception {
+  static void initialize() throws Exception {
     omnisharpDir = makeStaticTempDir();
     folder1BaseDir = makeStaticTempDir();
     initialize(Map.of(
@@ -133,7 +133,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @BeforeEach
-  public void mockSonarQube() {
+  void mockSonarQube() {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/authentication/validate?format=json", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addResponse("/api/developers/search_events?projects=&from=", new MockResponse().setResponseCode(200));
@@ -271,7 +271,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @AfterAll
-  public static void cleanUp() {
+  static void cleanUp() {
     FileUtils.deleteQuietly(folder1BaseDir.toFile());
     setUpFindFilesInFolderResponse(List.of());
   }
@@ -564,7 +564,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.getWorkspaceService()
       .didChangeWorkspaceFolders(
         new DidChangeWorkspaceFoldersParams(
-          new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(configScopeId)), Collections.emptyList())));
+          new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(configScopeId, Path.of(URI.create(configScopeId)).getFileName().toString())), Collections.emptyList())));
     foldersToRemove.add(configScopeId);
     awaitUntilAsserted(() -> assertThat(client)
       .satisfiesAnyOf(
@@ -722,7 +722,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.getWorkspaceService()
       .didChangeWorkspaceFolders(
         new DidChangeWorkspaceFoldersParams(
-          new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folder1BaseDir.toUri().toString())), Collections.emptyList())));
+          new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folder1BaseDir.toUri().toString(), folder1BaseDir.getFileName().toString())), Collections.emptyList())));
     foldersToRemove.add(folder1BaseDir.toUri().toString());
 
     lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotInBrowserLsParams("id", folder1BaseDir.toUri().toString()));
@@ -1448,7 +1448,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     client.suggestBindingLatch = new CountDownLatch(1);
     var basedir = Paths.get("path/to/base/auto-suggest").toAbsolutePath();
     var workspaceUri = basedir.toUri().toString();
-    var workspaceFolder = new WorkspaceFolder(workspaceUri);
+    var workspaceFolder = new WorkspaceFolder(workspaceUri, basedir.getFileName().toString());
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
       new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
 
