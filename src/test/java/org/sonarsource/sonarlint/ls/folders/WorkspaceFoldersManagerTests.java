@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
@@ -171,7 +172,7 @@ class WorkspaceFoldersManagerTests {
     assertThat(underTest.getAll()).extracting(WorkspaceFolderWrapper::getRootPath).containsExactly(basedir);
     assertThat(logTester.logs())
       .anyMatch(log -> log.contains("Processing didChangeWorkspaceFolders event"))
-      .anyMatch(log -> log.contains("Folder WorkspaceFolder[name=<null>,uri=" + basedir.toUri() + "] added"));
+      .anyMatch(log -> log.contains("Folder WorkspaceFolder[name=base,uri=" + basedir.toUri() + "] added"));
 
     logTester.clear();
 
@@ -181,7 +182,7 @@ class WorkspaceFoldersManagerTests {
     assertThat(underTest.getAll()).extracting(WorkspaceFolderWrapper::getRootPath).containsExactly(basedir);
     assertThat(logTester.logs())
       .anyMatch(log -> log.contains("Processing didChangeWorkspaceFolders event"))
-      .anyMatch(log -> log.contains("Registered workspace folder WorkspaceFolder[name=<null>,uri=" + basedir.toUri() + "] was already added"));
+      .anyMatch(log -> log.contains("Registered workspace folder WorkspaceFolder[name=base,uri=" + basedir.toUri() + "] was already added"));
   }
 
   @Test
@@ -199,7 +200,7 @@ class WorkspaceFoldersManagerTests {
     assertThat(underTest.getAll()).isEmpty();
     assertThat(logTester.logs())
       .anyMatch(log -> log.contains("Processing didChangeWorkspaceFolders event"))
-      .anyMatch(log -> log.contains("Folder WorkspaceFolder[name=<null>,uri=" + basedir.toUri() + "] removed"));
+      .anyMatch(log -> log.contains("Folder WorkspaceFolder[name=base,uri=" + basedir.toUri() + "] removed"));
 
     logTester.clear();
 
@@ -213,6 +214,6 @@ class WorkspaceFoldersManagerTests {
   }
 
   private static WorkspaceFolder mockWorkspaceFolder(URI uri) {
-    return new WorkspaceFolder(uri.toString());
+    return new WorkspaceFolder(uri.toString(), Path.of(uri).getFileName().toString());
   }
 }

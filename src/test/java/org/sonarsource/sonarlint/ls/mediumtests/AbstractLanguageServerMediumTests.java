@@ -26,6 +26,7 @@ import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -300,7 +301,7 @@ public abstract class AbstractLanguageServerMediumTests {
       lsProxy.getNotebookDocumentService().didClose(new DidCloseNotebookDocumentParams(new NotebookDocumentIdentifier(uri), List.of()));
     }
     foldersToRemove.forEach(folderUri -> lsProxy.getWorkspaceService().didChangeWorkspaceFolders(
-      new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(List.of(), List.of(new WorkspaceFolder(folderUri))))));
+      new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(List.of(), List.of(new WorkspaceFolder(folderUri, Path.of(URI.create(folderUri)).getFileName().toString()))))));
     instanceTempDirs.forEach(tempDirPath -> FileUtils.deleteQuietly(tempDirPath.toFile()));
     instanceTempDirs.clear();
   }

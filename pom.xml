@@ -52,7 +52,7 @@
       <groupId>org.eclipse.lsp4j</groupId>
       <artifactId>org.eclipse.lsp4j</artifactId>
       <!--      should be the >= than in sonarlint-rpc-java-client -->
-      <version>0.21.1</version>
+      <version>0.24.0</version>
     </dependency>
     <dependency>
       <groupId>org.sonarsource.sonarlint.core</groupId>

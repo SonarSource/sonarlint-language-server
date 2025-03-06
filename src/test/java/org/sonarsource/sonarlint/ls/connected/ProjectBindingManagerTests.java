@@ -101,7 +101,7 @@ class ProjectBindingManagerTests {
   private final OpenNotebooksCache openNotebooksCache = mock(OpenNotebooksCache.class);
 
   @BeforeEach
-  public void prepare() throws IOException {
+  void prepare() throws IOException {
     workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
     Files.createDirectories(workspaceFolderPath);
     workspaceFolderPath2 = basedir.resolve("myWorkspaceFolder2");
@@ -266,7 +266,7 @@ class ProjectBindingManagerTests {
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
     assertThat(binding).isEmpty();
-    assertThat(logTester.logs()).anyMatch(log -> log.contains("Workspace 'WorkspaceFolder[name=<null>,uri=" + workspaceFolderPath.toUri() + "]' unbound"));
+    assertThat(logTester.logs()).anyMatch(log -> log.contains("Workspace 'WorkspaceFolder[name="+ workspaceFolderPath.getFileName().toString() +",uri=" + workspaceFolderPath.toUri() + "]' unbound"));
   }
 
   @Test
@@ -483,7 +483,7 @@ class ProjectBindingManagerTests {
   }
 
   private WorkspaceFolderWrapper mockFileInAFolder() {
-    var folderWrapper = spy(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(), new WorkspaceFolder(workspaceFolderPath.toUri().toString()), logTester.getLogger()));
+    var folderWrapper = spy(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(), new WorkspaceFolder(workspaceFolderPath.toUri().toString(), workspaceFolderPath.getFileName().toString()), logTester.getLogger()));
     when(foldersManager.findFolderForFile(fileInAWorkspaceFolderPath.toUri())).thenReturn(Optional.of(folderWrapper));
     return folderWrapper;
   }
