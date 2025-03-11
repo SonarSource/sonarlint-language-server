@@ -160,7 +160,7 @@ class BackendServiceTests {
   void shouldExtractSonarCloudConnections() {
     var connectionId = "connectionId";
     var connections = Map.of(connectionId,
-      new ServerConnectionSettings(connectionId, "https://us.sonarcloud.io/", "1235", "orgKey", false, SonarCloudRegion.US));
+      new ServerConnectionSettings(connectionId, "https://sonarqube.us/", "1235", "orgKey", false, SonarCloudRegion.US));
 
     var result = BackendService.extractSonarCloudConnections(connections);
 
