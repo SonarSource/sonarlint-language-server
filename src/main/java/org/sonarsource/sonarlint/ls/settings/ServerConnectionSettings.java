@@ -38,7 +38,8 @@ public class ServerConnectionSettings {
   public static final String SONARCLOUD_URL = System.getProperty("sonarlint.internal.sonarcloud.url") != null ?
     System.getProperty("sonarlint.internal.sonarcloud.url") :
     "https://sonarcloud.io";
-  public static final String SONARCLOUD_US_URL = "https://sonarqube.us/";
+  public static final String SONARCLOUD_US_URL = System.getProperty("sonarlint.internal.sonarcloud.us.url") != null ?
+    System.getProperty("sonarlint.internal.sonarcloud.us.url") : "https://sonarqube.us/";
   static final String[] SONARCLOUD_ALIAS = {"https://sonarqube.com", "https://www.sonarqube.com", "https://www.sonarcloud.io", SONARCLOUD_URL, SONARCLOUD_US_URL};
 
   private final String connectionId;
