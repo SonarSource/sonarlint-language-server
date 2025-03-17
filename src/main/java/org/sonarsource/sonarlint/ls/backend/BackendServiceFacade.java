@@ -26,6 +26,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -51,8 +52,10 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.JsTsRequir
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.LanguageSpecificRequirements;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.OmnisharpRequirementsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarCloudAlternativeEnvironmentDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarQubeCloudRegionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SslConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.TelemetryClientConstantAttributesDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
@@ -233,10 +236,21 @@ public class BackendServiceFacade {
   private static SonarCloudAlternativeEnvironmentDto getSonarCloudAlternativeEnvironment() {
     var sonarCloudUrl = System.getProperty("sonarlint.internal.sonarcloud.url");
     var sonarCloudWebSocketUrl = System.getProperty("sonarlint.internal.sonarcloud.websocket.url");
-    if (sonarCloudUrl != null && sonarCloudWebSocketUrl != null) {
-      return new SonarCloudAlternativeEnvironmentDto(URI.create(sonarCloudUrl), URI.create(sonarCloudWebSocketUrl));
+    var sonarCloudApiUrl = System.getProperty("sonarlint.internal.sonarcloud.api.url");
+    var sonarCloudUsUrl = System.getProperty("sonarlint.internal.sonarcloud.us.url");
+    var sonarCloudUsWebSocketUrl = System.getProperty("sonarlint.internal.sonarcloud.us.websocket.url");
+    var sonarCloudUsApiUrl = System.getProperty("sonarlint.internal.sonarcloud.us.api.url");
+
+    var alternativeEnvironments = new EnumMap<SonarCloudRegion, SonarQubeCloudRegionDto>(SonarCloudRegion.class);
+    if (sonarCloudUrl != null && sonarCloudApiUrl != null && sonarCloudWebSocketUrl != null) {
+      alternativeEnvironments.put(SonarCloudRegion.EU,
+        new SonarQubeCloudRegionDto(URI.create(sonarCloudUrl), URI.create(sonarCloudApiUrl), URI.create(sonarCloudWebSocketUrl)));
     }
-    return null;
+    if (sonarCloudUsUrl != null && sonarCloudUsApiUrl != null && sonarCloudUsWebSocketUrl != null) {
+      alternativeEnvironments.put(SonarCloudRegion.US,
+        new SonarQubeCloudRegionDto(URI.create(sonarCloudUsUrl), URI.create(sonarCloudUsApiUrl), URI.create(sonarCloudUsWebSocketUrl)));
+    }
+    return alternativeEnvironments.isEmpty() ? null : new SonarCloudAlternativeEnvironmentDto(alternativeEnvironments);
   }
 
   @Nullable

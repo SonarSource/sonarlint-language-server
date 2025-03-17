@@ -231,7 +231,7 @@ public class CommandManager {
     var workspace = workspaceFoldersManager.findFolderForFile(fileUri).orElseThrow(() -> new IllegalStateException("No workspace found"));
     var workspaceUri = workspace.getUri();
     var resolveIssueAction = new CodeAction(String.format(SONARLINT_ACTION_PREFIX + "Resolve issue violating rule '%s' as...", ruleKey));
-    resolveIssueAction.setKind(CodeActionKind.Empty);
+    resolveIssueAction.setKind(CodeActionKind.QuickFix);
     resolveIssueAction.setDiagnostics(List.of(diagnostic));
     resolveIssueAction.setCommand(new Command("Resolve this issue", RESOLVE_ISSUE, List.of(workspaceUri.toString(), issueId, fileUri, isTaintIssue)));
     return resolveIssueAction;

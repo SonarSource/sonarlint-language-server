@@ -63,6 +63,9 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   private static final int SONAR_CLOUD_PORT = findAvailablePort();
   @RegisterExtension
   private static final MockWebServerExtension sonarCloudWebServer = new MockWebServerExtension(SONAR_CLOUD_PORT);
+  private static final int SONARCLOUD_US_PORT = SONAR_CLOUD_PORT + 1;
+  @RegisterExtension
+  private static final MockWebServerExtension sonarCloudUSWebServer = new MockWebServerExtension(SONARCLOUD_US_PORT);
 
   private static int findAvailablePort() {
     try {
@@ -79,6 +82,10 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   public static void initialize() throws Exception {
     System.setProperty("sonarlint.internal.sonarcloud.url", "http://localhost:" + SONAR_CLOUD_PORT);
     System.setProperty("sonarlint.internal.sonarcloud.websocket.url", "http://localhost:40000" + SONAR_CLOUD_PORT);
+    System.setProperty("sonarlint.internal.sonarcloud.api.url", "http://localhost:" + SONAR_CLOUD_PORT);
+    System.setProperty("sonarlint.internal.sonarcloud.us.url", "http://localhost:" + SONARCLOUD_US_PORT);
+    System.setProperty("sonarlint.internal.sonarcloud.us.websocket.url", "http://localhost:40000" + SONARCLOUD_US_PORT);
+    System.setProperty("sonarlint.internal.sonarcloud.us.api.url", "http://localhost:" + SONARCLOUD_US_PORT);
     folder1BaseDir = makeStaticTempDir();
     folder2BaseDir = makeStaticTempDir();
     initialize(Map.of(
@@ -93,6 +100,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   public static void resetSonarCloud() {
     System.clearProperty("sonarlint.internal.sonarcloud.websocket.url");
     System.clearProperty("sonarlint.internal.sonarcloud.url");
+    System.clearProperty("sonarlint.internal.sonarcloud.api.url");
   }
 
   @Override
@@ -262,6 +270,28 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
         .build());
     var token = "123456";
     var result = lsProxy.listUserOrganizations(new SonarLintExtendedLanguageServer.ListUserOrganizationsParams(token, SonarCloudRegion.EU.name())).join();
+    assertThat(result).hasSize(1);
+    assertThat(result.get(0).getKey()).isEqualTo("key");
+  }
+
+  @Test
+  void list_user_organizations_US() {
+    var paging = Common.Paging.newBuilder()
+      .setPageSize(500)
+      .setTotal(1)
+      .setPageIndex(1)
+      .build();
+    var organization = Organizations.Organization.newBuilder()
+      .setKey("key")
+      .setName("name")
+      .build();
+    sonarCloudUSWebServer.addProtobufResponse("/api/organizations/search.protobuf?member=true&ps=500&p=1",
+      Organizations.SearchWsResponse.newBuilder()
+        .addAllOrganizations(List.of(organization))
+        .setPaging(paging)
+        .build());
+    var token = "123456";
+    var result = lsProxy.listUserOrganizations(new SonarLintExtendedLanguageServer.ListUserOrganizationsParams(token, SonarCloudRegion.US.name())).join();
     assertThat(result).hasSize(1);
     assertThat(result.get(0).getKey()).isEqualTo("key");
   }

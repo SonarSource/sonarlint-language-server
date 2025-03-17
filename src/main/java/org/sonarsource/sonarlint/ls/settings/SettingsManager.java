@@ -465,8 +465,11 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         var token = getTokenFromClient(organizationKey);
         var disableNotifs = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
         var region = (String) m.getOrDefault(REGION_KEY, SonarCloudRegion.EU.name());
+        var parsedRegion = parseRegion(region);
         addIfUniqueConnectionId(serverConnections, connectionId,
-          new ServerConnectionSettings(connectionId, ServerConnectionSettings.SONARCLOUD_URL, token, organizationKey, disableNotifs, parseRegion(region)));
+          new ServerConnectionSettings(connectionId,
+           parsedRegion == SonarCloudRegion.US ? ServerConnectionSettings.SONARCLOUD_US_URL : ServerConnectionSettings.SONARCLOUD_URL,
+            token, organizationKey, disableNotifs, parsedRegion));
       }
     });
   }
