@@ -291,8 +291,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var showVerboseLogs = (boolean) options.getOrDefault("showVerboseLogs", true);
       lsLogOutput.initialize(showVerboseLogs);
 
-      workspaceFoldersManager.initialize(params.getWorkspaceFolders());
-
       var productKey = (String) options.get("productKey");
       // deprecated, will be ignored when productKey present
       var telemetryStorage = (String) options.get("telemetryStorage");
@@ -320,6 +318,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       backendServiceFacade.setCsharpOssPath((String) options.get("csharpOssPath"));
       backendServiceFacade.setCsharpEnterprisePath((String) options.get("csharpEnterprisePath"));
 
+      var eslintBridgeServerPath = (String) options.get("eslintBridgeServerPath");
+      provideBackendInitData(productKey, userAgent, clientNodePath, eslintBridgeServerPath);
+      workspaceFoldersManager.initialize(params.getWorkspaceFolders());
+
       var c = new ServerCapabilities();
       c.setTextDocumentSync(getTextDocumentSyncOptions());
       c.setCodeActionProvider(true);
@@ -330,10 +332,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       if (isEnableNotebooks(options)) {
         setNotebookSyncOptions(c);
       }
-
-      var eslintBridgeServerPath = (String) options.get("eslintBridgeServerPath");
       var info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
-      provideBackendInitData(productKey, userAgent, clientNodePath, eslintBridgeServerPath);
       return new InitializeResult(c, info);
     });
   }
