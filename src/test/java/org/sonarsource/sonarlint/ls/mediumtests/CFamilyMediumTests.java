@@ -119,7 +119,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
         }
         """);
 
-    awaitUntilAsserted(() -> assertLogContains("Specify the \"sonar.cfamily.compile-commands\" option to configure the C and C++ analysis"));
+    awaitUntilAsserted(() -> waitForLogToContain("Specify the \"sonar.cfamily.compile-commands\" option to configure the C and C++ analysis"));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
   }
 
@@ -167,7 +167,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
         }
         """);
 
-    awaitUntilAsserted(() -> assertLogContains("Specify the \"sonar.cfamily.compile-commands\" option to configure the C and C++ analysis"));
+    awaitUntilAsserted(() -> waitForLogToContain("Specify the \"sonar.cfamily.compile-commands\" option to configure the C and C++ analysis"));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
 
     setPathToCompileCommands(client.globalSettings, compilationDatabaseFile.toString());
