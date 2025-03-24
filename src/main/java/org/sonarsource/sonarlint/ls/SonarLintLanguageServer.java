@@ -117,6 +117,7 @@ import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.ModuleEventsProcessor;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -492,10 +493,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     securityHotspotsCache.clear(uri);
     diagnosticPublisher.publishDiagnostics(uri, false);
     var maybeWorkspaceFolder = workspaceFoldersManager.findFolderForFile(uri);
-    if (maybeWorkspaceFolder.isPresent()) {
-      var configScopeId = maybeWorkspaceFolder.get().getUri().toString();
-      backendServiceFacade.getBackendService().didCloseFile(configScopeId, uri);
-    }
+    var configScopeId = maybeWorkspaceFolder
+      .map(WorkspaceFolderWrapper::getUri)
+      .map(URI::toString)
+      .orElse(ROOT_CONFIGURATION_SCOPE);
+    backendServiceFacade.getBackendService().didCloseFile(configScopeId, uri);
   }
 
   @Override
