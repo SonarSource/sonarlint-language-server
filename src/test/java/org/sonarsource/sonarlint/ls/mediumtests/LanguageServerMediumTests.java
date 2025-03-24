@@ -597,7 +597,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     setDisableTelemetry(client.globalSettings, false);
     notifyConfigurationChangeOnClient();
 
-    assertLogContains(
+    waitForLogToContain(
       String.format("Global settings updated: WorkspaceSettings[analysisExcludes=,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false,organizationKey=<null>,region=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=true]",
         CONNECTION_ID, CONNECTION_ID, mockWebServerExtension.url("/")));
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
@@ -745,8 +745,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
           new DidChangeWorkspaceFoldersParams(
             new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folderUri, "No config")), Collections.emptyList())));
 
-      assertLogContainsPattern("\\[Error.*\\] Unable to fetch configuration of folder " + folderUri + ".*");
-      assertLogContainsPattern("(?s).*Internal error.*");
+      waitForLogToContainPattern("\\[Error.*\\] Unable to fetch configuration of folder " + folderUri + ".*");
+      waitForLogToContainPattern("(?s).*Internal error.*");
     } finally {
       lsProxy.getWorkspaceService()
         .didChangeWorkspaceFolders(
@@ -768,7 +768,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
           new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folderUri, "Added")), Collections.emptyList())));
       awaitLatch(client.settingsLatch);
 
-      assertLogContains(
+      waitForLogToContain(
         "Workspace folder 'WorkspaceFolder[name=Added,uri=file:///added_uri]' configuration updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.file.suffixes=.cs, sonar.cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern=another pattern]");
     } finally {
       lsProxy.getWorkspaceService()
@@ -884,7 +884,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     lsProxy.didLocalBranchNameChange(new DidLocalBranchNameChangeParams("file:///some_folder", "some/branch/name"));
 
-    assertLogContains("Folder file:///some_folder is now on branch some/branch/name.");
+    waitForLogToContain("Folder file:///some_folder is now on branch some/branch/name.");
 
     assertThat(client.referenceBranchNameByFolder.get("file:///some_folder")).isNull();
   }
@@ -896,7 +896,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     lsProxy.didLocalBranchNameChange(new DidLocalBranchNameChangeParams("file:///some_folder", null));
 
-    assertLogContains("Folder file:///some_folder is now on an unknown branch.");
+    waitForLogToContain("Folder file:///some_folder is now on an unknown branch.");
 
     assertThat(client.referenceBranchNameByFolder.get("file:///some_folder")).isNull();
   }
@@ -996,7 +996,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void openHotspotInBrowserShouldLogIfWorkspaceNotFound() {
     lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotInBrowserLsParams("id", "/workspace"));
 
-    assertLogContains("Can't find workspace folder for file /workspace during attempt to open hotspot in browser.");
+    waitForLogToContain("Can't find workspace folder for file /workspace during attempt to open hotspot in browser.");
   }
 
   @Test

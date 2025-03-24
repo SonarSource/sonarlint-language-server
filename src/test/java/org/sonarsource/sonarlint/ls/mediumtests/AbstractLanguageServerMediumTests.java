@@ -306,12 +306,26 @@ public abstract class AbstractLanguageServerMediumTests {
     instanceTempDirs.clear();
   }
 
-  protected static void assertLogContains(String msg) {
-    assertLogContainsPattern("\\[.*\\] " + Pattern.quote(msg) + ".*");
+  protected static void waitForLogToContain(String msg) {
+    waitForLogToContainPattern(ignoreBracketsPrefix(msg));
   }
 
-  protected static void assertLogContainsPattern(String msgPattern) {
-    await().atMost(10, SECONDS).untilAsserted(() -> assertThat(client.logs).anyMatch(p -> p.getMessage().matches(msgPattern)));
+  private static String ignoreBracketsPrefix(String msg) {
+    return "\\[.*] " + Pattern.quote(msg) + ".*";
+  }
+
+  protected static void waitForLogToContainPattern(String msgPattern) {
+    await().atMost(10, SECONDS).untilAsserted(() -> assertLogMatches(msgPattern));
+  }
+
+  public static void assertLogContains(String msg) {
+    assertLogMatches(ignoreBracketsPrefix(msg));
+  }
+
+  private static void assertLogMatches(String msgPattern) {
+    assertThat(client.logs)
+      .withFailMessage("Could not find log matching '%s'", msgPattern)
+      .anyMatch(p -> p.getMessage().matches(msgPattern));
   }
 
   protected String getUri(String filename) throws IOException {

@@ -727,7 +727,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotInBrowserLsParams("id", folder1BaseDir.toUri().toString()));
 
-    awaitUntilAsserted(() -> assertLogContains("Can't find branch for workspace folder " + folder1BaseDir.toUri().getPath()
+    awaitUntilAsserted(() -> waitForLogToContain("Can't find branch for workspace folder " + folder1BaseDir.toUri().getPath()
       + " during attempt to open hotspot in browser."));
   }
 
@@ -1343,8 +1343,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var uriInFolder = folder1BaseDir.resolve("shouldIgnore.razor").toUri().toString();
     didOpen(uriInFolder, "csharp", "@using System");
 
-    awaitUntilAsserted(() -> assertLogContains("Analysis detected 0 issues and 0 Security Hotspots"));
-    assertLogContains("'OmniSharp' skipped because there are no related files in the current project");
+    awaitUntilAsserted(() -> waitForLogToContain("Analysis detected 0 issues and 0 Security Hotspots"));
+    waitForLogToContain("'OmniSharp' skipped because there are no related files in the current project");
   }
 
   private void assertLocalIssuesStatusChanged(String fileUri) throws URISyntaxException {
