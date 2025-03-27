@@ -48,7 +48,7 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -164,9 +164,8 @@ class BackendServiceTests {
 
     var result = BackendService.extractSonarCloudConnections(connections);
 
-    org.assertj.core.api.AssertionsForInterfaceTypes.assertThat(result).hasSize(1);
+    assertThat(result).hasSize(1);
     assertThat(result.get(0).getRegion()).isEqualTo(SonarCloudRegion.US);
     assertThat(result.get(0).getConnectionId()).isEqualTo(connectionId);
-
   }
 }
