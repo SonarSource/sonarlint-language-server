@@ -85,6 +85,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssues
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.newcode.GetNewCodeDefinitionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.newcode.GetNewCodeDefinitionResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.remediation.aicodefix.SuggestFixParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.remediation.aicodefix.SuggestFixResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetEffectiveRuleDetailsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetEffectiveRuleDetailsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetStandaloneRuleDescriptionParams;
@@ -406,5 +408,11 @@ public class BackendService {
     var workspaceOrRootScope = Optional.ofNullable(workspaceFolder).orElse(ROOT_CONFIGURATION_SCOPE);
     var params = new GetEffectiveIssueDetailsParams(workspaceOrRootScope, issueKey);
     return initializedBackend().getIssueService().getEffectiveIssueDetails(params);
+  }
+
+  public CompletableFuture<SuggestFixResponse> suggestFix(@Nullable String workspaceFolder, UUID issueKey) {
+    var workspaceOrRootScope = Optional.ofNullable(workspaceFolder).orElse(ROOT_CONFIGURATION_SCOPE);
+    var params = new SuggestFixParams(workspaceOrRootScope, issueKey);
+    return initializedBackend().getAiCodeFixRpcService().suggestFix(params);
   }
 }

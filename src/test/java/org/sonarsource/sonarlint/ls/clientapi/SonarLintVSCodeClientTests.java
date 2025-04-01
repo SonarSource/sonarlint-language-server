@@ -877,6 +877,7 @@ class SonarLintVSCodeClientTests {
     assertThat(argumentCaptor.getValue().fileUri()).isEqualTo("file:///Users/sonarlint-user/project/src/main/java/com/sonarsource/MyClass.java");
     assertThat(argumentCaptor.getValue().textEdits().get(0).after()).isEmpty();
     assertThat(argumentCaptor.getValue().textEdits().get(1).before()).isEqualTo("System.out.println(\"Hello, World!\");");
+    assertThat(argumentCaptor.getValue().isLocal()).isFalse();
   }
 
   @Test
