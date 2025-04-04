@@ -565,6 +565,16 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
+    public void startProgressNotification(StartProgressNotificationParams params) {
+      // NOP
+    }
+
+    @Override
+    public void endProgressNotification(EndProgressNotificationParams params) {
+      // NOP
+    }
+
+    @Override
     public CompletableFuture<Boolean> canShowMissingRequirementsNotification() {
       return CompletableFuture.completedFuture(false);
     }
