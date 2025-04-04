@@ -42,6 +42,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotRpcSer
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.IssueRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.remediation.aicodefix.AiCodeFixRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.remediation.aicodefix.SuggestFixParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
@@ -167,5 +169,20 @@ class BackendServiceTests {
     assertThat(result).hasSize(1);
     assertThat(result.get(0).getRegion()).isEqualTo(SonarCloudRegion.US);
     assertThat(result.get(0).getConnectionId()).isEqualTo(connectionId);
+  }
+
+  @Test
+  void shouldForwardSuggestFixRequestToBackend() {
+    var configScopeId = "file:///User/folder";
+    var issueId = UUID.randomUUID();
+    var aiCodeFixRpcService = mock(AiCodeFixRpcService.class);
+
+    when(backend.getAiCodeFixRpcService()).thenReturn(aiCodeFixRpcService);
+
+    underTest.suggestFix(configScopeId, issueId);
+    var argumentCaptor = ArgumentCaptor.forClass(SuggestFixParams.class);
+    verify(aiCodeFixRpcService).suggestFix(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue().getConfigurationScopeId()).isEqualTo(configScopeId);
+    assertThat(argumentCaptor.getValue().getIssueId()).isEqualTo(issueId);
   }
 }

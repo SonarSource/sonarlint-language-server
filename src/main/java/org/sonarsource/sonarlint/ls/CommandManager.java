@@ -39,11 +39,13 @@ import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.ExecuteCommandParams;
+import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.ResourceOperation;
+import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.TextDocumentEdit;
 import org.eclipse.lsp4j.TextEdit;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
@@ -65,8 +67,11 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleDescription
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleMonolithicDescriptionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleParamDefinitionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleSplitDescriptionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.ChangesDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.LineRangeDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.FileEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.TextEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory;
@@ -94,6 +99,7 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.net.URI.create;
 import static org.sonarsource.sonarlint.core.client.utils.CleanCodeAttribute.fromDto;
+import static org.sonarsource.sonarlint.ls.backend.BackendService.ROOT_CONFIGURATION_SCOPE;
 import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARLINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARCLOUD_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARQUBE_TAINT_SOURCE;
@@ -110,17 +116,22 @@ public class CommandManager {
   static final String SONARLINT_BROWSE_TAINT_VULNERABILITY = "SonarLint.BrowseTaintVulnerability";
   static final String SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS = "SonarLint.ShowTaintVulnerabilityFlows";
   static final String SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS = "SonarLint.ShowSecurityHotspotFlows";
+  static final String SONARLINT_SUGGEST_FIX_COMMAND = "SonarLint.SuggestFix";
   static final List<String> SONARLINT_SERVERSIDE_COMMANDS = List.of(
     SONARLINT_QUICK_FIX_APPLIED,
     SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND,
     SONARLINT_SHOW_RULE_DESC_COMMAND,
     SONARLINT_OPEN_STANDALONE_RULE_DESCRIPTION_COMMAND,
     SONARLINT_BROWSE_TAINT_VULNERABILITY,
-    SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS);
+    SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS,
+    SONARLINT_SUGGEST_FIX_COMMAND);
   // Client side
   static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
   static final String RESOLVE_ISSUE = "SonarLint.ResolveIssue";
   static final String SONARLINT_ACTION_PREFIX = "SonarQube: ";
+  public static final MessageActionItem RETRY_ACTION = new MessageActionItem("Retry");
+  public static final MessageActionItem SHOW_ISSUE_DETAILS_ACTION = new MessageActionItem("Show issue details");
+  public static final int AI_CODEFIX_ISSUE_MESSAGE_MAX_LENGTH = 40;
 
   private final SonarLintExtendedLanguageClient client;
   private final SettingsManager settingsManager;
@@ -164,12 +175,26 @@ public class CommandManager {
     return codeActions;
   }
 
+  private void createFixWithAiCodeFixCodeAction(UUID issueId, List<Either<Command, CodeAction>> codeActions, Diagnostic diagnostic, URI fileUri, String message) {
+    var croppedMessage = message.length() > AI_CODEFIX_ISSUE_MESSAGE_MAX_LENGTH ?
+      StringUtils.substring(message, 0, AI_CODEFIX_ISSUE_MESSAGE_MAX_LENGTH).concat("...") : message;
+    var workspace = workspaceFoldersManager.findFolderForFile(fileUri).orElse(null);
+    var configScopeId = workspace == null ? ROOT_CONFIGURATION_SCOPE : workspace.getUri().toString();
+    var aiCodeFixCodeAction = new CodeAction(String.format(SONARLINT_ACTION_PREFIX + "✧˖° Fix with AI CodeFix '%s'", croppedMessage));
+    aiCodeFixCodeAction.setKind(CodeActionKind.QuickFix);
+    aiCodeFixCodeAction.setIsPreferred(true);
+    aiCodeFixCodeAction.setDiagnostics(List.of(diagnostic));
+    aiCodeFixCodeAction.setCommand(new Command("Fix with AI CodeFix", SONARLINT_SUGGEST_FIX_COMMAND, List.of(configScopeId, issueId.toString(), fileUri.toString())));
+    codeActions.add(Either.forRight(aiCodeFixCodeAction));
+  }
+
   private void computeCodeActionsForSonarLintIssues(Diagnostic diagnostic, List<Either<Command, CodeAction>> codeActions,
     CodeActionParams params, CancelChecker cancelToken) {
     var uri = create(params.getTextDocument().getUri());
     var binding = bindingManager.getBinding(uri);
 
     var ruleKey = diagnostic.getCode().getLeft();
+    var message = diagnostic.getMessage();
     var isNotebookCellUri = openNotebooksCache.isKnownCellUri(uri);
     var issueForDiagnostic = isNotebookCellUri ?
       issuesCache.getIssueForDiagnostic(openNotebooksCache.getNotebookUriFromCellUri(uri), diagnostic) :
@@ -202,7 +227,12 @@ public class CommandManager {
 
       addIssueDetailsCodeAction(params, codeActions, diagnostic, finding.getIssueId());
     }
-    issueForDiagnostic.ifPresent(versionedIssue -> addShowAllLocationsCodeAction(versionedIssue, codeActions, diagnostic, ruleKey, isNotebookCellUri));
+    issueForDiagnostic.ifPresent(delegatingFinding -> {
+      addShowAllLocationsCodeAction(delegatingFinding, codeActions, diagnostic, ruleKey, isNotebookCellUri);
+      if (!isNotebookCellUri && ((RaisedIssueDto) delegatingFinding.getFinding()).isAiCodeFixable() && delegatingFinding.quickFixes().isEmpty()) {
+        createFixWithAiCodeFixCodeAction(delegatingFinding.getIssueId(), codeActions, diagnostic, uri, message);
+      }
+    });
     if (!hasBinding) {
       var titleDeactivate = String.format("Deactivate rule '%s'", ruleKey);
       codeActions.add(newQuickFix(diagnostic, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, List.of(ruleKey)));
@@ -250,10 +280,14 @@ public class CommandManager {
     var binding = bindingManager.getBinding(uri);
     var actualBinding = binding.orElseThrow(() -> new IllegalStateException("Binding not found for taint vulnerability"));
     var ruleKey = diagnostic.getCode().getLeft();
+    var message = diagnostic.getMessage();
     var taintVulnerability = taintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(uri, diagnostic);
     taintVulnerability.ifPresent(issue -> {
       var issueKey = issue.getSonarServerKey();
       addIssueDetailsCodeAction(params, codeActions, diagnostic, issue.getId());
+      if (issue.isAiCodeFixable()) {
+        createFixWithAiCodeFixCodeAction(issue.getId(), codeActions, diagnostic, uri, message);
+      }
       if (!issue.getFlows().isEmpty()) {
         var titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", ruleKey);
         codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(issueKey, actualBinding.connectionId())));
@@ -311,9 +345,6 @@ public class CommandManager {
     newCodeAction.setCommand(new Command(title, command, params));
     newCodeAction.setKind(CodeActionKind.QuickFix);
     newCodeAction.setDiagnostics(List.of(diag));
-    if (command.equals(SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND)) {
-      newCodeAction.setIsPreferred(true);
-    }
     return Either.forRight(newCodeAction);
   }
 
@@ -498,6 +529,9 @@ public class CommandManager {
       case SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS:
         handleShowHotspotFlows(params);
         break;
+      case SONARLINT_SUGGEST_FIX_COMMAND:
+        handleSuggestFixCommand(params);
+        break;
       default:
         throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported command: " + params.getCommand(), null));
     }
@@ -521,6 +555,37 @@ public class CommandManager {
     var fileUri = getAsString(params.getArguments().get(1));
     getEffectiveRuleDetails(fileUri, ruleKey)
       .thenAccept(client::showRuleDescription);
+  }
+
+  private void handleSuggestFixCommand(ExecuteCommandParams params) {
+    var configScopeId = getAsString(params.getArguments().get(0));
+    var issueId = getAsString(params.getArguments().get(1));
+    var fileUri = getAsString(params.getArguments().get(2));
+    var taskId = UUID.randomUUID().toString();
+    client.startProgressNotification(new SonarLintExtendedLanguageClient.StartProgressNotificationParams(taskId, "Generating AI CodeFix..."));
+    backendServiceFacade.getBackendService().suggestFix(configScopeId, UUID.fromString(issueId)).thenAccept(response -> {
+      client.endProgressNotification(new SonarLintExtendedLanguageClient.EndProgressNotificationParams(taskId));
+      List<ChangesDto> changes = response.getChanges().stream().map(change -> {
+        var range = new LineRangeDto(change.getStartLine(), change.getEndLine());
+        return new ChangesDto(range, "", change.getNewCode());
+      }).toList();
+      client.showFixSuggestion(new SonarLintExtendedLanguageClient.ShowFixSuggestionParams(response.getId().toString(), changes, fileUri, true));
+    }).exceptionally(throwable -> {
+      client.endProgressNotification(new SonarLintExtendedLanguageClient.EndProgressNotificationParams(taskId));
+      logOutput.errorWithStackTrace("Error generating AI CodeFix", throwable);
+      var showMessageParams = new ShowMessageRequestParams(List.of(SHOW_ISSUE_DETAILS_ACTION, RETRY_ACTION));
+      showMessageParams.setType(MessageType.Warning);
+      showMessageParams.setMessage("Something went wrong while generating AI CodeFix. SonarQube was not able to generate a fix for this issue.");
+      client.showMessageRequest(showMessageParams).thenAccept(action -> {
+        if (RETRY_ACTION.equals(action)) {
+          handleSuggestFixCommand(params);
+        } else if (SHOW_ISSUE_DETAILS_ACTION.equals(action)) {
+          handleShowIssueDetailsFromCodeActionCommand(new ExecuteCommandParams(SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND,
+            List.of(new JsonPrimitive(issueId), new JsonPrimitive(fileUri))));
+        }
+      });
+      return null;
+    });
   }
 
   private void handleBrowseTaintVulnerability(ExecuteCommandParams params) {

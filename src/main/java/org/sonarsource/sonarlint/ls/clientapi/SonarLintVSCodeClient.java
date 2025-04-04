@@ -256,7 +256,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   public void showFixSuggestion(String configurationScopeId, String issueKey, FixSuggestionDto fixSuggestion) {
     var textEdits = fixSuggestion.fileEdit().changes();
     var fullFileUri = getFullFileUriFromFragments(configurationScopeId, fixSuggestion.fileEdit().idePath());
-    client.showFixSuggestion(new SonarLintExtendedLanguageClient.ShowFixSuggestionParams(fixSuggestion.suggestionId(), textEdits, fullFileUri.toString()));
+    client.showFixSuggestion(new SonarLintExtendedLanguageClient.ShowFixSuggestionParams(fixSuggestion.suggestionId(), textEdits, fullFileUri.toString(), false));
   }
 
   @Override

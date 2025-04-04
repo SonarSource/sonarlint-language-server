@@ -35,12 +35,16 @@ import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.ExecuteCommandParams;
+import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
+import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
+import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -52,10 +56,13 @@ import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
 import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
 import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.commons.api.TextRange;
+import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcErrorCode;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.EffectiveIssueDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.GetEffectiveIssueDetailsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.remediation.aicodefix.SuggestFixChangeDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.remediation.aicodefix.SuggestFixResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRuleDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetEffectiveRuleDetailsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleContextualSectionDto;
@@ -70,6 +77,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.FileEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueFlowDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.TextEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
@@ -83,6 +91,7 @@ import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 import org.sonarsource.sonarlint.ls.connected.DelegatingHotspot;
+import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -111,6 +120,7 @@ import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_ISSUE_D
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_RULE_DESC_COMMAND;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS;
+import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SUGGEST_FIX_COMMAND;
 import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARLINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARCLOUD_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARQUBE_TAINT_SOURCE;
@@ -180,6 +190,9 @@ class CommandManagerTests {
     var issue = mock(DelegatingFinding.class);
     when(issue.getIssueId()).thenReturn(UUID.randomUUID());
     when(issuesCache.getIssueForDiagnostic(any(URI.class), any())).thenReturn(Optional.of(issue));
+    var raisedFinding = mock(RaisedIssueDto.class);
+    when(issue.getFinding()).thenReturn(raisedFinding);
+    when(raisedFinding.isAiCodeFixable()).thenReturn(false);
     var folderWrapper = mock(WorkspaceFolderWrapper.class);
     when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
     when(issue.getFileUri()).thenReturn(URI.create(FILE_URI));
@@ -199,6 +212,9 @@ class CommandManagerTests {
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
     var issue = mock(DelegatingFinding.class);
+    var raisedFinding = mock(RaisedIssueDto.class);
+    when(issue.getFinding()).thenReturn(raisedFinding);
+    when(raisedFinding.isAiCodeFixable()).thenReturn(false);
     when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
     when(issue.getIssueId()).thenReturn(UUID.randomUUID());
 
@@ -219,6 +235,9 @@ class CommandManagerTests {
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
     var issue = mock(DelegatingFinding.class);
+    var raisedFinding = mock(RaisedIssueDto.class);
+    when(issue.getFinding()).thenReturn(raisedFinding);
+    when(raisedFinding.isAiCodeFixable()).thenReturn(false);
     when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
     when(issue.getIssueId()).thenReturn(UUID.randomUUID());
 
@@ -241,6 +260,71 @@ class CommandManagerTests {
         "SonarQube: Fix the issue!",
         "SonarQube: Show issue details for 'XYZ'",
         "SonarQube: Deactivate rule 'XYZ'");
+  }
+
+  @Test
+  void no_AICodeFix_if_issue_has_quickfixes() {
+    var fileUri = URI.create(FILE_URI);
+    when(bindingManager.getBinding(fileUri)).thenReturn(Optional.empty());
+
+    var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
+
+    var issue = mock(DelegatingFinding.class);
+    var raisedFinding = mock(RaisedIssueDto.class);
+    when(issue.getFinding()).thenReturn(raisedFinding);
+    when(raisedFinding.isAiCodeFixable()).thenReturn(true);
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
+    when(issue.getIssueId()).thenReturn(UUID.randomUUID());
+
+    var textEdit = mock(TextEditDto.class);
+    when(textEdit.newText()).thenReturn("");
+    when(textEdit.range()).thenReturn(new TextRangeDto(1, 0, 1, 1));
+    var edit = mock(FileEditDto.class);
+    when(edit.textEdits()).thenReturn(List.of(textEdit));
+    when(edit.target()).thenReturn(fileUri);
+    var fix = mock(QuickFixDto.class);
+    when(fix.message()).thenReturn("Fix the issue!");
+    when(fix.fileEdits()).thenReturn(List.of(edit));
+    when(issue.quickFixes()).thenReturn(List.of(fix));
+
+    var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
+      new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
+
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle())
+      .containsExactly(
+        "SonarQube: Fix the issue!",
+        "SonarQube: Show issue details for 'XYZ'",
+        "SonarQube: Deactivate rule 'XYZ'");
+  }
+
+  @Test
+  void should_show_AICodeFix_if_no_quickfixes_and_is_fixable() {
+    var folderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
+    when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
+    when(backendService.checkChangeIssueStatusPermitted(any()))
+      .thenReturn(CompletableFuture.completedFuture(new CheckStatusChangePermittedResponse(true, null, Collections.emptyList())));
+    var connId = "connectionId";
+    when(mockBinding.connectionId()).thenReturn(connId);
+    when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
+
+    var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
+
+    var issue = mock(DelegatingFinding.class);
+    var raisedFinding = mock(RaisedIssueDto.class);
+    when(issue.getFinding()).thenReturn(raisedFinding);
+    when(raisedFinding.isAiCodeFixable()).thenReturn(true);
+    when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
+    when(issue.getIssueId()).thenReturn(UUID.randomUUID());
+    when(issue.quickFixes()).thenReturn(List.of());
+
+    var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
+      new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
+
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle())
+      .containsExactly("SonarQube: Resolve issue violating rule 'XYZ' as...",
+        "SonarQube: Show issue details for 'XYZ'",
+        "SonarQube: ✧˖° Fix with AI CodeFix 'Foo'");
   }
 
   @Test
@@ -375,6 +459,9 @@ class CommandManagerTests {
     var flow = mock(IssueFlowDto.class);
     var flows = List.of(flow);
     var issue = mock(DelegatingFinding.class);
+    var raisedFinding = mock(RaisedIssueDto.class);
+    when(issue.getFinding()).thenReturn(raisedFinding);
+    when(raisedFinding.isAiCodeFixable()).thenReturn(false);
     when(issue.flows()).thenReturn(flows);
     when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
@@ -697,9 +784,12 @@ class CommandManagerTests {
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
-    var issue = mock(DelegatingFinding.class);
+    var issue = mock(DelegatingIssue.class);
     when(issue.getServerIssueKey()).thenReturn("qwerty");
     when(issue.getIssueId()).thenReturn(UUID.randomUUID());
+    var raisedFinding = mock(RaisedIssueDto.class);
+    when(issue.getFinding()).thenReturn(raisedFinding);
+    when(raisedFinding.isAiCodeFixable()).thenReturn(false);
     when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
 
     var textEdit = mock(TextEdit.class);
@@ -721,6 +811,112 @@ class CommandManagerTests {
   }
 
   @Test
+  void shouldShowFixSuggestionToClient() {
+    var issueId = UUID.randomUUID().toString();
+    var folderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
+    var suggestFixCommand = new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_COMMAND, List.of(new JsonPrimitive(folderWrapper.getUri().toString()),
+      new JsonPrimitive(issueId), new JsonPrimitive(FILE_URI)));
+
+    var fixChangeDto = new SuggestFixChangeDto(1, 2, "new Code()");
+
+    var fixSuggestionId = UUID.randomUUID();
+    when(backendService.suggestFix(any(), any()))
+      .thenReturn(CompletableFuture.completedFuture(new SuggestFixResponse(fixSuggestionId, "this is why", List.of(fixChangeDto))));
+
+    underTest.executeCommand(suggestFixCommand, NOP_CANCEL_TOKEN);
+
+    verify(mockClient).startProgressNotification(any(SonarLintExtendedLanguageClient.StartProgressNotificationParams.class));
+    verify(mockClient).endProgressNotification(any(SonarLintExtendedLanguageClient.EndProgressNotificationParams.class));
+    var captor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.ShowFixSuggestionParams.class);
+    verify(mockClient).showFixSuggestion(captor.capture());
+    SonarLintExtendedLanguageClient.ShowFixSuggestionParams showFixSuggestionParams = captor.getValue();
+    assertThat(showFixSuggestionParams.isLocal()).isTrue();
+    assertThat(showFixSuggestionParams.suggestionId()).isEqualTo(fixSuggestionId.toString());
+    assertThat(showFixSuggestionParams.fileUri()).isEqualTo(FILE_URI);
+    assertThat(showFixSuggestionParams.textEdits()).hasSize(1);
+    assertThat(showFixSuggestionParams.textEdits().get(0).after()).isEqualTo("new Code()");
+  }
+
+  @Test
+  void shouldShowWarningNotificationIfAiCodeFixGenerationFails() {
+    var issueId = UUID.randomUUID().toString();
+    var folderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
+    var suggestFixCommand = new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_COMMAND, List.of(new JsonPrimitive(folderWrapper.getUri().toString()),
+      new JsonPrimitive(issueId), new JsonPrimitive(FILE_URI)));
+
+    when(backendService.suggestFix(any(), any()))
+      .thenReturn(CompletableFuture.failedFuture(
+        new ResponseErrorException(
+          new ResponseError(
+            SonarLintRpcErrorCode.ISSUE_NOT_FOUND,
+            "Issue was not found",
+            null
+          )
+        ))
+      );
+
+    underTest.executeCommand(suggestFixCommand, NOP_CANCEL_TOKEN);
+
+    verify(mockClient).startProgressNotification(any(SonarLintExtendedLanguageClient.StartProgressNotificationParams.class));
+    verify(mockClient).endProgressNotification(any(SonarLintExtendedLanguageClient.EndProgressNotificationParams.class));
+    var captor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
+    verify(mockClient).showMessageRequest(captor.capture());
+    var showMessageRequestParams = captor.getValue();
+    assertThat(showMessageRequestParams.getType()).isEqualTo(MessageType.Warning);
+    assertThat(showMessageRequestParams.getMessage()).isEqualTo("Something went wrong while generating AI CodeFix. SonarQube was not able to generate a fix for this issue.");
+    assertThat(showMessageRequestParams.getActions()).hasSize(2);
+    assertThat(showMessageRequestParams.getActions().get(0).getTitle()).isEqualTo("Show issue details");
+    assertThat(showMessageRequestParams.getActions().get(1).getTitle()).isEqualTo("Retry");
+  }
+
+  @Test
+  void shouldShowShowIssueDetailsIfAiCodeFixGenerationFailsAndUserChoseTheAction() {
+    // mock issue details response
+    var response = mock(GetEffectiveIssueDetailsResponse.class);
+    when(backendService.getEffectiveIssueDetails(anyString(), any())).thenReturn(CompletableFuture.completedFuture(response));
+    var folderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
+    when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
+    var details = mock(EffectiveIssueDetailsDto.class);
+    when(details.getName()).thenReturn("Name");
+    Either<StandardModeDetails, MQRModeDetails> severityDetails = Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG));
+    when(details.getSeverityDetails()).thenReturn(severityDetails);
+    when(details.getParams()).thenReturn(emptyList());
+    when(details.getRuleKey()).thenReturn(FAKE_RULE_KEY);
+    when(details.getLanguage()).thenReturn(org.sonarsource.sonarlint.core.rpc.protocol.common.Language.JS);
+    var desc = mock(RuleMonolithicDescriptionDto.class);
+    when(desc.getHtmlContent()).thenReturn("Desc");
+    when(details.getDescription()).thenReturn(Either.forLeft(desc));
+    when(response.getDetails()).thenReturn(details);
+
+    var issueId = UUID.randomUUID().toString();
+    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
+    var suggestFixCommand = new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_COMMAND, List.of(new JsonPrimitive(folderWrapper.getUri().toString()),
+      new JsonPrimitive(issueId), new JsonPrimitive(FILE_URI)));
+
+    when(mockClient.showMessageRequest(any()))
+      .thenReturn(CompletableFuture.completedFuture(new MessageActionItem("Show issue details")));
+    when(backendService.suggestFix(any(), any()))
+      .thenReturn(CompletableFuture.failedFuture(
+        new ResponseErrorException(
+          new ResponseError(
+            SonarLintRpcErrorCode.ISSUE_NOT_FOUND,
+            "Issue was not found",
+            null
+          )
+        ))
+      );
+
+    underTest.executeCommand(suggestFixCommand, NOP_CANCEL_TOKEN);
+
+    verify(mockClient).startProgressNotification(any(SonarLintExtendedLanguageClient.StartProgressNotificationParams.class));
+    verify(mockClient).endProgressNotification(any(SonarLintExtendedLanguageClient.EndProgressNotificationParams.class));
+    verify(mockClient).showRuleDescription(any(ShowRuleDescriptionParams.class));
+  }
+
+  @Test
   void doesNotHaveResolveIssueActionWhenIssueStatusChangeNotPermitted() {
     var folderWrapper = mock(WorkspaceFolderWrapper.class);
     when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
@@ -735,6 +931,9 @@ class CommandManagerTests {
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
     var issue = mock(DelegatingFinding.class);
+    var raisedFinding = mock(RaisedIssueDto.class);
+    when(issue.getFinding()).thenReturn(raisedFinding);
+    when(raisedFinding.isAiCodeFixable()).thenReturn(false);
     when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
     when(issue.getIssueId()).thenReturn(UUID.randomUUID());
 
