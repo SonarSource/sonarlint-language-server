@@ -117,6 +117,18 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/showFixSuggestion")
   void showFixSuggestion(ShowFixSuggestionParams params);
 
+  record StartProgressNotificationParams(String taskId, String message) {
+  }
+
+  record EndProgressNotificationParams(String taskId) {
+  }
+
+  @JsonNotification("sonarlint/startProgressNotification")
+  void startProgressNotification(StartProgressNotificationParams params);
+
+  @JsonNotification("sonarlint/endProgressNotification")
+  void endProgressNotification(EndProgressNotificationParams params);
+
   @JsonNotification("sonarlint/showRuleDescription")
   void showRuleDescription(ShowRuleDescriptionParams params);
 
