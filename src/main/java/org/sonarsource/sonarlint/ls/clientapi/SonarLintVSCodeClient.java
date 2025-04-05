@@ -142,20 +142,17 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private final PromotionalNotifications promotionalNotifications;
   private final LSProgressMonitor progressMonitor;
 
-
   private AnalysisHelper analysisHelper;
 
-
-  public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider,
-    LanguageClientLogger logOutput, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
-    SkippedPluginsNotifier skippedPluginsNotifier, PromotionalNotifications promotionalNotifications, LSProgressMonitor progressMonitor) {
+  public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider, LanguageClientLogger logOutput,
+    TaintVulnerabilitiesCache taintVulnerabilitiesCache, SkippedPluginsNotifier skippedPluginsNotifier, PromotionalNotifications promotionalNotifications) {
     this.client = client;
     this.hostInfoProvider = hostInfoProvider;
     this.logOutput = logOutput;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.skippedPluginsNotifier = skippedPluginsNotifier;
     this.promotionalNotifications = promotionalNotifications;
-    this.progressMonitor = progressMonitor;
+    this.progressMonitor = new LSProgressMonitor(client);
     var bindingSuggestionsThreadFactory = Utils.threadFactory("Binding suggestion handler", false);
     bindingSuggestionsHandler = Executors.newSingleThreadScheduledExecutor(bindingSuggestionsThreadFactory);
     initializeDefaultProxyAuthenticator();
@@ -207,8 +204,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public void showSoonUnsupportedMessage(ShowSoonUnsupportedMessageParams coreParams) {
     var clientParams = new SonarLintExtendedLanguageClient.ShowSoonUnsupportedVersionMessageParams(
-      coreParams.getDoNotShowAgainId(), coreParams.getText()
-    );
+      coreParams.getDoNotShowAgainId(), coreParams.getText());
     client.showSoonUnsupportedVersionMessage(clientParams);
   }
 
@@ -331,7 +327,9 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public Either<TokenDto, UsernamePasswordDto> getCredentials(String connectionId) {
     var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
-    if (connectionSettings == null) return null;
+    if (connectionSettings == null) {
+      return null;
+    }
     var token = connectionSettings.getToken();
     return Either.forLeft(new TokenDto(token));
   }
@@ -387,8 +385,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       untrustedCert == null ? "" : untrustedCert.getNotAfter().toString(),
       sha1fingerprint,
       sha256fingerprint,
-      pathToActualTrustStore.toString()
-    );
+      pathToActualTrustStore.toString());
 
     return client.askSslCertificateConfirmation(confirmationParams).join();
   }
@@ -535,8 +532,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
           var taintsByFile = taints.getTaintVulnerabilities()
             .stream()
-            .collect(groupingBy(taintVulnerabilityDto ->
-              getFullFileUriFromFragments(configurationScopeId, taintVulnerabilityDto.getIdeFilePath()), toList()));
+            .collect(groupingBy(taintVulnerabilityDto -> getFullFileUriFromFragments(configurationScopeId, taintVulnerabilityDto.getIdeFilePath()), toList()));
 
           taintsByFile.forEach((fileUri, t) -> {
             var vulnerabilities = dtosToTaintIssues(configurationScopeId, t, isSonarCloud);
@@ -561,8 +557,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @NotNull
   private static ArrayList<TaintIssue> dtosToTaintIssues(String configurationScopeId, List<TaintVulnerabilityDto> t, Boolean isSonarCloud) {
     return t.stream()
-      .map(dto ->
-        new TaintIssue(dto, configurationScopeId, isSonarCloud))
+      .map(dto -> new TaintIssue(dto, configurationScopeId, isSonarCloud))
       .filter(tv -> !tv.isResolved())
       .collect(Collectors.toCollection(ArrayList::new));
   }
@@ -658,8 +653,9 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public Set<String> getFileExclusions(String configurationScopeId) {
     var excludes = settingsManager.getCurrentSettings().getAnalysisExcludes();
-    return excludes.isEmpty() ? Collections.emptySet() : Arrays.stream(excludes.split(","))
-      .collect(Collectors.toSet());
+    return excludes.isEmpty() ? Collections.emptySet()
+      : Arrays.stream(excludes.split(","))
+        .collect(Collectors.toSet());
   }
 
   @Override

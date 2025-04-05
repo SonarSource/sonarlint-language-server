@@ -24,10 +24,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.eclipse.lsp4j.FileChangeType;
 import org.eclipse.lsp4j.FileEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.ClientFileDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
@@ -98,8 +102,7 @@ class ModuleEventsProcessorTest {
     var events = List.of(
       new FileEvent("file:///tmp/test1.py", FileChangeType.Created),
       new FileEvent("file:///tmp/test2.py", FileChangeType.Changed),
-      new FileEvent("file:///tmp/test3.py", FileChangeType.Deleted)
-    );
+      new FileEvent("file:///tmp/test3.py", FileChangeType.Deleted));
     when(backendServiceFacade.getBackendService()).thenReturn(backend);
 
     moduleEventsProcessor.didChangeWatchedFiles(events);
@@ -115,5 +118,44 @@ class ModuleEventsProcessorTest {
     assertThat(((ClientFileDto) changedFilesCaptor.getValue().get(0)).getUri()).hasToString("file:///tmp/test2.py");
     assertThat(deletedFilesCaptor.getValue()).hasSize(1);
     assertThat(deletedFilesCaptor.getValue().get(0)).hasToString("file:///tmp/test3.py");
+  }
+
+  @ParameterizedTest(name = "Should detect {0} as {1}")
+  @MethodSource("provideParametersForLanguageDetection")
+  void shouldDetectLanguage(String clientLanguageId, Language expected) {
+    assertThat(ModuleEventsProcessor.toLanguage(clientLanguageId))
+      .isEqualTo(expected);
+  }
+
+  private static Stream<Arguments> provideParametersForLanguageDetection() {
+    return Stream.of(
+      Arguments.of(null, null),
+      Arguments.of("javascript", Language.JS),
+      Arguments.of("javascriptreact", Language.JS),
+      Arguments.of("vue", Language.JS),
+      Arguments.of("vue component", Language.JS),
+      Arguments.of("babel es6 javascript", Language.JS),
+
+      Arguments.of("python", Language.PYTHON),
+
+      Arguments.of("typescript", Language.TS),
+      Arguments.of("typescriptreact", Language.TS),
+
+      Arguments.of("html", Language.HTML),
+
+      Arguments.of("oraclesql", Language.PLSQL),
+      Arguments.of("plsql", Language.PLSQL),
+
+      Arguments.of("apex", Language.APEX),
+      Arguments.of("apex-anon", Language.APEX),
+
+      Arguments.of("php", Language.PHP),
+      Arguments.of("java", Language.JAVA),
+      Arguments.of("c", Language.C),
+      Arguments.of("cpp", Language.CPP),
+
+      Arguments.of("yaml", Language.YAML),
+
+      Arguments.of("unknown", null));
   }
 }
