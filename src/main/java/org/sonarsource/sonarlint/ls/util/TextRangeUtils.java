@@ -23,12 +23,9 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
-import org.sonarsource.sonarlint.core.commons.api.TextRange;
-import org.sonarsource.sonarlint.core.commons.api.TextRangeWithHash;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
-import org.sonarsource.sonarlint.core.serverconnection.issues.ServerTaintIssue;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 
 public class TextRangeUtils {
@@ -51,25 +48,8 @@ public class TextRangeUtils {
         textRange.getEndLineOffset()));
   }
 
-  public static Range convert(TaintVulnerabilityDto issue) {
+  private static Range convert(TaintVulnerabilityDto issue) {
     return convert(issue.getTextRange());
-  }
-
-  public static Range convert(ServerTaintIssue.ServerIssueLocation issue) {
-    return convert(issue.getTextRange());
-  }
-
-  public static Range convert(@Nullable TextRangeWithHash textRange) {
-    if (textRange == null) {
-      return new Range(new Position(0, 0), new Position(0, 0));
-    }
-    return new Range(
-      new Position(
-        textRange.getStartLine() - 1,
-        textRange.getStartLineOffset()),
-      new Position(
-        textRange.getEndLine() - 1,
-        textRange.getEndLineOffset()));
   }
 
   public static Range convert(@Nullable TextRangeWithHashDto textRange) {
@@ -98,13 +78,5 @@ public class TextRangeUtils {
 
   public static boolean locationMatches(TaintVulnerabilityDto i, Diagnostic d) {
     return convert(i).equals(d.getRange());
-  }
-
-
-  public static TextRangeDto textRangeDtoFromTextRange(@Nullable TextRange textRange) {
-    return textRange != null ? new TextRangeDto(textRange.getStartLine(),
-      textRange.getStartLineOffset(),
-      textRange.getEndLine(),
-      textRange.getEndLineOffset()) : null;
   }
 }

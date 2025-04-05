@@ -24,11 +24,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.eclipse.lsp4j.FileChangeType;
 import org.eclipse.lsp4j.FileEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.ClientFileDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
@@ -98,8 +103,7 @@ class ModuleEventsProcessorTest {
     var events = List.of(
       new FileEvent("file:///tmp/test1.py", FileChangeType.Created),
       new FileEvent("file:///tmp/test2.py", FileChangeType.Changed),
-      new FileEvent("file:///tmp/test3.py", FileChangeType.Deleted)
-    );
+      new FileEvent("file:///tmp/test3.py", FileChangeType.Deleted));
     when(backendServiceFacade.getBackendService()).thenReturn(backend);
 
     moduleEventsProcessor.didChangeWatchedFiles(events);
@@ -115,5 +119,43 @@ class ModuleEventsProcessorTest {
     assertThat(((ClientFileDto) changedFilesCaptor.getValue().get(0)).getUri()).hasToString("file:///tmp/test2.py");
     assertThat(deletedFilesCaptor.getValue()).hasSize(1);
     assertThat(deletedFilesCaptor.getValue().get(0)).hasToString("file:///tmp/test3.py");
+  }
+
+  @ParameterizedTest(name = "Should detect {0} as {1}")
+  @MethodSource("provideParametersForLanguageDetection")
+  void shouldDetectLanguage(String clientLanguageId, SonarLanguage expected) {
+    assertThat(ModuleEventsProcessor.toLanguage(clientLanguageId))
+      .isEqualTo(expected);
+  }
+
+  private static Stream<Arguments> provideParametersForLanguageDetection() {
+    return Stream.of(
+      Arguments.of("javascript", SonarLanguage.JS),
+      Arguments.of("javascriptreact", SonarLanguage.JS),
+      Arguments.of("vue", SonarLanguage.JS),
+      Arguments.of("vue component", SonarLanguage.JS),
+      Arguments.of("babel es6 javascript", SonarLanguage.JS),
+
+      Arguments.of("python", SonarLanguage.PYTHON),
+
+      Arguments.of("typescript", SonarLanguage.TS),
+      Arguments.of("typescriptreact", SonarLanguage.TS),
+
+      Arguments.of("html", SonarLanguage.HTML),
+
+      Arguments.of("oraclesql", SonarLanguage.PLSQL),
+      Arguments.of("plsql", SonarLanguage.PLSQL),
+
+      Arguments.of("apex", SonarLanguage.APEX),
+      Arguments.of("apex-anon", SonarLanguage.APEX),
+
+      Arguments.of("php", SonarLanguage.PHP),
+      Arguments.of("java", SonarLanguage.JAVA),
+      Arguments.of("c", SonarLanguage.C),
+      Arguments.of("cpp", SonarLanguage.CPP),
+
+      Arguments.of("yaml", SonarLanguage.YAML),
+
+      Arguments.of("unknown", null));
   }
 }
