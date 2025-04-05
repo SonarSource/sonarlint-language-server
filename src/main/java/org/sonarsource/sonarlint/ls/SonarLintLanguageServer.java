@@ -165,7 +165,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final OpenNotebooksCache openNotebooksCache;
   private final CommandManager commandManager;
   private final ExecutorService lspThreadPool;
-  private final LSProgressMonitor progressMonitor;
   private final HostInfoProvider hostInfoProvider;
   private final WorkspaceFolderBranchManager branchManager;
   private final JavaConfigCache javaConfigCache;
@@ -220,9 +219,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.hostInfoProvider = new HostInfoProvider();
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client, lsLogOutput);
     this.promotionalNotifications = new PromotionalNotifications(client);
-    this.progressMonitor = new LSProgressMonitor(client);
     var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, lsLogOutput, taintVulnerabilitiesCache,
-      skippedPluginsNotifier, promotionalNotifications, progressMonitor);
+      skippedPluginsNotifier, promotionalNotifications);
     this.backendServiceFacade = new BackendServiceFacade(vsCodeClient, lsLogOutput, client);
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
     this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, lsLogOutput);

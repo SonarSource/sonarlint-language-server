@@ -27,16 +27,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.ArgumentCaptor;
-import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.GetStatusResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixAppliedForRuleParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisDoneOnSingleLanguageParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificationsClickedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -109,61 +106,12 @@ class SonarLintTelemetryTests {
   }
 
   @Test
-  void analysisDoneOnMultipleFiles_should_trigger_analysisDoneOnMultipleFiles_when_enabled() {
-    telemetry.analysisDoneOnMultipleFiles();
-    verify(telemetryService).analysisDoneOnMultipleFiles();
-  }
-
-  @Test
-  void analysisDoneOnMultipleFiles_should_not_trigger_analysisDoneOnMultipleFiles_when_disabled() {
-    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
-    telemetry.analysisDoneOnMultipleFiles();
-
-    verify(telemetryService, never()).analysisDoneOnMultipleFiles();
-  }
-
-  @Test
-  void analysisDoneOnSingleFile_should_trigger_analysisDoneOnSingleFile_when_enabled() {
-    ArgumentCaptor<AnalysisDoneOnSingleLanguageParams> argument = ArgumentCaptor.forClass(AnalysisDoneOnSingleLanguageParams.class);
-    telemetry.analysisDoneOnSingleLanguage(SonarLanguage.JAVA, 1000);
-
-    verify(telemetryService).analysisDoneOnSingleLanguage(argument.capture());
-    assertThat(argument.getValue().getAnalysisTimeMs()).isEqualTo(1000);
-    assertThat(argument.getValue().getLanguage()).isEqualTo(Language.JAVA);
-  }
-
-  @Test
-  void analysisDoneOnSingleFile_should_not_trigger_analysisDoneOnSingleFile_when_language_is_null() {
-    telemetry.analysisDoneOnSingleLanguage(null, 1000);
-
-    verify(telemetryService, never()).analysisDoneOnSingleLanguage(any());
-
-  }
-
-  @Test
-  void analysisDoneOnSingleFile_should_not_trigger_analysisDoneOnSingleFile_when_disabled() {
-    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
-    telemetry.analysisDoneOnSingleLanguage(SonarLanguage.JAVA, 1000);
-
-    verify(telemetryService, never()).analysisDoneOnSingleLanguage(any());
-
-  }
-
-  @Test
   void devNotificationsClicked_when_enabled() {
     ArgumentCaptor<DevNotificationsClickedParams> argument = ArgumentCaptor.forClass(DevNotificationsClickedParams.class);
     telemetry.devNotificationsClicked("eventType");
 
     verify(telemetryService).devNotificationsClicked(argument.capture());
     assertThat(argument.getValue().getEventType()).isEqualTo("eventType");
-  }
-
-  @Test
-  void devNotificationsClicked_when_disabled() {
-    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
-    telemetry.analysisDoneOnSingleLanguage(SonarLanguage.JAVA, 1000);
-
-    verify(telemetryService, never()).devNotificationsClicked(any());
   }
 
   @Test

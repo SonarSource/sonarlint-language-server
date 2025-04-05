@@ -152,8 +152,7 @@ class SonarLintVSCodeClientTests {
     "http.proxyHost",
     "http.proxyPort",
     "http.proxyUser",
-    "http.proxyPassword"
-  );
+    "http.proxyPassword");
   private static final Map<String, String> savedProxyProperties = new HashMap<>();
 
   @TempDir
@@ -222,8 +221,7 @@ class SonarLintVSCodeClientTests {
 
   @BeforeEach
   void setup() throws IOException {
-    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache,
-      skippedPluginsNotifier, promotionalNotifications, progressMonitor);
+    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, skippedPluginsNotifier, promotionalNotifications);
     underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);
     underTest.setBindingManager(bindingManager);
@@ -275,8 +273,7 @@ class SonarLintVSCodeClientTests {
 
     underTest.listFiles(URI.create("file:///folderUri").toString());
 
-    var expectedClientParams =
-      new SonarLintExtendedLanguageClient.FolderUriParams("file:///folderUri");
+    var expectedClientParams = new SonarLintExtendedLanguageClient.FolderUriParams("file:///folderUri");
     verify(client).listFilesInFolder(expectedClientParams);
   }
 
@@ -348,8 +345,7 @@ class SonarLintVSCodeClientTests {
         "http://localhost:9000",
         "abcdefg",
         null,
-        false, SonarCloudRegion.EU
-      ));
+        false, SonarCloudRegion.EU));
     when(workspaceSettings.getServerConnections()).thenReturn(serverConnections);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     underTest.showSmartNotification(showSmartNotificationParams);
@@ -367,8 +363,7 @@ class SonarLintVSCodeClientTests {
         "https://sonarcloud.io",
         "abcdefg",
         "test-org",
-        false, SonarCloudRegion.EU
-      ));
+        false, SonarCloudRegion.EU));
     when(workspaceSettings.getServerConnections()).thenReturn(serverConnections);
     when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     underTest.showSmartNotification(showSmartNotificationParams);
@@ -399,8 +394,7 @@ class SonarLintVSCodeClientTests {
     when(client.listFilesInFolder(folderUriParams)).thenReturn(CompletableFuture.completedFuture(
       new SonarLintExtendedLanguageClient.FindFileByNamesInScopeResponse(List.of(
         new SonarLintExtendedLanguageClient.FoundFileDto(fileName1, folderPath + "/" + fileName1, "foo"),
-        new SonarLintExtendedLanguageClient.FoundFileDto(fileName2, folderPath + "/" + fileName2, "bar")
-      ))));
+        new SonarLintExtendedLanguageClient.FoundFileDto(fileName2, folderPath + "/" + fileName2, "bar")))));
 
     underTest.listFiles(folderUri.toString());
 
@@ -438,8 +432,7 @@ class SonarLintVSCodeClientTests {
       "TO_REVIEW",
       "fixed",
       hotspotRule,
-      null
-    );
+      null);
     underTest.showHotspot("myFolder", hotspotDetailsDto);
     var argCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.ShowHotspotParams.class);
     verify(client).showHotspot(argCaptor.capture());
@@ -496,8 +489,7 @@ class SonarLintVSCodeClientTests {
     var assistCreatingConnectionParams = new AssistCreatingConnectionParams(new SonarQubeConnectionParams(serverUrl, null, null));
     when(client.workspaceFolders()).thenReturn(CompletableFuture.completedFuture(List.of()));
     when(client.assistCreatingConnection(any())).thenReturn(CompletableFuture.completedFuture(
-      null
-    ));
+      null));
     when(settingsManager.getCurrentSettings()).thenReturn(mock(WorkspaceSettings.class));
     when(backendServiceFacade.getBackendService()).thenReturn(mock(BackendService.class));
     assertThrows(CompletionException.class, () -> underTest.assistCreatingConnection(assistCreatingConnectionParams, null));
@@ -533,7 +525,8 @@ class SonarLintVSCodeClientTests {
 
     var projectKey = "projectKey";
     var messageRequestParams = new ShowMessageRequestParams();
-    messageRequestParams.setMessage("SonarQube for VS Code couldn't match the server project '" + projectKey + "' to any of the currently open workspace folders. Please make sure the project is open in the workspace, or try configuring the binding manually.");
+    messageRequestParams.setMessage("SonarQube for VS Code couldn't match the server project '" + projectKey + "' to any of the currently open workspace folders. Please make " +
+      "sure the project is open in the workspace, or try configuring the binding manually.");
     messageRequestParams.setType(MessageType.Error);
     var learnMoreAction = new MessageActionItem("Learn more");
     messageRequestParams.setActions(List.of(learnMoreAction));
@@ -652,7 +645,6 @@ class SonarLintVSCodeClientTests {
 
     assertTrue(showAllLocationParams.isShouldOpenRuleDescription());
   }
-
 
   @Test
   void shouldLogMessagesWithLogLevel() {
@@ -858,15 +850,11 @@ class SonarLintVSCodeClientTests {
           new ChangesDto(
             new LineRangeDto(1, 1),
             "System.out.println(\"Hello, World!\");",
-            ""
-          ),
+            ""),
           new ChangesDto(
             new LineRangeDto(2, 2),
             "System.out.println(\"Hello, World!\");",
-            ""
-          )
-        )
-      ));
+            ""))));
 
     underTest.showFixSuggestion(configScope, issueKey, fixSuggestion);
 
@@ -894,15 +882,11 @@ class SonarLintVSCodeClientTests {
           new ChangesDto(
             new LineRangeDto(1, 1),
             "System.out.println(\"Hello, World!\");",
-            ""
-          ),
+            ""),
           new ChangesDto(
             new LineRangeDto(2, 2),
             "System.out.println(\"Hello, World!\");",
-            ""
-          )
-        )
-      ));
+            ""))));
 
     underTest.showFixSuggestion(configScope, issueKey, fixSuggestion);
 
@@ -942,7 +926,6 @@ class SonarLintVSCodeClientTests {
     assertThat(underTest.getBaseDir(configScopeId)).isEqualTo(Path.of("/my/config/scope"));
   }
 
-
   @Test
   @EnabledOnOs(OS.WINDOWS)
   void shouldReturnBaseDirOnWindows() {
@@ -969,14 +952,16 @@ class SonarLintVSCodeClientTests {
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
     return new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
-      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)), List.of(),
+        .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
+      List.of(),
       new TextRangeWithHashDto(5, 5, 5, 5, ""), "", true, false);
   }
 
   private TaintIssue getTaintIssue(UUID uuid) {
     return new TaintIssue(new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
-      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)), List.of(),
+        .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
+      List.of(),
       new TextRangeWithHashDto(5, 5, 5, 5, ""), "", true, false), "folderUri", true);
   }
 

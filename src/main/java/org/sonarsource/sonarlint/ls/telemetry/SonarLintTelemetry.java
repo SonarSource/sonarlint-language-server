@@ -21,15 +21,11 @@ package org.sonarsource.sonarlint.ls.telemetry;
 
 import java.util.function.Consumer;
 import javax.annotation.CheckForNull;
-import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixAppliedForRuleParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisDoneOnSingleLanguageParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificationsClickedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -69,15 +65,6 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
       logOutput.debug("Telemetry is disabled by system property");
     }
     return !telemetryDisabledBySystemProperty;
-  }
-
-  public void analysisDoneOnMultipleFiles() {
-    actIfEnabled(TelemetryRpcService::analysisDoneOnMultipleFiles);
-  }
-
-  public void analysisDoneOnSingleLanguage(@Nullable SonarLanguage language, int analysisTimeMs) {
-    if (language == null) return;
-    actIfEnabled(telemetryService -> telemetryService.analysisDoneOnSingleLanguage(new AnalysisDoneOnSingleLanguageParams(Language.valueOf(language.name()), analysisTimeMs)));
   }
 
   public void devNotificationsClicked(String eventType) {
