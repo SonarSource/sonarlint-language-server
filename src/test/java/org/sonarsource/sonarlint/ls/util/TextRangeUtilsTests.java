@@ -22,8 +22,6 @@ package org.sonarsource.sonarlint.ls.util;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.commons.api.TextRange;
-import org.sonarsource.sonarlint.core.commons.api.TextRangeWithHash;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
@@ -43,20 +41,6 @@ class TextRangeUtilsTests {
 
     DelegatingFinding issue2 = mockIssueWithTextRange(5, 2, 10, 7);
     Range result2 = TextRangeUtils.convert(issue2);
-    assertEquals(new Range(new Position(4, 2), new Position(9, 7)), result2);
-  }
-
-  @Test
-  void testConvertTextRangeWithHash() {
-    Range result1 = TextRangeUtils.convert(((TextRangeWithHash) null));
-    assertEquals(new Range(new Position(0, 0), new Position(0, 0)), result1);
-
-    var textRangeWithHash = mock(TextRangeWithHash.class);
-    when(textRangeWithHash.getStartLine()).thenReturn(5);
-    when(textRangeWithHash.getStartLineOffset()).thenReturn(2);
-    when(textRangeWithHash.getEndLine()).thenReturn(10);
-    when(textRangeWithHash.getEndLineOffset()).thenReturn(7);
-    Range result2 = TextRangeUtils.convert(textRangeWithHash);
     assertEquals(new Range(new Position(4, 2), new Position(9, 7)), result2);
   }
 
@@ -91,24 +75,6 @@ class TextRangeUtilsTests {
     assertThat(result2.getStartLine()).isEqualTo(4);
     assertThat(result2.getStartLineOffset()).isEqualTo(2);
     assertThat(result2.getEndLine()).isEqualTo(9);
-    assertThat(result2.getEndLineOffset()).isEqualTo(7);
-  }
-
-  @Test
-  void testTextRangeDtoFromTextRange() {
-    var result1 = TextRangeUtils.textRangeDtoFromTextRange(null);
-    assertThat(result1).isNull();
-
-    var textRange = mock(TextRange.class);
-    when(textRange.getStartLine()).thenReturn(5);
-    when(textRange.getStartLineOffset()).thenReturn(2);
-    when(textRange.getEndLine()).thenReturn(10);
-    when(textRange.getEndLineOffset()).thenReturn(7);
-
-    TextRangeDto result2 = TextRangeUtils.textRangeDtoFromTextRange(textRange);
-    assertThat(result2.getStartLine()).isEqualTo(5);
-    assertThat(result2.getStartLineOffset()).isEqualTo(2);
-    assertThat(result2.getEndLine()).isEqualTo(10);
     assertThat(result2.getEndLineOffset()).isEqualTo(7);
   }
 

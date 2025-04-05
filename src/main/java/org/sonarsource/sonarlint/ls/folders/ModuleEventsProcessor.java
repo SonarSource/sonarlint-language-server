@@ -28,13 +28,14 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import org.eclipse.lsp4j.FileChangeType;
 import org.eclipse.lsp4j.FileEvent;
 import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.ClientFileDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
-import org.sonarsource.sonarlint.ls.AnalysisClientInputFile;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
@@ -107,8 +108,7 @@ public class ModuleEventsProcessor {
     AtomicReference<ClientFileDto> clientFileDto = new AtomicReference<>();
     var fileUri = file.getUri();
     var fsPath = Paths.get(fileUri);
-    SonarLanguage sqLanguage = file.getLanguageId() != null ?
-      AnalysisClientInputFile.toSqLanguage(file.getLanguageId().toLowerCase(Locale.ROOT)) : null;
+    var language = file.getLanguageId() != null ? toLanguage(file.getLanguageId().toLowerCase(Locale.ROOT)) : null;
     workspaceFoldersManager.findFolderForFile(fileUri)
       .ifPresentOrElse(folder -> {
         var settings = folder.getSettings();
@@ -116,18 +116,37 @@ public class ModuleEventsProcessor {
         var relativePath = baseDir.relativize(fsPath);
         var folderUri = folder.getUri().toString();
         var isTest = isTestFile(file, settings);
-        clientFileDto.set(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(),
-          fsPath, file.getContent(), sqLanguage != null ? Language.valueOf(sqLanguage.name()) : null, true));
+        clientFileDto.set(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(), fsPath, file.getContent(), language, true));
       }, () -> {
         var isTest = isTestFile(file, settingsManager.getCurrentDefaultFolderSettings());
-        clientFileDto.set(new ClientFileDto(fileUri, fsPath, ROOT_CONFIGURATION_SCOPE, isTest, StandardCharsets.UTF_8.name(),
-          fsPath, file.getContent(), sqLanguage != null ? Language.valueOf(sqLanguage.name()) : null, true));
+        clientFileDto.set(new ClientFileDto(fileUri, fsPath, ROOT_CONFIGURATION_SCOPE, isTest, StandardCharsets.UTF_8.name(), fsPath, file.getContent(), language, true));
       });
     return clientFileDto.get();
   }
 
   private boolean isTestFile(VersionedOpenFile file, WorkspaceFolderSettings settings) {
     return fileTypeClassifier.isTest(settings, file.getUri(), file.isJava(), () -> javaConfigCache.getOrFetch(file.getUri()));
+  }
+
+  @CheckForNull
+  static Language toLanguage(@Nullable String clientLanguageId) {
+    if (clientLanguageId == null) {
+      return null;
+    }
+    // See https://microsoft.github.io/language-server-protocol/specification#textDocumentItem
+    return switch (clientLanguageId) {
+      case "javascript", "javascriptreact", "vue", "vue component", "babel es6 javascript" -> Language.JS;
+      case "python" -> Language.PYTHON;
+      case "typescript", "typescriptreact" -> Language.TS;
+      case "html" -> Language.HTML;
+      case "oraclesql" -> Language.PLSQL;
+      case "apex", "apex-anon" ->
+        // See https://github.com/forcedotcom/salesforcedx-vscode/blob/5e4b7715d1cb3d1ee2780780ed63f70f58e93b20/packages/salesforcedx-vscode-apex/package.json#L273
+        Language.APEX;
+      default ->
+        // Other supported languages map to the same key as the one used in SonarQube/SonarCloud
+        SonarLanguage.forKey(clientLanguageId).map(l -> Language.valueOf(l.name())).orElse(null);
+    };
   }
 
   public void shutdown() {
