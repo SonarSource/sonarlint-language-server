@@ -130,7 +130,7 @@ public class CommandManager {
   static final String RESOLVE_ISSUE = "SonarLint.ResolveIssue";
   static final String SONARLINT_ACTION_PREFIX = "SonarQube: ";
   public static final MessageActionItem RETRY_ACTION = new MessageActionItem("Retry");
-  public static final MessageActionItem SHOW_ISSUE_DETAILS_ACTION = new MessageActionItem("Show issue details");
+  public static final MessageActionItem SHOW_ISSUE_DETAILS_ACTION = new MessageActionItem("Show Issue Details");
   public static final int AI_CODEFIX_ISSUE_MESSAGE_MAX_LENGTH = 40;
 
   private final SonarLintExtendedLanguageClient client;
