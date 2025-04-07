@@ -867,7 +867,7 @@ class CommandManagerTests {
     assertThat(showMessageRequestParams.getType()).isEqualTo(MessageType.Warning);
     assertThat(showMessageRequestParams.getMessage()).isEqualTo("Something went wrong while generating AI CodeFix. SonarQube was not able to generate a fix for this issue.");
     assertThat(showMessageRequestParams.getActions()).hasSize(2);
-    assertThat(showMessageRequestParams.getActions().get(0).getTitle()).isEqualTo("Show issue details");
+    assertThat(showMessageRequestParams.getActions().get(0).getTitle()).isEqualTo("Show Issue Details");
     assertThat(showMessageRequestParams.getActions().get(1).getTitle()).isEqualTo("Retry");
   }
 
@@ -897,7 +897,7 @@ class CommandManagerTests {
       new JsonPrimitive(issueId), new JsonPrimitive(FILE_URI)));
 
     when(mockClient.showMessageRequest(any()))
-      .thenReturn(CompletableFuture.completedFuture(new MessageActionItem("Show issue details")));
+      .thenReturn(CompletableFuture.completedFuture(new MessageActionItem("Show Issue Details")));
     when(backendService.suggestFix(any(), any()))
       .thenReturn(CompletableFuture.failedFuture(
         new ResponseErrorException(
