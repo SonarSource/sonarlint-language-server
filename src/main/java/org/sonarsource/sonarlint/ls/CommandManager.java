@@ -129,8 +129,9 @@ public class CommandManager {
   static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
   static final String RESOLVE_ISSUE = "SonarLint.ResolveIssue";
   static final String SONARLINT_ACTION_PREFIX = "SonarQube: ";
-  public static final MessageActionItem RETRY_ACTION = new MessageActionItem("Retry");
-  public static final MessageActionItem SHOW_ISSUE_DETAILS_ACTION = new MessageActionItem("Show Issue Details");
+  public static final MessageActionItem SHOW_LOGS_ACTION = new MessageActionItem("Show Logs");
+  public static final MessageActionItem FIX_MANUALLY_ACTION = new MessageActionItem("Fix Manually");
+  // Arbitrary limit to avoid AI CodeFix QuickFix message becoming too long
   public static final int AI_CODEFIX_ISSUE_MESSAGE_MAX_LENGTH = 40;
 
   private final SonarLintExtendedLanguageClient client;
@@ -573,13 +574,13 @@ public class CommandManager {
     }).exceptionally(throwable -> {
       client.endProgressNotification(new SonarLintExtendedLanguageClient.EndProgressNotificationParams(taskId));
       logOutput.errorWithStackTrace("Error generating AI CodeFix", throwable);
-      var showMessageParams = new ShowMessageRequestParams(List.of(SHOW_ISSUE_DETAILS_ACTION, RETRY_ACTION));
+      var showMessageParams = new ShowMessageRequestParams(List.of(SHOW_LOGS_ACTION, FIX_MANUALLY_ACTION));
       showMessageParams.setType(MessageType.Warning);
       showMessageParams.setMessage("Something went wrong while generating AI CodeFix. SonarQube was not able to generate a fix for this issue.");
       client.showMessageRequest(showMessageParams).thenAccept(action -> {
-        if (RETRY_ACTION.equals(action)) {
-          handleSuggestFixCommand(params);
-        } else if (SHOW_ISSUE_DETAILS_ACTION.equals(action)) {
+        if (SHOW_LOGS_ACTION.equals(action)) {
+          client.showSonarLintOutput();
+        } else if (FIX_MANUALLY_ACTION.equals(action)) {
           handleShowIssueDetailsFromCodeActionCommand(new ExecuteCommandParams(SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND,
             List.of(new JsonPrimitive(issueId), new JsonPrimitive(fileUri))));
         }
