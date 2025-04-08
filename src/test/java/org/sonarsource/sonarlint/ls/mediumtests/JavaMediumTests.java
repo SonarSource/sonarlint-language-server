@@ -232,9 +232,9 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.logs)
       .extracting(withoutTimestamp())
       .containsSubsequence(
-        "[Debug] [org.sonar.java.classpath.AbstractClasspath : sonarlint-analysis-engine] Property 'sonar.java.jdkHome' set with: " + currentJdkHome,
-        "[Debug] [org.sonar.java.classpath.AbstractClasspath : sonarlint-analysis-engine] Property 'sonar.java.jdkHome' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]",
-        "[Debug] [org.sonar.java.classpath.AbstractClasspath : sonarlint-analysis-engine] Property 'sonar.java.libraries' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]");
+        "[Debug] [org.sonar.java.classpath.AbstractClasspath : sonarlint-analysis-scheduler] Property 'sonar.java.jdkHome' set with: " + currentJdkHome,
+        "[Debug] [org.sonar.java.classpath.AbstractClasspath : sonarlint-analysis-scheduler] Property 'sonar.java.jdkHome' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]",
+        "[Debug] [org.sonar.java.classpath.AbstractClasspath : sonarlint-analysis-scheduler] Property 'sonar.java.libraries' resolved with:" + System.lineSeparator() + "[" + jrtFsJarPath + "]");
   }
 
   @Test

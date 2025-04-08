@@ -187,7 +187,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(file2InFolder, 2),
         List.of(new TextDocumentContentChangeEvent("def foo():\n  toto2 = 0\n  plouf2 = 0\n"))));
 
-    assertAnalysisLogsContains(2, 0);
+    assertAnalysisLogsContains(4, 0);
   }
 
   @Test
