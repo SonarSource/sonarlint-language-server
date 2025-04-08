@@ -579,7 +579,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(uri, "python", "# Nothing to see here\n");
 
     awaitUntilAsserted(() -> assertThat(client.logs).extracting(withoutTimestamp())
-      .contains("[Error] [sonarlint : SonarLint Analysis Executor] No file to analyze"));
+      .contains("[Info] [sonarlint : sonarlint-analysis-scheduler] No file to analyze"));
     assertThat(client.getDiagnostics(uri)).isEmpty();
   }
 
@@ -818,10 +818,10 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestampAndMillis())
       .contains(
-        "[Info] [sonarlint : sonarlint-analysis-engine] Index files",
+        "[Info] [sonarlint : sonarlint-analysis-scheduler] Index files",
         "[Info] [sonarlint : Report about progress of file indexation] 1 file indexed",
         "[Info] [org.sonarsource.analyzer.commons.ProgressReport : rules execution progress] 1 source file to be analyzed",
-        "[Info] [sonarlint : sonarlint-analysis-engine] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
+        "[Info] [sonarlint : sonarlint-analysis-scheduler] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
   }
   
   @Test
@@ -839,11 +839,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .filteredOn(notFromContextualTSserver())
       .extracting(withoutTimestampAndMillis())
       .contains(
-        "[Info] [sonarlint : sonarlint-analysis-engine] Index files",
-        "[Debug] [sonarlint : sonarlint-analysis-engine] Language of file \"" + uri + "\" is set to \"PYTHON\"",
+        "[Info] [sonarlint : sonarlint-analysis-scheduler] Index files",
+        "[Debug] [sonarlint : sonarlint-analysis-scheduler] Language of file \"" + uri + "\" is set to \"PYTHON\"",
         "[Info] [sonarlint : Report about progress of file indexation] 1 file indexed",
-        "[Debug] [sonarlint : sonarlint-analysis-engine] Execute Sensor: Python Sensor",
-        "[Info] [sonarlint : sonarlint-analysis-engine] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
+        "[Debug] [sonarlint : sonarlint-analysis-scheduler] Execute Sensor: Python Sensor",
+        "[Info] [sonarlint : sonarlint-analysis-scheduler] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
   }
 
   @Test
@@ -1121,7 +1121,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var hotspotsString = hotspots == 1 ? "Security Hotspot" : "Security Hotspots";
     awaitUntilAsserted(() -> assertThat(client.logs)
       .extracting(withoutTimestampAndMillis())
-      .contains(String.format("[Info] [sonarlint : sonarlint-analysis-engine] Analysis detected %d %s and %d %s in XXXms", issues, issuesString, hotspots, hotspotsString)));
+      .contains(String.format("[Info] [sonarlint : sonarlint-analysis-scheduler] Analysis detected %d %s and %d %s in XXXms", issues, issuesString, hotspots, hotspotsString)));
   }
 
 }
