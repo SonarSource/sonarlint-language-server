@@ -468,7 +468,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         var parsedRegion = parseRegion(region);
         addIfUniqueConnectionId(serverConnections, connectionId,
           new ServerConnectionSettings(connectionId,
-           parsedRegion == SonarCloudRegion.US ? ServerConnectionSettings.SONARCLOUD_US_URL : ServerConnectionSettings.SONARCLOUD_URL,
+            parsedRegion == SonarCloudRegion.US ? ServerConnectionSettings.getSonarCloudUSUrl() : ServerConnectionSettings.getSonarCloudUrl(),
             token, organizationKey, disableNotifs, parsedRegion));
       }
     });
