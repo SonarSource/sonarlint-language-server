@@ -101,6 +101,9 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     System.clearProperty("sonarlint.internal.sonarcloud.websocket.url");
     System.clearProperty("sonarlint.internal.sonarcloud.url");
     System.clearProperty("sonarlint.internal.sonarcloud.api.url");
+    System.clearProperty("sonarlint.internal.sonarcloud.us.url");
+    System.clearProperty("sonarlint.internal.sonarcloud.us.websocket.url");
+    System.clearProperty("sonarlint.internal.sonarcloud.us.api.url");
   }
 
   @Override
