@@ -70,7 +70,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreat
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreatingConnectionResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.ConnectionSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.event.DidReceiveServerHotspotEvent;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.FixSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
@@ -390,11 +389,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     return client.askSslCertificateConfirmation(confirmationParams).join();
   }
 
-  @Override
-  public void didReceiveServerHotspotEvent(DidReceiveServerHotspotEvent event) {
-    // Deprecated on SLCORE side
-  }
-
   @Nullable
   @Override
   public String matchSonarProjectBranch(String configurationScopeId, String mainBranchName, Set<String> allBranchesNames, SonarLintCancelChecker cancelChecker) {
@@ -655,7 +649,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     var excludes = settingsManager.getCurrentSettings().getAnalysisExcludes();
     return excludes.isEmpty() ? Collections.emptySet()
       : Arrays.stream(excludes.split(","))
-        .collect(Collectors.toSet());
+      .collect(Collectors.toSet());
   }
 
   @Override
