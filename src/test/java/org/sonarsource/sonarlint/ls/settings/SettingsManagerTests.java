@@ -64,7 +64,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings.SONARCLOUD_US_URL;
 import static org.sonarsource.sonarlint.ls.settings.SettingsManager.ANALYSIS_EXCLUDES;
 import static org.sonarsource.sonarlint.ls.settings.SettingsManager.ANALYZER_PROPERTIES;
 import static org.sonarsource.sonarlint.ls.settings.SettingsManager.DOTNET_DEFAULT_SOLUTION_PATH;
@@ -280,7 +279,7 @@ class SettingsManagerTests {
     var settings = underTest.getCurrentSettings();
     assertThat(settings.getServerConnections()).containsKeys("usConn");
     assertThat(settings.getServerConnections().get("usConn").getRegion()).isEqualTo(SonarCloudRegion.US);
-    assertThat(settings.getServerConnections().get("usConn").getServerUrl()).isEqualTo(SONARCLOUD_US_URL);
+    assertThat(settings.getServerConnections().get("usConn").getServerUrl()).isEqualTo(ServerConnectionSettings.getSonarCloudUSUrl());
   }
 
 

@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.settings;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 
@@ -58,6 +59,24 @@ class ServerConnectionSettingsTests {
     assertThat(WITHOUT_ORG)
       .isEqualTo(new ServerConnectionSettings("serverId", "serverUrl", "token", null, false, SonarCloudRegion.EU))
       .isNotEqualTo(WITH_ORG);
+  }
+
+  @Test
+  void testIsSonarCloudAlias() {
+    Assertions.assertTrue(ServerConnectionSettings.isSonarCloudAlias("https://sonarqube.us"));
+    Assertions.assertTrue(ServerConnectionSettings.isSonarCloudAlias("https://sonarcloud.io"));
+    Assertions.assertTrue(ServerConnectionSettings.isSonarCloudAlias("https://sonarqube.com"));
+    Assertions.assertFalse(ServerConnectionSettings.isSonarCloudAlias("http://localhost:1234"));
+
+    // Set system property
+    System.setProperty("sonarlint.internal.sonarcloud.us.url", "http://localhost:1234");
+    Assertions.assertTrue(ServerConnectionSettings.isSonarCloudAlias("http://localhost:1234"));
+    System.clearProperty("sonarlint.internal.sonarcloud.us.url");
+
+    Assertions.assertFalse(ServerConnectionSettings.isSonarCloudAlias("http://localhost:5678"));
+    System.setProperty("sonarlint.internal.sonarcloud.url", "http://localhost:5678");
+    Assertions.assertTrue(ServerConnectionSettings.isSonarCloudAlias("http://localhost:5678"));
+    System.clearProperty("sonarlint.internal.sonarcloud.url");
   }
 
   @Test

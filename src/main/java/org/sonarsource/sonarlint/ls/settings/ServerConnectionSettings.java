@@ -35,13 +35,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.TokenDto;
 
 @Immutable
 public class ServerConnectionSettings {
-  public static final String SONARCLOUD_URL = System.getProperty("sonarlint.internal.sonarcloud.url") != null ?
-    System.getProperty("sonarlint.internal.sonarcloud.url") :
-    "https://sonarcloud.io";
-  public static final String SONARCLOUD_US_URL = System.getProperty("sonarlint.internal.sonarcloud.us.url") != null ?
-    System.getProperty("sonarlint.internal.sonarcloud.us.url") : "https://sonarqube.us/";
-  static final String[] SONARCLOUD_ALIAS = {"https://sonarqube.com", "https://www.sonarqube.com", "https://www.sonarcloud.io", SONARCLOUD_URL, SONARCLOUD_US_URL};
-
   private final String connectionId;
   private final String serverUrl;
   private String token;
@@ -103,8 +96,21 @@ public class ServerConnectionSettings {
     return isSonarCloudAlias(serverUrl);
   }
 
+  public static String getSonarCloudUrl() {
+    return System.getProperty("sonarlint.internal.sonarcloud.url") != null ?
+      System.getProperty("sonarlint.internal.sonarcloud.url") :
+      "https://sonarcloud.io";
+  }
+
+  public static String getSonarCloudUSUrl() {
+    return System.getProperty("sonarlint.internal.sonarcloud.us.url") != null ?
+      System.getProperty("sonarlint.internal.sonarcloud.us.url") : "https://sonarqube.us";
+  }
+
   public static boolean isSonarCloudAlias(String serverUrl) {
-    return List.of(SONARCLOUD_ALIAS).contains(serverUrl);
+    var possibleSonarCloudUrls = List.of("https://sonarqube.com", "https://www.sonarqube.com", "https://www.sonarcloud.io",
+      getSonarCloudUSUrl(), getSonarCloudUrl());
+    return possibleSonarCloudUrls.contains(serverUrl);
   }
 
   public boolean isSmartNotificationsDisabled() {
