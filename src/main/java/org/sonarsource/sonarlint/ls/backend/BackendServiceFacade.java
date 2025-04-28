@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,8 +45,8 @@ import org.sonarsource.sonarlint.core.rpc.impl.BackendJsonRpcLauncher;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.ConfigurationScopeDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.DidAddConfigurationScopesParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.BackendCapability;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.ClientConstantInfoDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.FeatureFlagsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.HttpConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.InitializeParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.JsTsRequirementsDto;
@@ -159,8 +160,7 @@ public class BackendServiceFacade {
   }
 
   private InitializeParams toInitParams(BackendInitParams initParams) {
-    var telemetryEnabled = telemetry != null && telemetry.enabled();
-    var monitoringEnabled = shouldEnableMonitoring();
+    var backendCapabilities = getBackendCapabilities(initParams);
     var clientNodeJsPath = StringUtils.isEmpty(initParams.getClientNodePath()) ? null : Path.of(initParams.getClientNodePath());
     var eslintBridgeServerBundlePath = StringUtils.isEmpty(initParams.getEslintBridgeServerPath()) ? null : Path.of(initParams.getEslintBridgeServerPath());
     var languageSpecificRequirements = getLanguageSpecificRequirements(clientNodeJsPath, eslintBridgeServerBundlePath);
@@ -173,8 +173,7 @@ public class BackendServiceFacade {
         telemetryInitParams.additionalAttributes()),
       getHttpConfiguration(),
       getSonarCloudAlternativeEnvironment(),
-      new FeatureFlagsDto(true, true, true,
-        true, initParams.isEnableSecurityHotspots(), true, true, true, telemetryEnabled, true, monitoringEnabled),
+      backendCapabilities,
       initParams.getStorageRoot(),
       Path.of(initParams.getSonarlintUserHome()),
       initParams.getEmbeddedPluginPaths(),
@@ -191,6 +190,23 @@ public class BackendServiceFacade {
       true,
       null
     );
+  }
+
+  @NotNull
+  EnumSet<BackendCapability> getBackendCapabilities(BackendInitParams initParams) {
+    var backendCapabilities = EnumSet.of(BackendCapability.SMART_NOTIFICATIONS, BackendCapability.PROJECT_SYNCHRONIZATION,
+      BackendCapability.EMBEDDED_SERVER, BackendCapability.SERVER_SENT_EVENTS, BackendCapability.DATAFLOW_BUG_DETECTION,
+      BackendCapability.FULL_SYNCHRONIZATION);
+    if (telemetry != null && telemetry.enabled()) {
+      backendCapabilities.add(BackendCapability.TELEMETRY);
+    }
+    if (shouldEnableMonitoring()) {
+      backendCapabilities.add(BackendCapability.MONITORING);
+    }
+    if (initParams.isEnableSecurityHotspots()) {
+      backendCapabilities.add(BackendCapability.SECURITY_HOTSPOTS);
+    }
+    return backendCapabilities;
   }
 
   boolean shouldEnableMonitoring() {
