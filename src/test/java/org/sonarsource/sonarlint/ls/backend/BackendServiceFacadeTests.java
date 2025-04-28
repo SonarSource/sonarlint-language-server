@@ -19,15 +19,18 @@
  */
 package org.sonarsource.sonarlint.ls.backend;
 
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.BackendCapability;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.MONITORING_DISABLED_PROPERTY_KEY;
 
 class BackendServiceFacadeTests {
@@ -37,8 +40,8 @@ class BackendServiceFacadeTests {
   SonarLintRpcClientDelegate backend = mock(SonarLintRpcClientDelegate.class);
   BackendServiceFacade underTest = new BackendServiceFacade(backend, mock(LanguageClientLogger.class), mock(SonarLintExtendedLanguageClient.class), 0);
 
-  @BeforeEach
-  void setUp() {
+  @AfterEach
+  void tearDown() {
     System.clearProperty(MONITORING_DISABLED_PROPERTY_KEY);
   }
 
@@ -90,6 +93,64 @@ class BackendServiceFacadeTests {
     var result = underTest.shouldEnableMonitoring();
 
     assertThat(result).isTrue();
+  }
+
+  @Test
+  void shouldComputeBackendCapabilities() {
+    // make sure monitoring is disabled
+    System.setProperty(MONITORING_DISABLED_PROPERTY_KEY, "true");
+
+    // make sure telemetry is disabled
+    SonarLintTelemetry telemetryService = mock(SonarLintTelemetry.class);
+    underTest.setTelemetry(telemetryService);
+    when(telemetryService.enabled()).thenReturn(false);
+
+    var backendInitParams = mock(BackendInitParams.class);
+    when(backendInitParams.isEnableSecurityHotspots()).thenReturn(true);
+    var backendCapabilities = underTest.getBackendCapabilities(backendInitParams);
+
+    assertThat(backendCapabilities)
+      .isNotNull()
+      .isNotEmpty()
+      .contains(BackendCapability.SMART_NOTIFICATIONS)
+      .contains(BackendCapability.SECURITY_HOTSPOTS)
+      .contains(BackendCapability.PROJECT_SYNCHRONIZATION)
+      .contains(BackendCapability.EMBEDDED_SERVER)
+      .contains(BackendCapability.DATAFLOW_BUG_DETECTION)
+      .contains(BackendCapability.FULL_SYNCHRONIZATION)
+      .contains(BackendCapability.SERVER_SENT_EVENTS)
+      .doesNotContain(BackendCapability.TELEMETRY)
+      .doesNotContain(BackendCapability.MONITORING);
+
+  }
+
+  @Test
+  void shouldComputeBackendCapabilities_withTelemetryAndMonitoring() {
+    // make sure monitoring is disabled
+    System.setProperty(MONITORING_DISABLED_PROPERTY_KEY, "false");
+
+    // make sure telemetry is disabled
+    SonarLintTelemetry telemetryService = mock(SonarLintTelemetry.class);
+    underTest.setTelemetry(telemetryService);
+    when(telemetryService.enabled()).thenReturn(true);
+
+    var backendInitParams = mock(BackendInitParams.class);
+    when(backendInitParams.isEnableSecurityHotspots()).thenReturn(true);
+    var backendCapabilities = underTest.getBackendCapabilities(backendInitParams);
+
+    assertThat(backendCapabilities)
+      .isNotNull()
+      .isNotEmpty()
+      .contains(BackendCapability.SMART_NOTIFICATIONS)
+      .contains(BackendCapability.SECURITY_HOTSPOTS)
+      .contains(BackendCapability.PROJECT_SYNCHRONIZATION)
+      .contains(BackendCapability.EMBEDDED_SERVER)
+      .contains(BackendCapability.DATAFLOW_BUG_DETECTION)
+      .contains(BackendCapability.FULL_SYNCHRONIZATION)
+      .contains(BackendCapability.SERVER_SENT_EVENTS)
+      .contains(BackendCapability.TELEMETRY)
+      .contains(BackendCapability.MONITORING);
+
   }
 
 }
