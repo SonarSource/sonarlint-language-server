@@ -266,7 +266,7 @@ class ProjectBindingManagerTests {
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
     assertThat(binding).isEmpty();
-    assertThat(logTester.logs()).anyMatch(log -> log.contains("Workspace 'WorkspaceFolder[name="+ workspaceFolderPath.getFileName().toString() +",uri=" + workspaceFolderPath.toUri() + "]' unbound"));
+    assertThat(logTester.logs()).anyMatch(log -> log.contains("Workspace 'WorkspaceFolder[name=" + workspaceFolderPath.getFileName().toString() + ",uri=" + workspaceFolderPath.toUri() + "]' unbound"));
   }
 
   @Test
@@ -349,11 +349,11 @@ class ProjectBindingManagerTests {
     var name1 = "name1";
     var name2 = "name2";
     var project1 = mock(ServerProject.class);
-    when(project1.getKey()).thenReturn(key1);
-    when(project1.getName()).thenReturn(name1);
+    when(project1.key()).thenReturn(key1);
+    when(project1.name()).thenReturn(name1);
     var project2 = mock(ServerProject.class);
-    when(project2.getKey()).thenReturn(key2);
-    when(project2.getName()).thenReturn(name2);
+    when(project2.key()).thenReturn(key2);
+    when(project2.name()).thenReturn(name2);
     when(backendServiceFacade.getBackendService().getAllProjects(any()))
       .thenReturn(CompletableFuture.completedFuture(new GetAllProjectsResponse(List.of(
         new SonarProjectDto(key1, name1),
