@@ -124,7 +124,6 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
-import org.sonarsource.sonarlint.ls.progress.LSProgressMonitor;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
@@ -767,7 +766,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
     params.setEmbeddedPluginPaths(new HashSet<>(analyzers));
     params.setConnectedModeEmbeddedPluginPathsByKey(getEmbeddedPluginsToPath());
-    params.setEnableSecurityHotspots(true);
 
     params.setEnabledLanguagesInStandaloneMode(EnabledLanguages.getStandaloneLanguages().stream()
       .map(l -> Language.valueOf(l.name())).collect(Collectors.toSet()));

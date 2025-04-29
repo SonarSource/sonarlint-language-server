@@ -106,7 +106,6 @@ class BackendServiceFacadeTests {
     when(telemetryService.enabled()).thenReturn(false);
 
     var backendInitParams = mock(BackendInitParams.class);
-    when(backendInitParams.isEnableSecurityHotspots()).thenReturn(true);
     var backendCapabilities = underTest.getBackendCapabilities(backendInitParams);
 
     assertThat(backendCapabilities)
@@ -135,7 +134,6 @@ class BackendServiceFacadeTests {
     when(telemetryService.enabled()).thenReturn(true);
 
     var backendInitParams = mock(BackendInitParams.class);
-    when(backendInitParams.isEnableSecurityHotspots()).thenReturn(true);
     var backendCapabilities = underTest.getBackendCapabilities(backendInitParams);
 
     assertThat(backendCapabilities)
