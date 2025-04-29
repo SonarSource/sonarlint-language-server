@@ -36,7 +36,6 @@ public class BackendInitParams {
   private Map<String, Path> connectedModeEmbeddedPluginPathsByKey;
   private Set<Language> enabledLanguagesInStandaloneMode;
   private Set<Language> extraEnabledLanguagesInConnectedMode;
-  private boolean enableSecurityHotspots;
   private List<SonarQubeConnectionConfigurationDto> sonarQubeConnections;
   private List<SonarCloudConnectionConfigurationDto> sonarCloudConnections;
   private String sonarlintUserHome;
@@ -92,14 +91,6 @@ public class BackendInitParams {
 
   public void setExtraEnabledLanguagesInConnectedMode(Set<Language> extraEnabledLanguagesInConnectedMode) {
     this.extraEnabledLanguagesInConnectedMode = extraEnabledLanguagesInConnectedMode;
-  }
-
-  public boolean isEnableSecurityHotspots() {
-    return enableSecurityHotspots;
-  }
-
-  public void setEnableSecurityHotspots(boolean enableSecurityHotspots) {
-    this.enableSecurityHotspots = enableSecurityHotspots;
   }
 
   public List<SonarQubeConnectionConfigurationDto> getSonarQubeConnections() {

@@ -196,15 +196,12 @@ public class BackendServiceFacade {
   EnumSet<BackendCapability> getBackendCapabilities(BackendInitParams initParams) {
     var backendCapabilities = EnumSet.of(BackendCapability.SMART_NOTIFICATIONS, BackendCapability.PROJECT_SYNCHRONIZATION,
       BackendCapability.EMBEDDED_SERVER, BackendCapability.SERVER_SENT_EVENTS, BackendCapability.DATAFLOW_BUG_DETECTION,
-      BackendCapability.FULL_SYNCHRONIZATION);
+      BackendCapability.FULL_SYNCHRONIZATION, BackendCapability.SECURITY_HOTSPOTS);
     if (telemetry != null && telemetry.enabled()) {
       backendCapabilities.add(BackendCapability.TELEMETRY);
     }
     if (shouldEnableMonitoring()) {
       backendCapabilities.add(BackendCapability.MONITORING);
-    }
-    if (initParams.isEnableSecurityHotspots()) {
-      backendCapabilities.add(BackendCapability.SECURITY_HOTSPOTS);
     }
     return backendCapabilities;
   }
