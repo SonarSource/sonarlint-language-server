@@ -823,7 +823,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
         "[Info] [org.sonarsource.analyzer.commons.ProgressReport : rules execution progress] 1 source file to be analyzed",
         "[Info] [sonarlint : sonarlint-analysis-scheduler] Analysis detected 1 issue and 0 Security Hotspots in XXXms"));
   }
-  
+
   @Test
   void test_analysis_with_debug_logs_enabled() throws Exception {
     setShowVerboseLogs(client.globalSettings, true);
@@ -1003,6 +1003,14 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void helpAndFeedbackLinkClickedNotificationShouldCallTelemetry() {
     SonarLintExtendedLanguageServer.HelpAndFeedbackLinkClickedNotificationParams params = new SonarLintExtendedLanguageServer.HelpAndFeedbackLinkClickedNotificationParams("faq");
     var result = lsProxy.helpAndFeedbackLinkClicked(params);
+
+    assertThat(result).isNull();
+  }
+
+  @Test
+  void toolCalledNotificationShouldCallTelemetry() {
+    SonarLintExtendedLanguageServer.ToolCalledParams params = new SonarLintExtendedLanguageServer.ToolCalledParams("toolName", true);
+    var result = lsProxy.toolCalled(params);
 
     assertThat(result).isNull();
   }
