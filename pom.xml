@@ -24,7 +24,7 @@
 
   <properties>
     <jdk.min.version>17</jdk.min.version>
-    <sonarlint.core.version>10.21.0.81131</sonarlint.core.version>
+    <sonarlint.core.version>10.22.0.81176</sonarlint.core.version>
     <slf4j.version>2.0.17</slf4j.version>
     <!-- Version used by Xodus -->
     <kotlin.version>1.6.10</kotlin.version>
@@ -36,7 +36,7 @@
     <sonar.html.version>3.18.0.5605</sonar.html.version>
     <sonar.xml.version>2.12.0.5749</sonar.xml.version>
     <sonar.text.version>2.20.0.5038</sonar.text.version>
-    <sonar.go.version>1.18.0.240</sonar.go.version>
+    <sonar.go.version>1.23.1.2838</sonar.go.version>
     <sonar.iac.version>1.40.0.13983</sonar.iac.version>
     <sonar.csharp.version>10.3.0.106239</sonar.csharp.version>
     <sonarlint.omnisharp.version>1.25.0.100242</sonarlint.omnisharp.version>
@@ -270,7 +270,7 @@
                   <destFileName>sonartext.jar</destFileName>
                 </artifactItem>
                 <artifactItem>
-                  <groupId>org.sonarsource.slang</groupId>
+                  <groupId>org.sonarsource.go</groupId>
                   <artifactId>sonar-go-plugin</artifactId>
                   <version>${sonar.go.version}</version>
                   <type>jar</type>
