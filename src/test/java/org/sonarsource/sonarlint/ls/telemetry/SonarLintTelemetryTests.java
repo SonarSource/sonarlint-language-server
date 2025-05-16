@@ -34,6 +34,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificat
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ToolCalledParams;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -174,6 +175,24 @@ class SonarLintTelemetryTests {
     telemetry.helpAndFeedbackLinkClicked("docs");
 
     verify(telemetryService, never()).helpAndFeedbackLinkClicked(any());
+  }
+
+  @Test
+  void toolCalled_when_enabled() {
+    ArgumentCaptor<ToolCalledParams> argument = ArgumentCaptor.forClass(ToolCalledParams.class);
+    telemetry.toolCalled("lm.sonarqube_list_potential_security_issues", true);
+
+    verify(telemetryService).toolCalled(argument.capture());
+    assertThat(argument.getValue().getToolName()).isEqualTo("lm.sonarqube_list_potential_security_issues");
+    assertThat(argument.getValue().isSucceeded()).isTrue();
+  }
+
+  @Test
+  void toolCalled_when_disabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+    telemetry.toolCalled("lm.sonarqube_list_potential_security_issues", true);
+
+    verify(telemetryService, never()).toolCalled(any());
   }
 
   @Test
