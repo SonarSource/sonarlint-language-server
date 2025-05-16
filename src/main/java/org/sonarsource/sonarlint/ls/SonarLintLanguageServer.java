@@ -736,6 +736,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return CompletableFuture.completedFuture(null);
   }
 
+  @Override
+  public void toolCalled(ToolCalledParams params) {
+    telemetry.toolCalled(params.toolName(), params.success());
+  }
+
   public Map<String, Path> getEmbeddedPluginsToPath() {
     var plugins = new HashMap<String, Path>();
     addPluginPathOrWarn("cfamily", Language.C, plugins);
