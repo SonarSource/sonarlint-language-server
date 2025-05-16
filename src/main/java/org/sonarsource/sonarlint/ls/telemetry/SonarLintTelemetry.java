@@ -26,6 +26,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixA
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificationsClickedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ToolCalledParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -85,6 +86,10 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
   public void helpAndFeedbackLinkClicked(String itemId) {
     actIfEnabled(telemetryRpcService -> telemetryRpcService.helpAndFeedbackLinkClicked(new HelpAndFeedbackClickedParams(itemId)));
+  }
+
+  public void toolCalled(String toolName, boolean success) {
+    actIfEnabled(telemetryRpcService -> telemetryRpcService.toolCalled(new ToolCalledParams(toolName, success)));
   }
 
   public void addedAutomaticBindings() {
