@@ -35,9 +35,11 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupported
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.GetConnectionSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.OrganizationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
 
 public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
@@ -435,6 +437,9 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/getBindingSuggestion")
   CompletableFuture<GetBindingSuggestionsResponse> getBindingSuggestion(GetBindingSuggestionParams params);
+
+  @JsonRequest("sonarlint/getConnectionSuggestions")
+  CompletableFuture<GetConnectionSuggestionsResponse> getConnectionSuggestions(GetConnectionSuggestionsParams params);
 
   class ChangeIssueStatusParams {
     private final String configurationScopeId;
