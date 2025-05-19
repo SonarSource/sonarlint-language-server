@@ -44,7 +44,10 @@ import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
+import org.eclipse.lsp4j.DidChangeWatchedFilesParams;
 import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
+import org.eclipse.lsp4j.FileChangeType;
+import org.eclipse.lsp4j.FileEvent;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
@@ -66,6 +69,7 @@ import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Components;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Hotspots;
@@ -106,6 +110,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private static final String PROJECT_NAME1 = "Project One";
   private static final String PROJECT_KEY2 = "project:key2";
   private static final String PROJECT_NAME2 = "Project Two";
+  private static final String ORGANIZATION_KEY = "myOrganization";
   private static final long CURRENT_TIME = System.currentTimeMillis();
   private static Path omnisharpDir;
   private static Path folder1BaseDir;
@@ -1474,6 +1479,43 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       var result = lsProxy.getBindingSuggestion(new GetBindingSuggestionParams(workspaceUri, CONNECTION_ID)).get();
       assertThat(result).isNotNull();
       assertThat(result.getSuggestions()).hasSize(1);
+    });
+  }
+
+  @Test
+  void should_allow_client_to_explicitly_ask_for_connection_suggestions() {
+    // add config scope
+    var workspaceUri = folder1BaseDir.resolve("foo-bar").toUri().toString();
+    var workspaceFolder = new WorkspaceFolder(workspaceUri, "foo-bar");
+    client.folderSettings = new HashMap<>();
+    client.folderSettings.put(workspaceUri, new HashMap<>());
+    lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
+      new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
+
+    foldersToRemove.add(workspaceUri);
+
+    // create clue file inside
+    var clueFileName = "connectedMode.json";
+    var clueFileContent = String.format("""
+      {
+          "sonarCloudOrganization": "%s",
+          "projectKey": "%s",
+          "region": "EU"
+      }""", ORGANIZATION_KEY, PROJECT_KEY);
+
+    // Create file for SLCORE
+    lsProxy.getWorkspaceService().didChangeWatchedFiles(new DidChangeWatchedFilesParams(List.of(new FileEvent(folder1BaseDir.resolve("foo-bar").resolve(".sonarlint").resolve(clueFileName).toFile().toURI().toString(), FileChangeType.Created))));
+    // send updated file content to SLCORE
+    didOpen(folder1BaseDir.resolve("foo-bar").resolve(".sonarlint").resolve(clueFileName).toFile().toURI().toString(), clueFileName, clueFileContent);
+
+    awaitUntilAsserted(() -> {
+      var result = lsProxy.getConnectionSuggestions(new GetConnectionSuggestionsParams(workspaceUri)).get();
+      var connectionSuggestions = result.getConnectionSuggestions();
+      assertThat(connectionSuggestions).isNotNull();
+      assertThat(connectionSuggestions).isNotEmpty();
+      assertTrue(connectionSuggestions.get(0).getConnectionSuggestion().isRight());
+      assertThat(connectionSuggestions.get(0).getConnectionSuggestion().getRight().getOrganization()).isEqualTo(ORGANIZATION_KEY);
+      assertThat(connectionSuggestions.get(0).getConnectionSuggestion().getRight().getProjectKey()).isEqualTo(PROJECT_KEY);
     });
   }
 }
