@@ -387,11 +387,11 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonNotification("sonarlint/helpAndFeedbackLinkClicked")
   CompletableFuture<Void> helpAndFeedbackLinkClicked(HelpAndFeedbackLinkClickedNotificationParams params);
 
-  record ToolCalledParams(String toolName, boolean success) {
+  record LMToolCalledParams(String toolName, boolean success) {
   }
 
-  @JsonNotification("sonarlint/toolCalled")
-  void toolCalled(ToolCalledParams params);
+  @JsonNotification("sonarlint/lmToolCalled")
+  void lmToolCalled(LMToolCalledParams params);
 
   class ScanFolderForHotspotsParams {
     private final String folderUri;

@@ -737,7 +737,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public void toolCalled(ToolCalledParams params) {
+  public void lmToolCalled(LMToolCalledParams params) {
     telemetry.toolCalled(params.toolName(), params.success());
   }
 
