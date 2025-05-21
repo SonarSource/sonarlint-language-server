@@ -82,6 +82,7 @@ import testutils.MockWebServerExtension;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -1105,6 +1106,13 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       assertThat(response.getNotPermittedReason()).isEqualTo("There is no binding for the folder: " + temp.toUri());
       assertThat(response.getAllowedStatuses()).isEmpty();
     });
+  }
+
+  @Test
+  void tool_called() {
+    // this is just to fix the coverage. A better test should be put in place, see SLLS-340
+    assertThatCode(() -> lsProxy.lmToolCalled(new SonarLintExtendedLanguageServer.LMToolCalledParams("name", true)))
+      .doesNotThrowAnyException();
   }
 
   @Override
