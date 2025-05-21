@@ -371,10 +371,6 @@ public class BackendService {
     return initializedBackend().getConnectionService().getProjectNamesByKey(params);
   }
 
-  public SonarLintRpcServer getBackend() {
-    return backend;
-  }
-
   public CompletableFuture<ListUserOrganizationsResponse> listUserOrganizations(String token, String region) {
     var params = new ListUserOrganizationsParams(Either.forLeft(new TokenDto(token)), SonarCloudRegion.valueOf(region));
     return initializedBackend().getConnectionService().listUserOrganizations(params);
