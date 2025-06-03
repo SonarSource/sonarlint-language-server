@@ -23,6 +23,8 @@ import java.util.function.Consumer;
 import javax.annotation.CheckForNull;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixAppliedForRuleParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingTriggeredParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingType;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificationsClickedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
@@ -106,6 +108,11 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
   public void fixSuggestionResolved(FixSuggestionResolvedParams params) {
     actIfEnabled(telemetryRpcService -> telemetryRpcService.fixSuggestionResolved(params));
+  }
+
+  public void wholeFolderHotspotsAnalysisTriggered() {
+    actIfEnabled(telemetryRpcService ->
+      telemetryRpcService.analysisReportingTriggered(new AnalysisReportingTriggeredParams(AnalysisReportingType.WHOLE_FOLDER_HOTSPOTS_SCAN_TYPE)));
   }
 
   private void actIfEnabled(Consumer<TelemetryRpcService> action) {

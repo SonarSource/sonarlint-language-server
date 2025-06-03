@@ -30,6 +30,8 @@ import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.GetStatusResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixAppliedForRuleParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingTriggeredParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingType;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificationsClickedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
@@ -255,6 +257,25 @@ class SonarLintTelemetryTests {
     telemetry.fixSuggestionResolved(params);
 
     verify(telemetryService, never()).fixSuggestionResolved(any());
+  }
+
+  @Test
+  void wholeFolderHotspotsScan_when_enabled() {
+    var argument = ArgumentCaptor.forClass(AnalysisReportingTriggeredParams.class);
+
+    telemetry.wholeFolderHotspotsAnalysisTriggered();
+
+    verify(telemetryService).analysisReportingTriggered(argument.capture());
+    assertThat(argument.getValue().getAnalysisType()).isEqualTo(AnalysisReportingType.WHOLE_FOLDER_HOTSPOTS_SCAN_TYPE);
+  }
+
+  @Test
+  void wholeFolderHotspotsScan_when_disabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+
+    telemetry.wholeFolderHotspotsAnalysisTriggered();
+
+    verify(telemetryService, never()).analysisReportingTriggered(any());
   }
 
   private static WorkspaceSettings newWorkspaceSettingsWithTelemetrySetting(boolean disableTelemetry) {

@@ -800,6 +800,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
       runScan(params);
+      telemetry.wholeFolderHotspotsAnalysisTriggered();
       return null;
     });
   }
