@@ -19,17 +19,29 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import java.nio.file.Path;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
+import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+
+import static java.lang.String.format;
 
 public class EnabledLanguages {
-  private EnabledLanguages() {
-    throw new IllegalStateException("Utility class");
+
+  private final List<Path> analyzers;
+  private final LanguageClientLogger lsLogOutput;
+
+  EnabledLanguages(List<Path> analyzers, LanguageClientLogger lsLogOutput) {
+    this.analyzers = analyzers;
+    this.lsLogOutput = lsLogOutput;
   }
 
-  private static final Language[] STANDALONE_LANGUAGES = {
+  private static final Set<Language> STANDALONE_LANGUAGES = EnumSet.of(
     Language.AZURERESOURCEMANAGER,
     Language.CPP,
     Language.C,
@@ -50,24 +62,64 @@ public class EnabledLanguages {
     Language.TERRAFORM,
     Language.TS,
     Language.XML,
-    Language.YAML,
-  };
+    Language.YAML
+  );
 
-  private static final Language[] CONNECTED_ADDITIONAL_LANGUAGES = {
+  private static final Set<Language> CONNECTED_ADDITIONAL_LANGUAGES = EnumSet.of(
     Language.APEX,
     Language.COBOL,
     Language.PLSQL,
     Language.TSQL,
     Language.ANSIBLE
-  };
+  );
 
 
   public static Set<Language> getStandaloneLanguages() {
-    return EnumSet.copyOf(List.of(STANDALONE_LANGUAGES));
+    return STANDALONE_LANGUAGES;
   }
 
   public static Set<Language> getConnectedLanguages() {
-    return Set.of(CONNECTED_ADDITIONAL_LANGUAGES);
+    return CONNECTED_ADDITIONAL_LANGUAGES;
   }
 
+  public Set<Path> getEmbeddedPluginsPaths() {
+    return Set.copyOf(analyzers);
+  }
+
+  public Map<String, Path> getConnectedModeEmbeddedPluginPathsByKey() {
+    var plugins = new HashMap<String, Path>();
+    Stream.of(ConnectedModeEmbeddedPlugin.values())
+        .forEach(plugin -> addPluginPathOrWarn(plugin, plugins));
+
+    analyzers.stream().filter(it -> it.toString().endsWith("sonarlintomnisharp.jar")).findFirst()
+      .ifPresent(p -> plugins.put("omnisharp", p));
+    return plugins;
+  }
+
+  private void addPluginPathOrWarn(ConnectedModeEmbeddedPlugin plugin, Map<String, Path> plugins) {
+    analyzers.stream().filter(it -> it.toString().endsWith(plugin.analyzerFileName)).findFirst()
+      .ifPresentOrElse(
+        pluginPath -> plugins.put(plugin.sonarPluginKey, pluginPath),
+        () -> lsLogOutput.warn(format("Embedded plugin not found: %s", plugin.sonarLanguageKey)));
+  }
+
+  private enum ConnectedModeEmbeddedPlugin {
+    CFAMILY("sonarcfamily.jar", "cpp", "c"),
+    HTML("sonarhtml.jar", "web", "web"),
+    JS("sonarjs.jar", "javascript", "js"),
+    XML("sonarxml.jar", "xml", "xml"),
+    TEXT("sonartext.jar", "text", "secrets"),
+    GO("sonargo.jar", "go", "go"),
+    IAC("sonariac.jar", "iac", "cloudformation");
+
+    private final String analyzerFileName;
+    private final String sonarPluginKey;
+    private final String sonarLanguageKey;
+
+    ConnectedModeEmbeddedPlugin(String analyzerFileName, String sonarPluginKey, String sonarLanguageKey) {
+      this.analyzerFileName = analyzerFileName;
+      this.sonarPluginKey = sonarPluginKey;
+      this.sonarLanguageKey = sonarLanguageKey;
+    }
+  }
 }
