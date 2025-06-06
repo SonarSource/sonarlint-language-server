@@ -74,12 +74,6 @@
       <artifactId>sonarlint-rpc-java-client</artifactId>
       <version>${sonarlint.core.version}</version>
     </dependency>
-    <!-- Keep while SLOOP is used in-process -->
-    <dependency>
-      <groupId>commons-io</groupId>
-      <artifactId>commons-io</artifactId>
-      <version>2.18.0</version>
-    </dependency>
     <dependency>
        <groupId>info.picocli</groupId>
        <artifactId>picocli</artifactId>
