@@ -30,10 +30,7 @@ import java.net.Socket;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -43,7 +40,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
@@ -87,7 +83,6 @@ import org.eclipse.lsp4j.services.NotebookDocumentService;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
-import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
@@ -105,7 +100,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueComment
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -188,12 +182,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   private final ModuleEventsProcessor moduleEventsProcessor;
   private final BackendServiceFacade backendServiceFacade;
-  private final Collection<Path> analyzers;
+  private final EnabledLanguages enabledLanguages;
   private final CountDownLatch shutdownLatch;
 
   private final ExecutorService branchChangeEventExecutor;
 
-  SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, Collection<Path> analyzers) {
+  SonarLintLanguageServer(InputStream inputStream, OutputStream outputStream, List<Path> analyzers) {
     this.lspThreadPool = Executors.newCachedThreadPool(Utils.threadFactory("SonarQube for VS Code LSP message processor", false));
 
     var input = new ExitingInputStream(inputStream, this);
@@ -206,10 +200,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       .create();
     this.branchChangeEventExecutor = Executors.newSingleThreadExecutor(Utils.threadFactory("SonarQube for VS Code branch change event handler", false));
 
-    this.analyzers = analyzers;
     this.client = launcher.getRemoteProxy();
     this.lsLogOutput = new LanguageClientLogger(this.client);
     this.openFilesCache = new OpenFilesCache(lsLogOutput);
+    this.enabledLanguages = new EnabledLanguages(analyzers, lsLogOutput);
 
     this.issuesCache = new IssuesCache();
     this.securityHotspotsCache = new HotspotsCache();
@@ -269,7 +263,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     launcher.startListening();
   }
 
-  static SonarLintLanguageServer bySocket(int port, Collection<Path> analyzers) throws IOException {
+  static SonarLintLanguageServer bySocket(int port, List<Path> analyzers) throws IOException {
     var socket = new Socket("localhost", port);
     return new SonarLintLanguageServer(socket.getInputStream(), socket.getOutputStream(), analyzers);
   }
@@ -743,27 +737,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     telemetry.toolCalled(params.toolName(), params.success());
   }
 
-  public Map<String, Path> getEmbeddedPluginsToPath() {
-    var plugins = new HashMap<String, Path>();
-    addPluginPathOrWarn("cfamily", Language.C, plugins);
-    addPluginPathOrWarn("html", Language.HTML, plugins);
-    addPluginPathOrWarn("js", Language.JS, plugins);
-    addPluginPathOrWarn("xml", Language.XML, plugins);
-    addPluginPathOrWarn("text", Language.SECRETS, plugins);
-    addPluginPathOrWarn("go", Language.GO, plugins);
-    addPluginPathOrWarn("iac", Language.CLOUDFORMATION, plugins);
-    analyzers.stream().filter(it -> it.toString().endsWith("sonarlintomnisharp.jar")).findFirst()
-      .ifPresent(p -> plugins.put("omnisharp", p));
-    return plugins;
-  }
-
-  private void addPluginPathOrWarn(String pluginName, Language language, Map<String, Path> plugins) {
-    analyzers.stream().filter(it -> it.toString().endsWith("sonar" + pluginName + ".jar")).findFirst()
-      .ifPresentOrElse(
-        pluginPath -> plugins.put(SonarLanguage.valueOf(language.name()).getPluginKey(), pluginPath),
-        () -> lsLogOutput.warn(format("Embedded plugin not found: %s", SonarLanguage.valueOf(language.name()).getSonarLanguageKey())));
-  }
-
   void provideBackendInitData(String productKey, String userAgent, String clientNodePath, String eslintBridgeServerPath) {
     BackendInitParams params = backendServiceFacade.getInitParams();
     params.setTelemetryProductKey(productKey);
@@ -771,13 +744,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     params.setStorageRoot(actualSonarLintUserHome.resolve("storage"));
     params.setSonarlintUserHome(actualSonarLintUserHome.toString());
 
-    params.setEmbeddedPluginPaths(new HashSet<>(analyzers));
-    params.setConnectedModeEmbeddedPluginPathsByKey(getEmbeddedPluginsToPath());
+    params.setEmbeddedPluginPaths(enabledLanguages.getEmbeddedPluginsPaths());
+    params.setConnectedModeEmbeddedPluginPathsByKey(enabledLanguages.getConnectedModeEmbeddedPluginPathsByKey());
 
-    params.setEnabledLanguagesInStandaloneMode(EnabledLanguages.getStandaloneLanguages().stream()
-      .map(l -> Language.valueOf(l.name())).collect(Collectors.toSet()));
-    params.setExtraEnabledLanguagesInConnectedMode(EnabledLanguages.getConnectedLanguages().stream()
-      .map(l -> Language.valueOf(l.name())).collect(Collectors.toSet()));
+    params.setEnabledLanguagesInStandaloneMode(EnabledLanguages.getStandaloneLanguages());
+    params.setExtraEnabledLanguagesInConnectedMode(EnabledLanguages.getConnectedLanguages());
     params.setUserAgent(userAgent);
     params.setClientNodePath(clientNodePath);
     params.setEslintBridgeServerPath(eslintBridgeServerPath);
