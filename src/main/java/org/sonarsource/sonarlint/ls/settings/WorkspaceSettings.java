@@ -26,7 +26,7 @@ import java.util.Objects;
 import javax.annotation.concurrent.Immutable;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
-import org.sonarsource.sonarlint.core.commons.RuleKey;
+import org.sonar.api.rule.RuleKey;
 
 /**
  * Settings global to the entire workspace (user + machine + workspace scopes)
