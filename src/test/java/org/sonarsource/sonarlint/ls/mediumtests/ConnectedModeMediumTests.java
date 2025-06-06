@@ -64,8 +64,6 @@ import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonar.api.utils.DateUtils;
-import org.sonarsource.sonarlint.core.commons.IssueSeverity;
-import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
@@ -328,7 +326,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setRule(Rules.Rule.newBuilder()
           .setSeverity("MINOR")
           .setType(Common.RuleType.SECURITY_HOTSPOT)
-          .setLang(SonarLanguage.PYTHON.getSonarLanguageKey())
+          .setLang("py")
           .build())
         .build());
     mockWebServerExtension.addProtobufResponse(
@@ -391,7 +389,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setRule(Rules.Rule.newBuilder()
           .setSeverity("MINOR")
           .setType(Common.RuleType.SECURITY_HOTSPOT)
-          .setLang(SonarLanguage.PYTHON.getSonarLanguageKey())
+          .setLang("py")
           .build())
         .build());
     mockWebServerExtension.addProtobufResponseDelimited(
@@ -747,7 +745,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setDescriptionSections(Rules.Rule.DescriptionSections.newBuilder().build())
         .setCleanCodeAttribute(Common.CleanCodeAttribute.CONVENTIONAL)
         .setEducationPrinciples(Rules.Rule.EducationPrinciples.newBuilder().build())
-        .setSeverity(IssueSeverity.BLOCKER.name())
+        .setSeverity("BLOCKER")
         .setType(Common.RuleType.BUG)
         .setHtmlDesc("htmlDesc")
         .setImpacts(Rules.Rule.Impacts.newBuilder().build())
@@ -796,7 +794,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setDescriptionSections(Rules.Rule.DescriptionSections.newBuilder().build())
         .setCleanCodeAttribute(Common.CleanCodeAttribute.CONVENTIONAL)
         .setEducationPrinciples(Rules.Rule.EducationPrinciples.newBuilder().build())
-        .setSeverity(IssueSeverity.BLOCKER.name())
+        .setSeverity("BLOCKER")
         .setType(Common.RuleType.SECURITY_HOTSPOT)
         .setHtmlDesc("htmlDesc")
         .setImpacts(Rules.Rule.Impacts.newBuilder().build())
@@ -916,7 +914,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setRule(Rules.Rule.newBuilder()
           .setSeverity("MINOR")
           .setType(Common.RuleType.SECURITY_HOTSPOT)
-          .setLang(SonarLanguage.PYTHON.getSonarLanguageKey())
+          .setLang("py")
           .build())
         .build());
     var hotspotKey = "myhotspotkey";
@@ -998,7 +996,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setRule(Rules.Rule.newBuilder()
           .setSeverity("MINOR")
           .setType(Common.RuleType.SECURITY_HOTSPOT)
-          .setLang(SonarLanguage.PYTHON.getSonarLanguageKey())
+          .setLang("py")
           .build())
         .build());
     var hotspotKey = "myhotspotkey";
@@ -1079,7 +1077,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setRule(Rules.Rule.newBuilder()
           .setSeverity("MINOR")
           .setType(Common.RuleType.SECURITY_HOTSPOT)
-          .setLang(SonarLanguage.PYTHON.getSonarLanguageKey())
+          .setLang("py")
           .build())
         .build());
     var hotspotKey = "myhotspotkey";
@@ -1311,7 +1309,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setRule(Rules.Rule.newBuilder()
           .setSeverity("MINOR")
           .setType(Common.RuleType.SECURITY_HOTSPOT)
-          .setLang(SonarLanguage.PYTHON.getSonarLanguageKey())
+          .setLang("py")
           .build())
         .build());
     mockWebServerExtension.addProtobufResponse(

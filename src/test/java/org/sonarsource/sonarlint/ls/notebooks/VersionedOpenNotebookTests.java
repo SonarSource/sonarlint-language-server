@@ -37,7 +37,6 @@ import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.FileEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.IssueFlowDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
@@ -79,7 +78,7 @@ public class VersionedOpenNotebookTests {
       SONAR_PYTHON_NOTEBOOK_CELL_DELIMITER +
       "cell3 line1\n" +
       "cell3 line2\n");
-    assertThat(versionedOpenFile.getLanguageId()).isEqualTo(SonarLanguage.IPYTHON.getSonarLanguageKey());
+    assertThat(versionedOpenFile.getLanguageId()).isEqualTo("ipynb");
   }
 
   @Test
@@ -98,7 +97,7 @@ public class VersionedOpenNotebookTests {
     assertThat(versionedOpenFile.getContent()).isEqualTo("" +
       "cell1 line1\n" +
       "cell1 line2\n");
-    assertThat(versionedOpenFile.getLanguageId()).isEqualTo(SonarLanguage.IPYTHON.getSonarLanguageKey());
+    assertThat(versionedOpenFile.getLanguageId()).isEqualTo("ipynb");
   }
 
   @Test
