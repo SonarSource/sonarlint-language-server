@@ -20,9 +20,7 @@
 package org.sonarsource.sonarlint.ls.util;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -108,19 +106,6 @@ public class GitUtils {
     } catch (IOException e) {
       logOutput.errorWithStackTrace("Couldn't find best matching branch.", e);
       return null;
-    }
-  }
-
-  public static boolean isCurrentBranch(String folderUri, String expectedBranch, LanguageClientLogger logOutput) {
-    var repo = GitUtils.getRepositoryForDir(Paths.get(URI.create(folderUri)), logOutput);
-    if (repo == null) {
-      return false;
-    }
-    try {
-      var branch = repo.getBranch();
-      return branch != null && branch.equals(expectedBranch);
-    } catch (IOException e) {
-      return false;
     }
   }
 

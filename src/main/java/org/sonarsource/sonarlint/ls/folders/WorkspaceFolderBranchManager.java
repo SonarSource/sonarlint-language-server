@@ -72,9 +72,4 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
     }
     return electedBranchName;
   }
-
-  public boolean matchProjectBranch(String folderUri, String branchNameToMatch, SonarLintCancelChecker cancelChecker) {
-    if (cancelChecker.isCanceled()) return false;
-    return GitUtils.isCurrentBranch(folderUri, branchNameToMatch, logOutput);
-  }
 }
