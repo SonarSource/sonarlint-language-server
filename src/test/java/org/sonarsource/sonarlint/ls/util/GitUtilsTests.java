@@ -138,33 +138,6 @@ class GitUtilsTests {
   }
 
   @Test
-  void isCurrentBranch_shouldReturnTrueWhenCurrentBranch(@TempDir File projectDir) {
-    javaUnzip("closest-branch.zip", projectDir);
-    Path path = Paths.get(projectDir.getPath(), "closest-branch");
-
-    boolean isCurrentBranch = GitUtils.isCurrentBranch(path.toUri().toString(), "current_branch", fakeClientLogger);
-    assertThat(isCurrentBranch).isTrue();
-  }
-
-  @Test
-  void isCurrentBranch_shouldReturnFalseWhenNotCurrentBranch(@TempDir File projectDir) {
-    javaUnzip("closest-branch.zip", projectDir);
-    Path path = Paths.get(projectDir.getPath(), "closest-branch");
-
-    boolean isCurrentBranch = GitUtils.isCurrentBranch(path.toUri().toString(), "not_current_branch", fakeClientLogger);
-    assertThat(isCurrentBranch).isFalse();
-  }
-
-  @Test
-  void isCurrentBranch_shouldReturnFalseWhenNoRepo(@TempDir File projectDir) {
-    javaUnzip("closest-branch.zip", projectDir);
-    Path path = Paths.get(projectDir.getPath(), "non-existent");
-
-    boolean isCurrentBranch = GitUtils.isCurrentBranch(path.toUri().toString(), "not_current_branch", fakeClientLogger);
-    assertThat(isCurrentBranch).isFalse();
-  }
-
-  @Test
   void shouldFavorCurrentBranchIfMultipleCandidates(@TempDir File projectDir) {
     // Both main and same-as-master branches are pointing to HEAD, but same-as-master is the currently checked out branch
     javaUnzip("two-branches-for-head.zip", projectDir);
