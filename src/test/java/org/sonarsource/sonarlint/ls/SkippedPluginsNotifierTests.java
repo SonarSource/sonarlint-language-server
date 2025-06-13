@@ -22,8 +22,10 @@ package org.sonarsource.sonarlint.ls;
 import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.MessageActionItem;
+import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidSkipLoadingPluginParams;
@@ -46,100 +48,125 @@ class SkippedPluginsNotifierTests {
   void initClient() {
     languageClient = mock(SonarLintExtendedLanguageClient.class);
     underTest = new SkippedPluginsNotifier(languageClient, mock(LanguageClientLogger.class));
-    when(languageClient.canShowMissingRequirementsNotification()).thenReturn(CompletableFuture.completedFuture(true));
   }
 
-  private void preparePopupSelection(@Nullable MessageActionItem selectedItem) {
-    when(languageClient.showMessageRequest(any(ShowMessageRequestParams.class))).thenReturn(CompletableFuture.completedFuture(selectedItem));
+
+  @Nested
+  class CanShowMissingRequirementsNotification {
+
+    private void preparePopupSelection(@Nullable MessageActionItem selectedItem) {
+      when(languageClient.showMessageRequest(any(ShowMessageRequestParams.class))).thenReturn(CompletableFuture.completedFuture(selectedItem));
+    }
+
+    @BeforeEach
+    void configureClient() {
+      when(languageClient.canShowMissingRequirementsNotification()).thenReturn(CompletableFuture.completedFuture(true));
+    }
+
+    @Test
+    void no_job_if_notifs_disabled() {
+      when(languageClient.canShowMissingRequirementsNotification()).thenReturn(CompletableFuture.completedFuture(false));
+
+      underTest.notifyOnceForSkippedPlugins(Language.YAML, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_NODE_JS, "18", "14");
+
+      verify(languageClient, never()).showMessageRequest(any());
+    }
+
+    @Test
+    void send_notification_once_for_jre() {
+      preparePopupSelection(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
+
+      underTest.notifyOnceForSkippedPlugins(Language.JAVA, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_JRE, "17", "11");
+      underTest.notifyOnceForSkippedPlugins(Language.JAVA, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_JRE, "17", "11");
+
+      var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
+      verify(languageClient, times(1)).showMessageRequest(messageCaptor.capture());
+      verify(languageClient, times(1)).openJavaHomeSettings();
+
+      var message = messageCaptor.getValue();
+      assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze Java code")
+        .contains("Java runtime version 17 or later is required. Current version is 11.");
+      assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
+    }
+
+    @Test
+    void send_notification_for_jre_and_close_notification() {
+      preparePopupSelection(null);
+
+      underTest.notifyOnceForSkippedPlugins(Language.JAVA, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_JRE, "17", "11");
+
+      var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
+      verify(languageClient, times(1)).showMessageRequest(messageCaptor.capture());
+
+      var message = messageCaptor.getValue();
+      assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze Java code")
+        .contains("Java runtime version 17 or later is required. Current version is 11.");
+      assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
+    }
+
+    @Test
+    void send_notification_for_node_when_found() {
+      preparePopupSelection(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
+
+      underTest.notifyOnceForSkippedPlugins(Language.JS, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_NODE_JS, "minNodeJsVersion", "currentNodeJsVersion");
+
+      var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
+      verify(languageClient, times(1)).showMessageRequest(messageCaptor.capture());
+      verify(languageClient, times(1)).openPathToNodeSettings();
+
+      var message = messageCaptor.getValue();
+      assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze JavaScript code")
+        .contains("Node.js runtime version minNodeJsVersion or later is required. Current version is currentNodeJsVersion.");
+      assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS, SkippedPluginsNotifier.ACTION_DONT_SHOW_AGAIN);
+    }
+
+    @Test
+    void send_notification_for_node_when_not_found() {
+      preparePopupSelection(null);
+
+      underTest.notifyOnceForSkippedPlugins(Language.JS, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_NODE_JS, "minNodeJsVersion", null);
+
+      var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
+      verify(languageClient, times(1)).showMessageRequest(messageCaptor.capture());
+
+      var message = messageCaptor.getValue();
+      assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze JavaScript code")
+        .contains("Node.js runtime version minNodeJsVersion or later is required.")
+        .doesNotContain("Current version is");
+      assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS, SkippedPluginsNotifier.ACTION_DONT_SHOW_AGAIN);
+    }
+
+    @Test
+    void should_turn_off_notifications_when_user_opts_out() {
+      preparePopupSelection(SkippedPluginsNotifier.ACTION_DONT_SHOW_AGAIN);
+
+      underTest.notifyOnceForSkippedPlugins(Language.JS, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_NODE_JS, "minNodeJsVersion", "currentNodeJsVersion");
+
+      var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
+      verify(languageClient, times(1)).showMessageRequest(messageCaptor.capture());
+      verify(languageClient, times(1)).doNotShowMissingRequirementsMessageAgain();
+      verify(languageClient, never()).openPathToNodeSettings();
+
+      var message = messageCaptor.getValue();
+      assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze JavaScript code")
+        .contains("Node.js runtime version minNodeJsVersion or later is required. Current version is currentNodeJsVersion.");
+      assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS, SkippedPluginsNotifier.ACTION_DONT_SHOW_AGAIN);
+    }
   }
+
 
   @Test
-  void no_job_if_notifs_disabled() {
-    when(languageClient.canShowMissingRequirementsNotification()).thenReturn(CompletableFuture.completedFuture(false));
-
-    underTest.notifyOnceForSkippedPlugins(Language.YAML, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_NODE_JS, "18", "14");
-
-    verify(languageClient, never()).showMessageRequest(any());
-  }
-
-  @Test
-  void send_notification_once_for_jre() {
-    preparePopupSelection(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
-
-    underTest.notifyOnceForSkippedPlugins(Language.JAVA, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_JRE, "17", "11");
-    underTest.notifyOnceForSkippedPlugins(Language.JAVA, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_JRE, "17", "11");
-
-    var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
-    verify(languageClient, times(1)).showMessageRequest(messageCaptor.capture());
-    verify(languageClient, times(1)).openJavaHomeSettings();
-
-    var message = messageCaptor.getValue();
-    assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze Java code")
-      .contains("Java runtime version 17 or later is required. Current version is 11.");
-    assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
-  }
-
-  @Test
-  void send_notification_for_jre_and_close_notification() {
-    preparePopupSelection(null);
-
-    underTest.notifyOnceForSkippedPlugins(Language.JAVA, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_JRE, "17", "11");
-
-    var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
-    verify(languageClient, times(1)).showMessageRequest(messageCaptor.capture());
-
-    var message = messageCaptor.getValue();
-    assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze Java code")
-      .contains("Java runtime version 17 or later is required. Current version is 11.");
-    assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
-  }
-
-  @Test
-  void send_notification_for_node_when_found() {
-    preparePopupSelection(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS);
+  void send_message_for_node_when_found() {
+    when(languageClient.canShowMissingRequirementsNotification())
+      .thenReturn(CompletableFuture.completedFuture(null));
 
     underTest.notifyOnceForSkippedPlugins(Language.JS, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_NODE_JS, "minNodeJsVersion", "currentNodeJsVersion");
 
-    var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
-    verify(languageClient, times(1)).showMessageRequest(messageCaptor.capture());
-    verify(languageClient, times(1)).openPathToNodeSettings();
+    var messageCaptor = ArgumentCaptor.forClass(MessageParams.class);
+    verify(languageClient, times(1)).showMessage(messageCaptor.capture());
 
     var message = messageCaptor.getValue();
-    assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze JavaScript code")
+    assertThat(message.getMessage())
       .contains("Node.js runtime version minNodeJsVersion or later is required. Current version is currentNodeJsVersion.");
-    assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS, SkippedPluginsNotifier.ACTION_DONT_SHOW_AGAIN);
-  }
-
-  @Test
-  void send_notification_for_node_when_not_found() {
-    preparePopupSelection(null);
-
-    underTest.notifyOnceForSkippedPlugins(Language.JS, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_NODE_JS, "minNodeJsVersion", null);
-
-    var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
-    verify(languageClient, times(1)).showMessageRequest(messageCaptor.capture());
-
-    var message = messageCaptor.getValue();
-    assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze JavaScript code")
-      .contains("Node.js runtime version minNodeJsVersion or later is required.")
-      .doesNotContain("Current version is");
-    assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS, SkippedPluginsNotifier.ACTION_DONT_SHOW_AGAIN);
-  }
-
-  @Test
-  void should_turn_off_notifications_when_user_opts_out() {
-    preparePopupSelection(SkippedPluginsNotifier.ACTION_DONT_SHOW_AGAIN);
-
-    underTest.notifyOnceForSkippedPlugins(Language.JS, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_NODE_JS, "minNodeJsVersion", "currentNodeJsVersion");
-
-    var messageCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
-    verify(languageClient, times(1)).showMessageRequest(messageCaptor.capture());
-    verify(languageClient, times(1)).doNotShowMissingRequirementsMessageAgain();
-    verify(languageClient, never()).openPathToNodeSettings();
-
-    var message = messageCaptor.getValue();
-    assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze JavaScript code")
-      .contains("Node.js runtime version minNodeJsVersion or later is required. Current version is currentNodeJsVersion.");
-    assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS, SkippedPluginsNotifier.ACTION_DONT_SHOW_AGAIN);
   }
 }
