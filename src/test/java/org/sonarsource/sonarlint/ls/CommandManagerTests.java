@@ -51,11 +51,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
-import org.sonarsource.sonarlint.core.analysis.api.ClientInputFile;
-import org.sonarsource.sonarlint.core.analysis.api.ClientInputFileEdit;
-import org.sonarsource.sonarlint.core.analysis.api.TextEdit;
-import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
-import org.sonarsource.sonarlint.core.commons.api.TextRange;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcErrorCode;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedResponse;
@@ -507,7 +502,7 @@ class CommandManagerTests {
     assertThat(actualParam.getName()).isEqualTo("Name");
     assertThat(actualParam.getType()).isEqualTo(RuleType.BUG.name());
     assertThat(actualParam.getSeverity()).isEqualTo(IssueSeverity.BLOCKER.name());
-    assertThat(actualParam.getLanguageKey()).isEqualTo(SonarLanguage.JS.getSonarLanguageKey());
+    assertThat(actualParam.getLanguageKey()).isEqualTo("js");
     assertThat(actualParam.getHtmlDescription()).isEqualTo("Desc");
   }
 
@@ -544,7 +539,7 @@ class CommandManagerTests {
     assertThat(actualParam.getName()).isEqualTo("Name");
     assertThat(actualParam.getType()).isEqualTo(RuleType.BUG.name());
     assertThat(actualParam.getSeverity()).isEqualTo(IssueSeverity.BLOCKER.name());
-    assertThat(actualParam.getLanguageKey()).isEqualTo(SonarLanguage.JS.getSonarLanguageKey());
+    assertThat(actualParam.getLanguageKey()).isEqualTo("js");
     assertThat(actualParam.getHtmlDescription()).isEqualTo("Desc");
   }
 
@@ -780,7 +775,6 @@ class CommandManagerTests {
     var connId = "connectionId";
     when(mockBinding.connectionId()).thenReturn(connId);
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
-    var fileUri = URI.create(FILE_URI);
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
@@ -791,15 +785,6 @@ class CommandManagerTests {
     when(issue.getFinding()).thenReturn(raisedFinding);
     when(raisedFinding.isAiCodeFixable()).thenReturn(false);
     when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
-
-    var textEdit = mock(TextEdit.class);
-    when(textEdit.newText()).thenReturn("");
-    when(textEdit.range()).thenReturn(new TextRange(1, 0, 1, 1));
-    var edit = mock(ClientInputFileEdit.class);
-    when(edit.textEdits()).thenReturn(List.of(textEdit));
-    var target = mock(ClientInputFile.class);
-    when(target.uri()).thenReturn(fileUri);
-    when(edit.target()).thenReturn(target);
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
@@ -926,7 +911,6 @@ class CommandManagerTests {
     var connId = "connectionId";
     when(mockBinding.connectionId()).thenReturn(connId);
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
-    var fileUri = URI.create(FILE_URI);
 
     var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ");
 
@@ -936,15 +920,6 @@ class CommandManagerTests {
     when(raisedFinding.isAiCodeFixable()).thenReturn(false);
     when(issuesCache.getIssueForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
     when(issue.getIssueId()).thenReturn(UUID.randomUUID());
-
-    var textEdit = mock(TextEdit.class);
-    when(textEdit.newText()).thenReturn("");
-    when(textEdit.range()).thenReturn(new TextRange(1, 0, 1, 1));
-    var edit = mock(ClientInputFileEdit.class);
-    when(edit.textEdits()).thenReturn(List.of(textEdit));
-    var target = mock(ClientInputFile.class);
-    when(target.uri()).thenReturn(fileUri);
-    when(edit.target()).thenReturn(target);
 
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);

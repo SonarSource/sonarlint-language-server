@@ -55,11 +55,11 @@ import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.jetbrains.annotations.NotNull;
-import org.sonarsource.sonarlint.core.commons.HotspotReviewStatus;
 import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintCancelChecker;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingResponse;
@@ -225,7 +225,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     var rule = hotspotDetails.getRule();
     var clientRule = new SonarLintExtendedLanguageClient.ShowHotspotParams.HotspotRule(rule.getKey(), rule.getName(), rule.getSecurityCategory(),
       rule.getVulnerabilityProbability(), rule.getRiskDescription(), rule.getVulnerabilityDescription(), rule.getFixRecommendations());
-    var reviewStatus = HotspotReviewStatus.TO_REVIEW.name().equals(hotspotDetails.getStatus()) ? "To Review" : "Reviewed";
+    var reviewStatus = HotspotStatus.TO_REVIEW.name().equals(hotspotDetails.getStatus()) ? "To Review" : "Reviewed";
     var showHotspotParams = new SonarLintExtendedLanguageClient.ShowHotspotParams(hotspotDetails.getKey(), hotspotDetails.getMessage(),
       hotspotDetails.getIdeFilePath().toString(),
       hotspotDetails.getTextRange(), hotspotDetails.getAuthor(), reviewStatus, hotspotDetails.getResolution(),
