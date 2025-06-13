@@ -82,7 +82,6 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.NotebookDocumentService;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
-import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
@@ -740,9 +739,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   void provideBackendInitData(String productKey, String userAgent, String clientNodePath, String eslintBridgeServerPath) {
     BackendInitParams params = backendServiceFacade.getInitParams();
     params.setTelemetryProductKey(productKey);
-    var actualSonarLintUserHome = Optional.ofNullable(SettingsManager.getSonarLintUserHomeOverride()).orElse(SonarLintUserHome.get());
-    params.setStorageRoot(actualSonarLintUserHome.resolve("storage"));
-    params.setSonarlintUserHome(actualSonarLintUserHome.toString());
+    var actualSonarLintUserHome = SettingsManager.getSonarLintUserHomeOverride();
+    if (actualSonarLintUserHome != null) {
+      params.setStorageRoot(actualSonarLintUserHome.resolve("storage"));
+      params.setSonarlintUserHome(actualSonarLintUserHome.toString());
+    }
 
     params.setEmbeddedPluginPaths(enabledLanguages.getEmbeddedPluginsPaths());
     params.setConnectedModeEmbeddedPluginPathsByKey(enabledLanguages.getConnectedModeEmbeddedPluginPathsByKey());
