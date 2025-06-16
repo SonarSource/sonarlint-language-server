@@ -543,10 +543,10 @@ class SonarLintVSCodeClientTests {
     var branchCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.SslCertificateConfirmationParams.class);
     verify(client).askSslCertificateConfirmation(branchCaptor.capture());
     var capturedValue = branchCaptor.getValue();
-    Assertions.assertThat(capturedValue.getIssuedBy()).isEqualTo("CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH");
-    Assertions.assertThat(capturedValue.getIssuedTo()).isEqualTo("CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH");
-    Assertions.assertThat(capturedValue.getSha1Fingerprint()).isEqualTo("E9 7B 2D 15 32 3F CA 0D 9B 6A 25 C3 2A 11 73 1C 96 8B FC 73");
-    Assertions.assertThat(capturedValue.getSha256Fingerprint()).isEqualTo("35 A0 22 CB CD 8D 57 55 F8 83 B3 CE 63 2A 42 A1\n" +
+    Assertions.assertThat(capturedValue.issuedBy()).isEqualTo("CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH");
+    Assertions.assertThat(capturedValue.issuedTo()).isEqualTo("CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH");
+    Assertions.assertThat(capturedValue.sha1Fingerprint()).isEqualTo("E9 7B 2D 15 32 3F CA 0D 9B 6A 25 C3 2A 11 73 1C 96 8B FC 73");
+    Assertions.assertThat(capturedValue.sha256Fingerprint()).isEqualTo("35 A0 22 CB CD 8D 57 55 F8 83 B3 CE 63 2A 42 A1\n" +
       "22 81 83 33 BF 2F 9A E7 E9 D7 81 F0 82 2C AD 58");
 
     assertThat(response).isTrue();
@@ -575,12 +575,12 @@ class SonarLintVSCodeClientTests {
     var branchCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.SslCertificateConfirmationParams.class);
     verify(client).askSslCertificateConfirmation(branchCaptor.capture());
     var capturedValue = branchCaptor.getValue();
-    Assertions.assertThat(capturedValue.getIssuedBy()).isEmpty();
-    Assertions.assertThat(capturedValue.getIssuedTo()).isEmpty();
-    Assertions.assertThat(capturedValue.getValidFrom()).isEmpty();
-    Assertions.assertThat(capturedValue.getValidTo()).isEmpty();
-    Assertions.assertThat(capturedValue.getSha1Fingerprint()).isEmpty();
-    Assertions.assertThat(capturedValue.getSha256Fingerprint()).isEmpty();
+    Assertions.assertThat(capturedValue.issuedBy()).isEmpty();
+    Assertions.assertThat(capturedValue.issuedTo()).isEmpty();
+    Assertions.assertThat(capturedValue.validFrom()).isEmpty();
+    Assertions.assertThat(capturedValue.validTo()).isEmpty();
+    Assertions.assertThat(capturedValue.sha1Fingerprint()).isEmpty();
+    Assertions.assertThat(capturedValue.sha256Fingerprint()).isEmpty();
 
     assertThat(response).isTrue();
   }
