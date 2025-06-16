@@ -55,7 +55,6 @@ import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.jetbrains.annotations.NotNull;
-import org.sonarsource.sonarlint.core.commons.SonarLintUserHome;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintCancelChecker;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionDto;
@@ -375,15 +374,13 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     } catch (CertificateEncodingException | IndexOutOfBoundsException e) {
       logOutput.errorWithStackTrace("Certificate encoding is malformed, SHA fingerprints will not be displayed.", e);
     }
-    var pathToActualTrustStore = SonarLintUserHome.get().resolve("ssl/truststore.p12");
     var confirmationParams = new SonarLintExtendedLanguageClient.SslCertificateConfirmationParams(
       untrustedCert == null ? "" : untrustedCert.getSubjectX500Principal().getName(),
       untrustedCert == null ? "" : untrustedCert.getIssuerX500Principal().getName(),
       untrustedCert == null ? "" : untrustedCert.getNotBefore().toString(),
       untrustedCert == null ? "" : untrustedCert.getNotAfter().toString(),
       sha1fingerprint,
-      sha256fingerprint,
-      pathToActualTrustStore.toString());
+      sha256fingerprint);
 
     return client.askSslCertificateConfirmation(confirmationParams).join();
   }
