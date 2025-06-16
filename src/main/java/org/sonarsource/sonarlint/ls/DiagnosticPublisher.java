@@ -90,17 +90,13 @@ public class DiagnosticPublisher {
     client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
   }
 
-  Diagnostic taintDtoToDiagnostic(Map.Entry<String, DelegatingFinding> entry) {
+  Diagnostic issueDtoToDiagnostic(Map.Entry<String, DelegatingFinding> entry) {
     var issue = entry.getValue();
     return prepareDiagnostic(issue, entry.getKey(), false, focusOnNewCode);
   }
 
   public void setFocusOnNewCode(boolean focusOnNewCode) {
     this.focusOnNewCode = focusOnNewCode;
-  }
-
-  public boolean isFocusOnNewCode() {
-    return focusOnNewCode;
   }
 
   public static Diagnostic prepareDiagnostic(DelegatingFinding issue, String entryKey, boolean ignoreSecondaryLocations, boolean focusOnNewCode) {
@@ -149,6 +145,10 @@ public class DiagnosticPublisher {
 
     public String getEntryKey() {
       return entryKey;
+    }
+
+    public String getServerIssueKey() {
+      return serverIssueKey;
     }
 
   }
@@ -204,7 +204,7 @@ public class DiagnosticPublisher {
     var localDiagnostics = localIssues.entrySet()
       .stream()
       .filter(e -> !e.getValue().isResolved())
-      .map(this::taintDtoToDiagnostic);
+      .map(this::issueDtoToDiagnostic);
 
     var diagnosticList = localDiagnostics
       .sorted(DiagnosticPublisher.byLineNumber())
