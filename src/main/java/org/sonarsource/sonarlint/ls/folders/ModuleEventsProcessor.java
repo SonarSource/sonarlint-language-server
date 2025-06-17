@@ -33,10 +33,10 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.FileChangeType;
 import org.eclipse.lsp4j.FileEvent;
 import org.jetbrains.annotations.NotNull;
-import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.ClientFileDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.domain.LSLanguage;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
@@ -145,7 +145,7 @@ public class ModuleEventsProcessor {
         Language.APEX;
       default ->
         // Other supported languages map to the same key as the one used in SonarQube/SonarCloud
-        SonarLanguage.forKey(clientLanguageId).map(l -> Language.valueOf(l.name())).orElse(null);
+        LSLanguage.forKey(clientLanguageId).map(l -> Language.valueOf(l.name())).orElse(null);
     };
   }
 
