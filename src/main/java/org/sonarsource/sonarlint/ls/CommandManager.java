@@ -117,6 +117,7 @@ public class CommandManager {
   static final String SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS = "SonarLint.ShowTaintVulnerabilityFlows";
   static final String SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS = "SonarLint.ShowSecurityHotspotFlows";
   static final String SONARLINT_SUGGEST_FIX_COMMAND = "SonarLint.SuggestFix";
+  static final String SONARLINT_SUGGEST_TAINT_FIX_COMMAND = "SonarLint.SuggestTaintFix";
   static final List<String> SONARLINT_SERVERSIDE_COMMANDS = List.of(
     SONARLINT_QUICK_FIX_APPLIED,
     SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND,
@@ -279,13 +280,9 @@ public class CommandManager {
   private void computeCodeActionsForTaintIssues(Diagnostic diagnostic, List<Either<Command, CodeAction>> codeActions, CodeActionParams params) {
     var uri = create(params.getTextDocument().getUri());
     var ruleKey = diagnostic.getCode().getLeft();
-    var message = diagnostic.getMessage();
     var taintVulnerability = taintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(uri, diagnostic);
     taintVulnerability.ifPresent(issue -> {
       var issueKey = issue.getSonarServerKey();
-      if (issue.isAiCodeFixable()) {
-        createFixWithAiCodeFixCodeAction(issue.getId(), codeActions, diagnostic, uri, message);
-      }
       codeActions.add(Either.forRight(createResolveIssueCodeAction(diagnostic, ruleKey, issueKey, uri, true)));
     });
   }
@@ -521,6 +518,9 @@ public class CommandManager {
       case SONARLINT_SUGGEST_FIX_COMMAND:
         handleSuggestFixCommand(params);
         break;
+      case SONARLINT_SUGGEST_TAINT_FIX_COMMAND:
+        handleSuggestTaintFixCommand(params);
+        break;
       default:
         throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported command: " + params.getCommand(), null));
     }
@@ -575,6 +575,15 @@ public class CommandManager {
       });
       return null;
     });
+  }
+
+  private void handleSuggestTaintFixCommand(ExecuteCommandParams params) {
+    var issueId = getAsString(params.getArguments().get(0));
+    var fileUri = getAsString(params.getArguments().get(1));
+    var workspace = workspaceFoldersManager.findFolderForFile(create(fileUri)).orElse(null);
+    var configScopeId = workspace == null ? ROOT_CONFIGURATION_SCOPE : workspace.getUri().toString();
+    handleSuggestFixCommand(new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_COMMAND,
+      List.of(new JsonPrimitive(configScopeId), new JsonPrimitive(issueId), new JsonPrimitive(fileUri))));
   }
 
   private void handleBrowseTaintVulnerability(ExecuteCommandParams params) {

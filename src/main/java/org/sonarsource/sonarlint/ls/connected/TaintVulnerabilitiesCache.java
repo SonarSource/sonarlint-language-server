@@ -90,6 +90,7 @@ public class TaintVulnerabilitiesCache {
       var diagnosticData = new DiagnosticPublisher.DiagnosticData();
       diagnosticData.setEntryKey(issue.getId().toString());
       diagnosticData.setServerIssueKey(issue.getSonarServerKey());
+      diagnosticData.setAiCodeFixable(issue.isAiCodeFixable());
       diagnostic.setData(diagnosticData);
 
       return Optional.of(diagnostic);

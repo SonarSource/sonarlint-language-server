@@ -130,6 +130,7 @@ public class DiagnosticPublisher {
     String serverIssueKey;
     @Nullable
     HotspotStatus status;
+    boolean isAiCodeFixable;
 
     public void setEntryKey(String entryKey) {
       this.entryKey = entryKey;
@@ -147,10 +148,14 @@ public class DiagnosticPublisher {
       return entryKey;
     }
 
+    @Nullable
     public String getServerIssueKey() {
       return serverIssueKey;
     }
 
+    public void setAiCodeFixable(boolean aiCodeFixable) {
+      isAiCodeFixable = aiCodeFixable;
+    }
   }
 
   public static void setSource(Diagnostic diagnostic, DelegatingFinding issue) {
