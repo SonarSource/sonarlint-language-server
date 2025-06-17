@@ -56,7 +56,6 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.jetbrains.annotations.NotNull;
-import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.EffectiveIssueDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRuleDetailsDto;
@@ -431,7 +430,7 @@ public class CommandManager {
     String ruleKey, String ruleContextKey) {
     var ruleName = ruleDetailsDto.getName();
     var language = Language.valueOf(ruleDetailsDto.getLanguage().name());
-    var languageKey = SonarLanguage.valueOf(language.name()).getSonarLanguageKey();
+    var languageKey = LSLanguage.valueOf(language.name()).getKey();
     var cleanCodeAttributeAndCategory = getCleanCodeAttributeAndCategory(ruleDetailsDto.getCleanCodeAttribute(),
       CleanCodeAttributeCategory.valueOf(fromDto(ruleDetailsDto.getCleanCodeAttribute()).getCategory().name())
     );
@@ -452,7 +451,7 @@ public class CommandManager {
     var type = !isMQRMode ? details.getSeverityDetails().getLeft().getType().toString() : null;
     var severity = !isMQRMode ? details.getSeverityDetails().getLeft().getSeverity().toString() : null;
     var language = Language.valueOf(details.getLanguage().name());
-    var languageKey = SonarLanguage.valueOf(language.name()).getSonarLanguageKey();
+    var languageKey = LSLanguage.valueOf(language.name()).getKey();
     var cleanCodeAttributeAndCategory = isMQRMode ?
       new ImmutablePair<>(cleanCodeAttributeToLabel(details.getSeverityDetails().getRight().getCleanCodeAttribute()),
         fromDto(details.getSeverityDetails().getRight().getCleanCodeAttribute()).getCategory().getLabel()) :
@@ -477,7 +476,7 @@ public class CommandManager {
     var type = !isMQRMode ? issueDetailsDto.getSeverityDetails().getLeft().getType().toString() : null;
     var severity = !isMQRMode ? issueDetailsDto.getSeverityDetails().getLeft().getSeverity().toString() : null;
     var language = Language.valueOf(issueDetailsDto.getLanguage().name());
-    var languageKey = SonarLanguage.valueOf(language.name()).getSonarLanguageKey();
+    var languageKey = LSLanguage.valueOf(language.name()).getKey();
     var cleanCodeAttributeAndCategory = isMQRMode ?
       new ImmutablePair<>(cleanCodeAttributeToLabel(issueDetailsDto.getSeverityDetails().getRight().getCleanCodeAttribute()),
         fromDto(issueDetailsDto.getSeverityDetails().getRight().getCleanCodeAttribute()).getCategory().getLabel()) :

@@ -34,12 +34,12 @@ import org.eclipse.lsp4j.NotebookDocumentChangeEvent;
 import org.eclipse.lsp4j.NotebookDocumentChangeEventCellTextContent;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
-import org.sonarsource.sonarlint.core.commons.api.SonarLanguage;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.FileEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.TextEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
+import org.sonarsource.sonarlint.ls.domain.LSLanguage;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 
 import static org.sonarsource.sonarlint.ls.notebooks.NotebookUtils.applyChangeToCellContent;
@@ -95,7 +95,7 @@ public class VersionedOpenNotebook {
   }
 
   public VersionedOpenFile asVersionedOpenFile() {
-    return new VersionedOpenFile(uri, SonarLanguage.IPYTHON.getSonarLanguageKey(), this.notebookVersion, getContent());
+    return new VersionedOpenFile(uri, LSLanguage.IPYTHON.getKey(), this.notebookVersion, getContent());
   }
 
   String getContent() {
