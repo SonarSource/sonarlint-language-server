@@ -101,8 +101,6 @@ import static java.net.URI.create;
 import static org.sonarsource.sonarlint.core.client.utils.CleanCodeAttribute.fromDto;
 import static org.sonarsource.sonarlint.ls.backend.BackendService.ROOT_CONFIGURATION_SCOPE;
 import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARLINT_SOURCE;
-import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARCLOUD_TAINT_SOURCE;
-import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.util.EnumLabelsMapper.cleanCodeAttributeToLabel;
 import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 
@@ -170,8 +168,6 @@ public class CommandManager {
       cancelToken.checkCanceled();
       if (SONARLINT_SOURCE.equals(diagnostic.getSource())) {
         computeCodeActionsForSonarLintIssues(diagnostic, codeActions, params, cancelToken);
-      } else if (SONARQUBE_TAINT_SOURCE.equals(diagnostic.getSource()) || SONARCLOUD_TAINT_SOURCE.equals((diagnostic.getSource()))) {
-        computeCodeActionsForTaintIssues(diagnostic, codeActions, params);
       }
     }
     return codeActions;
@@ -275,16 +271,6 @@ public class CommandManager {
       var titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
       codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(versionedIssue))));
     }
-  }
-
-  private void computeCodeActionsForTaintIssues(Diagnostic diagnostic, List<Either<Command, CodeAction>> codeActions, CodeActionParams params) {
-    var uri = create(params.getTextDocument().getUri());
-    var ruleKey = diagnostic.getCode().getLeft();
-    var taintVulnerability = taintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(uri, diagnostic);
-    taintVulnerability.ifPresent(issue -> {
-      var issueKey = issue.getSonarServerKey();
-      codeActions.add(Either.forRight(createResolveIssueCodeAction(diagnostic, ruleKey, issueKey, uri, true)));
-    });
   }
 
   private static WorkspaceEdit newWorkspaceEdit(QuickFixDto fix, @Nullable Integer documentVersion) {
