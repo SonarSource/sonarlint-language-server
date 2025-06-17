@@ -278,26 +278,14 @@ public class CommandManager {
 
   private void computeCodeActionsForTaintIssues(Diagnostic diagnostic, List<Either<Command, CodeAction>> codeActions, CodeActionParams params) {
     var uri = create(params.getTextDocument().getUri());
-    var binding = bindingManager.getBinding(uri);
-    var actualBinding = binding.orElseThrow(() -> new IllegalStateException("Binding not found for taint vulnerability"));
     var ruleKey = diagnostic.getCode().getLeft();
     var message = diagnostic.getMessage();
     var taintVulnerability = taintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(uri, diagnostic);
     taintVulnerability.ifPresent(issue -> {
       var issueKey = issue.getSonarServerKey();
-      addIssueDetailsCodeAction(params, codeActions, diagnostic, issue.getId());
       if (issue.isAiCodeFixable()) {
         createFixWithAiCodeFixCodeAction(issue.getId(), codeActions, diagnostic, uri, message);
       }
-      if (!issue.getFlows().isEmpty()) {
-        var titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", ruleKey);
-        codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(issueKey, actualBinding.connectionId())));
-      }
-      var title = String.format("Open taint vulnerability '%s' on '%s'", ruleKey, actualBinding.connectionId());
-      var serverUrl = settingsManager.getCurrentSettings().getServerConnections().get(actualBinding.connectionId()).getServerUrl();
-      var projectKey = UrlUtils.urlEncode(actualBinding.projectKey());
-      var issueUrl = String.format("%s/project/issues?id=%s&issues=%s&open=%s", serverUrl, projectKey, issueKey, issueKey);
-      codeActions.add(newQuickFix(diagnostic, title, SONARLINT_BROWSE_TAINT_VULNERABILITY, List.of(issueUrl)));
       codeActions.add(Either.forRight(createResolveIssueCodeAction(diagnostic, ruleKey, issueKey, uri, true)));
     });
   }
@@ -590,7 +578,13 @@ public class CommandManager {
   }
 
   private void handleBrowseTaintVulnerability(ExecuteCommandParams params) {
-    var taintUrl = getAsString(params.getArguments().get(0));
+    var issueKey = getAsString(params.getArguments().get(0));
+    var fileUri = getAsString(params.getArguments().get(1));
+    var binding = bindingManager.getBinding(create(fileUri));
+    var actualBinding = binding.orElseThrow(() -> new IllegalStateException("Binding not found for taint vulnerability"));
+    var serverUrl = settingsManager.getCurrentSettings().getServerConnections().get(actualBinding.connectionId()).getServerUrl();
+    var projectKey = UrlUtils.urlEncode(actualBinding.projectKey());
+    var taintUrl = String.format("%s/project/issues?id=%s&issues=%s&open=%s", serverUrl, projectKey, issueKey, issueKey);
     telemetry.taintVulnerabilitiesInvestigatedRemotely();
     client.browseTo(taintUrl);
   }
