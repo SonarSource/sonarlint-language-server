@@ -100,8 +100,6 @@ import static java.net.URI.create;
 import static org.sonarsource.sonarlint.core.client.utils.CleanCodeAttribute.fromDto;
 import static org.sonarsource.sonarlint.ls.backend.BackendService.ROOT_CONFIGURATION_SCOPE;
 import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARLINT_SOURCE;
-import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARCLOUD_TAINT_SOURCE;
-import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.util.EnumLabelsMapper.cleanCodeAttributeToLabel;
 import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 
@@ -116,6 +114,7 @@ public class CommandManager {
   static final String SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS = "SonarLint.ShowTaintVulnerabilityFlows";
   static final String SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS = "SonarLint.ShowSecurityHotspotFlows";
   static final String SONARLINT_SUGGEST_FIX_COMMAND = "SonarLint.SuggestFix";
+  static final String SONARLINT_SUGGEST_TAINT_FIX_COMMAND = "SonarLint.SuggestTaintFix";
   static final List<String> SONARLINT_SERVERSIDE_COMMANDS = List.of(
     SONARLINT_QUICK_FIX_APPLIED,
     SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND,
@@ -168,8 +167,6 @@ public class CommandManager {
       cancelToken.checkCanceled();
       if (SONARLINT_SOURCE.equals(diagnostic.getSource())) {
         computeCodeActionsForSonarLintIssues(diagnostic, codeActions, params, cancelToken);
-      } else if (SONARQUBE_TAINT_SOURCE.equals(diagnostic.getSource()) || SONARCLOUD_TAINT_SOURCE.equals((diagnostic.getSource()))) {
-        computeCodeActionsForTaintIssues(diagnostic, codeActions, params);
       }
     }
     return codeActions;
@@ -273,32 +270,6 @@ public class CommandManager {
       var titleShowAllLocations = String.format("Show all locations for issue '%s'", ruleKey);
       codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, ShowAllLocationsCommand.ID, List.of(ShowAllLocationsCommand.params(versionedIssue))));
     }
-  }
-
-  private void computeCodeActionsForTaintIssues(Diagnostic diagnostic, List<Either<Command, CodeAction>> codeActions, CodeActionParams params) {
-    var uri = create(params.getTextDocument().getUri());
-    var binding = bindingManager.getBinding(uri);
-    var actualBinding = binding.orElseThrow(() -> new IllegalStateException("Binding not found for taint vulnerability"));
-    var ruleKey = diagnostic.getCode().getLeft();
-    var message = diagnostic.getMessage();
-    var taintVulnerability = taintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(uri, diagnostic);
-    taintVulnerability.ifPresent(issue -> {
-      var issueKey = issue.getSonarServerKey();
-      addIssueDetailsCodeAction(params, codeActions, diagnostic, issue.getId());
-      if (issue.isAiCodeFixable()) {
-        createFixWithAiCodeFixCodeAction(issue.getId(), codeActions, diagnostic, uri, message);
-      }
-      if (!issue.getFlows().isEmpty()) {
-        var titleShowAllLocations = String.format("Show all locations for taint vulnerability '%s'", ruleKey);
-        codeActions.add(newQuickFix(diagnostic, titleShowAllLocations, SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(issueKey, actualBinding.connectionId())));
-      }
-      var title = String.format("Open taint vulnerability '%s' on '%s'", ruleKey, actualBinding.connectionId());
-      var serverUrl = settingsManager.getCurrentSettings().getServerConnections().get(actualBinding.connectionId()).getServerUrl();
-      var projectKey = UrlUtils.urlEncode(actualBinding.projectKey());
-      var issueUrl = String.format("%s/project/issues?id=%s&issues=%s&open=%s", serverUrl, projectKey, issueKey, issueKey);
-      codeActions.add(newQuickFix(diagnostic, title, SONARLINT_BROWSE_TAINT_VULNERABILITY, List.of(issueUrl)));
-      codeActions.add(Either.forRight(createResolveIssueCodeAction(diagnostic, ruleKey, issueKey, uri, true)));
-    });
   }
 
   private static WorkspaceEdit newWorkspaceEdit(QuickFixDto fix, @Nullable Integer documentVersion) {
@@ -532,6 +503,9 @@ public class CommandManager {
       case SONARLINT_SUGGEST_FIX_COMMAND:
         handleSuggestFixCommand(params);
         break;
+      case SONARLINT_SUGGEST_TAINT_FIX_COMMAND:
+        handleSuggestTaintFixCommand(params);
+        break;
       default:
         throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported command: " + params.getCommand(), null));
     }
@@ -588,8 +562,23 @@ public class CommandManager {
     });
   }
 
+  private void handleSuggestTaintFixCommand(ExecuteCommandParams params) {
+    var issueId = getAsString(params.getArguments().get(0));
+    var fileUri = getAsString(params.getArguments().get(1));
+    var workspace = workspaceFoldersManager.findFolderForFile(create(fileUri)).orElse(null);
+    var configScopeId = workspace == null ? ROOT_CONFIGURATION_SCOPE : workspace.getUri().toString();
+    handleSuggestFixCommand(new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_COMMAND,
+      List.of(new JsonPrimitive(configScopeId), new JsonPrimitive(issueId), new JsonPrimitive(fileUri))));
+  }
+
   private void handleBrowseTaintVulnerability(ExecuteCommandParams params) {
-    var taintUrl = getAsString(params.getArguments().get(0));
+    var issueKey = getAsString(params.getArguments().get(0));
+    var fileUri = getAsString(params.getArguments().get(1));
+    var binding = bindingManager.getBinding(create(fileUri));
+    var actualBinding = binding.orElseThrow(() -> new IllegalStateException("Binding not found for taint vulnerability"));
+    var serverUrl = settingsManager.getCurrentSettings().getServerConnections().get(actualBinding.connectionId()).getServerUrl();
+    var projectKey = UrlUtils.urlEncode(actualBinding.projectKey());
+    var taintUrl = String.format("%s/project/issues?id=%s&issues=%s&open=%s", serverUrl, projectKey, issueKey, issueKey);
     telemetry.taintVulnerabilitiesInvestigatedRemotely();
     client.browseTo(taintUrl);
   }

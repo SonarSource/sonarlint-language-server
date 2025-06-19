@@ -29,6 +29,7 @@ import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
+import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.ForcedAnalysisCoordinator;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.util.TextRangeUtils;
@@ -85,7 +86,12 @@ public class TaintVulnerabilitiesCache {
       diagnostic.setCode(issue.getRuleKey());
       diagnostic.setMessage(message(issue));
       diagnostic.setSource(issue.getSource());
-      diagnostic.setData(issue.getId().toString());
+
+      var diagnosticData = new DiagnosticPublisher.DiagnosticData();
+      diagnosticData.setEntryKey(issue.getId().toString());
+      diagnosticData.setServerIssueKey(issue.getSonarServerKey());
+      diagnosticData.setAiCodeFixable(issue.isAiCodeFixable());
+      diagnostic.setData(diagnosticData);
 
       return Optional.of(diagnostic);
     }

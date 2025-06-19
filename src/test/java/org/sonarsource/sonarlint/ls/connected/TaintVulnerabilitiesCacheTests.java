@@ -39,6 +39,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWit
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
+import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -79,7 +80,10 @@ class TaintVulnerabilitiesCacheTests {
     assertThat(diagnostic.getSeverity()).isEqualTo(expectedSeverity);
     assertThat(diagnostic.getSource()).isEqualTo(taintSource);
     assertThat(diagnostic.getCode().getLeft()).isEqualTo("ruleKey");
-    assertThat(diagnostic.getData()).isEqualTo(issueId.toString());
+    assertThat(diagnostic.getData().getClass()).isEqualTo(DiagnosticPublisher.DiagnosticData.class);
+    var diagnosticData = (DiagnosticPublisher.DiagnosticData) diagnostic.getData();
+    assertThat(diagnosticData.getEntryKey()).isEqualTo(issueId.toString());
+    assertThat(diagnosticData.getServerIssueKey()).isEqualTo("issueKey");
   }
 
   @Test

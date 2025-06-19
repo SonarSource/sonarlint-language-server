@@ -90,17 +90,13 @@ public class DiagnosticPublisher {
     client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
   }
 
-  Diagnostic taintDtoToDiagnostic(Map.Entry<String, DelegatingFinding> entry) {
+  Diagnostic issueDtoToDiagnostic(Map.Entry<String, DelegatingFinding> entry) {
     var issue = entry.getValue();
     return prepareDiagnostic(issue, entry.getKey(), false, focusOnNewCode);
   }
 
   public void setFocusOnNewCode(boolean focusOnNewCode) {
     this.focusOnNewCode = focusOnNewCode;
-  }
-
-  public boolean isFocusOnNewCode() {
-    return focusOnNewCode;
   }
 
   public static Diagnostic prepareDiagnostic(DelegatingFinding issue, String entryKey, boolean ignoreSecondaryLocations, boolean focusOnNewCode) {
@@ -134,6 +130,7 @@ public class DiagnosticPublisher {
     String serverIssueKey;
     @Nullable
     HotspotStatus status;
+    boolean isAiCodeFixable;
 
     public void setEntryKey(String entryKey) {
       this.entryKey = entryKey;
@@ -151,6 +148,14 @@ public class DiagnosticPublisher {
       return entryKey;
     }
 
+    @Nullable
+    public String getServerIssueKey() {
+      return serverIssueKey;
+    }
+
+    public void setAiCodeFixable(boolean aiCodeFixable) {
+      isAiCodeFixable = aiCodeFixable;
+    }
   }
 
   public static void setSource(Diagnostic diagnostic, DelegatingFinding issue) {
@@ -204,7 +209,7 @@ public class DiagnosticPublisher {
     var localDiagnostics = localIssues.entrySet()
       .stream()
       .filter(e -> !e.getValue().isResolved())
-      .map(this::taintDtoToDiagnostic);
+      .map(this::issueDtoToDiagnostic);
 
     var diagnosticList = localDiagnostics
       .sorted(DiagnosticPublisher.byLineNumber())

@@ -73,7 +73,7 @@ class DiagnosticPublisherTests {
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getMessage()).thenReturn("Do this, don't do that");
     when(issue.getStartLine()).thenReturn(null);
-    Diagnostic diagnostic = underTest.taintDtoToDiagnostic(entry("id", issue));
+    Diagnostic diagnostic = underTest.issueDtoToDiagnostic(entry("id", issue));
     assertThat(diagnostic.getRange()).isEqualTo(new Range(new Position(0, 0), new Position(0, 0)));
   }
 
@@ -86,15 +86,15 @@ class DiagnosticPublisherTests {
     when(issue.getStartLine()).thenReturn(1);
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getMessage()).thenReturn("Do this, don't do that");
-    assertThat(underTest.taintDtoToDiagnostic(entry(id, issue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(underTest.issueDtoToDiagnostic(entry(id, issue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.CRITICAL);
-    assertThat(underTest.taintDtoToDiagnostic(entry(id, issue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(underTest.issueDtoToDiagnostic(entry(id, issue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.MAJOR);
-    assertThat(underTest.taintDtoToDiagnostic(entry(id, issue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(underTest.issueDtoToDiagnostic(entry(id, issue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.MINOR);
-    assertThat(underTest.taintDtoToDiagnostic(entry(id, issue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(underTest.issueDtoToDiagnostic(entry(id, issue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.INFO);
-    assertThat(underTest.taintDtoToDiagnostic(entry(id, issue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(underTest.issueDtoToDiagnostic(entry(id, issue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
   }
 
   @Test
