@@ -76,10 +76,12 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
   public void taintVulnerabilitiesInvestigatedLocally() {
     actIfEnabled(TelemetryRpcService::taintVulnerabilitiesInvestigatedLocally);
+    actIfEnabled(TelemetryRpcService::taintInvestigatedLocally);
   }
 
   public void taintVulnerabilitiesInvestigatedRemotely() {
     actIfEnabled(TelemetryRpcService::taintVulnerabilitiesInvestigatedRemotely);
+    actIfEnabled(TelemetryRpcService::taintInvestigatedRemotely);
   }
 
   public void addQuickFixAppliedForRule(String ruleKey) {
