@@ -121,6 +121,7 @@ class SonarLintTelemetryTests {
   void taintVulnerabilitiesInvestigatedLocally_when_enabled() {
     telemetry.taintVulnerabilitiesInvestigatedLocally();
     verify(telemetryService).taintVulnerabilitiesInvestigatedLocally();
+    verify(telemetryService).taintInvestigatedLocally();
   }
 
   @Test
@@ -129,12 +130,14 @@ class SonarLintTelemetryTests {
     telemetry.taintVulnerabilitiesInvestigatedLocally();
 
     verify(telemetryService, never()).taintVulnerabilitiesInvestigatedLocally();
+    verify(telemetryService, never()).taintInvestigatedLocally();
   }
 
   @Test
   void taintVulnerabilitiesInvestigatedRemotely_when_enabled() {
     telemetry.taintVulnerabilitiesInvestigatedRemotely();
     verify(telemetryService).taintVulnerabilitiesInvestigatedRemotely();
+    verify(telemetryService).taintInvestigatedRemotely();
   }
 
   @Test
@@ -143,6 +146,7 @@ class SonarLintTelemetryTests {
     telemetry.taintVulnerabilitiesInvestigatedRemotely();
 
     verify(telemetryService, never()).taintVulnerabilitiesInvestigatedRemotely();
+    verify(telemetryService, never()).taintInvestigatedRemotely();
   }
 
   @Test
