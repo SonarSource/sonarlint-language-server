@@ -164,6 +164,7 @@ public class BackendServiceFacade {
     var clientNodeJsPath = StringUtils.isEmpty(initParams.getClientNodePath()) ? null : Path.of(initParams.getClientNodePath());
     var eslintBridgeServerBundlePath = StringUtils.isEmpty(initParams.getEslintBridgeServerPath()) ? null : Path.of(initParams.getEslintBridgeServerPath());
     var languageSpecificRequirements = getLanguageSpecificRequirements(clientNodeJsPath, eslintBridgeServerBundlePath);
+    var sonarLintUserHomePath = initParams.getSonarlintUserHome() == null ? null : Path.of(initParams.getSonarlintUserHome());
     return new InitializeParams(
       new ClientConstantInfoDto("Visual Studio Code", initParams.getUserAgent()),
       new TelemetryClientConstantAttributesDto(initParams.getTelemetryProductKey(),
@@ -175,7 +176,7 @@ public class BackendServiceFacade {
       getSonarCloudAlternativeEnvironment(),
       backendCapabilities,
       initParams.getStorageRoot(),
-      Path.of(initParams.getSonarlintUserHome()),
+      sonarLintUserHomePath,
       initParams.getEmbeddedPluginPaths(),
       initParams.getConnectedModeEmbeddedPluginPathsByKey(),
       initParams.getEnabledLanguagesInStandaloneMode(),
