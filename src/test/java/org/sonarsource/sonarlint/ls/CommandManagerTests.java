@@ -48,8 +48,6 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcErrorCode;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
@@ -116,9 +114,8 @@ import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_RULE_DE
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SUGGEST_FIX_COMMAND;
+import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SUGGEST_TAINT_FIX_COMMAND;
 import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARLINT_SOURCE;
-import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARCLOUD_TAINT_SOURCE;
-import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARQUBE_TAINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebookTests.createTestNotebookWithThreeCells;
 
 class CommandManagerTests {
@@ -361,90 +358,6 @@ class CommandManagerTests {
         "SonarQube: Deactivate rule 'XYZ'");
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {SONARQUBE_TAINT_SOURCE, SONARCLOUD_TAINT_SOURCE})
-  void codeActionsForTaintWithContext(String taintSource) {
-    var connId = "connectionId";
-    when(mockBinding.connectionId()).thenReturn(connId);
-    when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
-    var mockWorkspacesettings = mock(WorkspaceSettings.class);
-    var serverSettings = mock(ServerConnectionSettings.class);
-    when(serverSettings.getServerUrl()).thenReturn("https://some.server.url");
-    when(mockWorkspacesettings.getServerConnections()).thenReturn(Collections.singletonMap(connId, serverSettings));
-    when(mockSettingsManager.getCurrentSettings()).thenReturn(mockWorkspacesettings);
-    var folderWrapper = mock(WorkspaceFolderWrapper.class);
-    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
-    when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
-
-    var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, taintSource, "ruleKey");
-
-    var issue = mock(TaintIssue.class);
-    var issueId = UUID.randomUUID();
-    when(issue.getId()).thenReturn(issueId);
-    when(issue.getRuleKey()).thenReturn("ruleKey");
-    when(issue.getIntroductionDate()).thenReturn(Instant.EPOCH);
-    var flow = mock(TaintVulnerabilityDto.FlowDto.class);
-    when(issue.getFlows()).thenReturn(List.of(flow));
-    var location = mock(TaintVulnerabilityDto.FlowDto.LocationDto.class);
-    when(flow.getLocations()).thenReturn(List.of(location));
-    when(issue.getRuleKey()).thenReturn("SomeIssueKey");
-    when(issue.getRuleDescriptionContextKey()).thenReturn("servlet");
-    when(issue.getSonarServerKey()).thenReturn("serverIssueKey");
-    when(mockTaintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(issue));
-
-    var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
-      new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
-
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
-      "SonarQube: Show issue details for 'ruleKey'",
-      "SonarQube: Show all locations for taint vulnerability 'ruleKey'",
-      "SonarQube: Open taint vulnerability 'ruleKey' on 'connectionId'",
-      "SonarQube: Resolve issue violating rule 'ruleKey' as...");
-
-    assertThat(codeActions.get(0).getRight().getCommand().getArguments()).containsOnly(
-      issueId,
-      "file://foo.js");
-  }
-
-
-  @Test
-  void codeActionsForTaintNoContext() {
-    var connId = "connectionId";
-    when(mockBinding.connectionId()).thenReturn(connId);
-    when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
-    var mockWorkspacesettings = mock(WorkspaceSettings.class);
-    var serverSettings = mock(ServerConnectionSettings.class);
-    when(serverSettings.getServerUrl()).thenReturn("https://some.server.url");
-    when(mockWorkspacesettings.getServerConnections()).thenReturn(Collections.singletonMap(connId, serverSettings));
-    when(mockSettingsManager.getCurrentSettings()).thenReturn(mockWorkspacesettings);
-
-    var d = new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARCLOUD_TAINT_SOURCE, "ruleKey");
-    var fakeTaint = mock(TaintIssue.class);
-    var taintId = UUID.randomUUID();
-    when(fakeTaint.getId()).thenReturn(taintId);
-    when(fakeTaint.getSonarServerKey()).thenReturn("serverIssueKey");
-    when(fakeTaint.getWorkspaceFolderUri()).thenReturn("file:///my/workspace/folder");
-    var folderWrapper = mock(WorkspaceFolderWrapper.class);
-    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
-    when(workspaceFoldersManager.findFolderForFile(URI.create(FILE_URI))).thenReturn(Optional.of(folderWrapper));
-
-    when(mockTaintVulnerabilitiesCache.getTaintVulnerabilityForDiagnostic(any(URI.class), eq(d))).thenReturn(Optional.of(fakeTaint));
-
-    var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
-      new CodeActionContext(List.of(d))), NOP_CANCEL_TOKEN);
-
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
-      "SonarQube: Show issue details for 'ruleKey'",
-      "SonarQube: Open taint vulnerability 'ruleKey' on 'connectionId'",
-      "SonarQube: Resolve issue violating rule 'ruleKey' as...");
-
-    assertThat(codeActions.get(0).getRight().getCommand().getArguments()).containsOnly(
-      taintId,
-      "file://foo.js");
-    assertThat(codeActions.get(1).getRight().getCommand().getArguments()).containsOnly(
-      "https://some.server.url/project/issues?id=projectKey&issues=serverIssueKey&open=serverIssueKey");
-  }
-
   @Test
   void suggestShowAllLocationsForIssueWithFlows() {
     when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.empty());
@@ -545,8 +458,21 @@ class CommandManagerTests {
 
   @Test
   void browseTaintVulnerability() {
-    var issueUrl = "https://some.sq/issue/id";
-    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_BROWSE_TAINT_VULNERABILITY, List.of(new JsonPrimitive(issueUrl))), NOP_CANCEL_TOKEN);
+    var issueUrl = "https://some.server.url/project/issues?id=projectKey&issues=id&open=id";
+    var issueKey = "id";
+    var connId = "connectionId";
+    when(mockBinding.connectionId()).thenReturn(connId);
+    when(bindingManager.getBinding(URI.create(FILE_URI))).thenReturn(Optional.of(mockBinding));
+    var mockWorkspacesettings = mock(WorkspaceSettings.class);
+    var serverSettings = mock(ServerConnectionSettings.class);
+    when(serverSettings.getServerUrl()).thenReturn("https://some.server.url");
+    when(mockWorkspacesettings.getServerConnections()).thenReturn(Collections.singletonMap(connId, serverSettings));
+    when(mockSettingsManager.getCurrentSettings()).thenReturn(mockWorkspacesettings);
+    var folderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
+
+    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_BROWSE_TAINT_VULNERABILITY, List.of(new JsonPrimitive(issueKey), new JsonPrimitive(FILE_URI))), NOP_CANCEL_TOKEN);
+
     verify(mockTelemetry).taintVulnerabilitiesInvestigatedRemotely();
     verify(mockClient).browseTo(issueUrl);
   }
@@ -810,6 +736,35 @@ class CommandManagerTests {
       .thenReturn(CompletableFuture.completedFuture(new SuggestFixResponse(fixSuggestionId, "this is why", List.of(fixChangeDto))));
 
     underTest.executeCommand(suggestFixCommand, NOP_CANCEL_TOKEN);
+
+    verify(mockClient).startProgressNotification(any(SonarLintExtendedLanguageClient.StartProgressNotificationParams.class));
+    verify(mockClient).endProgressNotification(any(SonarLintExtendedLanguageClient.EndProgressNotificationParams.class));
+    var captor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.ShowFixSuggestionParams.class);
+    verify(mockClient).showFixSuggestion(captor.capture());
+    SonarLintExtendedLanguageClient.ShowFixSuggestionParams showFixSuggestionParams = captor.getValue();
+    assertThat(showFixSuggestionParams.isLocal()).isTrue();
+    assertThat(showFixSuggestionParams.suggestionId()).isEqualTo(fixSuggestionId.toString());
+    assertThat(showFixSuggestionParams.fileUri()).isEqualTo(FILE_URI);
+    assertThat(showFixSuggestionParams.textEdits()).hasSize(1);
+    assertThat(showFixSuggestionParams.textEdits().get(0).after()).isEqualTo("new Code()");
+  }
+
+  @Test
+  void shouldShowTaintFixSuggestionToClient() {
+    var issueId = UUID.randomUUID().toString();
+    var folderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
+    when(workspaceFoldersManager.findFolderForFile(any())).thenReturn(Optional.of(folderWrapper));
+    var suggestTaintFixCommand = new ExecuteCommandParams(SONARLINT_SUGGEST_TAINT_FIX_COMMAND, List.of(new JsonPrimitive(issueId),
+      new JsonPrimitive(FILE_URI)));
+
+    var fixChangeDto = new SuggestFixChangeDto(1, 2, "new Code()");
+
+    var fixSuggestionId = UUID.randomUUID();
+    when(backendService.suggestFix(any(), any()))
+      .thenReturn(CompletableFuture.completedFuture(new SuggestFixResponse(fixSuggestionId, "this is why", List.of(fixChangeDto))));
+
+    underTest.executeCommand(suggestTaintFixCommand, NOP_CANCEL_TOKEN);
 
     verify(mockClient).startProgressNotification(any(SonarLintExtendedLanguageClient.StartProgressNotificationParams.class));
     verify(mockClient).endProgressNotification(any(SonarLintExtendedLanguageClient.EndProgressNotificationParams.class));
