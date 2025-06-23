@@ -75,13 +75,17 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
   }
 
   public void taintVulnerabilitiesInvestigatedLocally() {
-    actIfEnabled(TelemetryRpcService::taintVulnerabilitiesInvestigatedLocally);
-    actIfEnabled(TelemetryRpcService::taintInvestigatedLocally);
+    actIfEnabled(telemetryRpcService -> {
+      telemetryRpcService.taintVulnerabilitiesInvestigatedLocally();
+      telemetryRpcService.taintInvestigatedLocally();
+    });
   }
 
   public void taintVulnerabilitiesInvestigatedRemotely() {
-    actIfEnabled(TelemetryRpcService::taintVulnerabilitiesInvestigatedRemotely);
-    actIfEnabled(TelemetryRpcService::taintInvestigatedRemotely);
+    actIfEnabled(telemetryRpcService -> {
+      telemetryRpcService.taintVulnerabilitiesInvestigatedRemotely();
+      telemetryRpcService.taintInvestigatedRemotely();
+    });
   }
 
   public void addQuickFixAppliedForRule(String ruleKey) {
