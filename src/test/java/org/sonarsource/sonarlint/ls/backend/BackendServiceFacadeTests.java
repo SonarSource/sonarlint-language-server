@@ -105,8 +105,7 @@ class BackendServiceFacadeTests {
     underTest.setTelemetry(telemetryService);
     when(telemetryService.enabled()).thenReturn(false);
 
-    var backendInitParams = mock(BackendInitParams.class);
-    var backendCapabilities = underTest.getBackendCapabilities(backendInitParams);
+    var backendCapabilities = underTest.getBackendCapabilities();
 
     assertThat(backendCapabilities)
       .isNotNull()
@@ -133,8 +132,7 @@ class BackendServiceFacadeTests {
     underTest.setTelemetry(telemetryService);
     when(telemetryService.enabled()).thenReturn(true);
 
-    var backendInitParams = mock(BackendInitParams.class);
-    var backendCapabilities = underTest.getBackendCapabilities(backendInitParams);
+    var backendCapabilities = underTest.getBackendCapabilities();
 
     assertThat(backendCapabilities)
       .isNotNull()

@@ -160,7 +160,7 @@ public class BackendServiceFacade {
   }
 
   private InitializeParams toInitParams(BackendInitParams initParams) {
-    var backendCapabilities = getBackendCapabilities(initParams);
+    var backendCapabilities = getBackendCapabilities();
     var clientNodeJsPath = StringUtils.isEmpty(initParams.getClientNodePath()) ? null : Path.of(initParams.getClientNodePath());
     var eslintBridgeServerBundlePath = StringUtils.isEmpty(initParams.getEslintBridgeServerPath()) ? null : Path.of(initParams.getEslintBridgeServerPath());
     var languageSpecificRequirements = getLanguageSpecificRequirements(clientNodeJsPath, eslintBridgeServerBundlePath);
@@ -194,10 +194,10 @@ public class BackendServiceFacade {
   }
 
   @NotNull
-  EnumSet<BackendCapability> getBackendCapabilities(BackendInitParams initParams) {
+  EnumSet<BackendCapability> getBackendCapabilities() {
     var backendCapabilities = EnumSet.of(BackendCapability.SMART_NOTIFICATIONS, BackendCapability.PROJECT_SYNCHRONIZATION,
       BackendCapability.EMBEDDED_SERVER, BackendCapability.SERVER_SENT_EVENTS, BackendCapability.DATAFLOW_BUG_DETECTION,
-      BackendCapability.FULL_SYNCHRONIZATION, BackendCapability.SECURITY_HOTSPOTS);
+      BackendCapability.FULL_SYNCHRONIZATION, BackendCapability.SECURITY_HOTSPOTS, BackendCapability.ISSUE_STREAMING);
     if (telemetry != null && telemetry.enabled()) {
       backendCapabilities.add(BackendCapability.TELEMETRY);
     }
