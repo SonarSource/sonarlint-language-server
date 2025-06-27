@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.Set;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.MessageActionItem;
+import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason;
@@ -79,6 +80,9 @@ public class SkippedPluginsNotifier {
     if (Boolean.TRUE.equals(isNotificationAllowed)) {
       showMessageWithOpenSettingsAction(client, formatMessage(title, content), NODEJS,
         client::openPathToNodeSettings);
+    }
+    else {
+      client.showMessage(new MessageParams(MessageType.Error, content));
     }
   }
 
