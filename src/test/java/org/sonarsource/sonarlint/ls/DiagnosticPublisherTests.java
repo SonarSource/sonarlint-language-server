@@ -23,12 +23,18 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.VulnerabilityProbability;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
@@ -95,6 +101,50 @@ class DiagnosticPublisherTests {
     assertThat(underTest.issueDtoToDiagnostic(entry(id, issue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.INFO);
     assertThat(underTest.issueDtoToDiagnostic(entry(id, issue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+  }
+
+  @Test
+  void shouldPrepareDiagnostic() {
+    var finding = mock(DelegatingFinding.class);
+    var textRange = new TextRangeDto(1, 0, 1, 1);
+    when(finding.getTextRange()).thenReturn(textRange);
+    when(finding.getStartLine()).thenReturn(1);
+    when(finding.getMessage()).thenReturn("Do this, don't do that");
+    when(finding.getRuleKey()).thenReturn("rule-key");
+    when(finding.isOnNewCode()).thenReturn(false);
+
+    var diagnostic = DiagnosticPublisher.prepareDiagnostic(finding, "entryKey", false, false);
+
+    assertThat(diagnostic.getRange().getStart().getLine()).isZero();
+    assertThat(diagnostic.getRange().getStart().getCharacter()).isZero();
+    assertThat(diagnostic.getRange().getEnd().getLine()).isZero();
+    assertThat(diagnostic.getRange().getEnd().getCharacter()).isEqualTo(1);
+    assertThat(diagnostic.getMessage()).isEqualTo("Do this, don't do that");
+    assertThat(diagnostic.getCode().getLeft()).isEqualTo("rule-key");
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+    assertThat(diagnostic.getData()).isNotNull();
+    assertThat(((DiagnosticPublisher.DiagnosticData) diagnostic.getData()).getEntryKey()).isEqualTo("entryKey");
+    assertThat(((DiagnosticPublisher.DiagnosticData) diagnostic.getData()).isOnNewCode()).isFalse();
+  }
+
+  @ParameterizedTest
+  @MethodSource("vulnerabilityProbabilityProvider")
+  void testConvertVulnerabilityProbability(VulnerabilityProbability vulnerabilityProbability, DiagnosticSeverity expectedSeverity) {
+    var hotspotDto = mock(RaisedHotspotDto.class);
+    when(hotspotDto.getVulnerabilityProbability()).thenReturn(vulnerabilityProbability);
+    var diagnostic = new Diagnostic();
+
+    DiagnosticPublisher.setVulnerabilityProbability(diagnostic, hotspotDto);
+
+    assertThat(diagnostic.getSeverity()).isEqualTo(expectedSeverity);
+  }
+
+  private static Stream<Arguments> vulnerabilityProbabilityProvider() {
+    return Stream.of(
+      Arguments.of(VulnerabilityProbability.HIGH, DiagnosticSeverity.Error),
+      Arguments.of(VulnerabilityProbability.MEDIUM, DiagnosticSeverity.Warning),
+      Arguments.of(VulnerabilityProbability.LOW, DiagnosticSeverity.Information)
+    );
   }
 
   @Test

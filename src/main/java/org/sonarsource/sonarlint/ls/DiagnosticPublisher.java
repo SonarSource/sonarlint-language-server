@@ -27,6 +27,7 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 import org.sonarsource.sonarlint.ls.connected.DelegatingHotspot;
@@ -102,7 +103,11 @@ public class DiagnosticPublisher {
   public static Diagnostic prepareDiagnostic(DelegatingFinding issue, String entryKey, boolean ignoreSecondaryLocations, boolean focusOnNewCode) {
     var diagnostic = new Diagnostic();
 
-    setSeverity(diagnostic, issue, focusOnNewCode);
+    if (issue.getFinding() instanceof RaisedHotspotDto hotspotDto) {
+      setVulnerabilityProbability(diagnostic, hotspotDto);
+    } else {
+      setSeverity(diagnostic, issue, focusOnNewCode);
+    }
     var range = convert(issue);
     diagnostic.setRange(range);
     diagnostic.setCode(issue.getRuleKey());
@@ -111,6 +116,14 @@ public class DiagnosticPublisher {
     setData(diagnostic, issue, entryKey);
 
     return diagnostic;
+  }
+
+  static void setVulnerabilityProbability(Diagnostic diagnostic, RaisedHotspotDto hotspot) {
+    switch (hotspot.getVulnerabilityProbability()) {
+      case MEDIUM -> diagnostic.setSeverity(DiagnosticSeverity.Warning);
+      case HIGH -> diagnostic.setSeverity(DiagnosticSeverity.Error);
+      default -> diagnostic.setSeverity(DiagnosticSeverity.Information);
+    }
   }
 
   static void setSeverity(Diagnostic diagnostic, DelegatingFinding issue, boolean focusOnNewCode) {
@@ -131,6 +144,7 @@ public class DiagnosticPublisher {
     @Nullable
     HotspotStatus status;
     boolean isAiCodeFixable;
+    boolean isOnNewCode;
 
     public void setEntryKey(String entryKey) {
       this.entryKey = entryKey;
@@ -156,6 +170,14 @@ public class DiagnosticPublisher {
     public void setAiCodeFixable(boolean aiCodeFixable) {
       isAiCodeFixable = aiCodeFixable;
     }
+
+    public void setOnNewCode(boolean onNewCode) {
+      isOnNewCode = onNewCode;
+    }
+
+    public boolean isOnNewCode() {
+      return isOnNewCode;
+    }
   }
 
   public static void setSource(Diagnostic diagnostic, DelegatingFinding issue) {
@@ -177,6 +199,7 @@ public class DiagnosticPublisher {
       data.setStatus(raisedHotspotDto.getReviewStatus());
     }
     data.setEntryKey(entryKey);
+    data.setOnNewCode(issue.isOnNewCode());
     diagnostic.setData(data);
   }
 

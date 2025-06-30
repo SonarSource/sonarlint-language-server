@@ -57,7 +57,7 @@ class TaintVulnerabilitiesCacheTests {
 
   @ParameterizedTest
   @MethodSource("testIssueConversionParameters")
-  void testIssueConversion(String taintSource, boolean isOnNewCode, boolean focusOnNewCode, DiagnosticSeverity expectedSeverity) {
+  void testIssueConversion(String taintSource, boolean isOnNewCode, DiagnosticSeverity expectedSeverity) {
     var issue = mock(TaintIssue.class);
     var flow = mock(TaintVulnerabilityDto.FlowDto.class);
     var loc1 = mock(TaintVulnerabilityDto.FlowDto.LocationDto.class);
@@ -74,7 +74,7 @@ class TaintVulnerabilitiesCacheTests {
     when(issue.getSource()).thenReturn(taintSource);
     when(issue.isOnNewCode()).thenReturn(isOnNewCode);
 
-    var diagnostic = convert(issue, focusOnNewCode).get();
+    var diagnostic = convert(issue).get();
 
     assertThat(diagnostic.getMessage()).isEqualTo("message [+2 locations]");
     assertThat(diagnostic.getSeverity()).isEqualTo(expectedSeverity);
@@ -90,7 +90,7 @@ class TaintVulnerabilitiesCacheTests {
   void testIssueConversionNoTextRange() {
     var issue = mock(TaintIssue.class);
 
-    var diagnosticOptional = convert(issue, false);
+    var diagnosticOptional = convert(issue);
 
     assertThat(diagnosticOptional).isEmpty();
   }
@@ -209,15 +209,15 @@ class TaintVulnerabilitiesCacheTests {
 
   private static Stream<Arguments> testIssueConversionParameters() {
     return Stream.of(
-      Arguments.of(SONARCLOUD_TAINT_SOURCE, true, true, DiagnosticSeverity.Warning),
-      Arguments.of(SONARCLOUD_TAINT_SOURCE, true, false, DiagnosticSeverity.Warning),
-      Arguments.of(SONARCLOUD_TAINT_SOURCE, false, true, DiagnosticSeverity.Hint),
-      Arguments.of(SONARCLOUD_TAINT_SOURCE, false, false, DiagnosticSeverity.Warning),
+      Arguments.of(SONARCLOUD_TAINT_SOURCE, true, DiagnosticSeverity.Error),
+      Arguments.of(SONARCLOUD_TAINT_SOURCE, true, DiagnosticSeverity.Error),
+      Arguments.of(SONARCLOUD_TAINT_SOURCE, false, DiagnosticSeverity.Error),
+      Arguments.of(SONARCLOUD_TAINT_SOURCE, false, DiagnosticSeverity.Error),
 
-      Arguments.of(SONARQUBE_TAINT_SOURCE, true, true, DiagnosticSeverity.Warning),
-      Arguments.of(SONARQUBE_TAINT_SOURCE, true, false, DiagnosticSeverity.Warning),
-      Arguments.of(SONARQUBE_TAINT_SOURCE, false, true, DiagnosticSeverity.Hint),
-      Arguments.of(SONARQUBE_TAINT_SOURCE, false, false, DiagnosticSeverity.Warning)
+      Arguments.of(SONARQUBE_TAINT_SOURCE, true, DiagnosticSeverity.Error),
+      Arguments.of(SONARQUBE_TAINT_SOURCE, true, DiagnosticSeverity.Error),
+      Arguments.of(SONARQUBE_TAINT_SOURCE, false, DiagnosticSeverity.Error),
+      Arguments.of(SONARQUBE_TAINT_SOURCE, false, DiagnosticSeverity.Error)
     );
   }
 }
