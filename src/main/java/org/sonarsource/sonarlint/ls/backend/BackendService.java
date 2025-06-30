@@ -28,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
@@ -311,8 +312,17 @@ public class BackendService {
   }
 
   public CompletableFuture<HelpGenerateUserTokenResponse> helpGenerateUserToken(String serverUrl) {
-    var params = new HelpGenerateUserTokenParams(serverUrl);
+    var utm = maybeUtm(serverUrl);
+    var params = new HelpGenerateUserTokenParams(serverUrl, utm);
     return initializedBackend().getConnectionService().helpGenerateUserToken(params);
+  }
+
+  @CheckForNull
+  private static HelpGenerateUserTokenParams.Utm maybeUtm(String serverUrl) {
+    if (ServerConnectionSettings.isSonarCloudAlias(serverUrl)) {
+      return new HelpGenerateUserTokenParams.Utm("referral", "sq-ide-product-vscode", "create-new-sqc-connection", "generate-token");
+    }
+    return null;
   }
 
   public CompletableFuture<org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedResponse>
