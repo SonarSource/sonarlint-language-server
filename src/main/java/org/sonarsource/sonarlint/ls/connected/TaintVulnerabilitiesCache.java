@@ -71,17 +71,16 @@ public class TaintVulnerabilitiesCache {
   public Stream<Diagnostic> getAsDiagnostics(URI fileUri, boolean focusOnNewCode) {
     return taintVulnerabilitiesPerFile.getOrDefault(fileUri, emptyList())
       .stream()
-      .flatMap(i -> TaintVulnerabilitiesCache.convert(i, focusOnNewCode).stream());
+      .flatMap(i -> TaintVulnerabilitiesCache.convert(i).stream());
   }
 
-  static Optional<Diagnostic> convert(TaintIssue issue, boolean focusOnNewCode) {
+  static Optional<Diagnostic> convert(TaintIssue issue) {
     if (issue.getTextRange() != null) {
       var range = TextRangeUtils.convert(issue.getTextRange());
       var diagnostic = new Diagnostic();
       boolean onNewCode = issue.isOnNewCode();
-      var severity = (focusOnNewCode && !onNewCode) ? DiagnosticSeverity.Hint : DiagnosticSeverity.Warning;
 
-      diagnostic.setSeverity(severity);
+      diagnostic.setSeverity(DiagnosticSeverity.Error);
       diagnostic.setRange(range);
       diagnostic.setCode(issue.getRuleKey());
       diagnostic.setMessage(message(issue));
@@ -91,6 +90,7 @@ public class TaintVulnerabilitiesCache {
       diagnosticData.setEntryKey(issue.getId().toString());
       diagnosticData.setServerIssueKey(issue.getSonarServerKey());
       diagnosticData.setAiCodeFixable(issue.isAiCodeFixable());
+      diagnosticData.setOnNewCode(onNewCode);
       diagnostic.setData(diagnosticData);
 
       return Optional.of(diagnostic);
