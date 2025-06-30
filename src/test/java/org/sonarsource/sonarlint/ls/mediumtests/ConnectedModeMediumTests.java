@@ -1516,4 +1516,39 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       assertThat(connectionSuggestions.get(0).getConnectionSuggestion().getRight().getProjectKey()).isEqualTo(PROJECT_KEY);
     });
   }
+
+  @Test
+  void should_generate_token_for_sonarqube_server() {
+    var generateTokenParams = new SonarLintExtendedLanguageServer.GenerateTokenParams(mockWebServerExtension.url("/"));
+
+    lsProxy.generateToken(generateTokenParams);
+
+    awaitUntilAsserted(() -> {
+      assertThat(client.openedLinks).isNotEmpty();
+    });
+
+    assertThat(client.openedLinks)
+      .hasSize(1)
+      .allMatch(url -> url.startsWith(mockWebServerExtension.url("/sonarlint/auth"))
+          && !url.contains("utm"));
+  }
+
+  @Test
+  void should_generate_token_for_sonarqube_cloud_with_link_tracking() {
+    var generateTokenParams = new SonarLintExtendedLanguageServer.GenerateTokenParams("https://sonarcloud.io");
+
+    lsProxy.generateToken(generateTokenParams);
+
+    awaitUntilAsserted(() -> {
+      assertThat(client.openedLinks).isNotEmpty();
+    });
+
+    assertThat(client.openedLinks)
+      .hasSize(1)
+      .allMatch(url -> url.startsWith("https://sonarcloud.io/sonarlint/auth")
+        && url.contains("utm_medium=referral")
+        && url.contains("utm_source=sq-ide-product-vscode")
+        && url.contains("utm_content=create-new-sqc-connection")
+        && url.contains("utm_term=generate-token"));
+  }
 }

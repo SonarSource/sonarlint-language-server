@@ -398,6 +398,7 @@ public abstract class AbstractLanguageServerMediumTests {
       scopeReadyForAnalysis.clear();
       suggestedBindings = null;
       isOpenInEditor = true;
+      openedLinks.clear();
     }
 
     @Override
