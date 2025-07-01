@@ -40,7 +40,8 @@ import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralized
 public class DiagnosticPublisher {
 
   static final String SONARLINT_SOURCE = "sonarqube";
-  static final String REMOTE_SOURCE = "remote";
+  static final String REMOTE_SOURCE = "remote-hotspot";
+  static final String LOCAL_HOTSPOT_SOURCE = "local-hotspot";
 
   public static final String ITEM_LOCATION = "location";
   public static final String ITEM_FLOW = "flow";
@@ -184,7 +185,9 @@ public class DiagnosticPublisher {
     if (issue instanceof DelegatingHotspot hotspotDto) {
       var isKnown = hotspotDto.getServerIssueKey() != null;
       var isHotspot = hotspotDto.getType() == RuleType.SECURITY_HOTSPOT;
-      diagnostic.setSource(isKnown && isHotspot ? REMOTE_SOURCE : SONARLINT_SOURCE);
+      if (isHotspot) {
+        diagnostic.setSource(isKnown ? REMOTE_SOURCE : LOCAL_HOTSPOT_SOURCE);
+      }
     } else {
       diagnostic.setSource(SONARLINT_SOURCE);
     }
