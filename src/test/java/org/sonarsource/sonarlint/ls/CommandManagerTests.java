@@ -82,6 +82,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDescriptionParams;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 import org.sonarsource.sonarlint.ls.connected.DelegatingHotspot;
 import org.sonarsource.sonarlint.ls.connected.DelegatingIssue;
@@ -104,6 +105,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -114,7 +116,7 @@ import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_RULE_DE
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SUGGEST_FIX_COMMAND;
-import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SUGGEST_TAINT_FIX_COMMAND;
+import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SUGGEST_FIX_FROM_CODE_ACTION_COMMAND;
 import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARLINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebookTests.createTestNotebookWithThreeCells;
 
@@ -502,6 +504,43 @@ class CommandManagerTests {
   }
 
   @Test
+  void showIssueFlows() {
+    var issueId = UUID.randomUUID();
+    var fileUri = URI.create(FILE_URI);
+    var finding = mock(DelegatingFinding.class);
+    when(finding.getIssueId()).thenReturn(issueId);
+    when(finding.getFileUri()).thenReturn(fileUri);
+    when(issuesCache.getIssueById(any(URI.class), eq(issueId.toString())))
+      .thenReturn(Optional.of(finding));
+
+    underTest.executeCommand(
+      new ExecuteCommandParams(CommandManager.SONARLINT_SHOW_ISSUE_FLOWS, List.of(new JsonPrimitive(issueId.toString()), new JsonPrimitive(FILE_URI))),
+      NOP_CANCEL_TOKEN);
+
+    var captor = ArgumentCaptor.forClass(ShowAllLocationsCommand.Param.class);
+
+    verify(mockClient).showIssueOrHotspot(captor.capture());
+    assertThat(captor.getValue().getFileUri()).isEqualTo(fileUri);
+  }
+
+  @Test
+  void showIssueFlows_issueNotFound() {
+    var issueId = UUID.randomUUID();
+    var fileUri = URI.create(FILE_URI);
+    var finding = mock(DelegatingFinding.class);
+    when(finding.getIssueId()).thenReturn(issueId);
+    when(finding.getFileUri()).thenReturn(fileUri);
+    when(issuesCache.getIssueById(any(), any()))
+      .thenReturn(Optional.empty());
+
+    underTest.executeCommand(
+      new ExecuteCommandParams(CommandManager.SONARLINT_SHOW_ISSUE_FLOWS, List.of(new JsonPrimitive(issueId.toString()), new JsonPrimitive(FILE_URI))),
+      NOP_CANCEL_TOKEN);
+
+    verify(mockClient, never()).showIssueOrHotspot(any());
+  }
+
+  @Test
   void showIssueDetails_issueNotFound() {
     when(backendService.getEffectiveIssueDetails(any(), any())).thenReturn(CompletableFuture.failedFuture(new CompletionException(new IllegalStateException("Issue not found"))));
     underTest.executeCommand(
@@ -726,7 +765,7 @@ class CommandManagerTests {
     var issueId = UUID.randomUUID().toString();
     var folderWrapper = mock(WorkspaceFolderWrapper.class);
     when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
-    var suggestFixCommand = new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_COMMAND, List.of(new JsonPrimitive(folderWrapper.getUri().toString()),
+    var suggestFixCommand = new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_FROM_CODE_ACTION_COMMAND, List.of(new JsonPrimitive(folderWrapper.getUri().toString()),
       new JsonPrimitive(issueId), new JsonPrimitive(FILE_URI)));
 
     var fixChangeDto = new SuggestFixChangeDto(1, 2, "new Code()");
@@ -755,7 +794,7 @@ class CommandManagerTests {
     var folderWrapper = mock(WorkspaceFolderWrapper.class);
     when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
     when(workspaceFoldersManager.findFolderForFile(any())).thenReturn(Optional.of(folderWrapper));
-    var suggestTaintFixCommand = new ExecuteCommandParams(SONARLINT_SUGGEST_TAINT_FIX_COMMAND, List.of(new JsonPrimitive(issueId),
+    var suggestTaintFixCommand = new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_COMMAND, List.of(new JsonPrimitive(issueId),
       new JsonPrimitive(FILE_URI)));
 
     var fixChangeDto = new SuggestFixChangeDto(1, 2, "new Code()");
@@ -783,7 +822,7 @@ class CommandManagerTests {
     var issueId = UUID.randomUUID().toString();
     var folderWrapper = mock(WorkspaceFolderWrapper.class);
     when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
-    var suggestFixCommand = new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_COMMAND, List.of(new JsonPrimitive(folderWrapper.getUri().toString()),
+    var suggestFixCommand = new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_FROM_CODE_ACTION_COMMAND, List.of(new JsonPrimitive(folderWrapper.getUri().toString()),
       new JsonPrimitive(issueId), new JsonPrimitive(FILE_URI)));
 
     when(backendService.suggestFix(any(), any()))
@@ -833,7 +872,7 @@ class CommandManagerTests {
 
     var issueId = UUID.randomUUID().toString();
     when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
-    var suggestFixCommand = new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_COMMAND, List.of(new JsonPrimitive(folderWrapper.getUri().toString()),
+    var suggestFixCommand = new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_FROM_CODE_ACTION_COMMAND, List.of(new JsonPrimitive(folderWrapper.getUri().toString()),
       new JsonPrimitive(issueId), new JsonPrimitive(FILE_URI)));
 
     when(mockClient.showMessageRequest(any()))
