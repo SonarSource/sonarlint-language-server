@@ -112,9 +112,10 @@ public class CommandManager {
   static final String SONARLINT_SHOW_RULE_DESC_COMMAND = "SonarLint.OpenRuleDesc";
   static final String SONARLINT_BROWSE_TAINT_VULNERABILITY = "SonarLint.BrowseTaintVulnerability";
   static final String SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS = "SonarLint.ShowTaintVulnerabilityFlows";
+  static final String SONARLINT_SHOW_ISSUE_FLOWS = "SonarLint.ShowIssueFlows";
   static final String SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS = "SonarLint.ShowSecurityHotspotFlows";
+  static final String SONARLINT_SUGGEST_FIX_FROM_CODE_ACTION_COMMAND = "SonarLint.SuggestFixFromCodeAction";
   static final String SONARLINT_SUGGEST_FIX_COMMAND = "SonarLint.SuggestFix";
-  static final String SONARLINT_SUGGEST_TAINT_FIX_COMMAND = "SonarLint.SuggestTaintFix";
   static final List<String> SONARLINT_SERVERSIDE_COMMANDS = List.of(
     SONARLINT_QUICK_FIX_APPLIED,
     SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND,
@@ -122,8 +123,9 @@ public class CommandManager {
     SONARLINT_OPEN_STANDALONE_RULE_DESCRIPTION_COMMAND,
     SONARLINT_BROWSE_TAINT_VULNERABILITY,
     SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS,
+    SONARLINT_SUGGEST_FIX_FROM_CODE_ACTION_COMMAND,
     SONARLINT_SUGGEST_FIX_COMMAND,
-    SONARLINT_SUGGEST_TAINT_FIX_COMMAND);
+    SONARLINT_SHOW_ISSUE_FLOWS);
   // Client side
   static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
   static final String RESOLVE_ISSUE = "SonarLint.ResolveIssue";
@@ -182,7 +184,8 @@ public class CommandManager {
     aiCodeFixCodeAction.setKind(CodeActionKind.QuickFix);
     aiCodeFixCodeAction.setIsPreferred(true);
     aiCodeFixCodeAction.setDiagnostics(List.of(diagnostic));
-    aiCodeFixCodeAction.setCommand(new Command("Fix with AI CodeFix", SONARLINT_SUGGEST_FIX_COMMAND, List.of(configScopeId, issueId.toString(), fileUri.toString())));
+    aiCodeFixCodeAction.setCommand(new Command("Fix with AI CodeFix", SONARLINT_SUGGEST_FIX_FROM_CODE_ACTION_COMMAND,
+      List.of(configScopeId, issueId.toString(), fileUri.toString())));
     codeActions.add(Either.forRight(aiCodeFixCodeAction));
   }
 
@@ -501,11 +504,14 @@ public class CommandManager {
       case SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS:
         handleShowHotspotFlows(params);
         break;
+      case SONARLINT_SUGGEST_FIX_FROM_CODE_ACTION_COMMAND:
+        handleSuggestFixFromCodeActionCommand(params);
+        break;
       case SONARLINT_SUGGEST_FIX_COMMAND:
         handleSuggestFixCommand(params);
         break;
-      case SONARLINT_SUGGEST_TAINT_FIX_COMMAND:
-        handleSuggestTaintFixCommand(params);
+      case SONARLINT_SHOW_ISSUE_FLOWS:
+        handleShowIssueFlows(params);
         break;
       default:
         throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported command: " + params.getCommand(), null));
@@ -532,7 +538,7 @@ public class CommandManager {
       .thenAccept(client::showRuleDescription);
   }
 
-  private void handleSuggestFixCommand(ExecuteCommandParams params) {
+  private void handleSuggestFixFromCodeActionCommand(ExecuteCommandParams params) {
     var configScopeId = getAsString(params.getArguments().get(0));
     var issueId = getAsString(params.getArguments().get(1));
     var fileUri = getAsString(params.getArguments().get(2));
@@ -563,12 +569,12 @@ public class CommandManager {
     });
   }
 
-  private void handleSuggestTaintFixCommand(ExecuteCommandParams params) {
+  private void handleSuggestFixCommand(ExecuteCommandParams params) {
     var issueId = getAsString(params.getArguments().get(0));
     var fileUri = getAsString(params.getArguments().get(1));
     var workspace = workspaceFoldersManager.findFolderForFile(create(fileUri)).orElse(null);
     var configScopeId = workspace == null ? ROOT_CONFIGURATION_SCOPE : workspace.getUri().toString();
-    handleSuggestFixCommand(new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_COMMAND,
+    handleSuggestFixFromCodeActionCommand(new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_FROM_CODE_ACTION_COMMAND,
       List.of(new JsonPrimitive(configScopeId), new JsonPrimitive(issueId), new JsonPrimitive(fileUri))));
   }
 
@@ -592,6 +598,17 @@ public class CommandManager {
         telemetry.taintVulnerabilitiesInvestigatedLocally();
         client.showIssueOrHotspot(ShowAllLocationsCommand.params(issue, connectionId));
       });
+  }
+
+  private void handleShowIssueFlows(ExecuteCommandParams params) {
+    var issueId = getAsString(params.getArguments().get(0));
+    var fileUri = getAsString(params.getArguments().get(1));
+    var issue = issuesCache.getIssueById(create(fileUri), issueId);
+    if (issue.isEmpty()) {
+      logOutput.error("Could not find issue with id " + issueId + ". Cannot show flows.");
+      return;
+    }
+    client.showIssueOrHotspot(ShowAllLocationsCommand.params(issue.get()));
   }
 
   private void handleShowHotspotFlows(ExecuteCommandParams params) {
