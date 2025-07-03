@@ -28,6 +28,7 @@ import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 import org.sonarsource.sonarlint.ls.connected.DelegatingHotspot;
@@ -146,6 +147,7 @@ public class DiagnosticPublisher {
     HotspotStatus status;
     boolean isAiCodeFixable;
     boolean isOnNewCode;
+    boolean hasQuickFix;
 
     public void setEntryKey(String entryKey) {
       this.entryKey = entryKey;
@@ -179,6 +181,14 @@ public class DiagnosticPublisher {
     public boolean isOnNewCode() {
       return isOnNewCode;
     }
+
+    public boolean hasQuickFix() {
+      return hasQuickFix;
+    }
+
+    public void setHasQuickFix(boolean hasQuickFix) {
+      this.hasQuickFix = hasQuickFix;
+    }
   }
 
   public static void setSource(Diagnostic diagnostic, DelegatingFinding issue) {
@@ -201,8 +211,11 @@ public class DiagnosticPublisher {
     if (issue instanceof DelegatingHotspot raisedHotspotDto) {
       data.setStatus(raisedHotspotDto.getReviewStatus());
     }
+    var isAiCodeFixable = issue.getFinding() instanceof RaisedIssueDto raisedIssueDto && raisedIssueDto.isAiCodeFixable();
     data.setEntryKey(entryKey);
     data.setOnNewCode(issue.isOnNewCode());
+    data.setAiCodeFixable(isAiCodeFixable);
+    data.setHasQuickFix(!issue.quickFixes().isEmpty());
     diagnostic.setData(data);
   }
 

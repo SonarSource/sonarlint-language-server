@@ -84,6 +84,7 @@ class TaintVulnerabilitiesCacheTests {
     var diagnosticData = (DiagnosticPublisher.DiagnosticData) diagnostic.getData();
     assertThat(diagnosticData.getEntryKey()).isEqualTo(issueId.toString());
     assertThat(diagnosticData.getServerIssueKey()).isEqualTo("issueKey");
+    assertThat(diagnosticData.hasQuickFix()).isFalse();
   }
 
   @Test

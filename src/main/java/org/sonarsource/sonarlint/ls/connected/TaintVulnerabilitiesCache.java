@@ -91,6 +91,7 @@ public class TaintVulnerabilitiesCache {
       diagnosticData.setServerIssueKey(issue.getSonarServerKey());
       diagnosticData.setAiCodeFixable(issue.isAiCodeFixable());
       diagnosticData.setOnNewCode(onNewCode);
+      diagnosticData.setHasQuickFix(false);
       diagnostic.setData(diagnosticData);
 
       return Optional.of(diagnostic);
