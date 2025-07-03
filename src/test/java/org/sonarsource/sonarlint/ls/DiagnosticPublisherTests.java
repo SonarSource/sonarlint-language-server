@@ -35,6 +35,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.VulnerabilityProbability;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
@@ -112,6 +113,7 @@ class DiagnosticPublisherTests {
     when(finding.getMessage()).thenReturn("Do this, don't do that");
     when(finding.getRuleKey()).thenReturn("rule-key");
     when(finding.isOnNewCode()).thenReturn(false);
+    when(finding.quickFixes()).thenReturn(List.of(mock(QuickFixDto.class)));
 
     var diagnostic = DiagnosticPublisher.prepareDiagnostic(finding, "entryKey", false, false);
 
@@ -125,6 +127,7 @@ class DiagnosticPublisherTests {
     assertThat(diagnostic.getData()).isNotNull();
     assertThat(((DiagnosticPublisher.DiagnosticData) diagnostic.getData()).getEntryKey()).isEqualTo("entryKey");
     assertThat(((DiagnosticPublisher.DiagnosticData) diagnostic.getData()).isOnNewCode()).isFalse();
+    assertThat(((DiagnosticPublisher.DiagnosticData) diagnostic.getData()).hasQuickFix()).isTrue();
   }
 
   @ParameterizedTest
