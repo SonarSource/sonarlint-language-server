@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
 import javax.annotation.Nullable;
@@ -27,8 +28,13 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ImpactDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedIssueDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.MQRModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 import org.sonarsource.sonarlint.ls.connected.DelegatingHotspot;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -40,7 +46,8 @@ import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralized
 public class DiagnosticPublisher {
 
   static final String SONARLINT_SOURCE = "sonarqube";
-  static final String REMOTE_SOURCE = "remote";
+  static final String REMOTE_SOURCE = "remote-hotspot";
+  static final String LOCAL_HOTSPOT_SOURCE = "local-hotspot";
 
   public static final String ITEM_LOCATION = "location";
   public static final String ITEM_FLOW = "flow";
@@ -145,6 +152,8 @@ public class DiagnosticPublisher {
     HotspotStatus status;
     boolean isAiCodeFixable;
     boolean isOnNewCode;
+    boolean hasQuickFix;
+    Integer impactSeverity;
 
     public void setEntryKey(String entryKey) {
       this.entryKey = entryKey;
@@ -178,13 +187,31 @@ public class DiagnosticPublisher {
     public boolean isOnNewCode() {
       return isOnNewCode;
     }
+
+    public boolean hasQuickFix() {
+      return hasQuickFix;
+    }
+
+    public void setHasQuickFix(boolean hasQuickFix) {
+      this.hasQuickFix = hasQuickFix;
+    }
+
+    public Integer getImpactSeverity() {
+      return impactSeverity;
+    }
+
+    public void setImpactSeverity(Integer impactSeverity) {
+      this.impactSeverity = impactSeverity;
+    }
   }
 
   public static void setSource(Diagnostic diagnostic, DelegatingFinding issue) {
     if (issue instanceof DelegatingHotspot hotspotDto) {
       var isKnown = hotspotDto.getServerIssueKey() != null;
       var isHotspot = hotspotDto.getType() == RuleType.SECURITY_HOTSPOT;
-      diagnostic.setSource(isKnown && isHotspot ? REMOTE_SOURCE : SONARLINT_SOURCE);
+      if (isHotspot) {
+        diagnostic.setSource(isKnown ? REMOTE_SOURCE : LOCAL_HOTSPOT_SOURCE);
+      }
     } else {
       diagnostic.setSource(SONARLINT_SOURCE);
     }
@@ -198,9 +225,21 @@ public class DiagnosticPublisher {
     if (issue instanceof DelegatingHotspot raisedHotspotDto) {
       data.setStatus(raisedHotspotDto.getReviewStatus());
     }
+    var isAiCodeFixable = issue.getFinding() instanceof RaisedIssueDto raisedIssueDto && raisedIssueDto.isAiCodeFixable();
     data.setEntryKey(entryKey);
     data.setOnNewCode(issue.isOnNewCode());
+    data.setAiCodeFixable(isAiCodeFixable);
+    data.setHasQuickFix(!issue.quickFixes().isEmpty());
+    data.setImpactSeverity(getImpactSeverity(issue.getSeverityDetails()));
     diagnostic.setData(data);
+  }
+
+  public static Integer getImpactSeverity(Either<StandardModeDetails, MQRModeDetails> severityDetails) {
+    if (severityDetails.isLeft()) {
+      return severityDetails.getLeft().getSeverity().ordinal();
+    }
+    var highestQualityImpact = Collections.max(severityDetails.getRight().getImpacts(), Comparator.comparing(ImpactDto::getImpactSeverity));
+    return highestQualityImpact.getImpactSeverity().ordinal();
   }
 
   public static String message(DelegatingFinding issue, boolean ignoreSecondaryLocations) {
@@ -246,7 +285,7 @@ public class DiagnosticPublisher {
   private PublishDiagnosticsParams createPublishTaintsParams(URI newUri) {
     var p = new PublishDiagnosticsParams();
 
-    var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostics(newUri, focusOnNewCode);
+    var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostics(newUri);
 
     var diagnosticList = taintDiagnostics
       .sorted(DiagnosticPublisher.byLineNumber())

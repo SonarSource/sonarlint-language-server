@@ -68,7 +68,7 @@ public class TaintVulnerabilitiesCache {
       .findFirst();
   }
 
-  public Stream<Diagnostic> getAsDiagnostics(URI fileUri, boolean focusOnNewCode) {
+  public Stream<Diagnostic> getAsDiagnostics(URI fileUri) {
     return taintVulnerabilitiesPerFile.getOrDefault(fileUri, emptyList())
       .stream()
       .flatMap(i -> TaintVulnerabilitiesCache.convert(i).stream());
@@ -90,7 +90,9 @@ public class TaintVulnerabilitiesCache {
       diagnosticData.setEntryKey(issue.getId().toString());
       diagnosticData.setServerIssueKey(issue.getSonarServerKey());
       diagnosticData.setAiCodeFixable(issue.isAiCodeFixable());
+      diagnosticData.setImpactSeverity(DiagnosticPublisher.getImpactSeverity(issue.getSeverityMode()));
       diagnosticData.setOnNewCode(onNewCode);
+      diagnosticData.setHasQuickFix(false);
       diagnostic.setData(diagnosticData);
 
       return Optional.of(diagnostic);
