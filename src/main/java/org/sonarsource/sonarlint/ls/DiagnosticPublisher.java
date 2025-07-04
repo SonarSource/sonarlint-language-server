@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
 import javax.annotation.Nullable;
@@ -27,9 +28,13 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ImpactDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedIssueDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.MQRModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 import org.sonarsource.sonarlint.ls.connected.DelegatingHotspot;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -148,6 +153,7 @@ public class DiagnosticPublisher {
     boolean isAiCodeFixable;
     boolean isOnNewCode;
     boolean hasQuickFix;
+    Integer impactSeverity;
 
     public void setEntryKey(String entryKey) {
       this.entryKey = entryKey;
@@ -189,6 +195,14 @@ public class DiagnosticPublisher {
     public void setHasQuickFix(boolean hasQuickFix) {
       this.hasQuickFix = hasQuickFix;
     }
+
+    public Integer getImpactSeverity() {
+      return impactSeverity;
+    }
+
+    public void setImpactSeverity(Integer impactSeverity) {
+      this.impactSeverity = impactSeverity;
+    }
   }
 
   public static void setSource(Diagnostic diagnostic, DelegatingFinding issue) {
@@ -216,7 +230,16 @@ public class DiagnosticPublisher {
     data.setOnNewCode(issue.isOnNewCode());
     data.setAiCodeFixable(isAiCodeFixable);
     data.setHasQuickFix(!issue.quickFixes().isEmpty());
+    data.setImpactSeverity(getImpactSeverity(issue.getSeverityDetails()));
     diagnostic.setData(data);
+  }
+
+  public static Integer getImpactSeverity(Either<StandardModeDetails, MQRModeDetails> severityDetails) {
+    if (severityDetails.isLeft()) {
+      return severityDetails.getLeft().getSeverity().ordinal();
+    }
+    var highestQualityImpact = Collections.max(severityDetails.getRight().getImpacts(), Comparator.comparing(ImpactDto::getImpactSeverity));
+    return highestQualityImpact.getImpactSeverity().ordinal();
   }
 
   public static String message(DelegatingFinding issue, boolean ignoreSecondaryLocations) {
@@ -262,7 +285,7 @@ public class DiagnosticPublisher {
   private PublishDiagnosticsParams createPublishTaintsParams(URI newUri) {
     var p = new PublishDiagnosticsParams();
 
-    var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostics(newUri, focusOnNewCode);
+    var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostics(newUri);
 
     var diagnosticList = taintDiagnostics
       .sorted(DiagnosticPublisher.byLineNumber())
