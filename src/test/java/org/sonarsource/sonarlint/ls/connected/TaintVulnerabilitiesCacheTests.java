@@ -36,6 +36,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
@@ -85,6 +86,7 @@ class TaintVulnerabilitiesCacheTests {
     assertThat(diagnosticData.getEntryKey()).isEqualTo(issueId.toString());
     assertThat(diagnosticData.getServerIssueKey()).isEqualTo("issueKey");
     assertThat(diagnosticData.hasQuickFix()).isFalse();
+    assertThat(diagnosticData.getImpactSeverity()).isEqualTo(ImpactSeverity.BLOCKER.ordinal());
   }
 
   @Test
@@ -137,7 +139,7 @@ class TaintVulnerabilitiesCacheTests {
 
     underTest.reload(uri, List.of(taint, resolvedTaint));
 
-    assertThat(underTest.getAsDiagnostics(uri, false)).hasSize(2);
+    assertThat(underTest.getAsDiagnostics(uri)).hasSize(2);
   }
 
   @Test

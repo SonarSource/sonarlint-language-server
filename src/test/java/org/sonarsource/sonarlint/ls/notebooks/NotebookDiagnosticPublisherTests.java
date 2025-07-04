@@ -73,6 +73,7 @@ class NotebookDiagnosticPublisherTests {
     when(cellIssue.getIssue()).thenReturn(raisedFindingDto);
     when(cellIssue.getMessage()).thenReturn("don't do this");
     when(cellIssue.getTextRange()).thenReturn(textRange);
+    when(cellIssue.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
 
     var diagnostic = convertCellIssue(new AbstractMap.SimpleImmutableEntry<>(issueKey, cellIssue));
 

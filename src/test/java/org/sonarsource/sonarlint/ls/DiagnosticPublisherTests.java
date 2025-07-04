@@ -33,13 +33,18 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ImpactDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.VulnerabilityProbability;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.MQRModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
@@ -78,6 +83,7 @@ class DiagnosticPublisherTests {
     var textRange = new TextRangeDto(0, 0, 0, 0);
     when(issue.getTextRange()).thenReturn(textRange);
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(issue.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
     when(issue.getMessage()).thenReturn("Do this, don't do that");
     when(issue.getStartLine()).thenReturn(null);
     Diagnostic diagnostic = underTest.issueDtoToDiagnostic(entry("id", issue));
@@ -92,6 +98,7 @@ class DiagnosticPublisherTests {
     when(issue.getTextRange()).thenReturn(textRange);
     when(issue.getStartLine()).thenReturn(1);
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
+    when(issue.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
     when(issue.getMessage()).thenReturn("Do this, don't do that");
     assertThat(underTest.issueDtoToDiagnostic(entry(id, issue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.CRITICAL);
@@ -114,6 +121,7 @@ class DiagnosticPublisherTests {
     when(finding.getRuleKey()).thenReturn("rule-key");
     when(finding.isOnNewCode()).thenReturn(false);
     when(finding.quickFixes()).thenReturn(List.of(mock(QuickFixDto.class)));
+    when(finding.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
 
     var diagnostic = DiagnosticPublisher.prepareDiagnostic(finding, "entryKey", false, false);
 
@@ -128,6 +136,33 @@ class DiagnosticPublisherTests {
     assertThat(((DiagnosticPublisher.DiagnosticData) diagnostic.getData()).getEntryKey()).isEqualTo("entryKey");
     assertThat(((DiagnosticPublisher.DiagnosticData) diagnostic.getData()).isOnNewCode()).isFalse();
     assertThat(((DiagnosticPublisher.DiagnosticData) diagnostic.getData()).hasQuickFix()).isTrue();
+    assertThat(((DiagnosticPublisher.DiagnosticData) diagnostic.getData()).getImpactSeverity()).isEqualTo(ImpactSeverity.BLOCKER.ordinal());
+  }
+
+  @ParameterizedTest
+  @MethodSource("severityProvider")
+  void shouldAssessIfFindingIsHighSeverity(Either<StandardModeDetails, MQRModeDetails> severityDetails, Integer impactSeverity) {
+    assertThat(DiagnosticPublisher.getImpactSeverity(severityDetails)).isEqualTo(impactSeverity);
+  }
+
+  private static Stream<Arguments> severityProvider() {
+    return Stream.of(
+      Arguments.of(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)), ImpactSeverity.BLOCKER.ordinal()),
+      Arguments.of(Either.forLeft(new StandardModeDetails(IssueSeverity.CRITICAL, RuleType.BUG)), ImpactSeverity.HIGH.ordinal()),
+      Arguments.of(Either.forLeft(new StandardModeDetails(IssueSeverity.INFO, RuleType.BUG)), ImpactSeverity.INFO.ordinal()),
+      Arguments.of(Either.forLeft(new StandardModeDetails(IssueSeverity.MINOR, RuleType.BUG)), ImpactSeverity.LOW.ordinal()),
+      Arguments.of(Either.forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)), ImpactSeverity.MEDIUM.ordinal()),
+      Arguments.of(Either.forRight(new MQRModeDetails(CleanCodeAttribute.TRUSTWORTHY,
+        List.of(new ImpactDto(SoftwareQuality.RELIABILITY, ImpactSeverity.HIGH), new ImpactDto(SoftwareQuality.SECURITY, ImpactSeverity.BLOCKER)))), ImpactSeverity.BLOCKER.ordinal()),
+      Arguments.of(Either.forRight(new MQRModeDetails(CleanCodeAttribute.TRUSTWORTHY,
+        List.of(new ImpactDto(SoftwareQuality.RELIABILITY, ImpactSeverity.MEDIUM)))), ImpactSeverity.MEDIUM.ordinal()),
+      Arguments.of(Either.forRight(new MQRModeDetails(CleanCodeAttribute.TRUSTWORTHY,
+        List.of(new ImpactDto(SoftwareQuality.RELIABILITY, ImpactSeverity.LOW), new ImpactDto(SoftwareQuality.MAINTAINABILITY, ImpactSeverity.LOW)))), ImpactSeverity.LOW.ordinal()),
+      Arguments.of(Either.forRight(new MQRModeDetails(CleanCodeAttribute.TRUSTWORTHY,
+        List.of(new ImpactDto(SoftwareQuality.RELIABILITY, ImpactSeverity.BLOCKER)))), ImpactSeverity.BLOCKER.ordinal()),
+      Arguments.of(Either.forRight(new MQRModeDetails(CleanCodeAttribute.TRUSTWORTHY,
+        List.of(new ImpactDto(SoftwareQuality.RELIABILITY, ImpactSeverity.INFO)))), ImpactSeverity.INFO.ordinal())
+    );
   }
 
   @ParameterizedTest
