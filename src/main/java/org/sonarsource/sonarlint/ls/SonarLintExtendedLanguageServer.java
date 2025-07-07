@@ -40,6 +40,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpG
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.OrganizationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 
 public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
@@ -732,4 +733,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/fixSuggestionResolved")
   CompletableFuture<Void> fixSuggestionResolved(FixSuggestionResolvedParams params);
+
+  @JsonNotification("sonarlint/findingsFiltered")
+  CompletableFuture<Void> findingsFiltered(FindingsFilteredParams params);
 }
