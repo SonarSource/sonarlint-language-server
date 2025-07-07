@@ -33,6 +33,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixA
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingTriggeredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingType;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificationsClickedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
@@ -147,6 +148,34 @@ class SonarLintTelemetryTests {
 
     verify(telemetryService, never()).taintVulnerabilitiesInvestigatedRemotely();
     verify(telemetryService, never()).taintInvestigatedRemotely();
+  }
+
+  @Test
+  void issueInvestigatedLocally_when_enabled() {
+    telemetry.issueInvestigatedLocally();
+    verify(telemetryService).issueInvestigatedLocally();
+  }
+
+  @Test
+  void issueInvestigatedLocally_when_disabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+    telemetry.issueInvestigatedLocally();
+
+    verify(telemetryService, never()).issueInvestigatedLocally();
+  }
+
+  @Test
+  void filterApplied_when_enabled() {
+    var telemetryParams = new FindingsFilteredParams("severity");
+    telemetry.findingFilterApplied(telemetryParams);
+    verify(telemetryService).findingsFiltered(telemetryParams);
+  }
+
+  @Test
+  void filterApplied_when_disabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+    telemetry.findingFilterApplied(new FindingsFilteredParams("severity"));
+    verify(telemetryService, never()).findingsFiltered(any());
   }
 
   @Test
