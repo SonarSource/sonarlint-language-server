@@ -26,6 +26,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixA
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingTriggeredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingType;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificationsClickedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ToolCalledParams;
@@ -88,6 +89,10 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     });
   }
 
+  public void issueInvestigatedLocally() {
+    actIfEnabled(TelemetryRpcService::issueInvestigatedLocally);
+  }
+
   public void addQuickFixAppliedForRule(String ruleKey) {
     actIfEnabled(telemetryRpcService -> telemetryRpcService.addQuickFixAppliedForRule(new AddQuickFixAppliedForRuleParams(ruleKey)));
   }
@@ -114,6 +119,10 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
   public void fixSuggestionResolved(FixSuggestionResolvedParams params) {
     actIfEnabled(telemetryRpcService -> telemetryRpcService.fixSuggestionResolved(params));
+  }
+
+  public void findingFilterApplied(FindingsFilteredParams params) {
+    actIfEnabled(telemetryRpcService -> telemetryRpcService.findingsFiltered(params));
   }
 
   public void wholeFolderHotspotsAnalysisTriggered() {
