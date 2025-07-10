@@ -76,6 +76,11 @@ public class IssuesCache {
       .map(issuesForFile::get);
   }
 
+  public Optional<DelegatingFinding> getIssueById(URI fileUri, String issueId) {
+    return Optional.ofNullable(issuesPerIdPerFileURI.get(fileUri))
+      .map(issues -> issues.get(issueId));
+  }
+
   public Map<String, DelegatingFinding> get(URI fileUri) {
     return issuesPerIdPerFileURI.getOrDefault(fileUri, Map.of());
   }
