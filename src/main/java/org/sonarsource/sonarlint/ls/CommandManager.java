@@ -601,6 +601,7 @@ public class CommandManager {
   }
 
   private void handleShowIssueFlows(ExecuteCommandParams params) {
+    telemetry.issueInvestigatedLocally();
     var issueId = getAsString(params.getArguments().get(0));
     var fileUri = getAsString(params.getArguments().get(1));
     var issue = issuesCache.getIssueById(create(fileUri), issueId);
