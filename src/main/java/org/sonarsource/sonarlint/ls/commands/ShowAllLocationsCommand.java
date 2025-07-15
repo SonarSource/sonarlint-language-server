@@ -37,6 +37,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.LocationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.LocalCodeFile;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
+import org.sonarsource.sonarlint.ls.connected.DelegatingHotspot;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
@@ -62,6 +63,7 @@ public final class ShowAllLocationsCommand {
     private final String creationDate;
     private final TextRangeDto textRange;
     private boolean codeMatches = false;
+    private boolean isHotspot = false;
 
 
     private Param(DelegatingFinding issue) {
@@ -75,6 +77,7 @@ public final class ShowAllLocationsCommand {
       this.connectionId = null;
       this.creationDate = null;
       this.shouldOpenRuleDescription = true;
+      this.isHotspot = issue instanceof DelegatingHotspot;
     }
 
     public Param(ShowIssueParams showIssueParams, @Nullable String connectionId, boolean shouldOpenRuleDescription) {
@@ -163,6 +166,9 @@ public final class ShowAllLocationsCommand {
       return shouldOpenRuleDescription;
     }
 
+    public boolean isHotspot() {
+      return isHotspot;
+    }
   }
 
   static class Flow {
