@@ -667,6 +667,10 @@ public abstract class AbstractLanguageServerMediumTests {
       return CompletableFutures.computeAsync(server -> "token");
     }
 
+    @Override
+    public void publishScaIssues(PublishDiagnosticsParams publishDiagnosticsParams) {
+      // NOP
+    }
   }
 
   protected static void notifyConfigurationChangeOnClient() {

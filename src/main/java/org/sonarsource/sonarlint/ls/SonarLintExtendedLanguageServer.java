@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
@@ -349,6 +350,30 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/openHotspotInBrowser")
   void openHotspotInBrowser(OpenHotspotInBrowserLsParams params);
+
+  @JsonNotification("sonarlint/openScaIssueInBrowser")
+  void openScaIssueInBrowser(OpenScaIssueInBrowserLsParams params);
+
+  class OpenScaIssueInBrowserLsParams {
+    private UUID issueId;
+    private String folderUri;
+
+    public OpenScaIssueInBrowserLsParams(UUID issueId, String folderUri) {
+      this.issueId = issueId;
+      this.folderUri = folderUri;
+    }
+
+    public UUID getIssueId() {
+      return issueId;
+    }
+
+    public String getFolderUri() {
+      return folderUri;
+    }
+  }
+
+  @JsonNotification("sonarlint/scaIssueInvestigatedLocally")
+  CompletableFuture<Void> scaIssueInvestigatedLocally();
 
   class ShowHotspotRuleDescriptionParams {
     String hotspotId;

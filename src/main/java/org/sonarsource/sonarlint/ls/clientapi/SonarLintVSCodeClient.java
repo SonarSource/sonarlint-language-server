@@ -59,6 +59,7 @@ import org.sonarsource.sonarlint.core.rpc.client.SonarLintCancelChecker;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ScaIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingResponse;
@@ -98,10 +99,12 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.CreateConnectionParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
+import org.sonarsource.sonarlint.ls.connected.DependencyRisksCache;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
+import org.sonarsource.sonarlint.ls.domain.ScaIssue;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -131,6 +134,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private BackendServiceFacade backendServiceFacade;
   private WorkspaceFolderBranchManager branchManager;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
+  private final DependencyRisksCache dependencyRisksCache;
   private WorkspaceFoldersManager workspaceFoldersManager;
   private ForcedAnalysisCoordinator forcedAnalysisCoordinator;
   private DiagnosticPublisher diagnosticPublisher;
@@ -142,11 +146,13 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private AnalysisHelper analysisHelper;
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider, LanguageClientLogger logOutput,
-    TaintVulnerabilitiesCache taintVulnerabilitiesCache, SkippedPluginsNotifier skippedPluginsNotifier, PromotionalNotifications promotionalNotifications) {
+    TaintVulnerabilitiesCache taintVulnerabilitiesCache, DependencyRisksCache dependencyRisksCache,
+    SkippedPluginsNotifier skippedPluginsNotifier, PromotionalNotifications promotionalNotifications) {
     this.client = client;
     this.hostInfoProvider = hostInfoProvider;
     this.logOutput = logOutput;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
+    this.dependencyRisksCache = dependencyRisksCache;
     this.skippedPluginsNotifier = skippedPluginsNotifier;
     this.promotionalNotifications = promotionalNotifications;
     this.progressMonitor = new LSProgressMonitor(client);
@@ -398,6 +404,44 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   }
 
   @Override
+  public void didChangeScaIssues(String configScopeId, Set<UUID> closedScaIssueIds, List<ScaIssueDto> addedScaIssues,
+    List<ScaIssueDto> updatedScaIssues) {
+    var existingScaIssuesPerFolder = dependencyRisksCache.getDependencyRisksPerConfigScope();
+
+    // Remove sca issues that were closed
+    existingScaIssuesPerFolder.forEach((folderUri, scaIssues) -> {
+      scaIssues.stream()
+        .filter(scaIssue -> closedScaIssueIds.contains(scaIssue.getId()))
+        .forEach(scaIssue -> dependencyRisksCache.removeScaIssue(folderUri.toString(), scaIssue.getId().toString()));
+    });
+
+    // Add new sca issues
+    addedScaIssues.forEach(scaIssue -> {
+      var addedScaIssuesForFolder = dtosToScaIssues(configScopeId, scaIssue);
+      if (existingScaIssuesPerFolder.containsKey(URI.create(configScopeId))) {
+        addedScaIssuesForFolder.addAll(existingScaIssuesPerFolder.get(URI.create(configScopeId)));
+      }
+      dependencyRisksCache.reload(URI.create(configScopeId), addedScaIssuesForFolder);
+    });
+
+    // Update existing sca issues
+    updatedScaIssues.forEach(scaIssue -> {
+      if (dependencyRisksCache.getDependencyRisksPerConfigScope().containsKey(URI.create(configScopeId))) {
+        if (dependencyRisksCache.getDependencyRiskById(scaIssue.getId().toString()).isPresent()) {
+          dependencyRisksCache.removeScaIssue(configScopeId, scaIssue.getId().toString());
+        }
+        if (scaIssue.getStatus().equals(ScaIssueDto.Status.OPEN)) {
+          dependencyRisksCache.add(URI.create(configScopeId), new ScaIssue(scaIssue, configScopeId));
+        }
+      } else {
+        dependencyRisksCache.reload(URI.create(configScopeId), dtosToScaIssues(configScopeId, scaIssue));
+      }
+    });
+
+    diagnosticPublisher.publishScaIssues(URI.create(configScopeId));
+  }
+
+  @Override
   public void didChangeTaintVulnerabilities(String folderUri, Set<UUID> closedTaintVulnerabilityIds,
     List<TaintVulnerabilityDto> addedTaintVulnerabilities, List<TaintVulnerabilityDto> updatedTaintVulnerabilities) {
     var addedTaintVulnerabilitiesByFile = addedTaintVulnerabilities.stream()
@@ -545,6 +589,11 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       .map(dto -> new TaintIssue(dto, configurationScopeId, isSonarCloud))
       .filter(tv -> !tv.isResolved())
       .collect(Collectors.toCollection(ArrayList::new));
+  }
+
+  @NotNull
+  private static ArrayList<ScaIssue> dtosToScaIssues(String folderUri, ScaIssueDto scaIssue) {
+    return new ArrayList<>(List.of(new ScaIssue(scaIssue, folderUri)));
   }
 
   public void setSettingsManager(SettingsManager settingsManager) {
