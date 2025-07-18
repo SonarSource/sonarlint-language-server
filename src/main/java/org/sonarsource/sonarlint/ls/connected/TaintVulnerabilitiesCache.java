@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 import java.net.URI;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -35,7 +34,6 @@ import org.sonarsource.sonarlint.ls.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.util.TextRangeUtils;
 
 import static java.util.Collections.emptyList;
-import static org.sonarsource.sonarlint.ls.util.TextRangeUtils.locationMatches;
 import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralizedSuffix;
 
 public class TaintVulnerabilitiesCache {
@@ -44,21 +42,6 @@ public class TaintVulnerabilitiesCache {
 
   public void clear(URI fileUri) {
     taintVulnerabilitiesPerFile.remove(fileUri);
-  }
-
-  public Optional<TaintIssue> getTaintVulnerabilityForDiagnostic(URI fileUri, Diagnostic d) {
-    return taintVulnerabilitiesPerFile.getOrDefault(fileUri, Collections.emptyList())
-      .stream()
-      .filter(i -> hasSameKey(d, i) || hasSameRuleKeyAndLocation(d, i))
-      .findFirst();
-  }
-
-  private static boolean hasSameKey(Diagnostic d, TaintVulnerabilityDto i) {
-    return d.getData() != null && d.getData().equals(i.getId().toString());
-  }
-
-  private static boolean hasSameRuleKeyAndLocation(Diagnostic d, TaintVulnerabilityDto i) {
-    return i.getRuleKey().equals(d.getCode().getLeft()) && locationMatches(i, d);
   }
 
   public Optional<TaintIssue> getTaintVulnerabilityByKey(String issueId) {

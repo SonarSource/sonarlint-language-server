@@ -48,6 +48,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
+import org.sonarsource.sonarlint.ls.connected.DependencyRisksCache;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.notebooks.DelegatingCellIssue;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
@@ -66,6 +67,7 @@ class DiagnosticPublisherTests {
   private DiagnosticPublisher underTest;
   private IssuesCache issuesCache;
   private HotspotsCache hotspotsCache;
+  private DependencyRisksCache dependencyRisksCache;
   private SonarLintExtendedLanguageClient languageClient;
 
   @BeforeEach
@@ -73,8 +75,9 @@ class DiagnosticPublisherTests {
     issuesCache = new IssuesCache();
     hotspotsCache = new HotspotsCache();
     languageClient = mock(SonarLintExtendedLanguageClient.class);
+    dependencyRisksCache = new DependencyRisksCache();
     underTest = new DiagnosticPublisher(languageClient, new TaintVulnerabilitiesCache(), issuesCache, hotspotsCache,
-      mock(OpenNotebooksCache.class));
+      mock(OpenNotebooksCache.class), dependencyRisksCache);
   }
 
   @Test

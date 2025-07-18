@@ -784,6 +784,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/publishTaintVulnerabilities")
   void publishTaintVulnerabilities(PublishDiagnosticsParams publishDiagnosticsParams);
 
+  @JsonNotification("sonarlint/publishScaIssues")
+  void publishScaIssues(PublishDiagnosticsParams publishDiagnosticsParams);
+
   @JsonNotification("sonarlint/readyForTests")
   void readyForTests();
 
