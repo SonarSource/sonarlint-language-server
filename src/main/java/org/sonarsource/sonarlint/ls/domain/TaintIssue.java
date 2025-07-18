@@ -27,8 +27,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
 
 public class TaintIssue extends TaintVulnerabilityDto {
-  public static final String SONARQUBE_TAINT_SOURCE = "Latest SonarQube Server Analysis";
-  public static final String SONARCLOUD_TAINT_SOURCE = "Latest SonarQube Cloud Analysis";
+  public static final String SONARQUBE_SERVER_SOURCE = "Latest SonarQube Server Analysis";
+  public static final String SONARQUBE_CLOUD_SOURCE = "Latest SonarQube Cloud Analysis";
   String workspaceFolderUri;
   String source;
 
@@ -37,7 +37,7 @@ public class TaintIssue extends TaintVulnerabilityDto {
       taintDto.getIdeFilePath(), taintDto.getIntroductionDate(), taintDto.getSeverityMode(), taintDto.getFlows(), taintDto.getTextRange(),
       taintDto.getRuleDescriptionContextKey(), taintDto.isOnNewCode(), taintDto.isAiCodeFixable());
     this.workspaceFolderUri = workspaceFolderUri;
-    this.source = isSonarCloud ? SONARCLOUD_TAINT_SOURCE : SONARQUBE_TAINT_SOURCE;
+    this.source = isSonarCloud ? SONARQUBE_CLOUD_SOURCE : SONARQUBE_SERVER_SOURCE;
   }
 
   public static Map<SoftwareQuality, ImpactSeverity> impactListToMap(List<ImpactDto> impacts) {

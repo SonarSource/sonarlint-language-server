@@ -1026,6 +1026,13 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  void dependencyRiskInvestigatedLocallyShouldCallTelemetry() {
+    var result = lsProxy.dependencyRiskIssueInvestigatedLocally();
+
+    assertThat(result).isNull();
+  }
+
+  @Test
   void getFilePatternsForAnalysis() throws ExecutionException, InterruptedException {
     var result = lsProxy.getFilePatternsForAnalysis(new SonarLintExtendedLanguageServer.UriParams("notBound")).get();
 

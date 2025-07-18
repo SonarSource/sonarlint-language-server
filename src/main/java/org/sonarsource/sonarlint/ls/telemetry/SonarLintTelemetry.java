@@ -125,6 +125,10 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     actIfEnabled(telemetryRpcService -> telemetryRpcService.findingsFiltered(params));
   }
 
+  public void dependencyRiskIssueInvestigatedLocally() {
+    actIfEnabled(TelemetryRpcService::dependencyRiskInvestigatedLocally);
+  }
+
   public void wholeFolderHotspotsAnalysisTriggered() {
     actIfEnabled(telemetryRpcService ->
       telemetryRpcService.analysisReportingTriggered(new AnalysisReportingTriggeredParams(AnalysisReportingType.WHOLE_FOLDER_HOTSPOTS_SCAN_TYPE)));

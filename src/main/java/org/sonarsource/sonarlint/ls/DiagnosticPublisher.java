@@ -37,6 +37,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
 import org.sonarsource.sonarlint.ls.connected.DelegatingHotspot;
+import org.sonarsource.sonarlint.ls.connected.DependencyRisksCache;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 
@@ -58,17 +59,19 @@ public class DiagnosticPublisher {
   private final IssuesCache issuesCache;
   private final HotspotsCache hotspotsCache;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
+  private final DependencyRisksCache dependencyRisksCache;
   private final OpenNotebooksCache openNotebooksCache;
 
   private boolean focusOnNewCode;
 
   public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
-    IssuesCache issuesCache, HotspotsCache hotspotsCache, OpenNotebooksCache openNotebooksCache) {
+    IssuesCache issuesCache, HotspotsCache hotspotsCache, OpenNotebooksCache openNotebooksCache, DependencyRisksCache dependencyRisksCache) {
     this.client = client;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.issuesCache = issuesCache;
     this.hotspotsCache = hotspotsCache;
     this.openNotebooksCache = openNotebooksCache;
+    this.dependencyRisksCache = dependencyRisksCache;
     this.focusOnNewCode = false;
   }
 
@@ -88,6 +91,10 @@ public class DiagnosticPublisher {
 
   public void publishTaints(URI f) {
     client.publishTaintVulnerabilities(createPublishTaintsParams(f));
+  }
+
+  public void publishDependencyRisks(URI f) {
+    client.publishDependencyRisks(createPublishDependencyRisksParams(f));
   }
 
   public void publishTaints() {
@@ -306,6 +313,15 @@ public class DiagnosticPublisher {
       .sorted(DiagnosticPublisher.byLineNumber())
       .toList());
     p.setUri(newUri.toString());
+
+    return p;
+  }
+
+  private PublishDiagnosticsParams createPublishDependencyRisksParams(URI folderUri) {
+    var p = new PublishDiagnosticsParams();
+
+    p.setDiagnostics(dependencyRisksCache.getAsDiagnostics(folderUri).toList());
+    p.setUri(folderUri.toString());
 
     return p;
   }

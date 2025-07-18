@@ -96,6 +96,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetStandaloneRu
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ListAllStandaloneRulesDefinitionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.StandaloneRuleConfigDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.UpdateStandaloneRulesConfigurationParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.OpenDependencyRiskInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.GetStatusResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllParams;
@@ -426,5 +427,10 @@ public class BackendService {
     var workspaceOrRootScope = Optional.ofNullable(workspaceFolder).orElse(ROOT_CONFIGURATION_SCOPE);
     var params = new SuggestFixParams(workspaceOrRootScope, issueKey);
     return initializedBackend().getAiCodeFixRpcService().suggestFix(params);
+  }
+
+  public CompletableFuture<Void> openDependencyRiskInBrowser(String folderUri, UUID issueId) {
+    var params = new OpenDependencyRiskInBrowserParams(folderUri, issueId);
+    return initializedBackend().getDependencyRiskService().openDependencyRiskInBrowser(params);
   }
 }

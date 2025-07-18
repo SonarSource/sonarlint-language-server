@@ -44,6 +44,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueComment
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.IssueRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.remediation.aicodefix.AiCodeFixRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.remediation.aicodefix.SuggestFixParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.DependencyRiskRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.OpenDependencyRiskInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
@@ -60,6 +62,7 @@ class BackendServiceTests {
 
   static SonarLintRpcServer backend = mock(SonarLintRpcServer.class);
   HotspotRpcService hotspotService = mock(HotspotRpcService.class);
+  DependencyRiskRpcService dependencyRiskRpcService = mock(DependencyRiskRpcService.class);
   ConfigurationRpcService configurationService = mock(ConfigurationRpcService.class);
   BindingRpcService bindingRpcService = mock(BindingRpcService.class);
   ConnectionRpcService connectionRpcService = mock(ConnectionRpcService.class);
@@ -184,5 +187,19 @@ class BackendServiceTests {
     verify(aiCodeFixRpcService).suggestFix(argumentCaptor.capture());
     assertThat(argumentCaptor.getValue().getConfigurationScopeId()).isEqualTo(configScopeId);
     assertThat(argumentCaptor.getValue().getIssueId()).isEqualTo(issueId);
+  }
+
+  @Test
+  void shouldForwardOpenDependencyRiskInBrowserRequestToBackend() {
+    var folderUri = "file:///User/folder";
+    var dependencyKey = UUID.randomUUID();
+    var argumentCaptor = ArgumentCaptor.forClass(OpenDependencyRiskInBrowserParams.class);
+    when(backend.getDependencyRiskService()).thenReturn(dependencyRiskRpcService);
+
+    underTest.openDependencyRiskInBrowser(folderUri, dependencyKey);
+
+    verify(dependencyRiskRpcService).openDependencyRiskInBrowser(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue().getConfigScopeId()).isEqualTo(folderUri);
+    assertThat(argumentCaptor.getValue().getDependencyRiskKey()).isEqualTo(dependencyKey);
   }
 }
