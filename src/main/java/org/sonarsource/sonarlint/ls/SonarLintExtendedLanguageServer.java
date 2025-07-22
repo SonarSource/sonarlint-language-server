@@ -39,6 +39,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConn
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.GetConnectionSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.OrganizationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.ChangeDependencyRiskStatusParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
@@ -545,6 +546,18 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/changeIssueStatus")
   CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params);
+
+  @JsonNotification("sonarlint/changeDependencyRiskStatus")
+  void changeDependencyRiskStatus(ChangeDependencyRiskStatusParams params);
+
+  @JsonRequest("sonarlint/getDependencyRiskTransitions")
+  CompletableFuture<GetDependencyRiskTransitionsResponse> getDependencyRiskTransitions(GetDependencyRiskTransitionsParams params);
+
+  record GetDependencyRiskTransitionsParams(UUID dependencyRiskId) {
+  }
+
+  record GetDependencyRiskTransitionsResponse(List<String> transitions) {
+  }
 
   class CheckLocalDetectionSupportedResponse {
     boolean isSupported;

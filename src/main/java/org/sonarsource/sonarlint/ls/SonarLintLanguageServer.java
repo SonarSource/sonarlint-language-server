@@ -96,6 +96,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.CheckStatusCh
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.ChangeDependencyRiskStatusParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
@@ -880,6 +881,27 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       if (!StringUtils.isEmpty(params.getComment())) {
         addIssueComment(new AddIssueCommentParams(params.getConfigurationScopeId(), params.getIssueId(), params.getComment()));
       }
+    });
+  }
+
+  @Override
+  public void changeDependencyRiskStatus(ChangeDependencyRiskStatusParams params) {
+    backendServiceFacade.getBackendService().changeDependencyRiskStatus(params).thenAccept(
+      nothing -> client.showMessage(new MessageParams(MessageType.Info, "Dependency risk status was updated"))
+    ).exceptionally(t -> {
+        lsLogOutput.errorWithStackTrace("Error changing dependency risk status", t);
+        client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the dependency risk. Check SonarQube for IDE output for details."));
+        return null;
+      }
+    );
+  }
+
+  @Override
+  public CompletableFuture<GetDependencyRiskTransitionsResponse> getDependencyRiskTransitions(GetDependencyRiskTransitionsParams params) {
+    return CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      var transitions = dependencyRisksCache.getAllowedTransitionsForDependencyRisk(params.dependencyRiskId().toString());
+      return new GetDependencyRiskTransitionsResponse(transitions);
     });
   }
 
