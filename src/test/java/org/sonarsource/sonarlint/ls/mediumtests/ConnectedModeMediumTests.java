@@ -67,6 +67,8 @@ import org.sonar.api.utils.DateUtils;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.ChangeDependencyRiskStatusParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.DependencyRiskTransition;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
 import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Components;
@@ -1264,6 +1266,34 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     });
   }
 
+  @Test
+  void should_notify_client_when_change_dependency_risk_status_fails() {
+    var riskId = UUID.randomUUID();
+
+    lsProxy.changeDependencyRiskStatus(new ChangeDependencyRiskStatusParams(
+      folder1BaseDir.toUri().toString(),
+      riskId,
+      DependencyRiskTransition.ACCEPT,
+      "some comment"
+    ));
+
+    awaitUntilAsserted(() -> {
+      assertThat(client.shownMessages)
+        .extracting(MessageParams::getType, MessageParams::getMessage)
+        .containsExactlyInAnyOrder(
+          tuple(MessageType.Error, "Could not change status for the dependency risk. Check SonarQube for IDE output for details."));
+    });
+  }
+
+  @Test
+  void should_return_empty_dependency_risk_transitions() {
+    var params = new SonarLintExtendedLanguageServer.GetDependencyRiskTransitionsParams(UUID.randomUUID());
+
+    var result = lsProxy.getDependencyRiskTransitions(params).join();
+
+    assertThat(result.transitions()).isEmpty();
+  }
+
   private void mockNoIssueAndNoTaintInIncrementalSync() {
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
@@ -1531,7 +1561,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.openedLinks)
       .hasSize(1)
       .allMatch(url -> url.startsWith(mockWebServerExtension.url("/sonarlint/auth"))
-          && !url.contains("utm"));
+        && !url.contains("utm"));
   }
 
   @Test

@@ -96,6 +96,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetStandaloneRu
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ListAllStandaloneRulesDefinitionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.StandaloneRuleConfigDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.UpdateStandaloneRulesConfigurationParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.ChangeDependencyRiskStatusParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.OpenDependencyRiskInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.GetStatusResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
@@ -432,5 +433,9 @@ public class BackendService {
   public CompletableFuture<Void> openDependencyRiskInBrowser(String folderUri, UUID issueId) {
     var params = new OpenDependencyRiskInBrowserParams(folderUri, issueId);
     return initializedBackend().getDependencyRiskService().openDependencyRiskInBrowser(params);
+  }
+
+  public CompletableFuture<Void> changeDependencyRiskStatus(ChangeDependencyRiskStatusParams params) {
+    return initializedBackend().getDependencyRiskService().changeStatus(params);
   }
 }

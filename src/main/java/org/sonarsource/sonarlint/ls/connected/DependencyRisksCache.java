@@ -49,6 +49,13 @@ public class DependencyRisksCache {
       .findFirst();
   }
 
+  public List<String> getAllowedTransitionsForDependencyRisk(String issueId) {
+    var dependencyRisk = this.getDependencyRiskById(issueId);
+    return dependencyRisk.map(risk -> risk.getTransitions().stream().map(
+      Enum::name
+    ).toList()).orElseGet(List::of);
+  }
+
   public Stream<Diagnostic> getAsDiagnostics(URI folderUri) {
     return dependencyRisksPerConfigScope.getOrDefault(folderUri, emptyList())
       .stream()

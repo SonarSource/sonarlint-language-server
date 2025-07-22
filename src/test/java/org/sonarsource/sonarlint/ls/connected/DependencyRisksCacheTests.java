@@ -195,4 +195,34 @@ class DependencyRisksCacheTests {
     assertThat(result.get(uri).get(0)).isEqualTo(issue);
   }
 
+  @Test
+  void should_return_allowed_transitions_for_dependency_risk() {
+    var uri = URI.create("/");
+    var risk = mock(DependencyRisk.class);
+    when(risk.getId()).thenReturn(UUID.randomUUID());
+    when(risk.getTransitions()).thenReturn(List.of(
+      DependencyRiskDto.Transition.SAFE,
+      DependencyRiskDto.Transition.CONFIRM,
+      DependencyRiskDto.Transition.ACCEPT
+    ));
+    // Add risk to cache
+    underTest.putAll(uri, new ArrayList<>(List.of(risk)));
+
+    var transitions = underTest.getAllowedTransitionsForDependencyRisk(risk.getId().toString());
+
+    assertThat(transitions).containsExactlyInAnyOrder(
+      "SAFE", "CONFIRM", "ACCEPT"
+    );
+  }
+
+  @Test
+  void should_return_empty_list_for_non_existent_dependency_risk() {
+    var risk = mock(DependencyRisk.class);
+    when(risk.getId()).thenReturn(UUID.randomUUID());
+
+    var transitions = underTest.getAllowedTransitionsForDependencyRisk(risk.getId().toString());
+
+    assertThat(transitions).isEmpty();
+  }
+
 }
