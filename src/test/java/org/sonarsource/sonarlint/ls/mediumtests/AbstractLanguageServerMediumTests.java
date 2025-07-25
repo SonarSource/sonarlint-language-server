@@ -352,6 +352,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     Map<String, List<Diagnostic>> diagnostics = new ConcurrentHashMap<>();
     Map<String, List<Diagnostic>> taints = new ConcurrentHashMap<>();
+    Map<String, List<Diagnostic>> dependencyRisks = new ConcurrentHashMap<>();
     Map<String, List<Diagnostic>> hotspots = new ConcurrentHashMap<>();
     Queue<MessageParams> logs = new ConcurrentLinkedQueue<>();
     Map<String, Object> globalSettings = new HashMap<>();
@@ -667,6 +668,10 @@ public abstract class AbstractLanguageServerMediumTests {
       return CompletableFutures.computeAsync(server -> "token");
     }
 
+    @Override
+    public void publishDependencyRisks(PublishDiagnosticsParams publishDiagnosticsParams) {
+      this.dependencyRisks.put(publishDiagnosticsParams.getUri(), publishDiagnosticsParams.getDiagnostics());
+    }
   }
 
   protected static void notifyConfigurationChangeOnClient() {

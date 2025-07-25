@@ -104,6 +104,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCh
 import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient;
+import org.sonarsource.sonarlint.ls.connected.DependencyRisksCache;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
@@ -156,6 +157,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final ProjectBindingManager bindingManager;
   private final ForcedAnalysisCoordinator forcedAnalysisCoordinator;
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
+  private final DependencyRisksCache dependencyRisksCache;
   private final OpenFilesCache openFilesCache;
   private final OpenNotebooksCache openNotebooksCache;
   private final CommandManager commandManager;
@@ -208,6 +210,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.issuesCache = new IssuesCache();
     this.securityHotspotsCache = new HotspotsCache();
     this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
+    this.dependencyRisksCache = new DependencyRisksCache();
     this.notebookDiagnosticPublisher = new NotebookDiagnosticPublisher(client, issuesCache);
     this.openNotebooksCache = new OpenNotebooksCache(lsLogOutput, notebookDiagnosticPublisher);
     this.notebookDiagnosticPublisher.setOpenNotebooksCache(openNotebooksCache);
@@ -215,12 +218,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client, lsLogOutput);
     this.promotionalNotifications = new PromotionalNotifications(client);
     var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, lsLogOutput, taintVulnerabilitiesCache,
+      dependencyRisksCache,
       skippedPluginsNotifier, promotionalNotifications);
     this.backendServiceFacade = new BackendServiceFacade(vsCodeClient, lsLogOutput, client);
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
     this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, lsLogOutput);
     this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache,
-      securityHotspotsCache, openNotebooksCache);
+      securityHotspotsCache, openNotebooksCache, dependencyRisksCache);
     vsCodeClient.setDiagnosticPublisher(diagnosticPublisher);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, backendServiceFacade, lsLogOutput);
     vsCodeClient.setSettingsManager(settingsManager);
@@ -715,6 +719,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
+  public CompletableFuture<Void> openDependencyRiskInBrowser(OpenDependencyRiskInBrowserParams params) {
+    var issueId = params.issueId();
+    var folderUri = params.folderUri();
+    return backendServiceFacade.getBackendService().openDependencyRiskInBrowser(folderUri, issueId);
+  }
+
+  @Override
   public CompletableFuture<Void> showHotspotRuleDescription(ShowHotspotRuleDescriptionParams params) {
     var fileUri = params.fileUri;
     var showHotspotCommandParams = new ExecuteCommandParams(SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND,
@@ -767,6 +778,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       return null;
     });
   }
+
 
   @Override
   public CompletableFuture<Void> scanFolderForHotspots(ScanFolderForHotspotsParams params) {
@@ -828,6 +840,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<Void> findingsFiltered(FindingsFilteredParams params) {
     telemetry.findingFilterApplied(params);
+    return CompletableFuture.completedFuture(null);
+  }
+
+  @Override
+  public CompletableFuture<Void> dependencyRiskIssueInvestigatedLocally() {
+    telemetry.dependencyRiskIssueInvestigatedLocally();
     return CompletableFuture.completedFuture(null);
   }
 

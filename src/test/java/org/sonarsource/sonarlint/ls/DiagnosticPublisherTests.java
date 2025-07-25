@@ -27,14 +27,17 @@ import java.util.stream.Stream;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ImpactDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.VulnerabilityProbability;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.DependencyRiskDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
@@ -48,7 +51,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.TextRangeDto;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
+import org.sonarsource.sonarlint.ls.connected.DependencyRisksCache;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
+import org.sonarsource.sonarlint.ls.domain.DependencyRisk;
 import org.sonarsource.sonarlint.ls.notebooks.DelegatingCellIssue;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 
@@ -60,12 +65,14 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARQUBE_SERVER_SOURCE;
 
 class DiagnosticPublisherTests {
 
   private DiagnosticPublisher underTest;
   private IssuesCache issuesCache;
   private HotspotsCache hotspotsCache;
+  private DependencyRisksCache dependencyRisksCache;
   private SonarLintExtendedLanguageClient languageClient;
 
   @BeforeEach
@@ -73,8 +80,9 @@ class DiagnosticPublisherTests {
     issuesCache = new IssuesCache();
     hotspotsCache = new HotspotsCache();
     languageClient = mock(SonarLintExtendedLanguageClient.class);
+    dependencyRisksCache = new DependencyRisksCache();
     underTest = new DiagnosticPublisher(languageClient, new TaintVulnerabilitiesCache(), issuesCache, hotspotsCache,
-      mock(OpenNotebooksCache.class));
+      mock(OpenNotebooksCache.class), dependencyRisksCache);
   }
 
   @Test
@@ -209,6 +217,27 @@ class DiagnosticPublisherTests {
     underTest.publishDiagnostics(uri, true);
 
     verify(languageClient, never()).showFirstSecretDetectionNotification();
+  }
+
+  @Test
+  void shouldPublishDependencyRisksForFolder() {
+    var folderUri = URI.create("file:///workspace");
+    var dependencyRisk = mock(DependencyRisk.class);
+    when(dependencyRisk.getId()).thenReturn(UUID.randomUUID());
+    when(dependencyRisk.getPackageName()).thenReturn("vulnerable-package");
+    when(dependencyRisk.getPackageVersion()).thenReturn("1.0.0");
+    when(dependencyRisk.getStatus()).thenReturn(DependencyRiskDto.Status.OPEN);
+    when(dependencyRisk.getType()).thenReturn(DependencyRiskDto.Type.VULNERABILITY);
+    when(dependencyRisk.getSeverity()).thenReturn(DependencyRiskDto.Severity.BLOCKER);
+    when(dependencyRisk.getSource()).thenReturn(SONARQUBE_SERVER_SOURCE);
+    dependencyRisksCache.putAll(folderUri, List.of(dependencyRisk));
+
+    underTest.publishDependencyRisks(folderUri);
+
+    var diagnostics = ArgumentCaptor.forClass(PublishDiagnosticsParams.class);
+    verify(languageClient, times(1)).publishDependencyRisks(diagnostics.capture());
+    assertThat(diagnostics.getValue().getUri()).isEqualTo(folderUri.toString());
+    assertThat(diagnostics.getValue().getDiagnostics()).hasSize(1);
   }
 
   @Test

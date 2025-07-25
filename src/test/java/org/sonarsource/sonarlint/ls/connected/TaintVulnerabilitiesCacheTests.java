@@ -25,11 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
-import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
-import org.eclipse.lsp4j.Position;
-import org.eclipse.lsp4j.Range;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -47,8 +43,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache.convert;
-import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARCLOUD_TAINT_SOURCE;
-import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARQUBE_TAINT_SOURCE;
+import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARQUBE_CLOUD_SOURCE;
+import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARQUBE_SERVER_SOURCE;
 
 class TaintVulnerabilitiesCacheTests {
 
@@ -99,24 +95,6 @@ class TaintVulnerabilitiesCacheTests {
   }
 
   @Test
-  void testGetServerIssueForDiagnosticBasedOnLocation() throws Exception {
-    var uri = new URI("/");
-    var issue = mock(TaintIssue.class);
-    when(issue.getTextRange()).thenReturn(new TextRangeWithHashDto(228, 14, 322, 14, ""));
-    when(issue.getRuleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
-    when(issue.isResolved()).thenReturn(false);
-
-    var diagnostic = mock(Diagnostic.class);
-    when(diagnostic.getCode()).thenReturn(Either.forLeft(SAMPLE_SECURITY_RULE_KEY));
-    var range = new Range(new Position(227, 14), new Position(321, 14));
-    when(diagnostic.getRange()).thenReturn(range);
-
-    underTest.reload(uri, List.of(issue));
-
-    assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).hasValue(issue);
-  }
-
-  @Test
   void testCacheOnlyUnresolvedTaintVulnerabilities() throws Exception {
     var uri = new URI("/");
     var taint = mock(TaintIssue.class);
@@ -140,39 +118,6 @@ class TaintVulnerabilitiesCacheTests {
     underTest.reload(uri, List.of(taint, resolvedTaint));
 
     assertThat(underTest.getAsDiagnostics(uri)).hasSize(2);
-  }
-
-  @Test
-  void testGetServerIssueForDiagnosticBasedOnKey() throws Exception {
-    var uri = new URI("/");
-    var issue = mock(TaintIssue.class);
-    var issueId = UUID.randomUUID();
-    when(issue.getId()).thenReturn(issueId);
-    when(issue.getRuleKey()).thenReturn(SAMPLE_SECURITY_RULE_KEY);
-    when(issue.isResolved()).thenReturn(false);
-
-    var diagnostic = mock(Diagnostic.class);
-    when(diagnostic.getData()).thenReturn(issueId.toString());
-    when(diagnostic.getCode()).thenReturn(Either.forLeft(""));
-    underTest.reload(uri, List.of(issue));
-
-    assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).hasValue(issue);
-  }
-
-  @Test
-  void testGetServerIssueForDiagnosticNotFound() throws Exception {
-    var uri = new URI("/");
-    var taint = mock(TaintIssue.class);
-    when(taint.getId()).thenReturn(UUID.randomUUID());
-    when(taint.getRuleKey()).thenReturn("someRuleKey");
-    when(taint.getRuleKey()).thenReturn("issueKey");
-
-    var diagnostic = mock(Diagnostic.class);
-    when(diagnostic.getData()).thenReturn("anotherKey");
-    when(diagnostic.getCode()).thenReturn(Either.forLeft("anotherRuleKey"));
-    underTest.reload(uri, List.of(taint));
-
-    assertThat(underTest.getTaintVulnerabilityForDiagnostic(uri, diagnostic)).isEmpty();
   }
 
   @Test
@@ -212,15 +157,15 @@ class TaintVulnerabilitiesCacheTests {
 
   private static Stream<Arguments> testIssueConversionParameters() {
     return Stream.of(
-      Arguments.of(SONARCLOUD_TAINT_SOURCE, true, DiagnosticSeverity.Error),
-      Arguments.of(SONARCLOUD_TAINT_SOURCE, true, DiagnosticSeverity.Error),
-      Arguments.of(SONARCLOUD_TAINT_SOURCE, false, DiagnosticSeverity.Error),
-      Arguments.of(SONARCLOUD_TAINT_SOURCE, false, DiagnosticSeverity.Error),
+      Arguments.of(SONARQUBE_CLOUD_SOURCE, true, DiagnosticSeverity.Error),
+      Arguments.of(SONARQUBE_CLOUD_SOURCE, true, DiagnosticSeverity.Error),
+      Arguments.of(SONARQUBE_CLOUD_SOURCE, false, DiagnosticSeverity.Error),
+      Arguments.of(SONARQUBE_CLOUD_SOURCE, false, DiagnosticSeverity.Error),
 
-      Arguments.of(SONARQUBE_TAINT_SOURCE, true, DiagnosticSeverity.Error),
-      Arguments.of(SONARQUBE_TAINT_SOURCE, true, DiagnosticSeverity.Error),
-      Arguments.of(SONARQUBE_TAINT_SOURCE, false, DiagnosticSeverity.Error),
-      Arguments.of(SONARQUBE_TAINT_SOURCE, false, DiagnosticSeverity.Error)
+      Arguments.of(SONARQUBE_SERVER_SOURCE, true, DiagnosticSeverity.Error),
+      Arguments.of(SONARQUBE_SERVER_SOURCE, true, DiagnosticSeverity.Error),
+      Arguments.of(SONARQUBE_SERVER_SOURCE, false, DiagnosticSeverity.Error),
+      Arguments.of(SONARQUBE_SERVER_SOURCE, false, DiagnosticSeverity.Error)
     );
   }
 }

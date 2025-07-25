@@ -63,6 +63,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.DependencyRiskDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TextRangeWithHashDto;
@@ -108,11 +109,13 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.CreateConnec
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
+import org.sonarsource.sonarlint.ls.connected.DependencyRisksCache;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
+import org.sonarsource.sonarlint.ls.domain.DependencyRisk;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
@@ -173,6 +176,7 @@ class SonarLintVSCodeClientTests {
   ArgumentCaptor<ShowAllLocationsCommand.Param> paramCaptor;
   BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   TaintVulnerabilitiesCache taintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
+  DependencyRisksCache dependencyRisksCache = mock(DependencyRisksCache.class);
   ForcedAnalysisCoordinator forcedAnalysisCoordinator = mock(ForcedAnalysisCoordinator.class);
   DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
   PromotionalNotifications promotionalNotifications = mock(PromotionalNotifications.class);
@@ -219,7 +223,7 @@ class SonarLintVSCodeClientTests {
 
   @BeforeEach
   void setup() throws IOException {
-    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, skippedPluginsNotifier, promotionalNotifications);
+    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, dependencyRisksCache, skippedPluginsNotifier, promotionalNotifications);
     underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);
     underTest.setBindingManager(bindingManager);
@@ -915,6 +919,81 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
+  void shouldUpdateDepRiskCacheOnAddedDependencyRisks() {
+    var configScopeId = "file:///my/config/scope";
+    var addedRiskId = UUID.randomUUID();
+    var addedRisk = mock(DependencyRiskDto.class);
+    when(addedRisk.getId()).thenReturn(addedRiskId);
+    when(addedRisk.getPackageName()).thenReturn("vulnerable-package");
+    when(addedRisk.getPackageVersion()).thenReturn("1.0.0");
+    when(addedRisk.getSeverity()).thenReturn(DependencyRiskDto.Severity.BLOCKER);
+    when(addedRisk.getType()).thenReturn(DependencyRiskDto.Type.VULNERABILITY);
+    when(addedRisk.getTransitions()).thenReturn(List.of(DependencyRiskDto.Transition.CONFIRM, DependencyRiskDto.Transition.ACCEPT));
+
+    underTest.didChangeDependencyRisks(configScopeId, Set.of(), List.of(addedRisk), List.of());
+
+    ArgumentCaptor<DependencyRisk> addedRiskCaptor = ArgumentCaptor.forClass(DependencyRisk.class);
+    var configScopeUriCaptor = ArgumentCaptor.forClass(URI.class);
+
+    verify(dependencyRisksCache, times(1)).addDependencyRisk(configScopeUriCaptor.capture(), addedRiskCaptor.capture());
+    assertThat(addedRiskCaptor.getValue().getId()).isEqualTo(addedRiskId);
+    verify(diagnosticPublisher, times(1)).publishDependencyRisks(configScopeUriCaptor.getValue());
+  }
+
+  @Test
+  void shouldRemoveDepRisksCacheOnClosedRisks() {
+    var configScopeId = "file:///my/config/scope";
+    var removedRiskId = UUID.randomUUID();
+    var removedRisk = mock(DependencyRisk.class);
+    dependencyRisksCache.addDependencyRisk(URI.create(configScopeId), removedRisk);
+
+    underTest.didChangeDependencyRisks(configScopeId, Set.of(removedRiskId), List.of(), List.of());
+
+    verify(dependencyRisksCache, times(1)).removeDependencyRisk(configScopeId, removedRiskId.toString());
+    verify(diagnosticPublisher, times(1)).publishDependencyRisks(URI.create(configScopeId));
+    assertThat(dependencyRisksCache.getDependencyRisksPerConfigScope().get(URI.create(configScopeId))).isNull();
+  }
+
+  @Test
+  void shouldUpdateDependencyRisksOnChangedRisks() {
+    var configScopeId = "file:///my/config/scope";
+    var changedRiskId1 = UUID.randomUUID();
+    var changedRiskId2 = UUID.randomUUID();
+    var changedRisk1Dto = mock(DependencyRiskDto.class);
+    var changedRisk1 = mock(DependencyRisk.class);
+    when(changedRisk1Dto.getId()).thenReturn(changedRiskId1);
+    when(changedRisk1Dto.getId()).thenReturn(changedRiskId1);
+    when(changedRisk1Dto.getPackageName()).thenReturn("vulnerable-package");
+    when(changedRisk1Dto.getPackageVersion()).thenReturn("1.0.0");
+    when(changedRisk1Dto.getSeverity()).thenReturn(DependencyRiskDto.Severity.BLOCKER);
+    when(changedRisk1Dto.getType()).thenReturn(DependencyRiskDto.Type.VULNERABILITY);
+    when(changedRisk1Dto.getStatus()).thenReturn(DependencyRiskDto.Status.OPEN);
+    when(changedRisk1Dto.getTransitions()).thenReturn(List.of(DependencyRiskDto.Transition.CONFIRM, DependencyRiskDto.Transition.ACCEPT));
+    var changedRisk2Dto = mock(DependencyRiskDto.class);
+    when(changedRisk2Dto.getId()).thenReturn(changedRiskId2);
+    when(changedRisk2Dto.getPackageName()).thenReturn("another-package");
+    when(changedRisk2Dto.getPackageVersion()).thenReturn("2.0.0");
+    when(changedRisk2Dto.getSeverity()).thenReturn(DependencyRiskDto.Severity.HIGH);
+    when(changedRisk2Dto.getType()).thenReturn(DependencyRiskDto.Type.VULNERABILITY);
+    when(changedRisk2Dto.getStatus()).thenReturn(DependencyRiskDto.Status.OPEN);
+    when(changedRisk2Dto.getTransitions()).thenReturn(List.of(DependencyRiskDto.Transition.CONFIRM, DependencyRiskDto.Transition.ACCEPT));
+
+    dependencyRisksCache.addDependencyRisk(URI.create(configScopeId), changedRisk1);
+
+    underTest.didChangeDependencyRisks(configScopeId, Set.of(), List.of(), List.of(changedRisk1Dto, changedRisk2Dto));
+
+    var changedRiskCaptor = ArgumentCaptor.forClass(DependencyRisk.class);
+    var configScopeUriCaptor = ArgumentCaptor.forClass(URI.class);
+
+    // first call from this test, two others from the actual cache update
+    verify(dependencyRisksCache, times(3)).addDependencyRisk(configScopeUriCaptor.capture(), changedRiskCaptor.capture());
+    var addedRisks = changedRiskCaptor.getAllValues();
+    assertThat(addedRisks.get(1).getId()).isEqualTo(changedRiskId1);
+    assertThat(addedRisks.get(2).getId()).isEqualTo(changedRiskId2);
+    verify(diagnosticPublisher, times(1)).publishDependencyRisks(configScopeUriCaptor.getValue());
+  }
+
+  @Test
   void shouldForwardIssueRaisedNotification() {
     var configScopeId = "file:///my/config/scope";
     var raisedIssue = mock(RaisedIssueDto.class);
@@ -932,7 +1011,7 @@ class SonarLintVSCodeClientTests {
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
     return new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
-        .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
+      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
       List.of(),
       new TextRangeWithHashDto(5, 5, 5, 5, ""), "", true, false);
   }
@@ -940,7 +1019,7 @@ class SonarLintVSCodeClientTests {
   private TaintIssue getTaintIssue(UUID uuid) {
     return new TaintIssue(new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
-        .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
+      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
       List.of(),
       new TextRangeWithHashDto(5, 5, 5, 5, ""), "", true, false), "folderUri", true);
   }
