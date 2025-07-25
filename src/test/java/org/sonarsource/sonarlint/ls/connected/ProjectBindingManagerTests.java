@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -69,6 +70,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.argThat;
 
 class ProjectBindingManagerTests {
 
@@ -469,6 +471,44 @@ class ProjectBindingManagerTests {
 
     assertThat(maybeBinding.get().connectionId()).isEqualTo("connectionId");
     assertThat(maybeBinding.get().projectKey()).isEqualTo("projectKey");
+  }
+
+  @Test
+  void validateConnection_should_handle_null_token_exception() {
+    var connectionId = "connectionWithNullToken";
+    var serverConnectionSettings = new ServerConnectionSettings(connectionId, "http://localhost:8080", null, null, false, null);
+    servers.put(connectionId, serverConnectionSettings);
+
+    underTest.validateConnection(connectionId);
+
+    verify(client).reportConnectionCheckResult(argThat(result ->
+      result.getConnectionId().equals(connectionId) &&
+        !result.isSuccess() &&
+        Objects.equals(result.getReason(), "Invalid credentials: Token cannot be null or empty for connection validation")));
+  }
+
+  @Test
+  void validateConnection_should_handle_empty_token_exception() {
+    var connectionId = "connectionWithEmptyToken";
+    var serverConnectionSettings = new ServerConnectionSettings(connectionId, "http://localhost:8080", "", null, false, null);
+    servers.put(connectionId, serverConnectionSettings);
+
+    underTest.validateConnection(connectionId);
+
+    verify(client).reportConnectionCheckResult(argThat(result ->
+      result.getConnectionId().equals(connectionId) &&
+        !result.isSuccess() &&
+        Objects.equals(result.getReason(), "Invalid credentials: Token cannot be null or empty for connection validation")));
+  }
+
+  @Test
+  void validateConnection_should_handle_unknown_connection() {
+    var connectionId = "unknownConnection";
+
+    underTest.validateConnection(connectionId);
+
+    // Should not call reportConnectionCheckResult for unknown connections
+    verifyNoInteractions(client);
   }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {

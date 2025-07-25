@@ -38,6 +38,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.util.Utils.getValidateConnectionParamsForNewConnection;
 import static org.sonarsource.sonarlint.ls.util.Utils.isDelegatingIssueWithServerIssueKey;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class UtilsTests {
 
@@ -181,5 +182,21 @@ class UtilsTests {
     assertThat(Utils.convertMessageType(org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType.WARNING)).isEqualTo(MessageType.Warning);
     assertThat(Utils.convertMessageType(org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType.INFO)).isEqualTo(MessageType.Info);
     assertThrows(NullPointerException.class, () -> Utils.convertMessageType(null));
+  }
+
+  @Test
+  void shouldRejectNullTokenInValidation() {
+    var params = new ConnectionCheckParams(null, null, "http://localhost:8080", null);
+    assertThatThrownBy(() -> getValidateConnectionParamsForNewConnection(params))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessage("Token cannot be null or empty for connection validation");
+  }
+
+  @Test
+  void shouldRejectEmptyTokenInValidation() {
+    var params = new ConnectionCheckParams("", null, "http://localhost:8080", null);
+    assertThatThrownBy(() -> getValidateConnectionParamsForNewConnection(params))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessage("Token cannot be null or empty for connection validation");
   }
 }
