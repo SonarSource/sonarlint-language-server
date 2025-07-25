@@ -1294,6 +1294,22 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(result.transitions()).isEmpty();
   }
 
+  @Test
+  void should_show_error_notification_when_open_risk_in_browser_fails() {
+    var riskId = UUID.randomUUID();
+    var folderUri = folder1BaseDir.toUri().toString();
+    var params = new SonarLintExtendedLanguageServer.OpenDependencyRiskInBrowserParams(riskId, folderUri);
+
+    lsProxy.openDependencyRiskInBrowser(params);
+
+    awaitUntilAsserted(() -> {
+      assertThat(client.shownMessages)
+        .extracting(MessageParams::getType, MessageParams::getMessage)
+        .containsExactlyInAnyOrder(
+          tuple(MessageType.Error, String.format("Failed to open dependency risk in browser: Configuration scope '%s' is not bound properly, unable to open dependency risk", folderUri)));
+    });
+  }
+
   private void mockNoIssueAndNoTaintInIncrementalSync() {
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
