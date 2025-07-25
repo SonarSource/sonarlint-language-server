@@ -932,12 +932,11 @@ class SonarLintVSCodeClientTests {
 
     underTest.didChangeDependencyRisks(configScopeId, Set.of(), List.of(addedRisk), List.of());
 
-    ArgumentCaptor<List<DependencyRisk>> addedRiskCaptor = ArgumentCaptor.forClass(List.class);
+    ArgumentCaptor<DependencyRisk> addedRiskCaptor = ArgumentCaptor.forClass(DependencyRisk.class);
     var configScopeUriCaptor = ArgumentCaptor.forClass(URI.class);
 
-    verify(dependencyRisksCache, times(1)).reload(configScopeUriCaptor.capture(), addedRiskCaptor.capture());
-    assertThat(addedRiskCaptor.getValue()).hasSize(1);
-    assertThat(addedRiskCaptor.getValue().get(0).getId()).isEqualTo(addedRiskId);
+    verify(dependencyRisksCache, times(1)).addDependencyRisk(configScopeUriCaptor.capture(), addedRiskCaptor.capture());
+    assertThat(addedRiskCaptor.getValue().getId()).isEqualTo(addedRiskId);
     verify(diagnosticPublisher, times(1)).publishDependencyRisks(configScopeUriCaptor.getValue());
   }
 
@@ -946,13 +945,13 @@ class SonarLintVSCodeClientTests {
     var configScopeId = "file:///my/config/scope";
     var removedRiskId = UUID.randomUUID();
     var removedRisk = mock(DependencyRisk.class);
-    when(removedRisk.getId()).thenReturn(removedRiskId);
-    when(dependencyRisksCache.getDependencyRisksPerConfigScope()).thenReturn(Map.of(URI.create(configScopeId), List.of(removedRisk)));
+    dependencyRisksCache.addDependencyRisk(URI.create(configScopeId), removedRisk);
 
     underTest.didChangeDependencyRisks(configScopeId, Set.of(removedRiskId), List.of(), List.of());
 
-    verify(dependencyRisksCache, times(1)).removeDependencyRisks(configScopeId, removedRiskId.toString());
+    verify(dependencyRisksCache, times(1)).removeDependencyRisk(configScopeId, removedRiskId.toString());
     verify(diagnosticPublisher, times(1)).publishDependencyRisks(URI.create(configScopeId));
+    assertThat(dependencyRisksCache.getDependencyRisksPerConfigScope().get(URI.create(configScopeId))).isNull();
   }
 
   @Test
@@ -963,7 +962,6 @@ class SonarLintVSCodeClientTests {
     var changedRisk1Dto = mock(DependencyRiskDto.class);
     var changedRisk1 = mock(DependencyRisk.class);
     when(changedRisk1Dto.getId()).thenReturn(changedRiskId1);
-    when(changedRisk1.getId()).thenReturn(changedRiskId1);
     when(changedRisk1Dto.getId()).thenReturn(changedRiskId1);
     when(changedRisk1Dto.getPackageName()).thenReturn("vulnerable-package");
     when(changedRisk1Dto.getPackageVersion()).thenReturn("1.0.0");
@@ -980,17 +978,18 @@ class SonarLintVSCodeClientTests {
     when(changedRisk2Dto.getStatus()).thenReturn(DependencyRiskDto.Status.OPEN);
     when(changedRisk2Dto.getTransitions()).thenReturn(List.of(DependencyRiskDto.Transition.CONFIRM, DependencyRiskDto.Transition.ACCEPT));
 
-    when(dependencyRisksCache.getDependencyRisksPerConfigScope()).thenReturn(Map.of(URI.create(configScopeId), List.of(changedRisk1)));
+    dependencyRisksCache.addDependencyRisk(URI.create(configScopeId), changedRisk1);
 
     underTest.didChangeDependencyRisks(configScopeId, Set.of(), List.of(), List.of(changedRisk1Dto, changedRisk2Dto));
 
     var changedRiskCaptor = ArgumentCaptor.forClass(DependencyRisk.class);
     var configScopeUriCaptor = ArgumentCaptor.forClass(URI.class);
 
-    verify(dependencyRisksCache, times(2)).add(configScopeUriCaptor.capture(), changedRiskCaptor.capture());
+    // first call from this test, two others from the actual cache update
+    verify(dependencyRisksCache, times(3)).addDependencyRisk(configScopeUriCaptor.capture(), changedRiskCaptor.capture());
     var addedRisks = changedRiskCaptor.getAllValues();
-    assertThat(addedRisks.get(0).getId()).isEqualTo(changedRiskId1);
-    assertThat(addedRisks.get(1).getId()).isEqualTo(changedRiskId2);
+    assertThat(addedRisks.get(1).getId()).isEqualTo(changedRiskId1);
+    assertThat(addedRisks.get(2).getId()).isEqualTo(changedRiskId2);
     verify(diagnosticPublisher, times(1)).publishDependencyRisks(configScopeUriCaptor.getValue());
   }
 

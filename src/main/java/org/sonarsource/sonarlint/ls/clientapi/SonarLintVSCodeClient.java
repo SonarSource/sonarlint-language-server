@@ -406,34 +406,21 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public void didChangeDependencyRisks(String configScopeId, Set<UUID> closedDependencyRiskIds, List<DependencyRiskDto> addedDependencyRisks,
     List<DependencyRiskDto> updatedDependencyRisks) {
-    var existingDependencyRisksPerFolder = dependencyRisksCache.getDependencyRisksPerConfigScope();
+    closedDependencyRiskIds.forEach(id -> dependencyRisksCache.removeDependencyRisk(configScopeId, id.toString()));
 
-    existingDependencyRisksPerFolder.forEach((folderUri, existingRisks) -> existingRisks.stream()
-      .filter(risk -> closedDependencyRiskIds.contains(risk.getId()))
-      .forEach(risk -> dependencyRisksCache.removeDependencyRisks(folderUri.toString(), risk.getId().toString())));
-
-    addedDependencyRisks.forEach(scaIssue -> {
-      var addedScaIssuesForFolder = dtosToDependencyRisks(configScopeId, scaIssue);
-      if (existingDependencyRisksPerFolder.containsKey(URI.create(configScopeId))) {
-        addedScaIssuesForFolder.addAll(existingDependencyRisksPerFolder.get(URI.create(configScopeId)));
-      }
-      dependencyRisksCache.reload(URI.create(configScopeId), addedScaIssuesForFolder);
+    var folderUri = URI.create(configScopeId);
+    addedDependencyRisks.forEach(dependencyRiskDto -> {
+      var dependencyRisk = new DependencyRisk(dependencyRiskDto, configScopeId);
+      dependencyRisksCache.addDependencyRisk(folderUri, dependencyRisk);
     });
 
-    updatedDependencyRisks.forEach(updatedRisk -> {
-      if (dependencyRisksCache.getDependencyRisksPerConfigScope().containsKey(URI.create(configScopeId))) {
-        if (dependencyRisksCache.getDependencyRiskById(updatedRisk.getId().toString()).isPresent()) {
-          dependencyRisksCache.removeDependencyRisks(configScopeId, updatedRisk.getId().toString());
-        }
-        if (updatedRisk.getStatus().equals(DependencyRiskDto.Status.OPEN)) {
-          dependencyRisksCache.add(URI.create(configScopeId), new DependencyRisk(updatedRisk, configScopeId));
-        }
-      } else {
-        dependencyRisksCache.reload(URI.create(configScopeId), dtosToDependencyRisks(configScopeId, updatedRisk));
-      }
+    updatedDependencyRisks.forEach(dependencyRiskDto -> {
+      var dependencyRisk = new DependencyRisk(dependencyRiskDto, configScopeId);
+      dependencyRisksCache.removeDependencyRisk(configScopeId, dependencyRisk.getId().toString());
+      dependencyRisksCache.addDependencyRisk(folderUri, dependencyRisk);
     });
 
-    diagnosticPublisher.publishDependencyRisks(URI.create(configScopeId));
+    diagnosticPublisher.publishDependencyRisks(folderUri);
   }
 
   @Override
@@ -584,11 +571,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       .map(dto -> new TaintIssue(dto, configurationScopeId, isSonarCloud))
       .filter(tv -> !tv.isResolved())
       .collect(Collectors.toCollection(ArrayList::new));
-  }
-
-  @NotNull
-  private static ArrayList<DependencyRisk> dtosToDependencyRisks(String folderUri, DependencyRiskDto scaIssue) {
-    return new ArrayList<>(List.of(new DependencyRisk(scaIssue, folderUri)));
   }
 
   public void setSettingsManager(SettingsManager settingsManager) {

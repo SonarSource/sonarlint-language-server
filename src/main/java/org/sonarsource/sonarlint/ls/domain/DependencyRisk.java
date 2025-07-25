@@ -24,8 +24,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.DependencyRi
 import static org.sonarsource.sonarlint.ls.domain.TaintIssue.SONARQUBE_SERVER_SOURCE;
 
 public class DependencyRisk extends DependencyRiskDto {
-  String workspaceFolderUri;
-  String source;
+  private final String workspaceFolderUri;
+  private final String source;
 
   public DependencyRisk(DependencyRiskDto dependencyRiskDto, String workspaceFolderUri) {
     super(dependencyRiskDto.getId(), dependencyRiskDto.getType(), dependencyRiskDto.getSeverity(), dependencyRiskDto.getStatus(),

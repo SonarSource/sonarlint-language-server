@@ -230,7 +230,7 @@ class DiagnosticPublisherTests {
     when(dependencyRisk.getType()).thenReturn(DependencyRiskDto.Type.VULNERABILITY);
     when(dependencyRisk.getSeverity()).thenReturn(DependencyRiskDto.Severity.BLOCKER);
     when(dependencyRisk.getSource()).thenReturn(SONARQUBE_SERVER_SOURCE);
-    dependencyRisksCache.reload(folderUri, List.of(dependencyRisk));
+    dependencyRisksCache.putAll(folderUri, List.of(dependencyRisk));
 
     underTest.publishDependencyRisks(folderUri);
 

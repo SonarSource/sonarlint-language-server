@@ -84,7 +84,7 @@ class DependencyRisksCacheTests {
     when(closedRisk.getPackageVersion()).thenReturn("2.0.0");
     when(closedRisk.getSource()).thenReturn(SONARQUBE_SERVER_SOURCE);
 
-    underTest.reload(uri, List.of(openRisk, closedRisk));
+    underTest.putAll(uri, List.of(openRisk, closedRisk));
 
     assertThat(underTest.getAsDiagnostics(uri)).hasSize(1);
   }
@@ -102,7 +102,7 @@ class DependencyRisksCacheTests {
     when(issue.getPackageVersion()).thenReturn("1.0.0");
     when(issue.getSource()).thenReturn(SONARQUBE_SERVER_SOURCE);
 
-    underTest.reload(uri, List.of(issue));
+    underTest.putAll(uri, List.of(issue));
 
     assertThat(underTest.getDependencyRiskById(issueId.toString())).hasValue(issue);
     assertThat(underTest.getDependencyRiskById("otherId")).isEmpty();
@@ -124,7 +124,7 @@ class DependencyRisksCacheTests {
     underTest.getDependencyRisksPerConfigScope().put(uri, new ArrayList<>(List.of(issue)));
     assertThat(underTest.getDependencyRiskById(issueId.toString())).hasValue(issue);
 
-    underTest.removeDependencyRisks(uri.toString(), issueId.toString());
+    underTest.removeDependencyRisk(uri.toString(), issueId.toString());
     assertThat(underTest.getDependencyRiskById(issueId.toString())).isEmpty();
   }
 
@@ -140,7 +140,7 @@ class DependencyRisksCacheTests {
     when(issue.getPackageVersion()).thenReturn("1.0.0");
     when(issue.getSource()).thenReturn(SONARQUBE_SERVER_SOURCE);
 
-    underTest.reload(uri, List.of(issue));
+    underTest.putAll(uri, List.of(issue));
     assertThat(underTest.getAsDiagnostics(uri)).hasSize(1);
 
     underTest.clear(uri);
@@ -148,7 +148,7 @@ class DependencyRisksCacheTests {
   }
 
   @Test
-  void should_add_to_cache() throws Exception {
+  void should_add_DependencyRisk_to_cache() throws Exception {
     var uri = new URI("/");
     var initialIssue = mock(DependencyRisk.class);
     when(initialIssue.getId()).thenReturn(UUID.randomUUID());
@@ -159,7 +159,7 @@ class DependencyRisksCacheTests {
     when(initialIssue.getPackageVersion()).thenReturn("1.0.0");
     when(initialIssue.getSource()).thenReturn(SONARQUBE_SERVER_SOURCE);
 
-    underTest.reload(uri, new ArrayList<>(List.of(initialIssue)));
+    underTest.putAll(uri, new ArrayList<>(List.of(initialIssue)));
     assertThat(underTest.getAsDiagnostics(uri)).hasSize(1);
 
     var newIssue = mock(DependencyRisk.class);
@@ -171,7 +171,7 @@ class DependencyRisksCacheTests {
     when(newIssue.getPackageVersion()).thenReturn("2.0.0");
     when(newIssue.getSource()).thenReturn(SONARQUBE_SERVER_SOURCE);
 
-    underTest.add(uri, newIssue);
+    underTest.addDependencyRisk(uri, newIssue);
     assertThat(underTest.getAsDiagnostics(uri)).hasSize(2);
   }
 
@@ -187,7 +187,7 @@ class DependencyRisksCacheTests {
     when(issue.getPackageVersion()).thenReturn("1.0.0");
     when(issue.getSource()).thenReturn(SONARQUBE_SERVER_SOURCE);
 
-    underTest.reload(uri, List.of(issue));
+    underTest.putAll(uri, List.of(issue));
 
     var result = underTest.getDependencyRisksPerConfigScope();
     assertThat(result).containsKey(uri);

@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -79,15 +80,15 @@ public class DependencyRisksCache {
     return issue.getPackageName().concat(" ").concat(issue.getPackageVersion());
   }
 
-  public void reload(URI folderUri, List<DependencyRisk> dependencyRisks) {
+  public void putAll(URI folderUri, List<DependencyRisk> dependencyRisks) {
     dependencyRisksPerConfigScope.put(folderUri, dependencyRisks);
   }
 
-  public void add(URI folderUri, DependencyRisk dependencyRisk) {
-    dependencyRisksPerConfigScope.get(folderUri).add(dependencyRisk);
+  public void addDependencyRisk(URI folderUri, DependencyRisk dependencyRisk) {
+    dependencyRisksPerConfigScope.computeIfAbsent(folderUri, a -> new ArrayList<>()).add(dependencyRisk);
   }
 
-  public void removeDependencyRisks(String folderUriStr, String key) {
+  public void removeDependencyRisk(String folderUriStr, String key) {
     var folderUri = URI.create(folderUriStr);
     var issues = dependencyRisksPerConfigScope.get(folderUri);
     if (issues != null) {
