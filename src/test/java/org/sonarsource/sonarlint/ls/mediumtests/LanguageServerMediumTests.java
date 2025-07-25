@@ -133,7 +133,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @BeforeEach
-  public void mockSonarQube() {
+  void mockSonarQube() {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.9\", \"id\": \"xzy\"}");
     mockWebServerExtension.addProtobufResponse("/api/settings/values.protobuf", Settings.Values.newBuilder().build());
     mockWebServerExtension.addStringResponse("/api/authentication/validate?format=json", "{\"valid\": true}");
@@ -938,6 +938,30 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(actual).isNotNull();
     assertThat(actual.getConnectionId()).isEqualTo(CONNECTION_ID);
     assertThat(actual.isSuccess()).isTrue();
+  }
+
+  @Test
+  void testCheckConnectionWithNullToken() throws ExecutionException, InterruptedException {
+    var testParams = new SonarLintExtendedLanguageServer.ConnectionCheckParams(null, null, "http://localhost:8080", null);
+    var result = lsProxy.checkConnection(testParams);
+
+    SonarLintExtendedLanguageClient.ConnectionCheckResult actual = result.get();
+    assertThat(actual).isNotNull();
+    assertThat(actual.getConnectionId()).isEqualTo("http://localhost:8080");
+    assertThat(actual.isSuccess()).isFalse();
+    assertThat(actual.getReason()).isEqualTo("Invalid credentials: Token cannot be null or empty for connection validation");
+  }
+
+  @Test
+  void testCheckConnectionWithEmptyToken() throws ExecutionException, InterruptedException {
+    var testParams = new SonarLintExtendedLanguageServer.ConnectionCheckParams("", null, "http://localhost:8080", null);
+    var result = lsProxy.checkConnection(testParams);
+
+    SonarLintExtendedLanguageClient.ConnectionCheckResult actual = result.get();
+    assertThat(actual).isNotNull();
+    assertThat(actual.getConnectionId()).isEqualTo("http://localhost:8080");
+    assertThat(actual.isSuccess()).isFalse();
+    assertThat(actual.getReason()).isEqualTo("Invalid credentials: Token cannot be null or empty for connection validation");
   }
 
   @Test
