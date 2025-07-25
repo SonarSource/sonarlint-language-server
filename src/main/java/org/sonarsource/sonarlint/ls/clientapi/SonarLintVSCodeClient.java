@@ -334,6 +334,9 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       return null;
     }
     var token = connectionSettings.getToken();
+    if (token == null || token.isEmpty()) {
+      return null;
+    }
     return Either.forLeft(new TokenDto(token));
   }
 

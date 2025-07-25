@@ -338,12 +338,18 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   public void validateConnection(String id) {
-    Optional.ofNullable(getValidateConnectionParamsFor(id))
-      .map(params -> backendServiceFacade.getBackendService().validateConnection(params))
-      .ifPresent(validationFuture -> validationFuture.thenAccept(validationResult -> {
-        var connectionCheckResult = validationResult.isSuccess() ? ConnectionCheckResult.success(id) : ConnectionCheckResult.failure(id, validationResult.getMessage());
-        client.reportConnectionCheckResult(connectionCheckResult);
-      }));
+    try {
+      Optional.ofNullable(getValidateConnectionParamsFor(id))
+        .map(params -> backendServiceFacade.getBackendService().validateConnection(params))
+        .ifPresent(validationFuture -> validationFuture.thenAccept(validationResult -> {
+          var connectionCheckResult = validationResult.isSuccess() ? ConnectionCheckResult.success(id) : ConnectionCheckResult.failure(id, validationResult.getMessage());
+          client.reportConnectionCheckResult(connectionCheckResult);
+        }));
+    } catch (IllegalStateException e) {
+      // Handle null/empty token validation errors
+      var connectionCheckResult = ConnectionCheckResult.failure(id, "Invalid credentials: " + e.getMessage());
+      client.reportConnectionCheckResult(connectionCheckResult);
+    }
   }
 
   public Optional<String> resolveBranchNameForFolder(URI folder) {

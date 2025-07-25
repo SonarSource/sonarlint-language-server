@@ -129,7 +129,13 @@ public class Utils {
 
   @NotNull
   public static ValidateConnectionParams getValidateConnectionParamsForNewConnection(SonarLintExtendedLanguageServer.ConnectionCheckParams params) {
-    Either<TokenDto, UsernamePasswordDto> credentials = Either.forLeft(new TokenDto(params.getToken()));
+    // Prevent null tokens from being sent to validation
+    var token = params.getToken();
+    if (token == null || token.isEmpty()) {
+      throw new IllegalStateException("Token cannot be null or empty for connection validation");
+    }
+    
+    Either<TokenDto, UsernamePasswordDto> credentials = Either.forLeft(new TokenDto(token));
     return params.getOrganization() != null ? new ValidateConnectionParams(
       new TransientSonarCloudConnectionDto(params.getOrganization(), credentials, SonarCloudRegion.valueOf(params.getRegion()))
     ) : new ValidateConnectionParams(new TransientSonarQubeConnectionDto(params.getServerUrl(), credentials));

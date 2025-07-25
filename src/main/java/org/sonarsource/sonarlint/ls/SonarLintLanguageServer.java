@@ -644,13 +644,18 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<ConnectionCheckResult> checkConnection(ConnectionCheckParams params) {
     var connectionName = getConnectionNameFromConnectionCheckParams(params);
     lsLogOutput.debug(format("Received a validate connectionName request for %s", connectionName));
-    var validateConnectionParams = getValidateConnectionParams(params);
-    if (validateConnectionParams != null) {
-      return backendServiceFacade.getBackendService().validateConnection(validateConnectionParams)
-        .thenApply(validationResult -> validationResult.isSuccess() ? success(connectionName)
-          : failure(connectionName, validationResult.getMessage()));
+    try {
+      var validateConnectionParams = getValidateConnectionParams(params);
+      if (validateConnectionParams != null) {
+        return backendServiceFacade.getBackendService().validateConnection(validateConnectionParams)
+          .thenApply(validationResult -> validationResult.isSuccess() ? success(connectionName)
+            : failure(connectionName, validationResult.getMessage()));
+      }
+      return CompletableFuture.completedFuture(failure(connectionName, format("Connection '%s' is unknown", connectionName)));
+    } catch (IllegalStateException e) {
+      // Handle null/empty token validation errors
+      return CompletableFuture.completedFuture(failure(connectionName, "Invalid credentials: " + e.getMessage()));
     }
-    return CompletableFuture.completedFuture(failure(connectionName, format("Connection '%s' is unknown", connectionName)));
   }
 
   private ValidateConnectionParams getValidateConnectionParams(ConnectionCheckParams params) {

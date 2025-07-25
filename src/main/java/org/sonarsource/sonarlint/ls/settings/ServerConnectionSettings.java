@@ -56,7 +56,8 @@ public class ServerConnectionSettings {
     this.disableNotifications = disableNotifications;
     this.region = region;
     this.endpointParams = createEndpointParams();
-    this.validateConnectionParams = createValidateConnectionParams();
+    // Don't create validateConnectionParams during construction to avoid exceptions
+    this.validateConnectionParams = null;
   }
 
   private EndpointParams createEndpointParams() {
@@ -64,9 +65,13 @@ public class ServerConnectionSettings {
   }
 
   private ValidateConnectionParams createValidateConnectionParams() {
+    if (token == null || token.isEmpty()) {
+      throw new IllegalStateException("Token cannot be null or empty for connection validation");
+    }
+    
     Either<TransientSonarQubeConnectionDto, TransientSonarCloudConnectionDto> connectionDto = isSonarCloudAlias() ?
-      Either.forRight(new TransientSonarCloudConnectionDto(getOrganizationKey(), Either.forLeft(new TokenDto(getToken())), getRegion())) :
-      Either.forLeft(new TransientSonarQubeConnectionDto(getServerUrl(), Either.forLeft(new TokenDto(getToken()))));
+      Either.forRight(new TransientSonarCloudConnectionDto(getOrganizationKey(), Either.forLeft(new TokenDto(token)), getRegion())) :
+      Either.forLeft(new TransientSonarQubeConnectionDto(getServerUrl(), Either.forLeft(new TokenDto(token))));
     return new ValidateConnectionParams(connectionDto);
   }
 
@@ -122,12 +127,16 @@ public class ServerConnectionSettings {
   }
 
   public ValidateConnectionParams getValidateConnectionParams() {
+    if (validateConnectionParams == null) {
+      validateConnectionParams = createValidateConnectionParams();
+    }
     return validateConnectionParams;
   }
 
   public void setToken(String token) {
     this.token = token;
-    this.validateConnectionParams = createValidateConnectionParams();
+    // Reset validateConnectionParams so it will be recreated with a new token
+    this.validateConnectionParams = null;
   }
 
   @Override

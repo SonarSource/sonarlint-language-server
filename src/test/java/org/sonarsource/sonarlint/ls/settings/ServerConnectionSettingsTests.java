@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ServerConnectionSettingsTests {
 
@@ -82,6 +83,22 @@ class ServerConnectionSettingsTests {
   @Test
   void testToStringHidesToken() {
     assertThat(WITH_ORG).hasToString("ServerConnectionSettings[connectionId=serverId,disableNotifications=false,organizationKey=myOrg,region=EU,serverUrl=serverUrl]");
+  }
+
+  @Test
+  void shouldRejectNullTokenInValidation() {
+    var settings = new ServerConnectionSettings("test", "http://localhost:8080", null, null, false, null);
+    assertThatThrownBy(settings::getValidateConnectionParams)
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessage("Token cannot be null or empty for connection validation");
+  }
+
+  @Test
+  void shouldRejectEmptyTokenInValidation() {
+    var settings = new ServerConnectionSettings("test", "http://localhost:8080", "", null, false, null);
+    assertThatThrownBy(settings::getValidateConnectionParams)
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessage("Token cannot be null or empty for connection validation");
   }
 
 }
