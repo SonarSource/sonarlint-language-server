@@ -720,10 +720,16 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<Void> openDependencyRiskInBrowser(OpenDependencyRiskInBrowserParams params) {
+  public void openDependencyRiskInBrowser(OpenDependencyRiskInBrowserParams params) {
     var issueId = params.issueId();
     var folderUri = params.folderUri();
-    return backendServiceFacade.getBackendService().openDependencyRiskInBrowser(folderUri, issueId);
+    backendServiceFacade.getBackendService().openDependencyRiskInBrowser(folderUri, issueId)
+      .exceptionally(ex -> {
+        var message = "Failed to open dependency risk in browser: " + ex.getMessage();
+        lsLogOutput.error(message);
+        client.showMessage(new MessageParams(MessageType.Error, message));
+        return null;
+      });
   }
 
   @Override

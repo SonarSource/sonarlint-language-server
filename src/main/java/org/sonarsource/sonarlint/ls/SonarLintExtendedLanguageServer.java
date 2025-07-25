@@ -353,7 +353,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   void openHotspotInBrowser(OpenHotspotInBrowserLsParams params);
 
   @JsonNotification("sonarlint/openDependencyRiskInBrowser")
-  CompletableFuture<Void> openDependencyRiskInBrowser(OpenDependencyRiskInBrowserParams params);
+  void openDependencyRiskInBrowser(OpenDependencyRiskInBrowserParams params);
 
   record OpenDependencyRiskInBrowserParams(UUID issueId, String folderUri) {
   }
