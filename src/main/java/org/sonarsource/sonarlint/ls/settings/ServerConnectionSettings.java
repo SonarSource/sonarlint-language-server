@@ -65,7 +65,7 @@ public class ServerConnectionSettings {
   }
 
   private ValidateConnectionParams createValidateConnectionParams() {
-    if (token == null || token.isEmpty()) {
+    if (token == null || token.isBlank()) {
       throw new IllegalStateException("Token cannot be null or empty for connection validation");
     }
     

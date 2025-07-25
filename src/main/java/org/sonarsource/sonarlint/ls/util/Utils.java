@@ -131,7 +131,7 @@ public class Utils {
   public static ValidateConnectionParams getValidateConnectionParamsForNewConnection(SonarLintExtendedLanguageServer.ConnectionCheckParams params) {
     // Prevent null tokens from being sent to validation
     var token = params.getToken();
-    if (token == null || token.isEmpty()) {
+    if (token == null || token.isBlank()) {
       throw new IllegalStateException("Token cannot be null or empty for connection validation");
     }
     
