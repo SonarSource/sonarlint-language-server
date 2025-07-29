@@ -1008,6 +1008,17 @@ class SonarLintVSCodeClientTests {
     assertThat(findingsPerFileCaptor.getValue().get(fileUri)).hasSize(1);
   }
 
+  @Test
+  void shouldCallInvalidTokenNotification() {
+    var connectionId = "test-connection-id";
+
+    underTest.invalidToken(connectionId);
+
+    var argCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.InvalidTokenNotificationParams.class);
+    verify(client).invalidTokenNotification(argCaptor.capture());
+    assertThat(argCaptor.getValue().connectionId()).isEqualTo(connectionId);
+  }
+
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
     return new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either

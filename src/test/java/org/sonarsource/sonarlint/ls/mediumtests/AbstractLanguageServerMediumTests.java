@@ -301,7 +301,8 @@ public abstract class AbstractLanguageServerMediumTests {
       lsProxy.getNotebookDocumentService().didClose(new DidCloseNotebookDocumentParams(new NotebookDocumentIdentifier(uri), List.of()));
     }
     foldersToRemove.forEach(folderUri -> lsProxy.getWorkspaceService().didChangeWorkspaceFolders(
-      new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(List.of(), List.of(new WorkspaceFolder(folderUri, Path.of(URI.create(folderUri)).getFileName().toString()))))));
+      new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(List.of(), List.of(new WorkspaceFolder(folderUri,
+        Path.of(URI.create(folderUri)).getFileName().toString()))))));
     instanceTempDirs.forEach(tempDirPath -> FileUtils.deleteQuietly(tempDirPath.toFile()));
     instanceTempDirs.clear();
   }
@@ -531,6 +532,10 @@ public abstract class AbstractLanguageServerMediumTests {
     public void submitNewCodeDefinition(SubmitNewCodeDefinitionParams params) {
       newCodeDefinitionCache.put(params.getFolderUri(),
         new NewCodeDefinitionDto(params.getNewCodeDefinitionOrMessage(), params.isSupported()));
+    }
+
+    @Override
+    public void invalidTokenNotification(InvalidTokenNotificationParams params) {
     }
 
     @Override

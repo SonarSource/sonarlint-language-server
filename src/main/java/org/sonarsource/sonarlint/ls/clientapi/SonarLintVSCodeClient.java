@@ -676,4 +676,9 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   public Map<String, String> getInferredAnalysisProperties(String configurationScopeId, List<URI> filesToAnalyze) {
     return analysisHelper.getInferredAnalysisProperties(configurationScopeId, filesToAnalyze);
   }
+
+  @Override
+  public void invalidToken(String connectionId) {
+    client.invalidTokenNotification(new SonarLintExtendedLanguageClient.InvalidTokenNotificationParams(connectionId));
+  }
 }
