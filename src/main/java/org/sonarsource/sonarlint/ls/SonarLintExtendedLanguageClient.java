@@ -878,9 +878,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/submitNewCodeDefinition")
   void submitNewCodeDefinition(SubmitNewCodeDefinitionParams params);
 
-  record InvalidTokenNotificationParams(String connectionId) {
+  record NotifyInvalidTokenParams(String connectionId) {
   }
 
-  @JsonNotification("sonarlint/invalidTokenNotification")
-  void invalidTokenNotification(InvalidTokenNotificationParams params);
+  @JsonNotification("sonarlint/notifyInvalidToken")
+  void notifyInvalidToken(NotifyInvalidTokenParams params);
 }

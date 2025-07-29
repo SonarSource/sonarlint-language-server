@@ -679,6 +679,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public void invalidToken(String connectionId) {
-    client.invalidTokenNotification(new SonarLintExtendedLanguageClient.InvalidTokenNotificationParams(connectionId));
+    client.notifyInvalidToken(new SonarLintExtendedLanguageClient.NotifyInvalidTokenParams(connectionId));
   }
 }

@@ -535,7 +535,7 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public void invalidTokenNotification(InvalidTokenNotificationParams params) {
+    public void notifyInvalidToken(NotifyInvalidTokenParams params) {
     }
 
     @Override

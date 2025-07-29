@@ -1009,13 +1009,13 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
-  void shouldCallInvalidTokenNotification() {
+  void shouldCallNotifyInvalidToken() {
     var connectionId = "test-connection-id";
 
     underTest.invalidToken(connectionId);
 
-    var argCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.InvalidTokenNotificationParams.class);
-    verify(client).invalidTokenNotification(argCaptor.capture());
+    var argCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.NotifyInvalidTokenParams.class);
+    verify(client).notifyInvalidToken(argCaptor.capture());
     assertThat(argCaptor.getValue().connectionId()).isEqualTo(connectionId);
   }
 
