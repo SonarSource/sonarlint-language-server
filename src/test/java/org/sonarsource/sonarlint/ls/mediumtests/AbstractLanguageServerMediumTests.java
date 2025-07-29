@@ -140,7 +140,7 @@ public abstract class AbstractLanguageServerMediumTests {
   private static ServerSocket serverSocket;
   protected static SonarLintExtendedLanguageServer lsProxy;
   protected static FakeLanguageClient client;
-  private static List<SonarLintExtendedLanguageClient.FoundFileDto> foundFileDtos = List.of();
+  private static Map<String, List<SonarLintExtendedLanguageClient.FoundFileDto>> foundFileDtosByFolderUri = new HashMap<>();
 
   @BeforeAll
   static void startServer() throws Exception {
@@ -275,8 +275,12 @@ public abstract class AbstractLanguageServerMediumTests {
     verifyConfigurationChangeOnClient();
   }
 
-  protected static void setUpFindFilesInFolderResponse(List<SonarLintExtendedLanguageClient.FoundFileDto> foundFileDtos) {
-    AbstractLanguageServerMediumTests.foundFileDtos = foundFileDtos;
+  protected static void clearFilesInFolder() {
+    foundFileDtosByFolderUri = new HashMap<>();
+  }
+
+  protected static void setUpFindFilesInFolderResponse(String folderUri, List<SonarLintExtendedLanguageClient.FoundFileDto> foundFileDtos) {
+    AbstractLanguageServerMediumTests.foundFileDtosByFolderUri.put(folderUri, foundFileDtos);
   }
 
   protected void setupGlobalSettings(Map<String, Object> globalSettings) {
@@ -364,10 +368,12 @@ public abstract class AbstractLanguageServerMediumTests {
     CountDownLatch settingsLatch = new CountDownLatch(0);
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
     CountDownLatch suggestBindingLatch = new CountDownLatch(0);
+    CountDownLatch suggestConnectionLatch = new CountDownLatch(0);
     CountDownLatch readyForTestsLatch = new CountDownLatch(0);
     ShowAllLocationsCommand.Param showIssueParams;
     ShowFixSuggestionParams showFixSuggestionParams;
     SuggestBindingParams suggestedBindings;
+    SuggestConnectionParams suggestConnections;
     ShowRuleDescriptionParams ruleDesc;
     boolean isIgnoredByScm = false;
     boolean shouldAnalyseFile = true;
@@ -546,12 +552,13 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void suggestConnection(SuggestConnectionParams suggestConnectionParams) {
-      throw new UnsupportedOperationException("Not implemented yet");
+      this.suggestConnections = suggestConnectionParams;
+      suggestConnectionLatch.countDown();
     }
 
     @Override
     public CompletableFuture<FindFileByNamesInScopeResponse> listFilesInFolder(FolderUriParams params) {
-      return CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(foundFileDtos));
+      return CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(foundFileDtosByFolderUri.get(params.getFolderUri())));
     }
 
     @Override
