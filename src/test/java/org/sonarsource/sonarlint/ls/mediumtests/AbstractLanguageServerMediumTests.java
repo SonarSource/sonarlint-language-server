@@ -31,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -276,11 +277,11 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected static void clearFilesInFolder() {
-    foundFileDtosByFolderUri = new HashMap<>();
+    foundFileDtosByFolderUri.clear();
   }
 
   protected static void setUpFindFilesInFolderResponse(String folderUri, List<SonarLintExtendedLanguageClient.FoundFileDto> foundFileDtos) {
-    AbstractLanguageServerMediumTests.foundFileDtosByFolderUri.put(folderUri, foundFileDtos);
+    foundFileDtosByFolderUri.put(folderUri, foundFileDtos);
   }
 
   protected void setupGlobalSettings(Map<String, Object> globalSettings) {
@@ -558,7 +559,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public CompletableFuture<FindFileByNamesInScopeResponse> listFilesInFolder(FolderUriParams params) {
-      return CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(foundFileDtosByFolderUri.get(params.getFolderUri())));
+      return CompletableFuture.completedFuture(new FindFileByNamesInScopeResponse(foundFileDtosByFolderUri.getOrDefault(params.getFolderUri(), Collections.emptyList())));
     }
 
     @Override
@@ -849,7 +850,7 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected static void awaitUntilAsserted(ThrowingRunnable assertion) {
-    await().atMost(2, MINUTES).untilAsserted(assertion);
+    await().atMost(1, MINUTES).untilAsserted(assertion);
   }
 
   protected Map<String, Object> getFolderSettings(String folderUri) {

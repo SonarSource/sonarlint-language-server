@@ -35,6 +35,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import mockwebserver3.MockResponse;
 import okio.Buffer;
 import org.apache.commons.io.FileUtils;
@@ -87,9 +89,13 @@ import testutils.MockWebServerExtension;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.sonar.api.rules.RuleType.SECURITY_HOTSPOT;
 
 
@@ -1527,48 +1533,42 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
 
     foldersToRemove.add(workspaceUri);
+
     // Availability of binding suggestions for the added folder can take some time
     awaitUntilAsserted(() -> {
       var result = lsProxy.getBindingSuggestion(new GetBindingSuggestionParams(workspaceUri, CONNECTION_ID)).get();
       assertThat(result).isNotNull();
-      assertThat(result.getSuggestions()).hasSize(1);
+      assertThat(result.getSuggestions()).isEmpty();
     });
   }
 
   @Test
-  void should_allow_client_to_explicitly_ask_for_connection_suggestions() {
-    // add config scope
-    var workspaceUri = folder1BaseDir.resolve("foo-bar").toUri().toString();
-    var workspaceFolder = new WorkspaceFolder(workspaceUri, "foo-bar");
-    client.folderSettings = new HashMap<>();
-    client.folderSettings.put(workspaceUri, new HashMap<>());
+  void should_allow_client_to_explicitly_ask_for_connection_suggestions() throws InterruptedException, IOException {
+    client.suggestConnectionLatch = new CountDownLatch(1);
+
+    var serverUrl = "https://random.sqs.url.com";
+
+    bindingSuggestionBaseDir = makeStaticTempDir();
+    var bindingClueFileName = "connectedMode.json";
+    var bindingClueFile = new SonarLintExtendedLanguageClient.FoundFileDto(
+      bindingClueFileName, bindingSuggestionBaseDir.resolve(".sonarlint").resolve(bindingClueFileName).toFile().getAbsolutePath(),
+      "{\"sonarQubeUri\": \"" + serverUrl + "\", \"projectKey\": \"" + PROJECT_KEY + "\"}");
+    setUpFindFilesInFolderResponse(bindingSuggestionBaseDir.toUri().toString(), List.of(bindingClueFile));
+
+    var workspaceFolder = new WorkspaceFolder(bindingSuggestionBaseDir.toUri().toString(), bindingSuggestionBaseDir.getFileName().toString());
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
       new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
 
-    foldersToRemove.add(workspaceUri);
-
-    // create clue file inside
-    var clueFileName = "connectedMode.json";
-    var clueFileContent = String.format("""
-      {
-          "sonarCloudOrganization": "%s",
-          "projectKey": "%s",
-          "region": "EU"
-      }""", ORGANIZATION_KEY, PROJECT_KEY);
-
-    // Create file for SLCORE
-    lsProxy.getWorkspaceService().didChangeWatchedFiles(new DidChangeWatchedFilesParams(List.of(new FileEvent(folder1BaseDir.resolve("foo-bar").resolve(".sonarlint").resolve(clueFileName).toFile().toURI().toString(), FileChangeType.Created))));
-    // send updated file content to SLCORE
-    didOpen(folder1BaseDir.resolve("foo-bar").resolve(".sonarlint").resolve(clueFileName).toFile().toURI().toString(), clueFileName, clueFileContent);
+    assertTrue(client.suggestConnectionLatch.await(10, SECONDS));
 
     awaitUntilAsserted(() -> {
-      var result = lsProxy.getConnectionSuggestions(new GetConnectionSuggestionsParams(workspaceUri)).get();
+      var result = lsProxy.getConnectionSuggestions(new GetConnectionSuggestionsParams(bindingSuggestionBaseDir.toUri().toString())).get();
       var connectionSuggestions = result.getConnectionSuggestions();
       assertThat(connectionSuggestions).isNotNull();
       assertThat(connectionSuggestions).isNotEmpty();
-      assertTrue(connectionSuggestions.get(0).getConnectionSuggestion().isRight());
-      assertThat(connectionSuggestions.get(0).getConnectionSuggestion().getRight().getOrganization()).isEqualTo(ORGANIZATION_KEY);
-      assertThat(connectionSuggestions.get(0).getConnectionSuggestion().getRight().getProjectKey()).isEqualTo(PROJECT_KEY);
+      assertTrue(connectionSuggestions.get(0).getConnectionSuggestion().isLeft());
+      assertThat(connectionSuggestions.get(0).getConnectionSuggestion().getLeft().getServerUrl()).isEqualTo(serverUrl);
+      assertThat(connectionSuggestions.get(0).getConnectionSuggestion().getLeft().getProjectKey()).isEqualTo(PROJECT_KEY);
     });
   }
 
@@ -1578,9 +1578,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     lsProxy.generateToken(generateTokenParams);
 
-    awaitUntilAsserted(() -> {
-      assertThat(client.openedLinks).isNotEmpty();
-    });
+    awaitUntilAsserted(() -> assertThat(client.openedLinks).isNotEmpty());
 
     assertThat(client.openedLinks)
       .hasSize(1)
@@ -1594,9 +1592,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     lsProxy.generateToken(generateTokenParams);
 
-    awaitUntilAsserted(() -> {
-      assertThat(client.openedLinks).isNotEmpty();
-    });
+    awaitUntilAsserted(() -> assertThat(client.openedLinks).isNotEmpty());
 
     assertThat(client.openedLinks)
       .hasSize(1)
