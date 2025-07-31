@@ -44,10 +44,7 @@ import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
-import org.eclipse.lsp4j.DidChangeWatchedFilesParams;
 import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
-import org.eclipse.lsp4j.FileChangeType;
-import org.eclipse.lsp4j.FileEvent;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
@@ -114,6 +111,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private static final long CURRENT_TIME = System.currentTimeMillis();
   private static Path omnisharpDir;
   private static Path folder1BaseDir;
+  private static Path bindingSuggestionBaseDir;
 
   @BeforeAll
   static void initialize() throws Exception {
@@ -133,8 +131,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var file1 = new SonarLintExtendedLanguageClient.FoundFileDto(fileName1, folder1BaseDir.resolve(fileName1).toFile().getAbsolutePath(), "def foo():\n  id_address = '12.34.56.78'\n");
     var file2 = new SonarLintExtendedLanguageClient.FoundFileDto(fileName2, folder1BaseDir.resolve(fileName2).toFile().getAbsolutePath(), "def foo():\n  id_address = '23.45.67.89'\n");
 
-    setUpFindFilesInFolderResponse(List.of(file1, file2));
-
+    setUpFindFilesInFolderResponse(folder1BaseDir.toUri().toString(), List.of(file1, file2));
   }
 
   @BeforeEach
@@ -279,7 +276,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @AfterAll
   static void cleanUp() {
     FileUtils.deleteQuietly(folder1BaseDir.toFile());
-    setUpFindFilesInFolderResponse(List.of());
+    clearFilesInFolder();
   }
 
   @Test
@@ -1494,19 +1491,27 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void should_automatically_suggest_bindings_to_client() throws Exception {
-    client.suggestBindingLatch = new CountDownLatch(1);
-    var basedir = Paths.get("path/to/base/auto-suggest").toAbsolutePath();
-    var workspaceUri = basedir.toUri().toString();
-    var workspaceFolder = new WorkspaceFolder(workspaceUri, basedir.getFileName().toString());
+  void should_automatically_suggest_connection_to_client() throws Exception {
+    client.suggestConnectionLatch = new CountDownLatch(1);
+
+    var serverUrl = "https://random.sqs.url.com";
+
+    bindingSuggestionBaseDir = makeStaticTempDir();
+    var bindingClueFileName = "connectedMode.json";
+    var bindingClueFile = new SonarLintExtendedLanguageClient.FoundFileDto(
+      bindingClueFileName, bindingSuggestionBaseDir.resolve(".sonarlint").resolve(bindingClueFileName).toFile().getAbsolutePath(),
+      "{\"sonarQubeUri\": \"" + serverUrl + "\", \"projectKey\": \"" + PROJECT_KEY + "\"}");
+    setUpFindFilesInFolderResponse(bindingSuggestionBaseDir.toUri().toString(), List.of(bindingClueFile));
+
+    var workspaceFolder = new WorkspaceFolder(bindingSuggestionBaseDir.toUri().toString(), bindingSuggestionBaseDir.getFileName().toString());
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
       new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
 
-    assertTrue(client.suggestBindingLatch.await(10, SECONDS));
+    assertTrue(client.suggestConnectionLatch.await(10, SECONDS));
 
-    assertThat(client.suggestedBindings).isNotNull();
-    assertThat(client.suggestedBindings.getSuggestions()).isNotEmpty();
-    assertThat(client.suggestedBindings.getSuggestions().get(workspaceUri)).isNotNull();
+    assertThat(client.suggestConnections).isNotNull();
+    assertThat(client.suggestConnections.getSuggestionsByConfigScopeId()).isNotEmpty();
+    assertThat(client.suggestConnections.getSuggestionsByConfigScopeId().get(bindingSuggestionBaseDir.toUri().toString())).isNotNull();
   }
 
   @Test
@@ -1519,48 +1524,42 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
 
     foldersToRemove.add(workspaceUri);
+
     // Availability of binding suggestions for the added folder can take some time
     awaitUntilAsserted(() -> {
       var result = lsProxy.getBindingSuggestion(new GetBindingSuggestionParams(workspaceUri, CONNECTION_ID)).get();
       assertThat(result).isNotNull();
-      assertThat(result.getSuggestions()).hasSize(1);
+      assertThat(result.getSuggestions()).isEmpty();
     });
   }
 
   @Test
-  void should_allow_client_to_explicitly_ask_for_connection_suggestions() {
-    // add config scope
-    var workspaceUri = folder1BaseDir.resolve("foo-bar").toUri().toString();
-    var workspaceFolder = new WorkspaceFolder(workspaceUri, "foo-bar");
-    client.folderSettings = new HashMap<>();
-    client.folderSettings.put(workspaceUri, new HashMap<>());
+  void should_allow_client_to_explicitly_ask_for_connection_suggestions() throws InterruptedException, IOException {
+    client.suggestConnectionLatch = new CountDownLatch(1);
+
+    var serverUrl = "https://random.sqs.url.com";
+
+    bindingSuggestionBaseDir = makeStaticTempDir();
+    var bindingClueFileName = "connectedMode.json";
+    var bindingClueFile = new SonarLintExtendedLanguageClient.FoundFileDto(
+      bindingClueFileName, bindingSuggestionBaseDir.resolve(".sonarlint").resolve(bindingClueFileName).toFile().getAbsolutePath(),
+      "{\"sonarQubeUri\": \"" + serverUrl + "\", \"projectKey\": \"" + PROJECT_KEY + "\"}");
+    setUpFindFilesInFolderResponse(bindingSuggestionBaseDir.toUri().toString(), List.of(bindingClueFile));
+
+    var workspaceFolder = new WorkspaceFolder(bindingSuggestionBaseDir.toUri().toString(), bindingSuggestionBaseDir.getFileName().toString());
     lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
       new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
 
-    foldersToRemove.add(workspaceUri);
-
-    // create clue file inside
-    var clueFileName = "connectedMode.json";
-    var clueFileContent = String.format("""
-      {
-          "sonarCloudOrganization": "%s",
-          "projectKey": "%s",
-          "region": "EU"
-      }""", ORGANIZATION_KEY, PROJECT_KEY);
-
-    // Create file for SLCORE
-    lsProxy.getWorkspaceService().didChangeWatchedFiles(new DidChangeWatchedFilesParams(List.of(new FileEvent(folder1BaseDir.resolve("foo-bar").resolve(".sonarlint").resolve(clueFileName).toFile().toURI().toString(), FileChangeType.Created))));
-    // send updated file content to SLCORE
-    didOpen(folder1BaseDir.resolve("foo-bar").resolve(".sonarlint").resolve(clueFileName).toFile().toURI().toString(), clueFileName, clueFileContent);
+    assertTrue(client.suggestConnectionLatch.await(10, SECONDS));
 
     awaitUntilAsserted(() -> {
-      var result = lsProxy.getConnectionSuggestions(new GetConnectionSuggestionsParams(workspaceUri)).get();
+      var result = lsProxy.getConnectionSuggestions(new GetConnectionSuggestionsParams(bindingSuggestionBaseDir.toUri().toString())).get();
       var connectionSuggestions = result.getConnectionSuggestions();
       assertThat(connectionSuggestions).isNotNull();
       assertThat(connectionSuggestions).isNotEmpty();
-      assertTrue(connectionSuggestions.get(0).getConnectionSuggestion().isRight());
-      assertThat(connectionSuggestions.get(0).getConnectionSuggestion().getRight().getOrganization()).isEqualTo(ORGANIZATION_KEY);
-      assertThat(connectionSuggestions.get(0).getConnectionSuggestion().getRight().getProjectKey()).isEqualTo(PROJECT_KEY);
+      assertTrue(connectionSuggestions.get(0).getConnectionSuggestion().isLeft());
+      assertThat(connectionSuggestions.get(0).getConnectionSuggestion().getLeft().getServerUrl()).isEqualTo(serverUrl);
+      assertThat(connectionSuggestions.get(0).getConnectionSuggestion().getLeft().getProjectKey()).isEqualTo(PROJECT_KEY);
     });
   }
 
@@ -1570,9 +1569,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     lsProxy.generateToken(generateTokenParams);
 
-    awaitUntilAsserted(() -> {
-      assertThat(client.openedLinks).isNotEmpty();
-    });
+    awaitUntilAsserted(() -> assertThat(client.openedLinks).isNotEmpty());
 
     assertThat(client.openedLinks)
       .hasSize(1)
@@ -1586,9 +1583,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     lsProxy.generateToken(generateTokenParams);
 
-    awaitUntilAsserted(() -> {
-      assertThat(client.openedLinks).isNotEmpty();
-    });
+    awaitUntilAsserted(() -> assertThat(client.openedLinks).isNotEmpty());
 
     assertThat(client.openedLinks)
       .hasSize(1)
