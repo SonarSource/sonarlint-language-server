@@ -29,6 +29,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificat
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ReportIssuesAsErrorLevelParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ReportIssuesAsOverrideParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ToolCalledParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -119,6 +121,14 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
   public void fixSuggestionResolved(FixSuggestionResolvedParams params) {
     actIfEnabled(telemetryRpcService -> telemetryRpcService.fixSuggestionResolved(params));
+  }
+
+  public void reportIssuesAsErrorLevel(ReportIssuesAsErrorLevelParams params) {
+    actIfEnabled(telemetryRpcService -> telemetryRpcService.reportIssuesAsErrorLevel(params));
+  }
+
+  public void reportIssuesAsOverride(ReportIssuesAsOverrideParams params) {
+    actIfEnabled(telemetryRpcService -> telemetryRpcService.reportIssuesAsOverride(params));
   }
 
   public void findingFilterApplied(FindingsFilteredParams params) {

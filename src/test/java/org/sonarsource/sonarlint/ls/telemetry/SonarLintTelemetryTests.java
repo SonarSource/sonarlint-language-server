@@ -37,6 +37,10 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilt
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ReportIssuesAsErrorLevel;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ReportIssuesAsErrorLevelParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ReportIssuesAsOverrideLevel;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ReportIssuesAsOverrideParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ToolCalledParams;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -290,6 +294,40 @@ class SonarLintTelemetryTests {
     telemetry.fixSuggestionResolved(params);
 
     verify(telemetryService, never()).fixSuggestionResolved(any());
+  }
+
+  @Test
+  void reportIssuesAsErrorLevel_when_enabled() {
+    var params = new ReportIssuesAsErrorLevelParams(ReportIssuesAsErrorLevel.ALL);
+    telemetry.reportIssuesAsErrorLevel(params);
+
+    verify(telemetryService).reportIssuesAsErrorLevel(params);
+  }
+
+  @Test
+  void reportIssuesAsErrorLevel_when_disabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+    var params = new ReportIssuesAsErrorLevelParams(ReportIssuesAsErrorLevel.ALL);
+    telemetry.reportIssuesAsErrorLevel(params);
+
+    verify(telemetryService, never()).reportIssuesAsErrorLevel(any());
+  }
+
+  @Test
+  void reportIssuesAsOverride_when_enabled() {
+    var params = new ReportIssuesAsOverrideParams(ReportIssuesAsOverrideLevel.ERROR, "repo:key");
+    telemetry.reportIssuesAsOverride(params);
+
+    verify(telemetryService).reportIssuesAsOverride(params);
+  }
+
+  @Test
+  void reportIssuesAsOverride_when_disabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+    var params = new ReportIssuesAsOverrideParams(ReportIssuesAsOverrideLevel.ERROR, "repo:key");
+    telemetry.reportIssuesAsOverride(params);
+
+    verify(telemetryService, never()).reportIssuesAsOverride(any());
   }
 
   @Test

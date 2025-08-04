@@ -134,7 +134,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     private String projectUri;
 
     public DidClasspathUpdateParams(@NonNull final String projectUri) {
-      this.projectUri = Preconditions.<String>checkNotNull(projectUri, "projectUri");
+      this.projectUri = Preconditions.checkNotNull(projectUri, "projectUri");
     }
 
     @NonNull
@@ -183,7 +183,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
 
     public DidJavaServerModeChangeParams(@NonNull final String serverMode) {
-      this.serverMode = Preconditions.<String>checkNotNull(serverMode, "serverMode");
+      this.serverMode = Preconditions.checkNotNull(serverMode, "serverMode");
     }
 
     @NonNull
@@ -756,6 +756,18 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/fixSuggestionResolved")
   CompletableFuture<Void> fixSuggestionResolved(FixSuggestionResolvedParams params);
+
+  record ReportIssuesAsErrorLevelParams(String level) {
+  }
+
+  @JsonNotification("sonarlint/reportIssuesAsErrorLevel")
+  CompletableFuture<Void> reportIssuesAsErrorLevel(ReportIssuesAsErrorLevelParams params);
+
+  record ReportIssuesAsOverrideParams(String ruleKey, String level) {
+  }
+
+  @JsonNotification("sonarlint/reportIssuesAsOverride")
+  CompletableFuture<Void> reportIssuesAsOverride(ReportIssuesAsOverrideParams params);
 
   @JsonNotification("sonarlint/findingsFiltered")
   CompletableFuture<Void> findingsFiltered(FindingsFilteredParams params);

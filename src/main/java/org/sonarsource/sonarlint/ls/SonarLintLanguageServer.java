@@ -101,6 +101,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSugg
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ReportIssuesAsErrorLevel;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ReportIssuesAsOverrideLevel;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -851,6 +853,25 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<Void> fixSuggestionResolved(FixSuggestionResolvedParams params) {
     telemetry.fixSuggestionResolved(new org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams(params.suggestionId(),
       params.accepted() ? FixSuggestionStatus.ACCEPTED : FixSuggestionStatus.DECLINED, null));
+    return CompletableFuture.completedFuture(null);
+  }
+
+  @Override
+  public CompletableFuture<Void> reportIssuesAsErrorLevel(ReportIssuesAsErrorLevelParams params) {
+    var level = switch (params.level()) {
+      case "All" -> ReportIssuesAsErrorLevel.ALL;
+      case "Medium severity and above" -> ReportIssuesAsErrorLevel.MEDIUM_AND_ABOVE;
+      default -> ReportIssuesAsErrorLevel.NONE;
+    };
+
+    telemetry.reportIssuesAsErrorLevel(new org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ReportIssuesAsErrorLevelParams(level));
+    return CompletableFuture.completedFuture(null);
+  }
+
+  @Override
+  public CompletableFuture<Void> reportIssuesAsOverride(ReportIssuesAsOverrideParams params) {
+    var level = "Error".equals(params.level()) ? ReportIssuesAsOverrideLevel.ERROR : ReportIssuesAsOverrideLevel.WARNING;
+    telemetry.reportIssuesAsOverride(new org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ReportIssuesAsOverrideParams(level, params.ruleKey()));
     return CompletableFuture.completedFuture(null);
   }
 
