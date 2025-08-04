@@ -43,12 +43,15 @@ public class WorkspaceSettings {
   private final boolean showVerboseLogs;
   private final String pathToNodeExecutable;
   private final boolean focusOnNewCode;
+  private final String reportIssuesAsErrorLevel;
+  private final Map<String, String> reportIssuesAsErrorOverrides;
 
   private final String analysisExcludes;
 
   public WorkspaceSettings(boolean disableTelemetry, Map<String, ServerConnectionSettings> connections,
     Collection<RuleKey> excludedRules, Collection<RuleKey> includedRules, Map<RuleKey, Map<String, String>> ruleParameters,
-    boolean showAnalyzerLogs, boolean showVerboseLogs, String pathToNodeExecutable, boolean focusOnNewCode, String analysisExcludes) {
+    boolean showAnalyzerLogs, boolean showVerboseLogs, String pathToNodeExecutable, boolean focusOnNewCode, String analysisExcludes,
+    String reportIssuesAsErrorLevel, Map<String, String> reportIssuesAsErrorOverrides) {
     this.disableTelemetry = disableTelemetry;
     this.connections = connections;
     this.excludedRules = excludedRules;
@@ -59,6 +62,8 @@ public class WorkspaceSettings {
     this.pathToNodeExecutable = pathToNodeExecutable;
     this.focusOnNewCode = focusOnNewCode;
     this.analysisExcludes = analysisExcludes;
+    this.reportIssuesAsErrorLevel = reportIssuesAsErrorLevel;
+    this.reportIssuesAsErrorOverrides = reportIssuesAsErrorOverrides;
   }
 
   public boolean isDisableTelemetry() {
@@ -103,6 +108,14 @@ public class WorkspaceSettings {
 
   public String getAnalysisExcludes() {
     return analysisExcludes;
+  }
+
+  public String getReportIssuesAsErrorLevel() {
+    return reportIssuesAsErrorLevel;
+  }
+
+  public Map<String, String> getReportIssuesAsErrorOverrides() {
+    return reportIssuesAsErrorOverrides;
   }
 
   @Override

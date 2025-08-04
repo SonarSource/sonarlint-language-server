@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.settings;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -31,12 +32,13 @@ class WorkspaceSettingsTests {
 
   public static final RuleKey RULE_KEY_1 = RuleKey.of("repo1", "rule1");
   public static final RuleKey RULE_KEY_2 = RuleKey.of("repo2", "rule2");
+  public static final Map<String, String> REPORT_ISSUES_AS_OVERRIDES = Map.of("repo2:rule2", "Error");
   private static final WorkspaceSettings SETTINGS = new WorkspaceSettings(false,
     Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, SonarCloudRegion.EU)),
     List.of(RULE_KEY_1),
     List.of(RULE_KEY_2),
     Map.of(RULE_KEY_2, Map.of("param1", "value1")),
-    false, false, "path/to/node", false, "");
+    false, false, "path/to/node", false, "", "None", REPORT_ISSUES_AS_OVERRIDES);
 
   @Test
   void testHashCode() {
@@ -45,7 +47,7 @@ class WorkspaceSettingsTests {
       List.of(RULE_KEY_1),
       List.of(RULE_KEY_2),
       Map.of(RULE_KEY_2, Map.of("param1", "value1")),
-      false, false, "path/to/node", false, "")).hasSameHashCodeAs(SETTINGS);
+      false, false, "path/to/node", false, "", "None", Collections.emptyMap())).hasSameHashCodeAs(SETTINGS);
   }
 
   @Test
@@ -58,74 +60,77 @@ class WorkspaceSettingsTests {
         Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, SonarCloudRegion.EU)),
         List.of(RuleKey.of("repo1", "rule1")),
         List.of(RuleKey.of("repo2", "rule2")),
-        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, ""))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, "", "None", Collections.emptyMap()))
       .isNotEqualTo(new WorkspaceSettings(true,
         Map.of("serverId2", new ServerConnectionSettings("serverId2", "serverUrl", "token", "myOrg", true, SonarCloudRegion.EU)),
         List.of(RuleKey.of("repo1", "rule1")),
         List.of(RuleKey.of("repo2", "rule2")),
-        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, ""))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, "", "None", Collections.emptyMap()))
       .isNotEqualTo(new WorkspaceSettings(false,
         Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl2", "token", "myOrg", true, SonarCloudRegion.EU)),
         List.of(RuleKey.of("repo1", "rule1")),
         List.of(RuleKey.of("repo2", "rule2")),
-        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, ""))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, "", "None", Collections.emptyMap()))
       .isNotEqualTo(new WorkspaceSettings(false,
         Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token2", "myOrg", true, SonarCloudRegion.EU)),
         List.of(RuleKey.of("repo1", "rule1")),
         List.of(RuleKey.of("repo2", "rule2")),
-        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, ""))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, "", "None", Collections.emptyMap()))
       .isNotEqualTo(new WorkspaceSettings(false,
         Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg2", true, SonarCloudRegion.EU)),
         List.of(RuleKey.of("repo1", "rule1")),
         List.of(RuleKey.of("repo2", "rule2")),
-        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, ""))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, "", "None", Collections.emptyMap()))
       .isNotEqualTo(new WorkspaceSettings(false,
         Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, SonarCloudRegion.EU)),
         List.of(RuleKey.of("repo1", "rule12")),
         List.of(RuleKey.of("repo2", "rule2")),
-        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, ""))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, "", "None", Collections.emptyMap()))
       .isNotEqualTo(new WorkspaceSettings(false,
         Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, SonarCloudRegion.EU)),
         List.of(RuleKey.of("repo1", "rule1")),
         List.of(RuleKey.of("repo2", "rule22")),
-        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, ""))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, "", "None", Collections.emptyMap()))
       .isNotEqualTo(new WorkspaceSettings(false,
         Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, SonarCloudRegion.EU)),
         List.of(RuleKey.of("repo1", "rule1")),
         List.of(RuleKey.of("repo2", "rule22")),
-        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, ""))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", false, "", "None", Collections.emptyMap()))
       .isNotEqualTo(new WorkspaceSettings(false,
         Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, SonarCloudRegion.EU)),
         List.of(RULE_KEY_1),
         List.of(RULE_KEY_2),
-        Map.of(RULE_KEY_2, Map.of("param1", "value2")), false, false, "path/to/node", false, ""))
+        Map.of(RULE_KEY_2, Map.of("param1", "value2")), false, false, "path/to/node", false, "", "None", Collections.emptyMap()))
       .isNotEqualTo(new WorkspaceSettings(false,
         Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, SonarCloudRegion.EU)),
         List.of(RuleKey.of("repo1", "rule1")),
         List.of(RuleKey.of("repo2", "rule2")),
-        Map.of(RULE_KEY_2, Map.of("param1", "value1")), true, false, "path/to/node", false, ""))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), true, false, "path/to/node", false, "", "None", Collections.emptyMap()))
       .isNotEqualTo(new WorkspaceSettings(false,
         Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, SonarCloudRegion.EU)),
         List.of(RuleKey.of("repo1", "rule1")),
         List.of(RuleKey.of("repo2", "rule2")),
-        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, true, "path/to/node", false, ""))
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, true, "path/to/node", false, "", "None", Collections.emptyMap()))
       .isNotEqualTo(new WorkspaceSettings(false,
         Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, SonarCloudRegion.EU)),
         List.of(RULE_KEY_1),
         List.of(RULE_KEY_2),
         Map.of(RULE_KEY_2, Map.of("param1", "value1")),
-        false, false, "other/path/to/node", false, ""))
+        false, false, "other/path/to/node", false, "", "None", Collections.emptyMap()))
       .isNotEqualTo(new WorkspaceSettings(false,
         Map.of("serverId", new ServerConnectionSettings("serverId", "serverUrl", "token", "myOrg", true, SonarCloudRegion.EU)),
         List.of(RuleKey.of("repo1", "rule1")),
         List.of(RuleKey.of("repo2", "rule2")),
-        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", true, ""));
+        Map.of(RULE_KEY_2, Map.of("param1", "value1")), false, false, "path/to/node", true, "", "Off", Collections.emptyMap()));
   }
 
   @Test
   void testToString() {
     assertThat(SETTINGS).hasToString(
-      "WorkspaceSettings[analysisExcludes=,connections={serverId=ServerConnectionSettings[connectionId=serverId,disableNotifications=true,organizationKey=myOrg,region=EU,serverUrl=serverUrl]},disableTelemetry=false,excludedRules=[repo1:rule1],focusOnNewCode=false,includedRules=[repo2:rule2],pathToNodeExecutable=path/to/node,ruleParameters={repo2:rule2={param1=value1}},showAnalyzerLogs=false,showVerboseLogs=false]");
+      "WorkspaceSettings[analysisExcludes=,connections={serverId=ServerConnectionSettings[connectionId=serverId,disableNotifications=true,organizationKey=myOrg,region=EU," +
+        "serverUrl=serverUrl]},disableTelemetry=false,excludedRules=[repo1:rule1],focusOnNewCode=false,includedRules=[repo2:rule2],pathToNodeExecutable=path/to/node," +
+        "reportIssuesAsErrorLevel=None,reportIssuesAsErrorOverrides={repo2:rule2=Error}," +
+        "ruleParameters={repo2:rule2={param1=value1}},showAnalyzerLogs=false,showVerboseLogs=false]");
   }
 
 }

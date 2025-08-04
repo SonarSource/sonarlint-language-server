@@ -96,7 +96,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private static final String PYTHON_S1481 = "python:S1481";
   private static final String PYTHON_S1313 = "python:S1313";
   private static final String PROJECT_KEY = "myProject";
-  public static final String LANGUAGES_LIST = "apex,c,cpp,cs,css,cobol,web,java,js,php,plsql,py,secrets,tsql,ts,xml,yaml,json,go,cloudformation,docker,kubernetes,terraform,azureresourcemanager,ansible";
+  public static final String LANGUAGES_LIST = "apex,c,cpp,cs,css,cobol,web,java,js,php,plsql,py,secrets,tsql,ts,xml,yaml,json,go,cloudformation,docker,kubernetes,terraform," +
+    "azureresourcemanager,ansible";
 
   @RegisterExtension
   private final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
@@ -128,8 +129,10 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     var fileName1 = "analysisConnected_scan_all_hotspot_then_forget_hotspot1.py";
     var fileName2 = "analysisConnected_scan_all_hotspot_then_forget_hotspot2.py";
-    var file1 = new SonarLintExtendedLanguageClient.FoundFileDto(fileName1, folder1BaseDir.resolve(fileName1).toFile().getAbsolutePath(), "def foo():\n  id_address = '12.34.56.78'\n");
-    var file2 = new SonarLintExtendedLanguageClient.FoundFileDto(fileName2, folder1BaseDir.resolve(fileName2).toFile().getAbsolutePath(), "def foo():\n  id_address = '23.45.67.89'\n");
+    var file1 = new SonarLintExtendedLanguageClient.FoundFileDto(fileName1, folder1BaseDir.resolve(fileName1).toFile().getAbsolutePath(), "def foo():\n  id_address = '12.34.56" +
+      ".78'\n");
+    var file2 = new SonarLintExtendedLanguageClient.FoundFileDto(fileName2, folder1BaseDir.resolve(fileName2).toFile().getAbsolutePath(), "def foo():\n  id_address = '23.45.67" +
+      ".89'\n");
 
     setUpFindFilesInFolderResponse(folder1BaseDir.toUri().toString(), List.of(file1, file2));
   }
@@ -515,7 +518,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     // Simulate that file 1 is open, should not be cleaned
     didOpen(uri1InFolder, "python", doc1Content);
     // allow enough time for the file opening to be reflected
-    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Language of file \"" + doc1.getUri() + "\" is set to \"PYTHON\"")));
+    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Language of file \"" + doc1.getUri() + "\" is set to " +
+      "\"PYTHON\"")));
 
     lsProxy.forgetFolderHotspots();
 
@@ -573,7 +577,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       .satisfiesAnyOf(
         c -> assertThat(c.scopeReadyForAnalysis).containsKey(configScopeId),
         c -> assertThat(c.logs.stream()).anyMatch(messageParams -> messageParams.getMessage().contains(String.format("Configuration scope '%s' is already bound", configScopeId))),
-        c -> assertThat(c.logs.stream()).anyMatch(messageParams -> messageParams.getMessage().contains(String.format("Duplicate configuration scope registered: %s", configScopeId)))
+        c -> assertThat(c.logs.stream()).anyMatch(messageParams -> messageParams.getMessage().contains(String.format("Duplicate configuration scope registered: %s",
+          configScopeId)))
       )
     );
   }
@@ -649,11 +654,11 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     codeActionParams.setRange(firstDiagnostic.getRange());
     codeActionParams.setContext(new CodeActionContext(List.of(firstDiagnostic)));
     var codeActions = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
-    assertThat(codeActions).hasSize(3)
+    assertThat(codeActions).hasSize(4)
       .extracting(Either::getRight)
       .extracting(CodeAction::getCommand)
       .extracting(Command::getCommand)
-      .containsExactlyInAnyOrder("SonarLint.QuickFixApplied", "SonarLint.ResolveIssue", "SonarLint.ShowIssueDetailsCodeAction");
+      .containsExactlyInAnyOrder("SonarLint.QuickFixApplied", "SonarLint.ResolveIssue", "SonarLint.ShowIssueDetailsCodeAction", "SonarQube.ReportIssuesAsError");
   }
 
   @Test
@@ -714,7 +719,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldThrowExceptionForUnknownProjectKey() {
-    SonarLintExtendedLanguageServer.GetRemoteProjectNamesByKeysParams testParams = new SonarLintExtendedLanguageServer.GetRemoteProjectNamesByKeysParams("random_string", List.of("unknown_project_key"));
+    SonarLintExtendedLanguageServer.GetRemoteProjectNamesByKeysParams testParams = new SonarLintExtendedLanguageServer.GetRemoteProjectNamesByKeysParams("random_string",
+      List.of("unknown_project_key"));
     var future = lsProxy.getRemoteProjectNamesByProjectKeys(testParams);
 
     awaitUntilAsserted(() -> assertThat(future).isCompletedExceptionally());
@@ -837,7 +843,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Hotspots.SearchWsResponse.newBuilder().build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
+    awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project " +
+      "'myProject'"))).isTrue());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
 
     var fileUri = folder1BaseDir.resolve("hotspot.py").toUri().toString();
@@ -876,7 +883,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Hotspots.SearchWsResponse.newBuilder().build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
+    awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project " +
+      "'myProject'"))).isTrue());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
 
     var fileUri = folder1BaseDir.resolve("shouldNotChangeIssueStatus.py").toUri().toString();
@@ -1059,7 +1067,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     lsProxy.changeHotspotStatus(new SonarLintExtendedLanguageServer.ChangeHotspotStatusParams(hotspotKey, HotspotStatus.SAFE.name(), uriInFolder));
 
-    awaitUntilAsserted(() -> assertThat(client.shownMessages).contains(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarQube for IDE output for details.")));
+    awaitUntilAsserted(() -> assertThat(client.shownMessages).contains(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarQube for " +
+      "IDE output for details.")));
   }
 
   @Test
@@ -1179,7 +1188,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.getAllowedHotspotStatuses(
       new SonarLintExtendedLanguageServer.GetAllowedHotspotStatusesParams(hotspotKey, folder1BaseDir.toUri().toString(), uriInFolder)).get();
 
-    awaitUntilAsserted(() -> assertThat(client.shownMessages).contains(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarQube for IDE output for details.")));
+    awaitUntilAsserted(() -> assertThat(client.shownMessages).contains(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarQube for " +
+      "IDE output for details.")));
   }
 
   @Test
@@ -1237,7 +1247,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
 
-    var result = lsProxy.checkIssueStatusChangePermitted(new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedParams(folder1BaseDir.toUri().toString(), issueKey)).get();
+    var result =
+      lsProxy.checkIssueStatusChangePermitted(new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedParams(folder1BaseDir.toUri().toString(), issueKey)).get();
 
     awaitUntilAsserted(() -> {
       assertTrue(result.isPermitted());
@@ -1249,10 +1260,12 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void change_issue_status_permission_check_exceptionally() throws ExecutionException, InterruptedException {
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
+    awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project " +
+      "'myProject'"))).isTrue());
 
     var issueKey = "malformed issue UUID";
-    var result = lsProxy.checkIssueStatusChangePermitted(new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedParams(folder1BaseDir.toUri().toString(), issueKey)).get();
+    var result =
+      lsProxy.checkIssueStatusChangePermitted(new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedParams(folder1BaseDir.toUri().toString(), issueKey)).get();
 
     awaitUntilAsserted(() -> {
       assertNull(result);
@@ -1303,7 +1316,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       assertThat(client.shownMessages)
         .extracting(MessageParams::getType, MessageParams::getMessage)
         .containsExactlyInAnyOrder(
-          tuple(MessageType.Error, String.format("Failed to open dependency risk in browser: Configuration scope '%s' is not bound properly, unable to open dependency risk", folderUri)));
+          tuple(MessageType.Error, String.format("Failed to open dependency risk in browser: Configuration scope '%s' is not bound properly, unable to open dependency risk",
+            folderUri)));
     });
   }
 
@@ -1398,11 +1412,13 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     mockWebServerExtension.addResponse("/api/issues/anticipated_transitions?projectKey=" + PROJECT_KEY, new MockResponse().setResponseCode(202));
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
     mockNoIssueAndNoTaintInIncrementalSync();
-    mockWebServerExtension.addProtobufResponse("/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + getFileNameFromFileUri(fileUri) + "&branch=master&ps=500&p=1",
+    mockWebServerExtension.addProtobufResponse("/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + getFileNameFromFileUri(fileUri) + "&branch=master&ps=500&p" +
+        "=1",
       Hotspots.SearchWsResponse.newBuilder().build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
+    awaitUntilAsserted(() -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project " +
+      "'myProject'"))).isTrue());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
 
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";

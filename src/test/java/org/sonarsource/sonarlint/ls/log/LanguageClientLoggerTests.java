@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.log;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Collections;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,7 +60,7 @@ class LanguageClientLoggerTests {
 
   @Test
   void enable_debug_logs() {
-    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, null, false, true, null, false, ""));
+    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, null, false, true, null, false, "", "None", Collections.emptyMap()));
 
     underTest.error("error");
     underTest.warn("warn");
@@ -77,7 +78,7 @@ class LanguageClientLoggerTests {
 
   @Test
   void enable_analyzer_debug_logs() {
-    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, null, true, true, null, false, ""));
+    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, null, true, true, null, false, "", "None", Collections.emptyMap()));
 
     underTest.error("error");
     underTest.warn("warn");

@@ -31,6 +31,7 @@ import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.IssuesCache;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 import static java.util.stream.Collectors.groupingBy;
 import static org.sonarsource.sonarlint.ls.DiagnosticPublisher.prepareDiagnostic;
@@ -39,21 +40,23 @@ public class NotebookDiagnosticPublisher {
   private final SonarLintExtendedLanguageClient client;
 
   private final IssuesCache issuesCache;
+  private final SettingsManager settingsManager;
   private final Map<URI, List<URI>> notebookCellsWithIssues = new HashMap<>();
   private OpenNotebooksCache openNotebooksCache;
 
-  public NotebookDiagnosticPublisher(SonarLintExtendedLanguageClient client, IssuesCache issuesCache) {
+  public NotebookDiagnosticPublisher(SonarLintExtendedLanguageClient client, IssuesCache issuesCache, SettingsManager settingsManager) {
     this.client = client;
     this.issuesCache = issuesCache;
+    this.settingsManager = settingsManager;
   }
 
   public void setOpenNotebooksCache(OpenNotebooksCache openNotebooksCache) {
     this.openNotebooksCache = openNotebooksCache;
   }
 
-  static Diagnostic convertCellIssue(Map.Entry<String, DelegatingCellIssue> entry) {
+  static Diagnostic convertCellIssue(Map.Entry<String, DelegatingCellIssue> entry, String reportIssuesAsErrorLevel, Map<String, String> reportIssuesAsErrorOverrides) {
     var issue = entry.getValue();
-    return prepareDiagnostic(issue, entry.getKey(), true, false);
+    return prepareDiagnostic(issue, entry.getKey(), true, false, reportIssuesAsErrorLevel, reportIssuesAsErrorOverrides);
   }
 
   public void publishNotebookDiagnostics(URI uri, VersionedOpenNotebook versionedOpenNotebook) {
@@ -64,7 +67,11 @@ public class NotebookDiagnosticPublisher {
     var localDiagnostics = localIssues.entrySet()
       .stream()
       .map(entry -> Map.entry(entry.getKey(), versionedOpenNotebook.toCellIssue(entry.getValue())))
-      .map(NotebookDiagnosticPublisher::convertCellIssue)
+      .map((Map.Entry<String, DelegatingCellIssue> entry1) ->
+        convertCellIssue(
+          entry1,
+          settingsManager.getCurrentSettings().getReportIssuesAsErrorLevel(),
+          settingsManager.getCurrentSettings().getReportIssuesAsErrorOverrides()))
       .collect(groupingBy(diagnostic -> {
         var localIssue = localIssues.get(((DiagnosticPublisher.DiagnosticData) diagnostic.getData()).getEntryKey());
         var cellUri = URI.create("");

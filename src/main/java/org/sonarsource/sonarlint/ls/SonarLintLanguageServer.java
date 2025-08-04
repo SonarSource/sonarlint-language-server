@@ -211,25 +211,30 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.issuesCache = new IssuesCache();
     this.securityHotspotsCache = new HotspotsCache();
     this.taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
-    this.dependencyRisksCache = new DependencyRisksCache();
-    this.notebookDiagnosticPublisher = new NotebookDiagnosticPublisher(client, issuesCache);
-    this.openNotebooksCache = new OpenNotebooksCache(lsLogOutput, notebookDiagnosticPublisher);
-    this.notebookDiagnosticPublisher.setOpenNotebooksCache(openNotebooksCache);
     this.hostInfoProvider = new HostInfoProvider();
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client, lsLogOutput);
     this.promotionalNotifications = new PromotionalNotifications(client);
-    var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, lsLogOutput, taintVulnerabilitiesCache,
+    this.dependencyRisksCache = new DependencyRisksCache();
+    var vsCodeClient = new SonarLintVSCodeClient(
+      client,
+      hostInfoProvider,
+      lsLogOutput,
+      taintVulnerabilitiesCache,
       dependencyRisksCache,
-      skippedPluginsNotifier, promotionalNotifications);
+      skippedPluginsNotifier,
+      promotionalNotifications);
     this.backendServiceFacade = new BackendServiceFacade(vsCodeClient, lsLogOutput, client);
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
     this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, lsLogOutput);
-    this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache,
-      securityHotspotsCache, openNotebooksCache, dependencyRisksCache);
-    vsCodeClient.setDiagnosticPublisher(diagnosticPublisher);
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, backendServiceFacade, lsLogOutput);
     vsCodeClient.setSettingsManager(settingsManager);
     vsCodeClient.setWorkspaceFoldersManager(workspaceFoldersManager);
+    this.notebookDiagnosticPublisher = new NotebookDiagnosticPublisher(client, issuesCache, settingsManager);
+    this.openNotebooksCache = new OpenNotebooksCache(lsLogOutput, notebookDiagnosticPublisher);
+    this.notebookDiagnosticPublisher.setOpenNotebooksCache(openNotebooksCache);
+    this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache,
+      securityHotspotsCache, openNotebooksCache, dependencyRisksCache, settingsManager);
+    vsCodeClient.setDiagnosticPublisher(diagnosticPublisher);
     backendServiceFacade.setSettingsManager(settingsManager);
     this.fileTypeClassifier = new FileTypeClassifier(lsLogOutput);
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);

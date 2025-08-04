@@ -407,8 +407,13 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     var consoleParams = ((Map<String, Object>) params.getOrDefault(OUTPUT, Collections.emptyMap()));
     var showAnalyzerLogs = (Boolean) consoleParams.getOrDefault(SHOW_ANALYZER_LOGS, false);
     var showVerboseLogs = (Boolean) consoleParams.getOrDefault(SHOW_VERBOSE_LOGS, false);
+    @SuppressWarnings("unchecked")
+    var reportIssuesAsErrorParams = (Map<String, Object>) params.getOrDefault("reportIssuesAsError", Collections.emptyMap());
+    var reportIssuesAsErrorLevel = (String) reportIssuesAsErrorParams.getOrDefault("level", "None");
+    @SuppressWarnings("unchecked")
+    var reportIssuesAsErrorOverrides = (Map<String, String>) reportIssuesAsErrorParams.getOrDefault("overrides", Collections.emptyMap());
     return new WorkspaceSettings(disableTelemetry, serverConnections, rulesConfiguration.excludedRules(), rulesConfiguration.includedRules(), rulesConfiguration.ruleParameters(),
-      showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable, focusOnNewCode, analysisExcludesStandalone);
+      showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable, focusOnNewCode, analysisExcludesStandalone, reportIssuesAsErrorLevel, reportIssuesAsErrorOverrides);
   }
 
   private Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params) {

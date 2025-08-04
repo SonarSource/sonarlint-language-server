@@ -195,8 +195,10 @@ class CommandManagerTests {
     var codeActions = underTest.computeCodeActions(new CodeActionParams(FAKE_TEXT_DOCUMENT, FAKE_RANGE,
       new CodeActionContext(List.of(new Diagnostic(FAKE_RANGE, "Foo", DiagnosticSeverity.Error, SONARLINT_SOURCE, "XYZ")))), NOP_CANCEL_TOKEN);
 
-    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly("SonarQube: Show issue details for 'XYZ'",
-      "SonarQube: Resolve issue violating rule 'XYZ' as...");
+    assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
+      "SonarQube: Show issue details for 'XYZ'",
+      "SonarQube: Resolve issue violating rule 'XYZ' as...",
+      "SonarQube: Report XYZ as Warning");
   }
 
   @Test
@@ -218,7 +220,8 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsOnly(
         "SonarQube: Show issue details for 'XYZ'",
-        "SonarQube: Deactivate rule 'XYZ'");
+        "SonarQube: Deactivate rule 'XYZ'",
+        "SonarQube: Report XYZ as Warning");
   }
 
   @Test
@@ -253,7 +256,8 @@ class CommandManagerTests {
       .containsExactly(
         "SonarQube: Fix the issue!",
         "SonarQube: Show issue details for 'XYZ'",
-        "SonarQube: Deactivate rule 'XYZ'");
+        "SonarQube: Deactivate rule 'XYZ'",
+        "SonarQube: Report XYZ as Warning");
   }
 
   @Test
@@ -288,7 +292,8 @@ class CommandManagerTests {
       .containsExactly(
         "SonarQube: Fix the issue!",
         "SonarQube: Show issue details for 'XYZ'",
-        "SonarQube: Deactivate rule 'XYZ'");
+        "SonarQube: Deactivate rule 'XYZ'",
+        "SonarQube: Report XYZ as Warning");
   }
 
   @Test
@@ -318,7 +323,8 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly("SonarQube: Resolve issue violating rule 'XYZ' as...",
         "SonarQube: Show issue details for 'XYZ'",
-        "SonarQube: ✧˖° Fix with AI CodeFix 'Foo'");
+        "SonarQube: ✧˖° Fix with AI CodeFix 'Foo'",
+        "SonarQube: Report XYZ as Warning");
   }
 
   @Test
@@ -357,7 +363,8 @@ class CommandManagerTests {
       .containsExactly(
         "SonarQube: Fix the issue!",
         "SonarQube: Show issue details for 'XYZ'",
-        "SonarQube: Deactivate rule 'XYZ'");
+        "SonarQube: Deactivate rule 'XYZ'",
+        "SonarQube: Report XYZ as Warning");
   }
 
   @Test
@@ -384,7 +391,8 @@ class CommandManagerTests {
       .containsOnly(
         "SonarQube: Show issue details for 'XYZ'",
         "SonarQube: Deactivate rule 'XYZ'",
-        "SonarQube: Show all locations for issue 'XYZ'");
+        "SonarQube: Show all locations for issue 'XYZ'",
+        "SonarQube: Report XYZ as Warning");
   }
 
   @Test
@@ -557,7 +565,8 @@ class CommandManagerTests {
 
   @Test
   void showIssueDetails_ruleNotFound() {
-    when(backendService.getEffectiveRuleDetails(any(), any(), any())).thenReturn(CompletableFuture.failedFuture(new CompletionException(new IllegalStateException("Rule not found"))));
+    when(backendService.getEffectiveRuleDetails(any(), any(), any())).thenReturn(CompletableFuture.failedFuture(new CompletionException(new IllegalStateException("Rule not " +
+      "found"))));
     underTest.executeCommand(
       new ExecuteCommandParams(SONARLINT_SHOW_RULE_DESC_COMMAND, List.of(new JsonPrimitive(FAKE_RULE_KEY), new JsonPrimitive(FILE_URI))),
       NOP_CANCEL_TOKEN);
@@ -628,7 +637,8 @@ class CommandManagerTests {
     var delegatingHotspot = new DelegatingHotspot(hotspot, URI.create("fileUri"), HotspotStatus.TO_REVIEW, null);
     when(securityHotspotsCache.get(URI.create("fileUri"))).thenReturn(Map.of(issueKey.toString(), delegatingHotspot));
 
-    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS, List.of(new JsonPrimitive(fileUri), new JsonPrimitive(issueKey.toString()))), NOP_CANCEL_TOKEN);
+    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS, List.of(new JsonPrimitive(fileUri), new JsonPrimitive(issueKey.toString()))),
+      NOP_CANCEL_TOKEN);
 
     verify(securityHotspotsCache).get(URI.create("fileUri"));
     verify(mockClient).showIssueOrHotspot(any());
@@ -757,7 +767,8 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
         "SonarQube: Resolve issue violating rule 'XYZ' as...",
-        "SonarQube: Show issue details for 'XYZ'");
+        "SonarQube: Show issue details for 'XYZ'",
+        "SonarQube: Report XYZ as Warning");
   }
 
   @Test
@@ -920,7 +931,8 @@ class CommandManagerTests {
 
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
-        "SonarQube: Show issue details for 'XYZ'");
+        "SonarQube: Show issue details for 'XYZ'",
+        "SonarQube: Report XYZ as Warning");
   }
 
 }

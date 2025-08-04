@@ -38,6 +38,7 @@ import org.eclipse.lsp4j.CodeActionKind;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
@@ -128,6 +129,8 @@ public class CommandManager {
     SONARLINT_SHOW_ISSUE_FLOWS);
   // Client side
   static final String SONARLINT_DEACTIVATE_RULE_COMMAND = "SonarLint.DeactivateRule";
+  static final String SONARQUBE_REPORT_ISSUES_AS_ERROR_COMMAND = "SonarQube.ReportIssuesAsError";
+  static final String SONARQUBE_REPORT_ISSUES_AS_WARNING_COMMAND = "SonarQube.ReportIssuesAsWarning";
   static final String RESOLVE_ISSUE = "SonarLint.ResolveIssue";
   static final String SONARLINT_ACTION_PREFIX = "SonarQube: ";
   public static final MessageActionItem SHOW_LOGS_ACTION = new MessageActionItem("Show Logs");
@@ -237,6 +240,14 @@ public class CommandManager {
     if (!hasBinding) {
       var titleDeactivate = String.format("Deactivate rule '%s'", ruleKey);
       codeActions.add(newQuickFix(diagnostic, titleDeactivate, SONARLINT_DEACTIVATE_RULE_COMMAND, List.of(ruleKey)));
+    }
+
+    if (diagnostic.getSeverity().equals(DiagnosticSeverity.Error)) {
+      var titleReportAsWarning = String.format("Report %s as Warning", ruleKey);
+      codeActions.add(newQuickFix(diagnostic, titleReportAsWarning, SONARQUBE_REPORT_ISSUES_AS_WARNING_COMMAND, List.of(ruleKey)));
+    } else {
+      var titleReportAsError = String.format("Report %s as Error", ruleKey);
+      codeActions.add(newQuickFix(diagnostic, titleReportAsError, SONARQUBE_REPORT_ISSUES_AS_ERROR_COMMAND, List.of(ruleKey)));
     }
   }
 

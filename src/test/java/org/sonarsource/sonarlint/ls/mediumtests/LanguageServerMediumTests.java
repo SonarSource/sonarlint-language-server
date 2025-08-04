@@ -248,7 +248,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(uri, "terraform", """
       resource "aws_s3_bucket" "mynoncompliantbucket" {
         bucket = "mybucketname"
-
+      
         tags = {
           "anycompany:cost-center" = "Accounting" # Noncompliant
         }
@@ -370,7 +370,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var d = client.getDiagnostics(uri).get(0);
     var codeActionParams = new CodeActionParams(new TextDocumentIdentifier(uri), d.getRange(), new CodeActionContext(List.of(d)));
     var codeActions = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
-    assertThat(codeActions).hasSize(3);
+    assertThat(codeActions).hasSize(4);
     var allLocationsAction = codeActions.get(1).getRight();
     assertThat(allLocationsAction.getCommand().getCommand()).isEqualTo(ShowAllLocationsCommand.ID);
     assertThat(allLocationsAction.getCommand().getArguments()).hasSize(1);
@@ -602,7 +602,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     notifyConfigurationChangeOnClient();
 
     waitForLogToContain(
-      String.format("Global settings updated: WorkspaceSettings[analysisExcludes=,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false,organizationKey=<null>,region=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=true]",
+      String.format("Global settings updated: WorkspaceSettings[analysisExcludes=,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false," +
+          "organizationKey=<null>,region=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,includedRules=[],pathToNodeExecutable=<null>," +
+          "reportIssuesAsErrorLevel=None,reportIssuesAsErrorOverrides={},ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=true]",
         CONNECTION_ID, CONNECTION_ID, mockWebServerExtension.url("/")));
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder( "Telemetry enabled");
@@ -639,7 +641,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S930");
     assertThat(client.ruleDesc.getName()).isEqualTo("Function calls should not pass extra arguments");
-    assertThat(htmlContent).contains("When you call a function in JavaScript and provide more arguments than the function expects, the extra arguments are simply ignored by the\n" +
+    assertThat(htmlContent).contains("When you call a function in JavaScript and provide more arguments than the function expects, the extra arguments are simply ignored by " +
+      "the\n" +
       "function.");
     assertThat(client.ruleDesc.getType()).isNull();
     assertThat(client.ruleDesc.getSeverity()).isNull();
@@ -659,7 +662,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.ruleDesc.getKey()).isEqualTo(JAVA_S2095);
     assertThat(client.ruleDesc.getCleanCodeAttribute()).isEqualTo(EnumLabelsMapper.cleanCodeAttributeToLabel(CleanCodeAttribute.COMPLETE));
     assertThat(client.ruleDesc.getCleanCodeAttributeCategory()).isEqualTo(EnumLabelsMapper.cleanCodeAttributeCategoryToLabel(CleanCodeAttributeCategory.INTENTIONAL));
-    assertThat(client.ruleDesc.getImpacts()).containsExactly(Map.entry(EnumLabelsMapper.softwareQualityToLabel(SoftwareQuality.RELIABILITY), EnumLabelsMapper.impactSeverityToLabel(ImpactSeverity.HIGH)));
+    assertThat(client.ruleDesc.getImpacts()).containsExactly(Map.entry(EnumLabelsMapper.softwareQualityToLabel(SoftwareQuality.RELIABILITY),
+      EnumLabelsMapper.impactSeverityToLabel(ImpactSeverity.HIGH)));
   }
 
   @Test
@@ -703,7 +707,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     var codeActionParams = new CodeActionParams(new TextDocumentIdentifier(uri), range, new CodeActionContext(List.of(client.getDiagnostics(uri).get(0))));
     var list = lsProxy.getTextDocumentService().codeAction(codeActionParams).get();
-    assertThat(list).hasSize(3);
+    assertThat(list).hasSize(4);
     var codeAction = list.get(0).getRight();
     assertThat(codeAction.getTitle()).isEqualTo("SonarQube: Show issue details for 'javascript:S930'");
     var openRuleDesc = codeAction.getCommand();
@@ -719,6 +723,10 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(disableRule.getCommand()).isEqualTo("SonarLint.DeactivateRule");
     assertThat(disableRule.getArguments()).hasSize(1);
     assertThat(((JsonPrimitive) disableRule.getArguments().get(0)).getAsString()).isEqualTo("javascript:S930");
+    var reportIssuesAsErrorAction = list.get(3).getRight();
+    assertThat(reportIssuesAsErrorAction.getTitle()).isEqualTo("SonarQube: Report javascript:S930 as Error");
+    var reportIssuesAsError = reportIssuesAsErrorAction.getCommand();
+    assertThat(reportIssuesAsError.getCommand()).isEqualTo("SonarQube.ReportIssuesAsError");
   }
 
   @Test
@@ -773,7 +781,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       awaitLatch(client.settingsLatch);
 
       waitForLogToContain(
-        "Workspace folder 'WorkspaceFolder[name=Added,uri=file:///added_uri]' configuration updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.file.suffixes=.cs, sonar.cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern=another pattern]");
+        "Workspace folder 'WorkspaceFolder[name=Added,uri=file:///added_uri]' configuration updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.file.suffixes=.cs, " +
+          "sonar.cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>," +
+          "pathToCompileCommands=<null>,projectKey=<null>,testFilePattern=another pattern]");
     } finally {
       lsProxy.getWorkspaceService()
         .didChangeWorkspaceFolders(

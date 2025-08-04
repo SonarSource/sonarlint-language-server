@@ -42,6 +42,8 @@ import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.IssuesCache;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -55,11 +57,12 @@ class NotebookDiagnosticPublisherTests {
   NotebookDiagnosticPublisher notebookDiagnosticPublisher;
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   IssuesCache issuesCache = mock(IssuesCache.class);
+  SettingsManager settingsManager = mock(SettingsManager.class);
   OpenNotebooksCache openNotebooksCache = mock(OpenNotebooksCache.class);
 
   @BeforeEach
   void setup() {
-    notebookDiagnosticPublisher = new NotebookDiagnosticPublisher(client, issuesCache);
+    notebookDiagnosticPublisher = new NotebookDiagnosticPublisher(client, issuesCache, settingsManager);
     notebookDiagnosticPublisher.setOpenNotebooksCache(openNotebooksCache);
   }
 
@@ -75,7 +78,7 @@ class NotebookDiagnosticPublisherTests {
     when(cellIssue.getTextRange()).thenReturn(textRange);
     when(cellIssue.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
 
-    var diagnostic = convertCellIssue(new AbstractMap.SimpleImmutableEntry<>(issueKey, cellIssue));
+    var diagnostic = convertCellIssue(new AbstractMap.SimpleImmutableEntry<>(issueKey, cellIssue), "None", Collections.emptyMap());
 
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     assertThat(diagnostic.getRange().getStart().getLine()).isEqualTo(textRange.getStartLine() - 1);
@@ -97,6 +100,7 @@ class NotebookDiagnosticPublisherTests {
 
   @Test
   void shouldPublishDiagnostics() {
+    mockWorkspaceSettings();
     var notebookUri = URI.create("file:///some/notebook.ipynb");
 
     var cell1 = new TextDocumentItem();
@@ -123,6 +127,7 @@ class NotebookDiagnosticPublisherTests {
 
   @Test
   void shouldCleanUpDiagnosticsForCellsWithNoIssues() {
+    mockWorkspaceSettings();
     var notebookUri = URI.create("file:///some/notebook.ipynb");
 
     var cell1 = new TextDocumentItem();
@@ -158,6 +163,7 @@ class NotebookDiagnosticPublisherTests {
 
   @Test
   void shouldRemoveExistingDiagnosticsFromNotebook() {
+    mockWorkspaceSettings();
     var notebookUri = URI.create("file:///some/notebook.ipynb");
 
     var cell1 = new TextDocumentItem();
@@ -216,5 +222,12 @@ class NotebookDiagnosticPublisherTests {
     when(issue.getFlows()).thenReturn(List.of(mock(IssueFlowDto.class)));
 
     return new DelegatingCellIssue(issue, URI.create("file:///my/folder/notebook.ipynb"), textRange, Collections.emptyList());
+  }
+
+  private void mockWorkspaceSettings() {
+    var workspaceSettings = mock(WorkspaceSettings.class);
+    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
+    when(workspaceSettings.getReportIssuesAsErrorLevel()).thenReturn("None");
+    when(workspaceSettings.getReportIssuesAsErrorOverrides()).thenReturn(Collections.emptyMap());
   }
 }

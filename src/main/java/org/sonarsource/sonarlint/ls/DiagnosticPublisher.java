@@ -29,9 +29,12 @@ import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.ImpactDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.VulnerabilityProbability;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.ImpactSeverity;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.MQRModeDetails;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.RuleType;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
@@ -40,6 +43,7 @@ import org.sonarsource.sonarlint.ls.connected.DelegatingHotspot;
 import org.sonarsource.sonarlint.ls.connected.DependencyRisksCache;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 import static org.sonarsource.sonarlint.ls.util.TextRangeUtils.convert;
 import static org.sonarsource.sonarlint.ls.util.Utils.buildMessageWithPluralizedSuffix;
@@ -53,6 +57,11 @@ public class DiagnosticPublisher {
   public static final String ITEM_LOCATION = "location";
   public static final String ITEM_FLOW = "flow";
 
+  private static final String SEVERITY_ERROR = "Error";
+  private static final String SEVERITY_WARNING = "Warning";
+  private static final String LEVEL_ALL = "All";
+  private static final String LEVEL_MEDIUM_AND_ABOVE = "Medium severity and above";
+
   private final SonarLintExtendedLanguageClient client;
   private boolean firstSecretIssueDetected;
 
@@ -61,17 +70,19 @@ public class DiagnosticPublisher {
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final DependencyRisksCache dependencyRisksCache;
   private final OpenNotebooksCache openNotebooksCache;
+  private final SettingsManager settingsManager;
 
   private boolean focusOnNewCode;
 
   public DiagnosticPublisher(SonarLintExtendedLanguageClient client, TaintVulnerabilitiesCache taintVulnerabilitiesCache,
-    IssuesCache issuesCache, HotspotsCache hotspotsCache, OpenNotebooksCache openNotebooksCache, DependencyRisksCache dependencyRisksCache) {
+    IssuesCache issuesCache, HotspotsCache hotspotsCache, OpenNotebooksCache openNotebooksCache, DependencyRisksCache dependencyRisksCache, SettingsManager settingsManager) {
     this.client = client;
     this.taintVulnerabilitiesCache = taintVulnerabilitiesCache;
     this.issuesCache = issuesCache;
     this.hotspotsCache = hotspotsCache;
     this.openNotebooksCache = openNotebooksCache;
     this.dependencyRisksCache = dependencyRisksCache;
+    this.settingsManager = settingsManager;
     this.focusOnNewCode = false;
   }
 
@@ -107,20 +118,27 @@ public class DiagnosticPublisher {
 
   Diagnostic issueDtoToDiagnostic(Map.Entry<String, DelegatingFinding> entry) {
     var issue = entry.getValue();
-    return prepareDiagnostic(issue, entry.getKey(), false, focusOnNewCode);
+    return prepareDiagnostic(
+      issue,
+      entry.getKey(),
+      false,
+      focusOnNewCode,
+      settingsManager.getCurrentSettings().getReportIssuesAsErrorLevel(),
+      settingsManager.getCurrentSettings().getReportIssuesAsErrorOverrides());
   }
 
   public void setFocusOnNewCode(boolean focusOnNewCode) {
     this.focusOnNewCode = focusOnNewCode;
   }
 
-  public static Diagnostic prepareDiagnostic(DelegatingFinding issue, String entryKey, boolean ignoreSecondaryLocations, boolean focusOnNewCode) {
+  public static Diagnostic prepareDiagnostic(DelegatingFinding issue, String entryKey, boolean ignoreSecondaryLocations, boolean focusOnNewCode, String reportIssuesAsErrorLevel,
+    Map<String, String> reportIssuesAsErrorOverrides) {
     var diagnostic = new Diagnostic();
 
     if (issue.getFinding() instanceof RaisedHotspotDto hotspotDto) {
-      setVulnerabilityProbability(diagnostic, hotspotDto);
+      setVulnerabilityProbability(diagnostic, hotspotDto, reportIssuesAsErrorLevel, reportIssuesAsErrorOverrides);
     } else {
-      setSeverity(diagnostic, issue, focusOnNewCode);
+      setSeverity(diagnostic, issue, focusOnNewCode, reportIssuesAsErrorLevel, reportIssuesAsErrorOverrides);
     }
     var range = convert(issue);
     diagnostic.setRange(range);
@@ -132,7 +150,16 @@ public class DiagnosticPublisher {
     return diagnostic;
   }
 
-  static void setVulnerabilityProbability(Diagnostic diagnostic, RaisedHotspotDto hotspot) {
+  static void setVulnerabilityProbability(Diagnostic diagnostic, RaisedHotspotDto hotspot, String reportIssuesAsErrorLevel, Map<String, String> reportIssuesAsErrorOverrides) {
+    if (applySeverityOverrideOrLevelLogic(diagnostic, hotspot.getRuleKey(), reportIssuesAsErrorLevel, reportIssuesAsErrorOverrides)) {
+      return;
+    }
+
+    if (LEVEL_MEDIUM_AND_ABOVE.equals(reportIssuesAsErrorLevel) && isMediumOrHighVulnerabilityProbability(hotspot)) {
+      diagnostic.setSeverity(DiagnosticSeverity.Error);
+      return;
+    }
+
     switch (hotspot.getVulnerabilityProbability()) {
       case MEDIUM -> diagnostic.setSeverity(DiagnosticSeverity.Warning);
       case HIGH -> diagnostic.setSeverity(DiagnosticSeverity.Error);
@@ -140,13 +167,59 @@ public class DiagnosticPublisher {
     }
   }
 
-  static void setSeverity(Diagnostic diagnostic, DelegatingFinding issue, boolean focusOnNewCode) {
+  static void setSeverity(Diagnostic diagnostic, DelegatingFinding issue, boolean focusOnNewCode, String reportIssuesAsErrorLevel,
+    Map<String, String> reportIssuesAsErrorOverrides) {
+    if (applySeverityOverrideOrLevelLogic(diagnostic, issue.getRuleKey(), reportIssuesAsErrorLevel, reportIssuesAsErrorOverrides)) {
+      return;
+    }
+
+    if (LEVEL_MEDIUM_AND_ABOVE.equals(reportIssuesAsErrorLevel) && isMediumOrHighSeverityIssue(issue)) {
+      diagnostic.setSeverity(DiagnosticSeverity.Error);
+      return;
+    }
+
     if (focusOnNewCode) {
       var newCodeSeverity = issue.isOnNewCode() ? DiagnosticSeverity.Warning : DiagnosticSeverity.Hint;
       diagnostic.setSeverity(newCodeSeverity);
     } else {
       diagnostic.setSeverity(DiagnosticSeverity.Warning);
     }
+  }
+
+  private static boolean applySeverityOverrideOrLevelLogic(Diagnostic diagnostic, String ruleKey,
+    String reportIssuesAsErrorLevel, Map<String, String> reportIssuesAsErrorOverrides) {
+    if (reportIssuesAsErrorOverrides.containsKey(ruleKey)) {
+      var overriddenSeverity = reportIssuesAsErrorOverrides.get(ruleKey);
+      if (SEVERITY_ERROR.equals(overriddenSeverity)) {
+        diagnostic.setSeverity(DiagnosticSeverity.Error);
+      } else if (SEVERITY_WARNING.equals(overriddenSeverity)) {
+        diagnostic.setSeverity(DiagnosticSeverity.Warning);
+      }
+      return true;
+    }
+
+    if (LEVEL_ALL.equals(reportIssuesAsErrorLevel)) {
+      diagnostic.setSeverity(DiagnosticSeverity.Error);
+      return true;
+    }
+
+    return false;
+  }
+
+  private static boolean isMediumOrHighSeverityIssue(DelegatingFinding issue) {
+    if (issue.getSeverityDetails().isLeft()) {
+      var severity = issue.getSeverityDetails().getLeft().getSeverity();
+      return severity == IssueSeverity.BLOCKER || severity == IssueSeverity.CRITICAL || severity == IssueSeverity.MAJOR;
+    } else {
+      var impacts = issue.getSeverityDetails().getRight().getImpacts();
+      return impacts.stream().anyMatch(impact ->
+        impact.getImpactSeverity() == ImpactSeverity.HIGH || impact.getImpactSeverity() == ImpactSeverity.MEDIUM);
+    }
+  }
+
+  private static boolean isMediumOrHighVulnerabilityProbability(RaisedHotspotDto hotspot) {
+    return hotspot.getVulnerabilityProbability() == VulnerabilityProbability.HIGH ||
+      hotspot.getVulnerabilityProbability() == VulnerabilityProbability.MEDIUM;
   }
 
   public static class DiagnosticData {
@@ -309,7 +382,8 @@ public class DiagnosticPublisher {
     p.setDiagnostics(hotspotsCache.get(newUri).entrySet()
       .stream()
       .filter(e -> !e.getValue().isResolved())
-      .map(e -> prepareDiagnostic(e.getValue(), e.getKey(), false, focusOnNewCode))
+      .map(e -> prepareDiagnostic(e.getValue(), e.getKey(), false, focusOnNewCode, settingsManager.getCurrentSettings().getReportIssuesAsErrorLevel(),
+        settingsManager.getCurrentSettings().getReportIssuesAsErrorOverrides()))
       .sorted(DiagnosticPublisher.byLineNumber())
       .toList());
     p.setUri(newUri.toString());

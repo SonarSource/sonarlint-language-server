@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -56,6 +57,8 @@ import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.domain.DependencyRisk;
 import org.sonarsource.sonarlint.ls.notebooks.DelegatingCellIssue;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -74,15 +77,17 @@ class DiagnosticPublisherTests {
   private HotspotsCache hotspotsCache;
   private DependencyRisksCache dependencyRisksCache;
   private SonarLintExtendedLanguageClient languageClient;
+  private SettingsManager settingsManager;
 
   @BeforeEach
-  public void init() {
+  void init() {
     issuesCache = new IssuesCache();
     hotspotsCache = new HotspotsCache();
     languageClient = mock(SonarLintExtendedLanguageClient.class);
     dependencyRisksCache = new DependencyRisksCache();
+    settingsManager = mock(SettingsManager.class);
     underTest = new DiagnosticPublisher(languageClient, new TaintVulnerabilitiesCache(), issuesCache, hotspotsCache,
-      mock(OpenNotebooksCache.class), dependencyRisksCache);
+      mock(OpenNotebooksCache.class), dependencyRisksCache, settingsManager);
   }
 
   @Test
@@ -94,6 +99,7 @@ class DiagnosticPublisherTests {
     when(issue.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
     when(issue.getMessage()).thenReturn("Do this, don't do that");
     when(issue.getStartLine()).thenReturn(null);
+    mockWorkspaceSettings();
     Diagnostic diagnostic = underTest.issueDtoToDiagnostic(entry("id", issue));
     assertThat(diagnostic.getRange()).isEqualTo(new Range(new Position(0, 0), new Position(0, 0)));
   }
@@ -108,6 +114,7 @@ class DiagnosticPublisherTests {
     when(issue.getSeverity()).thenReturn(IssueSeverity.BLOCKER);
     when(issue.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
     when(issue.getMessage()).thenReturn("Do this, don't do that");
+    mockWorkspaceSettings();
     assertThat(underTest.issueDtoToDiagnostic(entry(id, issue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     when(issue.getSeverity()).thenReturn(IssueSeverity.CRITICAL);
     assertThat(underTest.issueDtoToDiagnostic(entry(id, issue)).getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
@@ -131,7 +138,7 @@ class DiagnosticPublisherTests {
     when(finding.quickFixes()).thenReturn(List.of(mock(QuickFixDto.class)));
     when(finding.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
 
-    var diagnostic = DiagnosticPublisher.prepareDiagnostic(finding, "entryKey", false, false);
+    var diagnostic = DiagnosticPublisher.prepareDiagnostic(finding, "entryKey", false, false, "None", Collections.emptyMap());
 
     assertThat(diagnostic.getRange().getStart().getLine()).isZero();
     assertThat(diagnostic.getRange().getStart().getCharacter()).isZero();
@@ -161,11 +168,13 @@ class DiagnosticPublisherTests {
       Arguments.of(Either.forLeft(new StandardModeDetails(IssueSeverity.MINOR, RuleType.BUG)), ImpactSeverity.LOW.ordinal()),
       Arguments.of(Either.forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)), ImpactSeverity.MEDIUM.ordinal()),
       Arguments.of(Either.forRight(new MQRModeDetails(CleanCodeAttribute.TRUSTWORTHY,
-        List.of(new ImpactDto(SoftwareQuality.RELIABILITY, ImpactSeverity.HIGH), new ImpactDto(SoftwareQuality.SECURITY, ImpactSeverity.BLOCKER)))), ImpactSeverity.BLOCKER.ordinal()),
+          List.of(new ImpactDto(SoftwareQuality.RELIABILITY, ImpactSeverity.HIGH), new ImpactDto(SoftwareQuality.SECURITY, ImpactSeverity.BLOCKER)))),
+        ImpactSeverity.BLOCKER.ordinal()),
       Arguments.of(Either.forRight(new MQRModeDetails(CleanCodeAttribute.TRUSTWORTHY,
         List.of(new ImpactDto(SoftwareQuality.RELIABILITY, ImpactSeverity.MEDIUM)))), ImpactSeverity.MEDIUM.ordinal()),
       Arguments.of(Either.forRight(new MQRModeDetails(CleanCodeAttribute.TRUSTWORTHY,
-        List.of(new ImpactDto(SoftwareQuality.RELIABILITY, ImpactSeverity.LOW), new ImpactDto(SoftwareQuality.MAINTAINABILITY, ImpactSeverity.LOW)))), ImpactSeverity.LOW.ordinal()),
+          List.of(new ImpactDto(SoftwareQuality.RELIABILITY, ImpactSeverity.LOW), new ImpactDto(SoftwareQuality.MAINTAINABILITY, ImpactSeverity.LOW)))),
+        ImpactSeverity.LOW.ordinal()),
       Arguments.of(Either.forRight(new MQRModeDetails(CleanCodeAttribute.TRUSTWORTHY,
         List.of(new ImpactDto(SoftwareQuality.RELIABILITY, ImpactSeverity.BLOCKER)))), ImpactSeverity.BLOCKER.ordinal()),
       Arguments.of(Either.forRight(new MQRModeDetails(CleanCodeAttribute.TRUSTWORTHY,
@@ -180,7 +189,7 @@ class DiagnosticPublisherTests {
     when(hotspotDto.getVulnerabilityProbability()).thenReturn(vulnerabilityProbability);
     var diagnostic = new Diagnostic();
 
-    DiagnosticPublisher.setVulnerabilityProbability(diagnostic, hotspotDto);
+    DiagnosticPublisher.setVulnerabilityProbability(diagnostic, hotspotDto, "None", Collections.emptyMap());
 
     assertThat(diagnostic.getSeverity()).isEqualTo(expectedSeverity);
   }
@@ -210,6 +219,7 @@ class DiagnosticPublisherTests {
 
   @Test
   void dontShowFirstSecretDetectedNotificationIfAlreadyShown() {
+    mockWorkspaceSettings();
     underTest.initialize(true);
 
     var uri = initWithOneSecretIssue();
@@ -248,17 +258,125 @@ class DiagnosticPublisherTests {
     when(delegatingIssue.isOnNewCode()).thenReturn(false);
     var delegatingCellIssue = mock(DelegatingCellIssue.class);
 
-    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, false);
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, false, "None", Collections.emptyMap());
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
-    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, true);
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, true, "None", Collections.emptyMap());
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
-    DiagnosticPublisher.setSeverity(diagnostic, delegatingCellIssue, false);
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingCellIssue, false, "None", Collections.emptyMap());
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
-    DiagnosticPublisher.setSeverity(diagnostic, delegatingCellIssue, true);
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingCellIssue, true, "None", Collections.emptyMap());
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
 
     when(delegatingIssue.isOnNewCode()).thenReturn(true);
-    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, true);
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, true, "None", Collections.emptyMap());
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+  }
+
+  @Test
+  void setSeverity_AllLevel_ShouldReportAsError() {
+    var diagnostic = new Diagnostic();
+    var delegatingIssue = mock(DelegatingFinding.class);
+    when(delegatingIssue.isOnNewCode()).thenReturn(false);
+
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, false, "All", Collections.emptyMap());
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+  }
+
+  @Test
+  void setSeverity_MediumSeverityAndAbove_WithHighSeverityIssue_ShouldReportAsError() {
+    var diagnostic = new Diagnostic();
+    var delegatingIssue = mock(DelegatingFinding.class);
+    when(delegatingIssue.isOnNewCode()).thenReturn(false);
+    when(delegatingIssue.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
+
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, false, "Medium severity and above", Collections.emptyMap());
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+  }
+
+  @Test
+  void setSeverity_MediumSeverityAndAbove_WithLowSeverityIssue_ShouldReportAsWarning() {
+    var diagnostic = new Diagnostic();
+    var delegatingIssue = mock(DelegatingFinding.class);
+    when(delegatingIssue.isOnNewCode()).thenReturn(false);
+    when(delegatingIssue.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.MINOR, RuleType.BUG)));
+
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, false, "Medium severity and above", Collections.emptyMap());
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+  }
+
+  @Test
+  void setSeverity_WithRuleOverride_ShouldReportAsError() {
+    var diagnostic = new Diagnostic();
+    var delegatingIssue = mock(DelegatingFinding.class);
+    when(delegatingIssue.isOnNewCode()).thenReturn(false);
+    when(delegatingIssue.getRuleKey()).thenReturn("test:rule");
+    when(delegatingIssue.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.MINOR, RuleType.BUG)));
+
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, false, "None", Map.of("test:rule", "Error"));
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+  }
+
+  @Test
+  void setVulnerabilityProbability_AllLevel_ShouldReportAsError() {
+    var diagnostic = new Diagnostic();
+    var hotspotDto = mock(RaisedHotspotDto.class);
+    when(hotspotDto.getVulnerabilityProbability()).thenReturn(VulnerabilityProbability.LOW);
+
+    DiagnosticPublisher.setVulnerabilityProbability(diagnostic, hotspotDto, "All", Collections.emptyMap());
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+  }
+
+  @Test
+  void setVulnerabilityProbability_MediumSeverityAndAbove_WithHighProbability_ShouldReportAsError() {
+    var diagnostic = new Diagnostic();
+    var hotspotDto = mock(RaisedHotspotDto.class);
+    when(hotspotDto.getVulnerabilityProbability()).thenReturn(VulnerabilityProbability.HIGH);
+
+    DiagnosticPublisher.setVulnerabilityProbability(diagnostic, hotspotDto, "Medium severity and above", Collections.emptyMap());
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+  }
+
+  @Test
+  void setVulnerabilityProbability_MediumSeverityAndAbove_WithLowProbability_ShouldReportAsInformation() {
+    var diagnostic = new Diagnostic();
+    var hotspotDto = mock(RaisedHotspotDto.class);
+    when(hotspotDto.getVulnerabilityProbability()).thenReturn(VulnerabilityProbability.LOW);
+
+    DiagnosticPublisher.setVulnerabilityProbability(diagnostic, hotspotDto, "Medium severity and above", Collections.emptyMap());
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Information);
+  }
+
+  @Test
+  void setVulnerabilityProbability_WithRuleOverride_ShouldReportAsError() {
+    var diagnostic = new Diagnostic();
+    var hotspotDto = mock(RaisedHotspotDto.class);
+    when(hotspotDto.getVulnerabilityProbability()).thenReturn(VulnerabilityProbability.LOW);
+    when(hotspotDto.getRuleKey()).thenReturn("security:hotspot");
+
+    DiagnosticPublisher.setVulnerabilityProbability(diagnostic, hotspotDto, "None", Map.of("security:hotspot", "Error"));
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+  }
+
+  @Test
+  void setSeverity_WithRuleOverride_ShouldReportAsWarning() {
+    var diagnostic = new Diagnostic();
+    var delegatingIssue = mock(DelegatingFinding.class);
+    when(delegatingIssue.isOnNewCode()).thenReturn(false);
+    when(delegatingIssue.getRuleKey()).thenReturn("test:rule");
+    when(delegatingIssue.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
+
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, false, "None", Map.of("test:rule", "Warning"));
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+  }
+
+  @Test
+  void setVulnerabilityProbability_WithRuleOverride_ShouldReportAsWarning() {
+    var diagnostic = new Diagnostic();
+    var hotspotDto = mock(RaisedHotspotDto.class);
+    when(hotspotDto.getVulnerabilityProbability()).thenReturn(VulnerabilityProbability.HIGH);
+    when(hotspotDto.getRuleKey()).thenReturn("security:hotspot");
+
+    DiagnosticPublisher.setVulnerabilityProbability(diagnostic, hotspotDto, "All", Map.of("security:hotspot", "Warning"));
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
   }
 
@@ -275,5 +393,228 @@ class DiagnosticPublisherTests {
 
     issuesCache.reportIssues(Map.of(uri, List.of(issue)));
     return uri;
+  }
+
+  @Test
+  void setSeverity_WithRuleOverrideError_ShouldReportAsError() {
+    var diagnostic = new Diagnostic();
+    var delegatingIssue = mock(DelegatingFinding.class);
+    when(delegatingIssue.getRuleKey()).thenReturn("test:rule");
+
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, false, "None", Map.of("test:rule", "Error"));
+
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+  }
+
+  @Test
+  void setSeverity_WithRuleOverrideWarning_ShouldReportAsWarning() {
+    var diagnostic = new Diagnostic();
+    var delegatingIssue = mock(DelegatingFinding.class);
+    when(delegatingIssue.getRuleKey()).thenReturn("test:rule");
+
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, false, "None", Map.of("test:rule", "Warning"));
+
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+  }
+
+  @Test
+  void setSeverity_WithLevelAll_ShouldReportAsError() {
+    var diagnostic = new Diagnostic();
+    var delegatingIssue = mock(DelegatingFinding.class);
+    when(delegatingIssue.getRuleKey()).thenReturn("test:rule");
+    when(delegatingIssue.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.INFO, RuleType.BUG)));
+
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, false, "All", Collections.emptyMap());
+
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+  }
+
+  @ParameterizedTest
+  @MethodSource("provideMediumAndHighSeverityIssues")
+  void setSeverity_WithLevelMediumAndAbove_HighSeverityIssues_ShouldReportAsError(Either<StandardModeDetails, MQRModeDetails> severityDetails) {
+    var diagnostic = new Diagnostic();
+    var delegatingIssue = mock(DelegatingFinding.class);
+    when(delegatingIssue.getRuleKey()).thenReturn("test:rule");
+    when(delegatingIssue.getSeverityDetails()).thenReturn(severityDetails);
+
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, false, "Medium severity and above", Collections.emptyMap());
+
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+  }
+
+  private static Stream<Arguments> provideMediumAndHighSeverityIssues() {
+    return Stream.of(
+      // Standard mode - high severity issues
+      Arguments.of(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG))),
+      Arguments.of(Either.forLeft(new StandardModeDetails(IssueSeverity.CRITICAL, RuleType.BUG))),
+      Arguments.of(Either.forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG))),
+
+      // MQR mode - high impact issues
+      Arguments.of(Either.forRight(new MQRModeDetails(CleanCodeAttribute.CONVENTIONAL, List.of(
+        new ImpactDto(org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality.MAINTAINABILITY, ImpactSeverity.HIGH))))),
+      Arguments.of(Either.forRight(new MQRModeDetails(CleanCodeAttribute.CONVENTIONAL, List.of(
+        new ImpactDto(org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality.RELIABILITY, ImpactSeverity.MEDIUM)))))
+    );
+  }
+
+  @ParameterizedTest
+  @MethodSource("provideLowSeverityIssues")
+  void setSeverity_WithLevelMediumAndAbove_LowSeverityIssues_ShouldReportAsWarning(Either<StandardModeDetails, MQRModeDetails> severityDetails) {
+    var diagnostic = new Diagnostic();
+    var delegatingIssue = mock(DelegatingFinding.class);
+    when(delegatingIssue.getRuleKey()).thenReturn("test:rule");
+    when(delegatingIssue.getSeverityDetails()).thenReturn(severityDetails);
+    when(delegatingIssue.isOnNewCode()).thenReturn(false);
+
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, false, "Medium severity and above", Collections.emptyMap());
+
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+  }
+
+  private static Stream<Arguments> provideLowSeverityIssues() {
+    return Stream.of(
+      // Standard mode - low severity issues
+      Arguments.of(Either.forLeft(new StandardModeDetails(IssueSeverity.MINOR, RuleType.BUG))),
+      Arguments.of(Either.forLeft(new StandardModeDetails(IssueSeverity.INFO, RuleType.BUG))),
+
+      // MQR mode - low impact issues
+      Arguments.of(Either.forRight(new MQRModeDetails(CleanCodeAttribute.CONVENTIONAL, List.of(
+        new ImpactDto(org.sonarsource.sonarlint.core.rpc.protocol.common.SoftwareQuality.MAINTAINABILITY, ImpactSeverity.LOW)))))
+    );
+  }
+
+  @Test
+  void setSeverity_WithFocusOnNewCode_NewCodeIssue_ShouldReportAsWarning() {
+    var diagnostic = new Diagnostic();
+    var delegatingIssue = mock(DelegatingFinding.class);
+    when(delegatingIssue.getRuleKey()).thenReturn("test:rule");
+    when(delegatingIssue.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.MINOR, RuleType.BUG)));
+    when(delegatingIssue.isOnNewCode()).thenReturn(true);
+
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, true, "None", Collections.emptyMap());
+
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+  }
+
+  @Test
+  void setSeverity_WithFocusOnNewCode_OldCodeIssue_ShouldReportAsHint() {
+    var diagnostic = new Diagnostic();
+    var delegatingIssue = mock(DelegatingFinding.class);
+    when(delegatingIssue.getRuleKey()).thenReturn("test:rule");
+    when(delegatingIssue.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.MINOR, RuleType.BUG)));
+    when(delegatingIssue.isOnNewCode()).thenReturn(false);
+
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, true, "None", Collections.emptyMap());
+
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Hint);
+  }
+
+  @Test
+  void setVulnerabilityProbability_WithRuleOverrideError_ShouldReportAsError() {
+    var diagnostic = new Diagnostic();
+    var hotspotDto = mock(RaisedHotspotDto.class);
+    when(hotspotDto.getRuleKey()).thenReturn("security:hotspot");
+
+    DiagnosticPublisher.setVulnerabilityProbability(diagnostic, hotspotDto, "None", Map.of("security:hotspot", "Error"));
+
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+  }
+
+  @Test
+  void setVulnerabilityProbability_WithLevelAll_ShouldReportAsError() {
+    var diagnostic = new Diagnostic();
+    var hotspotDto = mock(RaisedHotspotDto.class);
+    when(hotspotDto.getRuleKey()).thenReturn("security:hotspot");
+    when(hotspotDto.getVulnerabilityProbability()).thenReturn(VulnerabilityProbability.LOW);
+
+    DiagnosticPublisher.setVulnerabilityProbability(diagnostic, hotspotDto, "All", Collections.emptyMap());
+
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+  }
+
+  @ParameterizedTest
+  @MethodSource("provideMediumAndHighVulnerabilityProbabilities")
+  void setVulnerabilityProbability_WithLevelMediumAndAbove_HighVulnerability_ShouldReportAsError(VulnerabilityProbability probability) {
+    var diagnostic = new Diagnostic();
+    var hotspotDto = mock(RaisedHotspotDto.class);
+    when(hotspotDto.getRuleKey()).thenReturn("security:hotspot");
+    when(hotspotDto.getVulnerabilityProbability()).thenReturn(probability);
+
+    DiagnosticPublisher.setVulnerabilityProbability(diagnostic, hotspotDto, "Medium severity and above", Collections.emptyMap());
+
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Error);
+  }
+
+  private static Stream<Arguments> provideMediumAndHighVulnerabilityProbabilities() {
+    return Stream.of(
+      Arguments.of(VulnerabilityProbability.HIGH),
+      Arguments.of(VulnerabilityProbability.MEDIUM)
+    );
+  }
+
+  @Test
+  void setVulnerabilityProbability_WithLevelMediumAndAbove_LowVulnerability_ShouldReportAsInformation() {
+    var diagnostic = new Diagnostic();
+    var hotspotDto = mock(RaisedHotspotDto.class);
+    when(hotspotDto.getRuleKey()).thenReturn("security:hotspot");
+    when(hotspotDto.getVulnerabilityProbability()).thenReturn(VulnerabilityProbability.LOW);
+
+    DiagnosticPublisher.setVulnerabilityProbability(diagnostic, hotspotDto, "Medium severity and above", Collections.emptyMap());
+
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Information);
+  }
+
+  @ParameterizedTest
+  @MethodSource("provideVulnerabilityProbabilitiesWithExpectedSeverities")
+  void setVulnerabilityProbability_DefaultBehavior_ShouldMapCorrectly(VulnerabilityProbability probability, DiagnosticSeverity expectedSeverity) {
+    var diagnostic = new Diagnostic();
+    var hotspotDto = mock(RaisedHotspotDto.class);
+    when(hotspotDto.getRuleKey()).thenReturn("security:hotspot");
+    when(hotspotDto.getVulnerabilityProbability()).thenReturn(probability);
+
+    DiagnosticPublisher.setVulnerabilityProbability(diagnostic, hotspotDto, "None", Collections.emptyMap());
+
+    assertThat(diagnostic.getSeverity()).isEqualTo(expectedSeverity);
+  }
+
+  private static Stream<Arguments> provideVulnerabilityProbabilitiesWithExpectedSeverities() {
+    return Stream.of(
+      Arguments.of(VulnerabilityProbability.HIGH, DiagnosticSeverity.Error),
+      Arguments.of(VulnerabilityProbability.MEDIUM, DiagnosticSeverity.Warning),
+      Arguments.of(VulnerabilityProbability.LOW, DiagnosticSeverity.Information)
+    );
+  }
+
+  @Test
+  void setSeverity_RuleOverrideTakesPrecedenceOverLevel() {
+    var diagnostic = new Diagnostic();
+    var delegatingIssue = mock(DelegatingFinding.class);
+    when(delegatingIssue.getRuleKey()).thenReturn("test:rule");
+    when(delegatingIssue.getSeverityDetails()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.INFO, RuleType.BUG)));
+
+    // Even with "All" level, rule override should take precedence
+    DiagnosticPublisher.setSeverity(diagnostic, delegatingIssue, false, "All", Map.of("test:rule", "Warning"));
+
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+  }
+
+  @Test
+  void setVulnerabilityProbability_RuleOverrideTakesPrecedenceOverLevel() {
+    var diagnostic = new Diagnostic();
+    var hotspotDto = mock(RaisedHotspotDto.class);
+    when(hotspotDto.getRuleKey()).thenReturn("security:hotspot");
+    when(hotspotDto.getVulnerabilityProbability()).thenReturn(VulnerabilityProbability.LOW);
+
+    // Even with "All" level, rule override should take precedence
+    DiagnosticPublisher.setVulnerabilityProbability(diagnostic, hotspotDto, "All", Map.of("security:hotspot", "Warning"));
+
+    assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
+  }
+
+  private void mockWorkspaceSettings() {
+    var workspaceSettings = mock(WorkspaceSettings.class);
+    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
+    when(workspaceSettings.getReportIssuesAsErrorLevel()).thenReturn("None");
+    when(workspaceSettings.getReportIssuesAsErrorOverrides()).thenReturn(Collections.emptyMap());
   }
 }
