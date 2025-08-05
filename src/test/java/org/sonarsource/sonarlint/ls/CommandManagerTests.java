@@ -198,7 +198,7 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle()).containsOnly(
       "SonarQube: Show issue details for 'XYZ'",
       "SonarQube: Resolve issue violating rule 'XYZ' as...",
-      "SonarQube: Report XYZ as Warning");
+      "SonarQube: Report 'XYZ' as Warning");
   }
 
   @Test
@@ -221,7 +221,7 @@ class CommandManagerTests {
       .containsOnly(
         "SonarQube: Show issue details for 'XYZ'",
         "SonarQube: Deactivate rule 'XYZ'",
-        "SonarQube: Report XYZ as Warning");
+        "SonarQube: Report 'XYZ' as Warning");
   }
 
   @Test
@@ -257,7 +257,7 @@ class CommandManagerTests {
         "SonarQube: Fix the issue!",
         "SonarQube: Show issue details for 'XYZ'",
         "SonarQube: Deactivate rule 'XYZ'",
-        "SonarQube: Report XYZ as Warning");
+        "SonarQube: Report 'XYZ' as Warning");
   }
 
   @Test
@@ -293,7 +293,7 @@ class CommandManagerTests {
         "SonarQube: Fix the issue!",
         "SonarQube: Show issue details for 'XYZ'",
         "SonarQube: Deactivate rule 'XYZ'",
-        "SonarQube: Report XYZ as Warning");
+        "SonarQube: Report 'XYZ' as Warning");
   }
 
   @Test
@@ -324,7 +324,7 @@ class CommandManagerTests {
       .containsExactly("SonarQube: Resolve issue violating rule 'XYZ' as...",
         "SonarQube: Show issue details for 'XYZ'",
         "SonarQube: ✧˖° Fix with AI CodeFix 'Foo'",
-        "SonarQube: Report XYZ as Warning");
+        "SonarQube: Report 'XYZ' as Warning");
   }
 
   @Test
@@ -364,7 +364,7 @@ class CommandManagerTests {
         "SonarQube: Fix the issue!",
         "SonarQube: Show issue details for 'XYZ'",
         "SonarQube: Deactivate rule 'XYZ'",
-        "SonarQube: Report XYZ as Warning");
+        "SonarQube: Report 'XYZ' as Warning");
   }
 
   @Test
@@ -392,7 +392,7 @@ class CommandManagerTests {
         "SonarQube: Show issue details for 'XYZ'",
         "SonarQube: Deactivate rule 'XYZ'",
         "SonarQube: Show all locations for issue 'XYZ'",
-        "SonarQube: Report XYZ as Warning");
+        "SonarQube: Report 'XYZ' as Warning");
   }
 
   @Test
@@ -768,7 +768,7 @@ class CommandManagerTests {
       .containsExactly(
         "SonarQube: Resolve issue violating rule 'XYZ' as...",
         "SonarQube: Show issue details for 'XYZ'",
-        "SonarQube: Report XYZ as Warning");
+        "SonarQube: Report 'XYZ' as Warning");
   }
 
   @Test
@@ -932,7 +932,7 @@ class CommandManagerTests {
     assertThat(codeActions).extracting(c -> c.getRight().getTitle())
       .containsExactly(
         "SonarQube: Show issue details for 'XYZ'",
-        "SonarQube: Report XYZ as Warning");
+        "SonarQube: Report 'XYZ' as Warning");
   }
 
 }

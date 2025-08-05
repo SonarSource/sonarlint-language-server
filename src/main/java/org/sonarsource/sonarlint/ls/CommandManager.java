@@ -243,10 +243,10 @@ public class CommandManager {
     }
 
     if (diagnostic.getSeverity().equals(DiagnosticSeverity.Error)) {
-      var titleReportAsWarning = String.format("Report %s as Warning", ruleKey);
+      var titleReportAsWarning = String.format("Report '%s' as Warning", ruleKey);
       codeActions.add(newQuickFix(diagnostic, titleReportAsWarning, SONARQUBE_REPORT_ISSUES_AS_WARNING_COMMAND, List.of(ruleKey)));
     } else {
-      var titleReportAsError = String.format("Report %s as Error", ruleKey);
+      var titleReportAsError = String.format("Report '%s' as Error", ruleKey);
       codeActions.add(newQuickFix(diagnostic, titleReportAsError, SONARQUBE_REPORT_ISSUES_AS_ERROR_COMMAND, List.of(ruleKey)));
     }
   }

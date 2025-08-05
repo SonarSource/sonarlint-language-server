@@ -724,7 +724,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(disableRule.getArguments()).hasSize(1);
     assertThat(((JsonPrimitive) disableRule.getArguments().get(0)).getAsString()).isEqualTo("javascript:S930");
     var reportIssuesAsErrorAction = list.get(3).getRight();
-    assertThat(reportIssuesAsErrorAction.getTitle()).isEqualTo("SonarQube: Report javascript:S930 as Error");
+    assertThat(reportIssuesAsErrorAction.getTitle()).isEqualTo("SonarQube: Report 'javascript:S930' as Error");
     var reportIssuesAsError = reportIssuesAsErrorAction.getCommand();
     assertThat(reportIssuesAsError.getCommand()).isEqualTo("SonarQube.ReportIssuesAsError");
   }
