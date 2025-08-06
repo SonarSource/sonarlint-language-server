@@ -28,7 +28,7 @@ public class DependencyRisk extends DependencyRiskDto {
   private final String source;
 
   public DependencyRisk(DependencyRiskDto dependencyRiskDto, String workspaceFolderUri) {
-    super(dependencyRiskDto.getId(), dependencyRiskDto.getType(), dependencyRiskDto.getSeverity(), dependencyRiskDto.getStatus(),
+    super(dependencyRiskDto.getId(), dependencyRiskDto.getType(), dependencyRiskDto.getSeverity(), dependencyRiskDto.getQuality(), dependencyRiskDto.getStatus(),
       dependencyRiskDto.getPackageName(), dependencyRiskDto.getPackageVersion(), dependencyRiskDto.getTransitions());
     this.workspaceFolderUri = workspaceFolderUri;
     this.source = SONARQUBE_SERVER_SOURCE;
