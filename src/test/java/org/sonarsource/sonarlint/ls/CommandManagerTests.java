@@ -851,6 +851,38 @@ class CommandManagerTests {
   }
 
   @Test
+  void shouldShowErrorNotificationIfAiCodeFixRateLimitExceeded() {
+    var issueId = UUID.randomUUID().toString();
+    var folderWrapper = mock(WorkspaceFolderWrapper.class);
+    when(folderWrapper.getUri()).thenReturn(URI.create("file:///"));
+    var suggestFixCommand = new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_FROM_CODE_ACTION_COMMAND, List.of(new JsonPrimitive(folderWrapper.getUri().toString()),
+      new JsonPrimitive(issueId), new JsonPrimitive(FILE_URI)));
+
+    when(backendService.suggestFix(any(), any()))
+      .thenReturn(CompletableFuture.failedFuture(
+        new ResponseErrorException(
+          new ResponseError(
+            SonarLintRpcErrorCode.TOO_MANY_REQUESTS,
+            "AI CodeFix usage has been capped. Too many requests have been made.",
+            issueId
+          )
+        ))
+      );
+
+    underTest.executeCommand(suggestFixCommand, NOP_CANCEL_TOKEN);
+
+    verify(mockClient).startProgressNotification(any(SonarLintExtendedLanguageClient.StartProgressNotificationParams.class));
+    verify(mockClient).endProgressNotification(any(SonarLintExtendedLanguageClient.EndProgressNotificationParams.class));
+    var captor = ArgumentCaptor.forClass(MessageParams.class);
+    verify(mockClient).showMessage(captor.capture());
+    var showMessageParams = captor.getValue();
+    assertThat(showMessageParams.getType()).isEqualTo(MessageType.Error);
+    assertThat(showMessageParams.getMessage()).isEqualTo("Fix generation is currently unavailable." +
+      " Your organization has reached the monthly usage limit for AI CodeFix." +
+      " To continue using this feature, please contact your SonarQube Server instance (or Cloud organization) administrator.");
+  }
+
+  @Test
   void shouldShowShowIssueDetailsIfAiCodeFixGenerationFailsAndUserChoseTheAction() {
     // mock issue details response
     var response = mock(GetEffectiveIssueDetailsResponse.class);
