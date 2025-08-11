@@ -66,6 +66,7 @@ class LSLanguageTests {
       Arguments.of(Language.RUBY, "Ruby", "ruby"),
       Arguments.of(Language.SCALA, "Scala", "scala"),
       Arguments.of(Language.SECRETS, "Secrets", "secrets"),
+      Arguments.of(Language.TEXT, "Text", "text"),
       Arguments.of(Language.SWIFT, "Swift", "swift"),
       Arguments.of(Language.TERRAFORM, "Terraform", "terraform"),
       Arguments.of(Language.TS, "TypeScript", "ts"),

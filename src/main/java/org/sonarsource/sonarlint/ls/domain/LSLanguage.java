@@ -54,6 +54,7 @@ public enum LSLanguage {
   RUBY("Ruby", "ruby"),
   SCALA("Scala", "scala"),
   SECRETS("Secrets", "secrets"),
+  TEXT("Text", "text"),
   SWIFT("Swift", "swift"),
   TERRAFORM("Terraform", "terraform"),
   TS("TypeScript", "ts"),
