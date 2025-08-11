@@ -39,7 +39,6 @@ public class WorkspaceSettings {
   private final Collection<RuleKey> excludedRules;
   private final Collection<RuleKey> includedRules;
   private final Map<RuleKey, Map<String, String>> ruleParameters;
-  private final boolean showAnalyzerLogs;
   private final boolean showVerboseLogs;
   private final String pathToNodeExecutable;
   private final boolean focusOnNewCode;
@@ -48,13 +47,12 @@ public class WorkspaceSettings {
 
   public WorkspaceSettings(boolean disableTelemetry, Map<String, ServerConnectionSettings> connections,
     Collection<RuleKey> excludedRules, Collection<RuleKey> includedRules, Map<RuleKey, Map<String, String>> ruleParameters,
-    boolean showAnalyzerLogs, boolean showVerboseLogs, String pathToNodeExecutable, boolean focusOnNewCode, String analysisExcludes) {
+    boolean showVerboseLogs, String pathToNodeExecutable, boolean focusOnNewCode, String analysisExcludes) {
     this.disableTelemetry = disableTelemetry;
     this.connections = connections;
     this.excludedRules = excludedRules;
     this.includedRules = includedRules;
     this.ruleParameters = ruleParameters;
-    this.showAnalyzerLogs = showAnalyzerLogs;
     this.showVerboseLogs = showVerboseLogs;
     this.pathToNodeExecutable = pathToNodeExecutable;
     this.focusOnNewCode = focusOnNewCode;
@@ -85,10 +83,6 @@ public class WorkspaceSettings {
     return !excludedRules.isEmpty() || !includedRules.isEmpty();
   }
 
-  public boolean showAnalyzerLogs() {
-    return showAnalyzerLogs;
-  }
-
   public boolean showVerboseLogs() {
     return showVerboseLogs;
   }
@@ -107,7 +101,7 @@ public class WorkspaceSettings {
 
   @Override
   public int hashCode() {
-    return Objects.hash(disableTelemetry, focusOnNewCode, connections, excludedRules, includedRules, showAnalyzerLogs, showVerboseLogs, pathToNodeExecutable);
+    return Objects.hash(disableTelemetry, focusOnNewCode, connections, excludedRules, includedRules, showVerboseLogs, pathToNodeExecutable);
   }
 
   @Override
@@ -125,7 +119,7 @@ public class WorkspaceSettings {
     return disableTelemetry == other.disableTelemetry && focusOnNewCode == other.focusOnNewCode && Objects.equals(connections, other.connections)
       && Objects.equals(excludedRules, other.excludedRules)
       && Objects.equals(includedRules, other.includedRules) && Objects.equals(ruleParameters, other.ruleParameters)
-      && Objects.equals(showAnalyzerLogs, other.showAnalyzerLogs) && Objects.equals(showVerboseLogs, other.showVerboseLogs)
+      && Objects.equals(showVerboseLogs, other.showVerboseLogs)
       && Objects.equals(pathToNodeExecutable, other.pathToNodeExecutable);
   }
 

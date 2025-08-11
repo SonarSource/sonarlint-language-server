@@ -206,7 +206,6 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     var currentJdkHome = javaHome.endsWith("jre") ? javaHome.getParent() : javaHome;
     var isModular = Files.exists(currentJdkHome.resolve("lib/jrt-fs.jar"));
 
-    setShowAnalyzerLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
 
     var uri = getUri("analyzeSimpleJavaFileOnOpen.java", analysisDir);

@@ -102,7 +102,6 @@ class SettingsManagerTests {
       "pathToCompileCommands": "/pathToCompileCommand",
       "disableTelemetry": true,
     "output": {
-      "showAnalyzerLogs": true,
       "showVerboseLogs": true
     },
       "rules": {
@@ -194,7 +193,6 @@ class SettingsManagerTests {
     underTest.didChangeConfiguration();
     var settings = underTest.getCurrentSettings();
     assertThat(settings.isDisableTelemetry()).isTrue();
-    assertThat(settings.showAnalyzerLogs()).isTrue();
     assertThat(settings.showVerboseLogs()).isTrue();
     assertThat(settings.getExcludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsOnly(tuple("xoo", "rule1"), tuple("xoo", "rule2"), tuple("xoo", "notEvenARule"));
     assertThat(settings.getIncludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsOnly(tuple("xoo", "rule3"), tuple("xoo", "rule4"));
@@ -519,7 +517,6 @@ class SettingsManagerTests {
         "pathToCompileCommands": "${workspaceFolder}/pathToCompileCommand",
         "disableTelemetry": true,
         "output": {
-        "showAnalyzerLogs": true,
         "showVerboseLogs": true
       }
       }
@@ -545,7 +542,6 @@ class SettingsManagerTests {
         "pathToCompileCommands": "${workspaceFolder}pathToCompileCommand",
         "disableTelemetry": true,
         "output": {
-        "showAnalyzerLogs": true,
         "showVerboseLogs": true
       }
       }
@@ -571,7 +567,6 @@ class SettingsManagerTests {
         "pathToCompileCommands": "${workspaceFolder}\\\\pathToCompileCommand",
         "disableTelemetry": true,
         "output": {
-        "showAnalyzerLogs": true,
         "showVerboseLogs": true
       }
       }
@@ -597,7 +592,6 @@ class SettingsManagerTests {
         "pathToCompileCommands": "${workspaceFolder}/pathToCompileCommand",
         "disableTelemetry": true,
         "output": {
-        "showAnalyzerLogs": true,
         "showVerboseLogs": true
       }
       }
@@ -620,7 +614,6 @@ class SettingsManagerTests {
         "pathToCompileCommands": "/pathToCompileCommand",
         "disableTelemetry": true,
         "output": {
-        "showAnalyzerLogs": true,
         "showVerboseLogs": true
       }
       }
@@ -642,7 +635,6 @@ class SettingsManagerTests {
         "pathToCompileCommands": "something${workspaceFolder}/pathToCompileCommand",
         "disableTelemetry": true,
         "output": {
-        "showAnalyzerLogs": true,
         "showVerboseLogs": true
       }
       }
@@ -665,7 +657,6 @@ class SettingsManagerTests {
         "pathToCompileCommands": "${workspaceFolder}/pathToCompileCommand",
         "disableTelemetry": true,
         "output": {
-        "showAnalyzerLogs": true,
         "showVerboseLogs": true
       }
       }
