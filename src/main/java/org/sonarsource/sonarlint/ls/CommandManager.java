@@ -56,6 +56,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.jetbrains.annotations.NotNull;
+import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcErrorCode;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.EffectiveIssueDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRuleDetailsDto;
@@ -554,6 +555,16 @@ public class CommandManager {
     }).exceptionally(throwable -> {
       client.endProgressNotification(new SonarLintExtendedLanguageClient.EndProgressNotificationParams(taskId));
       logOutput.errorWithStackTrace("Error generating AI CodeFix", throwable);
+      // We need to display a special error message if AI CodeFix service responded with 429
+      if (throwable.getCause() instanceof ResponseErrorException responseError) {
+        var error = responseError.getResponseError();
+        if (error.getCode() == SonarLintRpcErrorCode.TOO_MANY_REQUESTS) {
+          client.showMessage(new MessageParams(MessageType.Error, "Fix generation is currently unavailable." +
+            " Your organization has reached the monthly usage limit for AI CodeFix." +
+            " To continue using this feature, please contact your SonarQube Server instance (or Cloud organization) administrator."));
+          return null;
+        }
+      }
       var showMessageParams = new ShowMessageRequestParams(List.of(SHOW_LOGS_ACTION, FIX_MANUALLY_ACTION));
       showMessageParams.setType(MessageType.Warning);
       showMessageParams.setMessage("Something went wrong while generating AI CodeFix. SonarQube was not able to generate a fix for this issue.");
