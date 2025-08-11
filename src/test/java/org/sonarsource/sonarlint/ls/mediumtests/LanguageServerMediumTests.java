@@ -602,7 +602,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     notifyConfigurationChangeOnClient();
 
     waitForLogToContain(
-      String.format("Global settings updated: WorkspaceSettings[analysisExcludes=,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false,organizationKey=<null>,region=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showAnalyzerLogs=false,showVerboseLogs=true]",
+      String.format("Global settings updated: WorkspaceSettings[analysisExcludes=,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false,organizationKey=<null>,region=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showVerboseLogs=true]",
         CONNECTION_ID, CONNECTION_ID, mockWebServerExtension.url("/")));
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder( "Telemetry enabled");
@@ -810,7 +810,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void test_analysis_logs_enabled() throws Exception {
-    setShowAnalyzerLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
     Thread.sleep(1000);
     client.logs.clear();
@@ -831,7 +830,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void test_analysis_with_debug_logs_enabled() throws Exception {
     setShowVerboseLogs(client.globalSettings, true);
-    setShowAnalyzerLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
     Thread.sleep(1000);
     client.logs.clear();
@@ -854,7 +852,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Disabled("Disabled until we can tell apart 0 issues from failed analysis")
   void preservePreviousDiagnosticsWhenFileHasParsingErrors() throws Exception {
     setShowVerboseLogs(client.globalSettings, true);
-    setShowAnalyzerLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
     var uri = getUri("parsingError.py", analysisDir);
 

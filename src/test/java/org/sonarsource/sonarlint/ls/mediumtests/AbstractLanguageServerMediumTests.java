@@ -723,14 +723,6 @@ public abstract class AbstractLanguageServerMediumTests {
     }
   }
 
-  protected static void setShowAnalyzerLogs(Map<String, Object> config, @Nullable Boolean showAnalyzerLogs) {
-    if (showAnalyzerLogs != null) {
-      ((HashMap<String, Object>) config.computeIfAbsent("output", k -> new HashMap<String, Object>())).put("showAnalyzerLogs", showAnalyzerLogs);
-    } else {
-      config.remove("showAnalyzerLogs");
-    }
-  }
-
   protected static void setShowVerboseLogs(Map<String, Object> config, @Nullable Boolean showVerboseLogs) {
     if (showVerboseLogs != null) {
       ((HashMap<String, Object>) config.computeIfAbsent("output", k -> new HashMap<String, Object>())).put("showVerboseLogs", showVerboseLogs);
