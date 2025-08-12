@@ -37,6 +37,7 @@ public enum LSLanguage {
   CSS("CSS", "css"),
   DOCKER("Docker", "docker"),
   GO("Go", "go"),
+  GITHUBACTIONS("GitHub Actions", "githubactions"),
   HTML("HTML", "web"),
   IPYTHON("IPython Notebooks", "ipynb"),
   JAVA("Java", "java"),

@@ -49,6 +49,7 @@ class LSLanguageTests {
       Arguments.of(Language.CSS, "CSS", "css"),
       Arguments.of(Language.DOCKER, "Docker", "docker"),
       Arguments.of(Language.GO, "Go", "go"),
+      Arguments.of(Language.GITHUBACTIONS, "GitHub Actions", "githubactions"),
       Arguments.of(Language.HTML, "HTML", "web"),
       Arguments.of(Language.IPYTHON, "IPython Notebooks", "ipynb"),
       Arguments.of(Language.JAVA, "Java", "java"),
