@@ -24,7 +24,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
@@ -80,15 +79,16 @@ public class WorkspaceFolderWrapper {
    * Get non null settings, waiting for them to be initialized
    */
   public WorkspaceFolderSettings getSettings() {
-    try {
-      if (initLatch.await(1, TimeUnit.MINUTES)) {
-        return settings;
-      }
-    } catch (InterruptedException e) {
-      logOutput.debugWithStackTrace("Interrupted!", e);
-      Thread.currentThread().interrupt();
-    }
-    throw new IllegalStateException("Unable to get settings in time");
+//    try {
+//      if (initLatch.await(1, TimeUnit.MINUTES)) {
+//        return settings;
+//      }
+//    } catch (InterruptedException e) {
+//      logOutput.debugWithStackTrace("Interrupted!", e);
+//      Thread.currentThread().interrupt();
+//    }
+//    throw new IllegalStateException("Unable to get settings in time");
+    return settings;
   }
 
   @CheckForNull

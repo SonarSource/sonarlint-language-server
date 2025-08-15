@@ -56,6 +56,7 @@ public class WorkspaceFoldersManager {
   private final BackendServiceFacade backendServiceFacade;
   private final LanguageClientLogger logOutput;
   private final ExecutorService executor;
+  private List<WorkspaceFolder> workspaceFolders;
 
   public WorkspaceFoldersManager(BackendServiceFacade backendServiceFacade, LanguageClientLogger logOutput) {
     this(Executors.newCachedThreadPool(Utils.threadFactory("SonarLint folders manager", false)), backendServiceFacade, logOutput);
@@ -72,14 +73,18 @@ public class WorkspaceFoldersManager {
   }
 
   public void initialize(@Nullable List<WorkspaceFolder> workspaceFolders) {
+    this.workspaceFolders = workspaceFolders;
     if (workspaceFolders != null) {
       workspaceFolders.forEach(wf -> {
         var uri = create(wf.getUri());
         addFolder(wf, uri);
       });
-      executor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().addWorkspaceFolders(workspaceFolders, getBindingProvider()),
-        t -> logOutput.errorWithStackTrace("Failed to initialize workspace folders.", t)));
     }
+  }
+
+  public void initialized() {
+    executor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().addWorkspaceFolders(this.workspaceFolders, getBindingProvider()),
+      t -> logOutput.errorWithStackTrace("Failed to initialize workspace folders.", t)));
   }
 
   public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {

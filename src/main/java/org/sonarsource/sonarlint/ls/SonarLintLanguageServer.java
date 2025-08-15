@@ -30,6 +30,7 @@ import java.net.Socket;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +62,7 @@ import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
+import org.eclipse.lsp4j.InitializedParams;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.NotebookDocumentSyncRegistrationOptions;
@@ -89,6 +91,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConn
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.GetConnectionSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpGenerateUserTokenResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarCloudConnectionConfigurationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarQubeConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.ListUserOrganizationsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.OrganizationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionParams;
@@ -101,6 +105,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSugg
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -137,11 +142,18 @@ import static java.lang.String.format;
 import static java.net.URI.create;
 import static java.util.Objects.requireNonNull;
 import static java.util.Optional.ofNullable;
+import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
 import static org.sonarsource.sonarlint.ls.backend.BackendService.ROOT_CONFIGURATION_SCOPE;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.CONNECTION_ID;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.DEFAULT_CONNECTION_ID;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.DISABLE_NOTIFICATIONS;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.ORGANIZATION_KEY;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.REGION_KEY;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.SERVER_URL;
 import static org.sonarsource.sonarlint.ls.util.URIUtils.getFullFileUriFromFragments;
 import static org.sonarsource.sonarlint.ls.util.Utils.getConnectionNameFromConnectionCheckParams;
 import static org.sonarsource.sonarlint.ls.util.Utils.getValidateConnectionParamsForNewConnection;
@@ -307,6 +319,30 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var additionalAttributes = (Map<String, Object>) options.getOrDefault("additionalAttributes", Map.of());
       var userAgent = "SonarQube for IDE (SonarLint) - Visual Studio Code " + productVersion + " - " + clientVersion;
       var clientNodePath = (String) options.get("clientNodePath");
+      var sonarqubeServerConnections = (List<Map<String, Object>>) options.get("sonarqubeServerConnections");
+      var sq = new ArrayList<SonarQubeConnectionConfigurationDto>();
+      sonarqubeServerConnections.forEach(m -> {
+//        if (checkRequiredAttribute(m, "SonarQube server", SERVER_URL)) {
+        var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
+        var url = (String) m.get(SERVER_URL);
+        var disableNotifications = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
+        var connectionSettings = new SonarQubeConnectionConfigurationDto(connectionId, url, disableNotifications);
+        sq.add(connectionSettings);
+//        }
+      });
+      backendServiceFacade.setSonarQubeServerConnections(sq);
+      var sonarqubeCloudConnections = (List<Map<String, Object>>) options.get("sonarqubeCloudConnections");
+      var sc = new ArrayList<SonarCloudConnectionConfigurationDto>();
+      sonarqubeCloudConnections.forEach(m -> {
+//        if (checkRequiredAttribute(m, "SonarCloud", ORGANIZATION_KEY)) {
+        var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
+        var organizationKey = (String) m.get(ORGANIZATION_KEY);
+        var disableNotifs = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
+        var region = (String) m.getOrDefault(REGION_KEY, SonarCloudRegion.EU.name());
+        var parsedRegion = parseRegion(region);
+        sc.add(new SonarCloudConnectionConfigurationDto(connectionId, organizationKey, parsedRegion, disableNotifs));
+      });
+      backendServiceFacade.setSonarqubeCloudConnections(sc);
 
       diagnosticPublisher.initialize(firstSecretDetected);
 
@@ -319,6 +355,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
       var eslintBridgeServerPath = (String) options.get("eslintBridgeServerPath");
       provideBackendInitData(productKey, userAgent, clientNodePath, eslintBridgeServerPath);
+
+      backendServiceFacade.initialize();
+
       workspaceFoldersManager.initialize(params.getWorkspaceFolders());
 
       var c = new ServerCapabilities();
@@ -333,6 +372,25 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       }
       var info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
       return new InitializeResult(c, info);
+    });
+  }
+
+  SonarCloudRegion parseRegion(String region) {
+    try {
+      return SonarCloudRegion.valueOf(region);
+    } catch (IllegalArgumentException e) {
+//      logOutput.error(format("Unknown SonarQube Cloud region '%s'. Using default region '%s'", region, SonarCloudRegion.EU.name()));
+      return SonarCloudRegion.EU;
+    }
+  }
+
+  @Override
+  public void initialized(InitializedParams params) {
+    CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      lsLogOutput.debug("Language Server initialized");
+      settingsManager.didChangeConfiguration();
+      return null;
     });
   }
 

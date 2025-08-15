@@ -70,15 +70,15 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private static Path sonarLintUserHomeOverride = null;
 
-  private static final String ORGANIZATION_KEY = "organizationKey";
-  private static final String REGION_KEY = "region";
-  private static final String DISABLE_NOTIFICATIONS = "disableNotifications";
+  public static final String ORGANIZATION_KEY = "organizationKey";
+  public static final String REGION_KEY = "region";
+  public static final String DISABLE_NOTIFICATIONS = "disableNotifications";
   private static final String PROJECT = "project";
   public static final String DEFAULT_CONNECTION_ID = "<default>";
-  private static final String SERVER_URL = "serverUrl";
+  public static final String SERVER_URL = "serverUrl";
   private static final String SERVER_ID = "serverId";
   private static final String TOKEN = "token";
-  private static final String CONNECTION_ID = "connectionId";
+  public static final String CONNECTION_ID = "connectionId";
   public static final String SONARLINT_CONFIGURATION_NAMESPACE = "sonarlint";
   public static final String DOTNET_DEFAULT_SOLUTION_PATH = "dotnet.defaultSolution";
   public static final String OMNISHARP_USE_MODERN_NET = "omnisharp.useModernNet";
@@ -141,14 +141,14 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
    * Get workspace level settings, waiting for them to be initialized
    */
   public WorkspaceSettings getCurrentSettings() {
-    try {
-      if (initLatch.await(1, TimeUnit.MINUTES)) {
-        return currentSettings;
-      }
-    } catch (InterruptedException e) {
-      interrupted(e, logOutput);
-    }
-    throw new IllegalStateException("Unable to get settings in time");
+//    try {
+//      if (initLatch.await(1, TimeUnit.MINUTES)) {
+    return currentSettings;
+//      }
+//    } catch (InterruptedException e) {
+//    interrupted(e, logOutput);
+//    }
+//    throw new IllegalStateException("Unable to get settings in time");
   }
 
   public Map<String, StandaloneRuleConfigDto> getStandaloneRuleConfigByKey() {
@@ -168,14 +168,15 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
    * Get default workspace folder level settings, waiting for them to be initialized
    */
   public WorkspaceFolderSettings getCurrentDefaultFolderSettings() {
-    try {
-      if (initLatch.await(1, TimeUnit.MINUTES)) {
-        return currentDefaultSettings;
-      }
-    } catch (InterruptedException e) {
-      interrupted(e, logOutput);
-    }
-    throw new IllegalStateException("Unable to get settings in time");
+//    try {
+//      if (initLatch.await(1, TimeUnit.MINUTES)) {
+//        return currentDefaultSettings;
+//      }
+//    } catch (InterruptedException e) {
+//      interrupted(e, logOutput);
+//    }
+//    throw new IllegalStateException("Unable to get settings in time");
+    return currentDefaultSettings;
   }
 
   public void didChangeConfiguration() {
@@ -188,16 +189,17 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         var newDefaultFolderSettings = parseFolderSettings(workspaceSettingsMap, null);
         var oldDefaultFolderSettings = currentDefaultSettings;
         this.currentDefaultSettings = newDefaultFolderSettings;
-        if (initLatch.getCount() != 0) {
-          initLatch.countDown();
-          backendServiceFacade.initialize(getCurrentSettings().getServerConnections());
-        } else {
-          notifyChangeClientNodeJsPathIfNeeded(oldWorkspaceSettings, newWorkspaceSettings);
-          backendServiceFacade.getBackendService().didChangeConnections(getCurrentSettings().getServerConnections());
-          backendServiceFacade.getBackendService().updateStandaloneRulesConfiguration(getStandaloneRuleConfigByKey());
-        }
+//        if (initLatch.getCount() != 0) {
+//          initLatch.countDown();
+////          backendServiceFacade.initialize(getCurrentSettings().getServerConnections());
+//        } else {
+        notifyChangeClientNodeJsPathIfNeeded(oldWorkspaceSettings, newWorkspaceSettings);
+        backendServiceFacade.getBackendService().didChangeConnections(getCurrentSettings().getServerConnections());
+        backendServiceFacade.getBackendService().updateStandaloneRulesConfiguration(getStandaloneRuleConfigByKey());
+//        }
 
         foldersManager.getAll().forEach(f -> updateWorkspaceFolderSettings(f, true));
+        foldersManager.initialized();
         notifyListeners(newWorkspaceSettings, oldWorkspaceSettings, newDefaultFolderSettings, oldDefaultFolderSettings);
       } catch (InterruptedException e) {
         interrupted(e, logOutput);
@@ -209,8 +211,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     });
   }
 
-  private void notifyChangeClientNodeJsPathIfNeeded(WorkspaceSettings oldWorkspaceSettings, WorkspaceSettings newWorkspaceSettings) {
-    var hasNodeJsPathChanged = !Objects.equals(oldWorkspaceSettings.pathToNodeExecutable(), newWorkspaceSettings.pathToNodeExecutable());
+  private void notifyChangeClientNodeJsPathIfNeeded(@Nullable WorkspaceSettings oldWorkspaceSettings, WorkspaceSettings newWorkspaceSettings) {
+    var hasNodeJsPathChanged = oldWorkspaceSettings != null && !Objects.equals(oldWorkspaceSettings.pathToNodeExecutable(), newWorkspaceSettings.pathToNodeExecutable());
     if (hasNodeJsPathChanged) {
       backendServiceFacade.getBackendService().didChangeClientNodeJsPath(new DidChangeClientNodeJsPathParams(Path.of(newWorkspaceSettings.pathToNodeExecutable())));
     }

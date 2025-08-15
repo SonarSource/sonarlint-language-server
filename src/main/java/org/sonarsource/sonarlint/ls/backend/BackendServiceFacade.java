@@ -26,6 +26,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
@@ -45,6 +46,8 @@ import org.sonarsource.sonarlint.core.rpc.impl.BackendJsonRpcLauncher;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.ConfigurationScopeDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.DidAddConfigurationScopesParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarCloudConnectionConfigurationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarQubeConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.BackendCapability;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.ClientConstantInfoDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.HttpConfigurationDto;
@@ -85,6 +88,8 @@ public class BackendServiceFacade {
   private String omnisharpDirectory;
   private String csharpOssPath;
   private String csharpEnterprisePath;
+  private List<SonarQubeConnectionConfigurationDto> sonarQubeServerConnections = new ArrayList<>();
+  private List<SonarCloudConnectionConfigurationDto> sonarqubeCloudConnections = new ArrayList<>();
 
   public BackendServiceFacade(SonarLintRpcClientDelegate rpcClient, LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client) {
     this(rpcClient, lsLogOutput, client, DEFAULT_INIT_TIMEOUT_SECONDS);
@@ -141,6 +146,14 @@ public class BackendServiceFacade {
     this.csharpEnterprisePath = csharpEnterprisePath;
   }
 
+  public void setSonarQubeServerConnections(List<SonarQubeConnectionConfigurationDto> sonarQubeServerConnections) {
+    this.sonarQubeServerConnections = sonarQubeServerConnections;
+  }
+
+  public void setSonarqubeCloudConnections(List<SonarCloudConnectionConfigurationDto> sonarqubeCloudConnections) {
+    this.sonarqubeCloudConnections = sonarqubeCloudConnections;
+  }
+
   public BackendInitParams getInitParams() {
     return initParams;
   }
@@ -153,6 +166,20 @@ public class BackendServiceFacade {
       initParams.setSonarCloudConnections(scConnections);
       initParams.setStandaloneRuleConfigByKey(settingsManager.getStandaloneRuleConfigByKey());
       initParams.setFocusOnNewCode(settingsManager.getCurrentSettings().isFocusOnNewCode());
+      backendService.initialize(toInitParams(initParams));
+      backendService.addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(rootConfigurationScope)));
+      initLatch.countDown();
+    }
+  }
+
+  private void initOnce() {
+    if (initLatch.getCount() != 0) {
+      initParams.setSonarQubeConnections(this.sonarQubeServerConnections);
+      initParams.setSonarCloudConnections(this.sonarqubeCloudConnections);
+//      initParams.setStandaloneRuleConfigByKey(settingsManager.getStandaloneRuleConfigByKey());
+      initParams.setStandaloneRuleConfigByKey(Map.of());
+//      initParams.setFocusOnNewCode(settingsManager.getCurrentSettings().isFocusOnNewCode());
+      initParams.setFocusOnNewCode(false);
       backendService.initialize(toInitParams(initParams));
       backendService.addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(rootConfigurationScope)));
       initLatch.countDown();
@@ -305,6 +332,10 @@ public class BackendServiceFacade {
 
   public void initialize(Map<String, ServerConnectionSettings> serverConnections) {
     initOnce(serverConnections);
+  }
+
+  public void initialize() {
+    initOnce();
   }
 
   public void setTelemetryInitParams(TelemetryInitParams telemetryInitParams) {
