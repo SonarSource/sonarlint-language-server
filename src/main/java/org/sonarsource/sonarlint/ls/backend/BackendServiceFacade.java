@@ -59,11 +59,10 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarCloud
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarQubeCloudRegionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SslConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.TelemetryClientConstantAttributesDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.StandaloneRuleConfigDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
-import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
-import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.telemetry.TelemetryInitParams;
 
@@ -79,7 +78,6 @@ public class BackendServiceFacade {
   private final ConfigurationScopeDto rootConfigurationScope;
   private final ClientJsonRpcLauncher clientLauncher;
   private final LanguageClientLogger lsLogOutput;
-  private SettingsManager settingsManager;
   private TelemetryInitParams telemetryInitParams;
   private SonarLintTelemetry telemetry;
   private final CountDownLatch initLatch = new CountDownLatch(1);
@@ -90,6 +88,8 @@ public class BackendServiceFacade {
   private String csharpEnterprisePath;
   private List<SonarQubeConnectionConfigurationDto> sonarQubeServerConnections = new ArrayList<>();
   private List<SonarCloudConnectionConfigurationDto> sonarqubeCloudConnections = new ArrayList<>();
+  private Map<String, StandaloneRuleConfigDto> standaloneRuleConfigByKey = Map.of();
+  private boolean isFocusOnNewCode = false;
 
   public BackendServiceFacade(SonarLintRpcClientDelegate rpcClient, LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client) {
     this(rpcClient, lsLogOutput, client, DEFAULT_INIT_TIMEOUT_SECONDS);
@@ -130,10 +130,6 @@ public class BackendServiceFacade {
     }
   }
 
-  public void setSettingsManager(SettingsManager settingsManager) {
-    this.settingsManager = settingsManager;
-  }
-
   public void setOmnisharpDirectory(String omnisharpDirectory) {
     this.omnisharpDirectory = omnisharpDirectory;
   }
@@ -154,32 +150,24 @@ public class BackendServiceFacade {
     this.sonarqubeCloudConnections = sonarqubeCloudConnections;
   }
 
-  public BackendInitParams getInitParams() {
-    return initParams;
+  public void setStandaloneRuleConfigByKey(Map<String, StandaloneRuleConfigDto> standaloneRuleConfigByKey) {
+    this.standaloneRuleConfigByKey = standaloneRuleConfigByKey;
   }
 
-  private void initOnce(Map<String, ServerConnectionSettings> connections) {
-    if (initLatch.getCount() != 0) {
-      var sqConnections = BackendService.extractSonarQubeConnections(connections);
-      var scConnections = BackendService.extractSonarCloudConnections(connections);
-      initParams.setSonarQubeConnections(sqConnections);
-      initParams.setSonarCloudConnections(scConnections);
-      initParams.setStandaloneRuleConfigByKey(settingsManager.getStandaloneRuleConfigByKey());
-      initParams.setFocusOnNewCode(settingsManager.getCurrentSettings().isFocusOnNewCode());
-      backendService.initialize(toInitParams(initParams));
-      backendService.addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(rootConfigurationScope)));
-      initLatch.countDown();
-    }
+  public void setFocusOnNewCode(boolean focusOnNewCode) {
+    isFocusOnNewCode = focusOnNewCode;
+  }
+
+  public BackendInitParams getInitParams() {
+    return initParams;
   }
 
   private void initOnce() {
     if (initLatch.getCount() != 0) {
       initParams.setSonarQubeConnections(this.sonarQubeServerConnections);
       initParams.setSonarCloudConnections(this.sonarqubeCloudConnections);
-//      initParams.setStandaloneRuleConfigByKey(settingsManager.getStandaloneRuleConfigByKey());
-      initParams.setStandaloneRuleConfigByKey(Map.of());
-//      initParams.setFocusOnNewCode(settingsManager.getCurrentSettings().isFocusOnNewCode());
-      initParams.setFocusOnNewCode(false);
+      initParams.setStandaloneRuleConfigByKey(this.standaloneRuleConfigByKey);
+      initParams.setFocusOnNewCode(this.isFocusOnNewCode);
       backendService.initialize(toInitParams(initParams));
       backendService.addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(rootConfigurationScope)));
       initLatch.countDown();
@@ -330,10 +318,6 @@ public class BackendServiceFacade {
     }
   }
 
-  public void initialize(Map<String, ServerConnectionSettings> serverConnections) {
-    initOnce(serverConnections);
-  }
-
   public void initialize() {
     initOnce();
   }
@@ -353,4 +337,6 @@ public class BackendServiceFacade {
   public CountDownLatch getInitLatch() {
     return initLatch;
   }
+
+
 }

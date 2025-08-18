@@ -141,20 +141,35 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
    * Get workspace level settings, waiting for them to be initialized
    */
   public WorkspaceSettings getCurrentSettings() {
-//    try {
-//      if (initLatch.await(1, TimeUnit.MINUTES)) {
-    return currentSettings;
-//      }
-//    } catch (InterruptedException e) {
-//    interrupted(e, logOutput);
-//    }
-//    throw new IllegalStateException("Unable to get settings in time");
+    try {
+      if (initLatch.await(1, TimeUnit.MINUTES)) {
+        return currentSettings;
+      }
+    } catch (InterruptedException e) {
+      interrupted(e, logOutput);
+    }
+    throw new IllegalStateException("Unable to get settings in time");
   }
 
   public Map<String, StandaloneRuleConfigDto> getStandaloneRuleConfigByKey() {
     var standaloneRuleConfigByKey = new HashMap<String, StandaloneRuleConfigDto>();
     currentSettings.getIncludedRules().forEach((ruleKey -> addRulesToConfig(ruleKey, standaloneRuleConfigByKey, true)));
     currentSettings.getExcludedRules().forEach((ruleKey -> addRulesToConfig(ruleKey, standaloneRuleConfigByKey, false)));
+    return standaloneRuleConfigByKey;
+  }
+
+  public Map<String, StandaloneRuleConfigDto> getStandaloneRuleConfigByKey(RulesConfiguration initialRulesConfiguration) {
+    var standaloneRuleConfigByKey = new HashMap<String, StandaloneRuleConfigDto>();
+    initialRulesConfiguration.includedRules().forEach((ruleKey -> {
+      var ruleParams = initialRulesConfiguration.ruleParameters().get(ruleKey);
+      var sanitizedParams = ruleParams != null ? ruleParams : Map.<String, String>of();
+      standaloneRuleConfigByKey.put(ruleKey.toString(), new StandaloneRuleConfigDto(true, sanitizedParams));
+    }));
+    initialRulesConfiguration.excludedRules().forEach((ruleKey -> {
+      var ruleParams = initialRulesConfiguration.ruleParameters().get(ruleKey);
+      var sanitizedParams = ruleParams != null ? ruleParams : Map.<String, String>of();
+      standaloneRuleConfigByKey.put(ruleKey.toString(), new StandaloneRuleConfigDto(false, sanitizedParams));
+    }));
     return standaloneRuleConfigByKey;
   }
 
@@ -168,15 +183,14 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
    * Get default workspace folder level settings, waiting for them to be initialized
    */
   public WorkspaceFolderSettings getCurrentDefaultFolderSettings() {
-//    try {
-//      if (initLatch.await(1, TimeUnit.MINUTES)) {
-//        return currentDefaultSettings;
-//      }
-//    } catch (InterruptedException e) {
-//      interrupted(e, logOutput);
-//    }
-//    throw new IllegalStateException("Unable to get settings in time");
-    return currentDefaultSettings;
+    try {
+      if (initLatch.await(1, TimeUnit.MINUTES)) {
+        return currentDefaultSettings;
+      }
+    } catch (InterruptedException e) {
+      interrupted(e, logOutput);
+    }
+    throw new IllegalStateException("Unable to get settings in time");
   }
 
   public void didChangeConfiguration() {
@@ -189,14 +203,14 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         var newDefaultFolderSettings = parseFolderSettings(workspaceSettingsMap, null);
         var oldDefaultFolderSettings = currentDefaultSettings;
         this.currentDefaultSettings = newDefaultFolderSettings;
-//        if (initLatch.getCount() != 0) {
-//          initLatch.countDown();
-////          backendServiceFacade.initialize(getCurrentSettings().getServerConnections());
-//        } else {
+
+        // Count down the latch immediately after settings are set to allow getCurrentSettings() calls
+        // from listeners and other components
+        initLatch.countDown();
+
         notifyChangeClientNodeJsPathIfNeeded(oldWorkspaceSettings, newWorkspaceSettings);
-        backendServiceFacade.getBackendService().didChangeConnections(getCurrentSettings().getServerConnections());
+        backendServiceFacade.getBackendService().didChangeConnections(this.currentSettings.getServerConnections());
         backendServiceFacade.getBackendService().updateStandaloneRulesConfiguration(getStandaloneRuleConfigByKey());
-//        }
 
         foldersManager.getAll().forEach(f -> updateWorkspaceFolderSettings(f, true));
         foldersManager.initialized();
@@ -207,6 +221,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         logOutput.errorWithStackTrace("Unable to update configuration.", e);
       } finally {
         client.readyForTests();
+        // Ensure latch is counted down even in case of exceptions
+        while (initLatch.getCount() > 0) {
+          initLatch.countDown();
+        }
       }
     });
   }
@@ -439,7 +457,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     });
   }
 
-  private void parseSonarQubeConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
+  public void parseSonarQubeConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
     @SuppressWarnings("unchecked")
     var sonarqubeEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarqube", Collections.emptyList());
     sonarqubeEntries.forEach(m -> {
@@ -454,7 +472,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     });
   }
 
-  private void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
+  public void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
     @SuppressWarnings("unchecked")
     var sonarcloudEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
     sonarcloudEntries.forEach(m -> {
@@ -496,7 +514,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     }
   }
 
-  private boolean checkRequiredAttribute(Map<String, Object> map, String label, String... requiredAttributes) {
+  public boolean checkRequiredAttribute(Map<String, Object> map, String label, String... requiredAttributes) {
     var missing = stream(requiredAttributes).filter(att -> isBlank((String) map.get(att))).toList();
     if (!missing.isEmpty()) {
       logOutput.error(format("Incomplete %s connection configuration. Required parameters must not be blank: %s.", label, String.join(",", missing)));

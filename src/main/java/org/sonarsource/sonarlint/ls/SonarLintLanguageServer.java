@@ -32,12 +32,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -105,7 +107,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSugg
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
-import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.backend.BackendInitParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -127,6 +128,8 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
+import org.sonarsource.sonarlint.ls.settings.RulesConfiguration;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
@@ -142,18 +145,11 @@ import static java.lang.String.format;
 import static java.net.URI.create;
 import static java.util.Objects.requireNonNull;
 import static java.util.Optional.ofNullable;
-import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_ISSUE_DETAILS_FROM_CODE_ACTION_COMMAND;
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
 import static org.sonarsource.sonarlint.ls.backend.BackendService.ROOT_CONFIGURATION_SCOPE;
-import static org.sonarsource.sonarlint.ls.settings.SettingsManager.CONNECTION_ID;
-import static org.sonarsource.sonarlint.ls.settings.SettingsManager.DEFAULT_CONNECTION_ID;
-import static org.sonarsource.sonarlint.ls.settings.SettingsManager.DISABLE_NOTIFICATIONS;
-import static org.sonarsource.sonarlint.ls.settings.SettingsManager.ORGANIZATION_KEY;
-import static org.sonarsource.sonarlint.ls.settings.SettingsManager.REGION_KEY;
-import static org.sonarsource.sonarlint.ls.settings.SettingsManager.SERVER_URL;
 import static org.sonarsource.sonarlint.ls.util.URIUtils.getFullFileUriFromFragments;
 import static org.sonarsource.sonarlint.ls.util.Utils.getConnectionNameFromConnectionCheckParams;
 import static org.sonarsource.sonarlint.ls.util.Utils.getValidateConnectionParamsForNewConnection;
@@ -242,7 +238,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, backendServiceFacade, lsLogOutput);
     vsCodeClient.setSettingsManager(settingsManager);
     vsCodeClient.setWorkspaceFoldersManager(workspaceFoldersManager);
-    backendServiceFacade.setSettingsManager(settingsManager);
     this.fileTypeClassifier = new FileTypeClassifier(lsLogOutput);
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
     this.settingsManager.addListener(lsLogOutput);
@@ -319,30 +314,30 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var additionalAttributes = (Map<String, Object>) options.getOrDefault("additionalAttributes", Map.of());
       var userAgent = "SonarQube for IDE (SonarLint) - Visual Studio Code " + productVersion + " - " + clientVersion;
       var clientNodePath = (String) options.get("clientNodePath");
-      var sonarqubeServerConnections = (List<Map<String, Object>>) options.get("sonarqubeServerConnections");
-      var sq = new ArrayList<SonarQubeConnectionConfigurationDto>();
-      sonarqubeServerConnections.forEach(m -> {
-//        if (checkRequiredAttribute(m, "SonarQube server", SERVER_URL)) {
-        var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
-        var url = (String) m.get(SERVER_URL);
-        var disableNotifications = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
-        var connectionSettings = new SonarQubeConnectionConfigurationDto(connectionId, url, disableNotifications);
-        sq.add(connectionSettings);
-//        }
-      });
-      backendServiceFacade.setSonarQubeServerConnections(sq);
-      var sonarqubeCloudConnections = (List<Map<String, Object>>) options.get("sonarqubeCloudConnections");
-      var sc = new ArrayList<SonarCloudConnectionConfigurationDto>();
-      sonarqubeCloudConnections.forEach(m -> {
-//        if (checkRequiredAttribute(m, "SonarCloud", ORGANIZATION_KEY)) {
-        var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
-        var organizationKey = (String) m.get(ORGANIZATION_KEY);
-        var disableNotifs = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
-        var region = (String) m.getOrDefault(REGION_KEY, SonarCloudRegion.EU.name());
-        var parsedRegion = parseRegion(region);
-        sc.add(new SonarCloudConnectionConfigurationDto(connectionId, organizationKey, parsedRegion, disableNotifs));
-      });
-      backendServiceFacade.setSonarqubeCloudConnections(sc);
+
+      // initialize connections
+      var connectionsMap = (Map<String, Object>) options.getOrDefault("connections", Collections.emptyMap());
+      var sqs = new ArrayList<SonarQubeConnectionConfigurationDto>();
+      var serverConnections = new HashMap<String, ServerConnectionSettings>();
+      settingsManager.parseSonarQubeConnections(connectionsMap, serverConnections);
+      serverConnections.forEach((connectionId, connectionSettings) ->
+        sqs.add(new SonarQubeConnectionConfigurationDto(connectionId, connectionSettings.getServerUrl(), connectionSettings.isSmartNotificationsDisabled())));
+      backendServiceFacade.setSonarQubeServerConnections(sqs);
+
+      var cloudConnections = new HashMap<String, ServerConnectionSettings>();
+      settingsManager.parseSonarCloudConnections(connectionsMap, cloudConnections);
+      var sqc = new ArrayList<SonarCloudConnectionConfigurationDto>();
+      cloudConnections.forEach((connectionId, connectionSettings) ->
+        sqc.add(new SonarCloudConnectionConfigurationDto(connectionId, connectionSettings.getOrganizationKey(),
+          connectionSettings.getRegion(), connectionSettings.isSmartNotificationsDisabled())));
+      backendServiceFacade.setSonarqubeCloudConnections(sqc);
+
+      // initialise rule settings
+      var standaloneRulesConfiguration = RulesConfiguration.parse((Map<String, Object>) options.getOrDefault("rules", Collections.emptyMap()));
+      backendServiceFacade.setStandaloneRuleConfigByKey(settingsManager.getStandaloneRuleConfigByKey(standaloneRulesConfiguration));
+
+      var focusOnNewCode = (boolean) options.getOrDefault("focusOnNewCode", false);
+      backendServiceFacade.setFocusOnNewCode(focusOnNewCode);
 
       diagnosticPublisher.initialize(firstSecretDetected);
 
@@ -373,15 +368,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
       return new InitializeResult(c, info);
     });
-  }
-
-  SonarCloudRegion parseRegion(String region) {
-    try {
-      return SonarCloudRegion.valueOf(region);
-    } catch (IllegalArgumentException e) {
-//      logOutput.error(format("Unknown SonarQube Cloud region '%s'. Using default region '%s'", region, SonarCloudRegion.EU.name()));
-      return SonarCloudRegion.EU;
-    }
   }
 
   @Override
@@ -700,20 +686,25 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public CompletableFuture<ConnectionCheckResult> checkConnection(ConnectionCheckParams params) {
-    var connectionName = getConnectionNameFromConnectionCheckParams(params);
-    lsLogOutput.debug(format("Received a validate connectionName request for %s", connectionName));
-    try {
-      var validateConnectionParams = getValidateConnectionParams(params);
-      if (validateConnectionParams != null) {
-        return backendServiceFacade.getBackendService().validateConnection(validateConnectionParams)
-          .thenApply(validationResult -> validationResult.isSuccess() ? success(connectionName)
-            : failure(connectionName, validationResult.getMessage()));
+    return CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      var connectionName = getConnectionNameFromConnectionCheckParams(params);
+      lsLogOutput.debug(format("Received a validate connectionName request for %s", connectionName));
+      try {
+        var validateConnectionParams = getValidateConnectionParams(params);
+        if (validateConnectionParams != null) {
+          return backendServiceFacade.getBackendService().validateConnection(validateConnectionParams)
+            .thenApply(validationResult -> validationResult.isSuccess() ? success(connectionName)
+              : failure(connectionName, validationResult.getMessage())).get();
+        }
+        return failure(connectionName, format("Connection '%s' is unknown", connectionName));
+      } catch (IllegalStateException e) {
+        // Handle null/empty token validation errors
+        return failure(connectionName, "Invalid credentials: " + e.getMessage());
+      } catch (Exception e) {
+        return failure(connectionName, "Failed to validate connection: " + e.getMessage());
       }
-      return CompletableFuture.completedFuture(failure(connectionName, format("Connection '%s' is unknown", connectionName)));
-    } catch (IllegalStateException e) {
-      // Handle null/empty token validation errors
-      return CompletableFuture.completedFuture(failure(connectionName, "Invalid credentials: " + e.getMessage()));
-    }
+    });
   }
 
   private ValidateConnectionParams getValidateConnectionParams(ConnectionCheckParams params) {
@@ -723,8 +714,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public CompletableFuture<Map<String, String>> getRemoteProjectsForConnection(GetRemoteProjectsForConnectionParams getRemoteProjectsForConnectionParams) {
-    return CompletableFuture.completedFuture(
-      bindingManager.getRemoteProjects(getRemoteProjectsForConnectionParams.getConnectionId()));
+    return CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      return bindingManager.getRemoteProjects(getRemoteProjectsForConnectionParams.getConnectionId());
+    });
   }
 
   @Override
@@ -734,21 +727,28 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void onTokenUpdate(OnTokenUpdateNotificationParams onTokenUpdateNotificationParams) {
-    lsLogOutput.info("Updating credentials on token change.");
-    backendServiceFacade.getBackendService().didChangeCredentials(onTokenUpdateNotificationParams.getConnectionId());
-    var updatedConnection = settingsManager.getCurrentSettings().getServerConnections().get(onTokenUpdateNotificationParams.getConnectionId());
-    updatedConnection.setToken(onTokenUpdateNotificationParams.getToken());
-    bindingManager.validateConnection(onTokenUpdateNotificationParams.getConnectionId());
+    CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      lsLogOutput.info("Updating credentials on token change.");
+      backendServiceFacade.getBackendService().didChangeCredentials(onTokenUpdateNotificationParams.getConnectionId());
+      var updatedConnection = settingsManager.getCurrentSettings().getServerConnections().get(onTokenUpdateNotificationParams.getConnectionId());
+      updatedConnection.setToken(onTokenUpdateNotificationParams.getToken());
+      bindingManager.validateConnection(onTokenUpdateNotificationParams.getConnectionId());
+      return null;
+    });
   }
 
   @Override
   public CompletableFuture<Map<String, String>> getRemoteProjectNamesByProjectKeys(GetRemoteProjectNamesByKeysParams params) {
-    try {
-      return bindingManager.getRemoteProjectsByKeys(params.connectionId(), params.projectKeys());
-    } catch (IllegalStateException | IllegalArgumentException failed) {
-      var responseError = new ResponseError(ResponseErrorCode.InternalError, "Could not get remote project name", failed);
-      return CompletableFuture.failedFuture(new ResponseErrorException(responseError));
-    }
+    return CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      try {
+        return bindingManager.getRemoteProjectsByKeys(params.connectionId(), params.projectKeys()).get();
+      } catch (IllegalStateException | IllegalArgumentException | InterruptedException | ExecutionException failed) {
+        var responseError = new ResponseError(ResponseErrorCode.InternalError, "Could not get remote project name", failed);
+        throw new ResponseErrorException(responseError);
+      }
+    });
   }
 
   @Override
