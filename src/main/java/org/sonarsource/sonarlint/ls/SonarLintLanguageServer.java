@@ -102,6 +102,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.CheckStatusCh
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.StandaloneRuleConfigDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.ChangeDependencyRiskStatusParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
@@ -297,18 +298,18 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var showVerboseLogs = (boolean) options.getOrDefault("showVerboseLogs", true);
       lsLogOutput.initialize(showVerboseLogs);
 
+      var clientInfo = ofNullable(params.getClientInfo());
+      var workspaceName = (String) options.get("workspaceName");
+      var firstSecretDetected = (boolean) options.getOrDefault("firstSecretDetected", false);
+
       var productKey = (String) options.get("productKey");
       // deprecated, will be ignored when productKey present
       var telemetryStorage = (String) options.get("telemetryStorage");
-
       var productName = (String) options.get("productName");
       var productVersion = (String) options.get("productVersion");
-      var clientInfo = ofNullable(params.getClientInfo());
       this.appName = clientInfo.map(ci -> ci.getName()).orElse("Unknown");
-      var workspaceName = (String) options.get("workspaceName");
       var clientVersion = clientInfo.map(ci -> ci.getVersion()).orElse("Unknown");
       var ideVersion = appName + " " + clientVersion;
-      var firstSecretDetected = (boolean) options.getOrDefault("firstSecretDetected", false);
       var platform = (String) options.get("platform");
       var architecture = (String) options.get("architecture");
       var additionalAttributes = (Map<String, Object>) options.getOrDefault("additionalAttributes", Map.of());
@@ -317,21 +318,20 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var focusOnNewCode = (boolean) options.getOrDefault("focusOnNewCode", false);
       var standaloneRulesConfiguration = RulesConfiguration.parse((Map<String, Object>) options.getOrDefault("rules", Collections.emptyMap()));
       var connectionsMap = (Map<String, Object>) options.getOrDefault("connections", Collections.emptyMap());
+      var omnisharpDirectory = (String) options.get("omnisharpDirectory");
+      var csharpOssPath = (String) options.get("csharpOssPath");
+      var csharpEnterprisePath = (String) options.get("csharpEnterprisePath");
+      var standaloneRuleConfigByKey = settingsManager.getStandaloneRuleConfigByKey(standaloneRulesConfiguration);
+      var eslintBridgeServerPath = (String) options.get("eslintBridgeServerPath");
 
       diagnosticPublisher.initialize(firstSecretDetected);
 
       hostInfoProvider.initialize(clientVersion, workspaceName);
       backendServiceFacade.setTelemetryInitParams(new TelemetryInitParams(productKey, telemetryStorage,
         productName, productVersion, ideVersion, platform, architecture, additionalAttributes));
-      backendServiceFacade.setOmnisharpDirectory((String) options.get("omnisharpDirectory"));
-      backendServiceFacade.setCsharpOssPath((String) options.get("csharpOssPath"));
-      backendServiceFacade.setCsharpEnterprisePath((String) options.get("csharpEnterprisePath"));
-      backendServiceFacade.setStandaloneRuleConfigByKey(settingsManager.getStandaloneRuleConfigByKey(standaloneRulesConfiguration));
-      backendServiceFacade.setFocusOnNewCode(focusOnNewCode);
-      provideConnectionsDataforBackendInitialization(connectionsMap);
 
-      var eslintBridgeServerPath = (String) options.get("eslintBridgeServerPath");
-      provideBackendInitData(productKey, userAgent, clientNodePath, eslintBridgeServerPath);
+      provideBackendInitData(productKey, userAgent, clientNodePath, eslintBridgeServerPath, standaloneRuleConfigByKey, connectionsMap,
+        focusOnNewCode, omnisharpDirectory, csharpOssPath, csharpEnterprisePath);
 
       backendServiceFacade.initialize();
 
@@ -350,23 +350,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
       return new InitializeResult(c, info);
     });
-  }
-
-  private void provideConnectionsDataforBackendInitialization(Map<String, Object> connectionsMap) {
-    var sqs = new ArrayList<SonarQubeConnectionConfigurationDto>();
-    var serverConnections = new HashMap<String, ServerConnectionSettings>();
-    settingsManager.parseSonarQubeConnectionsWithoutToken(connectionsMap, serverConnections);
-    serverConnections.forEach((connectionId, connectionSettings) ->
-      sqs.add(new SonarQubeConnectionConfigurationDto(connectionId, connectionSettings.getServerUrl(), connectionSettings.isSmartNotificationsDisabled())));
-    backendServiceFacade.setSonarQubeServerConnections(sqs);
-
-    var cloudConnections = new HashMap<String, ServerConnectionSettings>();
-    settingsManager.parseSonarCloudConnectionsWithoutToken(connectionsMap, cloudConnections);
-    var sqc = new ArrayList<SonarCloudConnectionConfigurationDto>();
-    cloudConnections.forEach((connectionId, connectionSettings) ->
-      sqc.add(new SonarCloudConnectionConfigurationDto(connectionId, connectionSettings.getOrganizationKey(),
-        connectionSettings.getRegion(), connectionSettings.isSmartNotificationsDisabled())));
-    backendServiceFacade.setSonarqubeCloudConnections(sqc);
   }
 
   @Override
@@ -817,7 +800,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     telemetry.toolCalled(params.toolName(), params.success());
   }
 
-  void provideBackendInitData(String productKey, String userAgent, String clientNodePath, String eslintBridgeServerPath) {
+  void provideBackendInitData(String productKey, String userAgent, String clientNodePath, String eslintBridgeServerPath,
+    Map<String, StandaloneRuleConfigDto> standaloneRuleConfigByKey,
+    Map<String, Object> connectionsMap, boolean focusOnNewCode, String omnisharpDirectory, String csharpOssPath, String csharpEnterprisePath) {
     BackendInitParams params = backendServiceFacade.getInitParams();
     params.setTelemetryProductKey(productKey);
     var actualSonarLintUserHome = SettingsManager.getSonarLintUserHomeOverride();
@@ -834,6 +819,28 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     params.setUserAgent(userAgent);
     params.setClientNodePath(clientNodePath);
     params.setEslintBridgeServerPath(eslintBridgeServerPath);
+
+    var sqs = new ArrayList<SonarQubeConnectionConfigurationDto>();
+    var serverConnections = new HashMap<String, ServerConnectionSettings>();
+    settingsManager.parseSonarQubeConnectionsWithoutToken(connectionsMap, serverConnections);
+    serverConnections.forEach((connectionId, connectionSettings) ->
+      sqs.add(new SonarQubeConnectionConfigurationDto(connectionId, connectionSettings.getServerUrl(), connectionSettings.isSmartNotificationsDisabled())));
+    params.setSonarQubeConnections(sqs);
+
+    var cloudConnections = new HashMap<String, ServerConnectionSettings>();
+    settingsManager.parseSonarCloudConnectionsWithoutToken(connectionsMap, cloudConnections);
+    var sqc = new ArrayList<SonarCloudConnectionConfigurationDto>();
+    cloudConnections.forEach((connectionId, connectionSettings) ->
+      sqc.add(new SonarCloudConnectionConfigurationDto(connectionId, connectionSettings.getOrganizationKey(),
+        connectionSettings.getRegion(), connectionSettings.isSmartNotificationsDisabled())));
+    params.setSonarCloudConnections(sqc);
+
+    params.setStandaloneRuleConfigByKey(standaloneRuleConfigByKey);
+    params.setFocusOnNewCode(focusOnNewCode);
+
+    params.setOmnisharpDirectory(omnisharpDirectory);
+    params.setCsharpOssPath(csharpOssPath);
+    params.setCsharpEnterprisePath(csharpEnterprisePath);
   }
 
   public CompletableFuture<Void> showHotspotLocations(ShowHotspotLocationsParams showHotspotLocationsParams) {

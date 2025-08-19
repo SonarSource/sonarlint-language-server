@@ -56,7 +56,6 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -90,7 +89,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.sonar.api.rules.RuleType.SECURITY_HOTSPOT;
 
-@Disabled
 class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   private static final String QPROFILE_KEY = "AXDEr5Q7LjElHiH99ZhW";
@@ -124,10 +122,12 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         "productVersion", "0.1",
         "productKey", "productKey",
         "omnisharpDirectory", omnisharpDir.toString(),
-        "sonarqubeServerConnections", List.of(Map.of(
-          "connectionId", CONNECTION_ID,
-          "serverUrl", "/"
-        ))
+        "connections", Map.of(
+          "sonarqube", List.of(Map.of(
+            "connectionId", CONNECTION_ID,
+            "serverUrl", "/"
+          ))
+        )
       ),
       new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
 

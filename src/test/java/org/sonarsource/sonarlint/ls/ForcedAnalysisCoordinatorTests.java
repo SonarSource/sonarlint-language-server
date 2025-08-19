@@ -66,7 +66,7 @@ class ForcedAnalysisCoordinatorTests {
       openNotebooksCache, client, backendServiceFacade);
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     when(workspaceFoldersManager.findFolderForFile(any())).thenReturn(Optional.of(new WorkspaceFolderWrapper(workspaceFolderUri,
-      new WorkspaceFolder("file:///my/workspace/folder", "folder"))));
+      new WorkspaceFolder("file:///my/workspace/folder", "folder"), lsLogOutput)));
 
   }
 

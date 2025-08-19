@@ -210,6 +210,49 @@ class SettingsManagerTests {
         tuple("sc2", "https://sonarcloud.io", "token-from-storage", "myOrga2"));
   }
 
+  @Test
+  void shouldParseConnectionsWithoutTokens() {
+    var serverConnections = new HashMap<String, ServerConnectionSettings>();
+    var cloudConnections = new HashMap<String, ServerConnectionSettings>();
+    var connectionsMap = (Map) Map.of(
+      "sonarqube", List.of(Map.of(
+        "connectionId", "sq1",
+        "serverUrl", "/"
+      ), Map.of("connectionId", "sq2", "serverUrl", "https://mysonarqube2.mycompany.org")),
+      "sonarcloud", List.of(Map.of(
+        "connectionId", "sc1",
+        "organizationKey", "myOrga1"
+      ), Map.of("connectionId", "sc2", "organizationKey", "myOrga2")));
+
+    underTest.parseSonarCloudConnectionsWithoutToken(connectionsMap, cloudConnections);
+    underTest.parseSonarQubeConnectionsWithoutToken(connectionsMap, serverConnections);
+
+    assertThat(serverConnections).containsKeys("sq1", "sq2");
+    assertThat(serverConnections.get("sq1").getServerUrl()).isEqualTo("/");
+    assertThat(serverConnections.get("sq2").getServerUrl()).isEqualTo("https://mysonarqube2.mycompany.org");
+    assertThat(cloudConnections).containsKeys("sc1", "sc2");
+    assertThat(cloudConnections.get("sc1").getOrganizationKey()).isEqualTo("myOrga1");
+    assertThat(cloudConnections.get("sc2").getOrganizationKey()).isEqualTo("myOrga2");
+    assertThat(serverConnections.get("sq1").getToken()).isNull();
+    assertThat(serverConnections.get("sq2").getToken()).isNull();
+    assertThat(cloudConnections.get("sc1").getToken()).isNull();
+    assertThat(cloudConnections.get("sc2").getToken()).isNull();
+  }
+
+  @Test
+  void shouldParseStandaloneRuleConfiguration() {
+    var exampleRawRulesConfig = (Map) Map.of(
+      "docker:S2260", Map.of("level", "on"),
+      "python:S1481", Map.of("level", "off"),
+      "python:S3776", Map.of("level", "on", "parameters", Map.of("threshold", "10")));
+    var ruleConfig = RulesConfiguration.parse(exampleRawRulesConfig);
+
+    var parsingResult = underTest.getStandaloneRuleConfigByKey(ruleConfig);
+    assertThat(parsingResult).hasSize(3);
+    assertThat(parsingResult.get("python:S3776").isActive()).isTrue();
+    assertThat(parsingResult.get("python:S3776").getParamValueByKey()).containsOnly(entry("threshold", "10"));
+  }
+
 
   @Test
   void shouldLogErrorIfIncompleteConnections() {
@@ -402,7 +445,7 @@ class SettingsManagerTests {
         }
       }
       """);
-    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
+    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder(), logTester.getLogger());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
@@ -429,7 +472,7 @@ class SettingsManagerTests {
         }
       }
       """);
-    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
+    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder(), logTester.getLogger());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
@@ -524,7 +567,7 @@ class SettingsManagerTests {
     var workspaceFolderUri = workspaceFolder.toUri();
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
-    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder(), logTester.getLogger());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
@@ -549,7 +592,7 @@ class SettingsManagerTests {
     var workspaceFolderUri = workspaceFolder.toUri();
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
-    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder(), logTester.getLogger());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
@@ -574,7 +617,7 @@ class SettingsManagerTests {
     var workspaceFolderUri = workspaceFolder.toUri();
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
-    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder(), logTester.getLogger());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
@@ -664,7 +707,7 @@ class SettingsManagerTests {
     var workspaceFolderUri = URI.create("notfile:///workspace/folder");
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
-    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder(), logTester.getLogger());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();

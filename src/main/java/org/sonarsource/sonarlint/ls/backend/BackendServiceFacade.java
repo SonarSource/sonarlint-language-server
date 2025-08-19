@@ -26,11 +26,9 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -46,8 +44,6 @@ import org.sonarsource.sonarlint.core.rpc.impl.BackendJsonRpcLauncher;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.ConfigurationScopeDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.DidAddConfigurationScopesParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarCloudConnectionConfigurationDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarQubeConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.BackendCapability;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.ClientConstantInfoDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.HttpConfigurationDto;
@@ -59,7 +55,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarCloud
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarQubeCloudRegionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SslConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.TelemetryClientConstantAttributesDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.StandaloneRuleConfigDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -81,15 +76,6 @@ public class BackendServiceFacade {
   private TelemetryInitParams telemetryInitParams;
   private SonarLintTelemetry telemetry;
   private final CountDownLatch initLatch = new CountDownLatch(1);
-
-
-  private String omnisharpDirectory;
-  private String csharpOssPath;
-  private String csharpEnterprisePath;
-  private List<SonarQubeConnectionConfigurationDto> sonarQubeServerConnections = new ArrayList<>();
-  private List<SonarCloudConnectionConfigurationDto> sonarqubeCloudConnections = new ArrayList<>();
-  private Map<String, StandaloneRuleConfigDto> standaloneRuleConfigByKey = Map.of();
-  private boolean isFocusOnNewCode = false;
 
   public BackendServiceFacade(SonarLintRpcClientDelegate rpcClient, LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client) {
     this(rpcClient, lsLogOutput, client, DEFAULT_INIT_TIMEOUT_SECONDS);
@@ -130,44 +116,12 @@ public class BackendServiceFacade {
     }
   }
 
-  public void setOmnisharpDirectory(String omnisharpDirectory) {
-    this.omnisharpDirectory = omnisharpDirectory;
-  }
-
-  public void setCsharpOssPath(String csharpOssPath) {
-    this.csharpOssPath = csharpOssPath;
-  }
-
-  public void setCsharpEnterprisePath(String csharpEnterprisePath) {
-    this.csharpEnterprisePath = csharpEnterprisePath;
-  }
-
-  public void setSonarQubeServerConnections(List<SonarQubeConnectionConfigurationDto> sonarQubeServerConnections) {
-    this.sonarQubeServerConnections = sonarQubeServerConnections;
-  }
-
-  public void setSonarqubeCloudConnections(List<SonarCloudConnectionConfigurationDto> sonarqubeCloudConnections) {
-    this.sonarqubeCloudConnections = sonarqubeCloudConnections;
-  }
-
-  public void setStandaloneRuleConfigByKey(Map<String, StandaloneRuleConfigDto> standaloneRuleConfigByKey) {
-    this.standaloneRuleConfigByKey = standaloneRuleConfigByKey;
-  }
-
-  public void setFocusOnNewCode(boolean focusOnNewCode) {
-    isFocusOnNewCode = focusOnNewCode;
-  }
-
   public BackendInitParams getInitParams() {
     return initParams;
   }
 
   private void initOnce() {
     if (initLatch.getCount() != 0) {
-      initParams.setSonarQubeConnections(this.sonarQubeServerConnections);
-      initParams.setSonarCloudConnections(this.sonarqubeCloudConnections);
-      initParams.setStandaloneRuleConfigByKey(this.standaloneRuleConfigByKey);
-      initParams.setFocusOnNewCode(this.isFocusOnNewCode);
       backendService.initialize(toInitParams(initParams));
       backendService.addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(rootConfigurationScope)));
       initLatch.countDown();
@@ -241,14 +195,14 @@ public class BackendServiceFacade {
 
   @CheckForNull
   private OmnisharpRequirementsDto getOmnisharpRequirements() {
-    var pathToOssCsharp = csharpOssPath == null ? null : Path.of(csharpOssPath);
-    var pathToEnterpriseCsharp = csharpEnterprisePath == null ? null : Path.of(csharpEnterprisePath);
-    if (omnisharpDirectory == null || pathToOssCsharp == null || pathToEnterpriseCsharp == null) {
+    var pathToOssCsharp = initParams.getCsharpOssPath() == null ? null : Path.of(initParams.getCsharpOssPath());
+    var pathToEnterpriseCsharp = initParams.getCsharpEnterprisePath() == null ? null : Path.of(initParams.getCsharpEnterprisePath());
+    if (initParams.getOmnisharpDirectory() == null || pathToOssCsharp == null || pathToEnterpriseCsharp == null) {
       return null;
     }
-    return new OmnisharpRequirementsDto(Path.of(omnisharpDirectory, "mono"),
-      Path.of(omnisharpDirectory, "net6"),
-      Path.of(omnisharpDirectory, "net472"),
+    return new OmnisharpRequirementsDto(Path.of(initParams.getOmnisharpDirectory(), "mono"),
+      Path.of(initParams.getOmnisharpDirectory(), "net6"),
+      Path.of(initParams.getOmnisharpDirectory(), "net472"),
       pathToOssCsharp,
       pathToEnterpriseCsharp);
   }

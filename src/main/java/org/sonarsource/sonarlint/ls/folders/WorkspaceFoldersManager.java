@@ -56,7 +56,7 @@ public class WorkspaceFoldersManager {
   private final BackendServiceFacade backendServiceFacade;
   private final LanguageClientLogger logOutput;
   private final ExecutorService executor;
-  private List<WorkspaceFolder> workspaceFolders;
+  private final List<WorkspaceFolder> workspaceFolders = new ArrayList<>();
 
   public WorkspaceFoldersManager(BackendServiceFacade backendServiceFacade, LanguageClientLogger logOutput) {
     this(Executors.newCachedThreadPool(Utils.threadFactory("SonarLint folders manager", false)), backendServiceFacade, logOutput);
@@ -73,7 +73,6 @@ public class WorkspaceFoldersManager {
   }
 
   public void initialize(@Nullable List<WorkspaceFolder> workspaceFolders) {
-    this.workspaceFolders = workspaceFolders;
     if (workspaceFolders != null) {
       workspaceFolders.forEach(wf -> {
         var uri = create(wf.getUri());
@@ -108,6 +107,10 @@ public class WorkspaceFoldersManager {
   @CheckForNull
   private WorkspaceFolderWrapper removeFolder(URI uri) {
     var removed = folders.remove(uri);
+    var workspaceFolder = this.workspaceFolders.stream().filter(wf -> wf.getUri().equalsIgnoreCase(uri.toString())).findFirst().orElse(null);
+    if (workspaceFolder != null) {
+      this.workspaceFolders.remove(workspaceFolder);
+    }
     if (removed == null) {
       logOutput.warn("Unregistered workspace folder was missing: " + uri);
       return null;
@@ -118,11 +121,12 @@ public class WorkspaceFoldersManager {
   }
 
   private WorkspaceFolderWrapper addFolder(WorkspaceFolder added, URI uri) {
-    var addedWrapper = new WorkspaceFolderWrapper(uri, added);
+    var addedWrapper = new WorkspaceFolderWrapper(uri, added, logOutput);
     if (folders.put(uri, addedWrapper) != null) {
       logOutput.warn(format("Registered workspace folder %s was already added", addedWrapper));
     } else {
       logOutput.debug(format("Folder %s added", addedWrapper));
+      this.workspaceFolders.add(added);
     }
     return addedWrapper;
   }
