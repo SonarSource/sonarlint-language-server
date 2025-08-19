@@ -33,9 +33,9 @@ class WorkspaceFolderWrapperTests {
 
   @Test
   void testEqualsAndHashCode() {
-    WorkspaceFolderWrapper folder1 = new WorkspaceFolderWrapper(URI.create("file://folder1"), null);
-    WorkspaceFolderWrapper folder1bis = new WorkspaceFolderWrapper(URI.create("file://folder1"), null);
-    WorkspaceFolderWrapper folder2 = new WorkspaceFolderWrapper(URI.create("file://folder2"), null);
+    WorkspaceFolderWrapper folder1 = new WorkspaceFolderWrapper(URI.create("file://folder1"), null, logTester.getLogger());
+    WorkspaceFolderWrapper folder1bis = new WorkspaceFolderWrapper(URI.create("file://folder1"), null, logTester.getLogger());
+    WorkspaceFolderWrapper folder2 = new WorkspaceFolderWrapper(URI.create("file://folder2"), null, logTester.getLogger());
 
     assertThat(folder1)
       .isNotEqualTo("foo")

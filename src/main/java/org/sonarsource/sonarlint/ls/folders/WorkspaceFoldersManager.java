@@ -121,7 +121,7 @@ public class WorkspaceFoldersManager {
   }
 
   private WorkspaceFolderWrapper addFolder(WorkspaceFolder added, URI uri) {
-    var addedWrapper = new WorkspaceFolderWrapper(uri, added);
+    var addedWrapper = new WorkspaceFolderWrapper(uri, added, logOutput);
     if (folders.put(uri, addedWrapper) != null) {
       logOutput.warn(format("Registered workspace folder %s was already added", addedWrapper));
     } else {

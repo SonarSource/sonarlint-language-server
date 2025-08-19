@@ -464,7 +464,7 @@ class ProjectBindingManagerTests {
     var fileUri = URI.create("file:///fileUri");
     var folderUri = URI.create("file:///folderUri");
     when(foldersManager.findFolderForFile(fileUri))
-      .thenReturn(Optional.of(new WorkspaceFolderWrapper(folderUri, null)));
+      .thenReturn(Optional.of(new WorkspaceFolderWrapper(folderUri, null, null)));
     folderBindingCache.put(folderUri, Optional.of(new ProjectBinding("connectionId",
       "projectKey")));
     var maybeBinding = underTest.getBindingIfExists(fileUri);
@@ -523,7 +523,7 @@ class ProjectBindingManagerTests {
   }
 
   private WorkspaceFolderWrapper mockFileInAFolder() {
-    var folderWrapper = spy(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(), new WorkspaceFolder(workspaceFolderPath.toUri().toString(), workspaceFolderPath.getFileName().toString())));
+    var folderWrapper = spy(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(), new WorkspaceFolder(workspaceFolderPath.toUri().toString(), workspaceFolderPath.getFileName().toString()), logTester.getLogger()));
     when(foldersManager.findFolderForFile(fileInAWorkspaceFolderPath.toUri())).thenReturn(Optional.of(folderWrapper));
     return folderWrapper;
   }
