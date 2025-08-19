@@ -344,15 +344,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       logOutput.errorWithStackTrace("Can't get token for server " + serverUrlOrOrganization, e);
       return null;
     }
-//    if (connectionSettings == null) {
-//      return null;
-//    }
-//    var token = connectionSettings.getToken();
-//    if (token == null || token.isBlank()) {
-//      return null;
-//    }
-//    return Either.forLeft(new TokenDto(token));
-
   }
 
   @Override

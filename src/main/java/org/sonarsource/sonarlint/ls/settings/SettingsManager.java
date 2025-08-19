@@ -70,15 +70,15 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   private static Path sonarLintUserHomeOverride = null;
 
-  public static final String ORGANIZATION_KEY = "organizationKey";
-  public static final String REGION_KEY = "region";
-  public static final String DISABLE_NOTIFICATIONS = "disableNotifications";
+  private static final String ORGANIZATION_KEY = "organizationKey";
+  private static final String REGION_KEY = "region";
+  private static final String DISABLE_NOTIFICATIONS = "disableNotifications";
   private static final String PROJECT = "project";
   public static final String DEFAULT_CONNECTION_ID = "<default>";
-  public static final String SERVER_URL = "serverUrl";
+  private static final String SERVER_URL = "serverUrl";
   private static final String SERVER_ID = "serverId";
   private static final String TOKEN = "token";
-  public static final String CONNECTION_ID = "connectionId";
+  private static final String CONNECTION_ID = "connectionId";
   public static final String SONARLINT_CONFIGURATION_NAMESPACE = "sonarlint";
   public static final String DOTNET_DEFAULT_SOLUTION_PATH = "dotnet.defaultSolution";
   public static final String OMNISHARP_USE_MODERN_NET = "omnisharp.useModernNet";
@@ -457,7 +457,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     });
   }
 
-  public void parseSonarQubeConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
+  private void parseSonarQubeConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
     @SuppressWarnings("unchecked")
     var sonarqubeEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarqube", Collections.emptyList());
     sonarqubeEntries.forEach(m -> {
@@ -472,7 +472,21 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     });
   }
 
-  public void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
+  public void parseSonarQubeConnectionsWithoutToken(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
+    @SuppressWarnings("unchecked")
+    var sonarqubeEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarqube", Collections.emptyList());
+    sonarqubeEntries.forEach(m -> {
+      if (checkRequiredAttribute(m, "SonarQube server", SERVER_URL)) {
+        var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
+        var url = (String) m.get(SERVER_URL);
+        var disableNotifications = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
+        var connectionSettings = new ServerConnectionSettings(connectionId, url, null, null, disableNotifications, null);
+        addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
+      }
+    });
+  }
+
+  private void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
     @SuppressWarnings("unchecked")
     var sonarcloudEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
     sonarcloudEntries.forEach(m -> {
@@ -488,6 +502,25 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
           new ServerConnectionSettings(connectionId,
             parsedRegion == SonarCloudRegion.US ? ServerConnectionSettings.getSonarCloudUSUrl() : ServerConnectionSettings.getSonarCloudUrl(),
             token, organizationKey, disableNotifs, parsedRegion));
+      }
+    });
+  }
+
+  public void parseSonarCloudConnectionsWithoutToken(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
+    @SuppressWarnings("unchecked")
+    var sonarcloudEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
+    sonarcloudEntries.forEach(m -> {
+
+      if (checkRequiredAttribute(m, "SonarCloud", ORGANIZATION_KEY)) {
+        var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
+        var organizationKey = (String) m.get(ORGANIZATION_KEY);
+        var disableNotifs = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
+        var region = (String) m.getOrDefault(REGION_KEY, SonarCloudRegion.EU.name());
+        var parsedRegion = parseRegion(region);
+        addIfUniqueConnectionId(serverConnections, connectionId,
+          new ServerConnectionSettings(connectionId,
+            parsedRegion == SonarCloudRegion.US ? ServerConnectionSettings.getSonarCloudUSUrl() : ServerConnectionSettings.getSonarCloudUrl(),
+            null, organizationKey, disableNotifs, parsedRegion));
       }
     });
   }

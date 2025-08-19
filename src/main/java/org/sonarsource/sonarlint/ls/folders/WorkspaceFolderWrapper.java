@@ -23,25 +23,20 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
-import java.util.concurrent.CountDownLatch;
 import javax.annotation.CheckForNull;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.eclipse.lsp4j.WorkspaceFolder;
-import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 
 public class WorkspaceFolderWrapper {
   private final URI uri;
   private final WorkspaceFolder lspFolder;
-  private final LanguageClientLogger logOutput;
   private WorkspaceFolderSettings settings;
-  private final CountDownLatch initLatch = new CountDownLatch(1);
 
-  public WorkspaceFolderWrapper(URI uri, WorkspaceFolder lspFolder, LanguageClientLogger logOutput) {
+  public WorkspaceFolderWrapper(URI uri, WorkspaceFolder lspFolder) {
     this.uri = uri;
     this.lspFolder = lspFolder;
-    this.logOutput = logOutput;
   }
 
   public Path getRootPath() {
@@ -79,15 +74,6 @@ public class WorkspaceFolderWrapper {
    * Get non null settings, waiting for them to be initialized
    */
   public WorkspaceFolderSettings getSettings() {
-//    try {
-//      if (initLatch.await(1, TimeUnit.MINUTES)) {
-//        return settings;
-//      }
-//    } catch (InterruptedException e) {
-//      logOutput.debugWithStackTrace("Interrupted!", e);
-//      Thread.currentThread().interrupt();
-//    }
-//    throw new IllegalStateException("Unable to get settings in time");
     return settings;
   }
 
@@ -98,7 +84,6 @@ public class WorkspaceFolderWrapper {
 
   public void setSettings(WorkspaceFolderSettings settings) {
     this.settings = settings;
-    initLatch.countDown();
   }
 
 }

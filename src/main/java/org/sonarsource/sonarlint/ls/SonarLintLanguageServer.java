@@ -314,30 +314,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var additionalAttributes = (Map<String, Object>) options.getOrDefault("additionalAttributes", Map.of());
       var userAgent = "SonarQube for IDE (SonarLint) - Visual Studio Code " + productVersion + " - " + clientVersion;
       var clientNodePath = (String) options.get("clientNodePath");
-
-      // initialize connections
-      var connectionsMap = (Map<String, Object>) options.getOrDefault("connections", Collections.emptyMap());
-      var sqs = new ArrayList<SonarQubeConnectionConfigurationDto>();
-      var serverConnections = new HashMap<String, ServerConnectionSettings>();
-      settingsManager.parseSonarQubeConnections(connectionsMap, serverConnections);
-      serverConnections.forEach((connectionId, connectionSettings) ->
-        sqs.add(new SonarQubeConnectionConfigurationDto(connectionId, connectionSettings.getServerUrl(), connectionSettings.isSmartNotificationsDisabled())));
-      backendServiceFacade.setSonarQubeServerConnections(sqs);
-
-      var cloudConnections = new HashMap<String, ServerConnectionSettings>();
-      settingsManager.parseSonarCloudConnections(connectionsMap, cloudConnections);
-      var sqc = new ArrayList<SonarCloudConnectionConfigurationDto>();
-      cloudConnections.forEach((connectionId, connectionSettings) ->
-        sqc.add(new SonarCloudConnectionConfigurationDto(connectionId, connectionSettings.getOrganizationKey(),
-          connectionSettings.getRegion(), connectionSettings.isSmartNotificationsDisabled())));
-      backendServiceFacade.setSonarqubeCloudConnections(sqc);
-
-      // initialise rule settings
-      var standaloneRulesConfiguration = RulesConfiguration.parse((Map<String, Object>) options.getOrDefault("rules", Collections.emptyMap()));
-      backendServiceFacade.setStandaloneRuleConfigByKey(settingsManager.getStandaloneRuleConfigByKey(standaloneRulesConfiguration));
-
       var focusOnNewCode = (boolean) options.getOrDefault("focusOnNewCode", false);
-      backendServiceFacade.setFocusOnNewCode(focusOnNewCode);
+      var standaloneRulesConfiguration = RulesConfiguration.parse((Map<String, Object>) options.getOrDefault("rules", Collections.emptyMap()));
+      var connectionsMap = (Map<String, Object>) options.getOrDefault("connections", Collections.emptyMap());
 
       diagnosticPublisher.initialize(firstSecretDetected);
 
@@ -347,6 +326,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       backendServiceFacade.setOmnisharpDirectory((String) options.get("omnisharpDirectory"));
       backendServiceFacade.setCsharpOssPath((String) options.get("csharpOssPath"));
       backendServiceFacade.setCsharpEnterprisePath((String) options.get("csharpEnterprisePath"));
+      backendServiceFacade.setStandaloneRuleConfigByKey(settingsManager.getStandaloneRuleConfigByKey(standaloneRulesConfiguration));
+      backendServiceFacade.setFocusOnNewCode(focusOnNewCode);
+      provideConnectionsDataforBackendInitialization(connectionsMap);
 
       var eslintBridgeServerPath = (String) options.get("eslintBridgeServerPath");
       provideBackendInitData(productKey, userAgent, clientNodePath, eslintBridgeServerPath);
@@ -368,6 +350,23 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
       return new InitializeResult(c, info);
     });
+  }
+
+  private void provideConnectionsDataforBackendInitialization(Map<String, Object> connectionsMap) {
+    var sqs = new ArrayList<SonarQubeConnectionConfigurationDto>();
+    var serverConnections = new HashMap<String, ServerConnectionSettings>();
+    settingsManager.parseSonarQubeConnectionsWithoutToken(connectionsMap, serverConnections);
+    serverConnections.forEach((connectionId, connectionSettings) ->
+      sqs.add(new SonarQubeConnectionConfigurationDto(connectionId, connectionSettings.getServerUrl(), connectionSettings.isSmartNotificationsDisabled())));
+    backendServiceFacade.setSonarQubeServerConnections(sqs);
+
+    var cloudConnections = new HashMap<String, ServerConnectionSettings>();
+    settingsManager.parseSonarCloudConnectionsWithoutToken(connectionsMap, cloudConnections);
+    var sqc = new ArrayList<SonarCloudConnectionConfigurationDto>();
+    cloudConnections.forEach((connectionId, connectionSettings) ->
+      sqc.add(new SonarCloudConnectionConfigurationDto(connectionId, connectionSettings.getOrganizationKey(),
+        connectionSettings.getRegion(), connectionSettings.isSmartNotificationsDisabled())));
+    backendServiceFacade.setSonarqubeCloudConnections(sqc);
   }
 
   @Override

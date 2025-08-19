@@ -122,9 +122,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "additionalAttributes", Map.of(
         "extra", "value"
       ),
-      "omnisharpDirectory", omnisharpDir.toString(),
-      "sonarqubeServerConnections", List.of(),
-      "sonarqubeCloudConnections", List.of()
+      "omnisharpDirectory", omnisharpDir.toString()
     ), new WorkspaceFolder(analysisDir.toUri().toString(), "AnalysisDir"));
   }
 
