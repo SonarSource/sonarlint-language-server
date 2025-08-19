@@ -445,7 +445,7 @@ class SettingsManagerTests {
         }
       }
       """);
-    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder(), logTester.getLogger());
+    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
@@ -472,7 +472,7 @@ class SettingsManagerTests {
         }
       }
       """);
-    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder(), logTester.getLogger());
+    var folderWrapper = new WorkspaceFolderWrapper(FOLDER_URI, new WorkspaceFolder());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
@@ -567,7 +567,7 @@ class SettingsManagerTests {
     var workspaceFolderUri = workspaceFolder.toUri();
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
-    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder(), logTester.getLogger());
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
@@ -592,7 +592,7 @@ class SettingsManagerTests {
     var workspaceFolderUri = workspaceFolder.toUri();
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
-    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder(), logTester.getLogger());
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
@@ -617,7 +617,7 @@ class SettingsManagerTests {
     var workspaceFolderUri = workspaceFolder.toUri();
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
-    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder(), logTester.getLogger());
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();
@@ -707,7 +707,7 @@ class SettingsManagerTests {
     var workspaceFolderUri = URI.create("notfile:///workspace/folder");
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     mockConfigurationRequest(workspaceFolderUri, config);
-    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder(), logTester.getLogger());
+    var folderWrapper = new WorkspaceFolderWrapper(workspaceFolderUri, new WorkspaceFolder());
     when(foldersManager.getAll()).thenReturn(List.of(folderWrapper));
 
     underTest.didChangeConfiguration();

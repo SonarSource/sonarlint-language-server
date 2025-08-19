@@ -62,7 +62,7 @@ class FolderFileSystemTests {
   void should_provide_main_files_of_requested_suffix() {
     var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), anyBoolean(), any())).thenReturn(false);
-    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"), logTester.getLogger());
+    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
     folderWrapper.setSettings(EMPTY_SETTINGS);
     var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
@@ -78,7 +78,7 @@ class FolderFileSystemTests {
   void should_provide_test_files_of_requested_suffix() {
     var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), anyBoolean(), any())).thenReturn(true);
-    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"), logTester.getLogger());
+    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
     folderWrapper.setSettings(EMPTY_SETTINGS);
     var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
@@ -94,7 +94,7 @@ class FolderFileSystemTests {
   void should_provide_all_main_files() {
     var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), anyBoolean(), any())).thenReturn(false);
-    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"), logTester.getLogger());
+    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
     folderWrapper.setSettings(EMPTY_SETTINGS);
     var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
@@ -110,7 +110,7 @@ class FolderFileSystemTests {
   void should_provide_all_test_files() {
     var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), anyBoolean(), any())).thenReturn(true);
-    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"), logTester.getLogger());
+    var folderWrapper = new WorkspaceFolderWrapper(tempFolder.toUri(), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
     folderWrapper.setSettings(EMPTY_SETTINGS);
     var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
@@ -126,7 +126,7 @@ class FolderFileSystemTests {
   void should_throw_an_exception_when_folder_does_not_exist() {
     var fileTypeClassifier = mock(FileTypeClassifier.class);
     when(fileTypeClassifier.isTest(any(), any(), anyBoolean(), any())).thenReturn(false);
-    var folderWrapper = new WorkspaceFolderWrapper(URI.create("file:///wrong_path"), new WorkspaceFolder(tempFolder.toString(), "My Folder"), logTester.getLogger());
+    var folderWrapper = new WorkspaceFolderWrapper(URI.create("file:///wrong_path"), new WorkspaceFolder(tempFolder.toString(), "My Folder"));
     folderWrapper.setSettings(EMPTY_SETTINGS);
     var folderFileSystem = new FolderFileSystem(folderWrapper, mock(JavaConfigCache.class), fileTypeClassifier);
 
