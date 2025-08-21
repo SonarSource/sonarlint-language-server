@@ -158,6 +158,21 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     return standaloneRuleConfigByKey;
   }
 
+  public Map<String, StandaloneRuleConfigDto> getStandaloneRuleConfigByKey(RulesConfiguration initialRulesConfiguration) {
+    var standaloneRuleConfigByKey = new HashMap<String, StandaloneRuleConfigDto>();
+    initialRulesConfiguration.includedRules().forEach((ruleKey -> {
+      var ruleParams = initialRulesConfiguration.ruleParameters().get(ruleKey);
+      var sanitizedParams = ruleParams != null ? ruleParams : Map.<String, String>of();
+      standaloneRuleConfigByKey.put(ruleKey.toString(), new StandaloneRuleConfigDto(true, sanitizedParams));
+    }));
+    initialRulesConfiguration.excludedRules().forEach((ruleKey -> {
+      var ruleParams = initialRulesConfiguration.ruleParameters().get(ruleKey);
+      var sanitizedParams = ruleParams != null ? ruleParams : Map.<String, String>of();
+      standaloneRuleConfigByKey.put(ruleKey.toString(), new StandaloneRuleConfigDto(false, sanitizedParams));
+    }));
+    return standaloneRuleConfigByKey;
+  }
+
   private void addRulesToConfig(RuleKey ruleKey, HashMap<String, StandaloneRuleConfigDto> standaloneRuleConfigByKey, boolean isActive) {
     var params = currentSettings.getRuleParameters().get(ruleKey);
     var sanitizedParams = params != null ? params : Map.<String, String>of();
@@ -188,16 +203,17 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         var newDefaultFolderSettings = parseFolderSettings(workspaceSettingsMap, null);
         var oldDefaultFolderSettings = currentDefaultSettings;
         this.currentDefaultSettings = newDefaultFolderSettings;
-        if (initLatch.getCount() != 0) {
-          initLatch.countDown();
-          backendServiceFacade.initialize(getCurrentSettings().getServerConnections());
-        } else {
-          notifyChangeClientNodeJsPathIfNeeded(oldWorkspaceSettings, newWorkspaceSettings);
-          backendServiceFacade.getBackendService().didChangeConnections(getCurrentSettings().getServerConnections());
-          backendServiceFacade.getBackendService().updateStandaloneRulesConfiguration(getStandaloneRuleConfigByKey());
-        }
+
+        // Count down the latch immediately after settings are set to allow getCurrentSettings() calls
+        // from listeners and other components
+        initLatch.countDown();
+
+        notifyChangeClientNodeJsPathIfNeeded(oldWorkspaceSettings, newWorkspaceSettings);
+        backendServiceFacade.getBackendService().didChangeConnections(this.currentSettings.getServerConnections());
+        backendServiceFacade.getBackendService().updateStandaloneRulesConfiguration(getStandaloneRuleConfigByKey());
 
         foldersManager.getAll().forEach(f -> updateWorkspaceFolderSettings(f, true));
+        foldersManager.initialized();
         notifyListeners(newWorkspaceSettings, oldWorkspaceSettings, newDefaultFolderSettings, oldDefaultFolderSettings);
       } catch (InterruptedException e) {
         interrupted(e, logOutput);
@@ -205,12 +221,16 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         logOutput.errorWithStackTrace("Unable to update configuration.", e);
       } finally {
         client.readyForTests();
+        // Ensure latch is counted down even in case of exceptions
+        while (initLatch.getCount() > 0) {
+          initLatch.countDown();
+        }
       }
     });
   }
 
-  private void notifyChangeClientNodeJsPathIfNeeded(WorkspaceSettings oldWorkspaceSettings, WorkspaceSettings newWorkspaceSettings) {
-    var hasNodeJsPathChanged = !Objects.equals(oldWorkspaceSettings.pathToNodeExecutable(), newWorkspaceSettings.pathToNodeExecutable());
+  private void notifyChangeClientNodeJsPathIfNeeded(@Nullable WorkspaceSettings oldWorkspaceSettings, WorkspaceSettings newWorkspaceSettings) {
+    var hasNodeJsPathChanged = oldWorkspaceSettings != null && !Objects.equals(oldWorkspaceSettings.pathToNodeExecutable(), newWorkspaceSettings.pathToNodeExecutable());
     if (hasNodeJsPathChanged) {
       backendServiceFacade.getBackendService().didChangeClientNodeJsPath(new DidChangeClientNodeJsPathParams(Path.of(newWorkspaceSettings.pathToNodeExecutable())));
     }
@@ -452,6 +472,20 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     });
   }
 
+  public void parseSonarQubeConnectionsWithoutToken(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
+    @SuppressWarnings("unchecked")
+    var sonarqubeEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarqube", Collections.emptyList());
+    sonarqubeEntries.forEach(m -> {
+      if (checkRequiredAttribute(m, "SonarQube server", SERVER_URL)) {
+        var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
+        var url = (String) m.get(SERVER_URL);
+        var disableNotifications = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
+        var connectionSettings = new ServerConnectionSettings(connectionId, url, null, null, disableNotifications, null);
+        addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
+      }
+    });
+  }
+
   private void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
     @SuppressWarnings("unchecked")
     var sonarcloudEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
@@ -468,6 +502,25 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
           new ServerConnectionSettings(connectionId,
             parsedRegion == SonarCloudRegion.US ? ServerConnectionSettings.getSonarCloudUSUrl() : ServerConnectionSettings.getSonarCloudUrl(),
             token, organizationKey, disableNotifs, parsedRegion));
+      }
+    });
+  }
+
+  public void parseSonarCloudConnectionsWithoutToken(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
+    @SuppressWarnings("unchecked")
+    var sonarcloudEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
+    sonarcloudEntries.forEach(m -> {
+
+      if (checkRequiredAttribute(m, "SonarCloud", ORGANIZATION_KEY)) {
+        var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
+        var organizationKey = (String) m.get(ORGANIZATION_KEY);
+        var disableNotifs = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
+        var region = (String) m.getOrDefault(REGION_KEY, SonarCloudRegion.EU.name());
+        var parsedRegion = parseRegion(region);
+        addIfUniqueConnectionId(serverConnections, connectionId,
+          new ServerConnectionSettings(connectionId,
+            parsedRegion == SonarCloudRegion.US ? ServerConnectionSettings.getSonarCloudUSUrl() : ServerConnectionSettings.getSonarCloudUrl(),
+            null, organizationKey, disableNotifs, parsedRegion));
       }
     });
   }
@@ -494,7 +547,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     }
   }
 
-  private boolean checkRequiredAttribute(Map<String, Object> map, String label, String... requiredAttributes) {
+  public boolean checkRequiredAttribute(Map<String, Object> map, String label, String... requiredAttributes) {
     var missing = stream(requiredAttributes).filter(att -> isBlank((String) map.get(att))).toList();
     if (!missing.isEmpty()) {
       logOutput.error(format("Incomplete %s connection configuration. Required parameters must not be blank: %s.", label, String.join(",", missing)));

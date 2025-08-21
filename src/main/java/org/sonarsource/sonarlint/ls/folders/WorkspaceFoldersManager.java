@@ -56,6 +56,7 @@ public class WorkspaceFoldersManager {
   private final BackendServiceFacade backendServiceFacade;
   private final LanguageClientLogger logOutput;
   private final ExecutorService executor;
+  private final List<WorkspaceFolder> workspaceFolders = new ArrayList<>();
 
   public WorkspaceFoldersManager(BackendServiceFacade backendServiceFacade, LanguageClientLogger logOutput) {
     this(Executors.newCachedThreadPool(Utils.threadFactory("SonarLint folders manager", false)), backendServiceFacade, logOutput);
@@ -77,9 +78,12 @@ public class WorkspaceFoldersManager {
         var uri = create(wf.getUri());
         addFolder(wf, uri);
       });
-      executor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().addWorkspaceFolders(workspaceFolders, getBindingProvider()),
-        t -> logOutput.errorWithStackTrace("Failed to initialize workspace folders.", t)));
     }
+  }
+
+  public void initialized() {
+    executor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().addWorkspaceFolders(this.workspaceFolders, getBindingProvider()),
+      t -> logOutput.errorWithStackTrace("Failed to initialize workspace folders.", t)));
   }
 
   public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
@@ -103,6 +107,10 @@ public class WorkspaceFoldersManager {
   @CheckForNull
   private WorkspaceFolderWrapper removeFolder(URI uri) {
     var removed = folders.remove(uri);
+    var workspaceFolder = this.workspaceFolders.stream().filter(wf -> wf.getUri().equalsIgnoreCase(uri.toString())).findFirst().orElse(null);
+    if (workspaceFolder != null) {
+      this.workspaceFolders.remove(workspaceFolder);
+    }
     if (removed == null) {
       logOutput.warn("Unregistered workspace folder was missing: " + uri);
       return null;
@@ -118,6 +126,7 @@ public class WorkspaceFoldersManager {
       logOutput.warn(format("Registered workspace folder %s was already added", addedWrapper));
     } else {
       logOutput.debug(format("Folder %s added", addedWrapper));
+      this.workspaceFolders.add(added);
     }
     return addedWrapper;
   }

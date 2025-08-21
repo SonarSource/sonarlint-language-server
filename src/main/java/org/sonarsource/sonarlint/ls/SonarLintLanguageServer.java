@@ -30,13 +30,16 @@ import java.net.Socket;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -61,6 +64,7 @@ import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
+import org.eclipse.lsp4j.InitializedParams;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.NotebookDocumentSyncRegistrationOptions;
@@ -89,6 +93,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConn
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.GetConnectionSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpGenerateUserTokenResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarCloudConnectionConfigurationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.config.SonarQubeConnectionConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.ListUserOrganizationsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.OrganizationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionParams;
@@ -96,6 +102,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.CheckStatusCh
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.StandaloneRuleConfigDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.ChangeDependencyRiskStatusParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
@@ -122,6 +129,8 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
+import org.sonarsource.sonarlint.ls.settings.RulesConfiguration;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
@@ -230,7 +239,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, backendServiceFacade, lsLogOutput);
     vsCodeClient.setSettingsManager(settingsManager);
     vsCodeClient.setWorkspaceFoldersManager(workspaceFoldersManager);
-    backendServiceFacade.setSettingsManager(settingsManager);
     this.fileTypeClassifier = new FileTypeClassifier(lsLogOutput);
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
     this.settingsManager.addListener(lsLogOutput);
@@ -290,35 +298,43 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var showVerboseLogs = (boolean) options.getOrDefault("showVerboseLogs", true);
       lsLogOutput.initialize(showVerboseLogs);
 
+      var clientInfo = ofNullable(params.getClientInfo());
+      var workspaceName = (String) options.get("workspaceName");
+      var firstSecretDetected = (boolean) options.getOrDefault("firstSecretDetected", false);
+
       var productKey = (String) options.get("productKey");
       // deprecated, will be ignored when productKey present
       var telemetryStorage = (String) options.get("telemetryStorage");
-
       var productName = (String) options.get("productName");
       var productVersion = (String) options.get("productVersion");
-      var clientInfo = ofNullable(params.getClientInfo());
       this.appName = clientInfo.map(ci -> ci.getName()).orElse("Unknown");
-      var workspaceName = (String) options.get("workspaceName");
       var clientVersion = clientInfo.map(ci -> ci.getVersion()).orElse("Unknown");
       var ideVersion = appName + " " + clientVersion;
-      var firstSecretDetected = (boolean) options.getOrDefault("firstSecretDetected", false);
       var platform = (String) options.get("platform");
       var architecture = (String) options.get("architecture");
       var additionalAttributes = (Map<String, Object>) options.getOrDefault("additionalAttributes", Map.of());
       var userAgent = "SonarQube for IDE (SonarLint) - Visual Studio Code " + productVersion + " - " + clientVersion;
       var clientNodePath = (String) options.get("clientNodePath");
+      var focusOnNewCode = (boolean) options.getOrDefault("focusOnNewCode", false);
+      var standaloneRulesConfiguration = RulesConfiguration.parse((Map<String, Object>) options.getOrDefault("rules", Collections.emptyMap()));
+      var connectionsMap = (Map<String, Object>) options.getOrDefault("connections", Collections.emptyMap());
+      var omnisharpDirectory = (String) options.get("omnisharpDirectory");
+      var csharpOssPath = (String) options.get("csharpOssPath");
+      var csharpEnterprisePath = (String) options.get("csharpEnterprisePath");
+      var standaloneRuleConfigByKey = settingsManager.getStandaloneRuleConfigByKey(standaloneRulesConfiguration);
+      var eslintBridgeServerPath = (String) options.get("eslintBridgeServerPath");
 
       diagnosticPublisher.initialize(firstSecretDetected);
 
       hostInfoProvider.initialize(clientVersion, workspaceName);
       backendServiceFacade.setTelemetryInitParams(new TelemetryInitParams(productKey, telemetryStorage,
         productName, productVersion, ideVersion, platform, architecture, additionalAttributes));
-      backendServiceFacade.setOmnisharpDirectory((String) options.get("omnisharpDirectory"));
-      backendServiceFacade.setCsharpOssPath((String) options.get("csharpOssPath"));
-      backendServiceFacade.setCsharpEnterprisePath((String) options.get("csharpEnterprisePath"));
 
-      var eslintBridgeServerPath = (String) options.get("eslintBridgeServerPath");
-      provideBackendInitData(productKey, userAgent, clientNodePath, eslintBridgeServerPath);
+      provideBackendInitData(productKey, userAgent, clientNodePath, eslintBridgeServerPath, standaloneRuleConfigByKey, connectionsMap,
+        focusOnNewCode, omnisharpDirectory, csharpOssPath, csharpEnterprisePath);
+
+      backendServiceFacade.initialize();
+
       workspaceFoldersManager.initialize(params.getWorkspaceFolders());
 
       var c = new ServerCapabilities();
@@ -333,6 +349,16 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       }
       var info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
       return new InitializeResult(c, info);
+    });
+  }
+
+  @Override
+  public void initialized(InitializedParams params) {
+    CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      lsLogOutput.debug("Language Server initialized");
+      settingsManager.didChangeConfiguration();
+      return null;
     });
   }
 
@@ -642,20 +668,25 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public CompletableFuture<ConnectionCheckResult> checkConnection(ConnectionCheckParams params) {
-    var connectionName = getConnectionNameFromConnectionCheckParams(params);
-    lsLogOutput.debug(format("Received a validate connectionName request for %s", connectionName));
-    try {
-      var validateConnectionParams = getValidateConnectionParams(params);
-      if (validateConnectionParams != null) {
-        return backendServiceFacade.getBackendService().validateConnection(validateConnectionParams)
-          .thenApply(validationResult -> validationResult.isSuccess() ? success(connectionName)
-            : failure(connectionName, validationResult.getMessage()));
+    return CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      var connectionName = getConnectionNameFromConnectionCheckParams(params);
+      lsLogOutput.debug(format("Received a validate connectionName request for %s", connectionName));
+      try {
+        var validateConnectionParams = getValidateConnectionParams(params);
+        if (validateConnectionParams != null) {
+          return backendServiceFacade.getBackendService().validateConnection(validateConnectionParams)
+            .thenApply(validationResult -> validationResult.isSuccess() ? success(connectionName)
+              : failure(connectionName, validationResult.getMessage())).get();
+        }
+        return failure(connectionName, format("Connection '%s' is unknown", connectionName));
+      } catch (IllegalStateException e) {
+        // Handle null/empty token validation errors
+        return failure(connectionName, "Invalid credentials: " + e.getMessage());
+      } catch (Exception e) {
+        return failure(connectionName, "Failed to validate connection: " + e.getMessage());
       }
-      return CompletableFuture.completedFuture(failure(connectionName, format("Connection '%s' is unknown", connectionName)));
-    } catch (IllegalStateException e) {
-      // Handle null/empty token validation errors
-      return CompletableFuture.completedFuture(failure(connectionName, "Invalid credentials: " + e.getMessage()));
-    }
+    });
   }
 
   private ValidateConnectionParams getValidateConnectionParams(ConnectionCheckParams params) {
@@ -665,8 +696,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public CompletableFuture<Map<String, String>> getRemoteProjectsForConnection(GetRemoteProjectsForConnectionParams getRemoteProjectsForConnectionParams) {
-    return CompletableFuture.completedFuture(
-      bindingManager.getRemoteProjects(getRemoteProjectsForConnectionParams.getConnectionId()));
+    return CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      return bindingManager.getRemoteProjects(getRemoteProjectsForConnectionParams.getConnectionId());
+    });
   }
 
   @Override
@@ -676,21 +709,28 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void onTokenUpdate(OnTokenUpdateNotificationParams onTokenUpdateNotificationParams) {
-    lsLogOutput.info("Updating credentials on token change.");
-    backendServiceFacade.getBackendService().didChangeCredentials(onTokenUpdateNotificationParams.getConnectionId());
-    var updatedConnection = settingsManager.getCurrentSettings().getServerConnections().get(onTokenUpdateNotificationParams.getConnectionId());
-    updatedConnection.setToken(onTokenUpdateNotificationParams.getToken());
-    bindingManager.validateConnection(onTokenUpdateNotificationParams.getConnectionId());
+    CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      lsLogOutput.info("Updating credentials on token change.");
+      backendServiceFacade.getBackendService().didChangeCredentials(onTokenUpdateNotificationParams.getConnectionId());
+      var updatedConnection = settingsManager.getCurrentSettings().getServerConnections().get(onTokenUpdateNotificationParams.getConnectionId());
+      updatedConnection.setToken(onTokenUpdateNotificationParams.getToken());
+      bindingManager.validateConnection(onTokenUpdateNotificationParams.getConnectionId());
+      return null;
+    });
   }
 
   @Override
   public CompletableFuture<Map<String, String>> getRemoteProjectNamesByProjectKeys(GetRemoteProjectNamesByKeysParams params) {
-    try {
-      return bindingManager.getRemoteProjectsByKeys(params.connectionId(), params.projectKeys());
-    } catch (IllegalStateException | IllegalArgumentException failed) {
-      var responseError = new ResponseError(ResponseErrorCode.InternalError, "Could not get remote project name", failed);
-      return CompletableFuture.failedFuture(new ResponseErrorException(responseError));
-    }
+    return CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      try {
+        return bindingManager.getRemoteProjectsByKeys(params.connectionId(), params.projectKeys()).get();
+      } catch (IllegalStateException | IllegalArgumentException | InterruptedException | ExecutionException failed) {
+        var responseError = new ResponseError(ResponseErrorCode.InternalError, "Could not get remote project name", failed);
+        throw new ResponseErrorException(responseError);
+      }
+    });
   }
 
   @Override
@@ -760,7 +800,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     telemetry.toolCalled(params.toolName(), params.success());
   }
 
-  void provideBackendInitData(String productKey, String userAgent, String clientNodePath, String eslintBridgeServerPath) {
+  void provideBackendInitData(String productKey, String userAgent, String clientNodePath, String eslintBridgeServerPath,
+    Map<String, StandaloneRuleConfigDto> standaloneRuleConfigByKey,
+    Map<String, Object> connectionsMap, boolean focusOnNewCode, String omnisharpDirectory, String csharpOssPath, String csharpEnterprisePath) {
     BackendInitParams params = backendServiceFacade.getInitParams();
     params.setTelemetryProductKey(productKey);
     var actualSonarLintUserHome = SettingsManager.getSonarLintUserHomeOverride();
@@ -777,6 +819,28 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     params.setUserAgent(userAgent);
     params.setClientNodePath(clientNodePath);
     params.setEslintBridgeServerPath(eslintBridgeServerPath);
+
+    var sqs = new ArrayList<SonarQubeConnectionConfigurationDto>();
+    var serverConnections = new HashMap<String, ServerConnectionSettings>();
+    settingsManager.parseSonarQubeConnectionsWithoutToken(connectionsMap, serverConnections);
+    serverConnections.forEach((connectionId, connectionSettings) ->
+      sqs.add(new SonarQubeConnectionConfigurationDto(connectionId, connectionSettings.getServerUrl(), connectionSettings.isSmartNotificationsDisabled())));
+    params.setSonarQubeConnections(sqs);
+
+    var cloudConnections = new HashMap<String, ServerConnectionSettings>();
+    settingsManager.parseSonarCloudConnectionsWithoutToken(connectionsMap, cloudConnections);
+    var sqc = new ArrayList<SonarCloudConnectionConfigurationDto>();
+    cloudConnections.forEach((connectionId, connectionSettings) ->
+      sqc.add(new SonarCloudConnectionConfigurationDto(connectionId, connectionSettings.getOrganizationKey(),
+        connectionSettings.getRegion(), connectionSettings.isSmartNotificationsDisabled())));
+    params.setSonarCloudConnections(sqc);
+
+    params.setStandaloneRuleConfigByKey(standaloneRuleConfigByKey);
+    params.setFocusOnNewCode(focusOnNewCode);
+
+    params.setOmnisharpDirectory(omnisharpDirectory);
+    params.setCsharpOssPath(csharpOssPath);
+    params.setCsharpEnterprisePath(csharpEnterprisePath);
   }
 
   public CompletableFuture<Void> showHotspotLocations(ShowHotspotLocationsParams showHotspotLocationsParams) {

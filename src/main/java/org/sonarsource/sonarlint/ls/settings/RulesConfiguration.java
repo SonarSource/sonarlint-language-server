@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import org.sonar.api.rule.RuleKey;
 
-class RulesConfiguration {
+public class RulesConfiguration {
 
   private static final String LEVEL_ON = "on";
 
@@ -39,7 +39,7 @@ class RulesConfiguration {
     this.rules = rules;
   }
 
-  static RulesConfiguration parse(Map<String, Object> rulesSettings) {
+  public static RulesConfiguration parse(Map<String, Object> rulesSettings) {
     return new RulesConfiguration(rulesSettings.entrySet().stream()
       .map(ConfiguredRule::new)
       .filter(r -> r.key != null)

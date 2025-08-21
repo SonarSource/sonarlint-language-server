@@ -1009,6 +1009,48 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
+  void shouldGetCredentialsFromTheClient() {
+    var workspaceSettings = mock(WorkspaceSettings.class);
+    when(workspaceSettings.getServerConnections()).thenReturn(Map.of("testId",
+      new ServerConnectionSettings("testId", "http://localhost:9000", "tokenValueInSettings", null, false, null)));
+    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
+    when(client.getTokenForServer(any())).thenReturn(CompletableFuture.completedFuture("tokenValueFromClient"));
+
+    var result = underTest.getCredentials("testId");
+    assertThat(result).isNotNull();
+    assertThat(result.isLeft()).isTrue();
+    assertThat(result.getLeft().getToken()).isEqualTo("tokenValueFromClient");
+  }
+
+  @Test
+  void shouldGetSonarQubeCloudCredentialsFromTheClient() {
+    var workspaceSettings = mock(WorkspaceSettings.class);
+    when(workspaceSettings.getServerConnections()).thenReturn(Map.of("testId",
+      new ServerConnectionSettings("testId", "https://sonarcloud.io", "tokenValueInSettings", "myOrg", false, SonarCloudRegion.US)));
+    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
+    var orgCaptor = ArgumentCaptor.forClass(String.class);
+    when(client.getTokenForServer(orgCaptor.capture())).thenReturn(CompletableFuture.completedFuture("tokenValueFromClient"));
+
+    var result = underTest.getCredentials("testId");
+    assertThat(orgCaptor.getValue()).isEqualTo("US_myOrg");
+    assertThat(result).isNotNull();
+    assertThat(result.isLeft()).isTrue();
+    assertThat(result.getLeft().getToken()).isEqualTo("tokenValueFromClient");
+  }
+
+  @Test
+  void shouldHandleExceptionsFromClientDuringGetCredentials() {
+    var workspaceSettings = mock(WorkspaceSettings.class);
+    when(workspaceSettings.getServerConnections()).thenReturn(Map.of("testId",
+      new ServerConnectionSettings("testId", "http://localhost:9000", "tokenValueInSettings", null, false, null)));
+    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
+    when(client.getTokenForServer(any())).thenReturn(CompletableFuture.failedFuture(new InterruptedException()));
+
+    var result = underTest.getCredentials("testId");
+    assertThat(result).isNull();
+  }
+
+  @Test
   void shouldCallNotifyInvalidToken() {
     var connectionId = "test-connection-id";
 

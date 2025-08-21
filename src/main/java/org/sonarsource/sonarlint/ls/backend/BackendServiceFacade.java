@@ -29,7 +29,6 @@ import java.time.Duration;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -59,8 +58,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.TelemetryC
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
-import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
-import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.telemetry.TelemetryInitParams;
 
@@ -76,15 +73,9 @@ public class BackendServiceFacade {
   private final ConfigurationScopeDto rootConfigurationScope;
   private final ClientJsonRpcLauncher clientLauncher;
   private final LanguageClientLogger lsLogOutput;
-  private SettingsManager settingsManager;
   private TelemetryInitParams telemetryInitParams;
   private SonarLintTelemetry telemetry;
   private final CountDownLatch initLatch = new CountDownLatch(1);
-
-
-  private String omnisharpDirectory;
-  private String csharpOssPath;
-  private String csharpEnterprisePath;
 
   public BackendServiceFacade(SonarLintRpcClientDelegate rpcClient, LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client) {
     this(rpcClient, lsLogOutput, client, DEFAULT_INIT_TIMEOUT_SECONDS);
@@ -125,34 +116,12 @@ public class BackendServiceFacade {
     }
   }
 
-  public void setSettingsManager(SettingsManager settingsManager) {
-    this.settingsManager = settingsManager;
-  }
-
-  public void setOmnisharpDirectory(String omnisharpDirectory) {
-    this.omnisharpDirectory = omnisharpDirectory;
-  }
-
-  public void setCsharpOssPath(String csharpOssPath) {
-    this.csharpOssPath = csharpOssPath;
-  }
-
-  public void setCsharpEnterprisePath(String csharpEnterprisePath) {
-    this.csharpEnterprisePath = csharpEnterprisePath;
-  }
-
   public BackendInitParams getInitParams() {
     return initParams;
   }
 
-  private void initOnce(Map<String, ServerConnectionSettings> connections) {
+  private void initOnce() {
     if (initLatch.getCount() != 0) {
-      var sqConnections = BackendService.extractSonarQubeConnections(connections);
-      var scConnections = BackendService.extractSonarCloudConnections(connections);
-      initParams.setSonarQubeConnections(sqConnections);
-      initParams.setSonarCloudConnections(scConnections);
-      initParams.setStandaloneRuleConfigByKey(settingsManager.getStandaloneRuleConfigByKey());
-      initParams.setFocusOnNewCode(settingsManager.getCurrentSettings().isFocusOnNewCode());
       backendService.initialize(toInitParams(initParams));
       backendService.addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(rootConfigurationScope)));
       initLatch.countDown();
@@ -226,14 +195,14 @@ public class BackendServiceFacade {
 
   @CheckForNull
   private OmnisharpRequirementsDto getOmnisharpRequirements() {
-    var pathToOssCsharp = csharpOssPath == null ? null : Path.of(csharpOssPath);
-    var pathToEnterpriseCsharp = csharpEnterprisePath == null ? null : Path.of(csharpEnterprisePath);
-    if (omnisharpDirectory == null || pathToOssCsharp == null || pathToEnterpriseCsharp == null) {
+    var pathToOssCsharp = initParams.getCsharpOssPath() == null ? null : Path.of(initParams.getCsharpOssPath());
+    var pathToEnterpriseCsharp = initParams.getCsharpEnterprisePath() == null ? null : Path.of(initParams.getCsharpEnterprisePath());
+    if (initParams.getOmnisharpDirectory() == null || pathToOssCsharp == null || pathToEnterpriseCsharp == null) {
       return null;
     }
-    return new OmnisharpRequirementsDto(Path.of(omnisharpDirectory, "mono"),
-      Path.of(omnisharpDirectory, "net6"),
-      Path.of(omnisharpDirectory, "net472"),
+    return new OmnisharpRequirementsDto(Path.of(initParams.getOmnisharpDirectory(), "mono"),
+      Path.of(initParams.getOmnisharpDirectory(), "net6"),
+      Path.of(initParams.getOmnisharpDirectory(), "net472"),
       pathToOssCsharp,
       pathToEnterpriseCsharp);
   }
@@ -303,8 +272,8 @@ public class BackendServiceFacade {
     }
   }
 
-  public void initialize(Map<String, ServerConnectionSettings> serverConnections) {
-    initOnce(serverConnections);
+  public void initialize() {
+    initOnce();
   }
 
   public void setTelemetryInitParams(TelemetryInitParams telemetryInitParams) {
@@ -322,4 +291,6 @@ public class BackendServiceFacade {
   public CountDownLatch getInitLatch() {
     return initLatch;
   }
+
+
 }

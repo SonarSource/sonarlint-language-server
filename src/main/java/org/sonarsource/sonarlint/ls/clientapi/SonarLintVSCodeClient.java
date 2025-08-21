@@ -42,6 +42,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -330,14 +331,19 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public Either<TokenDto, UsernamePasswordDto> getCredentials(String connectionId) {
     var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
-    if (connectionSettings == null) {
+    var serverUrlOrOrganization = connectionSettings.isSonarCloudAlias() ?
+      (connectionSettings.getRegion() + "_" + connectionSettings.getOrganizationKey())
+      : connectionSettings.getServerUrl();
+    try {
+      return Either.forLeft(new TokenDto(client.getTokenForServer(serverUrlOrOrganization).get()));
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logOutput.errorWithStackTrace("Can't get token for server " + serverUrlOrOrganization, e);
+      return null;
+    } catch (ExecutionException e) {
+      logOutput.errorWithStackTrace("Can't get token for server " + serverUrlOrOrganization, e);
       return null;
     }
-    var token = connectionSettings.getToken();
-    if (token == null || token.isBlank()) {
-      return null;
-    }
-    return Either.forLeft(new TokenDto(token));
   }
 
   @Override

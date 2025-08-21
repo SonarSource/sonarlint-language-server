@@ -37,6 +37,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.TokenDto;
 public class ServerConnectionSettings {
   private final String connectionId;
   private final String serverUrl;
+  @Nullable
   private String token;
   private final boolean disableNotifications;
 
@@ -47,7 +48,7 @@ public class ServerConnectionSettings {
   private final EndpointParams endpointParams;
   private ValidateConnectionParams validateConnectionParams;
 
-  public ServerConnectionSettings(String connectionId, String serverUrl, String token, @Nullable String organizationKey,
+  public ServerConnectionSettings(String connectionId, String serverUrl, @Nullable String token, @Nullable String organizationKey,
     boolean disableNotifications, @Nullable SonarCloudRegion region) {
     this.connectionId = connectionId;
     this.serverUrl = serverUrl;
@@ -68,7 +69,7 @@ public class ServerConnectionSettings {
     if (token == null || token.isBlank()) {
       throw new IllegalStateException("Token cannot be null or empty for connection validation");
     }
-    
+
     Either<TransientSonarQubeConnectionDto, TransientSonarCloudConnectionDto> connectionDto = isSonarCloudAlias() ?
       Either.forRight(new TransientSonarCloudConnectionDto(getOrganizationKey(), Either.forLeft(new TokenDto(token)), getRegion())) :
       Either.forLeft(new TransientSonarQubeConnectionDto(getServerUrl(), Either.forLeft(new TokenDto(token))));

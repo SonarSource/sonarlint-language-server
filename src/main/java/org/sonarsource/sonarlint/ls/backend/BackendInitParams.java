@@ -44,6 +44,9 @@ public class BackendInitParams {
   private boolean isFocusOnNewCode;
   private String clientNodePath;
   private String eslintBridgeServerPath;
+  private String omnisharpDirectory;
+  private String csharpOssPath;
+  private String csharpEnterprisePath;
 
   public String getTelemetryProductKey() {
     return telemetryProductKey;
@@ -155,5 +158,29 @@ public class BackendInitParams {
 
   public String getEslintBridgeServerPath() {
     return eslintBridgeServerPath;
+  }
+
+  public String getOmnisharpDirectory() {
+    return omnisharpDirectory;
+  }
+
+  public void setOmnisharpDirectory(String omnisharpDirectory) {
+    this.omnisharpDirectory = omnisharpDirectory;
+  }
+
+  public String getCsharpOssPath() {
+    return csharpOssPath;
+  }
+
+  public void setCsharpOssPath(String csharpOssPath) {
+    this.csharpOssPath = csharpOssPath;
+  }
+  
+  public String getCsharpEnterprisePath() {
+    return csharpEnterprisePath;
+  }
+
+  public void setCsharpEnterprisePath(String csharpEnterprisePath) {
+    this.csharpEnterprisePath = csharpEnterprisePath;
   }
 }
