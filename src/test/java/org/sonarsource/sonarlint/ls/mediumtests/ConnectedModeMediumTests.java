@@ -101,15 +101,13 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private static final String PROJECT_NAME1 = "Project One";
   private static final String PROJECT_KEY2 = "project:key2";
   private static final String PROJECT_NAME2 = "Project Two";
-  private static final String ORGANIZATION_KEY = "myOrganization";
   private static final long CURRENT_TIME = System.currentTimeMillis();
-  private static Path omnisharpDir;
   private static Path folder1BaseDir;
   private static Path bindingSuggestionBaseDir;
 
   @BeforeAll
   static void initialize() throws Exception {
-    omnisharpDir = makeStaticTempDir();
+    Path omnisharpDir = makeStaticTempDir();
     folder1BaseDir = makeStaticTempDir();
     initialize(Map.of(
         "telemetryStorage", "not/exists",

@@ -17,10 +17,27 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls.telemetry;
+package org.sonarsource.sonarlint.ls;
 
 import java.util.Map;
-import javax.annotation.Nullable;
 
-public record TelemetryInitParams(String productName, String productVersion, String ideVersion, Map<String, Object> additionalAttributes) {
+public record SonarLintLanguageServerInitializationOptions(
+  boolean showVerboseLogs,
+  String workspaceName,
+  boolean firstSecretDetected,
+  String productKey,
+  String productName,
+  String productVersion,
+  Map<String, Object> additionalAttributes,
+  String clientNodePath,
+  boolean focusOnNewCode,
+  String omnisharpDirectory,
+  String csharpOssPath,
+  String csharpEnterprisePath,
+  String eslintBridgeServerPath,
+  boolean enableNotebooks,
+  // keep loose-typing for fields coming from settings, to allow graceful handling in case of user mistakes
+  Map<String, Object> rules,
+  Map<String, Object> connections) {
+
 }
