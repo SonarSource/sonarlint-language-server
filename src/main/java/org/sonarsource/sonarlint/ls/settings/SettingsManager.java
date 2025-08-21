@@ -52,6 +52,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeCli
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.StandaloneRuleConfigDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
+import org.sonarsource.sonarlint.ls.SonarLintLanguageServerInitializationOptions;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -313,9 +314,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
   static Map<String, Object> updateProperties(@org.jetbrains.annotations.Nullable URI workspaceUri, Map<String, Object> settingsMap) {
     var sonarLintSettingsMap = Utils.parseToMap(settingsMap.get(SONARLINT_CONFIGURATION_NAMESPACE));
-    var analyzerProperties = (Map<String, String>) (sonarLintSettingsMap == null ?
-      Maps.newHashMap() :
-      sonarLintSettingsMap.getOrDefault(ANALYZER_PROPERTIES, Maps.newHashMap()));
+    var analyzerProperties = (Map<String, String>) (sonarLintSettingsMap == null ? Maps.newHashMap() : sonarLintSettingsMap.getOrDefault(ANALYZER_PROPERTIES, Maps.newHashMap()));
     var analysisExcludes = getStringValue(settingsMap, ANALYSIS_EXCLUDES, "");
     forceIgnoreRazorFiles(analyzerProperties);
     var solutionRelativePath = getStringValue(settingsMap, DOTNET_DEFAULT_SOLUTION_PATH, "");
@@ -363,11 +362,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         // ignore
       }
     }
-    var resultingStringWithTrailingComma = sonarLintExcludes.isBlank() ?
-      globPatterns.toString() :
-      sonarLintExcludes.concat(",").concat(globPatterns.toString());
-    return resultingStringWithTrailingComma.isBlank() ?
-      "" : resultingStringWithTrailingComma.substring(0, resultingStringWithTrailingComma.length() - 1);
+    var resultingStringWithTrailingComma = sonarLintExcludes.isBlank() ? globPatterns.toString() : sonarLintExcludes.concat(",").concat(globPatterns.toString());
+    return resultingStringWithTrailingComma.isBlank() ? "" : resultingStringWithTrailingComma.substring(0, resultingStringWithTrailingComma.length() - 1);
   }
 
   private static void forceIgnoreRazorFiles(Map<String, String> analyzerProperties) {
@@ -472,7 +468,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     });
   }
 
-  public void parseSonarQubeConnectionsWithoutToken(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
+  public Map<String, ServerConnectionSettings> parseSonarQubeConnectionsWithoutToken(Map<String, Object> connectionsMap) {
+    var serverConnections = new HashMap<String, ServerConnectionSettings>();
     @SuppressWarnings("unchecked")
     var sonarqubeEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarqube", Collections.emptyList());
     sonarqubeEntries.forEach(m -> {
@@ -484,6 +481,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);
       }
     });
+    return serverConnections;
   }
 
   private void parseSonarCloudConnections(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
@@ -506,11 +504,11 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     });
   }
 
-  public void parseSonarCloudConnectionsWithoutToken(Map<String, Object> connectionsMap, Map<String, ServerConnectionSettings> serverConnections) {
+  public Map<String, ServerConnectionSettings> parseSonarCloudConnectionsWithoutToken(Map<String, Object> connectionsMap) {
+    var serverConnections = new HashMap<String, ServerConnectionSettings>();
     @SuppressWarnings("unchecked")
     var sonarcloudEntries = (List<Map<String, Object>>) connectionsMap.getOrDefault("sonarcloud", Collections.emptyList());
     sonarcloudEntries.forEach(m -> {
-
       if (checkRequiredAttribute(m, "SonarCloud", ORGANIZATION_KEY)) {
         var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
         var organizationKey = (String) m.get(ORGANIZATION_KEY);
@@ -523,6 +521,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
             null, organizationKey, disableNotifs, parsedRegion));
       }
     });
+    return serverConnections;
   }
 
   SonarCloudRegion parseRegion(String region) {
