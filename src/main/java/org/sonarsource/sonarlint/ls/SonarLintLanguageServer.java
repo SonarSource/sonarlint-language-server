@@ -324,9 +324,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var standaloneRuleConfigByKey = settingsManager.getStandaloneRuleConfigByKey(standaloneRulesConfiguration);
       var eslintBridgeServerPath = (String) options.get("eslintBridgeServerPath");
 
-      diagnosticPublisher.initialize(firstSecretDetected);
-
-      hostInfoProvider.initialize(clientVersion, workspaceName);
       backendServiceFacade.setTelemetryInitParams(new TelemetryInitParams(productKey, telemetryStorage,
         productName, productVersion, ideVersion, platform, architecture, additionalAttributes));
 
@@ -335,6 +332,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
       backendServiceFacade.initialize();
 
+      hostInfoProvider.initialize(clientVersion, workspaceName);
+      diagnosticPublisher.initialize(firstSecretDetected);
       workspaceFoldersManager.initialize(params.getWorkspaceFolders());
 
       var c = new ServerCapabilities();

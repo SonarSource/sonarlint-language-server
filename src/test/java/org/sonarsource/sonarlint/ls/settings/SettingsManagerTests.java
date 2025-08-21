@@ -31,7 +31,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.MessageType;
@@ -151,8 +150,6 @@ class SettingsManagerTests {
     backendService = mock(BackendService.class);
     when(backendFacade.getInitParams()).thenReturn(new BackendInitParams());
     when(backendFacade.getBackendService()).thenReturn(backendService);
-    var backendInitLatch = new CountDownLatch(1);
-    when(backendFacade.getInitLatch()).thenReturn(backendInitLatch);
     underTest = new SettingsManager(client, foldersManager, new ImmediateExecutorService(), backendFacade, logTester.getLogger());
     underTest = spy(underTest);
   }
