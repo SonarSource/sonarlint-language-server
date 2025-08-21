@@ -354,7 +354,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void initialized(InitializedParams params) {
     CompletableFutures.computeAsync(cancelToken -> {
-      cancelToken.checkCanceled();
       lsLogOutput.debug("Language Server initialized");
       settingsManager.didChangeConfiguration();
       return null;
