@@ -19,7 +19,8 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import com.google.common.annotations.VisibleForTesting;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -31,8 +32,6 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -130,7 +129,6 @@ import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.settings.RulesConfiguration;
-import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
@@ -290,50 +288,30 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
       this.traceLevel = parseTraceLevel(params.getTrace());
-
-      var options = Utils.parseToMap(params.getInitializationOptions());
-      if (options == null) {
-        options = Collections.emptyMap();
-      }
-      var showVerboseLogs = (boolean) options.getOrDefault("showVerboseLogs", true);
-      lsLogOutput.initialize(showVerboseLogs);
+      var initializationOptions = parse(params.getInitializationOptions());
+      lsLogOutput.initialize(initializationOptions.showVerboseLogs());
 
       var clientInfo = ofNullable(params.getClientInfo());
-      var workspaceName = (String) options.get("workspaceName");
-      var firstSecretDetected = (boolean) options.getOrDefault("firstSecretDetected", false);
 
-      var productKey = (String) options.get("productKey");
-      // deprecated, will be ignored when productKey present
-      var telemetryStorage = (String) options.get("telemetryStorage");
-      var productName = (String) options.get("productName");
-      var productVersion = (String) options.get("productVersion");
       this.appName = clientInfo.map(ci -> ci.getName()).orElse("Unknown");
       var clientVersion = clientInfo.map(ci -> ci.getVersion()).orElse("Unknown");
       var ideVersion = appName + " " + clientVersion;
-      var platform = (String) options.get("platform");
-      var architecture = (String) options.get("architecture");
-      var additionalAttributes = (Map<String, Object>) options.getOrDefault("additionalAttributes", Map.of());
+      var productVersion = initializationOptions.productVersion();
       var userAgent = "SonarQube for IDE (SonarLint) - Visual Studio Code " + productVersion + " - " + clientVersion;
-      var clientNodePath = (String) options.get("clientNodePath");
-      var focusOnNewCode = (boolean) options.getOrDefault("focusOnNewCode", false);
-      var standaloneRulesConfiguration = RulesConfiguration.parse((Map<String, Object>) options.getOrDefault("rules", Collections.emptyMap()));
-      var connectionsMap = (Map<String, Object>) options.getOrDefault("connections", Collections.emptyMap());
-      var omnisharpDirectory = (String) options.get("omnisharpDirectory");
-      var csharpOssPath = (String) options.get("csharpOssPath");
-      var csharpEnterprisePath = (String) options.get("csharpEnterprisePath");
+      var standaloneRulesConfiguration = RulesConfiguration.parse(initializationOptions.rules());
       var standaloneRuleConfigByKey = settingsManager.getStandaloneRuleConfigByKey(standaloneRulesConfiguration);
-      var eslintBridgeServerPath = (String) options.get("eslintBridgeServerPath");
 
-      backendServiceFacade.setTelemetryInitParams(new TelemetryInitParams(productKey, telemetryStorage,
-        productName, productVersion, ideVersion, platform, architecture, additionalAttributes));
+      backendServiceFacade
+        .setTelemetryInitParams(new TelemetryInitParams(initializationOptions.productName(), productVersion, ideVersion, initializationOptions.additionalAttributes()));
 
-      provideBackendInitData(productKey, userAgent, clientNodePath, eslintBridgeServerPath, standaloneRuleConfigByKey, connectionsMap,
-        focusOnNewCode, omnisharpDirectory, csharpOssPath, csharpEnterprisePath);
+      provideBackendInitData(initializationOptions.productKey(), userAgent, initializationOptions.clientNodePath(), initializationOptions.eslintBridgeServerPath(),
+        standaloneRuleConfigByKey, initializationOptions.connections(), initializationOptions.focusOnNewCode(), initializationOptions.omnisharpDirectory(),
+        initializationOptions.csharpOssPath(), initializationOptions.csharpEnterprisePath());
 
       backendServiceFacade.initialize();
 
-      hostInfoProvider.initialize(clientVersion, workspaceName);
-      diagnosticPublisher.initialize(firstSecretDetected);
+      hostInfoProvider.initialize(clientVersion, initializationOptions.workspaceName());
+      diagnosticPublisher.initialize(initializationOptions.firstSecretDetected());
       workspaceFoldersManager.initialize(params.getWorkspaceFolders());
 
       var c = new ServerCapabilities();
@@ -343,12 +321,17 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       executeCommandOptions.setWorkDoneProgress(true);
       c.setExecuteCommandProvider(executeCommandOptions);
       c.setWorkspace(getWorkspaceServerCapabilities());
-      if (isEnableNotebooks(options)) {
+      if (initializationOptions.enableNotebooks()) {
         setNotebookSyncOptions(c);
       }
       var info = new ServerInfo("SonarLint Language Server", getServerVersion("slls-version.txt"));
       return new InitializeResult(c, info);
     });
+  }
+
+  private static SonarLintLanguageServerInitializationOptions parse(Object initializationOptions) {
+    var gson = new GsonBuilder().create();
+    return gson.fromJson((JsonObject) initializationOptions, SonarLintLanguageServerInitializationOptions.class);
   }
 
   @Override
@@ -358,11 +341,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       settingsManager.didChangeConfiguration();
       return null;
     });
-  }
-
-  @VisibleForTesting
-  public static boolean isEnableNotebooks(Map<String, Object> options) {
-    return (boolean) options.getOrDefault("enableNotebooks", false);
   }
 
   private static void setNotebookSyncOptions(ServerCapabilities c) {
@@ -803,8 +781,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   void provideBackendInitData(String productKey, String userAgent, String clientNodePath, String eslintBridgeServerPath,
-    Map<String, StandaloneRuleConfigDto> standaloneRuleConfigByKey,
-    Map<String, Object> connectionsMap, boolean focusOnNewCode, String omnisharpDirectory, String csharpOssPath, String csharpEnterprisePath) {
+    Map<String, StandaloneRuleConfigDto> standaloneRuleConfigByKey, Map<String, Object> connections, boolean focusOnNewCode, String omnisharpDirectory, String csharpOssPath,
+    String csharpEnterprisePath) {
     BackendInitParams params = backendServiceFacade.getInitParams();
     params.setTelemetryProductKey(productKey);
     var actualSonarLintUserHome = SettingsManager.getSonarLintUserHomeOverride();
@@ -823,17 +801,15 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     params.setEslintBridgeServerPath(eslintBridgeServerPath);
 
     var sqs = new ArrayList<SonarQubeConnectionConfigurationDto>();
-    var serverConnections = new HashMap<String, ServerConnectionSettings>();
-    settingsManager.parseSonarQubeConnectionsWithoutToken(connectionsMap, serverConnections);
-    serverConnections.forEach((connectionId, connectionSettings) -> sqs
-      .add(new SonarQubeConnectionConfigurationDto(connectionId, connectionSettings.getServerUrl(), connectionSettings.isSmartNotificationsDisabled())));
+    settingsManager.parseSonarQubeConnectionsWithoutToken(connections)
+      .forEach((connectionId, connectionSettings) -> sqs
+        .add(new SonarQubeConnectionConfigurationDto(connectionId, connectionSettings.getServerUrl(), connectionSettings.isSmartNotificationsDisabled())));
     params.setSonarQubeConnections(sqs);
 
-    var cloudConnections = new HashMap<String, ServerConnectionSettings>();
-    settingsManager.parseSonarCloudConnectionsWithoutToken(connectionsMap, cloudConnections);
     var sqc = new ArrayList<SonarCloudConnectionConfigurationDto>();
-    cloudConnections.forEach((connectionId, connectionSettings) -> sqc.add(new SonarCloudConnectionConfigurationDto(connectionId, connectionSettings.getOrganizationKey(),
-      connectionSettings.getRegion(), connectionSettings.isSmartNotificationsDisabled())));
+    settingsManager.parseSonarCloudConnectionsWithoutToken(connections)
+      .forEach((connectionId, connectionSettings) -> sqc.add(new SonarCloudConnectionConfigurationDto(connectionId, connectionSettings.getOrganizationKey(),
+        connectionSettings.getRegion(), connectionSettings.isSmartNotificationsDisabled())));
     params.setSonarCloudConnections(sqc);
 
     params.setStandaloneRuleConfigByKey(standaloneRuleConfigByKey);

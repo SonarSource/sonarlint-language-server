@@ -104,7 +104,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConn
 import org.sonarsource.sonarlint.ls.ServerMain;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
-import org.sonarsource.sonarlint.ls.SonarLintLanguageServer;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
@@ -208,12 +207,19 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected static void initialize(Map<String, Object> initializeOptions, WorkspaceFolder... initFolders) throws InterruptedException, ExecutionException {
-    var initializeParams = getInitializeParams(initializeOptions, initFolders);
+    var defaultInitializeOptions = Map.of(
+      "rules", List.of(),
+      "connections", Map.of(
+        "sonarqube", List.of(),
+        "sonarcloud", List.of()));
+    var actualInitializeOptions = new HashMap<>(defaultInitializeOptions);
+    actualInitializeOptions.putAll(initializeOptions);
+    var initializeParams = getInitializeParams(actualInitializeOptions, initFolders);
     initializeParams.getCapabilities().setWindow(new WindowClientCapabilities());
     var initializeResult = lsProxy.initialize(initializeParams).get();
     assertThat(initializeResult.getServerInfo().getName()).isEqualTo("SonarLint Language Server");
     assertThat(initializeResult.getServerInfo().getVersion()).isNotBlank();
-    if (SonarLintLanguageServer.isEnableNotebooks(initializeOptions)) {
+    if (Boolean.TRUE.equals(actualInitializeOptions.get("enableNotebooks"))) {
       assertThat(initializeResult.getCapabilities().getNotebookDocumentSync()).isNotNull();
     } else {
       assertThat(initializeResult.getCapabilities().getNotebookDocumentSync()).isNull();
