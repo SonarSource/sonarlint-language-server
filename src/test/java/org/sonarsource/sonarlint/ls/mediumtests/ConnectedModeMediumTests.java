@@ -86,7 +86,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.sonar.api.rules.RuleType.SECURITY_HOTSPOT;
 
 class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
@@ -265,16 +264,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     addSonarQubeConnection(client.globalSettings, CONNECTION_ID, mockWebServerExtension.url("/"), "xxxxx");
     var folderUri = folder1BaseDir.toUri().toString();
     bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
-    client.readyForTestsLatch = new CountDownLatch(1);
-  }
-
-  @Override
-  protected void verifyConfigurationChangeOnClient() {
-    try {
-      assertTrue(client.readyForTestsLatch.await(15, SECONDS));
-    } catch (InterruptedException e) {
-      fail(e);
-    }
   }
 
   @AfterAll

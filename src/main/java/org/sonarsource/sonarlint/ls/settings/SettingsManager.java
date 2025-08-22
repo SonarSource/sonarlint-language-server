@@ -206,15 +206,12 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
         // Count down the latch immediately after settings are set to allow getCurrentSettings() calls
         // from listeners and other components
-        System.out.println("SettingsManager about to count down initLatch");
         initLatch.countDown();
-        System.out.println("SettingsManager initLatch count is now " + initLatch.getCount());
 
         notifyChangeClientNodeJsPathIfNeeded(oldWorkspaceSettings, newWorkspaceSettings);
         backendServiceFacade.getBackendService().didChangeConnections(this.currentSettings.getServerConnections());
         backendServiceFacade.getBackendService().updateStandaloneRulesConfiguration(getStandaloneRuleConfigByKey());
 
-        System.out.println("SettingsManager going to update workspace folders");
         foldersManager.getAll().forEach(f -> updateWorkspaceFolderSettings(f, true));
         foldersManager.initialized();
         notifyListeners(newWorkspaceSettings, oldWorkspaceSettings, newDefaultFolderSettings, oldDefaultFolderSettings);
@@ -223,7 +220,6 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       } catch (Exception e) {
         logOutput.errorWithStackTrace("Unable to update configuration.", e);
       } finally {
-        client.readyForTests();
         // Ensure latch is counted down even in case of exceptions
         while (initLatch.getCount() > 0) {
           initLatch.countDown();

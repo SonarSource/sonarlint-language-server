@@ -370,7 +370,6 @@ public abstract class AbstractLanguageServerMediumTests {
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
     CountDownLatch suggestBindingLatch = new CountDownLatch(0);
     CountDownLatch suggestConnectionLatch = new CountDownLatch(0);
-    CountDownLatch readyForTestsLatch = new CountDownLatch(0);
     ShowAllLocationsCommand.Param showIssueParams;
     ShowFixSuggestionParams showFixSuggestionParams;
     SuggestBindingParams suggestedBindings;
@@ -401,7 +400,6 @@ public abstract class AbstractLanguageServerMediumTests {
       settingsLatch = new CountDownLatch(0);
       showRuleDescriptionLatch = new CountDownLatch(0);
       suggestBindingLatch = new CountDownLatch(0);
-      readyForTestsLatch = new CountDownLatch(0);
       needCompilationDatabaseCalls.set(0);
       shouldAnalyseFile = true;
       scopeReadyForAnalysis.clear();
@@ -511,16 +509,10 @@ public abstract class AbstractLanguageServerMediumTests {
             }
           }
         } finally {
-          System.out.printf("AbstractLanguageServerMediumTests.FakeLanguageClient.configuration() is now counting down the settingsLatch: %d", settingsLatch.getCount());
           settingsLatch.countDown();
         }
         return result;
       });
-    }
-
-    @Override
-    public void readyForTests() {
-      readyForTestsLatch.countDown();
     }
 
     @Override

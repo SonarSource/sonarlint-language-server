@@ -45,11 +45,9 @@ import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import testutils.MockWebServerExtension;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.sonarsource.sonarlint.ls.mediumtests.LanguageServerMediumTests.assertAnalysisLogsContains;
 
 class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumTests {
@@ -109,15 +107,6 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   @Override
   protected void setupGlobalSettings(Map<String, Object> globalSettings) {
     setShowVerboseLogs(client.globalSettings, true);
-  }
-
-  @Override
-  protected void verifyConfigurationChangeOnClient() {
-    try {
-      assertTrue(client.readyForTestsLatch.await(15, SECONDS));
-    } catch (InterruptedException e) {
-      fail(e);
-    }
   }
 
   @Override
