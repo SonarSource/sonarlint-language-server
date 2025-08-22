@@ -32,13 +32,13 @@ import org.sonarsource.sonarlint.ls.notebooks.DelegatingCellIssue;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.util.Utils.getValidateConnectionParamsForNewConnection;
 import static org.sonarsource.sonarlint.ls.util.Utils.isDelegatingIssueWithServerIssueKey;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class UtilsTests {
 
@@ -167,13 +167,6 @@ class UtilsTests {
     assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(token, myScOrganization, null, "EU"))).isEqualTo(myScOrganization);
     assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(token, null, serverUrl, null))).isEqualTo(serverUrl);
     assertThat(Utils.getConnectionNameFromConnectionCheckParams(new ConnectionCheckParams(connectionId))).isEqualTo(connectionId);
-  }
-
-  @Test
-  void testFixWindowsURIEncoding() {
-    assertThat(Utils.fixWindowsURIEncoding(URI.create("file:///c:/work/sonarlint-language-server"))).isEqualTo(URI.create("file:///c%3A/work/sonarlint-language-server"));
-    assertThat(Utils.fixWindowsURIEncoding(URI.create("file:///c%3A/work/sonarlint-language-server"))).isEqualTo(URI.create("file:///c%3A/work/sonarlint-language-server"));
-    assertThat(Utils.fixWindowsURIEncoding(URI.create("file:///path/work/sonarlint-language-server"))).isEqualTo(URI.create("file:///path/work/sonarlint-language-server"));
   }
 
   @Test
