@@ -489,6 +489,7 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public CompletableFuture<List<Object>> configuration(ConfigurationParams configurationParams) {
       return CompletableFutures.computeAsync(cancelToken -> {
+        System.out.println("AbstractLanguageServerMediumTests.FakeLanguageClient.configuration() called with: " + configurationParams.getItems());
         List<Object> result;
         try {
           assertThat(configurationParams.getItems()).extracting(ConfigurationItem::getSection).containsExactly(SONARLINT_CONFIGURATION_NAMESPACE,
@@ -510,6 +511,7 @@ public abstract class AbstractLanguageServerMediumTests {
             }
           }
         } finally {
+          System.out.printf("AbstractLanguageServerMediumTests.FakeLanguageClient.configuration() is now counting down the settingsLatch: %d", settingsLatch.getCount());
           settingsLatch.countDown();
         }
         return result;
