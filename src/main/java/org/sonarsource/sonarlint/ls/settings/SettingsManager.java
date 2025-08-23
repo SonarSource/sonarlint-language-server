@@ -220,7 +220,6 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       } catch (Exception e) {
         logOutput.errorWithStackTrace("Unable to update configuration.", e);
       } finally {
-        client.readyForTests();
         // Ensure latch is counted down even in case of exceptions
         while (initLatch.getCount() > 0) {
           initLatch.countDown();

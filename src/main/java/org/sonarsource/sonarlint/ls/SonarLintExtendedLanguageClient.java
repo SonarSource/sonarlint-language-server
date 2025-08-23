@@ -787,9 +787,6 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("sonarlint/publishDependencyRisks")
   void publishDependencyRisks(PublishDiagnosticsParams publishDiagnosticsParams);
 
-  @JsonNotification("sonarlint/readyForTests")
-  void readyForTests();
-
   @JsonRequest("sonarlint/isOpenInEditor")
   CompletableFuture<Boolean> isOpenInEditor(String fileUri);
 

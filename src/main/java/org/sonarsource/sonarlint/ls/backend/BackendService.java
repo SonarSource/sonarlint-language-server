@@ -25,8 +25,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -118,11 +119,11 @@ import org.sonarsource.sonarlint.ls.util.EnumLabelsMapper;
 public class BackendService {
 
   public static final String ROOT_CONFIGURATION_SCOPE = "<root>";
+  private static final int INIT_TIMEOUT_SECONDS = 60;
 
   private final SonarLintRpcServer backend;
   private final LanguageClientLogger logOutput;
   private final SonarLintExtendedLanguageClient client;
-  private final CountDownLatch initializeLatch = new CountDownLatch(1);
 
   public BackendService(SonarLintRpcServer backend, LanguageClientLogger logOutput, SonarLintExtendedLanguageClient client) {
     this.backend = backend;
@@ -132,39 +133,31 @@ public class BackendService {
 
   public void initialize(InitializeParams backendInitParams) {
     try {
-      backend.initialize(backendInitParams).thenRun(initializeLatch::countDown).get();
+      backend.initialize(backendInitParams).get(INIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new IllegalStateException("Interrupted", e);
     } catch (ExecutionException e) {
       throw new IllegalStateException("Could not initialize SonarLint Backend", e);
+    } catch (TimeoutException e) {
+      throw new IllegalStateException("Could not initialize SonarLint Backend in time", e);
     }
-  }
-
-  private SonarLintRpcServer initializedBackend() {
-    try {
-      initializeLatch.await();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new IllegalStateException("SonarLint backend initialization interrupted", e);
-    }
-    return backend;
   }
 
   public void openHotspotInBrowser(OpenHotspotInBrowserParams params) {
-    initializedBackend().getHotspotService().openHotspotInBrowser(params);
+    backend.getHotspotService().openHotspotInBrowser(params);
   }
 
   public void didChangeConnections(Map<String, ServerConnectionSettings> connections) {
     var scConnections = extractSonarCloudConnections(connections);
     var sqConnections = extractSonarQubeConnections(connections);
     var params = new DidUpdateConnectionsParams(sqConnections, scConnections);
-    initializedBackend().getConnectionService().didUpdateConnections(params);
+    backend.getConnectionService().didUpdateConnections(params);
   }
 
   public void didChangeCredentials(String connectionId) {
     var params = new DidChangeCredentialsParams(connectionId);
-    initializedBackend().getConnectionService().didChangeCredentials(params);
+    backend.getConnectionService().didChangeCredentials(params);
   }
 
   public static List<SonarQubeConnectionConfigurationDto> extractSonarQubeConnections(Map<String, ServerConnectionSettings> connections) {
@@ -196,11 +189,11 @@ public class BackendService {
 
   public void removeWorkspaceFolder(String removedUri) {
     var params = new DidRemoveConfigurationScopeParams(removedUri);
-    initializedBackend().getConfigurationService().didRemoveConfigurationScope(params);
+    backend.getConfigurationService().didRemoveConfigurationScope(params);
   }
 
   public void updateBinding(DidUpdateBindingParams params) {
-    initializedBackend().getConfigurationService().didUpdateBinding(params);
+    backend.getConfigurationService().didUpdateBinding(params);
   }
 
   public void addWorkspaceFolders(List<WorkspaceFolder> added, Function<WorkspaceFolder, Optional<ProjectBinding>> bindingProvider) {
@@ -212,7 +205,7 @@ public class BackendService {
   }
 
   void addConfigurationScopes(DidAddConfigurationScopesParams params) {
-    initializedBackend().getConfigurationService().didAddConfigurationScopes(params);
+    backend.getConfigurationService().didAddConfigurationScopes(params);
   }
 
   public CompletableFuture<GetEffectiveRuleDetailsResponse> getEffectiveRuleDetails(@Nullable String workspaceFolder, String ruleKey, String ruleContextKey) {
@@ -223,7 +216,7 @@ public class BackendService {
 
   public CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(String folderUri) {
     var params = new CheckLocalDetectionSupportedParams(folderUri);
-    return initializedBackend().getHotspotService().checkLocalDetectionSupported(params)
+    return backend.getHotspotService().checkLocalDetectionSupported(params)
       .exceptionally(e -> new CheckLocalDetectionSupportedResponse(false, e.getMessage()));
   }
 
@@ -232,46 +225,46 @@ public class BackendService {
   }
 
   public CompletableFuture<GetEffectiveRuleDetailsResponse> getRuleDetails(GetEffectiveRuleDetailsParams params) {
-    return initializedBackend().getRulesService().getEffectiveRuleDetails(params);
+    return backend.getRulesService().getEffectiveRuleDetails(params);
   }
 
   public void updateStandaloneRulesConfiguration(Map<String, StandaloneRuleConfigDto> ruleConfigByKey) {
     var params = new UpdateStandaloneRulesConfigurationParams(ruleConfigByKey);
-    initializedBackend().getRulesService().updateStandaloneRulesConfiguration(params);
+    backend.getRulesService().updateStandaloneRulesConfiguration(params);
   }
 
   public CompletableFuture<GetStandaloneRuleDescriptionResponse> getStandaloneRuleDetails(String ruleKey) {
     var params = new GetStandaloneRuleDescriptionParams(ruleKey);
-    return initializedBackend().getRulesService().getStandaloneRuleDetails(params);
+    return backend.getRulesService().getStandaloneRuleDetails(params);
   }
 
   public CompletableFuture<ListAllStandaloneRulesDefinitionsResponse> listAllStandaloneRulesDefinitions() {
-    return initializedBackend().getRulesService().listAllStandaloneRulesDefinitions();
+    return backend.getRulesService().listAllStandaloneRulesDefinitions();
   }
 
   public CompletableFuture<GetSupportedFilePatternsResponse> getFilePatternsForAnalysis(GetSupportedFilePatternsParams params) {
-    return initializedBackend().getAnalysisService().getSupportedFilePatterns(params);
+    return backend.getAnalysisService().getSupportedFilePatterns(params);
   }
 
   public CompletableFuture<GetBindingSuggestionsResponse> getBindingSuggestion(GetBindingSuggestionParams params) {
-    return initializedBackend().getBindingService().getBindingSuggestions(params);
+    return backend.getBindingService().getBindingSuggestions(params);
   }
 
   public CompletableFuture<GetConnectionSuggestionsResponse> getConnectionSuggestions(GetConnectionSuggestionsParams params) {
-    return initializedBackend().getConnectionService().getConnectionSuggestions(params);
+    return backend.getConnectionService().getConnectionSuggestions(params);
   }
 
   public CompletableFuture<GetSharedConnectedModeConfigFileResponse> getSharedConnectedModeConfigFileContents(GetSharedConnectedModeConfigFileParams params) {
-    return initializedBackend().getBindingService().getSharedConnectedModeConfigFileContents(params);
+    return backend.getBindingService().getSharedConnectedModeConfigFileContents(params);
   }
 
   public void didChangeClientNodeJsPath(DidChangeClientNodeJsPathParams params) {
-    initializedBackend().getAnalysisService().didChangeClientNodeJsPath(params);
+    backend.getAnalysisService().didChangeClientNodeJsPath(params);
   }
 
   public CompletableFuture<SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedResponse>
   checkStatusChangePermitted(String connectionId, String issueKey) {
-    return initializedBackend().getIssueService().checkStatusChangePermitted(
+    return backend.getIssueService().checkStatusChangePermitted(
         new org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedParams(connectionId, issueKey))
       .thenApply(result -> new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedResponse(result.isPermitted(),
         result.getNotPermittedReason(), result.getAllowedStatuses().stream().map(EnumLabelsMapper::resolutionStatusToLabel).toList()))
@@ -284,11 +277,11 @@ public class BackendService {
   }
 
   public CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params) {
-    return initializedBackend().getIssueService().changeStatus(params);
+    return backend.getIssueService().changeStatus(params);
   }
 
   public CompletableFuture<Void> addIssueComment(AddIssueCommentParams params) {
-    return initializedBackend().getIssueService().addComment(params)
+    return backend.getIssueService().addComment(params)
       .exceptionally(t -> {
         logOutput.errorWithStackTrace("Error adding issue comment", t);
         client.showMessage(new MessageParams(MessageType.Error, "Could not add a new issue comment. Look at the SonarQube for IDE output for " +
@@ -298,25 +291,25 @@ public class BackendService {
   }
 
   public CompletableFuture<Void> changeHotspotStatus(ChangeHotspotStatusParams params) {
-    return initializedBackend().getHotspotService().changeStatus(params);
+    return backend.getHotspotService().changeStatus(params);
   }
 
   public CompletableFuture<CheckStatusChangePermittedResponse> getAllowedHotspotStatuses(CheckStatusChangePermittedParams params) {
-    return initializedBackend().getHotspotService().checkStatusChangePermitted(params);
+    return backend.getHotspotService().checkStatusChangePermitted(params);
   }
 
   public void notifyBackendOnVcsChange(String folderUri) {
-    initializedBackend().getSonarProjectBranchService().didVcsRepositoryChange(new DidVcsRepositoryChangeParams(folderUri));
+    backend.getSonarProjectBranchService().didVcsRepositoryChange(new DidVcsRepositoryChangeParams(folderUri));
   }
 
   public CompletableFuture<GetMatchedSonarProjectBranchResponse> getMatchedSonarProjectBranch(String configurationScopeId) {
-    return initializedBackend().getSonarProjectBranchService().getMatchedSonarProjectBranch(new GetMatchedSonarProjectBranchParams(configurationScopeId));
+    return backend.getSonarProjectBranchService().getMatchedSonarProjectBranch(new GetMatchedSonarProjectBranchParams(configurationScopeId));
   }
 
   public CompletableFuture<HelpGenerateUserTokenResponse> helpGenerateUserToken(String serverUrl) {
     var utm = maybeUtm(serverUrl);
     var params = new HelpGenerateUserTokenParams(serverUrl, utm);
-    return initializedBackend().getConnectionService().helpGenerateUserToken(params);
+    return backend.getConnectionService().helpGenerateUserToken(params);
   }
 
   @CheckForNull
@@ -329,47 +322,47 @@ public class BackendService {
 
   public CompletableFuture<org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedResponse>
   checkChangeIssueStatusPermitted(org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedParams params) {
-    return initializedBackend().getIssueService().checkStatusChangePermitted(params);
+    return backend.getIssueService().checkStatusChangePermitted(params);
   }
 
   public CompletableFuture<ReopenAllIssuesForFileResponse> reopenAllIssuesForFile(ReopenAllIssuesForFileParams params) {
-    return initializedBackend().getIssueService().reopenAllIssuesForFile(params);
+    return backend.getIssueService().reopenAllIssuesForFile(params);
   }
 
   public CompletableFuture<ValidateConnectionResponse> validateConnection(ValidateConnectionParams params) {
-    return initializedBackend().getConnectionService().validateConnection(params);
+    return backend.getConnectionService().validateConnection(params);
   }
 
   public CompletableFuture<GetNewCodeDefinitionResponse> getNewCodeDefinition(String configScopeId) {
-    return initializedBackend().getNewCodeService().getNewCodeDefinition(new GetNewCodeDefinitionParams(configScopeId));
+    return backend.getNewCodeService().getNewCodeDefinition(new GetNewCodeDefinitionParams(configScopeId));
   }
 
   public void toggleCleanAsYouCode() {
-    initializedBackend().getNewCodeService().didToggleFocus();
+    backend.getNewCodeService().didToggleFocus();
   }
 
   public CompletableFuture<GetStatusResponse> getTelemetryStatus() {
-    return initializedBackend().getTelemetryService().getStatus();
+    return backend.getTelemetryService().getStatus();
   }
 
   public void enableTelemetry() {
-    initializedBackend().getTelemetryService().enableTelemetry();
+    backend.getTelemetryService().enableTelemetry();
   }
 
   public void disableTelemetry() {
-    initializedBackend().getTelemetryService().disableTelemetry();
+    backend.getTelemetryService().disableTelemetry();
   }
 
   public TelemetryRpcService getTelemetryService() {
-    return initializedBackend().getTelemetryService();
+    return backend.getTelemetryService();
   }
 
   public CompletableFuture<GetAllProjectsResponse> getAllProjects(Either<TransientSonarQubeConnectionDto, TransientSonarCloudConnectionDto> transientConnection) {
-    return initializedBackend().getConnectionService().getAllProjects(new GetAllProjectsParams(transientConnection));
+    return backend.getConnectionService().getAllProjects(new GetAllProjectsParams(transientConnection));
   }
 
   public void updateFileSystem(List<ClientFileDto> addedFiles, List<ClientFileDto> changedFiles, List<URI> deletedFileUris) {
-    initializedBackend().getFileService().didUpdateFileSystem(new DidUpdateFileSystemParams(addedFiles, changedFiles, deletedFileUris));
+    backend.getFileService().didUpdateFileSystem(new DidUpdateFileSystemParams(addedFiles, changedFiles, deletedFileUris));
   }
 
   public CompletableFuture<ListAllResponse> getAllTaints(String folderUri) {
@@ -380,62 +373,62 @@ public class BackendService {
   public CompletableFuture<GetProjectNamesByKeyResponse> getProjectNamesByKeys(Either<TransientSonarQubeConnectionDto, TransientSonarCloudConnectionDto> transientConnection,
     List<String> projectKeys) {
     var params = new GetProjectNamesByKeyParams(transientConnection, projectKeys);
-    return initializedBackend().getConnectionService().getProjectNamesByKey(params);
+    return backend.getConnectionService().getProjectNamesByKey(params);
   }
 
   public CompletableFuture<ListUserOrganizationsResponse> listUserOrganizations(String token, String region) {
     var params = new ListUserOrganizationsParams(Either.forLeft(new TokenDto(token)), SonarCloudRegion.valueOf(region));
-    return initializedBackend().getConnectionService().listUserOrganizations(params);
+    return backend.getConnectionService().listUserOrganizations(params);
   }
 
   public void didOpenFile(String configScopeId, URI fileUri) {
     var params = new DidOpenFileParams(configScopeId, fileUri);
-    initializedBackend().getFileService().didOpenFile(params);
+    backend.getFileService().didOpenFile(params);
   }
 
   public void didCloseFile(String configScopeId, URI fileUri) {
     var params = new DidCloseFileParams(configScopeId, fileUri);
-    initializedBackend().getFileService().didCloseFile(params);
+    backend.getFileService().didCloseFile(params);
   }
 
   public void didSetUserAnalysisProperties(String configScopeId, Map<String, String> properties) {
     var params = new DidChangeAnalysisPropertiesParams(configScopeId, properties);
-    initializedBackend().getAnalysisService().didSetUserAnalysisProperties(params);
+    backend.getAnalysisService().didSetUserAnalysisProperties(params);
   }
 
   public void analyzeFullProject(String configScopeId, boolean hotspotsOnly) {
     var params = new AnalyzeFullProjectParams(configScopeId, hotspotsOnly);
-    initializedBackend().getAnalysisService().analyzeFullProject(params);
+    backend.getAnalysisService().analyzeFullProject(params);
   }
 
   public void analyzeFilesList(String configScopeId, List<URI> filesToAnalyze) {
     var params = new AnalyzeFileListParams(configScopeId, filesToAnalyze);
-    initializedBackend().getAnalysisService().analyzeFileList(params);
+    backend.getAnalysisService().analyzeFileList(params);
   }
 
   public void didChangePathToCompileCommands(String configScopeId, @Nullable String pathToCompileCommands) {
     var params = new DidChangePathToCompileCommandsParams(configScopeId, pathToCompileCommands == null ? "" : pathToCompileCommands);
-    initializedBackend().getAnalysisService().didChangePathToCompileCommands(params);
+    backend.getAnalysisService().didChangePathToCompileCommands(params);
   }
 
   public CompletableFuture<GetEffectiveIssueDetailsResponse> getEffectiveIssueDetails(@Nullable String workspaceFolder, UUID issueKey) {
     var workspaceOrRootScope = Optional.ofNullable(workspaceFolder).orElse(ROOT_CONFIGURATION_SCOPE);
     var params = new GetEffectiveIssueDetailsParams(workspaceOrRootScope, issueKey);
-    return initializedBackend().getIssueService().getEffectiveIssueDetails(params);
+    return backend.getIssueService().getEffectiveIssueDetails(params);
   }
 
   public CompletableFuture<SuggestFixResponse> suggestFix(@Nullable String workspaceFolder, UUID issueKey) {
     var workspaceOrRootScope = Optional.ofNullable(workspaceFolder).orElse(ROOT_CONFIGURATION_SCOPE);
     var params = new SuggestFixParams(workspaceOrRootScope, issueKey);
-    return initializedBackend().getAiCodeFixRpcService().suggestFix(params);
+    return backend.getAiCodeFixRpcService().suggestFix(params);
   }
 
   public CompletableFuture<Void> openDependencyRiskInBrowser(String folderUri, UUID issueId) {
     var params = new OpenDependencyRiskInBrowserParams(folderUri, issueId);
-    return initializedBackend().getDependencyRiskService().openDependencyRiskInBrowser(params);
+    return backend.getDependencyRiskService().openDependencyRiskInBrowser(params);
   }
 
   public CompletableFuture<Void> changeDependencyRiskStatus(ChangeDependencyRiskStatusParams params) {
-    return initializedBackend().getDependencyRiskService().changeStatus(params);
+    return backend.getDependencyRiskService().changeStatus(params);
   }
 }

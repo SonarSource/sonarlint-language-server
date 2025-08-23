@@ -219,7 +219,16 @@ public abstract class AbstractLanguageServerMediumTests {
     } else {
       assertThat(initializeResult.getCapabilities().getNotebookDocumentSync()).isNull();
     }
+    client.settingsLatch = new CountDownLatch(1);
+    // this triggers a didChangeConfiguration, in turns fetching configuration from the client
     lsProxy.initialized(new InitializedParams());
+    awaitLatch(client.settingsLatch);
+    // workspace/configuration has been called by server, but give some time for the response to be processed (settings change listeners)
+    try {
+      Thread.sleep(300);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
 
   @NotNull
@@ -370,7 +379,6 @@ public abstract class AbstractLanguageServerMediumTests {
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
     CountDownLatch suggestBindingLatch = new CountDownLatch(0);
     CountDownLatch suggestConnectionLatch = new CountDownLatch(0);
-    CountDownLatch readyForTestsLatch = new CountDownLatch(0);
     ShowAllLocationsCommand.Param showIssueParams;
     ShowFixSuggestionParams showFixSuggestionParams;
     SuggestBindingParams suggestedBindings;
@@ -401,7 +409,6 @@ public abstract class AbstractLanguageServerMediumTests {
       settingsLatch = new CountDownLatch(0);
       showRuleDescriptionLatch = new CountDownLatch(0);
       suggestBindingLatch = new CountDownLatch(0);
-      readyForTestsLatch = new CountDownLatch(0);
       needCompilationDatabaseCalls.set(0);
       shouldAnalyseFile = true;
       scopeReadyForAnalysis.clear();
@@ -489,6 +496,7 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public CompletableFuture<List<Object>> configuration(ConfigurationParams configurationParams) {
       return CompletableFutures.computeAsync(cancelToken -> {
+        System.out.println("AbstractLanguageServerMediumTests.FakeLanguageClient.configuration() called with: " + configurationParams.getItems());
         List<Object> result;
         try {
           assertThat(configurationParams.getItems()).extracting(ConfigurationItem::getSection).containsExactly(SONARLINT_CONFIGURATION_NAMESPACE,
@@ -514,11 +522,6 @@ public abstract class AbstractLanguageServerMediumTests {
         }
         return result;
       });
-    }
-
-    @Override
-    public void readyForTests() {
-      readyForTestsLatch.countDown();
     }
 
     @Override
@@ -693,7 +696,7 @@ public abstract class AbstractLanguageServerMediumTests {
     awaitLatch(client.settingsLatch);
     // workspace/configuration has been called by server, but give some time for the response to be processed (settings change listeners)
     try {
-      Thread.sleep(200);
+      Thread.sleep(300);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }

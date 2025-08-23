@@ -36,7 +36,6 @@ import java.util.regex.Pattern;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
@@ -134,7 +133,7 @@ public class Utils {
     if (token == null || token.isBlank()) {
       throw new IllegalStateException("Token cannot be null or empty for connection validation");
     }
-    
+
     Either<TokenDto, UsernamePasswordDto> credentials = Either.forLeft(new TokenDto(token));
     return params.getOrganization() != null ? new ValidateConnectionParams(
       new TransientSonarCloudConnectionDto(params.getOrganization(), credentials, SonarCloudRegion.valueOf(params.getRegion()))
@@ -188,20 +187,6 @@ public class Utils {
 
   public static boolean isDelegatingIssueWithServerIssueKey(String serverIssueKey, DelegatingFinding issueEntry) {
     return serverIssueKey.equals(issueEntry.getServerIssueKey());
-  }
-
-  /**
-   * Encodes the second occurrence of ":/" to URL encoding.
-   * Eg. "file:///c:/work/sonarlint-language-server" to "file:///c%3A/work/sonarlint-language-server"
-   */
-  public static URI fixWindowsURIEncoding(URI uri) {
-    var originalUriString = uri.toString();
-    var indexToReplace = StringUtils.ordinalIndexOf(originalUriString, ":/", 2);
-    if (indexToReplace < 0) {
-      return uri;
-    }
-    var encodedUriString = originalUriString.substring(0, indexToReplace) + "%3A" + originalUriString.substring(indexToReplace + 1);
-    return URI.create(encodedUriString);
   }
 
   public static MessageType convertMessageType(org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType messageType) {

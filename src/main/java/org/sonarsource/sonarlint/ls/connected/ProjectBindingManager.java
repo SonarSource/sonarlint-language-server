@@ -30,7 +30,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -69,7 +68,6 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
-import static org.sonarsource.sonarlint.ls.util.Utils.fixWindowsURIEncoding;
 import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
 import static org.sonarsource.sonarlint.ls.util.Utils.uriHasFileScheme;
 
@@ -80,7 +78,6 @@ import static org.sonarsource.sonarlint.ls.util.Utils.uriHasFileScheme;
 public class ProjectBindingManager implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
   private final WorkspaceFoldersManager foldersManager;
   private final SettingsManager settingsManager;
-  private final ConcurrentMap<URI, CountDownLatch> bindingUpdateQueue = new ConcurrentHashMap<>();
   private final ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache;
   private final LanguageClientLogger globalLogOutput;
   private final ConcurrentMap<URI, Optional<ProjectBinding>> fileBindingCache = new ConcurrentHashMap<>();
@@ -242,9 +239,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
       forceRebindDuringNextAnalysis(folder);
       if (folder == null) return;
-      var uri = fixWindowsURIEncoding(folder.getUri());
-      bindingUpdateQueue.getOrDefault(uri, new CountDownLatch(1)).countDown();
-      bindingUpdateQueue.remove(uri);
       var bindingConfigurationDto = new BindingConfigurationDto(newValue.getConnectionId(), newValue.getProjectKey(), false);
       var params = new DidUpdateBindingParams(folder.getUri().toString(), bindingConfigurationDto);
       backendServiceFacade.getBackendService().updateBinding(params);
