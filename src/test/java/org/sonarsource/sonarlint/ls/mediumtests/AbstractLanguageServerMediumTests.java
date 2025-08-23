@@ -223,6 +223,12 @@ public abstract class AbstractLanguageServerMediumTests {
     // this triggers a didChangeConfiguration, in turns fetching configuration from the client
     lsProxy.initialized(new InitializedParams());
     awaitLatch(client.settingsLatch);
+    // workspace/configuration has been called by server, but give some time for the response to be processed (settings change listeners)
+    try {
+      Thread.sleep(300);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
 
   @NotNull
@@ -690,7 +696,7 @@ public abstract class AbstractLanguageServerMediumTests {
     awaitLatch(client.settingsLatch);
     // workspace/configuration has been called by server, but give some time for the response to be processed (settings change listeners)
     try {
-      Thread.sleep(200);
+      Thread.sleep(300);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
