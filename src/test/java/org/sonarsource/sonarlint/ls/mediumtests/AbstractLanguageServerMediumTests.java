@@ -219,7 +219,10 @@ public abstract class AbstractLanguageServerMediumTests {
     } else {
       assertThat(initializeResult.getCapabilities().getNotebookDocumentSync()).isNull();
     }
+    client.settingsLatch = new CountDownLatch(1);
+    // this triggers a didChangeConfiguration, in turns fetching configuration from the client
     lsProxy.initialized(new InitializedParams());
+    awaitLatch(client.settingsLatch);
   }
 
   @NotNull
