@@ -25,6 +25,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
@@ -39,10 +40,13 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfi
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidClasspathUpdateParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidJavaServerModeChangeParams;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.commons.lang3.StringUtils.appendIfMissing;
 import static org.apache.commons.lang3.StringUtils.removeEnd;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.sonarsource.sonarlint.ls.mediumtests.LanguageServerMediumTests.assertAnalysisLogsContains;
 
 class JavaMediumTests extends AbstractLanguageServerMediumTests {
@@ -78,7 +82,17 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Override
   protected void setupGlobalSettings(Map<String, Object> globalSettings) {
+    client.readyForTestsLatch = new CountDownLatch(1);
     setShowVerboseLogs(client.globalSettings, true);
+  }
+
+  @Override
+  protected void verifyConfigurationChangeOnClient() {
+    try {
+      assertTrue(client.readyForTestsLatch.await(15, SECONDS));
+    } catch (InterruptedException e) {
+      fail(e);
+    }
   }
 
   @Test
