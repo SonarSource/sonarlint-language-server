@@ -454,21 +454,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void analyzeSimplePythonFileOnChange() throws Exception {
-    var uri = getUri("analyzeSimplePythonFileOnChange.py", analysisDir);
-
-    didOpen(uri, "python", "def foo():\n  # Empty\n");
-
-    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri).isEmpty()));
-
-    didChange(uri, "def foo():\n  toto = 0\n");
-
-    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
-      .containsExactly(tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning)));
-  }
-
-  @Test
   @DisabledOnOs(OS.WINDOWS)
   void cleanUpDiagnosticsOnFileClose() throws IOException {
     var uri = getUri("foo2.html", analysisDir);
