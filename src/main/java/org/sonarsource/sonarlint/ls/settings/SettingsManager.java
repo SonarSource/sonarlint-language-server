@@ -158,7 +158,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     return standaloneRuleConfigByKey;
   }
 
-  public Map<String, StandaloneRuleConfigDto> getStandaloneRuleConfigByKey(RulesConfiguration initialRulesConfiguration) {
+  public static Map<String, StandaloneRuleConfigDto> getStandaloneRuleConfigByKey(RulesConfiguration initialRulesConfiguration) {
     var standaloneRuleConfigByKey = new HashMap<String, StandaloneRuleConfigDto>();
     initialRulesConfiguration.includedRules().forEach((ruleKey -> {
       var ruleParams = initialRulesConfiguration.ruleParameters().get(ruleKey);
