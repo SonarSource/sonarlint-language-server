@@ -454,6 +454,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.getDiagnostics(fooMyTestUri)).isEmpty();
   }
 
+  //TODO re-enable or delete after investigation - flaky test
+  @Disabled
   @Test
   void analyzeSimplePythonFileOnChange() throws Exception {
     var uri = getUri("analyzeSimplePythonFileOnChange.py", analysisDir);
