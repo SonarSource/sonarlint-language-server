@@ -457,10 +457,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void analyzeSimplePythonFileOnChange() throws Exception {
     var uri = getUri("analyzeSimplePythonFileOnChange.py", analysisDir);
+    didOpen(uri, "python", "def Foo():\n  pass # Empty\n");
 
-    didOpen(uri, "python", "def foo():\n  # Empty\n");
-
-    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri).isEmpty()));
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(tuple(0, 4, 0, 7, "python:S1542", "sonarqube", "Rename function \"Foo\" to match the regular expression ^[a-z_][a-z0-9_]*$.", DiagnosticSeverity.Warning)));
 
     didChange(uri, "def foo():\n  toto = 0\n");
 

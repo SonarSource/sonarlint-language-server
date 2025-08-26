@@ -212,7 +212,6 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         backendServiceFacade.getBackendService().didChangeConnections(this.currentSettings.getServerConnections());
         backendServiceFacade.getBackendService().updateStandaloneRulesConfiguration(getStandaloneRuleConfigByKey());
 
-        System.out.println("SettingsManager going to update workspace folders");
         foldersManager.getAll().forEach(f -> updateWorkspaceFolderSettings(f, true));
         foldersManager.initialized();
         notifyListeners(newWorkspaceSettings, oldWorkspaceSettings, newDefaultFolderSettings, oldDefaultFolderSettings);
