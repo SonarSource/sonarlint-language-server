@@ -379,7 +379,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var classLoader = ClassLoader.getSystemClassLoader();
     try (var is = classLoader.getResourceAsStream(fileName)) {
       try (var isr = new InputStreamReader(is, StandardCharsets.UTF_8);
-           var reader = new BufferedReader(isr)) {
+        var reader = new BufferedReader(isr)) {
         return reader.lines().findFirst().orElse(null);
       }
     } catch (IOException e) {
@@ -407,12 +407,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<Object> shutdown() {
     List.<Runnable>of(
-        branchManager::shutdown,
-        settingsManager::shutdown,
-        workspaceFoldersManager::shutdown,
-        moduleEventsProcessor::shutdown,
-        branchChangeEventExecutor::shutdown,
-        backendServiceFacade::shutdown)
+      branchManager::shutdown,
+      settingsManager::shutdown,
+      workspaceFoldersManager::shutdown,
+      moduleEventsProcessor::shutdown,
+      branchChangeEventExecutor::shutdown,
+      backendServiceFacade::shutdown)
       // Do last
       .forEach(this::invokeQuietly);
 
@@ -675,7 +675,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         if (validateConnectionParams != null) {
           return backendServiceFacade.getBackendService().validateConnection(validateConnectionParams)
             .thenApply(validationResult -> validationResult.isSuccess() ? success(connectionName)
-              : failure(connectionName, validationResult.getMessage())).get();
+              : failure(connectionName, validationResult.getMessage()))
+            .get();
         }
         return failure(connectionName, format("Connection '%s' is unknown", connectionName));
       } catch (IllegalStateException e) {
@@ -738,28 +739,31 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void openHotspotInBrowser(OpenHotspotInBrowserLsParams params) {
-    var hotspotId = params.getHotspotId();
-    var fileUri = create(params.getFileUri());
-    var folderForFileOptional = workspaceFoldersManager.findFolderForFile(fileUri);
-    if (folderForFileOptional.isEmpty()) {
-      var message = "Can't find workspace folder for file "
-        + fileUri.getPath() + " during attempt to open hotspot in browser.";
-      lsLogOutput.error(message);
-      client.showMessage(new MessageParams(MessageType.Error, message));
-      return;
-    }
-    var workspaceFolderUri = folderForFileOptional.get().getUri();
-    var branchNameOptional = bindingManager.resolveBranchNameForFolder(workspaceFolderUri);
-    if (branchNameOptional.isEmpty()) {
-      var message = "Can't find branch for workspace folder "
-        + workspaceFolderUri.getPath() + " during attempt to open hotspot in browser.";
-      lsLogOutput.error(message);
-      client.showMessage(new MessageParams(MessageType.Error, message));
-      return;
-    }
-    var raisedHotspotDto = requireNonNull(securityHotspotsCache.get(fileUri).get(hotspotId));
-    var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(workspaceFolderUri.toString(), requireNonNull(raisedHotspotDto.getServerIssueKey()));
-    backendServiceFacade.getBackendService().openHotspotInBrowser(openHotspotInBrowserParams);
+    CompletableFutures.computeAsync(cancelToken -> {
+      var hotspotId = params.getHotspotId();
+      var fileUri = create(params.getFileUri());
+      var folderForFileOptional = workspaceFoldersManager.findFolderForFile(fileUri);
+      if (folderForFileOptional.isEmpty()) {
+        var message = "Can't find workspace folder for file "
+          + fileUri.getPath() + " during attempt to open hotspot in browser.";
+        lsLogOutput.error(message);
+        client.showMessage(new MessageParams(MessageType.Error, message));
+        return null;
+      }
+      var workspaceFolderUri = folderForFileOptional.get().getUri();
+      var branchNameOptional = bindingManager.resolveBranchNameForFolder(workspaceFolderUri);
+      if (branchNameOptional.isEmpty()) {
+        var message = "Can't find branch for workspace folder "
+          + workspaceFolderUri.getPath() + " during attempt to open hotspot in browser.";
+        lsLogOutput.error(message);
+        client.showMessage(new MessageParams(MessageType.Error, message));
+        return null;
+      }
+      var raisedHotspotDto = requireNonNull(securityHotspotsCache.get(fileUri).get(hotspotId));
+      var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(workspaceFolderUri.toString(), requireNonNull(raisedHotspotDto.getServerIssueKey()));
+      backendServiceFacade.getBackendService().openHotspotInBrowser(openHotspotInBrowserParams);
+      return null;
+    });
   }
 
   @Override
@@ -821,16 +825,15 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var sqs = new ArrayList<SonarQubeConnectionConfigurationDto>();
     var serverConnections = new HashMap<String, ServerConnectionSettings>();
     settingsManager.parseSonarQubeConnectionsWithoutToken(connectionsMap, serverConnections);
-    serverConnections.forEach((connectionId, connectionSettings) ->
-      sqs.add(new SonarQubeConnectionConfigurationDto(connectionId, connectionSettings.getServerUrl(), connectionSettings.isSmartNotificationsDisabled())));
+    serverConnections.forEach((connectionId, connectionSettings) -> sqs
+      .add(new SonarQubeConnectionConfigurationDto(connectionId, connectionSettings.getServerUrl(), connectionSettings.isSmartNotificationsDisabled())));
     params.setSonarQubeConnections(sqs);
 
     var cloudConnections = new HashMap<String, ServerConnectionSettings>();
     settingsManager.parseSonarCloudConnectionsWithoutToken(connectionsMap, cloudConnections);
     var sqc = new ArrayList<SonarCloudConnectionConfigurationDto>();
-    cloudConnections.forEach((connectionId, connectionSettings) ->
-      sqc.add(new SonarCloudConnectionConfigurationDto(connectionId, connectionSettings.getOrganizationKey(),
-        connectionSettings.getRegion(), connectionSettings.isSmartNotificationsDisabled())));
+    cloudConnections.forEach((connectionId, connectionSettings) -> sqc.add(new SonarCloudConnectionConfigurationDto(connectionId, connectionSettings.getOrganizationKey(),
+      connectionSettings.getRegion(), connectionSettings.isSmartNotificationsDisabled())));
     params.setSonarCloudConnections(sqc);
 
     params.setStandaloneRuleConfigByKey(standaloneRuleConfigByKey);
@@ -852,7 +855,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       return null;
     });
   }
-
 
   @Override
   public CompletableFuture<Void> scanFolderForHotspots(ScanFolderForHotspotsParams params) {
@@ -960,13 +962,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void changeDependencyRiskStatus(ChangeDependencyRiskStatusParams params) {
     backendServiceFacade.getBackendService().changeDependencyRiskStatus(params).thenAccept(
-      nothing -> client.showMessage(new MessageParams(MessageType.Info, "Dependency risk status was updated"))
-    ).exceptionally(t -> {
+      nothing -> client.showMessage(new MessageParams(MessageType.Info, "Dependency risk status was updated"))).exceptionally(t -> {
         lsLogOutput.errorWithStackTrace("Error changing dependency risk status", t);
         client.showMessage(new MessageParams(MessageType.Error, "Could not change status for the dependency risk. Check SonarQube for IDE output for details."));
         return null;
-      }
-    );
+      });
   }
 
   @Override

@@ -89,8 +89,7 @@ public class WorkspaceFoldersManager {
   public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
     logOutput.debug("Processing didChangeWorkspaceFolders event");
     for (var removed : event.getRemoved()) {
-      var uri = create(removed.getUri());
-      removeFolder(uri);
+      removeFolder(create(removed.getUri()));
     }
     for (var added : event.getAdded()) {
       var uri = create(added.getUri());
@@ -104,8 +103,7 @@ public class WorkspaceFoldersManager {
 
   }
 
-  @CheckForNull
-  private WorkspaceFolderWrapper removeFolder(URI uri) {
+  private void removeFolder(URI uri) {
     var removed = folders.remove(uri);
     var workspaceFolder = this.workspaceFolders.stream().filter(wf -> wf.getUri().equalsIgnoreCase(uri.toString())).findFirst().orElse(null);
     if (workspaceFolder != null) {
@@ -113,11 +111,8 @@ public class WorkspaceFoldersManager {
     }
     if (removed == null) {
       logOutput.warn("Unregistered workspace folder was missing: " + uri);
-      return null;
     }
     logOutput.debug(format("Folder %s removed", removed));
-    listeners.forEach(l -> l.removed(removed));
-    return removed;
   }
 
   private WorkspaceFolderWrapper addFolder(WorkspaceFolder added, URI uri) {

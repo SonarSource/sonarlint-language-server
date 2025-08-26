@@ -25,7 +25,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.text.StringEscapeUtils;
@@ -36,12 +35,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.eclipse.lsp4j.DiagnosticSeverity.Warning;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 @EnabledIfSystemProperty(named = "commercial", matches = ".*", disabledReason = "Commercial plugin not available")
 class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
@@ -57,21 +53,6 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
   @BeforeEach
   void clean() {
     setPathToCompileCommands(client.globalSettings, "");
-  }
-
-  @Override
-  protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
-    super.setUpFolderSettings(folderSettings);
-    client.readyForTestsLatch = new CountDownLatch(1);
-  }
-
-  @Override
-  protected void verifyConfigurationChangeOnClient() {
-    try {
-      assertTrue(client.readyForTestsLatch.await(15, SECONDS));
-    } catch (InterruptedException e) {
-      fail(e);
-    }
   }
 
   @Test

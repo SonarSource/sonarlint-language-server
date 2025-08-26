@@ -137,7 +137,7 @@ public abstract class AbstractLanguageServerMediumTests {
   Path temp;
   protected Set<String> toBeClosed = new HashSet<>();
   protected Set<String> notebooksToBeClosed = new HashSet<>();
-  protected Set<String> foldersToRemove = new HashSet<>();
+  private final Set<String> foldersToRemove = new HashSet<>();
   private static ServerSocket serverSocket;
   protected static SonarLintExtendedLanguageServer lsProxy;
   protected static FakeLanguageClient client;
@@ -177,7 +177,7 @@ public abstract class AbstractLanguageServerMediumTests {
     var text = fullPathToJar("sonartext");
     var xml = fullPathToJar("sonarxml");
     var omnisharp = fullPathToJar("sonarlintomnisharp");
-    String[] languageServerArgs = new String[]{"-port", "" + port, "-analyzers", go, java, javasymbolicexecution, js, php, py, html, xml, text, iac, omnisharp};
+    String[] languageServerArgs = new String[] {"-port", "" + port, "-analyzers", go, java, javasymbolicexecution, js, php, py, html, xml, text, iac, omnisharp};
     if (COMMERCIAL_ENABLED) {
       var cfamily = fullPathToJar("cfamily");
       languageServerArgs = ArrayUtils.add(languageServerArgs, cfamily);
@@ -219,10 +219,10 @@ public abstract class AbstractLanguageServerMediumTests {
     } else {
       assertThat(initializeResult.getCapabilities().getNotebookDocumentSync()).isNull();
     }
-    client.settingsLatch = new CountDownLatch(1);
+    client.settingsAppliedLatch = new CountDownLatch(1);
     // this triggers a didChangeConfiguration, in turns fetching configuration from the client
     lsProxy.initialized(new InitializedParams());
-    awaitLatch(client.settingsLatch);
+    awaitLatch(client.settingsAppliedLatch);
     // workspace/configuration has been called by server, but give some time for the response to be processed (settings change listeners)
     try {
       Thread.sleep(300);
@@ -282,7 +282,6 @@ public abstract class AbstractLanguageServerMediumTests {
     setUpFolderSettings(client.folderSettings);
 
     notifyConfigurationChangeOnClient();
-    verifyConfigurationChangeOnClient();
   }
 
   protected static void clearFilesInFolder() {
@@ -301,8 +300,13 @@ public abstract class AbstractLanguageServerMediumTests {
     // do nothing by default
   }
 
-  protected void verifyConfigurationChangeOnClient() {
-    // do nothing by default
+  protected void addFolder(String uri, String name) {
+    client.settingsAppliedLatch = new CountDownLatch(1);
+    var workspaceFolder = new WorkspaceFolder(uri, name);
+    lsProxy.getWorkspaceService().didChangeWorkspaceFolders(new DidChangeWorkspaceFoldersParams(
+      new WorkspaceFoldersChangeEvent(List.of(workspaceFolder), Collections.emptyList())));
+    awaitLatch(client.settingsAppliedLatch);
+    foldersToRemove.add(uri);
   }
 
   @AfterEach
@@ -375,11 +379,10 @@ public abstract class AbstractLanguageServerMediumTests {
     Map<String, GetJavaConfigResponse> javaConfigs = new HashMap<>();
     Map<String, String> referenceBranchNameByFolder = new HashMap<>();
     Map<String, Boolean> scopeReadyForAnalysis = new HashMap<>();
-    CountDownLatch settingsLatch = new CountDownLatch(0);
+    CountDownLatch settingsAppliedLatch = new CountDownLatch(0);
     CountDownLatch showRuleDescriptionLatch = new CountDownLatch(0);
     CountDownLatch suggestBindingLatch = new CountDownLatch(0);
     CountDownLatch suggestConnectionLatch = new CountDownLatch(0);
-    CountDownLatch readyForTestsLatch = new CountDownLatch(0);
     ShowAllLocationsCommand.Param showIssueParams;
     ShowFixSuggestionParams showFixSuggestionParams;
     SuggestBindingParams suggestedBindings;
@@ -407,10 +410,9 @@ public abstract class AbstractLanguageServerMediumTests {
       globalSettings = new HashMap<>();
       setDisableTelemetry(globalSettings, true);
       folderSettings.clear();
-      settingsLatch = new CountDownLatch(0);
+      settingsAppliedLatch = new CountDownLatch(0);
       showRuleDescriptionLatch = new CountDownLatch(0);
       suggestBindingLatch = new CountDownLatch(0);
-      readyForTestsLatch = new CountDownLatch(0);
       needCompilationDatabaseCalls.set(0);
       shouldAnalyseFile = true;
       scopeReadyForAnalysis.clear();
@@ -500,36 +502,31 @@ public abstract class AbstractLanguageServerMediumTests {
       return CompletableFutures.computeAsync(cancelToken -> {
         System.out.println("AbstractLanguageServerMediumTests.FakeLanguageClient.configuration() called with: " + configurationParams.getItems());
         List<Object> result;
-        try {
-          assertThat(configurationParams.getItems()).extracting(ConfigurationItem::getSection).containsExactly(SONARLINT_CONFIGURATION_NAMESPACE,
-            DOTNET_DEFAULT_SOLUTION_PATH, OMNISHARP_USE_MODERN_NET, OMNISHARP_LOAD_PROJECT_ON_DEMAND, OMNISHARP_PROJECT_LOAD_TIMEOUT, VSCODE_FILE_EXCLUDES);
-          result = new ArrayList<>(configurationParams.getItems().size());
-          for (var item : configurationParams.getItems()) {
-            if (item.getScopeUri() == null) {
-              if (item.getSection().equals(SONARLINT_CONFIGURATION_NAMESPACE)) {
-                result.add(globalSettings);
-              } else {
-                result.add(JsonNull.INSTANCE);
-              }
-            } else if (item.getScopeUri() != null && !item.getSection().equals(SONARLINT_CONFIGURATION_NAMESPACE)) {
-              result
-                .add(Optional.ofNullable(folderSettings.get(item.getScopeUri()))
-                  .orElseThrow(() -> new IllegalStateException("No settings mocked for workspaceFolderPath " + item.getScopeUri())));
-              // we don't want to repeat the same setting for one folder 5 times :)
-              break;
+        assertThat(configurationParams.getItems()).extracting(ConfigurationItem::getSection).containsExactly(SONARLINT_CONFIGURATION_NAMESPACE,
+          DOTNET_DEFAULT_SOLUTION_PATH, OMNISHARP_USE_MODERN_NET, OMNISHARP_LOAD_PROJECT_ON_DEMAND, OMNISHARP_PROJECT_LOAD_TIMEOUT, VSCODE_FILE_EXCLUDES);
+        result = new ArrayList<>(configurationParams.getItems().size());
+        for (var item : configurationParams.getItems()) {
+          if (item.getScopeUri() == null) {
+            if (item.getSection().equals(SONARLINT_CONFIGURATION_NAMESPACE)) {
+              result.add(globalSettings);
+            } else {
+              result.add(JsonNull.INSTANCE);
             }
+          } else if (item.getScopeUri() != null && !item.getSection().equals(SONARLINT_CONFIGURATION_NAMESPACE)) {
+            result
+              .add(Optional.ofNullable(folderSettings.get(item.getScopeUri()))
+                .orElseThrow(() -> new IllegalStateException("No settings mocked for workspaceFolderPath " + item.getScopeUri())));
+            // we don't want to repeat the same setting for one folder 5 times :)
+            break;
           }
-        } finally {
-          System.out.printf("AbstractLanguageServerMediumTests.FakeLanguageClient.configuration() is now counting down the settingsLatch: %d", settingsLatch.getCount());
-          settingsLatch.countDown();
         }
         return result;
       });
     }
 
     @Override
-    public void readyForTests() {
-      readyForTestsLatch.countDown();
+    public void settingsApplied() {
+      settingsAppliedLatch.countDown();
     }
 
     @Override
@@ -699,15 +696,9 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected static void notifyConfigurationChangeOnClient() {
-    client.settingsLatch = new CountDownLatch(1);
+    client.settingsAppliedLatch = new CountDownLatch(1);
     lsProxy.getWorkspaceService().didChangeConfiguration(new DidChangeConfigurationParams(Map.of("sonarlint", client.globalSettings)));
-    awaitLatch(client.settingsLatch);
-    // workspace/configuration has been called by server, but give some time for the response to be processed (settings change listeners)
-    try {
-      Thread.sleep(300);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    awaitLatch(client.settingsAppliedLatch);
   }
 
   protected static void setTestFilePattern(Map<String, Object> config, @Nullable String testFilePattern) {
