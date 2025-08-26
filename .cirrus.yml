@@ -20,6 +20,10 @@ only_if_except_nightly: &ONLY_IF_EXCEPT_NIGHTLY
   skip: "changesIncludeOnly('README.md')"
   only_if: $CIRRUS_USER_COLLABORATOR == 'true' && $CIRRUS_TAG == "" && $CIRRUS_BUILD_SOURCE != "cron"
 
+only_if_or_secondary_platform_except_nightly: &ONLY_IF_OR_SECONDARY_PLATFORM_EXCEPT_NIGHTLY
+  skip: "changesIncludeOnly('README.md')"
+  only_if: ($CIRRUS_USER_COLLABORATOR == 'true' && $CIRRUS_TAG == "" && $CIRRUS_BUILD_SOURCE != "cron") || $CIRRUS_CRON == "secondary-platform"
+
 only_pr_and_maintained_branches: &ONLY_PR_AND_MAINTAINED_BRANCHES
   skip: "changesIncludeOnly('README.md')"
   only_if: $CIRRUS_USER_COLLABORATOR == 'true' && $CIRRUS_TAG == "" && $CIRRUS_BUILD_SOURCE != "cron"
@@ -27,7 +31,7 @@ only_pr_and_maintained_branches: &ONLY_PR_AND_MAINTAINED_BRANCHES
 
 only_main_branches: &ONLY_MAIN_BRANCHES
   skip: "changesIncludeOnly('README.md')"
-  only_if: $CIRRUS_USER_COLLABORATOR == 'true' && $CIRRUS_TAG == "" && ($CIRRUS_BRANCH == $CIRRUS_DEFAULT_BRANCH || $CIRRUS_BRANCH =~ "branch-.*")
+  only_if: $CIRRUS_USER_COLLABORATOR == 'true' && $CIRRUS_TAG == "" && ($CIRRUS_BRANCH == $CIRRUS_DEFAULT_BRANCH || $CIRRUS_BRANCH =~ "branch-.*") && $CIRRUS_CRON != "secondary-platform"
 
 container_definition: &CONTAINER_DEFINITION
   image: ${CIRRUS_AWS_ACCOUNT}.dkr.ecr.eu-central-1.amazonaws.com/base:j17-latest
@@ -35,7 +39,7 @@ container_definition: &CONTAINER_DEFINITION
   cluster_name: ${CIRRUS_CLUSTER_NAME}
   namespace: default
   cpu: 4
-  memory: 4G
+  memory: 6G
 
 ec2_instance_definition: &WINVM_DEFINITION
   experimental: true
@@ -77,9 +81,9 @@ build_task:
 qa_linux_task:
   # name: "Run unit tests on Linux with Java 17 and SonarQube analysis on Next"
   # alias: qa_linux
-  #depends_on:
-  #  - build
-  <<: *ONLY_IF_EXCEPT_NIGHTLY
+  depends_on:
+    - build
+  <<: *ONLY_IF_OR_SECONDARY_PLATFORM_EXCEPT_NIGHTLY
   eks_container:
     <<: *CONTAINER_DEFINITION
   env:
@@ -98,21 +102,22 @@ qa_linux_task:
     slack_notification_script: |
       source slack-failure-notification
 
-sqc_eu_qa_linux_task:
+sonarqube_eu_analysis_task:
   # name: "Run unit tests on Linux with Java 17 and SonarQube analysis on Next"
   # alias: qa_linux
-  #depends_on:
-  #  - build
+  depends_on:
+    - build
+  only_if: $CIRRUS_CRON == "secondary-platform"
   eks_container:
     <<: *CONTAINER_DEFINITION
   env:
     DEPLOY_PULL_REQUEST: false
-    #SONAR_HOST_URL: VAULT[development/kv/data/sonarcloud data.url]
+    SONAR_HOST_URL: VAULT[development/kv/data/sonarcloud data.url]
     SONAR_TOKEN: VAULT[development/kv/data/sonarcloud data.token]
   <<: *MAVEN_CACHE
   qa_script:
     - source cirrus-env QA
-    - PULL_REQUEST_SHA=$GIT_SHA1 regular_mvn_build_deploy_analyze -P-deploy-sonarsource,-release,-sign -Dcommercial -Dmaven.install.skip=true -Dmaven.deploy.skip=true -Dsonar.organization=sonarsource -Dsonar.organization=sonarsource -Dsonar.projectKey=SonarSource_sonarlint-language-server -Dsonar.host.url=https://sonarcloud.io
+    - PULL_REQUEST_SHA=$GIT_SHA1 regular_mvn_build_deploy_analyze -P-deploy-sonarsource,-release,-sign -Dcommercial -Dmaven.install.skip=true -Dmaven.deploy.skip=true -Dsonar.organization=sonarsource -Dsonar.organization=sonarsource -Dsonar.projectKey=SonarSource_sonarlint-language-server
   cleanup_before_cache_script: cleanup_maven_repository
   on_failure:
     junit_artifacts:
@@ -121,21 +126,22 @@ sqc_eu_qa_linux_task:
     slack_notification_script: |
       source slack-failure-notification
 
-sqc_us_qa_linux_task:
+sonarqube_us_analysis_task:
   # name: "Run unit tests on Linux with Java 17 and SonarQube analysis on Next"
   # alias: qa_linux
-  #depends_on:
-  #  - build
+  depends_on:
+    - build
+  only_if: $CIRRUS_CRON == "secondary-platform"
   eks_container:
     <<: *CONTAINER_DEFINITION
   env:
     DEPLOY_PULL_REQUEST: false
-    #SONAR_HOST_URL: VAULT[development/kv/data/sonarqube-us data.url]
+    SONAR_HOST_URL: VAULT[development/kv/data/sonarqube-us data.url]
     SONAR_TOKEN: VAULT[development/kv/data/sonarqube-us data.token]
   <<: *MAVEN_CACHE
   qa_script:
     - source cirrus-env QA
-    - PULL_REQUEST_SHA=$GIT_SHA1 regular_mvn_build_deploy_analyze -P-deploy-sonarsource,-release,-sign -Dcommercial -Dmaven.install.skip=true -Dmaven.deploy.skip=true -Dsonar.organization=sonarsource -Dsonar.projectKey=SonarSource_sonarlint-language-server -Dsonar.host.url=https://sonarqube.us
+    - PULL_REQUEST_SHA=$GIT_SHA1 regular_mvn_build_deploy_analyze -P-deploy-sonarsource,-release,-sign -Dcommercial -Dmaven.install.skip=true -Dmaven.deploy.skip=true -Dsonar.organization=sonarsource -Dsonar.projectKey=SonarSource_sonarlint-language-server
   cleanup_before_cache_script: cleanup_maven_repository
   on_failure:
     junit_artifacts:
@@ -143,6 +149,27 @@ sqc_us_qa_linux_task:
       format: junit
     slack_notification_script: |
       source slack-failure-notification
+
+run_iris_task:
+  only_if: $CIRRUS_CRON == "secondary-platform"
+  depends_on:
+    - qa_linux
+    - sonarqube_us_analysis
+    - sonarqube_eu_analysis
+  eks_container:
+    <<: *CONTAINER_DEFINITION
+  env:
+    SONAR_SQC_EU_URL: VAULT[development/kv/data/sonarcloud data.url]
+    SONAR_SQC_US_URL: VAULT[development/kv/data/sonarqube-us data.url]
+    SONAR_NEXT_URL: VAULT[development/kv/data/next data.url]
+    SONAR_IRIS_NEXT_TOKEN: VAULT[development/kv/data/iris data.next]
+    SONAR_IRIS_SQC_EU_TOKEN: VAULT[development/kv/data/iris data.sqc-eu]
+    SONAR_IRIS_SQC_US_TOKEN: VAULT[development/kv/data/iris data.sqc-us]
+    ARTIFACTORY_USERNAME: VAULT[development/artifactory/token/${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-private-reader username]
+    ARTIFACTORY_ACCESS_TOKEN: VAULT[development/artifactory/token/${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-private-reader access_token]
+  iris_script: |
+    chmod +x .cirrus/run-iris.sh
+    .cirrus/run-iris.sh
 
 qa_windows_task:
   # name: "Run unit tests on Windows with Java 17"
