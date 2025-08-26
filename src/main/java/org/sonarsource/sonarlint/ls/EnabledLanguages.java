@@ -36,7 +36,7 @@ public class EnabledLanguages {
   private final List<Path> analyzers;
   private final LanguageClientLogger lsLogOutput;
 
-  EnabledLanguages(List<Path> analyzers, LanguageClientLogger lsLogOutput) {
+  public EnabledLanguages(List<Path> analyzers, LanguageClientLogger lsLogOutput) {
     this.analyzers = analyzers;
     this.lsLogOutput = lsLogOutput;
   }
