@@ -67,6 +67,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory;
@@ -456,10 +457,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void analyzeSimplePythonFileOnChange() throws Exception {
     var uri = getUri("analyzeSimplePythonFileOnChange.py", analysisDir);
+    didOpen(uri, "python", "def Foo():\n  pass # Empty\n");
 
-    didOpen(uri, "python", "def foo():\n  # Empty\n");
-
-    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri).isEmpty()));
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .containsExactly(tuple(0, 4, 0, 7, "python:S1542", "sonarqube", "Rename function \"Foo\" to match the regular expression ^[a-z_][a-z0-9_]*$.", DiagnosticSeverity.Warning)));
 
     didChange(uri, "def foo():\n  toto = 0\n");
 
@@ -739,47 +741,28 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void logErrorWhenClientFailedToReturnConfiguration() {
+  void logErrorWhenClientFailedToReturnConfiguration(@TempDir Path tempDir) {
     // No workspaceFolderPath settings registered in the client mock, so it should fail when server will request workspaceFolderPath
     // configuration
-    var folderUri = "some://noconfig_uri";
-    try {
-      lsProxy.getWorkspaceService()
-        .didChangeWorkspaceFolders(
-          new DidChangeWorkspaceFoldersParams(
-            new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folderUri, "No config")), Collections.emptyList())));
+    var folderUri = tempDir.toUri().toString();
 
-      waitForLogToContainPattern("\\[Error.*\\] Unable to fetch configuration of folder " + folderUri + ".*");
-      waitForLogToContainPattern("(?s).*Internal error.*");
-    } finally {
-      lsProxy.getWorkspaceService()
-        .didChangeWorkspaceFolders(
-          new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), List.of(new WorkspaceFolder(folderUri, "No config")))));
-    }
+    addFolder(folderUri, "No config");
+
+    waitForLogToContainPattern("\\[Error.*\\] Unable to fetch configuration of folder " + folderUri + ".*");
+    waitForLogToContainPattern("(?s).*Internal error.*");
   }
 
   @Test
   void fetchWorkspaceFolderConfigurationWhenAdded() {
-    client.settingsLatch = new CountDownLatch(1);
     var folderUri = "file:///added_uri";
     setShowVerboseLogs(client.globalSettings, true);
     setTestFilePattern(getFolderSettings(folderUri), "another pattern");
     notifyConfigurationChangeOnClient();
 
-    try {
-      lsProxy.getWorkspaceService()
-        .didChangeWorkspaceFolders(
-          new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folderUri, "Added")), Collections.emptyList())));
-      awaitLatch(client.settingsLatch);
+    addFolder(folderUri, "Added");
 
-      waitForLogToContain(
-        "Workspace folder 'WorkspaceFolder[name=Added,uri=file:///added_uri]' configuration updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.file.suffixes=.cs, sonar.cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern=another pattern]");
-    } finally {
-      lsProxy.getWorkspaceService()
-        .didChangeWorkspaceFolders(
-          new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(Collections.emptyList(), List.of(new WorkspaceFolder(folderUri, "Added")))));
-
-    }
+    waitForLogToContain(
+      "Workspace folder 'WorkspaceFolder[name=Added,uri=file:///added_uri]' configuration updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.file.suffixes=.cs, sonar.cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern=another pattern]");
   }
 
   @Test

@@ -220,7 +220,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       } catch (Exception e) {
         logOutput.errorWithStackTrace("Unable to update configuration.", e);
       } finally {
-        client.readyForTests();
+        client.settingsApplied();
         // Ensure latch is counted down even in case of exceptions
         while (initLatch.getCount() > 0) {
           initLatch.countDown();
@@ -411,6 +411,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       interrupted(e, logOutput);
     } catch (Exception e) {
       logOutput.errorWithStackTrace("Unable to update configuration of folder " + f.getUri(), e);
+    } finally {
+      if (!notifyOnChange) {
+        client.settingsApplied();
+      }
     }
   }
 

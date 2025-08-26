@@ -45,11 +45,9 @@ import org.sonarsource.sonarlint.core.serverapi.proto.sonarqube.ws.Common;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import testutils.MockWebServerExtension;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.sonarsource.sonarlint.ls.mediumtests.LanguageServerMediumTests.assertAnalysisLogsContains;
 
 class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumTests {
@@ -109,15 +107,6 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   @Override
   protected void setupGlobalSettings(Map<String, Object> globalSettings) {
     setShowVerboseLogs(client.globalSettings, true);
-  }
-
-  @Override
-  protected void verifyConfigurationChangeOnClient() {
-    try {
-      assertTrue(client.readyForTestsLatch.await(15, SECONDS));
-    } catch (InterruptedException e) {
-      fail(e);
-    }
   }
 
   @Override
@@ -196,8 +185,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   @Test
   void shouldNotBatchAnalysisFromDifferentFolders() {
     // Simulate opening of a second workspace folder
-    lsProxy.getWorkspaceService().didChangeWorkspaceFolders(
-      new DidChangeWorkspaceFoldersParams(new WorkspaceFoldersChangeEvent(List.of(new WorkspaceFolder(folder2BaseDir.toUri().toString(), "My Folder 2")), List.of())));
+    addFolder(folder2BaseDir.toUri().toString(), "My Folder 2");
 
     var file1InFolder1 = folder1BaseDir.resolve("file1.py").toUri().toString();
     var file2InFolder2 = folder2BaseDir.resolve("file2.py").toUri().toString();

@@ -28,7 +28,6 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.MONITORING_DISABLED_PROPERTY_KEY;
@@ -38,16 +37,11 @@ class BackendServiceFacadeTests {
   public static final String SONARLINT_HTTP_CONNECTION_TIMEOUT = "sonarlint.http.connectTimeout";
   public static final String SONARLINT_HTTP_SOCKET_TIMEOUT = "sonarlint.http.socketTimeout";
   SonarLintRpcClientDelegate backend = mock(SonarLintRpcClientDelegate.class);
-  BackendServiceFacade underTest = new BackendServiceFacade(backend, mock(LanguageClientLogger.class), mock(SonarLintExtendedLanguageClient.class), 0);
+  BackendServiceFacade underTest = new BackendServiceFacade(backend, mock(LanguageClientLogger.class), mock(SonarLintExtendedLanguageClient.class));
 
   @AfterEach
   void tearDown() {
     System.clearProperty(MONITORING_DISABLED_PROPERTY_KEY);
-  }
-
-  @Test
-  void shouldFailIfBackendNotInitialized() {
-    assertThrows(IllegalStateException.class, () -> underTest.getBackendService());
   }
 
   @Test

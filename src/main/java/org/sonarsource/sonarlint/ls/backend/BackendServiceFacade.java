@@ -30,7 +30,6 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -65,9 +64,6 @@ public class BackendServiceFacade {
 
   public static final String MONITORING_DISABLED_PROPERTY_KEY = "sonarlint.monitoring.disabled";
 
-  private static final int DEFAULT_INIT_TIMEOUT_SECONDS = 60;
-
-  private final int initTimeoutSeconds;
   private final BackendService backendService;
   private final BackendInitParams initParams;
   private final ConfigurationScopeDto rootConfigurationScope;
@@ -75,14 +71,8 @@ public class BackendServiceFacade {
   private final LanguageClientLogger lsLogOutput;
   private TelemetryInitParams telemetryInitParams;
   private SonarLintTelemetry telemetry;
-  private final CountDownLatch initLatch = new CountDownLatch(1);
 
   public BackendServiceFacade(SonarLintRpcClientDelegate rpcClient, LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client) {
-    this(rpcClient, lsLogOutput, client, DEFAULT_INIT_TIMEOUT_SECONDS);
-  }
-
-  BackendServiceFacade(SonarLintRpcClientDelegate rpcClient, LanguageClientLogger lsLogOutput, SonarLintExtendedLanguageClient client, int initTimeoutSeconds) {
-    this.initTimeoutSeconds = initTimeoutSeconds;
     this.lsLogOutput = lsLogOutput;
     var clientToServerOutputStream = new PipedOutputStream();
     try {
@@ -103,29 +93,11 @@ public class BackendServiceFacade {
   }
 
   public BackendService getBackendService() {
-    try {
-      var initialized = initLatch.await(initTimeoutSeconds, TimeUnit.SECONDS);
-      if (initialized) {
-        return backendService;
-      } else {
-        throw new IllegalStateException("Backend service not initialized in time");
-      }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new IllegalStateException("Interrupted", e);
-    }
+    return backendService;
   }
 
   public BackendInitParams getInitParams() {
     return initParams;
-  }
-
-  private void initOnce() {
-    if (initLatch.getCount() != 0) {
-      backendService.initialize(toInitParams(initParams));
-      backendService.addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(rootConfigurationScope)));
-      initLatch.countDown();
-    }
   }
 
   private InitializeParams toInitParams(BackendInitParams initParams) {
@@ -273,7 +245,8 @@ public class BackendServiceFacade {
   }
 
   public void initialize() {
-    initOnce();
+    backendService.initialize(toInitParams(initParams));
+    backendService.addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(rootConfigurationScope)));
   }
 
   public void setTelemetryInitParams(TelemetryInitParams telemetryInitParams) {
@@ -286,10 +259,6 @@ public class BackendServiceFacade {
 
   public void setTelemetry(SonarLintTelemetry telemetry) {
     this.telemetry = telemetry;
-  }
-
-  public CountDownLatch getInitLatch() {
-    return initLatch;
   }
 
 
