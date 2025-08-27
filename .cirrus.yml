@@ -38,8 +38,8 @@ container_definition: &CONTAINER_DEFINITION
   region: eu-central-1
   cluster_name: ${CIRRUS_CLUSTER_NAME}
   namespace: default
-  cpu: 4
-  memory: 6G
+  cpu: 6
+  memory: 10G
 
 ec2_instance_definition: &WINVM_DEFINITION
   experimental: true
@@ -117,7 +117,7 @@ sonarqube_eu_analysis_task:
   <<: *MAVEN_CACHE
   qa_script:
     - source cirrus-env QA
-    - PULL_REQUEST_SHA=$GIT_SHA1 regular_mvn_build_deploy_analyze -P-deploy-sonarsource,-release,-sign -Dcommercial -Dmaven.install.skip=true -Dmaven.deploy.skip=true -Dsonar.organization=sonarsource -Dsonar.organization=sonarsource -Dsonar.projectKey=SonarSource_sonarlint-language-server
+    - PULL_REQUEST_SHA=$GIT_SHA1 regular_mvn_build_deploy_analyze -P-deploy-sonarsource,-release,-sign -Dcommercial -Dmaven.install.skip=true -Dmaven.deploy.skip=true -Dsonar.organization=sonarsource -Dsonar.projectKey=SonarSource_sonarlint-language-server
   cleanup_before_cache_script: cleanup_maven_repository
   on_failure:
     junit_artifacts:

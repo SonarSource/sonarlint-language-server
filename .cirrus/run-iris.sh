@@ -10,7 +10,6 @@ set -euo pipefail
 function run_iris_sqc_eu () {
   java \
     -Diris.source.projectKey="org.sonarsource.sonarlint.ls:sonarlint-language-server" \
-    -Diris.source.organization="sonarsource" \
     -Diris.source.url="$SONAR_NEXT_URL" \
     -Diris.source.token="$SONAR_IRIS_NEXT_TOKEN" \
     -Diris.destination.projectKey="SonarSource_sonarlint-language-server" \
@@ -25,7 +24,6 @@ function run_iris_sqc_eu () {
 function run_iris_sqc_us () {
   java \
     -Diris.source.projectKey="org.sonarsource.sonarlint.ls:sonarlint-language-server" \
-    -Diris.source.organization="sonarsource" \
     -Diris.source.url="$SONAR_NEXT_URL" \
     -Diris.source.token="$SONAR_IRIS_NEXT_TOKEN" \
     -Diris.destination.projectKey="SonarSource_sonarlint-language-server" \
@@ -53,14 +51,14 @@ else
   echo "Downloaded $VERSION"
 fi
 
-echo "===== Execute IRIS Next as dry-run"
+echo "===== Execute IRIS SQC EU as dry-run"
 run_iris_sqc_eu "true"
 STATUS=$?
 if [ $STATUS -ne 0 ]; then
   echo "===== Failed to run IRIS dry-run"
   exit 1
 else
-  echo "===== Successful IRIS Next dry-run - executing IRIS for real."
+  echo "===== Successful IRIS SQC EU dry-run - executing IRIS for real."
   run_iris_sqc_eu "false"
 fi
 
