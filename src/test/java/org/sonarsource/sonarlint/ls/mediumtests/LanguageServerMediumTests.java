@@ -505,6 +505,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
         tuple(2, 2, 2, 27, "xml:S1135", "sonarqube", "Complete the task associated to this \"TODO\" comment.", DiagnosticSeverity.Warning)));
   }
 
+  //TODO
   @Test
   void analyzeSimpleCssFileOnOpen() throws Exception {
     var uri = getUri("analyzeSimpleCssFileOnOpen.css", analysisDir);
