@@ -105,8 +105,8 @@ public class BackendServiceFacade {
     var productVersion = initializationOptions.productVersion();
     var userAgent = "SonarQube for IDE (SonarLint) - Visual Studio Code " + productVersion + " - " + clientVersion;
     var backendCapabilities = getBackendCapabilities();
-    var clientNodeJsPath = StringUtils.isEmpty(initializationOptions.clientNodePath()) ? null : Path.of(initializationOptions.clientNodePath());
-    var eslintBridgeServerBundlePath = StringUtils.isEmpty(initializationOptions.eslintBridgeServerPath()) ? null : Path.of(initializationOptions.eslintBridgeServerPath());
+    var clientNodeJsPath = StringUtils.isBlank(initializationOptions.clientNodePath()) ? null : Path.of(initializationOptions.clientNodePath());
+    var eslintBridgeServerBundlePath = StringUtils.isBlank(initializationOptions.eslintBridgeServerPath()) ? null : Path.of(initializationOptions.eslintBridgeServerPath());
     var languageSpecificRequirements = getLanguageSpecificRequirements(initializationOptions, clientNodeJsPath, eslintBridgeServerBundlePath);
     var standaloneRulesConfiguration = RulesConfiguration.parse(initializationOptions.rules());
     var standaloneRuleConfigByKey = SettingsManager.getStandaloneRuleConfigByKey(standaloneRulesConfiguration);
