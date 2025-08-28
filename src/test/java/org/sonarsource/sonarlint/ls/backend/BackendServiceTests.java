@@ -19,10 +19,18 @@
  */
 package org.sonarsource.sonarlint.ls.backend;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
@@ -32,6 +40,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.issue.IssueNotFoundException;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalysisRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAutomaticAnalysisSettingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.BindingRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.ConfigurationRpcService;
@@ -53,12 +63,6 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 class BackendServiceTests {
 
@@ -221,5 +225,22 @@ class BackendServiceTests {
     assertThat(argumentCaptor.getValue().getDependencyRiskKey()).isEqualTo(dependencyKey);
     assertThat(argumentCaptor.getValue().getTransition()).isEqualTo(transition);
     assertThat(argumentCaptor.getValue().getComment()).isEqualTo(comment);
+  }
+
+  @Test
+  void shouldForwardDidChangeAutomaticAnalysisSettingToBackend() {
+    var analysisService = mock(AnalysisRpcService.class);
+    when(backend.getAnalysisService()).thenReturn(analysisService);
+    var enabled = true;
+    var disabled = false;
+    var argumentCaptor = ArgumentCaptor.forClass(DidChangeAutomaticAnalysisSettingParams.class);
+
+    underTest.didChangeAutomaticAnalysisSetting(enabled);
+    underTest.didChangeAutomaticAnalysisSetting(disabled);
+
+    verify(analysisService, times(2)).didChangeAutomaticAnalysisSetting(argumentCaptor.capture());
+    assertThat(argumentCaptor.getAllValues()).hasSize(2);
+    assertThat(argumentCaptor.getAllValues().get(0).isEnabled()).isTrue();
+    assertThat(argumentCaptor.getAllValues().get(1).isEnabled()).isFalse();
   }
 }
