@@ -27,7 +27,6 @@ import java.nio.file.Paths;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
-import org.apache.commons.text.StringEscapeUtils;
 import org.eclipse.lsp4j.Diagnostic;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -171,14 +170,28 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
           "file": "%s"
         }
       ]""".formatted(
-      StringEscapeUtils.escapeJson(cppProjectBaseDir.toString()),
-      StringEscapeUtils.escapeJson(mockClang.toString()),
-      StringEscapeUtils.escapeJson(cppFile.toString()),
-      StringEscapeUtils.escapeJson(cppFile.toString()));
+      escapeJsonString(cppProjectBaseDir.toString()),
+      escapeJsonString(mockClang.toString()),
+      escapeJsonString(cppFile.toString()),
+      escapeJsonString(cppFile.toString()));
 
     var compilationDatabaseFile = cppProjectBaseDir.resolve("compile_commands.json");
     FileUtils.write(compilationDatabaseFile.toFile(), compilationDatabaseContent, StandardCharsets.UTF_8);
     return compilationDatabaseFile;
+  }
+
+  private static String escapeJsonString(String input) {
+    if (input == null) {
+      return "null";
+    }
+    return input
+      .replace("\\", "\\\\")  // Escape backslashes first
+      .replace("\"", "\\\"")  // Escape double quotes
+      .replace("\b", "\\b")   // Escape backspace
+      .replace("\f", "\\f")   // Escape form feed
+      .replace("\n", "\\n")   // Escape newline
+      .replace("\r", "\\r")   // Escape carriage return
+      .replace("\t", "\\t");  // Escape tab
   }
 
   private Path mockClangCompiler() {
