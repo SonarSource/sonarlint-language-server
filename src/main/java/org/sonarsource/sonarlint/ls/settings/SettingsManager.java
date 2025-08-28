@@ -19,12 +19,13 @@
  */
 package org.sonarsource.sonarlint.ls.settings;
 
-import com.google.common.collect.Maps;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonNull;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
+import static java.lang.String.format;
+import static java.util.Arrays.stream;
+import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.sonarsource.sonarlint.ls.backend.BackendService.ROOT_CONFIGURATION_SCOPE;
+import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
+
 import java.net.URI;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -42,8 +43,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
@@ -59,12 +62,12 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
-import static java.lang.String.format;
-import static java.util.Arrays.stream;
-import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
-import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.sonarsource.sonarlint.ls.backend.BackendService.ROOT_CONFIGURATION_SCOPE;
-import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
+import com.google.common.collect.Maps;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 
 public class SettingsManager implements WorkspaceFolderLifecycleListener {
 
@@ -95,6 +98,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   private static final String PATH_TO_NODE_EXECUTABLE = "pathToNodeExecutable";
   private static final String PATH_TO_COMPILE_COMMANDS = "pathToCompileCommands";
   private static final String FOCUS_ON_NEW_CODE = "focusOnNewCode";
+  private static final String AUTOMATIC_ANALYSIS = "automaticAnalysis";
 
   private static final String WORKSPACE_FOLDER_VARIABLE = "${workspaceFolder}";
 
@@ -209,6 +213,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         initLatch.countDown();
 
         notifyChangeClientNodeJsPathIfNeeded(oldWorkspaceSettings, newWorkspaceSettings);
+        notifyAutomaticAnalysisEnablementChangeIfNeeded(oldWorkspaceSettings, newWorkspaceSettings);
         backendServiceFacade.getBackendService().didChangeConnections(this.currentSettings.getServerConnections());
         backendServiceFacade.getBackendService().updateStandaloneRulesConfiguration(getStandaloneRuleConfigByKey());
 
@@ -233,6 +238,13 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     var hasNodeJsPathChanged = oldWorkspaceSettings != null && !Objects.equals(oldWorkspaceSettings.pathToNodeExecutable(), newWorkspaceSettings.pathToNodeExecutable());
     if (hasNodeJsPathChanged) {
       backendServiceFacade.getBackendService().didChangeClientNodeJsPath(new DidChangeClientNodeJsPathParams(Path.of(newWorkspaceSettings.pathToNodeExecutable())));
+    }
+  }
+
+  private void notifyAutomaticAnalysisEnablementChangeIfNeeded(@Nullable WorkspaceSettings oldWorkspaceSettings, WorkspaceSettings newWorkspaceSettings) {
+    var hasAutomaticAnalysisChanged = oldWorkspaceSettings != null && !Objects.equals(oldWorkspaceSettings.isAutomaticAnalysis(), newWorkspaceSettings.isAutomaticAnalysis());
+    if (hasAutomaticAnalysisChanged) {
+      backendServiceFacade.getBackendService().didChangeAutomaticAnalysisSetting(newWorkspaceSettings.isAutomaticAnalysis());
     }
   }
 
@@ -417,6 +429,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     var disableTelemetry = (Boolean) params.getOrDefault(DISABLE_TELEMETRY, false);
     var pathToNodeExecutable = (String) params.get(PATH_TO_NODE_EXECUTABLE);
     var focusOnNewCode = (Boolean) params.getOrDefault(FOCUS_ON_NEW_CODE, false);
+    var automaticAnalysis = (Boolean) params.getOrDefault(AUTOMATIC_ANALYSIS, true);
     var analysisExcludesStandalone = (String) params.getOrDefault(ANALYSIS_EXCLUDES, "");
     var serverConnections = parseServerConnections(params);
     @SuppressWarnings("unchecked")
@@ -425,7 +438,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     var consoleParams = ((Map<String, Object>) params.getOrDefault(OUTPUT, Collections.emptyMap()));
     var showVerboseLogs = (Boolean) consoleParams.getOrDefault(SHOW_VERBOSE_LOGS, false);
     return new WorkspaceSettings(disableTelemetry, serverConnections, rulesConfiguration.excludedRules(), rulesConfiguration.includedRules(), rulesConfiguration.ruleParameters(),
-      showVerboseLogs, pathToNodeExecutable, focusOnNewCode, analysisExcludesStandalone);
+      showVerboseLogs, pathToNodeExecutable, focusOnNewCode, automaticAnalysis, analysisExcludesStandalone);
   }
 
   private Map<String, ServerConnectionSettings> parseServerConnections(Map<String, Object> params) {

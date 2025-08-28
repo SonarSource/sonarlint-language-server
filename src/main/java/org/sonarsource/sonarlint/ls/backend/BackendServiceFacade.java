@@ -142,7 +142,7 @@ public class BackendServiceFacade {
       standaloneRuleConfigByKey,
       initializationOptions.focusOnNewCode(),
       languageSpecificRequirements,
-      true,
+      initializationOptions.automaticAnalysis(),
       null);
   }
 

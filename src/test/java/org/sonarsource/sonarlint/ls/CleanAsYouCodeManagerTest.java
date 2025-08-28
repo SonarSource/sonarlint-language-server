@@ -45,7 +45,7 @@ class CleanAsYouCodeManagerTest {
   void shouldSetFocusOnNewCodeToDiagnosticPublisherOnChange() {
     underTest.onChange(null,
       new WorkspaceSettings(true, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(),
-        false, "", true, ""));
+        false, "", true, true, ""));
 
     verify(diagnosticPublisher).setFocusOnNewCode(true);
   }
@@ -62,9 +62,9 @@ class CleanAsYouCodeManagerTest {
 
     underTest.onChange(
       new WorkspaceSettings(true, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(),
-        false, "", false, ""),
+        false, "", false, true, ""),
       new WorkspaceSettings(true, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(),
-        false, "", true, ""));
+        false, "", true, true, ""));
 
     verify(backendService).toggleCleanAsYouCode();
     verify(diagnosticPublisher).publishDiagnostics(dummyFile1, false);

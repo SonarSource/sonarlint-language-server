@@ -44,7 +44,6 @@ import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
-import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.ExecuteCommandParams;
@@ -57,7 +56,6 @@ import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceFolder;
-import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.junit.jupiter.api.BeforeAll;
@@ -604,7 +602,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     notifyConfigurationChangeOnClient();
 
     waitForLogToContain(
-      String.format("Global settings updated: WorkspaceSettings[analysisExcludes=,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false,organizationKey=<null>,region=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showVerboseLogs=true]",
+      String.format("Global settings updated: WorkspaceSettings[analysisExcludes=,automaticAnalysis=true,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false,organizationKey=<null>,region=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showVerboseLogs=true]",
         CONNECTION_ID, CONNECTION_ID, mockWebServerExtension.url("/")));
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder( "Telemetry enabled");

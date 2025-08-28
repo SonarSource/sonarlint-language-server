@@ -31,6 +31,7 @@ public record SonarLintLanguageServerInitializationOptions(
   Map<String, Object> additionalAttributes,
   String clientNodePath,
   boolean focusOnNewCode,
+  boolean automaticAnalysis,
   String omnisharpDirectory,
   String csharpOssPath,
   String csharpEnterprisePath,
