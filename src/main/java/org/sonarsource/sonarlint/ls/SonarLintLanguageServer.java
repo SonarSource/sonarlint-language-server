@@ -246,8 +246,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       issuesCache, securityHotspotsCache, diagnosticPublisher,
       openNotebooksCache, notebookDiagnosticPublisher, openFilesCache);
     vsCodeClient.setAnalysisTaskExecutor(analysisHelper);
-    this.forcedAnalysisCoordinator = new ForcedAnalysisCoordinator(workspaceFoldersManager, bindingManager, openFilesCache, openNotebooksCache, client, backendServiceFacade);
-    vsCodeClient.setAnalysisScheduler(forcedAnalysisCoordinator);
+    this.forcedAnalysisCoordinator = new ForcedAnalysisCoordinator(workspaceFoldersManager, bindingManager, openFilesCache,
+      openNotebooksCache, client, backendServiceFacade, settingsManager);
     bindingManager.setAnalysisManager(forcedAnalysisCoordinator);
     this.settingsManager.addListener((WorkspaceSettingsChangeListener) forcedAnalysisCoordinator);
     this.settingsManager.addListener((WorkspaceFolderSettingsChangeListener) forcedAnalysisCoordinator);
