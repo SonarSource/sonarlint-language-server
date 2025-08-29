@@ -99,9 +99,9 @@ class SettingsManagerTests {
       },
       "pathToCompileCommands": "/pathToCompileCommand",
       "disableTelemetry": true,
-    "output": {
-      "showVerboseLogs": true
-    },
+      "output": {
+        "showVerboseLogs": true
+      },
       "rules": {
         "xoo:rule1": {
           "level": "off"
@@ -187,6 +187,7 @@ class SettingsManagerTests {
     var settings = underTest.getCurrentSettings();
     assertThat(settings.isDisableTelemetry()).isTrue();
     assertThat(settings.showVerboseLogs()).isTrue();
+    assertThat(settings.isAutomaticAnalysis()).isTrue();
     assertThat(settings.getExcludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsOnly(tuple("xoo", "rule1"), tuple("xoo", "rule2"), tuple("xoo", "notEvenARule"));
     assertThat(settings.getIncludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsOnly(tuple("xoo", "rule3"), tuple("xoo", "rule4"));
     assertThat(settings.getRuleParameters()).hasSize(1).containsOnlyKeys(RuleKey.parse("xoo:rule4"));
@@ -208,12 +209,10 @@ class SettingsManagerTests {
     var connectionsMap = Map.<String, Object>of(
       "sonarqube", List.of(Map.of(
         "connectionId", "sq1",
-        "serverUrl", "/"
-      ), Map.of("connectionId", "sq2", "serverUrl", "https://mysonarqube2.mycompany.org")),
+        "serverUrl", "/"), Map.of("connectionId", "sq2", "serverUrl", "https://mysonarqube2.mycompany.org")),
       "sonarcloud", List.of(Map.of(
         "connectionId", "sc1",
-        "organizationKey", "myOrga1"
-      ), Map.of("connectionId", "sc2", "organizationKey", "myOrga2")));
+        "organizationKey", "myOrga1"), Map.of("connectionId", "sc2", "organizationKey", "myOrga2")));
 
     var cloudConnections = underTest.parseSonarCloudConnectionsWithoutToken(connectionsMap);
     var serverConnections = underTest.parseSonarQubeConnectionsWithoutToken(connectionsMap);
@@ -856,11 +855,43 @@ class SettingsManagerTests {
 
     mockConfigurationRequest(null, """
       {
-      "disableTelemetry" : "true"}
+      "disableTelemetry" : true}
       """);
     underTest.didChangeConfiguration();
 
     verify(backendService, never()).didChangeClientNodeJsPath(any());
+  }
+
+  @Test
+  void shouldNotifyAboutAutomaticAnalysisSettingChange() {
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    underTest.didChangeConfiguration();
+
+    mockConfigurationRequest(null, """
+      {
+      "automaticAnalysis" : false
+      }
+      """);
+    underTest.didChangeConfiguration();
+
+    var argumentCaptor = ArgumentCaptor.forClass(Boolean.class);
+    verify(backendService).didChangeAutomaticAnalysisSetting(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue()).isFalse();
+  }
+
+  @Test
+  void shouldNotNotifyAboutAutomaticAnalysisSettingChange() {
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    underTest.didChangeConfiguration();
+
+    mockConfigurationRequest(null, """
+      {
+      "disableTelemetry" : true
+      }
+      """);
+    underTest.didChangeConfiguration();
+
+    verify(backendService, never()).didChangeAutomaticAnalysisSetting(any(Boolean.class));
   }
 
   @Test
@@ -869,6 +900,7 @@ class SettingsManagerTests {
     var sonarLintSettings = new JsonObject();
     sonarLintSettings.add("disableTelemetry", new JsonPrimitive(false));
     sonarLintSettings.add("focusOnNewCode", new JsonPrimitive(true));
+    sonarLintSettings.add("automaticAnalysis", new JsonPrimitive(true));
     Map<String, Object> settingsMap = new HashMap<>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
       DOTNET_DEFAULT_SOLUTION_PATH, JsonNull.INSTANCE,
       OMNISHARP_USE_MODERN_NET, JsonNull.INSTANCE,

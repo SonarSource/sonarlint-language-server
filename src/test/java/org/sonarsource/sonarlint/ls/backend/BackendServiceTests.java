@@ -32,6 +32,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.issue.IssueNotFoundException;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalysisRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAutomaticAnalysisSettingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.BindingRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.ConfigurationRpcService;
@@ -57,6 +59,7 @@ import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -221,5 +224,22 @@ class BackendServiceTests {
     assertThat(argumentCaptor.getValue().getDependencyRiskKey()).isEqualTo(dependencyKey);
     assertThat(argumentCaptor.getValue().getTransition()).isEqualTo(transition);
     assertThat(argumentCaptor.getValue().getComment()).isEqualTo(comment);
+  }
+
+  @Test
+  void shouldForwardDidChangeAutomaticAnalysisSettingToBackend() {
+    var analysisService = mock(AnalysisRpcService.class);
+    when(backend.getAnalysisService()).thenReturn(analysisService);
+    var enabled = true;
+    var disabled = false;
+    var argumentCaptor = ArgumentCaptor.forClass(DidChangeAutomaticAnalysisSettingParams.class);
+
+    underTest.didChangeAutomaticAnalysisSetting(enabled);
+    underTest.didChangeAutomaticAnalysisSetting(disabled);
+
+    verify(analysisService, times(2)).didChangeAutomaticAnalysisSetting(argumentCaptor.capture());
+    assertThat(argumentCaptor.getAllValues()).hasSize(2);
+    assertThat(argumentCaptor.getAllValues().get(0).isEnabled()).isTrue();
+    assertThat(argumentCaptor.getAllValues().get(1).isEnabled()).isFalse();
   }
 }

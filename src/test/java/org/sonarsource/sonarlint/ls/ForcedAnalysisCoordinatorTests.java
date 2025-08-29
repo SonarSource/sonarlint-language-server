@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -36,6 +37,8 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -51,6 +54,7 @@ class ForcedAnalysisCoordinatorTests {
   private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   private final BackendService backendService = mock(BackendService.class);
   private final WorkspaceFoldersManager workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
+  private final SettingsManager settingsManager = mock(SettingsManager.class);
   URI workspaceFolderUri = URI.create("file:///my/workspace/folder");
 
   @BeforeEach
@@ -63,7 +67,7 @@ class ForcedAnalysisCoordinatorTests {
     openFilesCache = new OpenFilesCache(lsLogOutput);
     OpenNotebooksCache openNotebooksCache = new OpenNotebooksCache(lsLogOutput, mock(NotebookDiagnosticPublisher.class));
     underTest = new ForcedAnalysisCoordinator(workspaceFoldersManager, mock(ProjectBindingManager.class), openFilesCache,
-      openNotebooksCache, client, backendServiceFacade);
+      openNotebooksCache, client, backendServiceFacade, settingsManager);
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     when(workspaceFoldersManager.findFolderForFile(any())).thenReturn(Optional.of(new WorkspaceFolderWrapper(workspaceFolderUri,
       new WorkspaceFolder("file:///my/workspace/folder", "folder"), lsLogOutput)));
@@ -72,6 +76,9 @@ class ForcedAnalysisCoordinatorTests {
 
   @Test
   void shouldScheduleAnalysisOfAllOpenJavaFilesWithoutIssueRefreshOnClasspathChange() {
+    when(settingsManager.getCurrentSettings())
+      .thenReturn(new WorkspaceSettings(true, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(),
+        false, "", true, true, ""));
     URI file1Uri = URI.create("file://Foo1.java");
     openFilesCache.didOpen(file1Uri, "java", "class Foo1 {}", 1);
     URI file2Uri = URI.create("file://Foo2.java");
@@ -86,6 +93,9 @@ class ForcedAnalysisCoordinatorTests {
 
   @Test
   void shouldScheduleAnalysisOfAllOpenJavaFilesWithoutIssueRefreshOnJavaServerModeChangeToStandard() {
+    when(settingsManager.getCurrentSettings())
+      .thenReturn(new WorkspaceSettings(true, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(),
+        false, "", true, true, ""));
     URI file1Uri = URI.create("file://Foo1.java");
     openFilesCache.didOpen(file1Uri, "java", "class Foo1 {}", 1);
     URI file2Uri = URI.create("file://Foo2.java");
@@ -105,6 +115,25 @@ class ForcedAnalysisCoordinatorTests {
     openFilesCache.didOpen(URI.create("file://Foo.js"), "javascript", "alert();", 1);
 
     underTest.didServerModeChange(ServerMode.LIGHTWEIGHT);
+
+    verify(backendService, times(0)).analyzeFilesList(any(), any());
+  }
+
+  @Test
+  void shouldNotLaunchAnalysisIfAutomaticAnalysisIsDisabled() {
+    when(settingsManager.getCurrentSettings())
+      .thenReturn(new WorkspaceSettings(false, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(),
+        false, "", true, false, ""));
+    URI file1Uri = URI.create("file://Foo1.java");
+    openFilesCache.didOpen(file1Uri, "java", "class Foo1 {}", 1);
+    URI file2Uri = URI.create("file://Foo2.java");
+    openFilesCache.didOpen(file2Uri, "java", "class Foo2 {}", 1);
+    URI file3Uri = URI.create("file://Foo.js");
+    openFilesCache.didOpen(file3Uri, "javascript", "alert();", 1);
+
+    underTest.didClasspathUpdate();
+    underTest.didServerModeChange(ServerMode.STANDARD);
+    underTest.analyzeAllUnboundOpenFiles();
 
     verify(backendService, times(0)).analyzeFilesList(any(), any());
   }

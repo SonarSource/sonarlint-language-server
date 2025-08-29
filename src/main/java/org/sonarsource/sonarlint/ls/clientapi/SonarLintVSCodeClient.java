@@ -94,7 +94,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.TokenDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.UsernamePasswordDto;
 import org.sonarsource.sonarlint.ls.AnalysisHelper;
 import org.sonarsource.sonarlint.ls.DiagnosticPublisher;
-import org.sonarsource.sonarlint.ls.ForcedAnalysisCoordinator;
 import org.sonarsource.sonarlint.ls.SkippedPluginsNotifier;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.CreateConnectionParams;
@@ -137,7 +136,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private final TaintVulnerabilitiesCache taintVulnerabilitiesCache;
   private final DependencyRisksCache dependencyRisksCache;
   private WorkspaceFoldersManager workspaceFoldersManager;
-  private ForcedAnalysisCoordinator forcedAnalysisCoordinator;
   private DiagnosticPublisher diagnosticPublisher;
   private final ScheduledExecutorService bindingSuggestionsHandler;
   private final SkippedPluginsNotifier skippedPluginsNotifier;
@@ -331,8 +329,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public Either<TokenDto, UsernamePasswordDto> getCredentials(String connectionId) {
     var connectionSettings = settingsManager.getCurrentSettings().getServerConnections().get(connectionId);
-    var serverUrlOrOrganization = connectionSettings.isSonarCloudAlias() ?
-      (connectionSettings.getRegion() + "_" + connectionSettings.getOrganizationKey())
+    var serverUrlOrOrganization = connectionSettings.isSonarCloudAlias() ? (connectionSettings.getRegion() + "_" + connectionSettings.getOrganizationKey())
       : connectionSettings.getServerUrl();
     try {
       return Either.forLeft(new TokenDto(client.getTokenForServer(serverUrlOrOrganization).get()));
@@ -532,8 +529,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
           getNewCodeDefinitionAndSubmitToClient(folderUri.toString());
           return null;
         });
-
-        forcedAnalysisCoordinator.analyzeAllUnboundOpenFiles();
       });
       initializeTaintCache(configurationScopeIds);
     }
@@ -621,10 +616,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     this.workspaceFoldersManager = workspaceFoldersManager;
   }
 
-  public void setAnalysisScheduler(ForcedAnalysisCoordinator analysisScheduler) {
-    this.forcedAnalysisCoordinator = analysisScheduler;
-  }
-
   public void setDiagnosticPublisher(DiagnosticPublisher diagnosticPublisher) {
     this.diagnosticPublisher = diagnosticPublisher;
   }
@@ -675,7 +666,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     var excludes = settingsManager.getCurrentSettings().getAnalysisExcludes();
     return excludes.isEmpty() ? Collections.emptySet()
       : Arrays.stream(excludes.split(","))
-      .collect(Collectors.toSet());
+        .collect(Collectors.toSet());
   }
 
   @Override

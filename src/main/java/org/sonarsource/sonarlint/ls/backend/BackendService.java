@@ -38,6 +38,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFileListParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFullProjectParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAnalysisPropertiesParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAutomaticAnalysisSettingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeClientNodeJsPathParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangePathToCompileCommandsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
@@ -262,10 +263,9 @@ public class BackendService {
     backend.getAnalysisService().didChangeClientNodeJsPath(params);
   }
 
-  public CompletableFuture<SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedResponse>
-  checkStatusChangePermitted(String connectionId, String issueKey) {
+  public CompletableFuture<SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedResponse> checkStatusChangePermitted(String connectionId, String issueKey) {
     return backend.getIssueService().checkStatusChangePermitted(
-        new org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedParams(connectionId, issueKey))
+      new org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedParams(connectionId, issueKey))
       .thenApply(result -> new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedResponse(result.isPermitted(),
         result.getNotPermittedReason(), result.getAllowedStatuses().stream().map(EnumLabelsMapper::resolutionStatusToLabel).toList()))
       .exceptionally(t -> {
@@ -320,8 +320,8 @@ public class BackendService {
     return null;
   }
 
-  public CompletableFuture<org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedResponse>
-  checkChangeIssueStatusPermitted(org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedParams params) {
+  public CompletableFuture<org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedResponse> checkChangeIssueStatusPermitted(
+    org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedParams params) {
     return backend.getIssueService().checkStatusChangePermitted(params);
   }
 
@@ -430,5 +430,10 @@ public class BackendService {
 
   public CompletableFuture<Void> changeDependencyRiskStatus(ChangeDependencyRiskStatusParams params) {
     return backend.getDependencyRiskService().changeStatus(params);
+  }
+
+  public void didChangeAutomaticAnalysisSetting(boolean isEnabled) {
+    var params = new DidChangeAutomaticAnalysisSettingParams(isEnabled);
+    backend.getAnalysisService().didChangeAutomaticAnalysisSetting(params);
   }
 }
