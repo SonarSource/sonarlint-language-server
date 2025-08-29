@@ -32,6 +32,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
+import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
@@ -51,15 +52,17 @@ public class ForcedAnalysisCoordinator implements WorkspaceSettingsChangeListene
   private final ProjectBindingManager bindingManager;
   private final SonarLintExtendedLanguageClient client;
   private final BackendServiceFacade backendServiceFacade;
+  private final SettingsManager settingsManager;
 
   public ForcedAnalysisCoordinator(WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
-    OpenNotebooksCache openNotebooksCache, SonarLintExtendedLanguageClient client, BackendServiceFacade backendServiceFacade) {
+    OpenNotebooksCache openNotebooksCache, SonarLintExtendedLanguageClient client, BackendServiceFacade backendServiceFacade, SettingsManager settingsManager) {
     this.workspaceFoldersManager = workspaceFoldersManager;
     this.bindingManager = bindingManager;
     this.openFilesCache = openFilesCache;
     this.openNotebooksCache = openNotebooksCache;
     this.backendServiceFacade = backendServiceFacade;
     this.client = client;
+    this.settingsManager = settingsManager;
   }
 
   public void analyzeAllOpenFilesInFolder(@Nullable WorkspaceFolderWrapper folder) {
@@ -70,6 +73,9 @@ public class ForcedAnalysisCoordinator implements WorkspaceSettingsChangeListene
   }
 
   private void analyseNotIgnoredFiles(List<VersionedOpenFile> files) {
+    if (!settingsManager.getCurrentSettings().isAutomaticAnalysis()) {
+      return;
+    }
     var uriStrings = files.stream().map(it -> it.getUri().toString()).toList();
     var fileUrisParams = new SonarLintExtendedLanguageClient.FileUrisParams(uriStrings);
     client.filterOutExcludedFiles(fileUrisParams)
