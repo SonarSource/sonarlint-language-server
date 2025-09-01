@@ -46,7 +46,7 @@ ec2_instance_definition: &WINVM_DEFINITION
   image: base-windows-jdk17-v*
   platform: windows
   region: eu-central-1
-  type: t3.large
+  type: c6i.xlarge
 
 maven_cache: &MAVEN_CACHE
   maven_cache:
