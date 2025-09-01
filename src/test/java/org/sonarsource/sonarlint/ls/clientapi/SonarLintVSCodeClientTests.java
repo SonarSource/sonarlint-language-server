@@ -63,6 +63,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionOrigin;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.DependencyRiskDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.ListAllResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.tracking.TaintVulnerabilityDto;
@@ -500,7 +501,7 @@ class SonarLintVSCodeClientTests {
   void assistBindingShouldCallClientMethod() {
     var configScopeId = "folderUri";
     var projectKey = "projectKey";
-    var assistBindingParams = new AssistBindingParams("connectionId", projectKey, configScopeId, false);
+    var assistBindingParams = new AssistBindingParams("connectionId", projectKey, configScopeId, BindingSuggestionOrigin.SHARED_CONFIGURATION);
     when(client.assistBinding(any())).thenReturn(
       CompletableFuture.completedFuture(new SonarLintExtendedLanguageClient.AssistBindingResponse("folderUri")));
     var workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
