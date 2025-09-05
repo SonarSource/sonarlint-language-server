@@ -39,6 +39,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -71,6 +73,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreat
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.ConnectionSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.FixSuggestionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.flightrecorder.FlightRecorderStartedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.GetProxyPasswordAuthenticationResponse;
@@ -677,5 +680,16 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public void invalidToken(String connectionId) {
     client.notifyInvalidToken(new SonarLintExtendedLanguageClient.NotifyInvalidTokenParams(connectionId));
+  }
+
+  @Override
+  public void flightRecorderStarted(FlightRecorderStartedParams params) {
+    // Notification needs to be delayed because LSP messages are not handled until after 'initialized'
+    new Timer("Flight Recorder Start Notification Delay").schedule(new TimerTask() {
+      @Override
+      public void run() {
+        client.flightRecorderStarted(new SonarLintExtendedLanguageClient.FlightRecorderStartedParams(params.getSessionId()));
+      }
+    }, 1000);
   }
 }

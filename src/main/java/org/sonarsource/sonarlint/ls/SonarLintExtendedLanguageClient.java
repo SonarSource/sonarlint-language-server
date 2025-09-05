@@ -32,6 +32,7 @@ import javax.annotation.Nullable;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
+import org.eclipse.lsp4j.jsonrpc.services.JsonSegment;
 import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRuleParamDto;
@@ -47,39 +48,40 @@ import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.domain.MQRModeDetails;
 import org.sonarsource.sonarlint.ls.domain.StandardModeDetails;
 
+@JsonSegment("sonarlint")
 public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
-  @JsonNotification("sonarlint/suggestBinding")
+  @JsonNotification("suggestBinding")
   void suggestBinding(SuggestBindingParams binding);
 
-  @JsonNotification("sonarlint/suggestConnection")
+  @JsonNotification("suggestConnection")
   void suggestConnection(SuggestConnectionParams suggestConnectionParams);
 
-  @JsonRequest("sonarlint/listFilesInFolder")
+  @JsonRequest("listFilesInFolder")
   CompletableFuture<FindFileByNamesInScopeResponse> listFilesInFolder(FolderUriParams params);
 
-  @JsonNotification("sonarlint/showSonarLintOutput")
+  @JsonNotification("showSonarLintOutput")
   void showSonarLintOutput();
 
-  @JsonNotification("sonarlint/openJavaHomeSettings")
+  @JsonNotification("openJavaHomeSettings")
   void openJavaHomeSettings();
 
-  @JsonNotification("sonarlint/openPathToNodeSettings")
+  @JsonNotification("openPathToNodeSettings")
   void openPathToNodeSettings();
 
-  @JsonNotification("sonarlint/doNotShowMissingRequirementsMessageAgain")
+  @JsonNotification("doNotShowMissingRequirementsMessageAgain")
   void doNotShowMissingRequirementsMessageAgain();
 
-  @JsonRequest("sonarlint/canShowMissingRequirementsNotification")
+  @JsonRequest("canShowMissingRequirementsNotification")
   CompletableFuture<Boolean> canShowMissingRequirementsNotification();
 
-  @JsonNotification("sonarlint/openConnectionSettings")
+  @JsonNotification("openConnectionSettings")
   void openConnectionSettings(boolean isSonarCloud);
 
-  @JsonNotification("sonarlint/removeBindingsForDeletedConnections")
+  @JsonNotification("removeBindingsForDeletedConnections")
   void removeBindingsForDeletedConnections(List<String> connectionIds);
 
-  @JsonRequest("sonarlint/assistCreatingConnection")
+  @JsonRequest("assistCreatingConnection")
   CompletableFuture<AssistCreatingConnectionResponse> assistCreatingConnection(CreateConnectionParams params);
 
   class AssistCreatingConnectionResponse {
@@ -95,7 +97,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
   }
 
-  @JsonRequest("sonarlint/assistBinding")
+  @JsonRequest("assistBinding")
   CompletableFuture<AssistBindingResponse> assistBinding(AssistBindingParams params);
 
   class AssistBindingResponse {
@@ -114,7 +116,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   record ShowFixSuggestionParams(String suggestionId, List<ChangesDto> textEdits, String fileUri, boolean isLocal) {
   }
 
-  @JsonNotification("sonarlint/showFixSuggestion")
+  @JsonNotification("showFixSuggestion")
   void showFixSuggestion(ShowFixSuggestionParams params);
 
   record StartProgressNotificationParams(String taskId, String message) {
@@ -123,13 +125,13 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   record EndProgressNotificationParams(String taskId) {
   }
 
-  @JsonNotification("sonarlint/startProgressNotification")
+  @JsonNotification("startProgressNotification")
   void startProgressNotification(StartProgressNotificationParams params);
 
-  @JsonNotification("sonarlint/endProgressNotification")
+  @JsonNotification("endProgressNotification")
   void endProgressNotification(EndProgressNotificationParams params);
 
-  @JsonNotification("sonarlint/showRuleDescription")
+  @JsonNotification("showRuleDescription")
   void showRuleDescription(ShowRuleDescriptionParams params);
 
   class ShowHotspotParams {
@@ -238,13 +240,13 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
   }
 
-  @JsonNotification("sonarlint/showHotspot")
+  @JsonNotification("showHotspot")
   void showHotspot(ShowHotspotParams showHotspotParams);
 
-  @JsonNotification("sonarlint/showIssue")
+  @JsonNotification("showIssue")
   void showIssue(ShowAllLocationsCommand.Param showIssueParams);
 
-  @JsonNotification("sonarlint/showIssueOrHotspot")
+  @JsonNotification("showIssueOrHotspot")
   void showIssueOrHotspot(ShowAllLocationsCommand.Param params);
 
   class FileUrisParams {
@@ -271,13 +273,13 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
   }
 
-  @JsonRequest("sonarlint/filterOutExcludedFiles")
+  @JsonRequest("filterOutExcludedFiles")
   CompletableFuture<FileUrisResult> filterOutExcludedFiles(FileUrisParams params);
 
-  @JsonNotification("sonarlint/maybeShowWiderLanguageSupportNotification")
+  @JsonNotification("maybeShowWiderLanguageSupportNotification")
   void maybeShowWiderLanguageSupportNotification(List<String> languageLabel);
 
-  @JsonNotification("sonarlint/showNotificationForFirstSecretsIssue")
+  @JsonNotification("showNotificationForFirstSecretsIssue")
   void showFirstSecretDetectionNotification();
 
   class ShowRuleDescriptionParams {
@@ -634,7 +636,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
    * Fetch java configuration for a given file.
    * See: https://github.com/redhat-developer/vscode-java/commit/e29f6df2db016c514afd8d2b69462ad2ef1de867
    */
-  @JsonRequest("sonarlint/getJavaConfig")
+  @JsonRequest("getJavaConfig")
   CompletableFuture<GetJavaConfigResponse> getJavaConfig(String fileUri);
 
   class GetJavaConfigResponse {
@@ -688,7 +690,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
   }
 
-  @JsonNotification("sonarlint/browseTo")
+  @JsonNotification("browseTo")
   void browseTo(String link);
 
   class ReferenceBranchForFolder {
@@ -732,13 +734,13 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
   }
 
-  @JsonNotification("sonarlint/setReferenceBranchNameForFolder")
+  @JsonNotification("setReferenceBranchNameForFolder")
   void setReferenceBranchNameForFolder(ReferenceBranchForFolder newReferenceBranch);
 
-  @JsonNotification("sonarlint/needCompilationDatabase")
+  @JsonNotification("needCompilationDatabase")
   void needCompilationDatabase();
 
-  @JsonNotification("sonarlint/reportConnectionCheckResult")
+  @JsonNotification("reportConnectionCheckResult")
   void reportConnectionCheckResult(ConnectionCheckResult result);
 
   class ConnectionCheckResult {
@@ -775,22 +777,22 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
   }
 
-  @JsonRequest("sonarlint/getTokenForServer")
+  @JsonRequest("getTokenForServer")
   CompletableFuture<String> getTokenForServer(String serverUrlOrOrganization);
 
-  @JsonNotification("sonarlint/publishSecurityHotspots")
+  @JsonNotification("publishSecurityHotspots")
   void publishSecurityHotspots(PublishDiagnosticsParams publishDiagnosticsParams);
 
-  @JsonNotification("sonarlint/publishTaintVulnerabilities")
+  @JsonNotification("publishTaintVulnerabilities")
   void publishTaintVulnerabilities(PublishDiagnosticsParams publishDiagnosticsParams);
 
-  @JsonNotification("sonarlint/publishDependencyRisks")
+  @JsonNotification("publishDependencyRisks")
   void publishDependencyRisks(PublishDiagnosticsParams publishDiagnosticsParams);
 
-  @JsonNotification("sonarlint/settingsApplied")
+  @JsonNotification("settingsApplied")
   void settingsApplied();
 
-  @JsonRequest("sonarlint/isOpenInEditor")
+  @JsonRequest("isOpenInEditor")
   CompletableFuture<Boolean> isOpenInEditor(String fileUri);
 
   record SslCertificateConfirmationParams(@Expose String issuedTo, @Expose String issuedBy, @Expose String validFrom,
@@ -798,7 +800,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
                                           @Expose String sha256Fingerprint) {
   }
 
-  @JsonRequest("sonarlint/askSslCertificateConfirmation")
+  @JsonRequest("askSslCertificateConfirmation")
   CompletableFuture<Boolean> askSslCertificateConfirmation(SslCertificateConfirmationParams params);
 
   class ShowSoonUnsupportedVersionMessageParams {
@@ -822,7 +824,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
   }
 
-  @JsonNotification("sonarlint/showSoonUnsupportedVersionMessage")
+  @JsonNotification("showSoonUnsupportedVersionMessage")
   void showSoonUnsupportedVersionMessage(ShowSoonUnsupportedVersionMessageParams messageParams);
 
   class SubmitNewCodeDefinitionParams {
@@ -875,12 +877,17 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
   }
 
-  @JsonNotification("sonarlint/submitNewCodeDefinition")
+  @JsonNotification("submitNewCodeDefinition")
   void submitNewCodeDefinition(SubmitNewCodeDefinitionParams params);
 
   record NotifyInvalidTokenParams(String connectionId) {
   }
 
-  @JsonNotification("sonarlint/notifyInvalidToken")
+  @JsonNotification("notifyInvalidToken")
   void notifyInvalidToken(NotifyInvalidTokenParams params);
+
+  record FlightRecorderStartedParams(String sessionId) {}
+
+  @JsonNotification("flightRecorderStarted")
+  void flightRecorderStarted(FlightRecorderStartedParams params);
 }

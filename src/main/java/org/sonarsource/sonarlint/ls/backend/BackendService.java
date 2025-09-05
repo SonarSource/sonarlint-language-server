@@ -436,4 +436,8 @@ public class BackendService {
     var params = new DidChangeAutomaticAnalysisSettingParams(isEnabled);
     backend.getAnalysisService().didChangeAutomaticAnalysisSetting(params);
   }
+
+  public void dumpThreads() {
+    backend.getFlightRecordingService().captureThreadDump();
+  }
 }
