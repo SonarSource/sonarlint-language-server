@@ -991,22 +991,22 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public CompletableFuture<Void> analyseOpenFileIgnoringExcludes(AnalyseOpenFileIgnoringExcludesParams params) {
-    var notebookUriStr = params.getNotebookUri();
+    var notebookUriStr = params.notebookUri();
     URI documentUri;
     VersionedOpenFile versionedOpenFile;
     if (notebookUriStr != null) {
       documentUri = create(notebookUriStr);
-      var version = params.getNotebookVersion();
+      var version = params.notebookVersion();
       var notebookUri = create(notebookUriStr);
       requireNonNull(version);
-      var cells = requireNonNull(params.getNotebookCells());
+      var cells = requireNonNull(params.notebookCells());
       var notebookFile = VersionedOpenNotebook.create(
         notebookUri, version,
         cells, notebookDiagnosticPublisher);
       versionedOpenFile = notebookFile.asVersionedOpenFile();
       openNotebooksCache.didOpen(notebookUri, version, cells);
     } else {
-      var document = requireNonNull(params.getTextDocument());
+      var document = requireNonNull(params.textDocument());
       documentUri = create(document.getUri());
       versionedOpenFile = openFilesCache.didOpen(create(document.getUri()), document.getLanguageId(), document.getText(), document.getVersion());
     }
@@ -1015,6 +1015,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       CompletableFutures.computeAsync(cancelChecker -> {
         moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(versionedOpenFile);
         workspaceFolder.ifPresent(folder -> backendServiceFacade.getBackendService().analyzeFilesList(folder.getUri().toString(), List.of(documentUri)));
+        if (params.triggeredByUser()) {
+          telemetry.currentFileAnalysisTriggered();
+        }
         return null;
       });
     }
