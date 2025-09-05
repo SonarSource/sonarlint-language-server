@@ -1024,4 +1024,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return CompletableFuture.completedFuture(null);
   }
 
+  @Override
+  public void dumpThreads() {
+    backendServiceFacade.getBackendService().dumpThreads();
+  }
 }
