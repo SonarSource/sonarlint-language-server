@@ -19,7 +19,6 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import java.io.IOException;
@@ -119,10 +118,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "showVerboseLogs", false,
       "productKey", "productKey",
       "additionalAttributes", Map.of(
-        "extra", "value"
-      ),
-      "omnisharpDirectory", omnisharpDir.toString()
-    ), new WorkspaceFolder(analysisDir.toUri().toString(), "AnalysisDir"));
+        "extra", "value"),
+      "omnisharpDirectory", omnisharpDir.toString()), new WorkspaceFolder(analysisDir.toUri().toString(), "AnalysisDir"));
   }
 
   @BeforeEach
@@ -168,7 +165,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleGoFileOnOpen() throws Exception {
-    setRulesConfig(client.globalSettings, GO_S1862, "on"); //NB: make sure the tested rule is enabled
+    setRulesConfig(client.globalSettings, GO_S1862, "on"); // NB: make sure the tested rule is enabled
     notifyConfigurationChangeOnClient();
 
     var uri = getUri("analyzeSimpleGoFileOnOpen.go", analysisDir);
@@ -191,7 +188,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleCloudFormationFileOnOpen() throws Exception {
-    setRulesConfig(client.globalSettings, CLOUDFORMATION_S6273, "on"); //NB: make sure the tested rule is enabled
+    setRulesConfig(client.globalSettings, CLOUDFORMATION_S6273, "on"); // NB: make sure the tested rule is enabled
     notifyConfigurationChangeOnClient();
 
     var uri = getUri("sampleCloudFormation.yaml", analysisDir);
@@ -223,7 +220,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleDockerFileOnOpen() throws Exception {
-    setRulesConfig(client.globalSettings, DOCKER_S6476, "on"); //NB: make sure the tested rule is enabled
+    setRulesConfig(client.globalSettings, DOCKER_S6476, "on"); // NB: make sure the tested rule is enabled
     notifyConfigurationChangeOnClient();
 
     var uri = getUri("Dockerfile", analysisDir);
@@ -239,7 +236,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analyzeSimpleTerraformFileOnOpen() throws Exception {
-    setRulesConfig(client.globalSettings, TERRAFORM_S6273, "on"); //NB: make sure the tested rule is enabled
+    setRulesConfig(client.globalSettings, TERRAFORM_S6273, "on"); // NB: make sure the tested rule is enabled
     notifyConfigurationChangeOnClient();
 
     var uri = getUri("sampleTerraform.tf", analysisDir);
@@ -351,7 +348,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(2, 14, 2, 69, PYTHON_S139, "sonarqube", "Move this trailing comment on the previous empty line.", DiagnosticSeverity.Warning)
-        // Expected issues on python:S1481 are suppressed by rule configuration
+      // Expected issues on python:S1481 are suppressed by rule configuration
       ));
   }
 
@@ -602,7 +599,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     notifyConfigurationChangeOnClient();
 
     waitForLogToContain(
-      String.format("Global settings updated: WorkspaceSettings[analysisExcludes=,automaticAnalysis=true,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false,organizationKey=<null>,region=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showVerboseLogs=true]",
+      String.format(
+        "Global settings updated: WorkspaceSettings[analysisExcludes=,automaticAnalysis=true,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false,organizationKey=<null>,region=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showVerboseLogs=true]",
         CONNECTION_ID, CONNECTION_ID, mockWebServerExtension.url("/")));
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder( "Telemetry enabled");
@@ -639,8 +637,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     assertThat(client.ruleDesc.getKey()).isEqualTo("javascript:S930");
     assertThat(client.ruleDesc.getName()).isEqualTo("Function calls should not pass extra arguments");
-    assertThat(htmlContent).contains("When you call a function in JavaScript and provide more arguments than the function expects, the extra arguments are simply ignored by the\n" +
-      "function.");
+    assertThat(htmlContent)
+      .contains("When you call a function in JavaScript and provide more arguments than the function expects, the extra arguments are simply ignored by the\n" +
+        "function.");
     assertThat(client.ruleDesc.getType()).isNull();
     assertThat(client.ruleDesc.getSeverity()).isNull();
     assertThat(client.ruleDesc.getCleanCodeAttributeCategory()).isEqualTo("Intentionality");
@@ -659,7 +658,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.ruleDesc.getKey()).isEqualTo(JAVA_S2095);
     assertThat(client.ruleDesc.getCleanCodeAttribute()).isEqualTo(EnumLabelsMapper.cleanCodeAttributeToLabel(CleanCodeAttribute.COMPLETE));
     assertThat(client.ruleDesc.getCleanCodeAttributeCategory()).isEqualTo(EnumLabelsMapper.cleanCodeAttributeCategoryToLabel(CleanCodeAttributeCategory.INTENTIONAL));
-    assertThat(client.ruleDesc.getImpacts()).containsExactly(Map.entry(EnumLabelsMapper.softwareQualityToLabel(SoftwareQuality.RELIABILITY), EnumLabelsMapper.impactSeverityToLabel(ImpactSeverity.HIGH)));
+    assertThat(client.ruleDesc.getImpacts())
+      .containsExactly(Map.entry(EnumLabelsMapper.softwareQualityToLabel(SoftwareQuality.RELIABILITY), EnumLabelsMapper.impactSeverityToLabel(ImpactSeverity.HIGH)));
   }
 
   @Test
@@ -724,8 +724,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void testListAllRules() {
     var result = lsProxy.listAllRules().join();
-    String[] commercialLanguages = new String[]{"C", "C++"};
-    String[] freeLanguages = new String[]{"AzureResourceManager", "CSS", "C#", "CloudFormation", "Docker", "Go", "HTML", "IPython Notebooks", "Java",
+    String[] commercialLanguages = new String[] {"C", "C++"};
+    String[] freeLanguages = new String[] {"AzureResourceManager", "CSS", "C#", "CloudFormation", "Docker", "Go", "HTML", "IPython Notebooks", "Java",
       "JavaScript", "Kubernetes", "PHP", "Python", "Secrets", "Terraform", "TypeScript", "XML"};
     if (COMMERCIAL_ENABLED) {
       awaitUntilAsserted(() -> assertThat(result).containsOnlyKeys(ArrayUtils.addAll(commercialLanguages, freeLanguages)));
@@ -771,7 +771,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     var uri = getUri("testAnalysisLogsDisabled.py", analysisDir);
     didOpen(uri, "python", "def foo():\n  toto = 0\n");
-
 
     assertAnalysisLogsContains(1, 0);
   }
@@ -1105,7 +1104,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     var fileName = "analyseOpenFileIgnoringExcludes.py";
     var fileUri = analysisDir.resolve(fileName).toUri().toString();
 
-    lsProxy.analyseOpenFileIgnoringExcludes(new SonarLintExtendedLanguageServer.AnalyseOpenFileIgnoringExcludesParams(
+    lsProxy.analyseOpenFileIgnoringExcludes(new SonarLintExtendedLanguageServer.AnalyseOpenFileIgnoringExcludesParams(false,
       new TextDocumentItem(fileUri, "py", 1, "def foo():\n  toto = 0\n"), null, null, Collections.emptyList()));
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
