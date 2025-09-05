@@ -543,7 +543,6 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
   }
 
-
   @JsonNotification("sonarlint/changeIssueStatus")
   CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params);
 
@@ -581,7 +580,6 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/checkLocalDetectionSupported")
   CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(UriParams params);
-
 
   @JsonRequest("sonarlint/getHotspotDetails")
   CompletableFuture<SonarLintExtendedLanguageClient.ShowRuleDescriptionParams> getHotspotDetails(
@@ -695,39 +693,12 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
   }
 
-  class AnalyseOpenFileIgnoringExcludesParams {
-    private final TextDocumentItem textDocument;
-    private final String notebookUri;
-    private final Integer notebookVersion;
-    private final List<TextDocumentItem> notebookCells;
-
-    public AnalyseOpenFileIgnoringExcludesParams(@Nullable TextDocumentItem textDocument,
-      @Nullable String notebookUri, @Nullable Integer notebookVersion, @Nullable List<TextDocumentItem> notebookCells) {
-      this.textDocument = textDocument;
-      this.notebookUri = notebookUri;
-      this.notebookVersion = notebookVersion;
-      this.notebookCells = notebookCells;
-    }
-
-    @CheckForNull
-    public TextDocumentItem getTextDocument() {
-      return textDocument;
-    }
-
-    @CheckForNull
-    public String getNotebookUri() {
-      return notebookUri;
-    }
-
-    @CheckForNull
-    public Integer getNotebookVersion() {
-      return notebookVersion;
-    }
-
-    @CheckForNull
-    public List<TextDocumentItem> getNotebookCells() {
-      return notebookCells;
-    }
+  record AnalyseOpenFileIgnoringExcludesParams(
+    boolean triggeredByUser,
+    TextDocumentItem textDocument,
+    String notebookUri,
+    Integer notebookVersion,
+    List<TextDocumentItem> notebookCells) {
   }
 
   @JsonNotification("sonarlint/analyseOpenFileIgnoringExcludes")

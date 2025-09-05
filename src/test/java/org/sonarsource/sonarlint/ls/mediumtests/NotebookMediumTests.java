@@ -51,8 +51,7 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
       "productVersion", "0.1",
       "showVerboseLogs", false,
       "enableNotebooks", true,
-      "productKey", "productKey"
-    ), new WorkspaceFolder(analysisDir.toUri().toString(), "AnalysisDir"));
+      "productKey", "productKey"), new WorkspaceFolder(analysisDir.toUri().toString(), "AnalysisDir"));
   }
 
   @BeforeEach
@@ -73,8 +72,7 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
       // First cell has no issue
       "def no_issue():\n  print('Hello')\n",
       // Second cell has an issue
-      "def foo():\n  print 'toto'\n"
-    );
+      "def foo():\n  print 'toto'\n");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri + "#2"))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
@@ -117,7 +115,7 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
     var fileName = "analyseOpenNotebookIgnoringExcludes.ipynb";
     var fileUri = analysisDir.resolve(fileName).toUri().toString();
 
-    lsProxy.analyseOpenFileIgnoringExcludes(new SonarLintExtendedLanguageServer.AnalyseOpenFileIgnoringExcludesParams(
+    lsProxy.analyseOpenFileIgnoringExcludes(new SonarLintExtendedLanguageServer.AnalyseOpenFileIgnoringExcludesParams(true,
       null, fileUri, 0,
       List.of(new TextDocumentItem(fileUri + "#1", "python", 1, "def foo():\n  print 'toto'\n"))));
 
