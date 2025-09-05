@@ -81,6 +81,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.ChangesDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.FileEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.FixSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.LineRangeDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.flightrecorder.FlightRecorderStartedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.ProxyDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.X509CertificateDto;
@@ -1049,6 +1050,19 @@ class SonarLintVSCodeClientTests {
     var argCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.NotifyInvalidTokenParams.class);
     verify(client).notifyInvalidToken(argCaptor.capture());
     assertThat(argCaptor.getValue().connectionId()).isEqualTo(connectionId);
+  }
+
+  @Test
+  void shouldCallFlightRecorderStarted() {
+    var sessionId = "test-session-id";
+
+    underTest.flightRecorderStarted(new FlightRecorderStartedParams(sessionId));
+
+    var argCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.FlightRecorderStartedParams.class);
+    Awaitility.await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> {
+      verify(client).flightRecorderStarted(argCaptor.capture());
+      assertThat(argCaptor.getValue().sessionId()).isEqualTo(sessionId);
+    });
   }
 
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
