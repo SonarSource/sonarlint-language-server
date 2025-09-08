@@ -39,8 +39,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -109,6 +107,7 @@ import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.domain.DependencyRisk;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
+import org.sonarsource.sonarlint.ls.flightrecorder.FlightRecorderManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
@@ -143,13 +142,14 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private final ScheduledExecutorService bindingSuggestionsHandler;
   private final SkippedPluginsNotifier skippedPluginsNotifier;
   private final PromotionalNotifications promotionalNotifications;
+  private final FlightRecorderManager flightRecorderManager;
   private final LSProgressMonitor progressMonitor;
 
   private AnalysisHelper analysisHelper;
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider, LanguageClientLogger logOutput,
-    TaintVulnerabilitiesCache taintVulnerabilitiesCache, DependencyRisksCache dependencyRisksCache,
-    SkippedPluginsNotifier skippedPluginsNotifier, PromotionalNotifications promotionalNotifications) {
+    TaintVulnerabilitiesCache taintVulnerabilitiesCache, DependencyRisksCache dependencyRisksCache, SkippedPluginsNotifier skippedPluginsNotifier,
+    PromotionalNotifications promotionalNotifications, FlightRecorderManager flightRecorderManager) {
     this.client = client;
     this.hostInfoProvider = hostInfoProvider;
     this.logOutput = logOutput;
@@ -157,6 +157,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     this.dependencyRisksCache = dependencyRisksCache;
     this.skippedPluginsNotifier = skippedPluginsNotifier;
     this.promotionalNotifications = promotionalNotifications;
+    this.flightRecorderManager = flightRecorderManager;
     this.progressMonitor = new LSProgressMonitor(client);
     var bindingSuggestionsThreadFactory = Utils.threadFactory("Binding suggestion handler", false);
     bindingSuggestionsHandler = Executors.newSingleThreadScheduledExecutor(bindingSuggestionsThreadFactory);
@@ -684,12 +685,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public void flightRecorderStarted(FlightRecorderStartedParams params) {
-    // Notification needs to be delayed because LSP messages are not handled until after 'initialized'
-    new Timer("Flight Recorder Start Notification Delay").schedule(new TimerTask() {
-      @Override
-      public void run() {
-        client.flightRecorderStarted(new SonarLintExtendedLanguageClient.FlightRecorderStartedParams(params.getSessionId()));
-      }
-    }, 1000);
+    flightRecorderManager.onFlightRecorderStarted(params.getSessionId());
   }
 }

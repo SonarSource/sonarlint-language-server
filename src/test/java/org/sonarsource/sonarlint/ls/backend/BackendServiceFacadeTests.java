@@ -20,35 +20,38 @@
 package org.sonarsource.sonarlint.ls.backend;
 
 import java.util.List;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.BackendCapability;
 import org.sonarsource.sonarlint.ls.EnabledLanguages;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
+import uk.org.webcompere.systemstubs.jupiter.SystemStub;
+import uk.org.webcompere.systemstubs.jupiter.SystemStubsExtension;
+import uk.org.webcompere.systemstubs.properties.SystemProperties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.FLIGHT_RECORDER_ENABLED_PROPERTY_KEY;
 import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.MONITORING_DISABLED_PROPERTY_KEY;
 
+@ExtendWith(SystemStubsExtension.class)
 class BackendServiceFacadeTests {
+
+  @SystemStub
+  private SystemProperties systemProperties;
 
   public static final String SONARLINT_HTTP_CONNECTION_TIMEOUT = "sonarlint.http.connectTimeout";
   public static final String SONARLINT_HTTP_SOCKET_TIMEOUT = "sonarlint.http.socketTimeout";
   SonarLintRpcClientDelegate backend = mock(SonarLintRpcClientDelegate.class);
   BackendServiceFacade underTest = new BackendServiceFacade(backend, mock(LanguageClientLogger.class), mock(SonarLintExtendedLanguageClient.class), new EnabledLanguages(List.of(), null));
 
-  @AfterEach
-  void tearDown() {
-    System.clearProperty(MONITORING_DISABLED_PROPERTY_KEY);
-  }
-
   @Test
   void shouldReturnDurationInMinutes() {
-    System.setProperty(SONARLINT_HTTP_CONNECTION_TIMEOUT, "3");
+    systemProperties.set(SONARLINT_HTTP_CONNECTION_TIMEOUT, "3");
 
     var result = BackendServiceFacade.getTimeoutProperty(SONARLINT_HTTP_CONNECTION_TIMEOUT);
 
@@ -58,7 +61,7 @@ class BackendServiceFacadeTests {
 
   @Test
   void shouldReturnDurationInSeconds() {
-    System.setProperty(SONARLINT_HTTP_CONNECTION_TIMEOUT, "PT3S");
+    systemProperties.set(SONARLINT_HTTP_CONNECTION_TIMEOUT, "PT3S");
 
     var result = BackendServiceFacade.getTimeoutProperty(SONARLINT_HTTP_CONNECTION_TIMEOUT);
 
@@ -75,7 +78,7 @@ class BackendServiceFacadeTests {
 
   @Test
   void shouldNotEnableMonitoringWhenDisabled() {
-    System.setProperty(MONITORING_DISABLED_PROPERTY_KEY, "true");
+    systemProperties.set(MONITORING_DISABLED_PROPERTY_KEY, "true");
 
     var result = underTest.shouldEnableMonitoring();
 
@@ -84,7 +87,7 @@ class BackendServiceFacadeTests {
 
   @Test
   void shouldEnableMonitoringWhenNotDisabled() {
-    System.setProperty(MONITORING_DISABLED_PROPERTY_KEY, "false");
+    systemProperties.set(MONITORING_DISABLED_PROPERTY_KEY, "false");
 
     var result = underTest.shouldEnableMonitoring();
 
@@ -94,7 +97,7 @@ class BackendServiceFacadeTests {
   @Test
   void shouldComputeBackendCapabilities() {
     // make sure monitoring is disabled
-    System.setProperty(MONITORING_DISABLED_PROPERTY_KEY, "true");
+    systemProperties.set(MONITORING_DISABLED_PROPERTY_KEY, "true");
 
     // make sure telemetry is disabled
     SonarLintTelemetry telemetryService = mock(SonarLintTelemetry.class);
@@ -114,16 +117,17 @@ class BackendServiceFacadeTests {
       .contains(BackendCapability.FULL_SYNCHRONIZATION)
       .contains(BackendCapability.SERVER_SENT_EVENTS)
       .doesNotContain(BackendCapability.TELEMETRY)
-      .doesNotContain(BackendCapability.MONITORING);
+      .doesNotContain(BackendCapability.MONITORING)
+      .doesNotContain(BackendCapability.FLIGHT_RECORDER);
 
   }
 
   @Test
   void shouldComputeBackendCapabilities_withTelemetryAndMonitoring() {
-    // make sure monitoring is disabled
-    System.setProperty(MONITORING_DISABLED_PROPERTY_KEY, "false");
+    // make sure monitoring is not disabled
+    systemProperties.set(MONITORING_DISABLED_PROPERTY_KEY, "false");
 
-    // make sure telemetry is disabled
+    // make sure telemetry is not disabled
     SonarLintTelemetry telemetryService = mock(SonarLintTelemetry.class);
     underTest.setTelemetry(telemetryService);
     when(telemetryService.enabled()).thenReturn(true);
@@ -141,8 +145,38 @@ class BackendServiceFacadeTests {
       .contains(BackendCapability.FULL_SYNCHRONIZATION)
       .contains(BackendCapability.SERVER_SENT_EVENTS)
       .contains(BackendCapability.TELEMETRY)
-      .contains(BackendCapability.MONITORING);
+      .contains(BackendCapability.MONITORING)
+      .doesNotContain(BackendCapability.FLIGHT_RECORDER);
 
   }
 
+  @Test
+  void shouldComputeBackendCapabilities_withFlightRecorder() {
+    // make sure monitoring is not disabled
+    systemProperties.set(MONITORING_DISABLED_PROPERTY_KEY, "false");
+    // make sure flight recorder is enabled
+    systemProperties.set(FLIGHT_RECORDER_ENABLED_PROPERTY_KEY, "true");
+
+    // make sure telemetry is not disabled
+    SonarLintTelemetry telemetryService = mock(SonarLintTelemetry.class);
+    underTest.setTelemetry(telemetryService);
+    when(telemetryService.enabled()).thenReturn(true);
+
+    var backendCapabilities = underTest.getBackendCapabilities();
+
+    assertThat(backendCapabilities)
+      .isNotNull()
+      .isNotEmpty()
+      .contains(BackendCapability.SMART_NOTIFICATIONS)
+      .contains(BackendCapability.SECURITY_HOTSPOTS)
+      .contains(BackendCapability.PROJECT_SYNCHRONIZATION)
+      .contains(BackendCapability.EMBEDDED_SERVER)
+      .contains(BackendCapability.DATAFLOW_BUG_DETECTION)
+      .contains(BackendCapability.FULL_SYNCHRONIZATION)
+      .contains(BackendCapability.SERVER_SENT_EVENTS)
+      .contains(BackendCapability.TELEMETRY)
+      .contains(BackendCapability.MONITORING)
+      .contains(BackendCapability.FLIGHT_RECORDER);
+
+  }
 }
