@@ -19,19 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.mediumtests;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.sonarsource.sonarlint.ls.SonarLintLanguageServer.JUPYTER_NOTEBOOK_TYPE;
-import static org.sonarsource.sonarlint.ls.settings.SettingsManager.DOTNET_DEFAULT_SOLUTION_PATH;
-import static org.sonarsource.sonarlint.ls.settings.SettingsManager.OMNISHARP_LOAD_PROJECT_ON_DEMAND;
-import static org.sonarsource.sonarlint.ls.settings.SettingsManager.OMNISHARP_PROJECT_LOAD_TIMEOUT;
-import static org.sonarsource.sonarlint.ls.settings.SettingsManager.OMNISHARP_USE_MODERN_NET;
-import static org.sonarsource.sonarlint.ls.settings.SettingsManager.SONARLINT_CONFIGURATION_NAMESPACE;
-import static org.sonarsource.sonarlint.ls.settings.SettingsManager.VSCODE_FILE_EXCLUDES;
-
+import com.google.gson.JsonNull;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -62,9 +50,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-
 import javax.annotation.Nullable;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.assertj.core.api.iterable.ThrowingExtractor;
@@ -121,11 +107,21 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
-
-import com.google.gson.JsonNull;
-
 import picocli.CommandLine;
 import testutils.LogTestStartAndEnd;
+
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.sonarsource.sonarlint.ls.SonarLintLanguageServer.JUPYTER_NOTEBOOK_TYPE;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.DOTNET_DEFAULT_SOLUTION_PATH;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.OMNISHARP_LOAD_PROJECT_ON_DEMAND;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.OMNISHARP_PROJECT_LOAD_TIMEOUT;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.OMNISHARP_USE_MODERN_NET;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.SONARLINT_CONFIGURATION_NAMESPACE;
+import static org.sonarsource.sonarlint.ls.settings.SettingsManager.VSCODE_FILE_EXCLUDES;
 
 @ExtendWith(LogTestStartAndEnd.class)
 public abstract class AbstractLanguageServerMediumTests {
@@ -399,6 +395,7 @@ public abstract class AbstractLanguageServerMediumTests {
     final Set<String> openedLinks = new HashSet<>();
     final Set<MessageParams> shownMessages = new HashSet<>();
     final Map<String, NewCodeDefinitionDto> newCodeDefinitionCache = new HashMap<>();
+    final Set<String> flightRecorderSessionIds = new HashSet<>();
 
     void clearHotspotsAndIssuesAndConfigScopeReadiness() {
       scopeReadyForAnalysis.clear();
@@ -423,6 +420,7 @@ public abstract class AbstractLanguageServerMediumTests {
       suggestedBindings = null;
       isOpenInEditor = true;
       openedLinks.clear();
+      flightRecorderSessionIds.clear();
     }
 
     @Override
@@ -554,6 +552,11 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void notifyInvalidToken(NotifyInvalidTokenParams params) {
+    }
+
+    @Override
+    public void flightRecorderStarted(FlightRecorderStartedParams params) {
+      flightRecorderSessionIds.add(params.sessionId());
     }
 
     @Override

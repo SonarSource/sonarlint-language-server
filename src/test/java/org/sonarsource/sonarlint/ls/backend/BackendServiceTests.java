@@ -40,6 +40,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.ConfigurationR
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpdateBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.ConnectionRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.ListUserOrganizationsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.flightrecorder.FlightRecordingRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
@@ -241,5 +242,15 @@ class BackendServiceTests {
     assertThat(argumentCaptor.getAllValues()).hasSize(2);
     assertThat(argumentCaptor.getAllValues().get(0).isEnabled()).isTrue();
     assertThat(argumentCaptor.getAllValues().get(1).isEnabled()).isFalse();
+  }
+
+  @Test
+  void shouldAskBackendToDumpThreads() {
+    var flightRecordingService = mock(FlightRecordingRpcService.class);
+    when(backend.getFlightRecordingService()).thenReturn(flightRecordingService);
+
+    underTest.dumpThreads();
+
+    verify(flightRecordingService).captureThreadDump();
   }
 }

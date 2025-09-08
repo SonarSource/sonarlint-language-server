@@ -71,6 +71,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.AssistCreat
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.ConnectionSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.FixSuggestionDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.flightrecorder.FlightRecorderStartedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.RaisedHotspotDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.GetProxyPasswordAuthenticationResponse;
@@ -106,6 +107,7 @@ import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.domain.DependencyRisk;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
+import org.sonarsource.sonarlint.ls.flightrecorder.FlightRecorderManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
@@ -140,13 +142,14 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   private final ScheduledExecutorService bindingSuggestionsHandler;
   private final SkippedPluginsNotifier skippedPluginsNotifier;
   private final PromotionalNotifications promotionalNotifications;
+  private final FlightRecorderManager flightRecorderManager;
   private final LSProgressMonitor progressMonitor;
 
   private AnalysisHelper analysisHelper;
 
   public SonarLintVSCodeClient(SonarLintExtendedLanguageClient client, HostInfoProvider hostInfoProvider, LanguageClientLogger logOutput,
-    TaintVulnerabilitiesCache taintVulnerabilitiesCache, DependencyRisksCache dependencyRisksCache,
-    SkippedPluginsNotifier skippedPluginsNotifier, PromotionalNotifications promotionalNotifications) {
+    TaintVulnerabilitiesCache taintVulnerabilitiesCache, DependencyRisksCache dependencyRisksCache, SkippedPluginsNotifier skippedPluginsNotifier,
+    PromotionalNotifications promotionalNotifications, FlightRecorderManager flightRecorderManager) {
     this.client = client;
     this.hostInfoProvider = hostInfoProvider;
     this.logOutput = logOutput;
@@ -154,6 +157,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     this.dependencyRisksCache = dependencyRisksCache;
     this.skippedPluginsNotifier = skippedPluginsNotifier;
     this.promotionalNotifications = promotionalNotifications;
+    this.flightRecorderManager = flightRecorderManager;
     this.progressMonitor = new LSProgressMonitor(client);
     var bindingSuggestionsThreadFactory = Utils.threadFactory("Binding suggestion handler", false);
     bindingSuggestionsHandler = Executors.newSingleThreadScheduledExecutor(bindingSuggestionsThreadFactory);
@@ -677,5 +681,10 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public void invalidToken(String connectionId) {
     client.notifyInvalidToken(new SonarLintExtendedLanguageClient.NotifyInvalidTokenParams(connectionId));
+  }
+
+  @Override
+  public void flightRecorderStarted(FlightRecorderStartedParams params) {
+    flightRecorderManager.onFlightRecorderStarted(params.getSessionId());
   }
 }

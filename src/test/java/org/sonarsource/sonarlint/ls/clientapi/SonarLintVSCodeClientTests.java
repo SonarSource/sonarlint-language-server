@@ -81,6 +81,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.ChangesDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.FileEditDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.FixSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.LineRangeDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.flightrecorder.FlightRecorderStartedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.hotspot.HotspotDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.ProxyDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.http.X509CertificateDto;
@@ -117,6 +118,7 @@ import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.domain.DependencyRisk;
 import org.sonarsource.sonarlint.ls.domain.TaintIssue;
+import org.sonarsource.sonarlint.ls.flightrecorder.FlightRecorderManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
@@ -173,6 +175,8 @@ class SonarLintVSCodeClientTests {
   DependencyRisksCache dependencyRisksCache = mock(DependencyRisksCache.class);
   DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
   PromotionalNotifications promotionalNotifications = mock(PromotionalNotifications.class);
+  FlightRecorderManager flightRecorderManager = mock(FlightRecorderManager.class);
+
   AnalysisHelper analysisHelper = mock(AnalysisHelper.class);
   WorkspaceFolderBranchManager branchManager = mock(WorkspaceFolderBranchManager.class);
 
@@ -215,7 +219,7 @@ class SonarLintVSCodeClientTests {
 
   @BeforeEach
   void setup() throws IOException {
-    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, dependencyRisksCache, skippedPluginsNotifier, promotionalNotifications);
+    underTest = new SonarLintVSCodeClient(client, server, logTester.getLogger(), taintVulnerabilitiesCache, dependencyRisksCache, skippedPluginsNotifier, promotionalNotifications, flightRecorderManager);
     underTest.setSmartNotifications(smartNotifications);
     underTest.setSettingsManager(settingsManager);
     underTest.setBindingManager(bindingManager);
@@ -1049,6 +1053,13 @@ class SonarLintVSCodeClientTests {
     var argCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.NotifyInvalidTokenParams.class);
     verify(client).notifyInvalidToken(argCaptor.capture());
     assertThat(argCaptor.getValue().connectionId()).isEqualTo(connectionId);
+  }
+
+  @Test
+  void shouldCallFlightRecorderStarted() {
+    var sessionId = "test-session-id";
+    underTest.flightRecorderStarted(new FlightRecorderStartedParams(sessionId));
+    verify(flightRecorderManager).onFlightRecorderStarted(sessionId);
   }
 
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
