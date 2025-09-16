@@ -44,6 +44,7 @@
     <!-- Release: enable publication to Bintray -->
     <artifactsToPublish>${project.groupId}:${project.artifactId}:jar</artifactsToPublish>
     <license.name>GNU LGPL v3</license.name>
+    <sonar.organization>sonarsource</sonar.organization>
   </properties>
 
   <dependencies>
