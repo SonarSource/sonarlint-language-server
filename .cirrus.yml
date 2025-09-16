@@ -4,9 +4,8 @@ env:
 
   ARTIFACTORY_URL: https://repox.jfrog.io/artifactory
   ARTIFACTORY_PRIVATE_USERNAME: vault-${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-private-reader
+  ARTIFACTORY_ACCESS_TOKEN: VAULT[development/artifactory/token/${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-private-reader access_token]
   ARTIFACTORY_PRIVATE_PASSWORD: VAULT[development/artifactory/token/${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-private-reader access_token]
-  SLACK_TOKEN: VAULT[development/kv/data/slack data.token]
-  SLACK_CHANNEL: squad-ide-vscode-bots
   NPM_CONFIG_//repox.jfrog.io/artifactory/api/npm/:_authToken: VAULT[development/artifactory/token/${CIRRUS_REPO_OWNER}-${CIRRUS_REPO_NAME}-private-reader access_token]
   NPM_CONFIG_registry: https://repox.jfrog.io/artifactory/api/npm/npm
 
@@ -74,9 +73,6 @@ build_task:
     - source cirrus-env BUILD-PRIVATE
     - regular_mvn_build_deploy_analyze -Dmaven.test.skip=true -Dsonar.skip=true
   cleanup_before_cache_script: cleanup_maven_repository
-  on_failure:
-    slack_notification_script: |
-      source slack-failure-notification
 
 qa_linux_task:
   # name: "Run unit tests on Linux with Java 17 and SonarQube analysis on Next"
@@ -99,8 +95,6 @@ qa_linux_task:
     junit_artifacts:
       path: '**/target/surefire-reports/TEST-*.xml'
       format: junit
-    slack_notification_script: |
-      source slack-failure-notification
 
 sonarqube_eu_analysis_task:
   # name: "Run unit tests on Linux with Java 17 and SonarQube analysis on Next"
@@ -123,8 +117,6 @@ sonarqube_eu_analysis_task:
     junit_artifacts:
       path: '**/target/surefire-reports/TEST-*.xml'
       format: junit
-    slack_notification_script: |
-      source slack-failure-notification
 
 sonarqube_us_analysis_task:
   # name: "Run unit tests on Linux with Java 17 and SonarQube analysis on Next"
@@ -147,8 +139,6 @@ sonarqube_us_analysis_task:
     junit_artifacts:
       path: '**/target/surefire-reports/TEST-*.xml'
       format: junit
-    slack_notification_script: |
-      source slack-failure-notification
 
 run_iris_task:
   only_if: $CIRRUS_CRON == "secondary-platform"
@@ -189,8 +179,6 @@ qa_windows_task:
     junit_artifacts:
       path: '**/target/surefire-reports/TEST-*.xml'
       format: junit
-    slack_notification_script: |
-      source slack-failure-notification
 
 mend_scan_task:
   # name: "Mend scan"
@@ -215,9 +203,6 @@ mend_scan_task:
   always:
     ws_scan_artifacts:
       path: "whitesource/**/*"
-  on_failure:
-    slack_notification_script: |
-      source slack-failure-notification
 
 promote_task:
   depends_on:
@@ -236,6 +221,3 @@ promote_task:
   <<: *MAVEN_CACHE
   promote_script: cirrus_promote_maven
   cleanup_before_cache_script: cleanup_maven_repository
-  on_failure:
-    slack_notification_script: |
-      source slack-failure-notification
