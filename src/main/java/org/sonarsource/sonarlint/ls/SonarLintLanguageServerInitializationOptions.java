@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls;
 
+import java.util.Collections;
 import java.util.Map;
 
 public record SonarLintLanguageServerInitializationOptions(
@@ -31,7 +32,7 @@ public record SonarLintLanguageServerInitializationOptions(
   Map<String, Object> additionalAttributes,
   String clientNodePath,
   boolean focusOnNewCode,
-  boolean automaticAnalysis,
+  Boolean automaticAnalysis,
   String omnisharpDirectory,
   String csharpOssPath,
   String csharpEnterprisePath,
@@ -40,5 +41,17 @@ public record SonarLintLanguageServerInitializationOptions(
   // keep loose-typing for fields coming from settings, to allow graceful handling in case of user mistakes
   Map<String, Object> rules,
   Map<String, Object> connections) {
+
+  public SonarLintLanguageServerInitializationOptions {
+    if (rules == null) {
+      rules = Collections.emptyMap();
+    }
+    if (connections == null) {
+      connections = Collections.emptyMap();
+    }
+    if (automaticAnalysis == null) {
+      automaticAnalysis = Boolean.TRUE;
+    }
+  }
 
 }
