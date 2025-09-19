@@ -33,7 +33,7 @@ public enum LSLanguage {
   CLOUDFORMATION("CloudFormation", "cloudformation"),
   COBOL("COBOL", "cobol"),
   CPP("C++", "cpp"),
-  CS("C#", "cs"),
+  CS("C#", "cs"\),
   CSS("CSS", "css"),
   DOCKER("Docker", "docker"),
   GO("Go", "go"),
