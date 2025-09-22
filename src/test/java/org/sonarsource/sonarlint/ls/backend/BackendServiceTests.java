@@ -39,6 +39,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConn
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.ConfigurationRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpdateBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.ConnectionRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.GetMCPServerConfigurationParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.ListUserOrganizationsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.flightrecorder.FlightRecordingRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotRpcService;
@@ -252,5 +253,20 @@ class BackendServiceTests {
     underTest.dumpThreads();
 
     verify(flightRecordingService).captureThreadDump();
+  }
+
+  @Test
+  void shouldForwardMCPServerConfigurationRequestToBackend() {
+    var connectionId = "connectionId";
+    var token = "token";
+
+    var argumentCaptor = ArgumentCaptor.forClass(GetMCPServerConfigurationParams.class);
+    when(backend.getConnectionService()).thenReturn(connectionRpcService);
+
+    underTest.getMCPServerConfiguration(new GetMCPServerConfigurationParams(connectionId, token));
+
+    verify(connectionRpcService).getMCPServerConfiguration(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue().getConnectionId()).isEqualTo(connectionId);
+    assertThat(argumentCaptor.getValue().getToken()).isEqualTo(token);
   }
 }
