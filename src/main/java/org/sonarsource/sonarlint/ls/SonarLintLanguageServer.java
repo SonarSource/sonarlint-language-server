@@ -120,6 +120,7 @@ import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
+import org.sonarsource.sonarlint.ls.embeddedserver.EmbeddedServerManager;
 import org.sonarsource.sonarlint.ls.flightrecorder.FlightRecorderManager;
 import org.sonarsource.sonarlint.ls.folders.ModuleEventsProcessor;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
@@ -160,6 +161,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public static final String PYTHON_LANGUAGE = "python";
   private final SonarLintExtendedLanguageClient client;
   private final FlightRecorderManager flightRecorderManager;
+  private final EmbeddedServerManager embeddedServerManager;
   private final SonarLintTelemetry telemetry;
   private final WorkspaceFoldersManager workspaceFoldersManager;
   private final SettingsManager settingsManager;
@@ -210,6 +212,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.openFilesCache = new OpenFilesCache(lsLogOutput);
 
     this.flightRecorderManager = new FlightRecorderManager(client);
+    this.embeddedServerManager = new EmbeddedServerManager(client);
     this.issuesCache = new IssuesCache();
     this.securityHotspotsCache = new HotspotsCache();
     var taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
@@ -221,7 +224,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client, lsLogOutput);
     var promotionalNotifications = new PromotionalNotifications(client);
     vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, lsLogOutput, taintVulnerabilitiesCache, dependencyRisksCache, skippedPluginsNotifier,
-      promotionalNotifications, flightRecorderManager);
+      promotionalNotifications, flightRecorderManager, embeddedServerManager);
     this.backendServiceFacade = new BackendServiceFacade(vsCodeClient, lsLogOutput, client, new EnabledLanguages(analyzers, lsLogOutput));
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
     this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, lsLogOutput);
@@ -330,6 +333,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       lsLogOutput.debug("Language Server initialized");
       settingsManager.didChangeConfiguration();
       flightRecorderManager.initialized();
+      embeddedServerManager.initialized();
       return null;
     });
   }

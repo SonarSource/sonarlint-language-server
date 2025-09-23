@@ -40,6 +40,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.RuleParamDefini
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.embeddedserver.EmbeddedServerStartedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.ChangesDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
@@ -340,13 +341,11 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
 
     public String getType() {
-      return severityDetails.isLeft() ?
-        severityDetails.getLeft().getType() : null;
+      return severityDetails.isLeft() ? severityDetails.getLeft().getType() : null;
     }
 
     public String getSeverity() {
-      return severityDetails.isLeft() ?
-        severityDetails.getLeft().getSeverity() : null;
+      return severityDetails.isLeft() ? severityDetails.getLeft().getSeverity() : null;
     }
 
     public boolean isTaint() {
@@ -366,13 +365,11 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
 
     public String getCleanCodeAttribute() {
-      return severityDetails.isRight() ?
-        severityDetails.getRight().getCleanCodeAttribute() : null;
+      return severityDetails.isRight() ? severityDetails.getRight().getCleanCodeAttribute() : null;
     }
 
     public String getCleanCodeAttributeCategory() {
-      return severityDetails.isRight() ?
-        severityDetails.getRight().getCleanCodeAttributeCategory() : null;
+      return severityDetails.isRight() ? severityDetails.getRight().getCleanCodeAttributeCategory() : null;
     }
 
     public Map<String, String> getImpacts() {
@@ -381,8 +378,12 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
       ShowRuleDescriptionParams that = (ShowRuleDescriptionParams) o;
       return isTaint == that.isTaint
         && Objects.equals(key, that.key)
@@ -431,7 +432,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
     public RuleDescriptionTab(String title, RuleDescriptionTabNonContextual ruleDescriptionTabNonContextual) {
       this.title = title;
-      this.ruleDescriptionTabContextual = new RuleDescriptionTabContextual[]{};
+      this.ruleDescriptionTabContextual = new RuleDescriptionTabContextual[] {};
       this.ruleDescriptionTabNonContextual = ruleDescriptionTabNonContextual;
       this.hasContextualInformation = false;
       this.defaultContextKey = "";
@@ -439,8 +440,12 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
       RuleDescriptionTab that = (RuleDescriptionTab) o;
       return hasContextualInformation == that.hasContextualInformation
         && Objects.equals(title, that.title)
@@ -505,8 +510,12 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
       RuleDescriptionTabContextual that = (RuleDescriptionTabContextual) o;
       return Objects.equals(htmlContent, that.htmlContent) && Objects.equals(contextKey, that.contextKey) && Objects.equals(displayName,
         that.displayName);
@@ -532,8 +541,12 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
       RuleDescriptionTabNonContextual that = (RuleDescriptionTabNonContextual) o;
       return Objects.equals(htmlContent, that.htmlContent);
     }
@@ -796,8 +809,8 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   CompletableFuture<Boolean> isOpenInEditor(String fileUri);
 
   record SslCertificateConfirmationParams(@Expose String issuedTo, @Expose String issuedBy, @Expose String validFrom,
-                                          @Expose String validTo, @Expose String sha1Fingerprint,
-                                          @Expose String sha256Fingerprint) {
+    @Expose String validTo, @Expose String sha1Fingerprint,
+    @Expose String sha256Fingerprint) {
   }
 
   @JsonRequest("askSslCertificateConfirmation")
@@ -865,8 +878,12 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
       FolderUriParams that = (FolderUriParams) o;
       return Objects.equals(folderUri, that.folderUri);
     }
@@ -886,8 +903,12 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("notifyInvalidToken")
   void notifyInvalidToken(NotifyInvalidTokenParams params);
 
-  record FlightRecorderStartedParams(String sessionId) {}
+  record FlightRecorderStartedParams(String sessionId) {
+  }
 
   @JsonNotification("flightRecorderStarted")
   void flightRecorderStarted(FlightRecorderStartedParams params);
+
+  @JsonNotification("embeddedServerStarted")
+  void embeddedServerStarted(EmbeddedServerStartedParams params);
 }
