@@ -101,6 +101,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.embeddedserver.EmbeddedServerStartedParams;
 import org.sonarsource.sonarlint.ls.ServerMain;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
@@ -175,7 +176,7 @@ public abstract class AbstractLanguageServerMediumTests {
     var text = fullPathToJar("sonartext");
     var xml = fullPathToJar("sonarxml");
     var omnisharp = fullPathToJar("sonarlintomnisharp");
-    String[] languageServerArgs = new String[]{"-port", "" + port, "-analyzers", go, java, javasymbolicexecution, js, php, py, html, xml, text, iac, omnisharp};
+    String[] languageServerArgs = new String[] {"-port", "" + port, "-analyzers", go, java, javasymbolicexecution, js, php, py, html, xml, text, iac, omnisharp};
     if (COMMERCIAL_ENABLED) {
       var cfamily = fullPathToJar("cfamily");
       languageServerArgs = ArrayUtils.add(languageServerArgs, cfamily);
@@ -698,6 +699,11 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public void publishDependencyRisks(PublishDiagnosticsParams publishDiagnosticsParams) {
       this.dependencyRisks.put(publishDiagnosticsParams.getUri(), publishDiagnosticsParams.getDiagnostics());
+    }
+
+    @Override
+    public void embeddedServerStarted(EmbeddedServerStartedParams params) {
+      // NOP
     }
   }
 
