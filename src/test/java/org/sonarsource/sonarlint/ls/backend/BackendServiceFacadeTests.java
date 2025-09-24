@@ -47,7 +47,8 @@ class BackendServiceFacadeTests {
   public static final String SONARLINT_HTTP_CONNECTION_TIMEOUT = "sonarlint.http.connectTimeout";
   public static final String SONARLINT_HTTP_SOCKET_TIMEOUT = "sonarlint.http.socketTimeout";
   SonarLintRpcClientDelegate backend = mock(SonarLintRpcClientDelegate.class);
-  BackendServiceFacade underTest = new BackendServiceFacade(backend, mock(LanguageClientLogger.class), mock(SonarLintExtendedLanguageClient.class), new EnabledLanguages(List.of(), null));
+  BackendServiceFacade underTest = new BackendServiceFacade(backend, mock(LanguageClientLogger.class), mock(SonarLintExtendedLanguageClient.class),
+    new EnabledLanguages(List.of(), null));
 
   @Test
   void shouldReturnDurationInMinutes() {
@@ -178,5 +179,26 @@ class BackendServiceFacadeTests {
       .contains(BackendCapability.MONITORING)
       .contains(BackendCapability.FLIGHT_RECORDER);
 
+  }
+
+  @Test
+  void should_use_cursor_as_product_key_if_present_in_app_name() {
+    var productKey = BackendServiceFacade.determineProductKey("Cursor", null);
+
+    assertThat(productKey).isEqualTo("cursor");
+  }
+
+  @Test
+  void should_use_windsurf_as_product_key_if_present_in_app_name() {
+    var productKey = BackendServiceFacade.determineProductKey("Windsurf", null);
+
+    assertThat(productKey).isEqualTo("windsurf");
+  }
+
+  @Test
+  void should_use_client_product_key_if_unknown_app_name() {
+    var productKey = BackendServiceFacade.determineProductKey("XXX", "vscode");
+
+    assertThat(productKey).isEqualTo("vscode");
   }
 }

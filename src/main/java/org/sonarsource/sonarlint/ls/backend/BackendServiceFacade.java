@@ -29,6 +29,7 @@ import java.time.Duration;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -120,9 +121,11 @@ public class BackendServiceFacade {
       sonarLintUserHome = overriddenUserHome.toString();
       workDir = Path.of(sonarLintUserHome);
     }
+
     return new InitializeParams(
       new ClientConstantInfoDto("Visual Studio Code", userAgent),
-      new TelemetryClientConstantAttributesDto(initializationOptions.productKey(),
+      new TelemetryClientConstantAttributesDto(
+        determineProductKey(appName, initializationOptions.productKey()),
         initializationOptions.productName(),
         initializationOptions.productVersion(),
         ideVersion,
@@ -145,6 +148,16 @@ public class BackendServiceFacade {
       languageSpecificRequirements,
       initializationOptions.automaticAnalysis(),
       null);
+  }
+
+  static String determineProductKey(String appName, String clientProductKey) {
+    if (appName.toLowerCase(Locale.US).contains("cursor")) {
+      return "cursor";
+    }
+    if (appName.toLowerCase(Locale.US).contains("windsurf")) {
+      return "windsurf";
+    }
+    return clientProductKey;
   }
 
   @NotNull
