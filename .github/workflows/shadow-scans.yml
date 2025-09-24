@@ -21,7 +21,7 @@ jobs:
         with:
           run-shadow-scans: true
           artifactory-deployer-role: qa-deployer
-          maven-args: -release,-sign -Dcommercial -Dmaven.install.skip=true
+          maven-args: -P-release,-sign -Dcommercial -Dmaven.install.skip=true
           artifactory-reader-role: private-reader
       - name: Run IRIS Analysis
         uses: SonarSource/unified-dogfooding-actions/run-iris@v1
