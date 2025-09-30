@@ -817,7 +817,7 @@ class SonarLintVSCodeClientTests {
     var configScopeId = "file:///my/config/scope";
     var language = Language.TS;
     var reason = DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_NODE_JS;
-    var minVersion = "18.18";
+    var minVersion = "20.11";
 
     underTest.didSkipLoadingPlugin(configScopeId, language, reason, minVersion, null);
 
