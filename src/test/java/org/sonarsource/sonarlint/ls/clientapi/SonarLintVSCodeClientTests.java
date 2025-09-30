@@ -533,7 +533,7 @@ class SonarLintVSCodeClientTests {
 
     underTest.noBindingSuggestionFound(new NoBindingSuggestionFoundParams(projectKey, false));
     verify(client).showMessageRequest(messageRequestParams);
-    verify(client).browseTo("https://docs.sonarsource.com/sonarqube-for-ide/vs-code/troubleshooting/#troubleshooting-connected-mode-setup");
+    verify(client).browseTo("https://docs.sonarsource.com/sonarqube-for-vs-code/troubleshooting/#troubleshooting-connected-mode-setup");
   }
 
   @Test
@@ -1068,7 +1068,7 @@ class SonarLintVSCodeClientTests {
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
     return new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
-        .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
+      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
       List.of(),
       new TextRangeWithHashDto(5, 5, 5, 5, ""), "", true, false);
   }
@@ -1076,7 +1076,7 @@ class SonarLintVSCodeClientTests {
   private TaintIssue getTaintIssue(UUID uuid) {
     return new TaintIssue(new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
-        .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
+      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
       List.of(),
       new TextRangeWithHashDto(5, 5, 5, 5, ""), "", true, false), "folderUri", true);
   }
