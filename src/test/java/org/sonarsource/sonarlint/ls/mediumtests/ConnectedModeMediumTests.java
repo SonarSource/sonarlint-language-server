@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import mockwebserver3.MockResponse;
@@ -82,6 +83,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.sonar.api.rules.RuleType.SECURITY_HOTSPOT;
 
@@ -286,6 +288,31 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(mcpServerConfig.getJsonConfiguration())
       .isNotEmpty()
       .contains(baseServerUrl);
+  }
+
+  @Test
+  void should_get_mcp_rule_file_content() {
+    var aiAssistedIde = "cursor";
+
+    var ruleFileContent = lsProxy.getMCPRuleFileContent(aiAssistedIde).join();
+
+    assertThat(ruleFileContent.getContent())
+      .isNotEmpty()
+      .contains("SonarQube MCP Server");
+  }
+
+  @Test
+  void should_show_warning_notification_for_unsupported_ide_when_requesting_rule_file_content() {
+    var aiAssistedIde = "unsupported-ide";
+
+    var future = lsProxy.getMCPRuleFileContent(aiAssistedIde);
+
+    assertThrows(CompletionException.class, future::join);
+
+    assertThat(client.shownMessages)
+      .isNotEmpty()
+      .contains(new MessageParams(MessageType.Warning,
+        "Rule file creation is not yet supported for IDE 'unsupported-ide'."));
   }
 
   @Test

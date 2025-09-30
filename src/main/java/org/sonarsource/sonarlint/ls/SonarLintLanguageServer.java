@@ -33,6 +33,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -86,6 +87,9 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.NotebookDocumentService;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAssistedIde;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
@@ -117,10 +121,10 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
+import org.sonarsource.sonarlint.ls.embeddedserver.EmbeddedServerManager;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
-import org.sonarsource.sonarlint.ls.embeddedserver.EmbeddedServerManager;
 import org.sonarsource.sonarlint.ls.flightrecorder.FlightRecorderManager;
 import org.sonarsource.sonarlint.ls.folders.ModuleEventsProcessor;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
@@ -682,6 +686,18 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<GetMCPServerConfigurationResponse> getMCPServerConfiguration(GetMCPServerConfigurationParams params) {
     return backendServiceFacade.getBackendService().getMCPServerConfiguration(params);
+  }
+
+  @Override
+  public CompletableFuture<GetRuleFileContentResponse> getMCPRuleFileContent(String clientProvidedIde) {
+    try {
+      var aiAssistedIde = AiAssistedIde.valueOf(clientProvidedIde.toUpperCase(Locale.US));
+      var params = new GetRuleFileContentParams(aiAssistedIde);
+      return backendServiceFacade.getBackendService().getMCPRuleFileContent(params);
+    } catch (IllegalArgumentException e) {
+      client.showMessage(new MessageParams(MessageType.Warning, "Rule file creation is not yet supported for IDE '" + clientProvidedIde + "'."));
+      throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported IDE: " + clientProvidedIde, e));
+    }
   }
 
   @Override
