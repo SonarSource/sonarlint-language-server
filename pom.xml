@@ -24,7 +24,7 @@
 
   <properties>
     <jdk.min.version>17</jdk.min.version>
-    <sonarlint.core.version>10.30.0.82224</sonarlint.core.version>
+    <sonarlint.core.version>10.33.0.82470</sonarlint.core.version>
     <slf4j.version>2.0.17</slf4j.version>
     <!-- Version used by Xodus -->
     <kotlin.version>1.6.10</kotlin.version>
@@ -44,6 +44,7 @@
     <!-- Release: enable publication to Bintray -->
     <artifactsToPublish>${project.groupId}:${project.artifactId}:jar</artifactsToPublish>
     <license.name>GNU LGPL v3</license.name>
+    <sonar.organization>sonarsource</sonar.organization>
   </properties>
 
   <dependencies>
@@ -142,6 +143,12 @@
       <groupId>org.mockito</groupId>
       <artifactId>mockito-junit-jupiter</artifactId>
       <version>5.8.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>uk.org.webcompere</groupId>
+      <artifactId>system-stubs-jupiter</artifactId>
+      <version>2.1.7</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -348,7 +355,7 @@
         <artifactId>frontend-maven-plugin</artifactId>
         <version>1.8.0</version>
         <configuration>
-          <nodeVersion>v18.20.1</nodeVersion>
+          <nodeVersion>v20.12.0</nodeVersion>
           <workingDirectory>src/test/resources/fake-ts-project</workingDirectory>
         </configuration>
         <executions>

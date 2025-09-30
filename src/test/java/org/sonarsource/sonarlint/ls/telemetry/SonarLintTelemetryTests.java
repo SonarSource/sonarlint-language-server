@@ -311,6 +311,25 @@ class SonarLintTelemetryTests {
     verify(telemetryService, never()).analysisReportingTriggered(any());
   }
 
+  @Test
+  void currentFileAnalysisTriggered_when_enabled() {
+    var argument = ArgumentCaptor.forClass(AnalysisReportingTriggeredParams.class);
+
+    telemetry.currentFileAnalysisTriggered();
+
+    verify(telemetryService).analysisReportingTriggered(argument.capture());
+    assertThat(argument.getValue().getAnalysisType()).isEqualTo(AnalysisReportingType.CURRENT_FILE_ANALYSIS_TYPE);
+  }
+
+  @Test
+  void currentFileAnalysisTriggered_when_disabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+
+    telemetry.currentFileAnalysisTriggered();
+
+    verify(telemetryService, never()).analysisReportingTriggered(any());
+  }
+
   private static WorkspaceSettings newWorkspaceSettingsWithTelemetrySetting(boolean disableTelemetry) {
     return new WorkspaceSettings(disableTelemetry, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(),
       Collections.emptyMap(), false, "/path/to/node", false, true, "");

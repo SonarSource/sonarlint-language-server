@@ -32,11 +32,14 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.util.Preconditions;
 import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
 import org.eclipse.lsp4j.services.LanguageServer;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.GetConnectionSuggestionsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.GetMCPServerConfigurationParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.GetMCPServerConfigurationResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.OrganizationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.ChangeDependencyRiskStatusParams;
@@ -543,7 +546,6 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
   }
 
-
   @JsonNotification("sonarlint/changeIssueStatus")
   CompletableFuture<Void> changeIssueStatus(ChangeIssueStatusParams params);
 
@@ -581,7 +583,6 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/checkLocalDetectionSupported")
   CompletableFuture<CheckLocalDetectionSupportedResponse> checkLocalDetectionSupported(UriParams params);
-
 
   @JsonRequest("sonarlint/getHotspotDetails")
   CompletableFuture<SonarLintExtendedLanguageClient.ShowRuleDescriptionParams> getHotspotDetails(
@@ -695,39 +696,12 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
   }
 
-  class AnalyseOpenFileIgnoringExcludesParams {
-    private final TextDocumentItem textDocument;
-    private final String notebookUri;
-    private final Integer notebookVersion;
-    private final List<TextDocumentItem> notebookCells;
-
-    public AnalyseOpenFileIgnoringExcludesParams(@Nullable TextDocumentItem textDocument,
-      @Nullable String notebookUri, @Nullable Integer notebookVersion, @Nullable List<TextDocumentItem> notebookCells) {
-      this.textDocument = textDocument;
-      this.notebookUri = notebookUri;
-      this.notebookVersion = notebookVersion;
-      this.notebookCells = notebookCells;
-    }
-
-    @CheckForNull
-    public TextDocumentItem getTextDocument() {
-      return textDocument;
-    }
-
-    @CheckForNull
-    public String getNotebookUri() {
-      return notebookUri;
-    }
-
-    @CheckForNull
-    public Integer getNotebookVersion() {
-      return notebookVersion;
-    }
-
-    @CheckForNull
-    public List<TextDocumentItem> getNotebookCells() {
-      return notebookCells;
-    }
+  record AnalyseOpenFileIgnoringExcludesParams(
+    boolean triggeredByUser,
+    TextDocumentItem textDocument,
+    String notebookUri,
+    Integer notebookVersion,
+    List<TextDocumentItem> notebookCells) {
   }
 
   @JsonNotification("sonarlint/analyseOpenFileIgnoringExcludes")
@@ -735,6 +709,12 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/getSharedConnectedModeFileContent")
   CompletableFuture<GetSharedConnectedModeConfigFileResponse> getSharedConnectedModeConfigFileContents(GetSharedConnectedModeConfigFileParams params);
+
+  @JsonRequest("sonarlint/getMCPServerConfiguration")
+  CompletableFuture<GetMCPServerConfigurationResponse> getMCPServerConfiguration(GetMCPServerConfigurationParams params);
+
+  @JsonRequest("sonarlint/getMCPRuleFileContent")
+  CompletableFuture<GetRuleFileContentResponse> getMCPRuleFileContent(String aiAssistedIde);
 
   enum BindingCreationMode {
     AUTOMATIC,
@@ -759,4 +739,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonNotification("sonarlint/findingsFiltered")
   CompletableFuture<Void> findingsFiltered(FindingsFilteredParams params);
+
+  @JsonNotification("sonarlint/dumpThreads")
+  void dumpThreads();
 }

@@ -29,6 +29,7 @@ import java.time.Duration;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -68,6 +69,7 @@ import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 public class BackendServiceFacade {
 
   public static final String MONITORING_DISABLED_PROPERTY_KEY = "sonarlint.monitoring.disabled";
+  public static final String FLIGHT_RECORDER_ENABLED_PROPERTY_KEY = "sonarlint.flightrecorder.enabled";
 
   private final BackendService backendService;
   private final ConfigurationScopeDto rootConfigurationScope;
@@ -119,9 +121,11 @@ public class BackendServiceFacade {
       sonarLintUserHome = overriddenUserHome.toString();
       workDir = Path.of(sonarLintUserHome);
     }
+
     return new InitializeParams(
       new ClientConstantInfoDto("Visual Studio Code", userAgent),
-      new TelemetryClientConstantAttributesDto(initializationOptions.productKey(),
+      new TelemetryClientConstantAttributesDto(
+        determineProductKey(appName, initializationOptions.productKey()),
         initializationOptions.productName(),
         initializationOptions.productVersion(),
         ideVersion,
@@ -146,6 +150,16 @@ public class BackendServiceFacade {
       null);
   }
 
+  static String determineProductKey(String appName, String clientProductKey) {
+    if (appName.toLowerCase(Locale.US).contains("cursor")) {
+      return "cursor";
+    }
+    if (appName.toLowerCase(Locale.US).contains("windsurf")) {
+      return "windsurf";
+    }
+    return clientProductKey;
+  }
+
   @NotNull
   EnumSet<BackendCapability> getBackendCapabilities() {
     var backendCapabilities = EnumSet.of(BackendCapability.SMART_NOTIFICATIONS, BackendCapability.PROJECT_SYNCHRONIZATION,
@@ -158,6 +172,9 @@ public class BackendServiceFacade {
     if (shouldEnableMonitoring()) {
       backendCapabilities.add(BackendCapability.MONITORING);
     }
+    if (shouldEnableFlightRecorder()) {
+      backendCapabilities.add(BackendCapability.FLIGHT_RECORDER);
+    }
     return backendCapabilities;
   }
 
@@ -167,6 +184,14 @@ public class BackendServiceFacade {
       lsLogOutput.debug("Monitoring is disabled by system property");
     }
     return !monitoringDisabledByProperty;
+  }
+
+  boolean shouldEnableFlightRecorder() {
+    var flightRecorderEnabledByProperty = "true".equals(System.getProperty(FLIGHT_RECORDER_ENABLED_PROPERTY_KEY));
+    if (flightRecorderEnabledByProperty) {
+      lsLogOutput.debug("Flight recorder is enabled by system property");
+    }
+    return flightRecorderEnabledByProperty;
   }
 
   @NotNull

@@ -32,6 +32,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.issue.IssueNotFoundException;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAssistedIde;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAssistedIdeRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalysisRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAutomaticAnalysisSettingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.BindingRpcService;
@@ -39,7 +42,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConn
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.ConfigurationRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpdateBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.ConnectionRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.GetMCPServerConfigurationParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.ListUserOrganizationsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.flightrecorder.FlightRecordingRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
@@ -72,6 +77,7 @@ class BackendServiceTests {
   BindingRpcService bindingRpcService = mock(BindingRpcService.class);
   ConnectionRpcService connectionRpcService = mock(ConnectionRpcService.class);
   IssueRpcService issueService = mock(IssueRpcService.class);
+  AiAssistedIdeRpcService aiAssistedIdeRpcService = mock(AiAssistedIdeRpcService.class);
   static LanguageClientLogger lsLogOutput = mock(LanguageClientLogger.class);
   static SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   static BackendService underTest = new BackendService(backend, lsLogOutput, client);
@@ -89,6 +95,7 @@ class BackendServiceTests {
     when(backend.getBindingService()).thenReturn(bindingRpcService);
     when(backend.getConnectionService()).thenReturn(connectionRpcService);
     when(backend.getIssueService()).thenReturn(issueService);
+    when(backend.getAiAssistedIdeRpcService()).thenReturn(aiAssistedIdeRpcService);
   }
 
   @Test
@@ -241,5 +248,42 @@ class BackendServiceTests {
     assertThat(argumentCaptor.getAllValues()).hasSize(2);
     assertThat(argumentCaptor.getAllValues().get(0).isEnabled()).isTrue();
     assertThat(argumentCaptor.getAllValues().get(1).isEnabled()).isFalse();
+  }
+
+  @Test
+  void shouldAskBackendToDumpThreads() {
+    var flightRecordingService = mock(FlightRecordingRpcService.class);
+    when(backend.getFlightRecordingService()).thenReturn(flightRecordingService);
+
+    underTest.dumpThreads();
+
+    verify(flightRecordingService).captureThreadDump();
+  }
+
+  @Test
+  void shouldForwardMCPServerConfigurationRequestToBackend() {
+    var connectionId = "connectionId";
+    var token = "token";
+
+    var argumentCaptor = ArgumentCaptor.forClass(GetMCPServerConfigurationParams.class);
+    when(backend.getConnectionService()).thenReturn(connectionRpcService);
+
+    underTest.getMCPServerConfiguration(new GetMCPServerConfigurationParams(connectionId, token));
+
+    verify(connectionRpcService).getMCPServerConfiguration(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue().getConnectionId()).isEqualTo(connectionId);
+    assertThat(argumentCaptor.getValue().getToken()).isEqualTo(token);
+  }
+
+  @Test
+  void shouldForwardMCPRuleFileRequestToBackend() {
+    var aiAssistedIde = AiAssistedIde.CURSOR;
+
+    var argumentCaptor = ArgumentCaptor.forClass(GetRuleFileContentParams.class);
+
+    underTest.getMCPRuleFileContent(new GetRuleFileContentParams(aiAssistedIde));
+
+    verify(aiAssistedIdeRpcService).getRuleFileContent(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue().getIde()).isEqualTo(aiAssistedIde);
   }
 }
