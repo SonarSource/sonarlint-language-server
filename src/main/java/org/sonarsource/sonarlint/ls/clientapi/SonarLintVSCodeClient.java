@@ -25,7 +25,6 @@ import java.net.Proxy;
 import java.net.ProxySelector;
 import java.net.URI;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.cert.CertificateEncodingException;
@@ -536,19 +535,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public List<ClientFileDto> listFiles(String configScopeId) {
-    return configScopeIdAsUri(configScopeId)
-      .map(configScopeIdAsUri -> CompletableFutures.computeAsync(c -> {
-        var response = client.listFilesInFolder(new SonarLintExtendedLanguageClient.FolderUriParams(configScopeId)).join();
-        var folderPath = Path.of(configScopeIdAsUri);
-        return response.getFoundFiles().stream()
-          .map(file -> {
-            var filePath = Path.of(file.getFilePath());
-            return new ClientFileDto(filePath.toUri(), folderPath.relativize(filePath), configScopeId, null, StandardCharsets.UTF_8.name(), filePath,
-              file.getContent(), null, true);
-          })
-          .toList();
-      }).join())
-      .orElse(List.of());
+    return List.of();
   }
 
   private static Optional<URI> configScopeIdAsUri(String configScopeId) {
