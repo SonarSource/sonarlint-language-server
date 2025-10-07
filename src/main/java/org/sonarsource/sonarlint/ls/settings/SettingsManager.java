@@ -475,7 +475,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       if (checkRequiredAttribute(m, "SonarQube server", SERVER_URL)) {
         var connectionId = defaultIfBlank((String) m.get(CONNECTION_ID), DEFAULT_CONNECTION_ID);
         var url = (String) m.get(SERVER_URL);
-        var token = getTokenFromClient(url);
+        String token = (String) m.getOrDefault(TOKEN, "");
+        if (token.isEmpty()) {
+          token = getTokenFromClient(url);
+        }
         var disableNotifications = (Boolean) m.getOrDefault(DISABLE_NOTIFICATIONS, false);
         var connectionSettings = new ServerConnectionSettings(connectionId, url, token, null, disableNotifications, null);
         addIfUniqueConnectionId(serverConnections, connectionId, connectionSettings);

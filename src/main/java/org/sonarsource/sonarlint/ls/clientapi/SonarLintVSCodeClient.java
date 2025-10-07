@@ -362,7 +362,8 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     var serverUrlOrOrganization = connectionSettings.isSonarCloudAlias() ? (connectionSettings.getRegion() + "_" + connectionSettings.getOrganizationKey())
       : connectionSettings.getServerUrl();
     try {
-      return Either.forLeft(new TokenDto(client.getTokenForServer(serverUrlOrOrganization).get()));
+      var cachedToken = connectionSettings.getToken();
+      return cachedToken != null ? Either.forLeft(new TokenDto(cachedToken)) : Either.forLeft(new TokenDto(client.getTokenForServer(serverUrlOrOrganization).get()));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logOutput.errorWithStackTrace("Can't get token for server " + serverUrlOrOrganization, e);
