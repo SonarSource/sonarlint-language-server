@@ -23,6 +23,7 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
+import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
@@ -273,15 +274,7 @@ public class DiagnosticPublisher {
   private PublishDiagnosticsParams createPublishDiagnosticsParams(URI newUri) {
     var p = new PublishDiagnosticsParams();
 
-    Map<String, DelegatingFinding> localIssues = issuesCache.get(newUri);
-
-    var localDiagnostics = localIssues.entrySet()
-      .stream()
-      .filter(e -> !e.getValue().isResolved())
-      .map(this::issueDtoToDiagnostic);
-
-    var diagnosticList = localDiagnostics
-      .sorted(DiagnosticPublisher.byLineNumber())
+    var diagnosticList = combineIssuesTaintsRisksAndHotspots(newUri)
       .toList();
     p.setDiagnostics(diagnosticList);
     p.setUri(newUri.toString());
@@ -292,10 +285,7 @@ public class DiagnosticPublisher {
   private PublishDiagnosticsParams createPublishTaintsParams(URI newUri) {
     var p = new PublishDiagnosticsParams();
 
-    var taintDiagnostics = taintVulnerabilitiesCache.getAsDiagnostics(newUri);
-
-    var diagnosticList = taintDiagnostics
-      .sorted(DiagnosticPublisher.byLineNumber())
+    var diagnosticList = combineIssuesTaintsRisksAndHotspots(newUri)
       .toList();
     p.setDiagnostics(diagnosticList);
     p.setUri(newUri.toString());
@@ -306,21 +296,37 @@ public class DiagnosticPublisher {
   private PublishDiagnosticsParams createPublishSecurityHotspotsParams(URI newUri) {
     var p = new PublishDiagnosticsParams();
 
-    p.setDiagnostics(hotspotsCache.get(newUri).entrySet()
-      .stream()
-      .filter(e -> !e.getValue().isResolved())
-      .map(e -> prepareDiagnostic(e.getValue(), e.getKey(), false, focusOnNewCode))
-      .sorted(DiagnosticPublisher.byLineNumber())
+    p.setDiagnostics(combineIssuesTaintsRisksAndHotspots(newUri)
       .toList());
     p.setUri(newUri.toString());
 
     return p;
   }
 
+  private Stream<Diagnostic> combineIssuesTaintsRisksAndHotspots(URI uri) {
+    var issues = issuesCache.get(uri).entrySet().stream()
+      .filter(e -> !e.getValue().isResolved())
+      .map(this::issueDtoToDiagnostic);
+
+    var hotspots = hotspotsCache.get(uri).entrySet().stream()
+      .filter(e -> !e.getValue().isResolved())
+      .map(e -> prepareDiagnostic(e.getValue(), e.getKey(), false, focusOnNewCode))
+      .sorted(DiagnosticPublisher.byLineNumber());
+
+    var taints = taintVulnerabilitiesCache.getAsDiagnostics(uri)
+      .sorted(DiagnosticPublisher.byLineNumber());
+
+    var dependencyRisks = dependencyRisksCache.getAsDiagnostics(uri)
+      .sorted(DiagnosticPublisher.byLineNumber());
+
+    return Stream.of(issues, hotspots, taints, dependencyRisks)
+      .flatMap(s -> s);
+  }
+
   private PublishDiagnosticsParams createPublishDependencyRisksParams(URI folderUri) {
     var p = new PublishDiagnosticsParams();
 
-    p.setDiagnostics(dependencyRisksCache.getAsDiagnostics(folderUri).toList());
+    p.setDiagnostics(combineIssuesTaintsRisksAndHotspots(folderUri).toList());
     p.setUri(folderUri.toString());
 
     return p;
