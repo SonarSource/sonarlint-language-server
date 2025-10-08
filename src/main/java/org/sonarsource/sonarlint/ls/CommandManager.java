@@ -30,6 +30,8 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+import java.awt.Desktop;
+
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -528,7 +530,50 @@ public class CommandManager {
     var issueKey = getAsString(params.getArguments().get(0));
     var fileUri = getAsString(params.getArguments().get(1));
     getFindingDetails(fileUri, issueKey)
-      .thenAccept(client::showRuleDescription);
+      .thenAccept(this::showRuleDescription);
+  }
+
+  private void showRuleDescription(ShowRuleDescriptionParams params) {
+    this.logOutput.info("Showing rule description for " + params.getKey());
+    String url = formatRuleInfoUrl(params);
+    openUrl(url);
+  }
+
+  private static String formatRuleInfoUrl(ShowRuleDescriptionParams params) {
+    String key = params.getKey();
+    String languageKey = getLanguageKey(key, params.getLanguageKey());
+    String rspecKey = getRspecRuleKey(key);
+    return String.format("https://rules.sonarsource.com/%s/RSPEC-%s", languageKey, rspecKey);
+  }
+
+  private static String getRspecRuleKey(String key) {
+    String[] parts = key.split(":", 2);
+    String ruleKey = parts.length == 2 ? parts[1] : key;
+    if(ruleKey.startsWith("S")) {
+        ruleKey = ruleKey.substring(1);
+    }
+    return ruleKey;
+  }
+
+  private static String getLanguageKey(String key, String defaultLanguage) {
+    String[] parts = key.split(":", 2);
+    if(parts.length == 2) {
+      return parts[0];
+    } else {
+      return defaultLanguage;
+    }
+  }
+
+  private void openUrl(String url) {
+    try {
+      if(Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+          Desktop.getDesktop().browse(new URI(url));
+      } else {
+        Runtime.getRuntime().exec(new String[]{"xdg-open", url});
+      }
+    } catch (Exception e) {
+      logOutput.errorWithStackTrace("Failed to open URL ",e);
+    }
   }
 
   // This method is used for showing a rule description during 'Open issue in IDE' flow, where local issue does not necessarily exist
