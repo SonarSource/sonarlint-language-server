@@ -84,13 +84,13 @@ public class DiagnosticPublisher {
       return;
     }
     if (!onlyIssues) {
-      client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
+      client.publishDiagnostics(createPublishSecurityHotspotsParams(f));
     }
     client.publishDiagnostics(createPublishDiagnosticsParams(f));
   }
 
   public void publishTaints(URI f) {
-    client.publishTaintVulnerabilities(createPublishTaintsParams(f));
+    client.publishDiagnostics(createPublishTaintsParams(f));
   }
 
   public void publishDependencyRisks(URI f) {
@@ -98,11 +98,11 @@ public class DiagnosticPublisher {
   }
 
   public void publishTaints() {
-    taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().forEach((uri, taints) -> client.publishTaintVulnerabilities(createPublishTaintsParams(uri)));
+    taintVulnerabilitiesCache.getTaintVulnerabilitiesPerFile().forEach((uri, taints) -> client.publishDiagnostics(createPublishTaintsParams(uri)));
   }
 
   public void publishHotspots(URI f) {
-    client.publishSecurityHotspots(createPublishSecurityHotspotsParams(f));
+    client.publishDiagnostics(createPublishSecurityHotspotsParams(f));
   }
 
   Diagnostic issueDtoToDiagnostic(Map.Entry<String, DelegatingFinding> entry) {
