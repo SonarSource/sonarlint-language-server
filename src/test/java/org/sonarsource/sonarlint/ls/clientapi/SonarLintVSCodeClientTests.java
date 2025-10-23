@@ -1066,17 +1066,17 @@ class SonarLintVSCodeClientTests {
   }
 
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
-    return new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
+    return new TaintVulnerabilityDto(uuid, "serverKey", false, null, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
-      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
+        .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
       List.of(),
       new TextRangeWithHashDto(5, 5, 5, 5, ""), "", true, false);
   }
 
   private TaintIssue getTaintIssue(UUID uuid) {
-    return new TaintIssue(new TaintVulnerabilityDto(uuid, "serverKey", false, "ruleKey", "message",
+    return new TaintIssue(new TaintVulnerabilityDto(uuid, "serverKey", false, null, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
-      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
+        .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
       List.of(),
       new TextRangeWithHashDto(5, 5, 5, 5, ""), "", true, false), "folderUri", true);
   }
