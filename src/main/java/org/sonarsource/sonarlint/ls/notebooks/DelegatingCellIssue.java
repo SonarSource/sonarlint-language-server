@@ -23,6 +23,7 @@ import java.net.URI;
 import java.util.List;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ResolutionStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.QuickFixDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedIssueDto;
@@ -73,7 +74,7 @@ public class DelegatingCellIssue extends DelegatingFinding {
   public RaisedIssueDto getIssue() {
     return new RaisedIssueDto(issue.getId(), issue.getServerKey(), issue.getRuleKey(), issue.getPrimaryMessage(),
       issue.getSeverityMode(), issue.getIntroductionDate(),
-      issue.isOnNewCode(), issue.isResolved(), cellTextRange, issue.getFlows(), cellQuickFixes, issue.getRuleDescriptionContextKey(), false);
+      issue.isOnNewCode(), issue.isResolved(), cellTextRange, issue.getFlows(), cellQuickFixes, issue.getRuleDescriptionContextKey(), false, ResolutionStatus.ACCEPT);
   }
 
   @Override

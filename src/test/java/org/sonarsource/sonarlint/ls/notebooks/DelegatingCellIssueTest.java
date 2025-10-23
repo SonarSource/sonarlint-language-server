@@ -49,8 +49,8 @@ class DelegatingCellIssueTest {
       List.of(),
       List.of(),
       null,
-      false
-    );
+      false,
+      null);
     var cellIssue = new DelegatingCellIssue(finding, URI.create("/my/workspace"), null, List.of());
 
     var issue = cellIssue.getIssue();

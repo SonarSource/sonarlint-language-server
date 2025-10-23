@@ -38,15 +38,13 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.StandardModeDetails;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-
 class TaintIssueTest {
 
   @Test
   void shouldConvertImpactsListToMap() {
     var impactsList = List.of(
       new ImpactDto(SoftwareQuality.SECURITY, ImpactSeverity.HIGH),
-      new ImpactDto(SoftwareQuality.RELIABILITY, ImpactSeverity.LOW)
-    );
+      new ImpactDto(SoftwareQuality.RELIABILITY, ImpactSeverity.LOW));
 
     var result = TaintIssue.impactListToMap(impactsList);
 
@@ -61,6 +59,7 @@ class TaintIssueTest {
     var taintIssueDto = new TaintVulnerabilityDto(UUID.randomUUID(),
       "serverKey",
       false,
+      null,
       "ruleKey",
       "message",
       Path.of("ideFilePath"),
@@ -84,6 +83,7 @@ class TaintIssueTest {
     var taintIssueDto = new TaintVulnerabilityDto(UUID.randomUUID(),
       "serverKey",
       false,
+      null,
       "ruleKey",
       "message",
       Path.of("ideFilePath"),

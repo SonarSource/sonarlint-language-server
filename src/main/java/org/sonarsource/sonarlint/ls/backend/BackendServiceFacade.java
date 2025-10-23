@@ -165,7 +165,7 @@ public class BackendServiceFacade {
     var backendCapabilities = EnumSet.of(BackendCapability.SMART_NOTIFICATIONS, BackendCapability.PROJECT_SYNCHRONIZATION,
       BackendCapability.EMBEDDED_SERVER, BackendCapability.SERVER_SENT_EVENTS, BackendCapability.DATAFLOW_BUG_DETECTION,
       BackendCapability.FULL_SYNCHRONIZATION, BackendCapability.SECURITY_HOTSPOTS, BackendCapability.ISSUE_STREAMING,
-      BackendCapability.SCA_SYNCHRONIZATION);
+      BackendCapability.SCA_SYNCHRONIZATION, BackendCapability.CONTEXT_GENERATION);
     if (telemetry != null && telemetry.enabled()) {
       backendCapabilities.add(BackendCapability.TELEMETRY);
     }

@@ -525,8 +525,8 @@ public class VersionedOpenNotebookTests {
       List.of(),
       List.of(),
       null,
-      false
-    );
+      false,
+      null);
     underTest.toCellIssue(new DelegatingIssue(fakeFindingDto, URI.create("")));
   }
 
