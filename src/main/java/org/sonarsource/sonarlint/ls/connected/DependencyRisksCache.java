@@ -52,8 +52,7 @@ public class DependencyRisksCache {
   public List<String> getAllowedTransitionsForDependencyRisk(String issueId) {
     var dependencyRisk = this.getDependencyRiskById(issueId);
     return dependencyRisk.map(risk -> risk.getTransitions().stream().map(
-      Enum::name
-    ).toList()).orElseGet(List::of);
+      Enum::name).toList()).orElseGet(List::of);
   }
 
   public Stream<Diagnostic> getAsDiagnostics(URI folderUri) {
@@ -84,7 +83,13 @@ public class DependencyRisksCache {
   }
 
   static String message(DependencyRiskDto issue) {
-    return issue.getPackageName().concat(" ").concat(issue.getPackageVersion());
+    var messageBuilder = new StringBuilder();
+    if (issue.getVulnerabilityId() != null) {
+      // Add CVE ID prefix if available; Helps to deduplicate issues when multiple vulnerabilities are reported on the same dependency and version
+      messageBuilder.append('[').append(issue.getVulnerabilityId()).append("] ");
+    }
+    messageBuilder.append(issue.getPackageName()).append(' ').append(issue.getPackageVersion());
+    return messageBuilder.toString();
   }
 
   public void putAll(URI folderUri, List<DependencyRisk> dependencyRisks) {

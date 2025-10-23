@@ -48,10 +48,11 @@ class DependencyRisksCacheTests {
     when(risk.getPackageName()).thenReturn("vulnerable-package");
     when(risk.getPackageVersion()).thenReturn("1.0.0");
     when(risk.getSource()).thenReturn(SONARQUBE_SERVER_SOURCE);
+    when(risk.getVulnerabilityId()).thenReturn("CVE-2020-1234");
 
     var diagnostic = convert(risk).get();
 
-    assertThat(diagnostic.getMessage()).isEqualTo("vulnerable-package 1.0.0");
+    assertThat(diagnostic.getMessage()).isEqualTo("[CVE-2020-1234] vulnerable-package 1.0.0");
     assertThat(diagnostic.getSource()).isEqualTo(SONARQUBE_SERVER_SOURCE);
     assertThat(diagnostic.getCode().getLeft()).isEqualTo("VULNERABILITY");
     assertThat(diagnostic.getData().getClass()).isEqualTo(DiagnosticPublisher.DiagnosticData.class);
@@ -203,16 +204,14 @@ class DependencyRisksCacheTests {
     when(risk.getTransitions()).thenReturn(List.of(
       DependencyRiskDto.Transition.SAFE,
       DependencyRiskDto.Transition.CONFIRM,
-      DependencyRiskDto.Transition.ACCEPT
-    ));
+      DependencyRiskDto.Transition.ACCEPT));
     // Add risk to cache
     underTest.putAll(uri, new ArrayList<>(List.of(risk)));
 
     var transitions = underTest.getAllowedTransitionsForDependencyRisk(risk.getId().toString());
 
     assertThat(transitions).containsExactlyInAnyOrder(
-      "SAFE", "CONFIRM", "ACCEPT"
-    );
+      "SAFE", "CONFIRM", "ACCEPT");
   }
 
   @Test
