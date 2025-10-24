@@ -22,6 +22,8 @@ package org.sonarsource.sonarlint.ls;
 import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.MessageActionItem;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,7 +48,8 @@ class SkippedPluginsNotifierTests {
   void initClient() {
     languageClient = mock(SonarLintExtendedLanguageClient.class);
     underTest = new SkippedPluginsNotifier(languageClient, mock(LanguageClientLogger.class));
-    when(languageClient.canShowMissingRequirementsNotification()).thenReturn(CompletableFuture.completedFuture(true));
+    when(languageClient.canShowMissingRequirementsNotification())
+      .thenReturn(CompletableFuture.completedFuture(SonarLintExtendedLanguageClient.MissingRequirementsNotificationDisplayOption.FULL));
   }
 
   private void preparePopupSelection(@Nullable MessageActionItem selectedItem) {
@@ -55,7 +58,8 @@ class SkippedPluginsNotifierTests {
 
   @Test
   void no_job_if_notifs_disabled() {
-    when(languageClient.canShowMissingRequirementsNotification()).thenReturn(CompletableFuture.completedFuture(false));
+    when(languageClient.canShowMissingRequirementsNotification())
+      .thenReturn(CompletableFuture.completedFuture(SonarLintExtendedLanguageClient.MissingRequirementsNotificationDisplayOption.DO_NOT_SHOW_AGAIN));
 
     underTest.notifyOnceForSkippedPlugins(Language.YAML, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_NODE_JS, "18", "14");
 
@@ -141,5 +145,23 @@ class SkippedPluginsNotifierTests {
     assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze JavaScript code")
       .contains("Node.js runtime version minNodeJsVersion or later is required. Current version is currentNodeJsVersion.");
     assertThat(message.getActions()).containsExactly(SkippedPluginsNotifier.ACTION_OPEN_SETTINGS, SkippedPluginsNotifier.ACTION_DONT_SHOW_AGAIN);
+  }
+
+  @Test
+  void should_send_only_error_notification_when_not_supported_by_client() {
+    when(languageClient.canShowMissingRequirementsNotification())
+      .thenReturn(CompletableFuture.completedFuture(SonarLintExtendedLanguageClient.MissingRequirementsNotificationDisplayOption.ERROR_ONLY));
+
+    underTest.notifyOnceForSkippedPlugins(Language.JS, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_NODE_JS, "minNodeJsVersion", "currentNodeJsVersion");
+
+    var messageCaptor = ArgumentCaptor.forClass(MessageParams.class);
+    verify(languageClient, times(1)).showMessage(messageCaptor.capture());
+    verify(languageClient, never()).openPathToNodeSettings();
+    verify(languageClient, never()).doNotShowMissingRequirementsMessageAgain();
+
+    var message = messageCaptor.getValue();
+    assertThat(message.getMessage()).contains("SonarQube for VS Code failed to analyze JavaScript code")
+      .contains("Node.js runtime version minNodeJsVersion or later is required. Current version is currentNodeJsVersion.");
+    assertThat(message.getType()).isEqualTo(MessageType.Error);
   }
 }

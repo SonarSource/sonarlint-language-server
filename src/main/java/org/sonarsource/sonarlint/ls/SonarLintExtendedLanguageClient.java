@@ -73,8 +73,14 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("doNotShowMissingRequirementsMessageAgain")
   void doNotShowMissingRequirementsMessageAgain();
 
+  enum MissingRequirementsNotificationDisplayOption {
+    FULL,
+    ERROR_ONLY,
+    DO_NOT_SHOW_AGAIN
+  }
+
   @JsonRequest("canShowMissingRequirementsNotification")
-  CompletableFuture<Boolean> canShowMissingRequirementsNotification();
+  CompletableFuture<MissingRequirementsNotificationDisplayOption> canShowMissingRequirementsNotification();
 
   @JsonNotification("openConnectionSettings")
   void openConnectionSettings(boolean isSonarCloud);
