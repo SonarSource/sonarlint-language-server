@@ -207,6 +207,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
     var input = new ExitingInputStream(inputStream, this);
     var launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
+      .configureGson(configureGson -> configureGson.registerTypeAdapter(SonarLintExtendedLanguageClient.MissingRequirementsNotificationDisplayOption.class,
+        new MissingRequirementsNotificationDisplayOptionDeserializer()))
       .setLocalService(this)
       .setRemoteInterface(SonarLintExtendedLanguageClient.class)
       .setInput(input)
