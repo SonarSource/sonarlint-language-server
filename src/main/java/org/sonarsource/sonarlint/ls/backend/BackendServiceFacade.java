@@ -57,6 +57,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarCloud
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarQubeCloudRegionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SslConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.TelemetryClientConstantAttributesDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.log.LogLevel;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.EnabledLanguages;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -147,7 +148,8 @@ public class BackendServiceFacade {
       initializationOptions.focusOnNewCode(),
       languageSpecificRequirements,
       initializationOptions.automaticAnalysis(),
-      null);
+      null,
+      LogLevel.DEBUG);
   }
 
   static String determineProductKey(String appName, String clientProductKey) {
