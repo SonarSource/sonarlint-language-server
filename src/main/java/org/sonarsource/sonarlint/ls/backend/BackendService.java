@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.backend;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -91,6 +92,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.GetEffectiveIss
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.GetEffectiveIssueDetailsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.labs.JoinIdeLabsProgramParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.labs.JoinIdeLabsProgramResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.newcode.GetNewCodeDefinitionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.newcode.GetNewCodeDefinitionResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.remediation.aicodefix.SuggestFixParams;
@@ -447,6 +450,27 @@ public class BackendService {
   public void didChangeAutomaticAnalysisSetting(boolean isEnabled) {
     var params = new DidChangeAutomaticAnalysisSettingParams(isEnabled);
     backend.getAnalysisService().didChangeAutomaticAnalysisSetting(params);
+  }
+
+  public CompletableFuture<JoinIdeLabsProgramResponse> joinIdeLabsProgram(String email, String ideName) {
+    var sourceIde = determineIdeLabsSourceIde(ideName);
+    var params = new JoinIdeLabsProgramParams(email, sourceIde);
+    return backend.getIdeLabsService().joinIdeLabsProgram(params);
+  }
+
+  static String determineIdeLabsSourceIde(String appName) {
+    if (appName.toLowerCase(Locale.US).contains("cursor")) {
+      return "cursor";
+    } else if (appName.toLowerCase(Locale.US).contains("windsurf")) {
+      return "windsurf";
+    } else if (appName.toLowerCase(Locale.US).contains("kiro")) {
+      return "kiro";
+    } else if (appName.toLowerCase(Locale.US).contains("codium")) {
+      return "codium";
+    } else if (appName.toLowerCase(Locale.US).contains("devin")) {
+      return "devin";
+    }
+    return "vscode";
   }
 
   public void dumpThreads() {
