@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidSkipLoadingPluginParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowMissingRequirementsNotification;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,7 +47,7 @@ class SkippedPluginsNotifierTests {
   void initClient() {
     languageClient = mock(SonarLintExtendedLanguageClient.class);
     underTest = new SkippedPluginsNotifier(languageClient, mock(LanguageClientLogger.class));
-    when(languageClient.canShowMissingRequirementsNotification()).thenReturn(CompletableFuture.completedFuture(true));
+    when(languageClient.canShowMissingRequirementsNotification()).thenReturn(CompletableFuture.completedFuture(ShowMissingRequirementsNotification.YES));
   }
 
   private void preparePopupSelection(@Nullable MessageActionItem selectedItem) {
@@ -55,7 +56,7 @@ class SkippedPluginsNotifierTests {
 
   @Test
   void no_job_if_notifs_disabled() {
-    when(languageClient.canShowMissingRequirementsNotification()).thenReturn(CompletableFuture.completedFuture(false));
+    when(languageClient.canShowMissingRequirementsNotification()).thenReturn(CompletableFuture.completedFuture(ShowMissingRequirementsNotification.NO));
 
     underTest.notifyOnceForSkippedPlugins(Language.YAML, DidSkipLoadingPluginParams.SkipReason.UNSATISFIED_NODE_JS, "18", "14");
 
