@@ -36,8 +36,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.issue.IssueNotFoundException;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAssistedIde;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAssistedIdeRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgent;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgentRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalysisRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAutomaticAnalysisSettingParams;
@@ -83,7 +83,7 @@ class BackendServiceTests {
   BindingRpcService bindingRpcService = mock(BindingRpcService.class);
   ConnectionRpcService connectionRpcService = mock(ConnectionRpcService.class);
   IssueRpcService issueService = mock(IssueRpcService.class);
-  AiAssistedIdeRpcService aiAssistedIdeRpcService = mock(AiAssistedIdeRpcService.class);
+  AiAgentRpcService aiAgentService = mock(AiAgentRpcService.class);
   IdeLabsRpcService ideLabsRpcService = mock(IdeLabsRpcService.class);
   static LanguageClientLogger lsLogOutput = mock(LanguageClientLogger.class);
   static SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
@@ -102,7 +102,7 @@ class BackendServiceTests {
     when(backend.getBindingService()).thenReturn(bindingRpcService);
     when(backend.getConnectionService()).thenReturn(connectionRpcService);
     when(backend.getIssueService()).thenReturn(issueService);
-    when(backend.getAiAssistedIdeRpcService()).thenReturn(aiAssistedIdeRpcService);
+    when(backend.getAiAgentService()).thenReturn(aiAgentService);
     when(backend.getIdeLabsService()).thenReturn(ideLabsRpcService);
   }
 
@@ -285,14 +285,14 @@ class BackendServiceTests {
 
   @Test
   void shouldForwardMCPRuleFileRequestToBackend() {
-    var aiAssistedIde = AiAssistedIde.CURSOR;
+    var aiAgent = AiAgent.CURSOR;
 
     var argumentCaptor = ArgumentCaptor.forClass(GetRuleFileContentParams.class);
 
-    underTest.getMCPRuleFileContent(new GetRuleFileContentParams(aiAssistedIde));
+    underTest.getMCPRuleFileContent(new GetRuleFileContentParams(aiAgent));
 
-    verify(aiAssistedIdeRpcService).getRuleFileContent(argumentCaptor.capture());
-    assertThat(argumentCaptor.getValue().getIde()).isEqualTo(aiAssistedIde);
+    verify(aiAgentService).getRuleFileContent(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue().getAiAgent()).isEqualTo(aiAgent);
   }
 
   @Test

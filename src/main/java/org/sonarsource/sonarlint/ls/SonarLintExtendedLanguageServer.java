@@ -716,7 +716,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   CompletableFuture<GetMCPServerConfigurationResponse> getMCPServerConfiguration(GetMCPServerConfigurationParams params);
 
   @JsonRequest("sonarlint/getMCPRuleFileContent")
-  CompletableFuture<GetRuleFileContentResponse> getMCPRuleFileContent(String aiAssistedIde);
+  CompletableFuture<GetRuleFileContentResponse> getMCPRuleFileContent(String aiAgent);
 
   enum BindingCreationMode {
     AUTOMATIC,

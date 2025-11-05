@@ -271,7 +271,7 @@ public class BackendService {
   }
 
   public CompletableFuture<GetRuleFileContentResponse> getMCPRuleFileContent(GetRuleFileContentParams params) {
-    return backend.getAiAssistedIdeRpcService().getRuleFileContent(params);
+    return backend.getAiAgentService().getRuleFileContent(params);
   }
 
   public void didChangeClientNodeJsPath(DidChangeClientNodeJsPathParams params) {
