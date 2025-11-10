@@ -292,9 +292,9 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void should_get_mcp_rule_file_content() {
-    var aiAssistedIde = "cursor";
+    var aiAgent = "cursor";
 
-    var ruleFileContent = lsProxy.getMCPRuleFileContent(aiAssistedIde).join();
+    var ruleFileContent = lsProxy.getMCPRuleFileContent(aiAgent).join();
 
     assertThat(ruleFileContent.getContent())
       .isNotEmpty()
@@ -303,16 +303,16 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void should_show_warning_notification_for_unsupported_ide_when_requesting_rule_file_content() {
-    var aiAssistedIde = "unsupported-ide";
+    var aiAgent = "unsupported-agent";
 
-    var future = lsProxy.getMCPRuleFileContent(aiAssistedIde);
+    var future = lsProxy.getMCPRuleFileContent(aiAgent);
 
     assertThrows(CompletionException.class, future::join);
 
     assertThat(client.shownMessages)
       .isNotEmpty()
       .contains(new MessageParams(MessageType.Warning,
-        "Rule file creation is not yet supported for IDE 'unsupported-ide'."));
+        "Rule file creation is not yet supported for AI agent 'unsupported-agent'."));
   }
 
   @Test

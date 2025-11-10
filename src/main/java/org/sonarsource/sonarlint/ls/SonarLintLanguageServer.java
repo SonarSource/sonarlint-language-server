@@ -87,7 +87,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.NotebookDocumentService;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAssistedIde;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgent;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
@@ -693,12 +693,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<GetRuleFileContentResponse> getMCPRuleFileContent(String clientProvidedIde) {
     try {
-      var aiAssistedIde = AiAssistedIde.valueOf(clientProvidedIde.toUpperCase(Locale.US));
-      var params = new GetRuleFileContentParams(aiAssistedIde);
+      var aiAgent = AiAgent.valueOf(clientProvidedIde.toUpperCase(Locale.US));
+      var params = new GetRuleFileContentParams(aiAgent);
       return backendServiceFacade.getBackendService().getMCPRuleFileContent(params);
     } catch (IllegalArgumentException e) {
-      client.showMessage(new MessageParams(MessageType.Warning, "Rule file creation is not yet supported for IDE '" + clientProvidedIde + "'."));
-      throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported IDE: " + clientProvidedIde, e));
+      client.showMessage(new MessageParams(MessageType.Warning, "Rule file creation is not yet supported for AI agent '" + clientProvidedIde + "'."));
+      throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported AI agent: " + clientProvidedIde, e));
     }
   }
 
