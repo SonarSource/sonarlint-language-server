@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.Set;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.MessageActionItem;
+import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.sonarsource.sonarlint.core.plugin.commons.api.SkipReason;
@@ -76,17 +77,18 @@ public class SkippedPluginsNotifier {
     }
     var isNotificationAllowed = client.canShowMissingRequirementsNotification().join();
     globalLogOutput.warn(content);
-    if (Boolean.TRUE.equals(isNotificationAllowed)) {
+    if (SonarLintExtendedLanguageClient.MissingRequirementsNotificationDisplayOption.FULL.equals(isNotificationAllowed)) {
       showMessageWithOpenSettingsAction(client, formatMessage(title, content), NODEJS,
         client::openPathToNodeSettings);
+    } else if (SonarLintExtendedLanguageClient.MissingRequirementsNotificationDisplayOption.ERROR_ONLY.equals(isNotificationAllowed)) {
+      client.showMessage(new MessageParams(MessageType.Error, formatMessage(title, content)));
     }
   }
 
   private void showMessageWithOpenSettingsAction(SonarLintExtendedLanguageClient client, String message,
     SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement requirementType, Runnable callback) {
     if (displayedMessages.add(message)) {
-      var params = requirementType == NODEJS ?
-        new ShowMessageRequestParams(List.of(ACTION_OPEN_SETTINGS, ACTION_DONT_SHOW_AGAIN))
+      var params = requirementType == NODEJS ? new ShowMessageRequestParams(List.of(ACTION_OPEN_SETTINGS, ACTION_DONT_SHOW_AGAIN))
         : new ShowMessageRequestParams(List.of(ACTION_OPEN_SETTINGS));
       params.setType(MessageType.Error);
       params.setMessage(message);
