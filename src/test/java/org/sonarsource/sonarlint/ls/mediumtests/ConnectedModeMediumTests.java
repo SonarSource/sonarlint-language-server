@@ -321,13 +321,19 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     var hookScriptContent = lsProxy.getHookScriptContent(aiAgent).join();
 
-    assertThat(hookScriptContent.getContent())
+    assertThat(hookScriptContent.getScriptContent())
       .isNotEmpty()
       .contains("SonarQube for IDE")
       .contains("post_write_code");
-    assertThat(hookScriptContent.getFileName())
+    assertThat(hookScriptContent.getScriptFileName())
       .isNotEmpty()
       .matches(".*\\.(js|py|sh)$");
+    assertThat(hookScriptContent.getConfigContent())
+      .isNotEmpty()
+      .contains("\"post_write_code\"")
+      .contains("{{SCRIPT_PATH}}");
+    assertThat(hookScriptContent.getConfigFileName())
+      .isEqualTo("hooks.json");
   }
 
   @Test
