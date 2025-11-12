@@ -316,6 +316,35 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  void should_get_hook_script_content() {
+    var aiAgent = "windsurf";
+
+    var hookScriptContent = lsProxy.getHookScriptContent(aiAgent).join();
+
+    assertThat(hookScriptContent.getContent())
+      .isNotEmpty()
+      .contains("SonarQube for IDE")
+      .contains("post_write_code");
+    assertThat(hookScriptContent.getFileName())
+      .isNotEmpty()
+      .matches(".*\\.(js|py|sh)$");
+  }
+
+  @Test
+  void should_show_warning_notification_for_unsupported_ide_when_requesting_hook_script() {
+    var aiAgent = "unsupported-agent";
+
+    var future = lsProxy.getHookScriptContent(aiAgent);
+
+    assertThrows(CompletionException.class, future::join);
+
+    assertThat(client.shownMessages)
+      .isNotEmpty()
+      .contains(new MessageParams(MessageType.Warning,
+        "Hook script creation is not yet supported for AI agent 'unsupported-agent'."));
+  }
+
+  @Test
   void analysisConnected_find_hotspot() {
     mockNoIssuesNoHotspotsForProject();
 
