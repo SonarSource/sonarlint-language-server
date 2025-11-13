@@ -72,6 +72,10 @@ public class BackendServiceFacade {
   public static final String MONITORING_DISABLED_PROPERTY_KEY = "sonarlint.monitoring.disabled";
   public static final String FLIGHT_RECORDER_ENABLED_PROPERTY_KEY = "sonarlint.flightrecorder.enabled";
 
+  private static final String CURSOR_APP_NAME = "Cursor";
+  private static final String WINDSURF_APP_NAME = "Windsurf";
+  private static final String VSCODE_APP_NAME = "Visual Studio Code";
+
   private final BackendService backendService;
   private final ConfigurationScopeDto rootConfigurationScope;
   private final ClientJsonRpcLauncher clientLauncher;
@@ -124,7 +128,7 @@ public class BackendServiceFacade {
     }
 
     return new InitializeParams(
-      new ClientConstantInfoDto("Visual Studio Code", userAgent),
+      new ClientConstantInfoDto(determineIdeName(appName), userAgent),
       new TelemetryClientConstantAttributesDto(
         determineProductKey(appName, initializationOptions.productKey()),
         initializationOptions.productName(),
@@ -152,12 +156,22 @@ public class BackendServiceFacade {
       LogLevel.DEBUG);
   }
 
-  static String determineProductKey(String appName, String clientProductKey) {
-    if (appName.toLowerCase(Locale.US).contains("cursor")) {
-      return "cursor";
+  static String determineIdeName(String appName) {
+    if (appName.toLowerCase(Locale.ROOT).contains(CURSOR_APP_NAME.toLowerCase(Locale.ROOT))) {
+      return CURSOR_APP_NAME;
     }
-    if (appName.toLowerCase(Locale.US).contains("windsurf")) {
-      return "windsurf";
+    if (appName.toLowerCase(Locale.ROOT).contains(WINDSURF_APP_NAME.toLowerCase(Locale.ROOT))) {
+      return WINDSURF_APP_NAME;
+    }
+    return VSCODE_APP_NAME;
+  }
+
+  static String determineProductKey(String appName, String clientProductKey) {
+    if (appName.toLowerCase(Locale.ROOT).contains(CURSOR_APP_NAME.toLowerCase(Locale.ROOT))) {
+      return CURSOR_APP_NAME.toLowerCase(Locale.ROOT);
+    }
+    if (appName.toLowerCase(Locale.ROOT).contains(WINDSURF_APP_NAME.toLowerCase(Locale.ROOT))) {
+      return WINDSURF_APP_NAME.toLowerCase(Locale.ROOT);
     }
     return clientProductKey;
   }
@@ -272,14 +286,14 @@ public class BackendServiceFacade {
     try {
       backendService.shutdown().get(10, TimeUnit.SECONDS);
     } catch (ExecutionException | TimeoutException e) {
-      lsLogOutput.errorWithStackTrace("Unable to shutdown the SonartLint backend", e);
+      lsLogOutput.errorWithStackTrace("Unable to shutdown the SonarLint backend", e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     } finally {
       try {
         clientLauncher.close();
       } catch (Exception e) {
-        lsLogOutput.errorWithStackTrace("Unable to stop the SonartLint client launcher", e);
+        lsLogOutput.errorWithStackTrace("Unable to stop the SonarLint client launcher", e);
       }
     }
   }
