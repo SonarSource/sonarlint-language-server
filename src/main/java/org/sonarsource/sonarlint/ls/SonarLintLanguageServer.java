@@ -88,6 +88,8 @@ import org.eclipse.lsp4j.services.NotebookDocumentService;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgent;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetHookScriptContentParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetHookScriptContentResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
@@ -698,6 +700,18 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       return backendServiceFacade.getBackendService().getMCPRuleFileContent(params);
     } catch (IllegalArgumentException e) {
       client.showMessage(new MessageParams(MessageType.Warning, "Rule file creation is not yet supported for AI agent '" + clientProvidedIde + "'."));
+      throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported AI agent: " + clientProvidedIde, e));
+    }
+  }
+
+  @Override
+  public CompletableFuture<GetHookScriptContentResponse> getHookScriptContent(String clientProvidedIde) {
+    try {
+      var aiAgent = AiAgent.valueOf(clientProvidedIde.toUpperCase(Locale.US));
+      var params = new GetHookScriptContentParams(aiAgent);
+      return backendServiceFacade.getBackendService().getHookScriptContent(params);
+    } catch (IllegalArgumentException e) {
+      client.showMessage(new MessageParams(MessageType.Warning, "Hook script creation is not yet supported for AI agent '" + clientProvidedIde + "'."));
       throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported AI agent: " + clientProvidedIde, e));
     }
   }
