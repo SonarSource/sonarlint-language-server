@@ -183,8 +183,8 @@ class SonarLintVSCodeClientTests {
   WorkspaceFolderBranchManager branchManager = mock(WorkspaceFolderBranchManager.class);
 
   private static final String PEM = """
-    subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH
-    issuer=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH
+    subject=CN=localhost,O=SonarSource Sàrl,L=Geneva,ST=Geneva,C=CH
+    issuer=CN=localhost,O=SonarSource Sàrl,L=Geneva,ST=Geneva,C=CH
     -----BEGIN CERTIFICATE-----
     MIIFuzCCA6OgAwIBAgIUU0485256+epwnFU4nHFqUbML9LMwDQYJKoZIhvcNAQEL
     BQAwXDELMAkGA1UEBhMCQ0gxDzANBgNVBAgMBkdlbmV2YTEPMA0GA1UEBwwGR2Vu
@@ -545,8 +545,8 @@ class SonarLintVSCodeClientTests {
     var branchCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.SslCertificateConfirmationParams.class);
     verify(client).askSslCertificateConfirmation(branchCaptor.capture());
     var capturedValue = branchCaptor.getValue();
-    Assertions.assertThat(capturedValue.issuedBy()).isEqualTo("CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH");
-    Assertions.assertThat(capturedValue.issuedTo()).isEqualTo("CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH");
+    Assertions.assertThat(capturedValue.issuedBy()).isEqualTo("CN=localhost,O=SonarSource Sàrl,L=Geneva,ST=Geneva,C=CH");
+    Assertions.assertThat(capturedValue.issuedTo()).isEqualTo("CN=localhost,O=SonarSource Sàrl,L=Geneva,ST=Geneva,C=CH");
     Assertions.assertThat(capturedValue.sha1Fingerprint()).isEqualTo("E9 7B 2D 15 32 3F CA 0D 9B 6A 25 C3 2A 11 73 1C 96 8B FC 73");
     Assertions.assertThat(capturedValue.sha256Fingerprint()).isEqualTo("35 A0 22 CB CD 8D 57 55 F8 83 B3 CE 63 2A 42 A1\n" +
       "22 81 83 33 BF 2F 9A E7 E9 D7 81 F0 82 2C AD 58");
