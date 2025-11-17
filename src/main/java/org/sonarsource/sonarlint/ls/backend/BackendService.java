@@ -40,10 +40,12 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContent
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFileListParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFullProjectParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeVCSChangedFilesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAnalysisPropertiesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAutomaticAnalysisSettingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeClientNodeJsPathParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangePathToCompileCommandsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.ForceAnalyzeResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
@@ -419,6 +421,11 @@ public class BackendService {
   public void analyzeFilesList(String configScopeId, List<URI> filesToAnalyze) {
     var params = new AnalyzeFileListParams(configScopeId, filesToAnalyze);
     backend.getAnalysisService().analyzeFileList(params);
+  }
+
+  public CompletableFuture<ForceAnalyzeResponse> analyzeVCSChangedFiles(String configScopeId) {
+    var params = new AnalyzeVCSChangedFilesParams(configScopeId);
+    return backend.getAnalysisService().analyzeVCSChangedFiles(params);
   }
 
   public void didChangePathToCompileCommands(String configScopeId, @Nullable String pathToCompileCommands) {

@@ -709,6 +709,12 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonNotification("sonarlint/analyseOpenFileIgnoringExcludes")
   CompletableFuture<Void> analyseOpenFileIgnoringExcludes(AnalyseOpenFileIgnoringExcludesParams params);
 
+  public record AnalyzeVCSChangedFilesParams(List<String> configScopeIds) {
+  }
+
+  @JsonNotification("sonarlint/analyzeVCSChangedFiles")
+  void analyzeVCSChangedFiles(AnalyzeVCSChangedFilesParams configScopeIds);
+
   @JsonRequest("sonarlint/getSharedConnectedModeFileContent")
   CompletableFuture<GetSharedConnectedModeConfigFileResponse> getSharedConnectedModeConfigFileContents(GetSharedConnectedModeConfigFileParams params);
 

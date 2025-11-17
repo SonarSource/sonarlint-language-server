@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import org.apache.commons.lang3.ArrayUtils;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.lsp4j.CodeActionContext;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.Diagnostic;
@@ -120,6 +121,12 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "additionalAttributes", Map.of(
         "extra", "value"),
       "omnisharpDirectory", omnisharpDir.toString()), new WorkspaceFolder(analysisDir.toUri().toString(), "AnalysisDir"));
+
+    var vcsChangedAnalysisFileName = "analyzeVCSChangedFiles.py";
+    var vcsChangedFile = new SonarLintExtendedLanguageClient.FoundFileDto(vcsChangedAnalysisFileName, analysisDir.resolve(vcsChangedAnalysisFileName).toFile().getAbsolutePath(),
+      "def foo():\n  toto = 0\n");
+
+    setUpFindFilesInFolderResponse(analysisDir.toUri().toString(), List.of(vcsChangedFile));
   }
 
   @BeforeEach
@@ -1113,6 +1120,28 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning)));
+  }
+
+  @Test
+  void analyzeVCSChangedFiles() throws IOException {
+    // Initialize git repository
+    try (var gitRepo = Git.init().setDirectory(analysisDir.toFile()).call()) {
+      // Create one untracked file with an issue inside
+      var fileName = "analyzeVCSChangedFiles.py";
+      var fileUri = analysisDir.resolve(fileName);
+      Files.createFile(fileUri);
+      Files.writeString(fileUri, "def foo():\n toto = 0\n");
+
+      lsProxy.analyzeVCSChangedFiles(new SonarLintExtendedLanguageServer.AnalyzeVCSChangedFilesParams(List.of(analysisDir.toUri().toString())));
+
+      awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri.toUri().toString()))
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+          Diagnostic::getSeverity)
+        .containsExactlyInAnyOrder(
+          tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning)));
+    } catch (GitAPIException e) {
+      throw new IllegalStateException("Failed to initialize Git Repo for tests");
+    }
   }
 
   @Test
