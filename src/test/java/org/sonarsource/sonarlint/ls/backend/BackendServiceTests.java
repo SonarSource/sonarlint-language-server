@@ -40,6 +40,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgent;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgentRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalysisRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeVCSChangedFilesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAutomaticAnalysisSettingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.BindingRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
@@ -85,6 +86,7 @@ class BackendServiceTests {
   IssueRpcService issueService = mock(IssueRpcService.class);
   AiAgentRpcService aiAgentService = mock(AiAgentRpcService.class);
   IdeLabsRpcService ideLabsRpcService = mock(IdeLabsRpcService.class);
+  AnalysisRpcService analysisRpcService = mock(AnalysisRpcService.class);
   static LanguageClientLogger lsLogOutput = mock(LanguageClientLogger.class);
   static SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   static BackendService underTest = new BackendService(backend, lsLogOutput, client);
@@ -266,6 +268,18 @@ class BackendServiceTests {
     underTest.dumpThreads();
 
     verify(flightRecordingService).captureThreadDump();
+  }
+
+  @Test
+  void shouldForwardAnalyzeVCSChangedFilesRequestToBackend() {
+    when(backend.getAnalysisService()).thenReturn(analysisRpcService);
+    var configScopeId = "configScopeId";
+    var argumentCaptor = ArgumentCaptor.forClass(AnalyzeVCSChangedFilesParams.class);
+
+    underTest.analyzeVCSChangedFiles(configScopeId);
+
+    verify(analysisRpcService).analyzeVCSChangedFiles(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue().getConfigScopeId()).isEqualTo(configScopeId);
   }
 
   @Test

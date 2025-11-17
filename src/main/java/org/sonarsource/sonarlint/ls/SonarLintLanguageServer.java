@@ -1057,6 +1057,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
+  public void analyzeVCSChangedFiles(AnalyzeVCSChangedFilesParams params) {
+    params.configScopeIds().forEach(configScopeId -> backendServiceFacade.getBackendService().analyzeVCSChangedFiles(configScopeId));
+  }
+
+  @Override
   public void dumpThreads() {
     backendServiceFacade.getBackendService().dumpThreads();
   }
