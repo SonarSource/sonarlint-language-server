@@ -38,6 +38,7 @@ import org.sonarsource.sonarlint.core.issue.IssueNotFoundException;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgent;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgentRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetHookScriptContentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalysisRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAutomaticAnalysisSettingParams;
@@ -292,6 +293,18 @@ class BackendServiceTests {
     underTest.getMCPRuleFileContent(new GetRuleFileContentParams(aiAgent));
 
     verify(aiAgentService).getRuleFileContent(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue().getAiAgent()).isEqualTo(aiAgent);
+  }
+
+  @Test
+  void shouldForwardHookScriptRequestToBackend() {
+    var aiAgent = AiAgent.WINDSURF;
+
+    var argumentCaptor = ArgumentCaptor.forClass(GetHookScriptContentParams.class);
+
+    underTest.getHookScriptContent(new GetHookScriptContentParams(aiAgent));
+
+    verify(aiAgentService).getHookScriptContent(argumentCaptor.capture());
     assertThat(argumentCaptor.getValue().getAiAgent()).isEqualTo(aiAgent);
   }
 
