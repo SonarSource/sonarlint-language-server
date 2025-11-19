@@ -705,11 +705,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<GetHookScriptContentResponse> getHookScriptContent(String clientProvidedIde) {
+  public CompletableFuture<GetHookScriptContentResponse> getAiAgentHookScriptContent(String clientProvidedIde) {
     try {
       var aiAgent = AiAgent.valueOf(clientProvidedIde.toUpperCase(Locale.US));
       var params = new GetHookScriptContentParams(aiAgent);
-      return backendServiceFacade.getBackendService().getHookScriptContent(params);
+      return backendServiceFacade.getBackendService().getAiAgentHookScriptContent(params);
     } catch (IllegalArgumentException e) {
       client.showMessage(new MessageParams(MessageType.Warning, "Hook script creation is not yet supported for AI agent '" + clientProvidedIde + "'."));
       throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported AI agent: " + clientProvidedIde, e));

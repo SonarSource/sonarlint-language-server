@@ -719,8 +719,8 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonRequest("sonarlint/getMCPRuleFileContent")
   CompletableFuture<GetRuleFileContentResponse> getMCPRuleFileContent(String aiAgent);
 
-  @JsonRequest("sonarlint/getHookScriptContent")
-  CompletableFuture<GetHookScriptContentResponse> getHookScriptContent(String aiAgent);
+  @JsonRequest("sonarlint/getAiAgentHookScriptContent")
+  CompletableFuture<GetHookScriptContentResponse> getAiAgentHookScriptContent(String aiAgent);
 
   enum BindingCreationMode {
     AUTOMATIC,

@@ -276,7 +276,7 @@ public class BackendService {
     return backend.getAiAgentService().getRuleFileContent(params);
   }
 
-  public CompletableFuture<GetHookScriptContentResponse> getHookScriptContent(GetHookScriptContentParams params) {
+  public CompletableFuture<GetHookScriptContentResponse> getAiAgentHookScriptContent(GetHookScriptContentParams params) {
     return backend.getAiAgentService().getHookScriptContent(params);
   }
 

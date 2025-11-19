@@ -297,12 +297,12 @@ class BackendServiceTests {
   }
 
   @Test
-  void shouldForwardHookScriptRequestToBackend() {
+  void shouldForwardAiAgentHookScriptRequestToBackend() {
     var aiAgent = AiAgent.WINDSURF;
 
     var argumentCaptor = ArgumentCaptor.forClass(GetHookScriptContentParams.class);
 
-    underTest.getHookScriptContent(new GetHookScriptContentParams(aiAgent));
+    underTest.getAiAgentHookScriptContent(new GetHookScriptContentParams(aiAgent));
 
     verify(aiAgentService).getHookScriptContent(argumentCaptor.capture());
     assertThat(argumentCaptor.getValue().getAiAgent()).isEqualTo(aiAgent);

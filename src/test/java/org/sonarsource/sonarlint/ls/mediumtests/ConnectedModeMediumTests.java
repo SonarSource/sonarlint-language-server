@@ -316,10 +316,10 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void should_get_hook_script_content() {
+  void should_get_ai_agent_hook_script_content() {
     var aiAgent = "windsurf";
 
-    var hookScriptContent = lsProxy.getHookScriptContent(aiAgent).join();
+    var hookScriptContent = lsProxy.getAiAgentHookScriptContent(aiAgent).join();
 
     assertThat(hookScriptContent.getScriptContent())
       .isNotEmpty()
@@ -337,10 +337,10 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void should_show_warning_notification_for_unsupported_ide_when_requesting_hook_script() {
+  void should_show_warning_notification_for_unsupported_ide_when_requesting_ai_agent_hook_script() {
     var aiAgent = "unsupported-agent";
 
-    var future = lsProxy.getHookScriptContent(aiAgent);
+    var future = lsProxy.getAiAgentHookScriptContent(aiAgent);
 
     assertThrows(CompletionException.class, future::join);
 

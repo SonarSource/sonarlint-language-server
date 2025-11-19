@@ -201,4 +201,40 @@ class BackendServiceFacadeTests {
 
     assertThat(productKey).isEqualTo("vscode");
   }
+
+  @Test
+  void should_return_cursor_as_ide_name_if_present_in_app_name() {
+    var ideName = BackendServiceFacade.determineIdeName("CuRsOR");
+
+    assertThat(ideName).isEqualTo("Cursor");
+  }
+
+  @Test
+  void should_return_windsurf_as_ide_name_if_present_in_app_name() {
+    var ideName = BackendServiceFacade.determineIdeName("windsurf");
+
+    assertThat(ideName).isEqualTo("Windsurf");
+  }
+
+  @Test
+  void should_return_windsurf_as_ide_name_when_contained_in_app_name() {
+    var ideName = BackendServiceFacade.determineIdeName("Windsurf Next");
+
+    assertThat(ideName).isEqualTo("Windsurf");
+  }
+
+  @Test
+  void should_return_vscode_as_ide_name_if_unknown_app_name() {
+    var ideName = BackendServiceFacade.determineIdeName("Unknown IDE");
+
+    assertThat(ideName).isEqualTo("Visual Studio Code");
+  }
+
+  @Test
+  void should_return_vscode_as_ide_name_for_standard_vscode() {
+    var ideName = BackendServiceFacade.determineIdeName("Visual Studio CODE");
+
+    assertThat(ideName).isEqualTo("Visual Studio Code");
+  }
+
 }
