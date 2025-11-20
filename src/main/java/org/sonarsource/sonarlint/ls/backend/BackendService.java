@@ -36,6 +36,8 @@ import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetHookScriptContentParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetHookScriptContentResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFileListParams;
@@ -274,6 +276,10 @@ public class BackendService {
 
   public CompletableFuture<GetRuleFileContentResponse> getMCPRuleFileContent(GetRuleFileContentParams params) {
     return backend.getAiAgentService().getRuleFileContent(params);
+  }
+
+  public CompletableFuture<GetHookScriptContentResponse> getAiAgentHookScriptContent(GetHookScriptContentParams params) {
+    return backend.getAiAgentService().getHookScriptContent(params);
   }
 
   public void didChangeClientNodeJsPath(DidChangeClientNodeJsPathParams params) {

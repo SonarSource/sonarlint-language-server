@@ -32,6 +32,7 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.util.Preconditions;
 import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
 import org.eclipse.lsp4j.services.LanguageServer;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetHookScriptContentResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
@@ -723,6 +724,9 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/getMCPRuleFileContent")
   CompletableFuture<GetRuleFileContentResponse> getMCPRuleFileContent(String aiAgent);
+
+  @JsonRequest("sonarlint/getAiAgentHookScriptContent")
+  CompletableFuture<GetHookScriptContentResponse> getAiAgentHookScriptContent(String aiAgent);
 
   enum BindingCreationMode {
     AUTOMATIC,
