@@ -118,6 +118,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnecti
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowMissingRequirementsNotification;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient;
 import org.sonarsource.sonarlint.ls.connected.DependencyRisksCache;
@@ -207,6 +208,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
     var input = new ExitingInputStream(inputStream, this);
     var launcher = new Launcher.Builder<SonarLintExtendedLanguageClient>()
+      .configureGson(configureGson -> {
+        configureGson.registerTypeAdapter(ShowMissingRequirementsNotification.class, new ShowMissingRequirementsNotificationDeserializer());
+      })
       .setLocalService(this)
       .setRemoteInterface(SonarLintExtendedLanguageClient.class)
       .setInput(input)
