@@ -115,6 +115,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.labs.JoinIdeLabsProgr
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.ChangeDependencyRiskStatusParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AcceptedBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
@@ -860,12 +861,17 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public void didCreateBinding(BindingCreationMode creationMode) {
-    switch (creationMode) {
-      case AUTOMATIC -> telemetry.addedAutomaticBindings();
-      case IMPORTED -> telemetry.addedImportedBindings();
-      case MANUAL -> telemetry.addedManualBindings();
-    }
+  public CompletableFuture<Void> addedManualBindings() {
+    backendServiceFacade.getBackendService().getTelemetryService()
+      .addedManualBindings();
+    return CompletableFuture.completedFuture(null);
+  }
+
+  @Override
+  public CompletableFuture<Void> acceptedBindingSuggestion(AcceptedBindingSuggestionParams params) {
+    backendServiceFacade.getBackendService().getTelemetryService()
+      .acceptedBindingSuggestion(params);
+    return CompletableFuture.completedFuture(null);
   }
 
   @Override

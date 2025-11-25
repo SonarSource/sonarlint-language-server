@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.telemetry;
 import java.util.function.Consumer;
 import javax.annotation.CheckForNull;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AcceptedBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixAppliedForRuleParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingTriggeredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingType;
@@ -105,16 +106,12 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     actIfEnabled(telemetryRpcService -> telemetryRpcService.toolCalled(new ToolCalledParams(toolName, success)));
   }
 
-  public void addedAutomaticBindings() {
-    actIfEnabled(TelemetryRpcService::addedAutomaticBindings);
-  }
-
-  public void addedImportedBindings() {
-    actIfEnabled(TelemetryRpcService::addedImportedBindings);
-  }
-
   public void addedManualBindings() {
     actIfEnabled(TelemetryRpcService::addedManualBindings);
+  }
+
+  public void acceptedBindingSuggestion(AcceptedBindingSuggestionParams params) {
+    actIfEnabled(telemetryRpcService -> telemetryRpcService.acceptedBindingSuggestion(params));
   }
 
   public void fixSuggestionResolved(FixSuggestionResolvedParams params) {
