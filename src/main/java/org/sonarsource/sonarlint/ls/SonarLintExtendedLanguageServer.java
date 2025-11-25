@@ -757,4 +757,10 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/joinIdeLabsProgram")
   CompletableFuture<JoinIdeLabsProgramResponse> joinIdeLabsProgram(JoinIdeLabsProgramParams params);
+
+  @JsonNotification("sonarlint/labsExternalLinkClicked")
+  void labsExternalLinkClicked(String linkId);
+
+  @JsonNotification("sonarlint/labsFeedbackLinkClicked")
+  void labsFeedbackLinkClicked(String featureId);
 }

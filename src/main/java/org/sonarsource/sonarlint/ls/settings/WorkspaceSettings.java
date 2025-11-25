@@ -43,12 +43,13 @@ public class WorkspaceSettings {
   private final String pathToNodeExecutable;
   private final boolean focusOnNewCode;
   private final boolean automaticAnalysis;
+  private final boolean ideLabsEnabled;
 
   private final String analysisExcludes;
 
   public WorkspaceSettings(boolean disableTelemetry, Map<String, ServerConnectionSettings> connections,
     Collection<RuleKey> excludedRules, Collection<RuleKey> includedRules, Map<RuleKey, Map<String, String>> ruleParameters,
-    boolean showVerboseLogs, String pathToNodeExecutable, boolean focusOnNewCode, boolean automaticAnalysis, String analysisExcludes) {
+    boolean showVerboseLogs, String pathToNodeExecutable, boolean focusOnNewCode, boolean automaticAnalysis, String analysisExcludes, boolean ideLabsEnabled) {
     this.disableTelemetry = disableTelemetry;
     this.connections = connections;
     this.excludedRules = excludedRules;
@@ -59,6 +60,7 @@ public class WorkspaceSettings {
     this.focusOnNewCode = focusOnNewCode;
     this.automaticAnalysis = automaticAnalysis;
     this.analysisExcludes = analysisExcludes;
+    this.ideLabsEnabled = ideLabsEnabled;
   }
 
   public boolean isDisableTelemetry() {
@@ -101,6 +103,10 @@ public class WorkspaceSettings {
     return automaticAnalysis;
   }
 
+  public boolean isIdeLabsEnabled() {
+    return ideLabsEnabled;
+  }
+
   public String getAnalysisExcludes() {
     return analysisExcludes;
   }
@@ -122,7 +128,8 @@ public class WorkspaceSettings {
       return false;
     }
     var other = (WorkspaceSettings) obj;
-    return disableTelemetry == other.disableTelemetry && focusOnNewCode == other.focusOnNewCode && Objects.equals(connections, other.connections)
+    return disableTelemetry == other.disableTelemetry && focusOnNewCode == other.focusOnNewCode && ideLabsEnabled == other.ideLabsEnabled
+      && Objects.equals(connections, other.connections)
       && Objects.equals(excludedRules, other.excludedRules)
       && Objects.equals(includedRules, other.includedRules) && Objects.equals(ruleParameters, other.ruleParameters)
       && Objects.equals(showVerboseLogs, other.showVerboseLogs)

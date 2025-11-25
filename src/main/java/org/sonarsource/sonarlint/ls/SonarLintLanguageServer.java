@@ -1086,4 +1086,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<JoinIdeLabsProgramResponse> joinIdeLabsProgram(JoinIdeLabsProgramParams params) {
     return backendServiceFacade.getBackendService().joinIdeLabsProgram(params.getEmail(), params.getIde());
   }
+
+  @Override
+  public void labsExternalLinkClicked(String linkId) {
+    telemetry.labsExternalLinkClicked(linkId);
+  }
+
+  @Override
+  public void labsFeedbackLinkClicked(String featureId) {
+    telemetry.labsFeedbackLinkClicked(featureId);
+  }
 }

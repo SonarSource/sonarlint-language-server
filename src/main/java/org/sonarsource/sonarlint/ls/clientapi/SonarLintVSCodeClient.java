@@ -353,7 +353,19 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public TelemetryClientLiveAttributesResponse getTelemetryLiveAttributes() {
-    return new TelemetryClientLiveAttributesResponse(Map.of());
+    try {
+      var hasJoinedIdeLabs = client.hasJoinedIdeLabs().get();
+      var hasEnabledIdeLabs = settingsManager.getCurrentSettings().isIdeLabsEnabled();
+      return new TelemetryClientLiveAttributesResponse(
+        Map.of("ideLabsJoined", hasJoinedIdeLabs, "ideLabsEnabled", hasJoinedIdeLabs && hasEnabledIdeLabs));
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logOutput.errorWithStackTrace("Cannot determine if user has Joined IDE Labs or not", e);
+      return new TelemetryClientLiveAttributesResponse(Map.of());
+    } catch (ExecutionException e) {
+      logOutput.errorWithStackTrace("Cannot determine if user has Joined IDE Labs or not", e);
+      return new TelemetryClientLiveAttributesResponse(Map.of());
+    }
   }
 
   @Override
@@ -674,7 +686,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     var excludes = settingsManager.getCurrentSettings().getAnalysisExcludes();
     return excludes.isEmpty() ? Collections.emptySet()
       : Arrays.stream(excludes.split(","))
-      .collect(Collectors.toSet());
+        .collect(Collectors.toSet());
   }
 
   @Override

@@ -78,7 +78,7 @@ class ForcedAnalysisCoordinatorTests {
   void shouldScheduleAnalysisOfAllOpenJavaFilesWithoutIssueRefreshOnClasspathChange() {
     when(settingsManager.getCurrentSettings())
       .thenReturn(new WorkspaceSettings(true, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(),
-        false, "", true, true, ""));
+        false, "", true, true, "", false));
     URI file1Uri = URI.create("file://Foo1.java");
     openFilesCache.didOpen(file1Uri, "java", "class Foo1 {}", 1);
     URI file2Uri = URI.create("file://Foo2.java");
@@ -95,7 +95,7 @@ class ForcedAnalysisCoordinatorTests {
   void shouldScheduleAnalysisOfAllOpenJavaFilesWithoutIssueRefreshOnJavaServerModeChangeToStandard() {
     when(settingsManager.getCurrentSettings())
       .thenReturn(new WorkspaceSettings(true, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(),
-        false, "", true, true, ""));
+        false, "", true, true, "", false));
     URI file1Uri = URI.create("file://Foo1.java");
     openFilesCache.didOpen(file1Uri, "java", "class Foo1 {}", 1);
     URI file2Uri = URI.create("file://Foo2.java");
@@ -123,7 +123,7 @@ class ForcedAnalysisCoordinatorTests {
   void shouldNotLaunchAnalysisIfAutomaticAnalysisIsDisabled() {
     when(settingsManager.getCurrentSettings())
       .thenReturn(new WorkspaceSettings(false, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(),
-        false, "", true, false, ""));
+        false, "", true, false, "", false));
     URI file1Uri = URI.create("file://Foo1.java");
     openFilesCache.didOpen(file1Uri, "java", "class Foo1 {}", 1);
     URI file2Uri = URI.create("file://Foo2.java");
