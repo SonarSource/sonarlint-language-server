@@ -121,7 +121,6 @@ class ProjectBindingManagerTests {
       .thenReturn(newWorkspaceSettingsWithServers(servers));
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(UNBOUND_SETTINGS);
 
-
     when(backendServiceFacade.getBackendService()).thenReturn(mock(BackendService.class));
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token"));
 
@@ -135,7 +134,7 @@ class ProjectBindingManagerTests {
   }
 
   private static WorkspaceSettings newWorkspaceSettingsWithServers(Map<String, ServerConnectionSettings> servers) {
-    return new WorkspaceSettings(false, servers, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), false, "", false, true, "");
+    return new WorkspaceSettings(false, servers, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), false, "", false, true, "", false);
   }
 
   @Test
@@ -268,7 +267,8 @@ class ProjectBindingManagerTests {
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
     assertThat(binding).isEmpty();
-    assertThat(logTester.logs()).anyMatch(log -> log.contains("Workspace 'WorkspaceFolder[name=" + workspaceFolderPath.getFileName().toString() + ",uri=" + workspaceFolderPath.toUri() + "]' unbound"));
+    assertThat(logTester.logs())
+      .anyMatch(log -> log.contains("Workspace 'WorkspaceFolder[name=" + workspaceFolderPath.getFileName().toString() + ",uri=" + workspaceFolderPath.toUri() + "]' unbound"));
   }
 
   @Test
@@ -359,13 +359,11 @@ class ProjectBindingManagerTests {
     when(backendServiceFacade.getBackendService().getAllProjects(any()))
       .thenReturn(CompletableFuture.completedFuture(new GetAllProjectsResponse(List.of(
         new SonarProjectDto(key1, name1),
-        new SonarProjectDto(key2, name2)
-      ))));
+        new SonarProjectDto(key2, name2)))));
     servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
     assertThat(underTest.getRemoteProjects(CONNECTION_ID)).containsExactlyInAnyOrderEntriesOf(Map.of(
       key1, name1,
-      key2, name2
-    ));
+      key2, name2));
   }
 
   @Test
@@ -377,13 +375,11 @@ class ProjectBindingManagerTests {
     when(backendServiceFacade.getBackendService().getProjectNamesByKeys(any(), eq(List.of(key1, key2))))
       .thenReturn(CompletableFuture.completedFuture(new GetProjectNamesByKeyResponse(Map.of(
         key1, name1,
-        key2, name2
-      ))));
+        key2, name2))));
     servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
     assertThat(underTest.getRemoteProjectsByKeys(CONNECTION_ID, List.of(key1, key2)).get()).containsExactlyInAnyOrderEntriesOf(Map.of(
       key1, name1,
-      key2, name2
-    ));
+      key2, name2));
   }
 
   @Test
@@ -406,13 +402,11 @@ class ProjectBindingManagerTests {
     when(backendServiceFacade.getBackendService().getAllProjects(any()))
       .thenReturn(CompletableFuture.completedFuture(new GetAllProjectsResponse(List.of(
         new SonarProjectDto(key1, name1),
-        new SonarProjectDto(key2, name2)
-      ))));
+        new SonarProjectDto(key2, name2)))));
     servers.put(SettingsManager.connectionIdOrDefault(null), GLOBAL_SETTINGS);
     assertThat(underTest.getRemoteProjects("<default>")).containsExactlyInAnyOrderEntriesOf(Map.of(
       key1, name1,
-      key2, name2
-    ));
+      key2, name2));
   }
 
   @Test
@@ -481,10 +475,9 @@ class ProjectBindingManagerTests {
 
     underTest.validateConnection(connectionId);
 
-    verify(client).reportConnectionCheckResult(argThat(result ->
-      result.getConnectionId().equals(connectionId) &&
-        !result.isSuccess() &&
-        Objects.equals(result.getReason(), "Invalid credentials: Token cannot be null or empty for connection validation")));
+    verify(client).reportConnectionCheckResult(argThat(result -> result.getConnectionId().equals(connectionId) &&
+      !result.isSuccess() &&
+      Objects.equals(result.getReason(), "Invalid credentials: Token cannot be null or empty for connection validation")));
   }
 
   @Test
@@ -495,10 +488,9 @@ class ProjectBindingManagerTests {
 
     underTest.validateConnection(connectionId);
 
-    verify(client).reportConnectionCheckResult(argThat(result ->
-      result.getConnectionId().equals(connectionId) &&
-        !result.isSuccess() &&
-        Objects.equals(result.getReason(), "Invalid credentials: Token cannot be null or empty for connection validation")));
+    verify(client).reportConnectionCheckResult(argThat(result -> result.getConnectionId().equals(connectionId) &&
+      !result.isSuccess() &&
+      Objects.equals(result.getReason(), "Invalid credentials: Token cannot be null or empty for connection validation")));
   }
 
   @Test
@@ -523,7 +515,8 @@ class ProjectBindingManagerTests {
   }
 
   private WorkspaceFolderWrapper mockFileInAFolder() {
-    var folderWrapper = spy(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(), new WorkspaceFolder(workspaceFolderPath.toUri().toString(), workspaceFolderPath.getFileName().toString()), logTester.getLogger()));
+    var folderWrapper = spy(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(),
+      new WorkspaceFolder(workspaceFolderPath.toUri().toString(), workspaceFolderPath.getFileName().toString()), logTester.getLogger()));
     when(foldersManager.findFolderForFile(fileInAWorkspaceFolderPath.toUri())).thenReturn(Optional.of(folderWrapper));
     return folderWrapper;
   }

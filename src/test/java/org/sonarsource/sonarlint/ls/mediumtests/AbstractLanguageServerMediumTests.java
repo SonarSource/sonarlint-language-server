@@ -610,6 +610,11 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
+    public CompletableFuture<Boolean> hasJoinedIdeLabs() {
+      return CompletableFuture.completedFuture(false);
+    }
+
+    @Override
     public void showRuleDescription(ShowRuleDescriptionParams params) {
       this.ruleDesc = params;
       showRuleDescriptionLatch.countDown();

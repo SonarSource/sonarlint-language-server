@@ -37,6 +37,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilt
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.IdeLabsExternalLinkClickedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.IdeLabsFeedbackLinkClickedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ToolCalledParams;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -330,8 +332,46 @@ class SonarLintTelemetryTests {
     verify(telemetryService, never()).analysisReportingTriggered(any());
   }
 
+  @Test
+  void labsLinkClicked_when_enabled() {
+    var argument = ArgumentCaptor.forClass(IdeLabsExternalLinkClickedParams.class);
+
+    telemetry.labsExternalLinkClicked("feature_documentation");
+
+    verify(telemetryService).ideLabsExternalLinkClicked(argument.capture());
+    assertThat(argument.getValue().getLinkId()).isEqualTo("feature_documentation");
+  }
+
+  @Test
+  void labsLinkClicked_when_disabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+
+    telemetry.labsExternalLinkClicked("feature_documentation");
+
+    verify(telemetryService, never()).ideLabsExternalLinkClicked(any());
+  }
+
+  @Test
+  void labsFeedbackLinkClicked_when_enabled() {
+    var argument = ArgumentCaptor.forClass(IdeLabsFeedbackLinkClickedParams.class);
+
+    telemetry.labsFeedbackLinkClicked("first_feature");
+
+    verify(telemetryService).ideLabsFeedbackLinkClicked(argument.capture());
+    assertThat(argument.getValue().getFeatureId()).isEqualTo("first_feature");
+  }
+
+  @Test
+  void labsFeedbackLinkClicked_when_disabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+
+    telemetry.labsFeedbackLinkClicked("first_feature");
+
+    verify(telemetryService, never()).ideLabsFeedbackLinkClicked(any());
+  }
+
   private static WorkspaceSettings newWorkspaceSettingsWithTelemetrySetting(boolean disableTelemetry) {
     return new WorkspaceSettings(disableTelemetry, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(),
-      Collections.emptyMap(), false, "/path/to/node", false, true, "");
+      Collections.emptyMap(), false, "/path/to/node", false, true, "", false);
   }
 }

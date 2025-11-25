@@ -29,6 +29,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificat
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.HelpAndFeedbackClickedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.IdeLabsExternalLinkClickedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.IdeLabsFeedbackLinkClickedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ToolCalledParams;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -136,6 +138,14 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
   public void currentFileAnalysisTriggered() {
     actIfEnabled(telemetryRpcService -> telemetryRpcService.analysisReportingTriggered(new AnalysisReportingTriggeredParams(AnalysisReportingType.CURRENT_FILE_ANALYSIS_TYPE)));
+  }
+
+  public void labsExternalLinkClicked(String linkId) {
+    actIfEnabled(telemetryRpcService -> telemetryRpcService.ideLabsExternalLinkClicked(new IdeLabsExternalLinkClickedParams(linkId)));
+  }
+
+  public void labsFeedbackLinkClicked(String featureId) {
+    actIfEnabled(telemetryRpcService -> telemetryRpcService.ideLabsFeedbackLinkClicked(new IdeLabsFeedbackLinkClickedParams(featureId)));
   }
 
   private void actIfEnabled(Consumer<TelemetryRpcService> action) {

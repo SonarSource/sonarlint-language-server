@@ -41,6 +41,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
@@ -1063,6 +1064,56 @@ class SonarLintVSCodeClientTests {
     var sessionId = "test-session-id";
     underTest.flightRecorderStarted(new FlightRecorderStartedParams(sessionId));
     verify(flightRecorderManager).onFlightRecorderStarted(sessionId);
+  }
+
+  @Test
+  void shouldReturnTelemetryLiveAttributesWhenLabsIsJoinedAndEnabled() {
+    var workspaceSettings = mock(WorkspaceSettings.class);
+    when(workspaceSettings.isIdeLabsEnabled()).thenReturn(true);
+    when(client.hasJoinedIdeLabs()).thenReturn(CompletableFuture.completedFuture(true));
+    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
+
+    var result = underTest.getTelemetryLiveAttributes();
+    assertThat(result).isNotNull();
+    assertThat(result.getAdditionalAttributes()).hasSize(2);
+    assertTrue((Boolean) result.getAdditionalAttributes().get("ideLabsEnabled"));
+    assertTrue((Boolean) result.getAdditionalAttributes().get("ideLabsJoined"));
+  }
+
+  @Test
+  void shouldReturnTelemetryLiveAttributesWhenLabsIsNotJoined() {
+    var workspaceSettings = mock(WorkspaceSettings.class);
+    when(workspaceSettings.isIdeLabsEnabled()).thenReturn(false);
+    when(client.hasJoinedIdeLabs()).thenReturn(CompletableFuture.completedFuture(false));
+    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
+
+    var result = underTest.getTelemetryLiveAttributes();
+    assertThat(result).isNotNull();
+    assertThat(result.getAdditionalAttributes()).hasSize(2);
+    assertFalse((Boolean) result.getAdditionalAttributes().get("ideLabsEnabled"));
+    assertFalse((Boolean) result.getAdditionalAttributes().get("ideLabsJoined"));
+  }
+
+  @Test
+  void shouldReturnEmptyTelemetryLiveAttributesWhenLabsStatusUndefined() {
+    when(client.hasJoinedIdeLabs()).thenAnswer(invocation -> {
+      throw new ExecutionException("Something went wrong", new Throwable());
+    });
+
+    var result = underTest.getTelemetryLiveAttributes();
+    assertThat(result).isNotNull();
+    assertThat(result.getAdditionalAttributes()).isEmpty();
+  }
+
+  @Test
+  void shouldReturnEmptyTelemetryLiveAttributesWhenLabsCheckInterrupted() {
+    when(client.hasJoinedIdeLabs()).thenAnswer(invocation -> {
+      throw new InterruptedException();
+    });
+
+    var result = underTest.getTelemetryLiveAttributes();
+    assertThat(result).isNotNull();
+    assertThat(result.getAdditionalAttributes()).isEmpty();
   }
 
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {

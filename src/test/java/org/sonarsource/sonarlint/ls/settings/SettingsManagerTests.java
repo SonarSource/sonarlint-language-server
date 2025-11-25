@@ -131,7 +131,8 @@ class SettingsManagerTests {
           "connectionId": "sq1",
           "projectKey": "myProject"
         }
-      }
+      },
+      "ideLabsEnabled": true
     }
     """;
 
@@ -188,6 +189,7 @@ class SettingsManagerTests {
     assertThat(settings.isDisableTelemetry()).isTrue();
     assertThat(settings.showVerboseLogs()).isTrue();
     assertThat(settings.isAutomaticAnalysis()).isTrue();
+    assertThat(settings.isIdeLabsEnabled()).isTrue();
     assertThat(settings.getExcludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsOnly(tuple("xoo", "rule1"), tuple("xoo", "rule2"), tuple("xoo", "notEvenARule"));
     assertThat(settings.getIncludedRules()).extracting(RuleKey::repository, RuleKey::rule).containsOnly(tuple("xoo", "rule3"), tuple("xoo", "rule4"));
     assertThat(settings.getRuleParameters()).hasSize(1).containsOnlyKeys(RuleKey.parse("xoo:rule4"));

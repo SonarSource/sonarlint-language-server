@@ -607,7 +607,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     waitForLogToContain(
       String.format(
-        "Global settings updated: WorkspaceSettings[analysisExcludes=,automaticAnalysis=true,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false,organizationKey=<null>,region=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showVerboseLogs=true]",
+        "Global settings updated: WorkspaceSettings[analysisExcludes=,automaticAnalysis=true,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false,organizationKey=<null>,region=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,ideLabsEnabled=false,includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showVerboseLogs=true]",
         CONNECTION_ID, CONNECTION_ID, mockWebServerExtension.url("/")));
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder( "Telemetry enabled");

@@ -82,6 +82,9 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonRequest("canShowMissingRequirementsNotification")
   CompletableFuture<MissingRequirementsNotificationDisplayOption> canShowMissingRequirementsNotification();
 
+  @JsonRequest("hasJoinedIdeLabs")
+  CompletableFuture<Boolean> hasJoinedIdeLabs();
+
   @JsonNotification("openConnectionSettings")
   void openConnectionSettings(boolean isSonarCloud);
 
