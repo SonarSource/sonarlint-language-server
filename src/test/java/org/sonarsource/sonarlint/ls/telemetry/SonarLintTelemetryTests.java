@@ -27,8 +27,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.ArgumentCaptor;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionOrigin;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.GetStatusResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AcceptedBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixAppliedForRuleParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingTriggeredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingType;
@@ -231,36 +233,6 @@ class SonarLintTelemetryTests {
   }
 
   @Test
-  void addedAutomaticBindings_when_enabled() {
-    telemetry.addedAutomaticBindings();
-
-    verify(telemetryService).addedAutomaticBindings();
-  }
-
-  @Test
-  void addedAutomaticBindings_when_disabled() {
-    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
-    telemetry.addedAutomaticBindings();
-
-    verify(telemetryService, never()).addedAutomaticBindings();
-  }
-
-  @Test
-  void addedImportedBindings_when_enabled() {
-    telemetry.addedImportedBindings();
-
-    verify(telemetryService).addedImportedBindings();
-  }
-
-  @Test
-  void addedImportedBindings_when_disabled() {
-    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
-    telemetry.addedImportedBindings();
-
-    verify(telemetryService, never()).addedImportedBindings();
-  }
-
-  @Test
   void addedManualBindings_when_enabled() {
     telemetry.addedManualBindings();
 
@@ -273,6 +245,23 @@ class SonarLintTelemetryTests {
     telemetry.addedManualBindings();
 
     verify(telemetryService, never()).addedManualBindings();
+  }
+
+  @Test
+  void acceptedBindingSuggestion_when_enabled() {
+    var params = new AcceptedBindingSuggestionParams(BindingSuggestionOrigin.PROJECT_NAME);
+
+    telemetry.acceptedBindingSuggestion(params);
+
+    verify(telemetryService).acceptedBindingSuggestion(params);
+  }
+
+  @Test
+  void acceptedBindingSuggestion_when_disabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+    telemetry.acceptedBindingSuggestion(new AcceptedBindingSuggestionParams(BindingSuggestionOrigin.PROJECT_NAME));
+
+    verify(telemetryService, never()).acceptedBindingSuggestion(any());
   }
 
   @Test

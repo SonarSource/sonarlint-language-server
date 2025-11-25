@@ -48,6 +48,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.labs.JoinIdeLabsProgr
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.ChangeDependencyRiskStatusParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AcceptedBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 
 public interface SonarLintExtendedLanguageServer extends LanguageServer {
@@ -728,14 +729,11 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonRequest("sonarlint/getAiAgentHookScriptContent")
   CompletableFuture<GetHookScriptContentResponse> getAiAgentHookScriptContent(String aiAgent);
 
-  enum BindingCreationMode {
-    AUTOMATIC,
-    IMPORTED,
-    MANUAL
-  }
+  @JsonNotification("sonarlint/addedManualBindings")
+  void addedManualBindings();
 
-  @JsonNotification("sonarlint/didCreateBinding")
-  void didCreateBinding(BindingCreationMode creationMode);
+  @JsonNotification("sonarlint/acceptedBindingSuggestion")
+  void acceptedBindingSuggestion(AcceptedBindingSuggestionParams params);
 
   record ListUserOrganizationsParams(String token, String region) {
   }
