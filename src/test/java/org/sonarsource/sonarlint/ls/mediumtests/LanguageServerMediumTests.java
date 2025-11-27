@@ -66,6 +66,8 @@ import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionOrigin;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AcceptedBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory;
@@ -1159,6 +1161,20 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void tool_called() {
     // this is just to fix the coverage. A better test should be put in place, see SLLS-340
     assertThatCode(() -> lsProxy.lmToolCalled(new SonarLintExtendedLanguageServer.LMToolCalledParams("name", true)))
+      .doesNotThrowAnyException();
+  }
+
+  @Test
+  void added_manual_binding() {
+    // this is just to fix the coverage. A better test should be put in place, see SLLS-340
+    assertThatCode(() -> lsProxy.addedManualBindings())
+      .doesNotThrowAnyException();
+  }
+
+  @Test
+  void accepted_binding_suggestion() {
+    // this is just to fix the coverage. A better test should be put in place, see SLLS-340
+    assertThatCode(() -> lsProxy.acceptedBindingSuggestion(new AcceptedBindingSuggestionParams(BindingSuggestionOrigin.PROJECT_NAME)))
       .doesNotThrowAnyException();
   }
 
