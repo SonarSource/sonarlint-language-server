@@ -357,7 +357,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       var hasJoinedIdeLabs = client.hasJoinedIdeLabs().get();
       var hasEnabledIdeLabs = settingsManager.getCurrentSettings().isIdeLabsEnabled();
       return new TelemetryClientLiveAttributesResponse(
-        Map.of("ideLabsJoined", hasJoinedIdeLabs, "ideLabsEnabled", hasJoinedIdeLabs && hasEnabledIdeLabs));
+        Map.of("joinedIdeLabs", hasJoinedIdeLabs, "enabledIdeLabs", hasJoinedIdeLabs && hasEnabledIdeLabs));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logOutput.errorWithStackTrace("Cannot determine if user has Joined IDE Labs or not", e);

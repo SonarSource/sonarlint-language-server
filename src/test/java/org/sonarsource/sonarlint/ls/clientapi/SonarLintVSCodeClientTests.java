@@ -1076,8 +1076,8 @@ class SonarLintVSCodeClientTests {
     var result = underTest.getTelemetryLiveAttributes();
     assertThat(result).isNotNull();
     assertThat(result.getAdditionalAttributes()).hasSize(2);
-    assertTrue((Boolean) result.getAdditionalAttributes().get("ideLabsEnabled"));
-    assertTrue((Boolean) result.getAdditionalAttributes().get("ideLabsJoined"));
+    assertTrue((Boolean) result.getAdditionalAttributes().get("enabledIdeLabs"));
+    assertTrue((Boolean) result.getAdditionalAttributes().get("joinedIdeLabs"));
   }
 
   @Test
@@ -1090,8 +1090,8 @@ class SonarLintVSCodeClientTests {
     var result = underTest.getTelemetryLiveAttributes();
     assertThat(result).isNotNull();
     assertThat(result.getAdditionalAttributes()).hasSize(2);
-    assertFalse((Boolean) result.getAdditionalAttributes().get("ideLabsEnabled"));
-    assertFalse((Boolean) result.getAdditionalAttributes().get("ideLabsJoined"));
+    assertFalse((Boolean) result.getAdditionalAttributes().get("enabledIdeLabs"));
+    assertFalse((Boolean) result.getAdditionalAttributes().get("joinedIdeLabs"));
   }
 
   @Test
