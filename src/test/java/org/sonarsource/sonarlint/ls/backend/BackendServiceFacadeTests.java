@@ -36,7 +36,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.FLIGHT_RECORDER_ENABLED_PROPERTY_KEY;
-import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.MONITORING_DISABLED_PROPERTY_KEY;
 
 @ExtendWith(SystemStubsExtension.class)
 class BackendServiceFacadeTests {
@@ -78,28 +77,7 @@ class BackendServiceFacadeTests {
   }
 
   @Test
-  void shouldNotEnableMonitoringWhenDisabled() {
-    systemProperties.set(MONITORING_DISABLED_PROPERTY_KEY, "true");
-
-    var result = underTest.shouldEnableMonitoring();
-
-    assertThat(result).isFalse();
-  }
-
-  @Test
-  void shouldEnableMonitoringWhenNotDisabled() {
-    systemProperties.set(MONITORING_DISABLED_PROPERTY_KEY, "false");
-
-    var result = underTest.shouldEnableMonitoring();
-
-    assertThat(result).isTrue();
-  }
-
-  @Test
   void shouldComputeBackendCapabilities() {
-    // make sure monitoring is disabled
-    systemProperties.set(MONITORING_DISABLED_PROPERTY_KEY, "true");
-
     // make sure telemetry is disabled
     SonarLintTelemetry telemetryService = mock(SonarLintTelemetry.class);
     underTest.setTelemetry(telemetryService);
@@ -125,9 +103,6 @@ class BackendServiceFacadeTests {
 
   @Test
   void shouldComputeBackendCapabilities_withTelemetryAndMonitoring() {
-    // make sure monitoring is not disabled
-    systemProperties.set(MONITORING_DISABLED_PROPERTY_KEY, "false");
-
     // make sure telemetry is not disabled
     SonarLintTelemetry telemetryService = mock(SonarLintTelemetry.class);
     underTest.setTelemetry(telemetryService);
@@ -146,15 +121,13 @@ class BackendServiceFacadeTests {
       .contains(BackendCapability.FULL_SYNCHRONIZATION)
       .contains(BackendCapability.SERVER_SENT_EVENTS)
       .contains(BackendCapability.TELEMETRY)
-      .contains(BackendCapability.MONITORING)
+      .doesNotContain(BackendCapability.MONITORING)
       .doesNotContain(BackendCapability.FLIGHT_RECORDER);
 
   }
 
   @Test
   void shouldComputeBackendCapabilities_withFlightRecorder() {
-    // make sure monitoring is not disabled
-    systemProperties.set(MONITORING_DISABLED_PROPERTY_KEY, "false");
     // make sure flight recorder is enabled
     systemProperties.set(FLIGHT_RECORDER_ENABLED_PROPERTY_KEY, "true");
 
