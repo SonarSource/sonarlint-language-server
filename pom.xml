@@ -24,22 +24,23 @@
 
   <properties>
     <jdk.min.version>17</jdk.min.version>
-    <sonarlint.core.version>10.38.0.83909</sonarlint.core.version>
+    <sonarlint.core.version>10.38.0.83993</sonarlint.core.version>
     <slf4j.version>2.0.17</slf4j.version>
     <!-- Version used by Xodus -->
     <kotlin.version>1.6.10</kotlin.version>
     <!-- analyzers used for tests -->
-    <sonar.java.version>8.8.0.37665</sonar.java.version>
-    <sonar.javascript.version>10.20.0.29356</sonar.javascript.version>
-    <sonar.php.version>3.41.0.12692</sonar.php.version>
-    <sonar.python.version>4.25.0.19056</sonar.python.version>
-    <sonar.html.version>3.18.0.5605</sonar.html.version>
-    <sonar.xml.version>2.12.0.5749</sonar.xml.version>
-    <sonar.text.version>2.20.0.5038</sonar.text.version>
-    <sonar.go.version>1.23.1.2838</sonar.go.version>
-    <sonar.iac.version>1.40.0.13983</sonar.iac.version>
-    <sonar.csharp.version>10.3.0.106239</sonar.csharp.version>
-    <sonarlint.omnisharp.version>1.25.0.100242</sonarlint.omnisharp.version>
+    <sonar.java.version>8.22.0.41895</sonar.java.version>
+    <sonar.java.se.version>8.16.3.1589</sonar.java.se.version>
+    <sonar.javascript.version>11.7.1.36988</sonar.javascript.version>
+    <sonar.php.version>3.53.0.15220</sonar.php.version>
+    <sonar.python.version>5.14.2.29072</sonar.python.version>
+    <sonar.html.version>3.22.0.7011</sonar.html.version>
+    <sonar.xml.version>2.14.2.7437</sonar.xml.version>
+    <sonar.text.version>2.34.0.9939</sonar.text.version>
+    <sonar.go.version>1.31.0.4938</sonar.go.version>
+    <sonar.iac.version>2.2.0.18377</sonar.iac.version>
+    <sonar.csharp.version>10.16.2.130377</sonar.csharp.version>
+    <sonarlint.omnisharp.version>1.36.0.101591</sonarlint.omnisharp.version>
     <gitRepositoryName>sonarlint-language-server</gitRepositoryName>
     <!-- Release: enable publication to Bintray -->
     <artifactsToPublish>${project.groupId}:${project.artifactId}:jar</artifactsToPublish>
@@ -204,7 +205,7 @@
                 <artifactItem>
                   <groupId>org.sonarsource.java</groupId>
                   <artifactId>sonar-java-symbolic-execution-plugin</artifactId>
-                  <version>${sonar.java.version}</version>
+                  <version>${sonar.java.se.version}</version>
                   <type>jar</type>
                   <overWrite>false</overWrite>
                   <outputDirectory>${project.build.directory}/plugins</outputDirectory>
@@ -400,7 +401,7 @@
                     <artifactItem>
                       <groupId>com.sonarsource.cpp</groupId>
                       <artifactId>sonar-cfamily-plugin</artifactId>
-                      <version>6.62.0.78645</version>
+                      <version>6.75.1.93101</version>
                       <destFileName>cfamily.jar</destFileName>
                       <type>jar</type>
                     </artifactItem>
