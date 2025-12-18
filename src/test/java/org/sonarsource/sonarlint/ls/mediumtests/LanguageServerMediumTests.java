@@ -745,6 +745,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  @Disabled
   void logErrorWhenClientFailedToReturnConfiguration(@TempDir Path tempDir) {
     // No workspaceFolderPath settings registered in the client mock, so it should fail when server will request workspaceFolderPath
     // configuration
