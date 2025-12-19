@@ -745,7 +745,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  @Disabled
   void logErrorWhenClientFailedToReturnConfiguration(@TempDir Path tempDir) {
     // No workspaceFolderPath settings registered in the client mock, so it should fail when server will request workspaceFolderPath
     // configuration
@@ -1179,6 +1178,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Override
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
     addSonarQubeConnection(client.globalSettings, CONNECTION_ID, mockWebServerExtension.url("/"), TOKEN);
+    folderSettings.put(analysisDir.toUri().toString(), new HashMap<>());
   }
 
   private Predicate<? super MessageParams> notFromContextualTSserver() {
