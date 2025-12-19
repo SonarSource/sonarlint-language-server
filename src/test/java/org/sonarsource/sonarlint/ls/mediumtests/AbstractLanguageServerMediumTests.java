@@ -517,7 +517,7 @@ public abstract class AbstractLanguageServerMediumTests {
           } else if (item.getScopeUri() != null && !item.getSection().equals(SONARLINT_CONFIGURATION_NAMESPACE)) {
             result
               .add(Optional.ofNullable(folderSettings.get(item.getScopeUri()))
-                .orElse(new HashMap<>()));
+                .orElseThrow(() -> new IllegalStateException("No settings mocked for workspaceFolderPath " + item.getScopeUri())));
             // we don't want to repeat the same setting for one folder 5 times :)
             break;
           }

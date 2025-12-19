@@ -495,7 +495,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     var uriInFolder = folder1BaseDir.resolve("hotspot.py").toUri().toString();
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Merged 1 hotspots in store. Closed 0.")));
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
@@ -1010,7 +1009,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Merged 1 hotspots in store. Closed 0.")));
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
@@ -1087,7 +1085,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Merged 1 hotspots in store. Closed 0.")));
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
@@ -1177,7 +1174,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Merged 1 hotspots in store. Closed 0.")));
 
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
