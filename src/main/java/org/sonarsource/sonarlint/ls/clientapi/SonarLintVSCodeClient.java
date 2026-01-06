@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -83,6 +84,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedFindingDto
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.RaisedIssueDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.ShowIssueParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.message.ShowMessageRequestResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.message.ShowSoonUnsupportedMessageParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidSkipLoadingPluginParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.progress.ReportProgressParams;
@@ -196,6 +198,32 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public void showMessage(org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType type, String text) {
     client.showMessage(new MessageParams(convertMessageType(type), text));
+  }
+
+  @Override
+  public ShowMessageRequestResponse showMessageRequest(
+    org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType type,
+    String message,
+    List<org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageActionItem> actions) {
+
+    var actionKeyByDisplayText = new HashMap<String, String>();
+    var lspActions = new ArrayList<MessageActionItem>(actions.size());
+    for (var action : actions) {
+      var displayText = action.getDisplayText();
+      actionKeyByDisplayText.put(displayText, action.getKey());
+      lspActions.add(new MessageActionItem(displayText));
+    }
+
+    var showMessageParams = new ShowMessageRequestParams(lspActions);
+    showMessageParams.setType(convertMessageType(type));
+    showMessageParams.setMessage(message);
+
+    var selectedActionKey = client.showMessageRequest(showMessageParams)
+      .thenApply(selected -> selected == null ? null : actionKeyByDisplayText.get(selected.getTitle()))
+      .exceptionally(e -> null)
+      .join();
+
+    return new ShowMessageRequestResponse(selectedActionKey);
   }
 
   @Override
