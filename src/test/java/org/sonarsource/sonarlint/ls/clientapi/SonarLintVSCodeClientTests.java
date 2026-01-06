@@ -337,6 +337,69 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
+  void shouldForwardShowMessageRequest() {
+    var message = "Do you like our product?";
+    var actions = List.of(new org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageActionItem("yes", "Yes!", true),
+      new org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageActionItem("no", "No", false),
+      new org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageActionItem("later", "Ask me later", false));
+    var messageType = org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType.INFO;
+    when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(null));
+
+    underTest.showMessageRequest(messageType, message, actions);
+
+    var argCaptor = ArgumentCaptor.forClass(ShowMessageRequestParams.class);
+
+    verify(client).showMessageRequest(argCaptor.capture());
+
+    assertThat(argCaptor.getValue().getMessage()).isEqualTo(message);
+    assertThat(argCaptor.getValue().getType()).isEqualTo(MessageType.Info);
+    assertThat(argCaptor.getValue().getActions().stream().map(MessageActionItem::getTitle))
+      .containsExactly(actions.get(0).getDisplayText(), actions.get(1).getDisplayText(), actions.get(2).getDisplayText());
+  }
+
+  @Test
+  void shouldRespondWithSelectedActionForShowMessageRequest() {
+    var message = "Do you like our product?";
+    var actions = List.of(new org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageActionItem("yes", "Yes!", true),
+      new org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageActionItem("no", "No", false),
+      new org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageActionItem("later", "Ask me later", false));
+    var messageType = org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType.INFO;
+    when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(new MessageActionItem("Ask me later")));
+
+    var response = underTest.showMessageRequest(messageType, message, actions);
+
+    assertThat(response.getSelectedKey()).isEqualTo(actions.get(2).getKey());
+  }
+
+  @Test
+  void shouldRespondWithNullWhenUserDismissedNotification() {
+    var message = "Do you like our product?";
+    var actions = List.of(new org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageActionItem("yes", "Yes!", true),
+      new org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageActionItem("no", "No", false),
+      new org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageActionItem("later", "Ask me later", false));
+    var messageType = org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType.INFO;
+    when(client.showMessageRequest(any())).thenReturn(CompletableFuture.completedFuture(null));
+
+    var response = underTest.showMessageRequest(messageType, message, actions);
+
+    assertThat(response.getSelectedKey()).isNull();
+  }
+
+  @Test
+  void shouldRespondWithNullWhenExceptionThrownDuringShowMessageRequest() {
+    var message = "Do you like our product?";
+    var actions = List.of(new org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageActionItem("yes", "Yes!", true),
+      new org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageActionItem("no", "No", false),
+      new org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageActionItem("later", "Ask me later", false));
+    var messageType = org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageType.INFO;
+    when(client.showMessageRequest(any())).thenReturn(CompletableFuture.failedFuture(new InterruptedException("Something went wrong")));
+
+    var response = underTest.showMessageRequest(messageType, message, actions);
+
+    assertThat(response.getSelectedKey()).isNull();
+  }
+
+  @Test
   void shouldHandleShowSmartNotificationWhenConnectionExists() {
     var workspaceSettings = mock(WorkspaceSettings.class);
     var showSmartNotificationParams = mock(ShowSmartNotificationParams.class);
