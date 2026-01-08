@@ -196,6 +196,13 @@ class BackendServiceFacadeTests {
   }
 
   @Test
+  void should_use_kiro_as_product_key_if_present_in_app_name() {
+    var productKey = BackendServiceFacade.determineProductKey("Kiro", null);
+
+    assertThat(productKey).isEqualTo("kiro");
+  }
+
+  @Test
   void should_use_client_product_key_if_unknown_app_name() {
     var productKey = BackendServiceFacade.determineProductKey("XXX", "vscode");
 
@@ -221,6 +228,20 @@ class BackendServiceFacadeTests {
     var ideName = BackendServiceFacade.determineIdeName("Windsurf Next");
 
     assertThat(ideName).isEqualTo("Windsurf");
+  }
+
+  @Test
+  void should_return_kiro_as_ide_name_if_present_in_app_name() {
+    var ideName = BackendServiceFacade.determineIdeName("kiro");
+
+    assertThat(ideName).isEqualTo("Kiro");
+  }
+
+  @Test
+  void should_return_kiro_as_ide_name_when_contained_in_app_name() {
+    var ideName = BackendServiceFacade.determineIdeName("Kiro Preview");
+
+    assertThat(ideName).isEqualTo("Kiro");
   }
 
   @Test
