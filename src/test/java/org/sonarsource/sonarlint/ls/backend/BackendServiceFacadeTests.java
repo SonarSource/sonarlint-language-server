@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.backend;
 
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
@@ -36,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.FLIGHT_RECORDER_ENABLED_PROPERTY_KEY;
-import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.MONITORING_DISABLED_PROPERTY_KEY;
+import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.MONITORING_ENABLED_PROPERTY_KEY;
 
 @ExtendWith(SystemStubsExtension.class)
 class BackendServiceFacadeTests {
@@ -49,6 +50,11 @@ class BackendServiceFacadeTests {
   SonarLintRpcClientDelegate backend = mock(SonarLintRpcClientDelegate.class);
   BackendServiceFacade underTest = new BackendServiceFacade(backend, mock(LanguageClientLogger.class), mock(SonarLintExtendedLanguageClient.class),
     new EnabledLanguages(List.of(), null));
+
+  @AfterEach
+  void cleanup() {
+    systemProperties.remove(MONITORING_ENABLED_PROPERTY_KEY);
+  }
 
   @Test
   void shouldReturnDurationInMinutes() {
@@ -79,16 +85,14 @@ class BackendServiceFacadeTests {
 
   @Test
   void shouldNotEnableMonitoringWhenDisabled() {
-    systemProperties.set(MONITORING_DISABLED_PROPERTY_KEY, "true");
-
     var result = underTest.shouldEnableMonitoring();
 
     assertThat(result).isFalse();
   }
 
   @Test
-  void shouldEnableMonitoringWhenNotDisabled() {
-    systemProperties.set(MONITORING_DISABLED_PROPERTY_KEY, "false");
+  void shouldEnableMonitoringWhenPropertyEnabled() {
+    systemProperties.set(MONITORING_ENABLED_PROPERTY_KEY, "true");
 
     var result = underTest.shouldEnableMonitoring();
 
@@ -97,9 +101,6 @@ class BackendServiceFacadeTests {
 
   @Test
   void shouldComputeBackendCapabilities() {
-    // make sure monitoring is disabled
-    systemProperties.set(MONITORING_DISABLED_PROPERTY_KEY, "true");
-
     // make sure telemetry is disabled
     SonarLintTelemetry telemetryService = mock(SonarLintTelemetry.class);
     underTest.setTelemetry(telemetryService);
@@ -125,8 +126,8 @@ class BackendServiceFacadeTests {
 
   @Test
   void shouldComputeBackendCapabilities_withTelemetryAndMonitoring() {
-    // make sure monitoring is not disabled
-    systemProperties.set(MONITORING_DISABLED_PROPERTY_KEY, "false");
+    // make sure monitoring is enabled
+    systemProperties.set(MONITORING_ENABLED_PROPERTY_KEY, "true");
 
     // make sure telemetry is not disabled
     SonarLintTelemetry telemetryService = mock(SonarLintTelemetry.class);
@@ -153,8 +154,8 @@ class BackendServiceFacadeTests {
 
   @Test
   void shouldComputeBackendCapabilities_withFlightRecorder() {
-    // make sure monitoring is not disabled
-    systemProperties.set(MONITORING_DISABLED_PROPERTY_KEY, "false");
+    // make sure monitoring is enabled
+    systemProperties.set(MONITORING_ENABLED_PROPERTY_KEY, "true");
     // make sure flight recorder is enabled
     systemProperties.set(FLIGHT_RECORDER_ENABLED_PROPERTY_KEY, "true");
 
