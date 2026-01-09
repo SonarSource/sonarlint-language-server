@@ -145,7 +145,6 @@ public abstract class AbstractLanguageServerMediumTests {
   @BeforeAll
   static void startServer() throws Exception {
     System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
-    System.setProperty("sonarlint.monitoring.disabled", "true");
     SettingsManager.setSonarLintUserHomeOverride(makeStaticTempDir());
     serverSocket = new ServerSocket(0);
     var port = serverSocket.getLocalPort();

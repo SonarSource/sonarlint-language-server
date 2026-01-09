@@ -69,7 +69,7 @@ import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
 public class BackendServiceFacade {
 
-  public static final String MONITORING_DISABLED_PROPERTY_KEY = "sonarlint.monitoring.disabled";
+  public static final String MONITORING_ENABLED_PROPERTY_KEY = "sonarlint.monitoring.enabled";
   public static final String FLIGHT_RECORDER_ENABLED_PROPERTY_KEY = "sonarlint.flightrecorder.enabled";
 
   private static final String CURSOR_APP_NAME = "Cursor";
@@ -195,11 +195,11 @@ public class BackendServiceFacade {
   }
 
   boolean shouldEnableMonitoring() {
-    var monitoringDisabledByProperty = "true".equals(System.getProperty(MONITORING_DISABLED_PROPERTY_KEY));
-    if (monitoringDisabledByProperty) {
-      lsLogOutput.debug("Monitoring is disabled by system property");
+    var monitoringEnabledByProperty = "true".equals(System.getProperty(MONITORING_ENABLED_PROPERTY_KEY));
+    if (!monitoringEnabledByProperty) {
+      lsLogOutput.debug("Monitoring is not enabled by system property");
     }
-    return !monitoringDisabledByProperty;
+    return monitoringEnabledByProperty;
   }
 
   boolean shouldEnableFlightRecorder() {
