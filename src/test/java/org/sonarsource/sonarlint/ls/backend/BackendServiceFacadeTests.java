@@ -117,6 +117,7 @@ class BackendServiceFacadeTests {
       .contains(BackendCapability.DATAFLOW_BUG_DETECTION)
       .contains(BackendCapability.FULL_SYNCHRONIZATION)
       .contains(BackendCapability.SERVER_SENT_EVENTS)
+      .contains(BackendCapability.PROMOTIONAL_CAMPAIGNS)
       .doesNotContain(BackendCapability.TELEMETRY)
       .doesNotContain(BackendCapability.MONITORING)
       .doesNotContain(BackendCapability.FLIGHT_RECORDER);
@@ -145,6 +146,7 @@ class BackendServiceFacadeTests {
       .contains(BackendCapability.DATAFLOW_BUG_DETECTION)
       .contains(BackendCapability.FULL_SYNCHRONIZATION)
       .contains(BackendCapability.SERVER_SENT_EVENTS)
+      .contains(BackendCapability.PROMOTIONAL_CAMPAIGNS)
       .contains(BackendCapability.TELEMETRY)
       .contains(BackendCapability.MONITORING)
       .doesNotContain(BackendCapability.FLIGHT_RECORDER);
@@ -175,6 +177,7 @@ class BackendServiceFacadeTests {
       .contains(BackendCapability.DATAFLOW_BUG_DETECTION)
       .contains(BackendCapability.FULL_SYNCHRONIZATION)
       .contains(BackendCapability.SERVER_SENT_EVENTS)
+      .contains(BackendCapability.PROMOTIONAL_CAMPAIGNS)
       .contains(BackendCapability.TELEMETRY)
       .contains(BackendCapability.MONITORING)
       .contains(BackendCapability.FLIGHT_RECORDER);
