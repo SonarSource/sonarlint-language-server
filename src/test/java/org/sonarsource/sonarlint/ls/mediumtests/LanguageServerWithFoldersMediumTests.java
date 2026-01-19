@@ -29,12 +29,10 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
-import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceFolder;
-import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -61,7 +59,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   private static final int SONAR_CLOUD_PORT = findAvailablePort();
   @RegisterExtension
   private static final MockWebServerExtension sonarCloudWebServer = new MockWebServerExtension(SONAR_CLOUD_PORT);
-  private static final int SONARCLOUD_US_PORT = SONAR_CLOUD_PORT + 1;
+  private static final int SONARCLOUD_US_PORT = findAvailablePort();
   @RegisterExtension
   private static final MockWebServerExtension sonarCloudUSWebServer = new MockWebServerExtension(SONARCLOUD_US_PORT);
 
@@ -87,10 +85,10 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     folder1BaseDir = makeStaticTempDir();
     folder2BaseDir = makeStaticTempDir();
     initialize(Map.of(
-        "telemetryStorage", "not/exists",
-        "productName", "SLCORE tests",
-        "productVersion", "0.1",
-        "productKey", "productKey"),
+      "telemetryStorage", "not/exists",
+      "productName", "SLCORE tests",
+      "productVersion", "0.1",
+      "productKey", "productKey"),
       new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
   }
 
