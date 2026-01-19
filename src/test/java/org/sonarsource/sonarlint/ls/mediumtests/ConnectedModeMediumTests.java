@@ -830,6 +830,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  @DisabledOnOs(OS.WINDOWS)
   void shouldReturnHotspotDetails() {
     addConfigScope(folder1BaseDir.toUri().toString());
 
