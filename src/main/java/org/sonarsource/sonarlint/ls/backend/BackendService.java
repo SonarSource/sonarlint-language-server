@@ -485,8 +485,4 @@ public class BackendService {
     }
     return "vscode";
   }
-
-  public void dumpThreads() {
-    backend.getFlightRecordingService().captureThreadDump();
-  }
 }
