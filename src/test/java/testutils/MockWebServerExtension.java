@@ -23,14 +23,15 @@ import com.google.protobuf.Message;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import mockwebserver3.Dispatcher;
 import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
 import mockwebserver3.RecordedRequest;
 import okio.Buffer;
+import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -38,11 +39,12 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import static java.util.Objects.requireNonNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class MockWebServerExtension implements BeforeEachCallback, AfterEachCallback {
+public class MockWebServerExtension implements BeforeEachCallback, AfterEachCallback, AfterAllCallback {
 
   private final Integer port;
   private MockWebServer server;
-  protected final Map<String, MockResponse> responsesByPath = new HashMap<>();
+  private boolean serverStarted = false;
+  protected final Map<String, MockResponse> responsesByPath = new ConcurrentHashMap<>();
 
   public MockWebServerExtension() {
     this.server = new MockWebServer();
@@ -56,28 +58,66 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterEachCall
 
   @Override
   public void beforeEach(ExtensionContext context) throws Exception {
-    server = new MockWebServer();
-    responsesByPath.clear();
-    final Dispatcher dispatcher = new Dispatcher() {
-      @Override
-      public MockResponse dispatch(RecordedRequest request) {
-        if (responsesByPath.containsKey(request.getPath())) {
-          return responsesByPath.get(request.getPath());
+    // Only create and start server if not already running
+    if (!serverStarted) {
+      server = new MockWebServer();
+      final Dispatcher dispatcher = new Dispatcher() {
+        @Override
+        public MockResponse dispatch(RecordedRequest request) {
+          var requestPath = request.getPath();
+          if (responsesByPath.containsKey(requestPath)) {
+            return responsesByPath.get(requestPath);
+          }
+
+          // Match requests with changedSince parameter
+          if (requestPath != null && requestPath.contains("changedSince=")) {
+            // Remove the entire changedSince parameter from the request
+            var requestWithoutChangedSince = requestPath.replaceFirst("[&?]changedSince=\\d+", "");
+
+            for (var entry : responsesByPath.entrySet()) {
+              var mockPath = entry.getKey();
+              if (mockPath == null) continue;
+
+              // Check if mock path matches request (with or without changedSince)
+              if (mockPath.equals(requestWithoutChangedSince)) {
+                return entry.getValue();
+              }
+
+              // Also try matching if both have changedSince but with different timestamps
+              if (mockPath.contains("changedSince=")) {
+                var mockWithoutChangedSince = mockPath.replaceFirst("[&?]changedSince=\\d+", "");
+                if (mockWithoutChangedSince.equals(requestWithoutChangedSince)) {
+                  return entry.getValue();
+                }
+              }
+            }
+          }
+
+          return new MockResponse().setResponseCode(404);
         }
-        return new MockResponse().setResponseCode(404);
+      };
+      server.setDispatcher(dispatcher);
+      if (this.port != null) {
+        server.start(this.port);
+      } else {
+        server.start();
       }
-    };
-    server.setDispatcher(dispatcher);
-    if (this.port != null) {
-      server.start(this.port);
-    } else {
-      server.start();
+      serverStarted = true;
     }
   }
 
   @Override
   public void afterEach(ExtensionContext context) throws Exception {
-    stopServer();
+    // Don't stop server between tests - just clear responses
+    // Server will be stopped in afterAll
+  }
+
+  @Override
+  public void afterAll(ExtensionContext context) throws Exception {
+    if (serverStarted) {
+      stopServer();
+      serverStarted = false;
+    }
   }
 
   public void stopServer() throws IOException {
