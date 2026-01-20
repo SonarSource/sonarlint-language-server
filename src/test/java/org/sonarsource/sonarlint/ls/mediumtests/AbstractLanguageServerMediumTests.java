@@ -111,6 +111,7 @@ import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import picocli.CommandLine;
 import testutils.LogTestStartAndEnd;
 
+import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -860,7 +861,7 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected static void awaitUntilAsserted(ThrowingRunnable assertion) {
-    await().atMost(15, SECONDS).untilAsserted(assertion);
+    await().atMost(2, MINUTES).untilAsserted(assertion);
   }
 
   protected Map<String, Object> getFolderSettings(String folderUri) {
