@@ -519,7 +519,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void delayAnalysisOnChange() throws Exception {
+  void shouldAnalyzeLatestChange() throws Exception {
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
 
@@ -535,6 +535,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 2),
         List.of(new TextDocumentContentChangeEvent("def foo():\n  toto = 0\n"))));
+    Thread.sleep(50); // Small delay to ensure the changes are batched together
     lsProxy.getTextDocumentService()
       .didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(uri, 3),
         List.of(new TextDocumentContentChangeEvent("def foo():\n  toto = 0\n  plouf = 0\n"))));
