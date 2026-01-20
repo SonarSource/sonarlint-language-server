@@ -861,7 +861,7 @@ public abstract class AbstractLanguageServerMediumTests {
   }
 
   protected static void awaitUntilAsserted(ThrowingRunnable assertion) {
-    await().atMost(2, MINUTES).untilAsserted(assertion);
+    await().atMost(1, MINUTES).untilAsserted(assertion);
   }
 
   protected Map<String, Object> getFolderSettings(String folderUri) {
