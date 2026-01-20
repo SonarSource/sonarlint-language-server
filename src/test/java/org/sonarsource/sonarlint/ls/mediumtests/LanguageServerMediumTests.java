@@ -1123,7 +1123,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void analyzeVCSChangedFiles() throws IOException {
+  void analyzeVCSChangedFiles() throws Exception {
     // Initialize git repository
     try (var gitRepo = Git.init().setDirectory(analysisDir.toFile()).call()) {
       // Create one untracked file with an issue inside
@@ -1131,6 +1131,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       var fileUri = analysisDir.resolve(fileName);
       Files.createFile(fileUri);
       Files.writeString(fileUri, "def foo():\n toto = 0\n");
+
+      // Give Git and the backend time to detect the repository and file changes
+      Thread.sleep(100);
 
       lsProxy.analyzeVCSChangedFiles(new SonarLintExtendedLanguageServer.AnalyzeVCSChangedFilesParams(List.of(analysisDir.toUri().toString())));
 
