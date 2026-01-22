@@ -44,7 +44,7 @@ jobs:
       - uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
         with:
           version: 2025.9.12
-      - uses: SonarSource/ci-github-actions/build-maven@c86cc657b13bf2e89567e51a7454a6ede8204c69 #v1.3.17
+      - uses: SonarSource/ci-github-actions/build-maven@v1
         with:
           maven-args: -Dcommercial -Dmaven.install.skip=true -Dmaven.deploy.skip=true -P-deploy-sonarsource,-release,-sign
           artifactory-deployer-role: qa-deployer
