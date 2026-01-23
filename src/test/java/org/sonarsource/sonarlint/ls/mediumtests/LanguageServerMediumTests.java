@@ -1126,14 +1126,14 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void analyzeVCSChangedFiles() throws Exception {
     // Initialize git repository
     try (var gitRepo = Git.init().setDirectory(analysisDir.toFile()).call()) {
+      // Create initial commit to properly establish the git repository
+      gitRepo.commit().setMessage("Initial commit").setAllowEmpty(true).call();
+
       // Create one untracked file with an issue inside
       var fileName = "analyzeVCSChangedFiles.py";
       var fileUri = analysisDir.resolve(fileName);
       Files.createFile(fileUri);
       Files.writeString(fileUri, "def foo():\n toto = 0\n");
-
-      // Give Git and the backend time to detect the repository and file changes
-      Thread.sleep(100);
 
       lsProxy.analyzeVCSChangedFiles(new SonarLintExtendedLanguageServer.AnalyzeVCSChangedFilesParams(List.of(analysisDir.toUri().toString())));
 
