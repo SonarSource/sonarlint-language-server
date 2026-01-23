@@ -65,30 +65,19 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterEachCall
         @Override
         public MockResponse dispatch(RecordedRequest request) {
           var requestPath = request.getPath();
+
+          // Try exact match first
           if (responsesByPath.containsKey(requestPath)) {
             return responsesByPath.get(requestPath);
           }
 
-          // Match requests with changedSince parameter
-          if (requestPath != null && requestPath.contains("changedSince=")) {
-            // Remove the entire changedSince parameter from the request
-            var requestWithoutChangedSince = requestPath.replaceFirst("[&?]changedSince=\\d+", "");
-
+          // Try matching ignoring timestamp parameters (changedSince values vary at runtime)
+          if (requestPath != null) {
+            var normalizedRequestPath = removeTimestampParameters(requestPath);
             for (var entry : responsesByPath.entrySet()) {
               var mockPath = entry.getKey();
-              if (mockPath == null) continue;
-
-              // Check if mock path matches request (with or without changedSince)
-              if (mockPath.equals(requestWithoutChangedSince)) {
+              if (mockPath != null && normalizedRequestPath.equals(removeTimestampParameters(mockPath))) {
                 return entry.getValue();
-              }
-
-              // Also try matching if both have changedSince but with different timestamps
-              if (mockPath.contains("changedSince=")) {
-                var mockWithoutChangedSince = mockPath.replaceFirst("[&?]changedSince=\\d+", "");
-                if (mockWithoutChangedSince.equals(requestWithoutChangedSince)) {
-                  return entry.getValue();
-                }
               }
             }
           }
@@ -106,10 +95,20 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterEachCall
     }
   }
 
+  /**
+   * Removes timestamp-based query parameters (like changedSince) from a URL path.
+   * This allows mock responses to match requests regardless of the actual timestamp value,
+   * which can vary between test runs.
+   */
+  private static String removeTimestampParameters(String path) {
+    return path.replaceFirst("[&?]changedSince=\\d+", "");
+  }
+
   @Override
   public void afterEach(ExtensionContext context) throws Exception {
-    // Don't stop server between tests - just clear responses
+    // Clear responses between tests to prevent response leakage
     // Server will be stopped in afterAll
+    responsesByPath.clear();
   }
 
   @Override
