@@ -419,6 +419,7 @@ public abstract class AbstractLanguageServerMediumTests {
       shouldAnalyseFile = true;
       scopeReadyForAnalysis.clear();
       suggestedBindings = null;
+      ruleDesc = null;
       isOpenInEditor = true;
       openedLinks.clear();
       flightRecorderSessionIds.clear();

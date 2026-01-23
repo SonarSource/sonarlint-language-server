@@ -24,8 +24,6 @@ import java.net.ServerSocket;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
@@ -45,7 +43,6 @@ import testutils.MockWebServerExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.sonarsource.sonarlint.ls.mediumtests.LanguageServerMediumTests.assertAnalysisLogsContains;
 
 class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumTests {
@@ -216,15 +213,13 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
       .hasSize(2));
     var issueId = ((JsonObject) client.getDiagnostics(file1InFolder).get(0).getData()).get("entryKey").getAsString();
 
-    client.showRuleDescriptionLatch = new CountDownLatch(1);
-
     lsProxy.getWorkspaceService()
       .executeCommand(new ExecuteCommandParams(
         "SonarLint.ShowIssueDetailsCodeAction",
         List.of(issueId, file1InFolder)))
       .get();
 
-    assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
+    awaitUntilAsserted(() -> assertThat(client.ruleDesc).isNotNull());
 
     var ruleDescriptionTabNonContextual = client.ruleDesc.getHtmlDescriptionTabs()[0].getRuleDescriptionTabNonContextual();
     var htmlContent = ruleDescriptionTabNonContextual != null ? ruleDescriptionTabNonContextual.getHtmlContent() : "";
