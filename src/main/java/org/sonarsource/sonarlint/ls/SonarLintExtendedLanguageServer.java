@@ -750,9 +750,6 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonNotification("sonarlint/findingsFiltered")
   CompletableFuture<Void> findingsFiltered(FindingsFilteredParams params);
 
-  @JsonNotification("sonarlint/dumpThreads")
-  void dumpThreads();
-
   @JsonRequest("sonarlint/joinIdeLabsProgram")
   CompletableFuture<JoinIdeLabsProgramResponse> joinIdeLabsProgram(JoinIdeLabsProgramParams params);
 

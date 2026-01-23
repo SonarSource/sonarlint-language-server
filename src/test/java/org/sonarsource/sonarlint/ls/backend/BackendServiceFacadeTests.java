@@ -36,7 +36,6 @@ import uk.org.webcompere.systemstubs.properties.SystemProperties;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.FLIGHT_RECORDER_ENABLED_PROPERTY_KEY;
 import static org.sonarsource.sonarlint.ls.backend.BackendServiceFacade.MONITORING_ENABLED_PROPERTY_KEY;
 
 @ExtendWith(SystemStubsExtension.class)
@@ -120,8 +119,7 @@ class BackendServiceFacadeTests {
       .contains(BackendCapability.SERVER_SENT_EVENTS)
       .contains(BackendCapability.PROMOTIONAL_CAMPAIGNS)
       .doesNotContain(BackendCapability.TELEMETRY)
-      .doesNotContain(BackendCapability.MONITORING)
-      .doesNotContain(BackendCapability.FLIGHT_RECORDER);
+      .doesNotContain(BackendCapability.MONITORING);
 
   }
 
@@ -149,39 +147,7 @@ class BackendServiceFacadeTests {
       .contains(BackendCapability.SERVER_SENT_EVENTS)
       .contains(BackendCapability.PROMOTIONAL_CAMPAIGNS)
       .contains(BackendCapability.TELEMETRY)
-      .contains(BackendCapability.MONITORING)
-      .doesNotContain(BackendCapability.FLIGHT_RECORDER);
-
-  }
-
-  @Test
-  void shouldComputeBackendCapabilities_withFlightRecorder() {
-    // make sure monitoring is enabled
-    systemProperties.set(MONITORING_ENABLED_PROPERTY_KEY, "true");
-    // make sure flight recorder is enabled
-    systemProperties.set(FLIGHT_RECORDER_ENABLED_PROPERTY_KEY, "true");
-
-    // make sure telemetry is not disabled
-    SonarLintTelemetry telemetryService = mock(SonarLintTelemetry.class);
-    underTest.setTelemetry(telemetryService);
-    when(telemetryService.enabled()).thenReturn(true);
-
-    var backendCapabilities = underTest.getBackendCapabilities();
-
-    assertThat(backendCapabilities)
-      .isNotNull()
-      .isNotEmpty()
-      .contains(BackendCapability.SMART_NOTIFICATIONS)
-      .contains(BackendCapability.SECURITY_HOTSPOTS)
-      .contains(BackendCapability.PROJECT_SYNCHRONIZATION)
-      .contains(BackendCapability.EMBEDDED_SERVER)
-      .contains(BackendCapability.DATAFLOW_BUG_DETECTION)
-      .contains(BackendCapability.FULL_SYNCHRONIZATION)
-      .contains(BackendCapability.SERVER_SENT_EVENTS)
-      .contains(BackendCapability.PROMOTIONAL_CAMPAIGNS)
-      .contains(BackendCapability.TELEMETRY)
-      .contains(BackendCapability.MONITORING)
-      .contains(BackendCapability.FLIGHT_RECORDER);
+      .contains(BackendCapability.MONITORING);
 
   }
 

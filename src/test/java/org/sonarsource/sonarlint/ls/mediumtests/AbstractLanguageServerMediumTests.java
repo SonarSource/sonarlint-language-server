@@ -396,7 +396,6 @@ public abstract class AbstractLanguageServerMediumTests {
     final Set<String> openedLinks = new HashSet<>();
     final Set<MessageParams> shownMessages = new HashSet<>();
     final Map<String, NewCodeDefinitionDto> newCodeDefinitionCache = new HashMap<>();
-    final Set<String> flightRecorderSessionIds = new HashSet<>();
 
     void clearHotspotsAndIssuesAndConfigScopeReadiness() {
       scopeReadyForAnalysis.clear();
@@ -421,7 +420,6 @@ public abstract class AbstractLanguageServerMediumTests {
       suggestedBindings = null;
       isOpenInEditor = true;
       openedLinks.clear();
-      flightRecorderSessionIds.clear();
     }
 
     @Override
@@ -553,11 +551,6 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void notifyInvalidToken(NotifyInvalidTokenParams params) {
-    }
-
-    @Override
-    public void flightRecorderStarted(FlightRecorderStartedParams params) {
-      flightRecorderSessionIds.add(params.sessionId());
     }
 
     @Override
