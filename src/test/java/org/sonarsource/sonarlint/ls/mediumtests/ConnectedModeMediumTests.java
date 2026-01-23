@@ -96,7 +96,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   public static final String LANGUAGES_LIST = "apex,c,cpp,cs,css,cobol,web,java,js,php,plsql,py,secrets,text,tsql,ts,xml,yaml,json,go,cloudformation,docker,kubernetes,terraform,azureresourcemanager,ansible,githubactions";
 
   @RegisterExtension
-  private final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
+  private static final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
 
   private static final String CONNECTION_ID = "mediumTests";
 
