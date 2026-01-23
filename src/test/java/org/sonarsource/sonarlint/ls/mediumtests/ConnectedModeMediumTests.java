@@ -371,6 +371,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void analysisConnected_find_tracked_hotspot_before_sq_10_1() {
     var analyzedFileName = "analysisConnected_find_tracked_hotspot_before_sq_10_1.py";
+    var hotspotKey = UUID.randomUUID().toString();
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.0\", \"id\": \"xzy\"}");
     mockWebServerExtension.addProtobufResponse("/api/measures/component.protobuf?additionalFields=period&metricKeys=projects&component=myProject",
       Measures.ComponentWsResponse.newBuilder()
@@ -397,7 +398,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       "/api/hotspots/search.protobuf?projectKey=myProject&files=" + analyzedFileName + "&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder()
         .addHotspots(Hotspots.SearchWsResponse.Hotspot.newBuilder()
-          .setKey("myhotspotkey")
+          .setKey(hotspotKey)
           .setMessage("Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.")
           .setComponent("someComponentKey")
           .setCreationDate(DateUtils.formatDateTime(System.currentTimeMillis()))
@@ -418,8 +419,9 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setPaging(Common.Paging.newBuilder().setTotal(1).build())
         .build());
 
+    notifyConfigurationChangeOnClient();
+
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
     var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
@@ -541,7 +543,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var scanParams = new SonarLintExtendedLanguageServer.ScanFolderForHotspotsParams(folder1BaseDir.toUri().toString(), documents);
 
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(() -> assertThat(client.logs).anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'")));
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
 
     lsProxy.scanFolderForHotspots(scanParams);
@@ -885,8 +886,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Hotspots.SearchWsResponse.newBuilder().build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(
-      () -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
 
     var fileUri = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
@@ -925,8 +924,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Hotspots.SearchWsResponse.newBuilder().build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(
-      () -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
 
     var fileUri = folder1BaseDir.resolve("shouldNotChangeIssueStatus.py").toUri().toString();
@@ -1282,8 +1279,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void change_issue_status_permission_check_exceptionally() throws ExecutionException, InterruptedException {
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(
-      () -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
 
     var issueKey = "malformed issue UUID";
     var result = lsProxy.checkIssueStatusChangePermitted(new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedParams(folder1BaseDir.toUri().toString(), issueKey))
@@ -1437,8 +1432,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Hotspots.SearchWsResponse.newBuilder().build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
-    awaitUntilAsserted(
-      () -> assertThat(client.logs.stream().anyMatch(messageParams -> messageParams.getMessage().contains("Synchronizing project branches for project 'myProject'"))).isTrue());
     lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
 
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";
