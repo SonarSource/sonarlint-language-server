@@ -436,6 +436,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analysisConnected_find_tracked_hotspot_after_sq_10_1() {
+    var hotspotKey = UUID.randomUUID().toString();
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
@@ -457,7 +458,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
       Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
       Hotspots.HotspotLite.newBuilder()
-        .setKey("myhotspotkey")
+        .setKey(hotspotKey)
         .setFilePath("hotspot.py")
         .setCreationDate(System.currentTimeMillis())
         .setStatus("TO_REVIEW")
@@ -477,7 +478,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
       Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
       Hotspots.HotspotLite.newBuilder()
-        .setKey("myhotspotkey")
+        .setKey(hotspotKey)
         .setFilePath("hotspot.py")
         .setCreationDate(System.currentTimeMillis())
         .setStatus("TO_REVIEW")
@@ -968,7 +969,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .setLang("py")
           .build())
         .build());
-    var hotspotKey = "myhotspotkey";
+    var hotspotKey = UUID.randomUUID().toString();
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
       Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
@@ -1044,7 +1045,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .setLang("py")
           .build())
         .build());
-    var hotspotKey = "myhotspotkey";
+    var hotspotKey = UUID.randomUUID().toString();
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
       Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
@@ -1120,7 +1121,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .setLang("py")
           .build())
         .build());
-    var hotspotKey = "myhotspotkey";
+    var hotspotKey = UUID.randomUUID().toString();
     mockWebServerExtension.addProtobufResponse("/api/hotspots/show.protobuf?hotspot=" + hotspotKey,
       Hotspots.ShowWsResponse.newBuilder()
         .setMessage("message")
@@ -1472,6 +1473,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldReportTaintIssues() {
+    var issueKey = UUID.randomUUID().toString();
     mockNoIssuesNoHotspotsForProject();
     mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=myProject&files=taints.py&branch=master&ps=500&p=1",
@@ -1483,7 +1485,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setQueryTimestamp(CURRENT_TIME)
         .build(),
       Issues.TaintVulnerabilityLite.newBuilder()
-        .setKey("issueKey")
+        .setKey(issueKey)
         .setRuleKey("ruleKey")
         .setType(Common.RuleType.BUG)
         .setSeverity(Common.Severity.MAJOR)
@@ -1502,7 +1504,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setQueryTimestamp(CURRENT_TIME)
         .build(),
       Issues.TaintVulnerabilityLite.newBuilder()
-        .setKey("issueKey")
+        .setKey(issueKey)
         .setRuleKey("ruleKey")
         .setType(Common.RuleType.BUG)
         .setSeverity(Common.Severity.MAJOR)
