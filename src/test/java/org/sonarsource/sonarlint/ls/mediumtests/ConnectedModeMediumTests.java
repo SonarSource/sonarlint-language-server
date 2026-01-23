@@ -443,7 +443,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       "/api/hotspots/search.protobuf?projectKey=myProject&files=hotspot.py&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
     mockWebServerExtension.addProtobufResponse(
-      "/api/hotspots/search.protobuf?projectKey=myProject&files=analysisConnected_no_matching_server_issues.py&branch=master&ps=500&p=1",
+      "/api/hotspots/search.protobuf?projectKey=myProject&files=analysisConnected_find_tracked_hotspot_after_sq_10_1.py&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
     mockWebServerExtension.addProtobufResponse(
       "/api/rules/show.protobuf?key=python:S1313",
@@ -593,6 +593,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analysisConnected_no_matching_server_issues() {
+    var fileName = "analysisConnected_no_matching_server_issues.py";
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockNoIssuesNoHotspotsForProject();
     mockWebServerExtension.addStringResponse("/api/authentication/validate?format=json", "{\"valid\": true}");
@@ -608,9 +609,12 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .setParameter("9.2")
           .build())
         .build());
+    mockWebServerExtension.addProtobufResponse(
+      "/api/hotspots/search.protobuf?projectKey=myProject&files=" + fileName + "&branch=master&ps=500&p=1",
+      Hotspots.SearchWsResponse.newBuilder().build());
 
     addConfigScope(folder1BaseDir.toUri().toString());
-    var uriInFolder = folder1BaseDir.resolve("hotspot.py").toUri().toString();
+    var uriInFolder = folder1BaseDir.resolve(fileName).toUri().toString();
     didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
