@@ -82,10 +82,10 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     folder1BaseDir = makeStaticTempDir();
     folder2BaseDir = makeStaticTempDir();
     initialize(Map.of(
-      "telemetryStorage", "not/exists",
-      "productName", "SLCORE tests",
-      "productVersion", "0.1",
-      "productKey", "productKey"),
+        "telemetryStorage", "not/exists",
+        "productName", "SLCORE tests",
+        "productVersion", "0.1",
+        "productKey", "productKey"),
       new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
   }
 
@@ -156,8 +156,8 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   @Test
   void shouldBatchAnalysisFromTheSameFolder() {
-    var file1InFolder = folder1BaseDir.resolve("file1.py").toUri().toString();
-    var file2InFolder = folder1BaseDir.resolve("file2.py").toUri().toString();
+    var file1InFolder = folder1BaseDir.resolve("shouldBatchAnalysisFromTheSameFolder1.py").toUri().toString();
+    var file2InFolder = folder1BaseDir.resolve("shouldBatchAnalysisFromTheSameFolder2.py").toUri().toString();
 
     didOpen(file1InFolder, "python", "def foo():\n  return\n");
     didOpen(file2InFolder, "python", "def foo():\n  return\n");
@@ -182,8 +182,8 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     // Simulate opening of a second workspace folder
     addFolder(folder2BaseDir.toUri().toString(), "My Folder 2");
 
-    var file1InFolder1 = folder1BaseDir.resolve("file1.py").toUri().toString();
-    var file2InFolder2 = folder2BaseDir.resolve("file2.py").toUri().toString();
+    var file1InFolder1 = folder1BaseDir.resolve("shouldNotBatchAnalysisFromDifferentFolders1.py").toUri().toString();
+    var file2InFolder2 = folder2BaseDir.resolve("shouldNotBatchAnalysisFromDifferentFolders2.py").toUri().toString();
 
     didOpen(file1InFolder1, "python", "def foo():\n  toto = 0\n");
     didOpen(file2InFolder2, "python", "def foo():\n  toto2 = 0\n");
@@ -205,7 +205,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   @Test
   void shouldOpenRuleDescFromCodeAction() throws Exception {
-    var file1InFolder = folder1BaseDir.resolve("file1.py").toUri().toString();
+    var file1InFolder = folder1BaseDir.resolve("shouldOpenRuleDescFromCodeAction.py").toUri().toString();
 
     didOpen(file1InFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
