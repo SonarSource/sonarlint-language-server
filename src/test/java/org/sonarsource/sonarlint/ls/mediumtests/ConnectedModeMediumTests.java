@@ -239,7 +239,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
       Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build());
-    client.clearHotspotsAndIssuesAndConfigScopeReadiness();
   }
 
   @NotNull

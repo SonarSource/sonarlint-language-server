@@ -398,12 +398,6 @@ public abstract class AbstractLanguageServerMediumTests {
     final Map<String, NewCodeDefinitionDto> newCodeDefinitionCache = new HashMap<>();
     final Set<String> flightRecorderSessionIds = new HashSet<>();
 
-    void clearHotspotsAndIssuesAndConfigScopeReadiness() {
-      scopeReadyForAnalysis.clear();
-      diagnostics.clear();
-      hotspots.clear();
-    }
-
     void clear() {
       diagnostics.clear();
       hotspots.clear();
