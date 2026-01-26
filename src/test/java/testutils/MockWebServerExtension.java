@@ -31,15 +31,14 @@ import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
 import mockwebserver3.RecordedRequest;
 import okio.Buffer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.AfterAllCallback;
-import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
-import static java.util.Objects.requireNonNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class MockWebServerExtension implements BeforeEachCallback, AfterEachCallback, AfterAllCallback {
+public class MockWebServerExtension implements BeforeEachCallback, AfterAllCallback {
 
   private final Integer port;
   private MockWebServer server;
@@ -104,8 +103,8 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterEachCall
     return path.replaceFirst("[&?]changedSince=\\d+", "");
   }
 
-  @Override
-  public void afterEach(ExtensionContext context) throws Exception {
+  @AfterEach
+  void afterEach() {
     // Clear responses between tests to prevent response leakage
     // Server will be stopped in afterAll
     responsesByPath.clear();
@@ -127,16 +126,8 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterEachCall
     responsesByPath.put(path, new MockResponse().setBody(body));
   }
 
-  public void removeResponse(String path) {
-    responsesByPath.remove(path);
-  }
-
   public void addResponse(String path, MockResponse response) {
     responsesByPath.put(path, response);
-  }
-
-  public int getRequestCount() {
-    return server.getRequestCount();
   }
 
   public RecordedRequest takeRequest() {
@@ -150,14 +141,6 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterEachCall
 
   public String url(String path) {
     return server.url(path).toString();
-  }
-
-  public void addResponseFromResource(String path, String responseResourcePath) {
-    try (var b = new Buffer()) {
-      responsesByPath.put(path, new MockResponse().setBody(b.readFrom(requireNonNull(MockWebServerExtension.class.getResourceAsStream(responseResourcePath)))));
-    } catch (IOException e) {
-      fail(e);
-    }
   }
 
   public void addProtobufResponse(String path, Message m) {
