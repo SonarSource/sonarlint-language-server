@@ -253,7 +253,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Override
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
-    mockSonarQube();
     setShowVerboseLogs(client.globalSettings, true);
     addSonarQubeConnection(client.globalSettings, CONNECTION_ID, mockWebServerExtension.url("/"), "xxxxx");
     var folder1Uri = folder1BaseDir.toUri().toString();
