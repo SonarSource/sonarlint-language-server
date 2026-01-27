@@ -102,7 +102,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   private static final String GO_S1862 = "go:S1862";
   private static final String GO_S108 = "go:S108";
   @RegisterExtension
-  private static final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
+  private static final MockWebServerExtension mockWebServerExtension = MockWebServerExtension.onRandomPort();
   public static final String CLOUDFORMATION_S6273 = "cloudformation:S6273";
   public static final String DOCKER_S6476 = "docker:S6476";
   public static final String TERRAFORM_S6273 = "terraform:S6273";
@@ -135,10 +135,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void prepare() throws IOException {
     client.isIgnoredByScm = false;
     org.apache.commons.io.FileUtils.cleanDirectory(analysisDir.toFile());
-  }
-
-  @BeforeEach
-  void mockSonarQube() {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.9\", \"id\": \"xzy\"}");
     mockWebServerExtension.addProtobufResponse("/api/settings/values.protobuf", Settings.Values.newBuilder().build());
     mockWebServerExtension.addStringResponse("/api/authentication/validate?format=json", "{\"valid\": true}");
@@ -250,7 +246,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(uri, "terraform", """
       resource "aws_s3_bucket" "mynoncompliantbucket" {
         bucket = "mybucketname"
-
+      
         tags = {
           "anycompany:cost-center" = "Accounting" # Noncompliant
         }
@@ -354,7 +350,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(2, 14, 2, 69, PYTHON_S139, "sonarqube", "Move this trailing comment on the previous empty line.", DiagnosticSeverity.Warning)
-      // Expected issues on python:S1481 are suppressed by rule configuration
+        // Expected issues on python:S1481 are suppressed by rule configuration
       ));
   }
 
@@ -607,7 +603,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     waitForLogToContain(
       String.format(
-        "Global settings updated: WorkspaceSettings[analysisExcludes=,automaticAnalysis=true,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false,organizationKey=<null>,region=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,ideLabsEnabled=false,includedRules=[],pathToNodeExecutable=<null>,ruleParameters={},showVerboseLogs=true]",
+        "Global settings updated: WorkspaceSettings[analysisExcludes=,automaticAnalysis=true,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false," +
+          "organizationKey=<null>,region=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,ideLabsEnabled=false,includedRules=[]," +
+          "pathToNodeExecutable=<null>,ruleParameters={},showVerboseLogs=true]",
         CONNECTION_ID, CONNECTION_ID, mockWebServerExtension.url("/")));
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder( "Telemetry enabled");
@@ -731,8 +729,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void testListAllRules() {
     var result = lsProxy.listAllRules().join();
-    String[] commercialLanguages = new String[] {"C", "C++"};
-    String[] freeLanguages = new String[] {"AzureResourceManager", "CSS", "C#", "CloudFormation", "Docker", "Go", "HTML", "IPython Notebooks", "Java",
+    String[] commercialLanguages = new String[]{"C", "C++"};
+    String[] freeLanguages = new String[]{"AzureResourceManager", "CSS", "C#", "CloudFormation", "Docker", "Go", "HTML", "IPython Notebooks", "Java",
       "JavaScript", "Kubernetes", "PHP", "Python", "Secrets", "Terraform", "TypeScript", "XML"};
     if (COMMERCIAL_ENABLED) {
       awaitUntilAsserted(() -> assertThat(result).containsOnlyKeys(ArrayUtils.addAll(commercialLanguages, freeLanguages)));
@@ -767,7 +765,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     addFolder(folderUri, "Added");
 
     waitForLogToContain(
-      "Workspace folder 'WorkspaceFolder[name=Added,uri=file:///added_uri]' configuration updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.file.suffixes=.cs, sonar.cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>,pathToCompileCommands=<null>,projectKey=<null>,testFilePattern=another pattern]");
+      "Workspace folder 'WorkspaceFolder[name=Added,uri=file:///added_uri]' configuration updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.file.suffixes=.cs, sonar" +
+        ".cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>,pathToCompileCommands=<null>," +
+        "projectKey=<null>,testFilePattern=another pattern]");
   }
 
   @Test
@@ -1123,9 +1123,12 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void analyzeVCSChangedFiles() throws IOException {
+  void analyzeVCSChangedFiles() throws Exception {
     // Initialize git repository
     try (var gitRepo = Git.init().setDirectory(analysisDir.toFile()).call()) {
+      // Create initial commit to properly establish the git repository
+      gitRepo.commit().setMessage("Initial commit").setAllowEmpty(true).call();
+
       // Create one untracked file with an issue inside
       var fileName = "analyzeVCSChangedFiles.py";
       var fileUri = analysisDir.resolve(fileName);

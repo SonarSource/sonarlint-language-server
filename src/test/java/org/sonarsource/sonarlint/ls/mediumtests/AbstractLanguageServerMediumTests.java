@@ -397,12 +397,6 @@ public abstract class AbstractLanguageServerMediumTests {
     final Set<MessageParams> shownMessages = new HashSet<>();
     final Map<String, NewCodeDefinitionDto> newCodeDefinitionCache = new HashMap<>();
 
-    void clearHotspotsAndIssuesAndConfigScopeReadiness() {
-      scopeReadyForAnalysis.clear();
-      diagnostics.clear();
-      hotspots.clear();
-    }
-
     void clear() {
       diagnostics.clear();
       hotspots.clear();
@@ -418,6 +412,7 @@ public abstract class AbstractLanguageServerMediumTests {
       shouldAnalyseFile = true;
       scopeReadyForAnalysis.clear();
       suggestedBindings = null;
+      ruleDesc = null;
       isOpenInEditor = true;
       openedLinks.clear();
     }

@@ -24,8 +24,6 @@ import java.net.ServerSocket;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
@@ -45,7 +43,6 @@ import testutils.MockWebServerExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.sonarsource.sonarlint.ls.mediumtests.LanguageServerMediumTests.assertAnalysisLogsContains;
 
 class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumTests {
@@ -58,10 +55,10 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   private static final int SONAR_CLOUD_PORT = findAvailablePort();
   @RegisterExtension
-  private static final MockWebServerExtension sonarCloudWebServer = new MockWebServerExtension(SONAR_CLOUD_PORT);
+  private static final MockWebServerExtension sonarCloudWebServer = MockWebServerExtension.onPort(SONAR_CLOUD_PORT);
   private static final int SONARCLOUD_US_PORT = findAvailablePort();
   @RegisterExtension
-  private static final MockWebServerExtension sonarCloudUSWebServer = new MockWebServerExtension(SONARCLOUD_US_PORT);
+  private static final MockWebServerExtension sonarCloudUSWebServer = MockWebServerExtension.onPort(SONARCLOUD_US_PORT);
 
   private static int findAvailablePort() {
     try {
@@ -85,10 +82,10 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     folder1BaseDir = makeStaticTempDir();
     folder2BaseDir = makeStaticTempDir();
     initialize(Map.of(
-      "telemetryStorage", "not/exists",
-      "productName", "SLCORE tests",
-      "productVersion", "0.1",
-      "productKey", "productKey"),
+        "telemetryStorage", "not/exists",
+        "productName", "SLCORE tests",
+        "productVersion", "0.1",
+        "productKey", "productKey"),
       new WorkspaceFolder(folder1BaseDir.toUri().toString(), "My Folder 1"));
   }
 
@@ -159,8 +156,8 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   @Test
   void shouldBatchAnalysisFromTheSameFolder() {
-    var file1InFolder = folder1BaseDir.resolve("file1.py").toUri().toString();
-    var file2InFolder = folder1BaseDir.resolve("file2.py").toUri().toString();
+    var file1InFolder = folder1BaseDir.resolve("shouldBatchAnalysisFromTheSameFolder1.py").toUri().toString();
+    var file2InFolder = folder1BaseDir.resolve("shouldBatchAnalysisFromTheSameFolder2.py").toUri().toString();
 
     didOpen(file1InFolder, "python", "def foo():\n  return\n");
     didOpen(file2InFolder, "python", "def foo():\n  return\n");
@@ -185,8 +182,8 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     // Simulate opening of a second workspace folder
     addFolder(folder2BaseDir.toUri().toString(), "My Folder 2");
 
-    var file1InFolder1 = folder1BaseDir.resolve("file1.py").toUri().toString();
-    var file2InFolder2 = folder2BaseDir.resolve("file2.py").toUri().toString();
+    var file1InFolder1 = folder1BaseDir.resolve("shouldNotBatchAnalysisFromDifferentFolders1.py").toUri().toString();
+    var file2InFolder2 = folder2BaseDir.resolve("shouldNotBatchAnalysisFromDifferentFolders2.py").toUri().toString();
 
     didOpen(file1InFolder1, "python", "def foo():\n  toto = 0\n");
     didOpen(file2InFolder2, "python", "def foo():\n  toto2 = 0\n");
@@ -208,7 +205,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   @Test
   void shouldOpenRuleDescFromCodeAction() throws Exception {
-    var file1InFolder = folder1BaseDir.resolve("file1.py").toUri().toString();
+    var file1InFolder = folder1BaseDir.resolve("shouldOpenRuleDescFromCodeAction.py").toUri().toString();
 
     didOpen(file1InFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
@@ -216,15 +213,13 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
       .hasSize(2));
     var issueId = ((JsonObject) client.getDiagnostics(file1InFolder).get(0).getData()).get("entryKey").getAsString();
 
-    client.showRuleDescriptionLatch = new CountDownLatch(1);
-
     lsProxy.getWorkspaceService()
       .executeCommand(new ExecuteCommandParams(
         "SonarLint.ShowIssueDetailsCodeAction",
         List.of(issueId, file1InFolder)))
       .get();
 
-    assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
+    awaitUntilAsserted(() -> assertThat(client.ruleDesc).isNotNull());
 
     var ruleDescriptionTabNonContextual = client.ruleDesc.getHtmlDescriptionTabs()[0].getRuleDescriptionTabNonContextual();
     var htmlContent = ruleDescriptionTabNonContextual != null ? ruleDescriptionTabNonContextual.getHtmlContent() : "";
