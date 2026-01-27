@@ -93,10 +93,11 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private static final String PYTHON_S1481 = "python:S1481";
   private static final String PYTHON_S1313 = "python:S1313";
   private static final String PROJECT_KEY = "myProject";
-  public static final String LANGUAGES_LIST = "apex,c,cpp,cs,css,cobol,web,java,js,php,plsql,py,secrets,text,tsql,ts,xml,yaml,json,go,cloudformation,docker,kubernetes,terraform,azureresourcemanager,ansible,githubactions";
+  public static final String LANGUAGES_LIST = "apex,c,cpp,cs,css,cobol,web,java,js,php,plsql,py,secrets,text,tsql,ts,xml,yaml,json,go,cloudformation,docker,kubernetes,terraform," +
+    "azureresourcemanager,ansible,githubactions";
 
   @RegisterExtension
-  private static final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
+  private static final MockWebServerExtension mockWebServerExtension = MockWebServerExtension.onRandomPort();
 
   private static final String CONNECTION_ID = "mediumTests";
 
@@ -177,7 +178,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setValue(".cs,.razor"))
       .build());
     mockWebServerExtension.addProtobufResponse("/api/rules/search.protobuf?repositories=roslyn.sonaranalyzer.security.cs,javasecurity," +
-      "jssecurity,phpsecurity,pythonsecurity,tssecurity&f=repo&s=key&ps=500&p=1",
+        "jssecurity,phpsecurity,pythonsecurity,tssecurity&f=repo&s=key&ps=500&p=1",
       Rules.SearchResponse.newBuilder().build());
     mockWebServerExtension.addProtobufResponse("/api/qualityprofiles/search.protobuf?project=myProject",
       Qualityprofiles.SearchWsResponse.newBuilder()
@@ -507,7 +508,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   @DisabledOnOs(OS.WINDOWS)
-  // whole folder scan does not work on Windows - SLLS-250
+    // whole folder scan does not work on Windows - SLLS-250
   void analysisConnected_scan_all_hotspot_then_forget() throws IOException {
     var file1 = "analysisConnected_scan_all_hotspot_then_forget_hotspot1.py";
     var file2 = "analysisConnected_scan_all_hotspot_then_forget_hotspot2.py";

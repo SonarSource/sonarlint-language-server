@@ -102,7 +102,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   private static final String GO_S1862 = "go:S1862";
   private static final String GO_S108 = "go:S108";
   @RegisterExtension
-  private static final MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
+  private static final MockWebServerExtension mockWebServerExtension = MockWebServerExtension.onRandomPort();
   public static final String CLOUDFORMATION_S6273 = "cloudformation:S6273";
   public static final String DOCKER_S6476 = "docker:S6476";
   public static final String TERRAFORM_S6273 = "terraform:S6273";

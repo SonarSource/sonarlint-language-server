@@ -31,112 +31,57 @@ import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
 import mockwebserver3.RecordedRequest;
 import okio.Buffer;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class MockWebServerExtension implements BeforeEachCallback, AfterAllCallback {
+public class MockWebServerExtension implements BeforeEachCallback, AfterEachCallback {
 
-  private final Integer port;
   private MockWebServer server;
-  private boolean serverStarted = false;
-  protected final Map<String, MockResponse> responsesByPath = new ConcurrentHashMap<>();
+  private MockWebServerDispatcher dispatcher;
+  private final Integer port;
 
-  public MockWebServerExtension() {
-    this.server = new MockWebServer();
-    this.port = null;
+  private MockWebServerExtension(Integer port) {
+    this.port = port;
   }
 
-  public MockWebServerExtension(int port) {
-    this.server = new MockWebServer();
-    this.port = port;
+  public static MockWebServerExtension onPort(int port) {
+    return new MockWebServerExtension(port);
+  }
+
+  public static MockWebServerExtension onRandomPort() {
+    return new MockWebServerExtension(null);
   }
 
   @Override
   public void beforeEach(ExtensionContext context) throws Exception {
-    // Only create and start server if not already running
-    if (!serverStarted) {
-      server = new MockWebServer();
-      final Dispatcher dispatcher = new Dispatcher() {
-        @Override
-        public MockResponse dispatch(RecordedRequest request) {
-          var requestPath = request.getPath();
-
-          // Try exact match first
-          if (responsesByPath.containsKey(requestPath)) {
-            return responsesByPath.get(requestPath);
-          }
-
-          // Try matching ignoring timestamp parameters (changedSince values vary at runtime)
-          if (requestPath != null) {
-            var normalizedRequestPath = removeTimestampParameters(requestPath);
-            for (var entry : responsesByPath.entrySet()) {
-              var mockPath = entry.getKey();
-              if (mockPath != null && normalizedRequestPath.equals(removeTimestampParameters(mockPath))) {
-                return entry.getValue();
-              }
-            }
-          }
-
-          return new MockResponse().setResponseCode(404);
-        }
-      };
-      server.setDispatcher(dispatcher);
-      if (this.port != null) {
-        server.start(this.port);
-      } else {
-        server.start();
-      }
-      serverStarted = true;
+    this.dispatcher = new MockWebServerDispatcher();
+    this.server = new MockWebServer();
+    this.server.setDispatcher(this.dispatcher);
+    if (this.port != null) {
+      server.start(this.port);
+    } else {
+      server.start();
     }
-  }
-
-  /**
-   * Removes timestamp-based query parameters (like changedSince) from a URL path.
-   * This allows mock responses to match requests regardless of the actual timestamp value,
-   * which can vary between test runs.
-   */
-  private static String removeTimestampParameters(String path) {
-    return path.replaceFirst("[&?]changedSince=\\d+", "");
-  }
-
-  @AfterEach
-  void afterEach() {
-    // Clear responses between tests to prevent response leakage
-    // Server will be stopped in afterAll
-    responsesByPath.clear();
   }
 
   @Override
-  public void afterAll(ExtensionContext context) throws Exception {
-    if (serverStarted) {
-      stopServer();
-      serverStarted = false;
+  public void afterEach(ExtensionContext context) throws IOException {
+    dispatcher.clear();
+    if (server != null) {
+      server.shutdown();
     }
-  }
-
-  public void stopServer() throws IOException {
-    server.shutdown();
   }
 
   public void addStringResponse(String path, String body) {
-    responsesByPath.put(path, new MockResponse().setBody(body));
+    dispatcher.mockResponse(path, new MockResponse().setBody(body));
   }
 
   public void addResponse(String path, MockResponse response) {
-    responsesByPath.put(path, response);
-  }
-
-  public RecordedRequest takeRequest() {
-    try {
-      return server.takeRequest();
-    } catch (InterruptedException e) {
-      fail(e);
-      return null; // appeasing the compiler: this line will never be executed.
-    }
+    dispatcher.mockResponse(path, response);
   }
 
   public String url(String path) {
@@ -146,7 +91,7 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterAllCallb
   public void addProtobufResponse(String path, Message m) {
     try (var b = new Buffer()) {
       m.writeTo(b.outputStream());
-      responsesByPath.put(path, new MockResponse().setBody(b));
+      dispatcher.mockResponse(path, new MockResponse().setBody(b));
     } catch (IOException e) {
       fail(e);
     }
@@ -155,7 +100,7 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterAllCallb
   public void addProtobufResponseDelimited(String path, Message... m) {
     try (var b = new Buffer()) {
       writeMessages(b.outputStream(), Arrays.asList(m).iterator());
-      responsesByPath.put(path, new MockResponse().setBody(b));
+      dispatcher.mockResponse(path, new MockResponse().setBody(b));
     }
   }
 
@@ -173,4 +118,49 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterAllCallb
     }
   }
 
+  private static class MockWebServerDispatcher extends Dispatcher {
+
+    protected final Map<String, MockResponse> responsesByPath = new ConcurrentHashMap<>();
+
+    @NotNull
+    @Override
+    public MockResponse dispatch(@NotNull RecordedRequest recordedRequest) {
+      var requestPath = recordedRequest.getPath();
+
+      // Try exact match first
+      if (responsesByPath.containsKey(requestPath)) {
+        return responsesByPath.get(requestPath);
+      }
+
+      // Try matching ignoring timestamp parameters (changedSince values vary at runtime)
+      if (requestPath != null) {
+        var normalizedRequestPath = removeTimestampParameters(requestPath);
+        for (var entry : responsesByPath.entrySet()) {
+          var mockPath = entry.getKey();
+          if (mockPath != null && normalizedRequestPath.equals(removeTimestampParameters(mockPath))) {
+            return entry.getValue();
+          }
+        }
+      }
+
+      return new MockResponse().setResponseCode(404);
+    }
+
+    public void clear() {
+      responsesByPath.clear();
+    }
+
+    private void mockResponse(String path, MockResponse response) {
+      responsesByPath.put(path, response);
+    }
+
+    /**
+     * Removes timestamp-based query parameters (like changedSince) from a URL path.
+     * This allows mock responses to match requests regardless of the actual timestamp value,
+     * which can vary between test runs.
+     */
+    private static String removeTimestampParameters(String path) {
+      return path.replaceFirst("[&?]changedSince=\\d+", "");
+    }
+  }
 }

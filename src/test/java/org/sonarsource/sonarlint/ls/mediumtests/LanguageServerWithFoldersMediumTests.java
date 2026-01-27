@@ -55,10 +55,10 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
 
   private static final int SONAR_CLOUD_PORT = findAvailablePort();
   @RegisterExtension
-  private static final MockWebServerExtension sonarCloudWebServer = new MockWebServerExtension(SONAR_CLOUD_PORT);
+  private static final MockWebServerExtension sonarCloudWebServer = MockWebServerExtension.onPort(SONAR_CLOUD_PORT);
   private static final int SONARCLOUD_US_PORT = findAvailablePort();
   @RegisterExtension
-  private static final MockWebServerExtension sonarCloudUSWebServer = new MockWebServerExtension(SONARCLOUD_US_PORT);
+  private static final MockWebServerExtension sonarCloudUSWebServer = MockWebServerExtension.onPort(SONARCLOUD_US_PORT);
 
   private static int findAvailablePort() {
     try {
