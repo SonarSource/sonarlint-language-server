@@ -32,13 +32,14 @@ import mockwebserver3.MockWebServer;
 import mockwebserver3.RecordedRequest;
 import okio.Buffer;
 import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
-import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class MockWebServerExtension implements BeforeEachCallback, AfterEachCallback {
+public class MockWebServerExtension implements BeforeAllCallback, AfterAllCallback, AfterEachCallback {
 
   private MockWebServer server;
   private MockWebServerDispatcher dispatcher;
@@ -57,7 +58,7 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterEachCall
   }
 
   @Override
-  public void beforeEach(ExtensionContext context) throws Exception {
+  public void beforeAll(ExtensionContext context) throws Exception {
     this.dispatcher = new MockWebServerDispatcher();
     this.server = new MockWebServer();
     this.server.setDispatcher(this.dispatcher);
@@ -69,8 +70,12 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterEachCall
   }
 
   @Override
-  public void afterEach(ExtensionContext context) throws IOException {
+  public void afterEach(ExtensionContext context) {
     dispatcher.clear();
+  }
+
+  @Override
+  public void afterAll(ExtensionContext context) throws IOException {
     if (server != null) {
       server.shutdown();
     }
@@ -89,7 +94,8 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterEachCall
   }
 
   public void addProtobufResponse(String path, Message m) {
-    try (var b = new Buffer()) {
+    try {
+      var b = new Buffer();
       m.writeTo(b.outputStream());
       dispatcher.mockResponse(path, new MockResponse().setBody(b));
     } catch (IOException e) {
@@ -98,10 +104,9 @@ public class MockWebServerExtension implements BeforeEachCallback, AfterEachCall
   }
 
   public void addProtobufResponseDelimited(String path, Message... m) {
-    try (var b = new Buffer()) {
-      writeMessages(b.outputStream(), Arrays.asList(m).iterator());
-      dispatcher.mockResponse(path, new MockResponse().setBody(b));
-    }
+    var b = new Buffer();
+    writeMessages(b.outputStream(), Arrays.asList(m).iterator());
+    dispatcher.mockResponse(path, new MockResponse().setBody(b));
   }
 
   public static <T extends Message> void writeMessages(OutputStream output, Iterator<T> messages) {
