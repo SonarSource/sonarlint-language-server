@@ -636,7 +636,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     addFolder(configScopeId, Path.of(URI.create(configScopeId)).getFileName().toString());
     awaitUntilAsserted(() -> assertThat(client)
       .satisfiesAnyOf(
-        c -> assertThat(c.scopeReadyForAnalysis).containsKey(configScopeId),
+        c -> assertThat(c.newCodeDefinitionCache).containsKey(configScopeId),
         c -> assertThat(c.logs.stream()).anyMatch(messageParams -> messageParams.getMessage().contains(String.format("Configuration scope '%s' is already bound", configScopeId))),
         c -> assertThat(c.logs.stream())
           .anyMatch(messageParams -> messageParams.getMessage().contains(String.format("Duplicate configuration scope registered: %s", configScopeId)))));
