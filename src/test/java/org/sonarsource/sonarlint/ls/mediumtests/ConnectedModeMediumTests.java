@@ -217,29 +217,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .setType(Common.BranchType.BRANCH)
           .build())
         .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=" + PROJECT_KEY + "&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=" + PROJECT_KEY + "&branchName=master&languages=" + LANGUAGES_LIST,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
-      Issues.IssuesPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Issues.IssuesPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build());
   }
 
   @NotNull
