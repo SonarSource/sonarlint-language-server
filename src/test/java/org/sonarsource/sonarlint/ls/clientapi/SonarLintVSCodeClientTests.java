@@ -366,10 +366,11 @@ class SonarLintVSCodeClientTests {
     var response = underTest.showMessageRequest(messageType, message, actions);
 
     assertThat(response.getSelectedKey()).isEqualTo(actions.get(2).getKey());
+    assertThat(response.isClosedByUser()).isFalse();
   }
 
   @Test
-  void shouldRespondWithNullWhenUserDismissedNotification() {
+  void shouldSetFlagWhenUserDismissedNotification() {
     var message = "Do you like our product?";
     var actions = List.of(new org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageActionItem("yes", "Yes!", true),
       new org.sonarsource.sonarlint.core.rpc.protocol.client.message.MessageActionItem("no", "No", false),
@@ -380,6 +381,7 @@ class SonarLintVSCodeClientTests {
     var response = underTest.showMessageRequest(messageType, message, actions);
 
     assertThat(response.getSelectedKey()).isNull();
+    assertThat(response.isClosedByUser()).isTrue();
   }
 
   @Test
@@ -393,7 +395,7 @@ class SonarLintVSCodeClientTests {
 
     var response = underTest.showMessageRequest(messageType, message, actions);
 
-    assertThat(response.getSelectedKey()).isNull();
+    assertThat(response).isNull();
   }
 
   @Test
