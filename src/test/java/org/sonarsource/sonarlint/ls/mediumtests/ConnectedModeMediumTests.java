@@ -459,26 +459,12 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .setLang("py")
           .build())
         .build());
+    // Initial sync returns empty to establish baseline
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
-      Hotspots.HotspotLite.newBuilder()
-        .setKey(hotspotKey)
-        .setFilePath(analyzedFileName)
-        .setCreationDate(System.currentTimeMillis())
-        .setStatus("TO_REVIEW")
-        .setVulnerabilityProbability("LOW")
-        .setMessage("Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.")
-        .setTextRange(Hotspots.TextRange.newBuilder()
-          .setStartLine(1)
-          .setStartLineOffset(13)
-          .setEndLine(1)
-          .setEndLineOffset(26)
-          .setHash(Utils.hash("'12.34.56.78'"))
-          .build())
-        .setRuleKey(PYTHON_S1313)
-        .build());
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build());
 
+    // Incremental sync returns the actual findings
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
       Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
@@ -996,25 +982,11 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .build())
         .build());
     var hotspotKey = UUID.randomUUID().toString();
+    // Initial sync returns empty to establish baseline
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
-      Hotspots.HotspotLite.newBuilder()
-        .setKey(hotspotKey)
-        .setFilePath(analyzedFileName)
-        .setCreationDate(System.currentTimeMillis())
-        .setStatus("TO_REVIEW")
-        .setVulnerabilityProbability("LOW")
-        .setMessage("Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.")
-        .setTextRange(Hotspots.TextRange.newBuilder()
-          .setStartLine(1)
-          .setStartLineOffset(13)
-          .setEndLine(1)
-          .setEndLineOffset(26)
-          .setHash(Utils.hash("'12.34.56.78'"))
-          .build())
-        .setRuleKey(PYTHON_S1313)
-        .build());
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build());
+    // Incremental sync returns the actual findings
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
       Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
@@ -1076,27 +1048,9 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .build())
         .build());
     var hotspotKey = UUID.randomUUID().toString();
+    // Initial sync returns empty to establish baseline
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
-      Hotspots.HotspotLite.newBuilder()
-        .setKey(hotspotKey)
-        .setFilePath(analyzedFileName)
-        .setCreationDate(System.currentTimeMillis())
-        .setStatus("TO_REVIEW")
-        .setVulnerabilityProbability("LOW")
-        .setMessage("Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.")
-        .setTextRange(Hotspots.TextRange.newBuilder()
-          .setStartLine(1)
-          .setStartLineOffset(13)
-          .setEndLine(1)
-          .setEndLineOffset(26)
-          .setHash(Utils.hash("'12.34.56.78'"))
-          .build())
-        .setRuleKey(PYTHON_S1313)
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
       Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
       Hotspots.HotspotLite.newBuilder()
         .setKey(hotspotKey)
@@ -1169,25 +1123,11 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setRule(Hotspots.Rule.newBuilder().setVulnerabilityProbability("HIGH").build())
         .setCanChangeStatus(true)
         .build());
+    // Initial sync returns empty to establish baseline
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
-      Hotspots.HotspotLite.newBuilder()
-        .setKey(hotspotKey)
-        .setFilePath(analyzedFileName)
-        .setCreationDate(System.currentTimeMillis())
-        .setStatus("TO_REVIEW")
-        .setVulnerabilityProbability("LOW")
-        .setMessage("Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.")
-        .setTextRange(Hotspots.TextRange.newBuilder()
-          .setStartLine(1)
-          .setStartLineOffset(13)
-          .setEndLine(1)
-          .setEndLineOffset(26)
-          .setHash(Utils.hash("'12.34.56.78'"))
-          .build())
-        .setRuleKey(PYTHON_S1313)
-        .build());
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build());
+    // Incremental sync returns the actual findings
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
       Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build(),
@@ -1529,27 +1469,9 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var issueKey = UUID.randomUUID().toString();
     mockNoIssuesNoHotspotsForProject(analyzedFileName);
     var fileUri = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
+    // Full sync returns the taint
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build(),
-      Issues.TaintVulnerabilityLite.newBuilder()
-        .setKey(issueKey)
-        .setRuleKey("ruleKey")
-        .setType(Common.RuleType.BUG)
-        .setSeverity(Common.Severity.MAJOR)
-        .setMainLocation(Issues.Location.newBuilder().setFilePath(analyzedFileName).setMessage("message")
-          .setTextRange(Issues.TextRange.newBuilder()
-            .setStartLine(1)
-            .setStartLineOffset(1)
-            .setEndLine(1)
-            .setEndLineOffset(2)
-            .setHash("hash")))
-        .setCreationDate(Instant.now().toEpochMilli())
-        .build());
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
       Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
         .setQueryTimestamp(CURRENT_TIME)
         .build(),
