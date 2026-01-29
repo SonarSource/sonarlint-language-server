@@ -214,12 +214,11 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     showMessageParams.setType(convertMessageType(type));
     showMessageParams.setMessage(message);
 
-    var selectedActionKey = client.showMessageRequest(showMessageParams)
-      .thenApply(selected -> selected == null ? null : actionKeyByDisplayText.get(selected.getTitle()))
+    return client.showMessageRequest(showMessageParams)
+      .thenApply(selected -> selected == null ? new ShowMessageRequestResponse(null, true) :
+        new ShowMessageRequestResponse(actionKeyByDisplayText.get(selected.getTitle()), false))
       .exceptionally(e -> null)
       .join();
-
-    return new ShowMessageRequestResponse(selectedActionKey);
   }
 
   @Override
