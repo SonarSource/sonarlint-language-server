@@ -351,12 +351,15 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void analysisConnected_find_hotspot() {
+  void analysisConnected_find_hotspot() throws IOException {
+    var folder = makeStaticTempDir();
+    var folderUri = folder.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
     var analyzedFileName = "analysisConnected_find_hotspot.py";
     mockNoIssuesNoHotspotsForProject(analyzedFileName);
 
-    addConfigScope(folder1BaseDir.toUri().toString());
-    var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
+    addConfigScope(folderUri);
+    var uriInFolder = folder.resolve(analyzedFileName).toUri().toString();
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
@@ -368,7 +371,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void analysisConnected_find_tracked_hotspot_before_sq_10_1() {
+  void analysisConnected_find_tracked_hotspot_before_sq_10_1() throws IOException {
     var analyzedFileName = "analysisConnected_find_tracked_hotspot_before_sq_10_1.py";
     var hotspotKey = UUID.randomUUID().toString();
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.0\", \"id\": \"xzy\"}");
@@ -420,10 +423,14 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     notifyConfigurationChangeOnClient();
 
-    addConfigScope(folder1BaseDir.toUri().toString());
-    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
+    var folder = makeStaticTempDir();
+    var folderUri = folder.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
 
-    var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
+    addConfigScope(folderUri);
+    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folderUri, "master"));
+
+    var uriInFolder = folder.resolve(analyzedFileName).toUri().toString();
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
@@ -435,7 +442,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void analysisConnected_find_tracked_hotspot_after_sq_10_1() {
+  void analysisConnected_find_tracked_hotspot_after_sq_10_1() throws IOException {
     var analyzedFileName = "analysisConnected_find_tracked_hotspot_after_sq_10_1.py";
     var hotspotKey = UUID.randomUUID().toString();
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
@@ -492,9 +499,13 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setRuleKey(PYTHON_S1313)
         .build());
 
-    var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
-    addConfigScope(folder1BaseDir.toUri().toString());
-    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
+    var folder = makeStaticTempDir();
+    var folderUri = folder.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
+
+    var uriInFolder = folder.resolve(analyzedFileName).toUri().toString();
+    addConfigScope(folderUri);
+    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folderUri, "master"));
 
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
@@ -587,7 +598,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void analysisConnected_no_matching_server_issues() {
+  void analysisConnected_no_matching_server_issues() throws IOException {
     var fileName = "analysisConnected_no_matching_server_issues.py";
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockNoIssuesNoHotspotsForProject(fileName);
@@ -605,8 +616,12 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .build())
         .build());
 
-    addConfigScope(folder1BaseDir.toUri().toString());
-    var uriInFolder = folder1BaseDir.resolve(fileName).toUri().toString();
+    var folder = makeStaticTempDir();
+    var folderUri = folder.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
+
+    addConfigScope(folderUri);
+    var uriInFolder = folder.resolve(fileName).toUri().toString();
     didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
@@ -679,10 +694,14 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setClosed(false)
         .build());
 
-    addConfigScope(folder1BaseDir.toUri().toString());
-    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
+    var folder = makeStaticTempDir();
+    var folderUri = folder.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
 
-    var uriInFolder = folder1BaseDir.resolve("analysisConnected_matching_server_issues.py").toUri().toString();
+    addConfigScope(folderUri);
+    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folderUri, "master"));
+
+    var uriInFolder = folder.resolve("analysisConnected_matching_server_issues.py").toUri().toString();
     didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
@@ -780,7 +799,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void shouldOpenHotspotDescription() {
+  void shouldOpenHotspotDescription() throws IOException {
     mockWebServerExtension.addProtobufResponse("/api/rules/show.protobuf?key=" + PYTHON_S1313, Rules.ShowResponse.newBuilder()
       .setRule(Rules.Rule.newBuilder()
         .setKey(PYTHON_S1313)
@@ -799,8 +818,13 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     var analyzedFileName = "shouldOpenHotspotDescription.py";
     mockNoIssuesNoHotspotsForProject(analyzedFileName);
-    addConfigScope(folder1BaseDir.toUri().toString());
-    var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
+
+    var folder = makeStaticTempDir();
+    var folderUri = folder.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
+
+    addConfigScope(folderUri);
+    var uriInFolder = folder.resolve(analyzedFileName).toUri().toString();
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder)).hasSize(1));
 
@@ -875,7 +899,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void shouldChangeIssueStatus() {
+  void shouldChangeIssueStatus() throws IOException {
     var analyzedFileName = "shouldChangeIssueStatus.py";
     mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addResponse("/api/issues/anticipated_transitions?projectKey=myProject", new MockResponse().setResponseCode(200));
@@ -884,10 +908,14 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       "/api/hotspots/search.protobuf?projectKey=myProject&files=" + analyzedFileName + "&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
 
-    addConfigScope(folder1BaseDir.toUri().toString());
-    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
+    var folder = makeStaticTempDir();
+    var folderUri = folder.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
 
-    var fileUri = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
+    addConfigScope(folderUri);
+    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folderUri, "some/branch/name"));
+
+    var fileUri = folder.resolve(analyzedFileName).toUri().toString();
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";
     didOpen(fileUri, "python", content);
 
@@ -900,7 +928,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     var issueKey = ((JsonObject) client.getDiagnostics(fileUri).get(0).getData()).get("entryKey").getAsString();
 
-    lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
+    lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folderUri, issueKey,
       "False positive", fileUri, "clever comment", false));
 
     // Now we expect that one issue is resolved
@@ -913,7 +941,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void shouldNotChangeIssueStatus() {
+  void shouldNotChangeIssueStatus() throws IOException {
     var issueKey = UUID.randomUUID().toString();
 
     mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(400));
@@ -922,10 +950,14 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       "/api/hotspots/search.protobuf?projectKey=myProject&files=shouldNotChangeIssueStatus.py&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
 
-    addConfigScope(folder1BaseDir.toUri().toString());
-    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
+    var folder = makeStaticTempDir();
+    var folderUri = folder.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
 
-    var fileUri = folder1BaseDir.resolve("shouldNotChangeIssueStatus.py").toUri().toString();
+    addConfigScope(folderUri);
+    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folderUri, "some/branch/name"));
+
+    var fileUri = folder.resolve("shouldNotChangeIssueStatus.py").toUri().toString();
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";
     didOpen(fileUri, "python", content);
 
@@ -936,7 +968,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
 
-    lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
+    lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folderUri, issueKey,
       "False positive", fileUri, "clever comment", false));
 
     // Now we expect that one issue is resolved
@@ -945,7 +977,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void change_hotspot_status_to_resolved() {
+  void change_hotspot_status_to_resolved() throws IOException {
     var analyzedFileName = "hotspot_resolved.py";
 
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
@@ -1003,9 +1035,13 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setRuleKey(PYTHON_S1313)
         .build());
 
-    var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
-    addConfigScope(folder1BaseDir.toUri().toString());
-    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
+    var folder = makeStaticTempDir();
+    var folderUri = folder.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
+
+    var uriInFolder = folder.resolve(analyzedFileName).toUri().toString();
+    addConfigScope(folderUri);
+    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folderUri, "master"));
 
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
@@ -1021,7 +1057,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void should_not_change_hotspot_status_to_resolved() {
+  void should_not_change_hotspot_status_to_resolved() throws IOException {
     var analyzedFileName = "hotspot_not_resolved.py";
 
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
@@ -1079,9 +1115,13 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setRuleKey(PYTHON_S1313)
         .build());
 
-    var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
-    addConfigScope(folder1BaseDir.toUri().toString());
-    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "master"));
+    var folder = makeStaticTempDir();
+    var folderUri = folder.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
+
+    var uriInFolder = folder.resolve(analyzedFileName).toUri().toString();
+    addConfigScope(folderUri);
+    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folderUri, "master"));
 
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
@@ -1098,7 +1138,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void change_hotspot_status_permission_check() throws ExecutionException, InterruptedException {
+  void change_hotspot_status_permission_check() throws ExecutionException, InterruptedException, IOException {
     var analyzedFileName = "hotspot_permissions.py";
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
@@ -1168,8 +1208,13 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setRuleKey(PYTHON_S1313)
         .build());
 
-    var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
-    addConfigScope(folder1BaseDir.toUri().toString());
+    var folder = makeStaticTempDir();
+    var folderUri = folder.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
+
+    addConfigScope(folderUri);
+
+    var uriInFolder = folder.resolve(analyzedFileName).toUri().toString();
 
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
@@ -1179,7 +1224,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         tuple(0, 13, 0, 26, PYTHON_S1313, "remote-hotspot", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Information)));
 
     var response = lsProxy.getAllowedHotspotStatuses(
-      new SonarLintExtendedLanguageServer.GetAllowedHotspotStatusesParams(hotspotKey, folder1BaseDir.toUri().toString(), uriInFolder)).get();
+      new SonarLintExtendedLanguageServer.GetAllowedHotspotStatusesParams(hotspotKey, folderUri, uriInFolder)).get();
 
     assertThat(response.isPermitted()).isTrue();
     assertThat(response.getNotPermittedReason()).isNull();
@@ -1187,13 +1232,17 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void change_hotspot_status_permission_check_fail() throws ExecutionException, InterruptedException {
+  void change_hotspot_status_permission_check_fail() throws ExecutionException, InterruptedException, IOException {
     var analyzedFileName = "hotspot_no_permissions.py";
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(400));
 
-    var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
-    addConfigScope(folder1BaseDir.toUri().toString());
+    var folder = makeStaticTempDir();
+    var folderUri = folder.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
+
+    var uriInFolder = folder.resolve(analyzedFileName).toUri().toString();
+    addConfigScope(folderUri);
     var hotspotKey = "myHotspotKey";
 
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
@@ -1204,14 +1253,14 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         tuple(0, 13, 0, 26, PYTHON_S1313, "local-hotspot", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Information)));
 
     lsProxy.getAllowedHotspotStatuses(
-      new SonarLintExtendedLanguageServer.GetAllowedHotspotStatusesParams(hotspotKey, folder1BaseDir.toUri().toString(), uriInFolder)).get();
+      new SonarLintExtendedLanguageServer.GetAllowedHotspotStatusesParams(hotspotKey, folderUri, uriInFolder)).get();
 
     awaitUntilAsserted(() -> assertThat(client.shownMessages)
       .contains(new MessageParams(MessageType.Error, "Could not change status for the hotspot. Look at the SonarQube for IDE output for details.")));
   }
 
   @Test
-  void change_issue_status_permission_check() throws ExecutionException, InterruptedException {
+  void change_issue_status_permission_check() throws ExecutionException, InterruptedException, IOException {
     var issueKey = UUID.randomUUID().toString();
     mockWebServerExtension.addProtobufResponse(
       "/api/issues/search.protobuf?issues=" + issueKey + "&additionalFields=transitions&ps=1&p=1",
@@ -1252,9 +1301,14 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
-    addConfigScope(folder1BaseDir.toUri().toString());
-    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
-    var fileUri = folder1BaseDir.resolve("change_issue_status_permission_check.py").toUri().toString();
+
+    var folder = makeStaticTempDir();
+    var folderUri = folder.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
+
+    addConfigScope(folderUri);
+    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folderUri, "some/branch/name"));
+    var fileUri = folder.resolve("change_issue_status_permission_check.py").toUri().toString();
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";
     didOpen(fileUri, "python", content);
 
@@ -1265,7 +1319,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
 
-    var result = lsProxy.checkIssueStatusChangePermitted(new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedParams(folder1BaseDir.toUri().toString(), issueKey))
+    var result = lsProxy.checkIssueStatusChangePermitted(new SonarLintExtendedLanguageServer.CheckIssueStatusChangePermittedParams(folderUri, issueKey))
       .get();
 
     awaitUntilAsserted(() -> {
@@ -1391,18 +1445,26 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void shouldChangeLocalIssueStatus() throws URISyntaxException {
-    var fileUri = folder1BaseDir.resolve("changeLocalIssueStatus.py").toUri().toString();
-    assertLocalIssuesStatusChanged(fileUri);
+  void shouldChangeLocalIssueStatus() throws URISyntaxException, IOException {
+    var folder = makeStaticTempDir();
+    var folderUri = folder.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
+
+    var fileUri = folder.resolve("changeLocalIssueStatus.py").toUri().toString();
+    assertLocalIssuesStatusChanged(folderUri, fileUri);
   }
 
   @Test
-  void shouldReopenResolvedLocalIssues() throws URISyntaxException {
-    var fileName = "changeAndReopenLocalIssueStatus.py";
-    var fileUri = folder1BaseDir.resolve(fileName).toUri().toString();
-    assertLocalIssuesStatusChanged(fileUri);
+  void shouldReopenResolvedLocalIssues() throws URISyntaxException, IOException {
+    var folder = makeStaticTempDir();
+    var folderUri = folder.toUri().toString();
+    bindProject(getFolderSettings(folderUri), CONNECTION_ID, PROJECT_KEY);
 
-    lsProxy.reopenResolvedLocalIssues(new SonarLintExtendedLanguageServer.ReopenAllIssuesForFileParams(fileName, fileUri, folder1BaseDir.toUri().toString()));
+    var fileName = "changeAndReopenLocalIssueStatus.py";
+    var fileUri = folder.resolve(fileName).toUri().toString();
+    assertLocalIssuesStatusChanged(folderUri, fileUri);
+
+    lsProxy.reopenResolvedLocalIssues(new SonarLintExtendedLanguageServer.ReopenAllIssuesForFileParams(fileName, fileUri, folderUri));
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
         Diagnostic::getSeverity)
@@ -1422,7 +1484,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     waitForLogToContain("'OmniSharp' skipped because there are no related files in the current project");
   }
 
-  private void assertLocalIssuesStatusChanged(String fileUri) throws URISyntaxException {
+  private void assertLocalIssuesStatusChanged(String configScope, String fileUri) throws URISyntaxException, IOException {
     mockWebServerExtension.addResponse("/api/issues/anticipated_transitions?projectKey=" + PROJECT_KEY, new MockResponse().setResponseCode(202));
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
     mockNoIssueAndNoTaintInIncrementalSync();
@@ -1430,8 +1492,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       "/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + getFileNameFromFileUri(fileUri) + "&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
 
-    addConfigScope(folder1BaseDir.toUri().toString());
-    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(folder1BaseDir.toUri().toString(), "some/branch/name"));
+    addConfigScope(configScope);
+    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(configScope, "some/branch/name"));
 
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";
     didOpen(fileUri, "python", content);
@@ -1446,7 +1508,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var diagnostics = client.getDiagnostics(fileUri);
     var issueKey = ((JsonObject) diagnostics.stream().filter(it -> it.getMessage().equals("Remove the unused local variable \"plouf\"."))
       .findFirst().get().getData()).get("entryKey").getAsString();
-    lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(folder1BaseDir.toUri().toString(), issueKey,
+    lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(configScope, issueKey,
       "False positive", fileUri, "", false));
 
     // Now we expect that one issue is resolved
