@@ -1135,6 +1135,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       Files.createFile(fileUri);
       Files.writeString(fileUri, "def foo():\n toto = 0\n");
 
+      // Ensure file is created before calling lsProxy
+      await().atMost(5, SECONDS).until(() -> Files.exists(fileUri));
+
       lsProxy.analyzeVCSChangedFiles(new SonarLintExtendedLanguageServer.AnalyzeVCSChangedFilesParams(List.of(analysisDir.toUri().toString())));
 
       awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri.toUri().toString()))

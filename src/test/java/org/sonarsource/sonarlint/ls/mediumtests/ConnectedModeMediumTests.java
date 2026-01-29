@@ -1484,7 +1484,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     waitForLogToContain("'OmniSharp' skipped because there are no related files in the current project");
   }
 
-  private void assertLocalIssuesStatusChanged(String configScope, String fileUri) throws URISyntaxException, IOException {
+  private void assertLocalIssuesStatusChanged(String configScope, String fileUri) throws URISyntaxException {
     mockWebServerExtension.addResponse("/api/issues/anticipated_transitions?projectKey=" + PROJECT_KEY, new MockResponse().setResponseCode(202));
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
     mockNoIssueAndNoTaintInIncrementalSync();
