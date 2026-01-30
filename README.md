@@ -2,7 +2,7 @@ SonarLint Language Server
 =========================
 SonarLint language server (used by SonarLint VSCode)
 
-[![Build Status](https://github.com/SonarSource/sonarlint-language-server/actions/workflows/build.yml/badge.svg)](https://cirrus-ci.com/github/SonarSource/sonarlint-language-server)
+[![Build Status](https://github.com/SonarSource/sonarlint-language-server/actions/workflows/build.yml/badge.svg)](https://github.com/SonarSource/sonarlint-language-server/actions/workflows/build.yml?query=branch%3Amaster)
 [![Quality Gate Status](https://next.sonarqube.com/sonarqube/api/project_badges/measure?project=org.sonarsource.sonarlint.ls%3Asonarlint-language-server&metric=alert_status)](https://next.sonarqube.com/sonarqube/dashboard?id=org.sonarsource.sonarlint.ls%3Asonarlint-language-server)
 
 Have Question or Feedback?
@@ -13,7 +13,6 @@ then head to the [SonarSource forum](https://community.sonarsource.com/c/help/sl
 
 Be aware that this forum is a community, so the standard pleasantries ("Hi", "Thanks", ...) are expected. And if you don't get an answer to your thread, you should sit on your
 hands for at least three days before bumping it. Operators are not standing by. :-)
-
 
 Contributing
 ------------
