@@ -482,13 +482,19 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @DisabledOnOs(OS.WINDOWS)
     // whole folder scan does not work on Windows - SLLS-250
   void analysisConnected_scan_all_hotspot_then_forget() throws IOException {
-    var file1 = "analysisConnected_scan_all_hotspot_then_forget_hotspot1.py";
-    var file2 = "analysisConnected_scan_all_hotspot_then_forget_hotspot2.py";
-    mockNoIssuesNoHotspotsForProject(file1);
+    var fileName1 = "analysisConnected_scan_all_hotspot_then_forget_hotspot1.py";
+    var fileName2 = "analysisConnected_scan_all_hotspot_then_forget_hotspot2.py";
+    var file1 = new SonarLintExtendedLanguageClient.FoundFileDto(fileName1, folder1BaseDir.resolve(fileName1).toFile().getAbsolutePath(),
+      "def foo():\n  id_address = '12.34.56.78'\n");
+    var file2 = new SonarLintExtendedLanguageClient.FoundFileDto(fileName2, folder1BaseDir.resolve(fileName2).toFile().getAbsolutePath(),
+      "def foo():\n  id_address = '23.45.67.89'\n");
+    setUpFindFilesInFolderResponse(folder1BaseDir.toUri().toString(), List.of(file1, file2));
+
+    mockNoIssuesNoHotspotsForProject(fileName1);
     mockWebServerExtension.addProtobufResponse("/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + file2 + "&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
 
-    var uri1InFolder = folder1BaseDir.resolve(file1).toUri().toString();
+    var uri1InFolder = folder1BaseDir.resolve(fileName1).toUri().toString();
     var doc1 = new TextDocumentItem();
     doc1.setUri(uri1InFolder);
     String doc1Content = "def foo():\n  id_address = '12.34.56.78'\n";
@@ -499,7 +505,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     Files.createFile(doc1Path);
     Files.writeString(doc1Path, doc1Content);
 
-    var uri2InFolder = folder1BaseDir.resolve(file2).toUri().toString();
+    var uri2InFolder = folder1BaseDir.resolve(fileName2).toUri().toString();
     var doc2 = new TextDocumentItem();
     doc2.setUri(uri2InFolder);
     String doc2Content = "def foo():\n  id_address = '23.45.67.89'\n";
