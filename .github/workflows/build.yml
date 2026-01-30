@@ -51,6 +51,7 @@ jobs:
           artifactory-reader-role: private-reader
       - name: Generate test report
         uses: dorny/test-reporter@dc3a92680fcc15842eef52e8c4606ea7ce6bd3f3 # v2.1.1
+        if: ${{ !cancelled() }}
         with:
           name: QA Linux Test Report
           reporter: java-junit
@@ -74,12 +75,13 @@ jobs:
           maven-args: -B -e -V -Dcommercial -Dmaven.test.redirectTestOutputToFile=false
       - name: Generate test report
         uses: dorny/test-reporter@dc3a92680fcc15842eef52e8c4606ea7ce6bd3f3 # v2.1.1
+        if: ${{ !cancelled() }}
         with:
-         name: QA Linux Test Report
-         reporter: java-junit
-         path: '**/target/surefire-reports/TEST-*.xml'
-         list-suites: failed
-         list-tests: failed
+          name: QA Linux Test Report
+          reporter: java-junit
+          path: '**/target/surefire-reports/TEST-*.xml'
+          list-suites: failed
+          list-tests: failed
 
   promote:
     needs: [ build, qa-linux, qa-windows ]

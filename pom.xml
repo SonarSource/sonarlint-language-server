@@ -345,7 +345,6 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <trimStackTrace>false</trimStackTrace>
-          <rerunFailingTestsCount>2</rerunFailingTestsCount>
         </configuration>
       </plugin>
     </plugins>

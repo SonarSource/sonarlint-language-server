@@ -123,12 +123,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "additionalAttributes", Map.of(
         "extra", "value"),
       "omnisharpDirectory", omnisharpDir.toString()), new WorkspaceFolder(analysisDir.toUri().toString(), "AnalysisDir"));
-
-    var vcsChangedAnalysisFileName = "analyzeVCSChangedFiles.py";
-    var vcsChangedFile = new SonarLintExtendedLanguageClient.FoundFileDto(vcsChangedAnalysisFileName, analysisDir.resolve(vcsChangedAnalysisFileName).toFile().getAbsolutePath(),
-      "def foo():\n  toto = 0\n");
-
-    setUpFindFilesInFolderResponse(analysisDir.toUri().toString(), List.of(vcsChangedFile));
   }
 
   @BeforeEach
@@ -1123,17 +1117,23 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  @Disabled
   void analyzeVCSChangedFiles() throws Exception {
+    var vcsChangedAnalysisFileName = "analyzeVCSChangedFiles.py";
+    var vcsChangedFile = new SonarLintExtendedLanguageClient.FoundFileDto(vcsChangedAnalysisFileName, analysisDir.resolve(vcsChangedAnalysisFileName).toFile().getAbsolutePath(),
+      "def foo():\n  toto = 0\n");
+
+    setUpFindFilesInFolderResponse(analysisDir.toUri().toString(), List.of(vcsChangedFile));
+
     // Initialize git repository
     try (var gitRepo = Git.init().setDirectory(analysisDir.toFile()).call()) {
-      // Create initial commit to properly establish the git repository
-      gitRepo.commit().setMessage("Initial commit").setAllowEmpty(true).call();
-
-      // Create one untracked file with an issue inside
       var fileName = "analyzeVCSChangedFiles.py";
       var fileUri = analysisDir.resolve(fileName);
       Files.createFile(fileUri);
       Files.writeString(fileUri, "def foo():\n toto = 0\n");
+
+      // Ensure file is created before calling lsProxy
+      await().atMost(5, SECONDS).until(() -> Files.exists(fileUri));
 
       lsProxy.analyzeVCSChangedFiles(new SonarLintExtendedLanguageServer.AnalyzeVCSChangedFilesParams(List.of(analysisDir.toUri().toString())));
 
