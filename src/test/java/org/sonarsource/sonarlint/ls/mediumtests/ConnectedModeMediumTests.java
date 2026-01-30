@@ -352,7 +352,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   void analysisConnected_find_tracked_hotspot_before_sq_10_1() throws IOException {
     var analyzedFileName = "analysisConnected_find_tracked_hotspot_before_sq_10_1.py";
     var hotspotKey = UUID.randomUUID().toString();
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.0\", \"id\": \"xzy\"}");
     mockWebServerExtension.addProtobufResponse("/api/measures/component.protobuf?additionalFields=period&metricKeys=projects&component=myProject",
       Measures.ComponentWsResponse.newBuilder()
         .setComponent(Measures.Component.newBuilder()
@@ -423,7 +422,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   void analysisConnected_find_tracked_hotspot_after_sq_10_1() throws IOException {
     var analyzedFileName = "analysisConnected_find_tracked_hotspot_after_sq_10_1.py";
     var hotspotKey = UUID.randomUUID().toString();
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=myProject&files=" + analyzedFileName + "&branch=master&ps=500&p=1",
@@ -564,7 +562,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void analysisConnected_no_matching_server_issues() throws IOException {
     var fileName = "analysisConnected_no_matching_server_issues.py";
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockNoIssuesNoHotspotsForProject(fileName);
     mockWebServerExtension.addStringResponse("/api/authentication/validate?format=json", "{\"valid\": true}");
     mockWebServerExtension.addProtobufResponse("/api/measures/component.protobuf?additionalFields=period&metricKeys=projects&component=myProject",
@@ -939,8 +936,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void change_hotspot_status_to_resolved() throws IOException {
     var analyzedFileName = "hotspot_resolved.py";
-
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
     mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
@@ -1005,8 +1000,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void should_not_change_hotspot_status_to_resolved() throws IOException {
     var analyzedFileName = "hotspot_not_resolved.py";
-
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(400));
     mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
@@ -1068,7 +1061,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void change_hotspot_status_permission_check() throws ExecutionException, InterruptedException, IOException {
     var analyzedFileName = "hotspot_permissions.py";
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
     mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
@@ -1148,7 +1140,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void change_hotspot_status_permission_check_fail() throws ExecutionException, InterruptedException, IOException {
     var analyzedFileName = "hotspot_no_permissions.py";
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(400));
 
     var folder = makeStaticTempDir();
@@ -1328,7 +1319,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   private void mockNoIssuesNoHotspotsForProject(String fileName) {
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addProtobufResponseDelimited(
       "/api/issues/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
       Issues.IssuesPullQueryTimestamp.newBuilder()
