@@ -52,7 +52,6 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -136,7 +135,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     setUpFindFilesInFolderResponse(folder1BaseDir.toUri().toString(), List.of(file1, file2));
   }
 
-  @BeforeEach
   void mockSonarQube() {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addStringResponse("/api/features/list", "[]");
@@ -230,6 +228,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Override
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
+    mockSonarQube();
     setShowVerboseLogs(client.globalSettings, true);
     addSonarQubeConnection(client.globalSettings, CONNECTION_ID, mockWebServerExtension.url("/"), "xxxxx");
     var folder1Uri = folder1BaseDir.toUri().toString();
