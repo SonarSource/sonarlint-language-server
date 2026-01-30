@@ -219,7 +219,9 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @NotNull
   private static Buffer safeGetSonarPython() {
-    try (var buffer = new Buffer().readFrom(new FileInputStream(fullPathToJar("sonarpython")))) {
+    try (var inputStream = new FileInputStream(fullPathToJar("sonarpython"))) {
+      var buffer = new Buffer();
+      buffer.readFrom(inputStream);
       return buffer;
     } catch (IOException ioEx) {
       throw new IllegalStateException(ioEx);
