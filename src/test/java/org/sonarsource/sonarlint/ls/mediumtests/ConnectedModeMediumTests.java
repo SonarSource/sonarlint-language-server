@@ -350,6 +350,9 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void analysisConnected_find_tracked_hotspot_before_sq_10_1() throws IOException {
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.0\", \"id\": \"xzy\"}");
+    mockNoIssueAndNoTaintInIncrementalSync();
+
     var analyzedFileName = "analysisConnected_find_tracked_hotspot_before_sq_10_1.py";
     var hotspotKey = UUID.randomUUID().toString();
     mockWebServerExtension.addProtobufResponse("/api/measures/component.protobuf?additionalFields=period&metricKeys=projects&component=myProject",
