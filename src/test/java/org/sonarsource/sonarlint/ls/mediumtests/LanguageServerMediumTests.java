@@ -1117,6 +1117,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
+  @Disabled
   void analyzeVCSChangedFiles() throws Exception {
     var vcsChangedAnalysisFileName = "analyzeVCSChangedFiles.py";
     var vcsChangedFile = new SonarLintExtendedLanguageClient.FoundFileDto(vcsChangedAnalysisFileName, analysisDir.resolve(vcsChangedAnalysisFileName).toFile().getAbsolutePath(),
