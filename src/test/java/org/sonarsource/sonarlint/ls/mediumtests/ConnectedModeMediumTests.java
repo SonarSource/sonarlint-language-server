@@ -589,8 +589,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   private void addConfigScope(String configScopeId) {
     addFolder(configScopeId, Path.of(URI.create(configScopeId)).getFileName().toString());
-    awaitUntilAsserted(() -> assertThat(client)
-      .satisfiesAnyOf(c -> assertThat(c.newCodeDefinitionCache).containsKey(configScopeId)));
+    awaitUntilAsserted(() -> assertThat(client.newCodeDefinitionCache).containsKey(configScopeId));
   }
 
   @Test
