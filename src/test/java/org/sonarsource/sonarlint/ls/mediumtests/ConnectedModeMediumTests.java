@@ -106,14 +106,12 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private static final String PROJECT_NAME2 = "Project Two";
   private static final long CURRENT_TIME = System.currentTimeMillis();
   private static Path folder1BaseDir;
-  private static Path folder2BaseDir;
   private static Path bindingSuggestionBaseDir;
 
   @BeforeAll
   static void initialize() throws Exception {
     Path omnisharpDir = makeStaticTempDir();
     folder1BaseDir = makeStaticTempDir();
-    folder2BaseDir = makeStaticTempDir();
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
@@ -235,8 +233,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     addSonarQubeConnection(client.globalSettings, CONNECTION_ID, mockWebServerExtension.url("/"), "xxxxx");
     var folder1Uri = folder1BaseDir.toUri().toString();
     bindProject(getFolderSettings(folder1Uri), CONNECTION_ID, PROJECT_KEY);
-    var folder2Uri = folder2BaseDir.toUri().toString();
-    bindProject(getFolderSettings(folder2Uri), CONNECTION_ID, PROJECT_KEY2);
   }
 
   @AfterAll
@@ -748,7 +744,10 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void openHotspotInBrowserShouldLogIfBranchNotFound() {
+  void openHotspotInBrowserShouldLogIfBranchNotFound() throws IOException {
+    var folder2BaseDir = makeStaticTempDir();
+    var folder2Uri = folder2BaseDir.toUri().toString();
+    bindProject(getFolderSettings(folder2Uri), CONNECTION_ID, PROJECT_KEY2);
     addFolder(folder2BaseDir.toUri().toString(), folder2BaseDir.getFileName().toString());
 
     lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotInBrowserLsParams("id", folder2BaseDir.toUri().toString()));
@@ -756,6 +755,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(
       () -> assertThat(client.shownMessages).contains(new MessageParams(MessageType.Error, "Can't find branch for workspace folder " + folder2BaseDir.toUri().getPath()
         + " during attempt to open hotspot in browser.")));
+    FileUtils.deleteQuietly(folder2BaseDir.toFile());
   }
 
   @Test
