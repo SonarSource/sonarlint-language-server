@@ -602,7 +602,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
           "pathToNodeExecutable=<null>,ruleParameters={},showVerboseLogs=true]",
         CONNECTION_ID, CONNECTION_ID, mockWebServerExtension.url("/")));
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
-    // assertLogContainsInOrder( "Telemetry enabled");
+    // 
   }
 
   @Test
