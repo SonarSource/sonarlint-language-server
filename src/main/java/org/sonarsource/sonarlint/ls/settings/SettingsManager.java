@@ -644,10 +644,8 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   }
 
   private static String removePossibleLeadingSlash(String path) {
-    if (path.startsWith("/")) {
-      return StringUtils.removeStart(path, "/");
-    } else if (path.startsWith("\\")) {
-      return StringUtils.removeStart(path, "\\");
+    if (path.startsWith("/") || path.startsWith("\\")) {
+      return path.substring(1);
     }
     return path;
   }
