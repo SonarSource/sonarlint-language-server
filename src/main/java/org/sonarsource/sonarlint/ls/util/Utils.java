@@ -90,17 +90,12 @@ public class Utils {
     Thread.currentThread().interrupt();
   }
 
-  public static void shutdownAndAwait(ExecutorService executor, boolean stopActiveTasks) {
-    if (stopActiveTasks) {
-      executor.shutdownNow();
-    } else {
-      executor.shutdown();
-    }
+  public static void shutdownAndAwaitTerminatingActiveTasks(ExecutorService executor) {
+    executor.shutdownNow();
     try {
       executor.awaitTermination(1, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-  }
     }
 
   }
