@@ -105,7 +105,6 @@ class OpenNotebooksCacheTests extends AbstractLanguageServerMediumTests {
     var cell2 = new TextDocumentItem();
     cell2.setUri(notebookUri + "#cell2");
     cell2.setText("cell2 line1\ncell2 line2\n");
-    var fakeNotebook = VersionedOpenNotebook.create(notebookUri, 1, List.of(cell1, cell2), mock(NotebookDiagnosticPublisher.class));
 
     var underTest = new OpenNotebooksCache(mock(LanguageClientLogger.class), mock(NotebookDiagnosticPublisher.class));
     underTest.didOpen(notebookUri, 1, List.of(cell1, cell2));
