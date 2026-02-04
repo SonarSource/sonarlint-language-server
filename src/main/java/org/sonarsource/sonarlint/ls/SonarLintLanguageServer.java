@@ -193,7 +193,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
    */
-  private TraceValue traceLevel;
 
   private final ModuleEventsProcessor moduleEventsProcessor;
   private final BackendServiceFacade backendServiceFacade;
