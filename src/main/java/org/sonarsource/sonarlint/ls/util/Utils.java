@@ -101,6 +101,13 @@ public class Utils {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }
+  public static void shutdownAndAwaitFinishingActiveTasks(ExecutorService executor) {
+    executor.shutdown();
+    try {
+      executor.awaitTermination(1, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
 
   }
 
