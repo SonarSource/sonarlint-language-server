@@ -30,7 +30,7 @@ import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 class CatchingRunnableTests {
   List<String> fakeLogs = new ArrayList<>();
   boolean callVerifier = false;
-  Consumer<Throwable> dummyConsumer = (t) -> fakeLogs.add("I have failed");
+  Consumer<Throwable> dummyConsumer = t -> fakeLogs.add("I have failed");
 
   @Test
   void shouldApplyConsumerWithThrowable() {
