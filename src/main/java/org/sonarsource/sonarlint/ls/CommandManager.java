@@ -551,7 +551,7 @@ public class CommandManager {
         var range = new LineRangeDto(change.getStartLine(), change.getEndLine());
         return new ChangesDto(range, "", change.getNewCode());
       }).toList();
-      client.showFixSuggestion(new SonarLintExtendedLanguageClient.ShowFixSuggestionParams(response.getId().toString(), changes, fileUri, true));
+      client.showFixSuggestion(new SonarLintExtendedLanguageClient.ShowFixSuggestionParams(response.getId().toString(), response.getExplanation(), changes, fileUri, true));
     }).exceptionally(throwable -> {
       client.endProgressNotification(new SonarLintExtendedLanguageClient.EndProgressNotificationParams(taskId));
       logOutput.errorWithStackTrace("Error generating AI CodeFix", throwable);

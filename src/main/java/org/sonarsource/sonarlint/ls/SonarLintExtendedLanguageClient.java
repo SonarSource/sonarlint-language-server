@@ -123,7 +123,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
     }
   }
 
-  record ShowFixSuggestionParams(String suggestionId, List<ChangesDto> textEdits, String fileUri, boolean isLocal) {
+  record ShowFixSuggestionParams(String suggestionId, String explanation, List<ChangesDto> textEdits, String fileUri, boolean isLocal) {
   }
 
   @JsonNotification("showFixSuggestion")
