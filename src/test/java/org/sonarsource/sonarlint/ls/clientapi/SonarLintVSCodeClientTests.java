@@ -903,9 +903,10 @@ class SonarLintVSCodeClientTests {
     var configScope = "file:///Users/sonarlint-user/project/";
     var issueKey = "AbC235fVfd";
     var suggestionId = UUID.randomUUID().toString();
+    var explanation = "You should really reconsider this";
     var fixSuggestion = new FixSuggestionDto(
       suggestionId,
-      "You should really reconsider this",
+      explanation,
       new FileEditDto(
         Path.of("src/main/java/com/sonarsource/MyClass.java"),
         List.of(
@@ -924,6 +925,7 @@ class SonarLintVSCodeClientTests {
 
     verify(client).showFixSuggestion(argumentCaptor.capture());
     assertThat(argumentCaptor.getValue().suggestionId()).isEqualTo(suggestionId);
+    assertThat(argumentCaptor.getValue().explanation()).isEqualTo(explanation);
     assertThat(argumentCaptor.getValue().fileUri()).isEqualTo("file:///Users/sonarlint-user/project/src/main/java/com/sonarsource/MyClass.java");
     assertThat(argumentCaptor.getValue().textEdits().get(0).after()).isEmpty();
     assertThat(argumentCaptor.getValue().textEdits().get(1).before()).isEqualTo("System.out.println(\"Hello, World!\");");
@@ -936,9 +938,10 @@ class SonarLintVSCodeClientTests {
     var configScope = "file:///Users/sonarlint-user/project/";
     var issueKey = "AbC235fVfd";
     var suggestionId = UUID.randomUUID().toString();
+    var explanation = "You should really reconsider this";
     var fixSuggestion = new FixSuggestionDto(
       suggestionId,
-      "You should really reconsider this",
+      explanation,
       new FileEditDto(
         Path.of("src/main/java/com/sonarsource/MyClass.java"),
         List.of(
@@ -957,6 +960,7 @@ class SonarLintVSCodeClientTests {
 
     verify(client).showFixSuggestion(argumentCaptor.capture());
     assertThat(argumentCaptor.getValue().suggestionId()).isEqualTo(suggestionId);
+    assertThat(argumentCaptor.getValue().explanation()).isEqualTo(explanation);
     assertThat(argumentCaptor.getValue().fileUri()).isEqualTo("file:///C:/Users/sonarlint-user/project/src/main/java/com/sonarsource/MyClass.java");
     assertThat(argumentCaptor.getValue().textEdits().get(0).after()).isEmpty();
     assertThat(argumentCaptor.getValue().textEdits().get(1).before()).isEqualTo("System.out.println(\"Hello, World!\");");
@@ -1174,7 +1178,7 @@ class SonarLintVSCodeClientTests {
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
     return new TaintVulnerabilityDto(uuid, "serverKey", false, null, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
-        .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
+      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
       List.of(),
       new TextRangeWithHashDto(5, 5, 5, 5, ""), "", true, false);
   }
@@ -1182,7 +1186,7 @@ class SonarLintVSCodeClientTests {
   private TaintIssue getTaintIssue(UUID uuid) {
     return new TaintIssue(new TaintVulnerabilityDto(uuid, "serverKey", false, null, "ruleKey", "message",
       Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
-        .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
+      .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
       List.of(),
       new TextRangeWithHashDto(5, 5, 5, 5, ""), "", true, false), "folderUri", true);
   }

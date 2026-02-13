@@ -771,8 +771,9 @@ class CommandManagerTests {
     var fixChangeDto = new SuggestFixChangeDto(1, 2, "new Code()");
 
     var fixSuggestionId = UUID.randomUUID();
+    var explanation = "this is why";
     when(backendService.suggestFix(any(), any()))
-      .thenReturn(CompletableFuture.completedFuture(new SuggestFixResponse(fixSuggestionId, "this is why", List.of(fixChangeDto))));
+      .thenReturn(CompletableFuture.completedFuture(new SuggestFixResponse(fixSuggestionId, explanation, List.of(fixChangeDto))));
 
     underTest.executeCommand(suggestFixCommand, NOP_CANCEL_TOKEN);
 
@@ -783,6 +784,7 @@ class CommandManagerTests {
     SonarLintExtendedLanguageClient.ShowFixSuggestionParams showFixSuggestionParams = captor.getValue();
     assertThat(showFixSuggestionParams.isLocal()).isTrue();
     assertThat(showFixSuggestionParams.suggestionId()).isEqualTo(fixSuggestionId.toString());
+    assertThat(showFixSuggestionParams.explanation()).isEqualTo(explanation);
     assertThat(showFixSuggestionParams.fileUri()).isEqualTo(FILE_URI);
     assertThat(showFixSuggestionParams.textEdits()).hasSize(1);
     assertThat(showFixSuggestionParams.textEdits().get(0).after()).isEqualTo("new Code()");
@@ -800,8 +802,9 @@ class CommandManagerTests {
     var fixChangeDto = new SuggestFixChangeDto(1, 2, "new Code()");
 
     var fixSuggestionId = UUID.randomUUID();
+    var explanation = "this is why";
     when(backendService.suggestFix(any(), any()))
-      .thenReturn(CompletableFuture.completedFuture(new SuggestFixResponse(fixSuggestionId, "this is why", List.of(fixChangeDto))));
+      .thenReturn(CompletableFuture.completedFuture(new SuggestFixResponse(fixSuggestionId, explanation, List.of(fixChangeDto))));
 
     underTest.executeCommand(suggestTaintFixCommand, NOP_CANCEL_TOKEN);
 
@@ -812,6 +815,7 @@ class CommandManagerTests {
     SonarLintExtendedLanguageClient.ShowFixSuggestionParams showFixSuggestionParams = captor.getValue();
     assertThat(showFixSuggestionParams.isLocal()).isTrue();
     assertThat(showFixSuggestionParams.suggestionId()).isEqualTo(fixSuggestionId.toString());
+    assertThat(showFixSuggestionParams.explanation()).isEqualTo(explanation);
     assertThat(showFixSuggestionParams.fileUri()).isEqualTo(FILE_URI);
     assertThat(showFixSuggestionParams.textEdits()).hasSize(1);
     assertThat(showFixSuggestionParams.textEdits().get(0).after()).isEqualTo("new Code()");
