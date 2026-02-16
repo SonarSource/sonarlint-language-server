@@ -72,6 +72,7 @@ jobs:
         with:
           artifactory-reader-role: private-reader
           artifactory-deployer-role: qa-deployer
+          sonar-platform: none
           maven-args: -B -e -V -Dcommercial -Dmaven.test.redirectTestOutputToFile=false
       - name: Generate test report
         uses: dorny/test-reporter@dc3a92680fcc15842eef52e8c4606ea7ce6bd3f3 # v2.1.1
