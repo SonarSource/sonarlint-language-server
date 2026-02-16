@@ -88,7 +88,6 @@ jobs:
     runs-on: github-ubuntu-latest-s
     name: Promote
     steps:
-      - uses: actions/checkout@v5
       - uses: SonarSource/ci-github-actions/promote@v1
         with:
           promote-pull-request: true
