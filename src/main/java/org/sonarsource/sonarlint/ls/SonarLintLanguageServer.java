@@ -193,7 +193,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   /**
    * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
    */
-  private TraceValue traceLevel;
 
   private final ModuleEventsProcessor moduleEventsProcessor;
   private final BackendServiceFacade backendServiceFacade;
@@ -292,7 +291,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
-      this.traceLevel = parseTraceLevel(params.getTrace());
+      parseTraceLevel(params.getTrace());
       var initializationOptions = parse(params.getInitializationOptions());
       lsLogOutput.initialize(initializationOptions.showVerboseLogs());
 
@@ -547,7 +546,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void setTrace(SetTraceParams params) {
-    this.traceLevel = parseTraceLevel(params.getValue());
+    parseTraceLevel(params.getValue());
   }
 
   private static TraceValue parseTraceLevel(@Nullable String trace) {
