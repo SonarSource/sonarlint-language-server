@@ -90,7 +90,15 @@ public class Utils {
     Thread.currentThread().interrupt();
   }
 
-  public static void shutdownAndAwait(ExecutorService executor, boolean stopActiveTasks) {
+  public static void shutdownAndAwaitOrderly(ExecutorService executor) {
+    shutdownAndAwait(executor, false);
+  }
+
+  public static void shutdownAndAwaitImmediate(ExecutorService executor) {
+    shutdownAndAwait(executor, true);
+  }
+
+  private static void shutdownAndAwait(ExecutorService executor, boolean stopActiveTasks) {
     if (stopActiveTasks) {
       executor.shutdownNow();
     } else {
