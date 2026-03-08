@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls;
 
 import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
@@ -146,13 +147,20 @@ public class AnalysisHelper {
   }
 
   private void populateCfamilyProperties(List<URI> filesToAnalyzeUris, Map<String,
-    String> extraProperties,
-    WorkspaceFolderSettings settings) {
+    String> extraProperties, WorkspaceFolderSettings settings) {
     var cOrCppFiles = filesToAnalyzeUris.stream().map(openFilesCache::getFile).filter(Optional::isPresent).map(Optional::get)
       .filter(VersionedOpenFile::isCOrCpp).collect(Collectors.toMap(VersionedOpenFile::getUri, identity()));
 
     var pathToCompileCommands = settings.getPathToCompileCommands();
-    if (!cOrCppFiles.isEmpty() && (pathToCompileCommands == null || !Files.isRegularFile(Paths.get(pathToCompileCommands)))) {
+    var isRegularFile = false;
+    if (pathToCompileCommands != null) {
+      try {
+        isRegularFile = Files.isRegularFile(Paths.get(pathToCompileCommands));
+      } catch (InvalidPathException e) {
+        clientLogger.error(format("Invalid path to compile commands: \"%s\", reason: \"%s\"", pathToCompileCommands, e.getMessage()));
+      }
+    }
+    if (!cOrCppFiles.isEmpty() && !isRegularFile) {
       client.needCompilationDatabase();
     }
     if (pathToCompileCommands != null) {
