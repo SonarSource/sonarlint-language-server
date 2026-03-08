@@ -26,6 +26,8 @@ import java.net.ProxySelector;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.cert.CertificateEncodingException;
@@ -543,10 +545,16 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
         var folderPath = Path.of(configScopeIdAsUri);
         return response.getFoundFiles().stream()
           .map(file -> {
-            var filePath = Path.of(file.getFilePath());
-            return new ClientFileDto(filePath.toUri(), folderPath.relativize(filePath), configScopeId, null, StandardCharsets.UTF_8.name(), filePath,
-              file.getContent(), null, true);
+            try {
+              var filePath = Path.of(file.getFilePath());
+              return new ClientFileDto(filePath.toUri(), folderPath.relativize(filePath), configScopeId, null, StandardCharsets.UTF_8.name(), filePath,
+                file.getContent(), null, true);
+            } catch (InvalidPathException | FileSystemNotFoundException e) {
+              logOutput.debug(format("Invalid file path returned by client in folder %s: %s", configScopeId, file.getFilePath()));
+              return null;
+            }
           })
+          .filter(Objects::nonNull)
           .toList();
       }).join())
       .orElse(List.of());
