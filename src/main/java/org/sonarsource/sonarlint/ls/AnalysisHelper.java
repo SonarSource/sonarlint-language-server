@@ -152,15 +152,15 @@ public class AnalysisHelper {
       .filter(VersionedOpenFile::isCOrCpp).collect(Collectors.toMap(VersionedOpenFile::getUri, identity()));
 
     var pathToCompileCommands = settings.getPathToCompileCommands();
-    var isRegularFile = false;
+    var isCompileCommandsRegularFile = false;
     if (pathToCompileCommands != null) {
       try {
-        isRegularFile = Files.isRegularFile(Paths.get(pathToCompileCommands));
+        isCompileCommandsRegularFile = Files.isRegularFile(Paths.get(pathToCompileCommands));
       } catch (InvalidPathException e) {
         clientLogger.error(format("Invalid path to compile commands: \"%s\", reason: \"%s\"", pathToCompileCommands, e.getMessage()));
       }
     }
-    if (!cOrCppFiles.isEmpty() && !isRegularFile) {
+    if (!cOrCppFiles.isEmpty() && !isCompileCommandsRegularFile) {
       client.needCompilationDatabase();
     }
     if (pathToCompileCommands != null) {
