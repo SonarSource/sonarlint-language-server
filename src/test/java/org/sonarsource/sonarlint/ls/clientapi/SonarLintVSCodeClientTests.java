@@ -468,6 +468,28 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
+  void shouldIgnoreInvalidPathsWhenFindingFiles() {
+    var folderPath = basedir.resolve("someFile");
+    var folderUri = folderPath.toUri();
+    var validFileName = "file1";
+    
+    // An actual string that `Path.of` will reject with InvalidPathException 
+    var invalidCharsFilePath = "foo\u0000bar";
+
+    var folderUriParams = new SonarLintExtendedLanguageClient.FolderUriParams(folderUri.toString());
+    when(client.listFilesInFolder(folderUriParams)).thenReturn(CompletableFuture.completedFuture(
+      new SonarLintExtendedLanguageClient.FindFileByNamesInScopeResponse(List.of(
+        new SonarLintExtendedLanguageClient.FoundFileDto(validFileName, folderPath.resolve(validFileName).toString(), "foo"),
+        new SonarLintExtendedLanguageClient.FoundFileDto("invalidChars", invalidCharsFilePath, "baz"))))
+    );
+
+    var files = underTest.listFiles(folderUri.toString());
+
+    assertThat(files).hasSize(1);
+    assertThat(files.get(0).getUri()).isEqualTo(folderPath.resolve(validFileName).toUri());
+  }
+
+  @Test
   void shouldCallServerOnGetHostInfo() {
     when(server.getHostInfo()).thenReturn(new GetClientLiveInfoResponse("description"));
 
