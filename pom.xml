@@ -27,20 +27,20 @@
     <sonarlint.core.version>10.46.0.84435</sonarlint.core.version>
     <slf4j.version>2.0.17</slf4j.version>
     <!-- Version used by Xodus -->
-    <kotlin.version>1.6.20</kotlin.version>
+    <kotlin.version>1.6.10</kotlin.version>
     <!-- analyzers used for tests -->
     <sonar.java.version>8.22.0.41895</sonar.java.version>
-    <sonar.java.se.version>8.17.0.181</sonar.java.se.version>
-    <sonar.javascript.version>11.8.0.37897</sonar.javascript.version>
-    <sonar.php.version>3.54.0.15452</sonar.php.version>
-    <sonar.python.version>5.15.0.29514</sonar.python.version>
-    <sonar.html.version>3.23.0.7209</sonar.html.version>
-    <sonar.xml.version>2.15.0.7513</sonar.xml.version>
-    <sonar.text.version>2.35.0.10074</sonar.text.version>
-    <sonar.go.version>1.32.0.5128</sonar.go.version>
-    <sonar.iac.version>2.3.0.18572</sonar.iac.version>
-    <sonar.csharp.version>10.17.0.131074</sonar.csharp.version>
-    <sonarlint.omnisharp.version>1.37.0.101606</sonarlint.omnisharp.version>
+    <sonar.java.se.version>8.16.3.1589</sonar.java.se.version>
+    <sonar.javascript.version>11.7.1.36988</sonar.javascript.version>
+    <sonar.php.version>3.53.0.15220</sonar.php.version>
+    <sonar.python.version>5.14.2.29072</sonar.python.version>
+    <sonar.html.version>3.22.0.7011</sonar.html.version>
+    <sonar.xml.version>2.14.2.7437</sonar.xml.version>
+    <sonar.text.version>2.34.0.9939</sonar.text.version>
+    <sonar.go.version>1.31.0.4938</sonar.go.version>
+    <sonar.iac.version>2.2.0.18377</sonar.iac.version>
+    <sonar.csharp.version>10.16.2.130377</sonar.csharp.version>
+    <sonarlint.omnisharp.version>1.36.0.101591</sonarlint.omnisharp.version>
     <gitRepositoryName>sonarlint-language-server</gitRepositoryName>
     <!-- Release: enable publication to Bintray -->
     <artifactsToPublish>${project.groupId}:${project.artifactId}:jar</artifactsToPublish>
