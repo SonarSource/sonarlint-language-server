@@ -54,7 +54,7 @@
       <groupId>org.eclipse.lsp4j</groupId>
       <artifactId>org.eclipse.lsp4j</artifactId>
       <!--      should be the >= than in sonarlint-rpc-java-client -->
-      <version>0.24.0</version>
+      <version>1.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.sonarsource.sonarlint.core</groupId>
@@ -100,7 +100,7 @@
     <dependency>
       <groupId>org.eclipse.jgit</groupId>
       <artifactId>org.eclipse.jgit</artifactId>
-      <version>6.10.1.202505221210-r</version>
+      <version>7.0.0.202409031743-r</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
