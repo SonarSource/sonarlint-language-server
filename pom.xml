@@ -27,20 +27,20 @@
     <sonarlint.core.version>10.46.0.84435</sonarlint.core.version>
     <slf4j.version>2.0.17</slf4j.version>
     <!-- Version used by Xodus -->
-    <kotlin.version>1.6.10</kotlin.version>
+    <kotlin.version>1.6.20</kotlin.version>
     <!-- analyzers used for tests -->
-    <sonar.java.version>8.22.0.41895</sonar.java.version>
-    <sonar.java.se.version>8.16.3.1589</sonar.java.se.version>
-    <sonar.javascript.version>11.7.1.36988</sonar.javascript.version>
-    <sonar.php.version>3.53.0.15220</sonar.php.version>
-    <sonar.python.version>5.14.2.29072</sonar.python.version>
-    <sonar.html.version>3.22.0.7011</sonar.html.version>
-    <sonar.xml.version>2.14.2.7437</sonar.xml.version>
-    <sonar.text.version>2.34.0.9939</sonar.text.version>
-    <sonar.go.version>1.31.0.4938</sonar.go.version>
-    <sonar.iac.version>2.2.0.18377</sonar.iac.version>
-    <sonar.csharp.version>10.16.2.130377</sonar.csharp.version>
-    <sonarlint.omnisharp.version>1.36.0.101591</sonarlint.omnisharp.version>
+    <sonar.java.version>8.23.0.42096</sonar.java.version>
+    <sonar.java.se.version>8.17.0.181</sonar.java.se.version>
+    <sonar.javascript.version>11.8.0.37897</sonar.javascript.version>
+    <sonar.php.version>3.54.0.15452</sonar.php.version>
+    <sonar.python.version>5.15.0.29514</sonar.python.version>
+    <sonar.html.version>3.23.0.7209</sonar.html.version>
+    <sonar.xml.version>2.15.0.7513</sonar.xml.version>
+    <sonar.text.version>2.35.0.10074</sonar.text.version>
+    <sonar.go.version>1.32.0.5128</sonar.go.version>
+    <sonar.iac.version>2.3.0.18572</sonar.iac.version>
+    <sonar.csharp.version>10.17.0.131074</sonar.csharp.version>
+    <sonarlint.omnisharp.version>1.37.0.101606</sonarlint.omnisharp.version>
     <gitRepositoryName>sonarlint-language-server</gitRepositoryName>
     <!-- Release: enable publication to Bintray -->
     <artifactsToPublish>${project.groupId}:${project.artifactId}:jar</artifactsToPublish>
@@ -79,12 +79,12 @@
     <dependency>
        <groupId>info.picocli</groupId>
        <artifactId>picocli</artifactId>
-       <version>4.7.1</version>
+       <version>4.7.2</version>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
-      <version>3.18.0</version>
+      <version>3.19.0</version>
     </dependency>
     <dependency>
       <groupId>com.google.code.findbugs</groupId>
@@ -95,7 +95,7 @@
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
-      <version>1.16.0</version>
+      <version>1.16.1</version>
     </dependency>
     <dependency>
       <groupId>org.eclipse.jgit</groupId>
@@ -119,13 +119,13 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
-      <version>5.8.2</version>
+      <version>5.9.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.awaitility</groupId>
       <artifactId>awaitility</artifactId>
-      <version>4.2.0</version>
+      <version>4.2.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -137,25 +137,25 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
-      <version>5.8.0</version>
+      <version>5.9.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-junit-jupiter</artifactId>
-      <version>5.8.0</version>
+      <version>5.9.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>uk.org.webcompere</groupId>
       <artifactId>system-stubs-jupiter</artifactId>
-      <version>2.1.7</version>
+      <version>2.1.8</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.squareup.okhttp3</groupId>
       <artifactId>mockwebserver</artifactId>
-      <version>5.0.0-alpha.7</version>
+      <version>5.0.0-alpha.8</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -357,7 +357,7 @@
           <plugin>
             <groupId>org.jacoco</groupId>
             <artifactId>jacoco-maven-plugin</artifactId>
-            <version>0.8.10</version>
+            <version>0.8.11</version>
             <executions>
               <execution>
                 <id>prepare-agent</id>
@@ -400,7 +400,7 @@
                     <artifactItem>
                       <groupId>com.sonarsource.cpp</groupId>
                       <artifactId>sonar-cfamily-plugin</artifactId>
-                      <version>6.75.1.93101</version>
+                      <version>6.76.0.93913</version>
                       <destFileName>cfamily.jar</destFileName>
                       <type>jar</type>
                     </artifactItem>
