@@ -29,7 +29,7 @@
     <!-- Version used by Xodus -->
     <kotlin.version>1.6.20</kotlin.version>
     <!-- analyzers used for tests -->
-    <sonar.java.version>8.23.0.42096</sonar.java.version>
+    <sonar.java.version>8.22.0.41895</sonar.java.version>
     <sonar.java.se.version>8.17.0.181</sonar.java.se.version>
     <sonar.javascript.version>11.8.0.37897</sonar.javascript.version>
     <sonar.php.version>3.54.0.15452</sonar.php.version>
