@@ -14,7 +14,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: jdx/mise-action@a2de727769b7a3f5b44204ea28b4a3d778541ec5 # v3.0.1
+      - uses: jdx/mise-action@c0b8518a9f5e56c720e9545c993b77ff15dc7b27 # v3.0.2
         with:
           version: 2025.9.15
       - uses: SonarSource/ci-github-actions/build-maven@c15f3733837c5ebd0f04a676feb1e18fae147cd5 # 1.3.27
