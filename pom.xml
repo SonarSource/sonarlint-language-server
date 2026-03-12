@@ -33,7 +33,7 @@
     <sonar.java.se.version>8.16.3.1589</sonar.java.se.version>
     <sonar.javascript.version>11.7.1.36988</sonar.javascript.version>
     <sonar.php.version>3.53.0.15220</sonar.php.version>
-    <sonar.python.version>5.14.2.29072</sonar.python.version>
+    <sonar.python.version>5.19.0.32098</sonar.python.version>
     <sonar.html.version>3.22.0.7011</sonar.html.version>
     <sonar.xml.version>2.14.2.7437</sonar.xml.version>
     <sonar.text.version>2.34.0.9939</sonar.text.version>
