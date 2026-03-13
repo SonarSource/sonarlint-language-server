@@ -19,6 +19,9 @@ permissions:
   id-token: write
   contents: write
 
+env:
+  CACHE_BACKEND: s3
+
 jobs:
   build:
     runs-on: github-ubuntu-latest-s
