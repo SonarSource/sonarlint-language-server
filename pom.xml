@@ -31,7 +31,7 @@
     <!-- analyzers used for tests -->
     <sonar.java.version>8.22.0.41895</sonar.java.version>
     <sonar.java.se.version>8.16.3.1589</sonar.java.se.version>
-    <sonar.javascript.version>11.7.1.36988</sonar.javascript.version>
+    <sonar.javascript.version>12.0.0.38664</sonar.javascript.version>
     <sonar.php.version>3.55.0.15704</sonar.php.version>
     <sonar.python.version>5.19.0.32098</sonar.python.version>
     <sonar.html.version>3.22.0.7011</sonar.html.version>
