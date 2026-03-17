@@ -87,7 +87,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.ShowIssueParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.message.ShowMessageRequestResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.message.ShowSoonUnsupportedMessageParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidChangePluginStatusesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidSkipLoadingPluginParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.plugin.PluginStatusDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.progress.ReportProgressParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.progress.StartProgressParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.smartnotification.ShowSmartNotificationParams;
@@ -735,4 +737,10 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   public void embeddedServerStarted(EmbeddedServerStartedParams params) {
     embeddedServerManager.embeddedServerStarted(params.getPort());
   }
+
+  @Override
+  public void didChangePluginStatuses(String configScopeId, List<PluginStatusDto> pluginStatuses) {
+    client.didChangePluginStatuses(new DidChangePluginStatusesParams(configScopeId, pluginStatuses));
+  }
+
 }

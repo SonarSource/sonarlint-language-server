@@ -98,6 +98,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssues
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ReopenAllIssuesForFileResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.labs.JoinIdeLabsProgramParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.labs.JoinIdeLabsProgramResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.plugin.GetPluginStatusesParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.plugin.GetPluginStatusesResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.newcode.GetNewCodeDefinitionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.newcode.GetNewCodeDefinitionResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.remediation.aicodefix.SuggestFixParams;
@@ -463,6 +465,10 @@ public class BackendService {
   public void didChangeAutomaticAnalysisSetting(boolean isEnabled) {
     var params = new DidChangeAutomaticAnalysisSettingParams(isEnabled);
     backend.getAnalysisService().didChangeAutomaticAnalysisSetting(params);
+  }
+
+  public CompletableFuture<GetPluginStatusesResponse> getPluginStatuses(@Nullable String configScopeId) {
+    return backend.getPluginService().getPluginStatuses(new GetPluginStatusesParams(configScopeId));
   }
 
   public CompletableFuture<JoinIdeLabsProgramResponse> joinIdeLabsProgram(String email, String ideName) {

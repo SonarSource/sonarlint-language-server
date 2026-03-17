@@ -112,6 +112,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotIn
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.labs.JoinIdeLabsProgramParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.labs.JoinIdeLabsProgramResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.plugin.GetPluginStatusesResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.ChangeDependencyRiskStatusParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
@@ -1091,4 +1092,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public void labsFeedbackLinkClicked(String featureId) {
     telemetry.labsFeedbackLinkClicked(featureId);
   }
+
+  @Override
+  public CompletableFuture<GetPluginStatusesResponse> getPluginStatuses(GetPluginStatusesParams params) {
+    return backendServiceFacade.getBackendService().getPluginStatuses(params.configurationScopeId());
+  }
+
 }

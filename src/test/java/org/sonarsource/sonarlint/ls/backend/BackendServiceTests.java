@@ -56,6 +56,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueComment
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.IssueRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.labs.IdeLabsRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.labs.JoinIdeLabsProgramParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.plugin.GetPluginStatusesParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.plugin.PluginRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.remediation.aicodefix.AiCodeFixRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.remediation.aicodefix.SuggestFixParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.ChangeDependencyRiskStatusParams;
@@ -331,6 +333,31 @@ class BackendServiceTests {
     var sourceIde = BackendService.determineIdeLabsSourceIde(appName);
 
     assertThat(sourceIde).isEqualTo(expectedSource);
+  }
+
+  @Test
+  void shouldForwardGetPluginStatusesWithConfigScopeIdToBackend() {
+    var configScopeId = "file:///workspace/folder";
+    var pluginRpcService = mock(PluginRpcService.class);
+    when(backend.getPluginService()).thenReturn(pluginRpcService);
+
+    underTest.getPluginStatuses(configScopeId);
+
+    var argumentCaptor = ArgumentCaptor.forClass(GetPluginStatusesParams.class);
+    verify(pluginRpcService).getPluginStatuses(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue().getConfigurationScopeId()).isEqualTo(configScopeId);
+  }
+
+  @Test
+  void shouldForwardGetPluginStatusesWithNullConfigScopeIdToBackend() {
+    var pluginRpcService = mock(PluginRpcService.class);
+    when(backend.getPluginService()).thenReturn(pluginRpcService);
+
+    underTest.getPluginStatuses(null);
+
+    var argumentCaptor = ArgumentCaptor.forClass(GetPluginStatusesParams.class);
+    verify(pluginRpcService).getPluginStatuses(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue().getConfigurationScopeId()).isNull();
   }
 
   private static Stream<Arguments> ideSourceProvider() {

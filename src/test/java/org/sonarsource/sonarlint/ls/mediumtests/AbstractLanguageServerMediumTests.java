@@ -102,6 +102,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingP
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.embeddedserver.EmbeddedServerStartedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidChangePluginStatusesParams;
 import org.sonarsource.sonarlint.ls.ServerMain;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
@@ -697,6 +698,12 @@ public abstract class AbstractLanguageServerMediumTests {
     public void embeddedServerStarted(EmbeddedServerStartedParams params) {
       // NOP
     }
+
+    @Override
+    public void didChangePluginStatuses(DidChangePluginStatusesParams params) {
+      // NOP
+    }
+
   }
 
   protected static void notifyConfigurationChangeOnClient() {

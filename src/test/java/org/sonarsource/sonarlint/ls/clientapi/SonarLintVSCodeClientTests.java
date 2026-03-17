@@ -93,6 +93,10 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.issue.ShowIssueParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogLevel;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.log.LogParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.message.ShowSoonUnsupportedMessageParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.plugin.ArtifactSourceDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.plugin.PluginStateDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.plugin.PluginStatusDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidChangePluginStatusesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidSkipLoadingPluginParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.smartnotification.ShowSmartNotificationParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.IssueSeverity;
@@ -1195,6 +1199,23 @@ class SonarLintVSCodeClientTests {
     var result = underTest.getTelemetryLiveAttributes();
     assertThat(result).isNotNull();
     assertThat(result.getAdditionalAttributes()).isEmpty();
+  }
+
+  @Test
+  void shouldForwardDidChangePluginStatusesToClient() {
+    var configScopeId = "file:///workspace/folder";
+    var pluginStatus = new PluginStatusDto("JavaScript", PluginStateDto.ACTIVE, ArtifactSourceDto.EMBEDDED, "1.0.0", null);
+    var pluginStatuses = List.of(pluginStatus);
+
+    underTest.didChangePluginStatuses(configScopeId, pluginStatuses);
+
+    var argumentCaptor = ArgumentCaptor.forClass(DidChangePluginStatusesParams.class);
+    verify(client).didChangePluginStatuses(argumentCaptor.capture());
+    assertThat(argumentCaptor.getValue().getConfigScopeId()).isEqualTo(configScopeId);
+    assertThat(argumentCaptor.getValue().getPluginStatuses()).hasSize(1);
+    assertThat(argumentCaptor.getValue().getPluginStatuses().get(0).getPluginName()).isEqualTo("JavaScript");
+    assertThat(argumentCaptor.getValue().getPluginStatuses().get(0).getState()).isEqualTo(PluginStateDto.ACTIVE);
+    assertThat(argumentCaptor.getValue().getPluginStatuses().get(0).getSource()).isEqualTo(ArtifactSourceDto.EMBEDDED);
   }
 
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {

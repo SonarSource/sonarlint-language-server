@@ -41,6 +41,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.AssistBindingP
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.SuggestBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.SuggestConnectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.embeddedserver.EmbeddedServerStartedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.plugin.DidChangePluginStatusesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.fix.ChangesDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Either;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
@@ -914,4 +915,7 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
 
   @JsonNotification("embeddedServerStarted")
   void embeddedServerStarted(EmbeddedServerStartedParams params);
+
+  @JsonNotification("didChangePluginStatuses")
+  void didChangePluginStatuses(DidChangePluginStatusesParams params);
 }
