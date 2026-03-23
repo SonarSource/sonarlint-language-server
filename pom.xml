@@ -27,7 +27,7 @@
     <sonarlint.core.version>10.47.0.84936</sonarlint.core.version>
     <slf4j.version>2.0.17</slf4j.version>
     <!-- Version used by Xodus -->
-    <kotlin.version>1.6.10</kotlin.version>
+    <kotlin.version>1.9.25</kotlin.version>
     <!-- analyzers used for tests -->
     <sonar.java.version>8.22.0.41895</sonar.java.version>
     <sonar.java.se.version>8.16.3.1589</sonar.java.se.version>
@@ -79,12 +79,12 @@
     <dependency>
        <groupId>info.picocli</groupId>
        <artifactId>picocli</artifactId>
-       <version>4.7.2</version>
+       <version>4.7.7</version>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
-      <version>3.19.0</version>
+      <version>3.20.0</version>
     </dependency>
     <dependency>
       <groupId>com.google.code.findbugs</groupId>
@@ -95,7 +95,7 @@
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
-      <version>1.16.1</version>
+      <version>1.21.0</version>
     </dependency>
     <dependency>
       <groupId>org.eclipse.jgit</groupId>
@@ -119,13 +119,13 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
-      <version>5.9.0</version>
+      <version>5.14.3</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.awaitility</groupId>
       <artifactId>awaitility</artifactId>
-      <version>4.2.1</version>
+      <version>4.3.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -137,13 +137,13 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
-      <version>5.9.0</version>
+      <version>5.23.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-junit-jupiter</artifactId>
-      <version>5.9.0</version>
+      <version>5.23.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -155,7 +155,7 @@
     <dependency>
       <groupId>com.squareup.okhttp3</groupId>
       <artifactId>mockwebserver</artifactId>
-      <version>5.0.0-alpha.8</version>
+      <version>5.3.2</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -357,7 +357,7 @@
           <plugin>
             <groupId>org.jacoco</groupId>
             <artifactId>jacoco-maven-plugin</artifactId>
-            <version>0.8.11</version>
+            <version>0.8.14</version>
             <executions>
               <execution>
                 <id>prepare-agent</id>
