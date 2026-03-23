@@ -53,7 +53,7 @@ jobs:
           artifactory-deployer-role: qa-deployer
           artifactory-reader-role: private-reader
       - name: Generate test report
-        uses: dorny/test-reporter@3d76b34a4535afbd0600d347b09a6ee5deb3ed7f # v2.6.0
+        uses: dorny/test-reporter@df6247429542221bc30d46a036ee47af1102c451 # v2.7.0
         if: ${{ !cancelled() }}
         with:
           name: QA Linux Test Report
@@ -78,7 +78,7 @@ jobs:
           sonar-platform: none
           maven-args: -B -e -V -Dcommercial -Dmaven.test.redirectTestOutputToFile=false
       - name: Generate test report
-        uses: dorny/test-reporter@3d76b34a4535afbd0600d347b09a6ee5deb3ed7f # v2.6.0
+        uses: dorny/test-reporter@df6247429542221bc30d46a036ee47af1102c451 # v2.7.0
         if: ${{ !cancelled() }}
         with:
           name: QA Linux Test Report
