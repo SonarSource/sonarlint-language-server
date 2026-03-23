@@ -1214,7 +1214,7 @@ class SonarLintVSCodeClientTests {
     assertThat(argumentCaptor.getValue().getConfigScopeId()).isEqualTo(configScopeId);
     assertThat(argumentCaptor.getValue().getPluginStatuses()).hasSize(1);
     assertThat(argumentCaptor.getValue().getPluginStatuses().get(0).getLanguage()).isEqualTo(Language.JAVA);
-    assertThat(argumentCaptor.getValue().getPluginStatuses().get(0).getPluginName()).isEqualTo("JavaScript");
+    assertThat(argumentCaptor.getValue().getPluginStatuses().get(0).getPluginName()).isEqualTo("Java");
     assertThat(argumentCaptor.getValue().getPluginStatuses().get(0).getState()).isEqualTo(PluginStateDto.ACTIVE);
     assertThat(argumentCaptor.getValue().getPluginStatuses().get(0).getSource()).isEqualTo(ArtifactSourceDto.EMBEDDED);
     assertThat(argumentCaptor.getValue().getPluginStatuses().get(0).getServerVersion()).isEqualTo("2025.1");
