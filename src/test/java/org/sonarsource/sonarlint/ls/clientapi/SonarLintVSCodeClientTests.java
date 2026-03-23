@@ -1204,7 +1204,7 @@ class SonarLintVSCodeClientTests {
   @Test
   void shouldForwardDidChangePluginStatusesToClient() {
     var configScopeId = "file:///workspace/folder";
-    var pluginStatus = new PluginStatusDto(Language.JAVA, "JavaScript", PluginStateDto.ACTIVE, ArtifactSourceDto.EMBEDDED, "1.0.0", null, "2025.1");
+    var pluginStatus = new PluginStatusDto(Language.JAVA, "Java", PluginStateDto.ACTIVE, ArtifactSourceDto.EMBEDDED, "1.0.0", null, "2025.1");
     var pluginStatuses = List.of(pluginStatus);
 
     underTest.didChangePluginStatuses(configScopeId, pluginStatuses);
