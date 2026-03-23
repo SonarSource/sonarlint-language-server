@@ -1204,7 +1204,7 @@ class SonarLintVSCodeClientTests {
   @Test
   void shouldForwardDidChangePluginStatusesToClient() {
     var configScopeId = "file:///workspace/folder";
-    var pluginStatus = new PluginStatusDto("JavaScript", PluginStateDto.ACTIVE, ArtifactSourceDto.EMBEDDED, "1.0.0", null);
+    var pluginStatus = new PluginStatusDto(Language.JAVA, "Java", PluginStateDto.ACTIVE, ArtifactSourceDto.EMBEDDED, "1.0.0", null, "2025.1");
     var pluginStatuses = List.of(pluginStatus);
 
     underTest.didChangePluginStatuses(configScopeId, pluginStatuses);
@@ -1213,9 +1213,11 @@ class SonarLintVSCodeClientTests {
     verify(client).didChangePluginStatuses(argumentCaptor.capture());
     assertThat(argumentCaptor.getValue().getConfigScopeId()).isEqualTo(configScopeId);
     assertThat(argumentCaptor.getValue().getPluginStatuses()).hasSize(1);
-    assertThat(argumentCaptor.getValue().getPluginStatuses().get(0).getPluginName()).isEqualTo("JavaScript");
+    assertThat(argumentCaptor.getValue().getPluginStatuses().get(0).getLanguage()).isEqualTo(Language.JAVA);
+    assertThat(argumentCaptor.getValue().getPluginStatuses().get(0).getPluginName()).isEqualTo("Java");
     assertThat(argumentCaptor.getValue().getPluginStatuses().get(0).getState()).isEqualTo(PluginStateDto.ACTIVE);
     assertThat(argumentCaptor.getValue().getPluginStatuses().get(0).getSource()).isEqualTo(ArtifactSourceDto.EMBEDDED);
+    assertThat(argumentCaptor.getValue().getPluginStatuses().get(0).getServerVersion()).isEqualTo("2025.1");
   }
 
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
