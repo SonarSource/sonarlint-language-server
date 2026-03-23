@@ -130,7 +130,8 @@ public class MockWebServerExtension implements BeforeAllCallback, AfterAllCallba
     @NotNull
     @Override
     public MockResponse dispatch(@NotNull RecordedRequest recordedRequest) {
-      var requestPath = recordedRequest.getUrl().encodedPath();
+      var url = recordedRequest.getUrl();
+      var requestPath = url.encodedPath() + (url.encodedQuery() != null ? "?" + url.encodedQuery() : "");
 
       // Try the exact match first
       if (responsesByPath.containsKey(requestPath)) {
