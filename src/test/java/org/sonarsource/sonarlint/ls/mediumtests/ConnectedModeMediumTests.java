@@ -147,8 +147,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
     mockWebServerExtension.addStringResponse("/api/features/list", "[]");
     mockWebServerExtension.addProtobufResponse("/api/settings/values.protobuf", Settings.Values.newBuilder().build());
-    mockWebServerExtension.addResponse("/api/authentication/validate?format=json", new MockResponse().setResponseCode(200));
-    mockWebServerExtension.addResponse("/api/developers/search_events?projects=&from=", new MockResponse().setResponseCode(200));
+    mockWebServerExtension.addResponse("/api/authentication/validate?format=json", new MockResponse.Builder().code(200).build());
+    mockWebServerExtension.addResponse("/api/developers/search_events?projects=&from=", new MockResponse.Builder().code(200).build());
     mockWebServerExtension.addProtobufResponse("/api/components/search.protobuf?qualifiers=TRK&ps=500&p=1",
       Components.SearchWsResponse.newBuilder()
         .addComponents(Components.Component.newBuilder().setKey(PROJECT_KEY1).setName(PROJECT_NAME1).build())
@@ -177,7 +177,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .build());
     mockWebServerExtension.addStringResponse("/api/plugins/installed",
       "{\"plugins\":[{\"key\": \"python\", \"hash\": \"ignored\", \"filename\": \"sonarpython.jar\", \"sonarLintSupported\": true}]}");
-    mockWebServerExtension.addResponse("/api/plugins/download?plugin=python", new MockResponse().setBody(safeGetSonarPython()));
+    mockWebServerExtension.addResponse("/api/plugins/download?plugin=python", new MockResponse.Builder().body(safeGetSonarPython()).build());
     mockWebServerExtension.addProtobufResponse("/api/settings/values.protobuf?component=myProject", Settings.ValuesWsResponse.newBuilder()
       .addSettings(Settings.Setting.newBuilder()
         .setKey("sonar.cs.file.suffixes")
@@ -848,9 +848,9 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void shouldChangeIssueStatus() {
     var analyzedFileName = "shouldChangeIssueStatus.py";
-    mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
-    mockWebServerExtension.addResponse("/api/issues/anticipated_transitions?projectKey=myProject", new MockResponse().setResponseCode(200));
-    mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
+    mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse.Builder().code(200).build());
+    mockWebServerExtension.addResponse("/api/issues/anticipated_transitions?projectKey=myProject", new MockResponse.Builder().code(200).build());
+    mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse.Builder().code(200).build());
     mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=myProject&files=" + analyzedFileName + "&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
@@ -888,8 +888,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   void shouldNotChangeIssueStatus() {
     var issueKey = UUID.randomUUID().toString();
 
-    mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(400));
-    mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(400));
+    mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse.Builder().code(400).build());
+    mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse.Builder().code(400).build());
     mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=myProject&files=shouldNotChangeIssueStatus.py&branch=master&ps=500&p=1",
       Hotspots.SearchWsResponse.newBuilder().build());
@@ -920,7 +920,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void change_hotspot_status_to_resolved() {
     var analyzedFileName = "hotspot_resolved.py";
-    mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
+    mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse.Builder().code(200).build());
     mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=myProject&files=" + analyzedFileName + "&branch=master&ps=500&p=1",
@@ -981,7 +981,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void should_not_change_hotspot_status_to_resolved() {
     var analyzedFileName = "hotspot_not_resolved.py";
-    mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(400));
+    mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse.Builder().code(400).build());
     mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=myProject&files=" + analyzedFileName + "&branch=master&ps=500&p=1",
@@ -1039,7 +1039,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void change_hotspot_status_permission_check() throws ExecutionException, InterruptedException {
     var analyzedFileName = "hotspot_permissions.py";
-    mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(200));
+    mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse.Builder().code(200).build());
     mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=myProject&files=" + analyzedFileName + "&branch=master&ps=500&p=1",
@@ -1115,7 +1115,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void change_hotspot_status_permission_check_fail() throws ExecutionException, InterruptedException {
     var analyzedFileName = "hotspot_no_permissions.py";
-    mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse().setResponseCode(400));
+    mockWebServerExtension.addResponse("/api/hotspots/change_status", new MockResponse.Builder().code(400).build());
 
     var configScopeId = folder1BaseDir.toUri().toString();
     addConfigScope(configScopeId);
@@ -1176,8 +1176,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setClosed(false)
         .build());
 
-    mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse().setResponseCode(200));
-    mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
+    mockWebServerExtension.addResponse("/api/issues/do_transition", new MockResponse.Builder().code(200).build());
+    mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse.Builder().code(200).build());
 
     var configScopeId = folder1BaseDir.toUri().toString();
     addConfigScope(configScopeId);
@@ -1351,8 +1351,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   private void assertLocalIssuesStatusChanged(String configScope, String fileUri) throws URISyntaxException {
-    mockWebServerExtension.addResponse("/api/issues/anticipated_transitions?projectKey=" + PROJECT_KEY, new MockResponse().setResponseCode(202));
-    mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse().setResponseCode(200));
+    mockWebServerExtension.addResponse("/api/issues/anticipated_transitions?projectKey=" + PROJECT_KEY, new MockResponse.Builder().code(202).build());
+    mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse.Builder().code(200).build());
     mockNoIssueAndNoTaintInIncrementalSync();
     mockWebServerExtension.addProtobufResponse(
       "/api/hotspots/search.protobuf?projectKey=" + PROJECT_KEY + "&files=" + getFileNameFromFileUri(fileUri) + "&branch=master&ps=500&p=1",

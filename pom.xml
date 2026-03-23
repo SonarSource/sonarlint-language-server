@@ -27,7 +27,7 @@
     <sonarlint.core.version>10.48.0.85074</sonarlint.core.version>
     <slf4j.version>2.0.17</slf4j.version>
     <!-- Version used by Xodus -->
-    <kotlin.version>1.6.10</kotlin.version>
+    <kotlin.version>1.9.21</kotlin.version>
     <!-- analyzers used for tests -->
     <sonar.java.version>8.22.0.41895</sonar.java.version>
     <sonar.java.se.version>8.16.3.1589</sonar.java.se.version>
