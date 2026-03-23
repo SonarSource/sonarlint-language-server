@@ -27,7 +27,7 @@
     <sonarlint.core.version>10.47.0.84936</sonarlint.core.version>
     <slf4j.version>2.0.17</slf4j.version>
     <!-- Version used by Xodus -->
-    <kotlin.version>1.6.10</kotlin.version>
+    <kotlin.version>2.3.20</kotlin.version>
     <!-- analyzers used for tests -->
     <sonar.java.version>8.22.0.41895</sonar.java.version>
     <sonar.java.se.version>8.16.3.1589</sonar.java.se.version>
@@ -54,7 +54,7 @@
       <groupId>org.eclipse.lsp4j</groupId>
       <artifactId>org.eclipse.lsp4j</artifactId>
       <!--      should be the >= than in sonarlint-rpc-java-client -->
-      <version>0.24.0</version>
+      <version>1.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.sonarsource.sonarlint.core</groupId>
@@ -100,7 +100,7 @@
     <dependency>
       <groupId>org.eclipse.jgit</groupId>
       <artifactId>org.eclipse.jgit</artifactId>
-      <version>6.10.1.202505221210-r</version>
+      <version>7.6.0.202603022253-r</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -119,7 +119,7 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
-      <version>5.9.0</version>
+      <version>6.0.3</version>
       <scope>test</scope>
     </dependency>
     <dependency>
