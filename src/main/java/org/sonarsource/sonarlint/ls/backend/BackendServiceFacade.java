@@ -34,7 +34,6 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -52,7 +51,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.HttpConfig
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.InitializeParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.JsTsRequirementsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.LanguageSpecificRequirements;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.OmnisharpRequirementsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarCloudAlternativeEnvironmentDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarQubeCloudRegionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SslConfigurationDto;
@@ -114,7 +112,7 @@ public class BackendServiceFacade {
     var backendCapabilities = getBackendCapabilities();
     var clientNodeJsPath = StringUtils.isBlank(initializationOptions.clientNodePath()) ? null : Path.of(initializationOptions.clientNodePath());
     var eslintBridgeServerBundlePath = StringUtils.isBlank(initializationOptions.eslintBridgeServerPath()) ? null : Path.of(initializationOptions.eslintBridgeServerPath());
-    var languageSpecificRequirements = getLanguageSpecificRequirements(initializationOptions, clientNodeJsPath, eslintBridgeServerBundlePath);
+    var languageSpecificRequirements = getLanguageSpecificRequirements(clientNodeJsPath, eslintBridgeServerBundlePath);
     var standaloneRulesConfiguration = RulesConfiguration.parse(initializationOptions.rules());
     var standaloneRuleConfigByKey = SettingsManager.getStandaloneRuleConfigByKey(standaloneRulesConfiguration);
     var overriddenUserHome = SettingsManager.getSonarLintUserHomeOverride();
@@ -206,26 +204,10 @@ public class BackendServiceFacade {
   }
 
   @NotNull
-  private static LanguageSpecificRequirements getLanguageSpecificRequirements(SonarLintLanguageServerInitializationOptions initializationOptions, @Nullable Path clientNodeJsPath,
-    @Nullable Path eslintBridgeSeverPath) {
+  private static LanguageSpecificRequirements getLanguageSpecificRequirements(@Nullable Path clientNodeJsPath, @Nullable Path eslintBridgeSeverPath) {
     return new LanguageSpecificRequirements(
       new JsTsRequirementsDto(clientNodeJsPath, eslintBridgeSeverPath),
-      getOmnisharpRequirements(initializationOptions));
-  }
-
-  @CheckForNull
-  private static OmnisharpRequirementsDto getOmnisharpRequirements(SonarLintLanguageServerInitializationOptions initializationOptions) {
-    var pathToOssCsharp = initializationOptions.csharpOssPath() == null ? null : Path.of(initializationOptions.csharpOssPath());
-    var pathToEnterpriseCsharp = initializationOptions.csharpEnterprisePath() == null ? null : Path.of(initializationOptions.csharpEnterprisePath());
-    var omnisharpDirectory = initializationOptions.omnisharpDirectory();
-    if (omnisharpDirectory == null || pathToOssCsharp == null || pathToEnterpriseCsharp == null) {
-      return null;
-    }
-    return new OmnisharpRequirementsDto(Path.of(omnisharpDirectory, "mono"),
-      Path.of(omnisharpDirectory, "net6.0"),
-      Path.of(omnisharpDirectory, "net472"),
-      pathToOssCsharp,
-      pathToEnterpriseCsharp);
+      null);
   }
 
   private static HttpConfigurationDto getHttpConfiguration() {

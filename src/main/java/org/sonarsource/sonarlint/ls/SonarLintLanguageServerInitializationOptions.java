@@ -33,9 +33,6 @@ public record SonarLintLanguageServerInitializationOptions(
   String clientNodePath,
   boolean focusOnNewCode,
   Boolean automaticAnalysis,
-  String omnisharpDirectory,
-  String csharpOssPath,
-  String csharpEnterprisePath,
   String eslintBridgeServerPath,
   boolean enableNotebooks,
   // keep loose-typing for fields coming from settings, to allow graceful handling in case of user mistakes
