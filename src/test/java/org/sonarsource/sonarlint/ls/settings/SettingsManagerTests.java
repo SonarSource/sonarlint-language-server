@@ -757,7 +757,7 @@ class SettingsManagerTests {
     var sonarLintSettings = new JsonObject();
     sonarLintSettings.add("disableTelemetry", new JsonPrimitive(false));
     sonarLintSettings.add("focusOnNewCode", new JsonPrimitive(true));
-    Map<String, Object> settingsMap = new HashMap<>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
+    var settingsMap = new HashMap<String, Object>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
       DOTNET_DEFAULT_SOLUTION_PATH, new JsonPrimitive("Roslyn.sln"),
       OMNISHARP_USE_MODERN_NET, new JsonPrimitive("true"),
       OMNISHARP_LOAD_PROJECT_ON_DEMAND, new JsonPrimitive("false"),
@@ -903,7 +903,7 @@ class SettingsManagerTests {
     sonarLintSettings.add("disableTelemetry", new JsonPrimitive(false));
     sonarLintSettings.add("focusOnNewCode", new JsonPrimitive(true));
     sonarLintSettings.add("automaticAnalysis", new JsonPrimitive(true));
-    Map<String, Object> settingsMap = new HashMap<>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
+    var settingsMap = new HashMap<String, Object>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
       DOTNET_DEFAULT_SOLUTION_PATH, JsonNull.INSTANCE,
       OMNISHARP_USE_MODERN_NET, JsonNull.INSTANCE,
       OMNISHARP_LOAD_PROJECT_ON_DEMAND, JsonNull.INSTANCE,
@@ -924,7 +924,7 @@ class SettingsManagerTests {
     var sonarLintSettings = new JsonObject();
     sonarLintSettings.add("disableTelemetry", new JsonPrimitive(false));
     sonarLintSettings.add("focusOnNewCode", new JsonPrimitive(true));
-    Map<String, Object> settingsMap = new HashMap<>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
+    var settingsMap = new HashMap<String, Object>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
       DOTNET_DEFAULT_SOLUTION_PATH, new JsonPrimitive(""),
       OMNISHARP_USE_MODERN_NET, new JsonPrimitive(""),
       OMNISHARP_LOAD_PROJECT_ON_DEMAND, new JsonPrimitive(""),
@@ -945,7 +945,7 @@ class SettingsManagerTests {
     var sonarLintSettings = new JsonObject();
     sonarLintSettings.add("disableTelemetry", new JsonPrimitive(false));
     sonarLintSettings.add("focusOnNewCode", new JsonPrimitive(true));
-    Map<String, Object> settingsMap = new HashMap<>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
+    var settingsMap = new HashMap<String, Object>(Map.of(SONARLINT_CONFIGURATION_NAMESPACE, sonarLintSettings,
       DOTNET_DEFAULT_SOLUTION_PATH, new JsonObject(),
       OMNISHARP_USE_MODERN_NET, new JsonObject(),
       OMNISHARP_LOAD_PROJECT_ON_DEMAND, new JsonObject(),

@@ -130,8 +130,6 @@ import static org.sonarsource.sonarlint.ls.settings.SettingsManager.VSCODE_FILE_
 public abstract class AbstractLanguageServerMediumTests {
 
   protected static final boolean COMMERCIAL_ENABLED = System.getProperty("commercial") != null;
-  private static final String CSHARP_OSS_PATH = fullPathToJar("sonarcsharp");
-  private static final String CSHARP_ENTERPRISE_PATH = COMMERCIAL_ENABLED ? fullPathToJar("csharpenterprise") : CSHARP_OSS_PATH;
 
   private static final Set<Path> staticTempDirs = new HashSet<>();
   private final Set<Path> instanceTempDirs = new HashSet<>();
@@ -177,11 +175,7 @@ public abstract class AbstractLanguageServerMediumTests {
     var text = fullPathToJar("sonartext");
     var xml = fullPathToJar("sonarxml");
     var omnisharp = fullPathToJar("sonarlintomnisharp");
-    String[] languageServerArgs = new String[] {"-port", "" + port, "-analyzers", go, java, javasymbolicexecution, js, php, py, html, xml, text, iac, omnisharp};
-    if (COMMERCIAL_ENABLED) {
-      var cfamily = fullPathToJar("cfamily");
-      languageServerArgs = ArrayUtils.add(languageServerArgs, cfamily);
-    }
+    var languageServerArgs = new String[] {"-port", "" + port, "-analyzers", go, java, javasymbolicexecution, js, php, py, html, xml, text, iac, omnisharp};
 
     try {
       var cmd = new CommandLine(new ServerMain());
@@ -239,8 +233,6 @@ public abstract class AbstractLanguageServerMediumTests {
     initializeParams.setTrace("messages");
 
     var actualInitOptions = new HashMap<>(initializeOptions);
-    actualInitOptions.put("csharpOssPath", CSHARP_OSS_PATH);
-    actualInitOptions.put("csharpEnterprisePath", CSHARP_ENTERPRISE_PATH);
     initializeParams.setInitializationOptions(actualInitOptions);
 
     initializeParams.setWorkspaceFolders(List.of(initFolders));

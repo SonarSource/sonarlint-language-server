@@ -107,12 +107,10 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   public static final String DOCKER_S6476 = "docker:S6476";
   public static final String TERRAFORM_S6273 = "terraform:S6273";
   public static final String ARM_S4423 = "azureresourcemanager:S4423";
-  private static Path omnisharpDir;
   private static Path analysisDir;
 
   @BeforeAll
   static void initialize() throws Exception {
-    omnisharpDir = makeStaticTempDir();
     analysisDir = makeStaticTempDir();
     initialize(Map.of(
       "telemetryStorage", "not/exists",
@@ -121,8 +119,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       "showVerboseLogs", false,
       "productKey", "productKey",
       "additionalAttributes", Map.of(
-        "extra", "value"),
-      "omnisharpDirectory", omnisharpDir.toString()), new WorkspaceFolder(analysisDir.toUri().toString(), "AnalysisDir"));
+        "extra", "value")), new WorkspaceFolder(analysisDir.toUri().toString(), "AnalysisDir"));
   }
 
   @BeforeEach

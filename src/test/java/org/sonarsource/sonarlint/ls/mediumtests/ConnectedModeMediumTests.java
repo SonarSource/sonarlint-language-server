@@ -113,13 +113,11 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @BeforeAll
   static void initialize() throws Exception {
-    Path omnisharpDir = makeStaticTempDir();
     initialize(Map.of(
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
       "productVersion", "0.1",
       "productKey", "productKey",
-      "omnisharpDirectory", omnisharpDir.toString(),
       "connections", Map.of(
         "sonarqube", List.of(Map.of(
           "connectionId", CONNECTION_ID,
