@@ -145,6 +145,14 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
     actIfEnabled(telemetryRpcService -> telemetryRpcService.ideLabsFeedbackLinkClicked(new IdeLabsFeedbackLinkClickedParams(featureId)));
   }
 
+  public void supportedLanguagesPanelOpened() {
+    actIfEnabled(TelemetryRpcService::supportedLanguagesPanelOpened);
+  }
+
+  public void supportedLanguagesPanelCtaClicked() {
+    actIfEnabled(TelemetryRpcService::supportedLanguagesPanelCtaClicked);
+  }
+
   private void actIfEnabled(Consumer<TelemetryRpcService> action) {
     if (enabled()) {
       action.accept(backendServiceFacade.getBackendService().getTelemetryService());

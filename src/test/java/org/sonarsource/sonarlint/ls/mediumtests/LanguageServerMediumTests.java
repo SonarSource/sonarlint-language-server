@@ -1177,6 +1177,16 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .doesNotThrowAnyException();
   }
 
+  @Test
+  void supportedLanguagesPanelOpenedShouldCallTelemetry() {
+    assertThatCode(() -> lsProxy.supportedLanguagesPanelOpened()).doesNotThrowAnyException();
+  }
+
+  @Test
+  void supportedLanguagesPanelCtaClickedShouldCallTelemetry() {
+    assertThatCode(() -> lsProxy.supportedLanguagesPanelCtaClicked()).doesNotThrowAnyException();
+  }
+
   @Override
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
     addSonarQubeConnection(client.globalSettings, CONNECTION_ID, mockWebServerExtension.url("/"), TOKEN);

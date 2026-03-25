@@ -766,4 +766,10 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonRequest("sonarlint/getPluginStatuses")
   CompletableFuture<GetPluginStatusesResponse> getPluginStatuses(GetPluginStatusesParams params);
 
+  @JsonNotification("sonarlint/supportedLanguagesPanelOpened")
+  void supportedLanguagesPanelOpened();
+
+  @JsonNotification("sonarlint/supportedLanguagesPanelCtaClicked")
+  void supportedLanguagesPanelCtaClicked();
+
 }
