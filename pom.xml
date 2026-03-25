@@ -24,7 +24,7 @@
 
   <properties>
     <jdk.min.version>17</jdk.min.version>
-    <sonarlint.core.version>11.0.0.85168</sonarlint.core.version>
+    <sonarlint.core.version>11.1.0.85185</sonarlint.core.version>
     <slf4j.version>2.0.17</slf4j.version>
     <!-- Version used by Xodus -->
     <kotlin.version>1.9.21</kotlin.version>
@@ -284,15 +284,6 @@
                   <destFileName>sonariac.jar</destFileName>
                 </artifactItem>
                 <artifactItem>
-                  <groupId>org.sonarsource.dotnet</groupId>
-                  <artifactId>sonar-csharp-plugin</artifactId>
-                  <version>${sonar.csharp.version}</version>
-                  <type>jar</type>
-                  <overWrite>false</overWrite>
-                  <outputDirectory>${project.build.directory}/plugins</outputDirectory>
-                  <destFileName>sonarcsharp.jar</destFileName>
-                </artifactItem>
-                <artifactItem>
                   <groupId>org.sonarsource.sonarlint.omnisharp</groupId>
                   <artifactId>sonarlint-omnisharp-plugin</artifactId>
                   <version>${sonarlint.omnisharp.version}</version>
@@ -370,53 +361,6 @@
                 <goals>
                   <goal>report</goal>
                 </goals>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-    <profile>
-      <id>commercial</id>
-      <activation>
-        <property>
-          <name>commercial</name>
-        </property>
-      </activation>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-dependency-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>copy-commercial-plugins</id>
-                <phase>validate</phase>
-                <goals>
-                  <goal>copy</goal>
-                </goals>
-                <configuration>
-                  <artifactItems>
-                    <artifactItem>
-                      <groupId>com.sonarsource.cpp</groupId>
-                      <artifactId>sonar-cfamily-plugin</artifactId>
-                      <version>6.76.0.93913</version>
-                      <destFileName>cfamily.jar</destFileName>
-                      <type>jar</type>
-                    </artifactItem>
-                    <artifactItem>
-                      <groupId>com.sonarsource.dotnet</groupId>
-                      <artifactId>sonar-csharp-enterprise-plugin</artifactId>
-                      <version>${sonar.csharp.version}</version>
-                      <destFileName>csharpenterprise.jar</destFileName>
-                      <type>jar</type>
-                    </artifactItem>
-                  </artifactItems>
-                  <outputDirectory>${project.build.directory}/plugins</outputDirectory>
-                  <overWriteReleases>false</overWriteReleases>
-                  <overWriteSnapshots>true</overWriteSnapshots>
-                  <stripVersion>false</stripVersion>
-                </configuration>
               </execution>
             </executions>
           </plugin>
