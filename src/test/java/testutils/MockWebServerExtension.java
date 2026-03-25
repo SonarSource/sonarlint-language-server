@@ -75,14 +75,14 @@ public class MockWebServerExtension implements BeforeAllCallback, AfterAllCallba
   }
 
   @Override
-  public void afterAll(ExtensionContext context) throws IOException {
+  public void afterAll(ExtensionContext context) {
     if (server != null) {
-      server.shutdown();
+      server.close();
     }
   }
 
   public void addStringResponse(String path, String body) {
-    dispatcher.mockResponse(path, new MockResponse().setBody(body));
+    dispatcher.mockResponse(path, new MockResponse.Builder().body(body).build());
   }
 
   public void addResponse(String path, MockResponse response) {
@@ -97,7 +97,7 @@ public class MockWebServerExtension implements BeforeAllCallback, AfterAllCallba
     try {
       var b = new Buffer();
       m.writeTo(b.outputStream());
-      dispatcher.mockResponse(path, new MockResponse().setBody(b));
+      dispatcher.mockResponse(path, new MockResponse.Builder().body(b).build());
     } catch (IOException e) {
       fail(e);
     }
@@ -106,7 +106,7 @@ public class MockWebServerExtension implements BeforeAllCallback, AfterAllCallba
   public void addProtobufResponseDelimited(String path, Message... m) {
     var b = new Buffer();
     writeMessages(b.outputStream(), Arrays.asList(m).iterator());
-    dispatcher.mockResponse(path, new MockResponse().setBody(b));
+    dispatcher.mockResponse(path, new MockResponse.Builder().body(b).build());
   }
 
   public static <T extends Message> void writeMessages(OutputStream output, Iterator<T> messages) {
@@ -130,25 +130,24 @@ public class MockWebServerExtension implements BeforeAllCallback, AfterAllCallba
     @NotNull
     @Override
     public MockResponse dispatch(@NotNull RecordedRequest recordedRequest) {
-      var requestPath = recordedRequest.getPath();
+      var url = recordedRequest.getUrl();
+      var requestPath = url.encodedPath() + (url.encodedQuery() != null ? "?" + url.encodedQuery() : "");
 
-      // Try exact match first
+      // Try the exact match first
       if (responsesByPath.containsKey(requestPath)) {
         return responsesByPath.get(requestPath);
       }
 
       // Try matching ignoring timestamp parameters (changedSince values vary at runtime)
-      if (requestPath != null) {
-        var normalizedRequestPath = removeTimestampParameters(requestPath);
-        for (var entry : responsesByPath.entrySet()) {
-          var mockPath = entry.getKey();
-          if (mockPath != null && normalizedRequestPath.equals(removeTimestampParameters(mockPath))) {
-            return entry.getValue();
-          }
+      var normalizedRequestPath = removeTimestampParameters(requestPath);
+      for (var entry : responsesByPath.entrySet()) {
+        var mockPath = entry.getKey();
+        if (mockPath != null && normalizedRequestPath.equals(removeTimestampParameters(mockPath))) {
+          return entry.getValue();
         }
       }
 
-      return new MockResponse().setResponseCode(404);
+      return new MockResponse.Builder().code(404).build();
     }
 
     public void clear() {
