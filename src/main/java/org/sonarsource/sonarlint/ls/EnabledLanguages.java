@@ -106,7 +106,6 @@ public class EnabledLanguages {
   }
 
   private enum ConnectedModeEmbeddedPlugin {
-    CFAMILY("sonarcfamily.jar", "cpp", "c"),
     HTML("sonarhtml.jar", "web", "web"),
     JS("sonarjs.jar", "javascript", "js"),
     XML("sonarxml.jar", "xml", "xml"),
