@@ -222,7 +222,7 @@ public class BackendServiceFacade {
       return null;
     }
     return new OmnisharpRequirementsDto(Path.of(omnisharpDirectory, "mono"),
-      Path.of(omnisharpDirectory, "net6"),
+      Path.of(omnisharpDirectory, "net6.0"),
       Path.of(omnisharpDirectory, "net472"),
       pathToOssCsharp,
       pathToEnterpriseCsharp);
