@@ -129,8 +129,6 @@ import static org.sonarsource.sonarlint.ls.settings.SettingsManager.VSCODE_FILE_
 @ExtendWith(LogTestStartAndEnd.class)
 public abstract class AbstractLanguageServerMediumTests {
 
-  protected static final boolean COMMERCIAL_ENABLED = System.getProperty("commercial") != null;
-
   private static final Set<Path> staticTempDirs = new HashSet<>();
   private final Set<Path> instanceTempDirs = new HashSet<>();
   Path temp;

@@ -719,17 +719,11 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void testListAllRules() {
-    var result = lsProxy.listAllRules().join();
-    String[] commercialLanguages = new String[]{"C", "C++"};
-    String[] freeLanguages = new String[]{"AzureResourceManager", "CSS", "C#", "CloudFormation", "Docker", "Go", "HTML", "IPython Notebooks", "Java",
+    String[] languages = new String[]{"AzureResourceManager", "C", "C++", "CSS", "C#", "CloudFormation", "Docker", "Go", "HTML", "IPython Notebooks", "Java",
       "JavaScript", "Kubernetes", "PHP", "Python", "Secrets", "Terraform", "TypeScript", "XML"};
-    if (COMMERCIAL_ENABLED) {
-      awaitUntilAsserted(() -> assertThat(result).containsOnlyKeys(ArrayUtils.addAll(commercialLanguages, freeLanguages)));
-    } else {
-      awaitUntilAsserted(() -> assertThat(result).containsOnlyKeys(freeLanguages));
-    }
+    awaitUntilAsserted(() -> assertThat(lsProxy.listAllRules().join()).containsOnlyKeys(languages));
 
-    awaitUntilAsserted(() -> assertThat(result.get("HTML"))
+    awaitUntilAsserted(() -> assertThat(lsProxy.listAllRules().join().get("HTML"))
       .extracting(Rule::getKey, Rule::getName, Rule::isActiveByDefault)
       .contains(tuple("Web:PageWithoutTitleCheck", "\"<title>\" should be present in all pages", true)));
   }
