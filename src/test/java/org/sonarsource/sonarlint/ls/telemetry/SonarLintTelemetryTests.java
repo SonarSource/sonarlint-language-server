@@ -359,6 +359,36 @@ class SonarLintTelemetryTests {
     verify(telemetryService, never()).ideLabsFeedbackLinkClicked(any());
   }
 
+  @Test
+  void supportedLanguagesPanelOpened_when_enabled() {
+    telemetry.supportedLanguagesPanelOpened();
+
+    verify(telemetryService).supportedLanguagesPanelOpened();
+  }
+
+  @Test
+  void supportedLanguagesPanelOpened_when_disabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+    telemetry.supportedLanguagesPanelOpened();
+
+    verify(telemetryService, never()).supportedLanguagesPanelOpened();
+  }
+
+  @Test
+  void supportedLanguagesPanelCtaClicked_when_enabled() {
+    telemetry.supportedLanguagesPanelCtaClicked();
+
+    verify(telemetryService).supportedLanguagesPanelCtaClicked();
+  }
+
+  @Test
+  void supportedLanguagesPanelCtaClicked_when_disabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+    telemetry.supportedLanguagesPanelCtaClicked();
+
+    verify(telemetryService, never()).supportedLanguagesPanelCtaClicked();
+  }
+
   private static WorkspaceSettings newWorkspaceSettingsWithTelemetrySetting(boolean disableTelemetry) {
     return new WorkspaceSettings(disableTelemetry, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(),
       Collections.emptyMap(), false, "/path/to/node", false, true, "", false);

@@ -1098,4 +1098,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     return backendServiceFacade.getBackendService().getPluginStatuses(params.configurationScopeId());
   }
 
+  @Override
+  public void supportedLanguagesPanelOpened() {
+    telemetry.supportedLanguagesPanelOpened();
+  }
+
+  @Override
+  public void supportedLanguagesPanelCtaClicked() {
+    telemetry.supportedLanguagesPanelCtaClicked();
+  }
+
 }
