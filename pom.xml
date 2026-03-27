@@ -29,18 +29,18 @@
     <!-- Version used by Xodus -->
     <kotlin.version>1.9.21</kotlin.version>
     <!-- analyzers used for tests -->
-    <sonar.java.version>8.22.0.41895</sonar.java.version>
-    <sonar.java.se.version>8.16.3.1589</sonar.java.se.version>
-    <sonar.javascript.version>12.0.0.38664</sonar.javascript.version>
+    <sonar.java.version>8.26.0.42915</sonar.java.version>
+    <sonar.java.se.version>8.19.0.1586</sonar.java.se.version>
+    <sonar.javascript.version>12.1.0.39434</sonar.javascript.version>
     <sonar.php.version>3.55.0.15704</sonar.php.version>
-    <sonar.python.version>5.19.0.32098</sonar.python.version>
-    <sonar.html.version>3.22.0.7011</sonar.html.version>
-    <sonar.xml.version>2.14.2.7437</sonar.xml.version>
-    <sonar.text.version>2.34.0.9939</sonar.text.version>
-    <sonar.go.version>1.31.0.4938</sonar.go.version>
-    <sonar.iac.version>2.2.0.18377</sonar.iac.version>
-    <sonar.csharp.version>10.16.2.130377</sonar.csharp.version>
-    <sonarlint.omnisharp.version>1.36.0.101591</sonarlint.omnisharp.version>
+    <sonar.python.version>5.20.0.32295</sonar.python.version>
+    <sonar.html.version>3.25.0.7473</sonar.html.version>
+    <sonar.xml.version>2.16.0.7616</sonar.xml.version>
+    <sonar.text.version>2.42.0.10784</sonar.text.version>
+    <sonar.go.version>1.33.0.5387</sonar.go.version>
+    <sonar.iac.version>2.8.0.19776</sonar.iac.version>
+    <sonar.csharp.version>10.21.0.135717</sonar.csharp.version>
+    <sonarlint.omnisharp.version>1.40.0.101699</sonarlint.omnisharp.version>
     <gitRepositoryName>sonarlint-language-server</gitRepositoryName>
     <!-- Release: enable publication to Bintray -->
     <artifactsToPublish>${project.groupId}:${project.artifactId}:jar</artifactsToPublish>
@@ -400,7 +400,7 @@
                     <artifactItem>
                       <groupId>com.sonarsource.cpp</groupId>
                       <artifactId>sonar-cfamily-plugin</artifactId>
-                      <version>6.76.0.93913</version>
+                      <version>6.79.0.97291</version>
                       <destFileName>cfamily.jar</destFileName>
                       <type>jar</type>
                     </artifactItem>
