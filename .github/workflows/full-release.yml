@@ -72,7 +72,7 @@ jobs:
           branch: bot/bump-project-version
           branch-suffix: timestamp
           delete-branch: true
-          base: master
+          base: ${{ inputs.branch }}
           draft: true # so that we don't actually need to re-open the PR and just make it ready for review
           reviewers: ${{ github.actor }}
           body: Bump the version for the new iteration. Created by release automation.
