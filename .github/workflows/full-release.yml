@@ -1,0 +1,78 @@
+name: Full release
+
+on:
+  workflow_dispatch:
+    inputs:
+      short-description:
+        description: 'A short description for the release ticket'
+        required: true
+        type: string
+      branch:
+        description: 'The branch from which to release.'
+        required: false
+        default: 'master'
+        type: string
+
+jobs:
+  lock-branch:
+    name: Lock ${{ inputs.branch }} branch
+    uses: ./.github/workflows/ToggleLockBranch.yml
+    permissions:
+      id-token: write
+    with:
+      branch: ${{ inputs.branch }}
+
+  release:
+    name: Release
+    uses: SonarSource/release-github-actions/.github/workflows/ide-automated-release.yml@2d944d5ff92467db2dee4e1629a6c1b88cc6e953 # 1.4.3
+    if: always() && !failure() && !cancelled()
+    permissions:
+      statuses: read
+      id-token: write
+      contents: write
+      actions: write
+      pull-requests: write
+    needs:
+      - lock-branch
+    with:
+      jira-project-key: "SLLS"
+      project-name: "SonarLint Language Server"
+      short-description: ${{ inputs.short-description }}
+      branch: ${{ inputs.branch }}
+
+  unlock-branch:
+    name: Unlock ${{ inputs.branch }} branch
+    uses: ./.github/workflows/ToggleLockBranch.yml
+    needs: release
+    permissions:
+      id-token: write
+    with:
+      branch: ${{ inputs.branch }}
+
+  bump-version:
+    name: Create a PR to bump version
+    runs-on: github-ubuntu-latest-s
+    needs:
+      - release
+    permissions:
+      contents: write # write for peter-evans/create-pull-request, read for actions/checkout
+      pull-requests: write # write for peter-evans/create-pull-request
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: bump-version
+        env:
+          NEW_VERSION: ${{ needs.release.outputs.new-version }}
+        run: |
+          mvn versions:set -DgenerateBackupPoms=false -DnewVersion="$NEW_VERSION-SNAPSHOT"
+      - uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8
+        with:
+          author: ${{ github.actor }} <${{ github.actor }}>
+          commit-message: Prepare next development iteration
+          title: Prepare next development iteration
+          branch: bot/bump-project-version
+          branch-suffix: timestamp
+          delete-branch: true
+          base: ${{ inputs.branch }}
+          draft: true # so that we don't actually need to re-open the PR and just make it ready for review
+          reviewers: ${{ github.actor }}
+          body: Bump the version for the new iteration. Created by release automation.
