@@ -28,7 +28,7 @@ jobs:
     name: Build
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3.6.3
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
         with:
           version: 2026.3.14
       - uses: SonarSource/ci-github-actions/build-maven@9be49711ed44b2a7b65511bb4782a4e77d8f7184 # 1.3.28
@@ -44,7 +44,7 @@ jobs:
     name: QA Linux
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3.6.3
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
         with:
           version: 2026.3.14
       - uses: SonarSource/ci-github-actions/build-maven@9be49711ed44b2a7b65511bb4782a4e77d8f7184 # 1.3.28
@@ -53,7 +53,7 @@ jobs:
           artifactory-deployer-role: qa-deployer
           artifactory-reader-role: private-reader
       - name: Generate test report
-        uses: dorny/test-reporter@df6247429542221bc30d46a036ee47af1102c451 # v2.7.0
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         if: ${{ !cancelled() }}
         with:
           name: QA Linux Test Report
@@ -68,7 +68,7 @@ jobs:
     name: QA Windows
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3.6.3
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
         with:
           version: 2026.3.14
       - uses: SonarSource/ci-github-actions/build-maven@9be49711ed44b2a7b65511bb4782a4e77d8f7184 # 1.3.28
@@ -78,7 +78,7 @@ jobs:
           sonar-platform: none
           maven-args: -B -e -V -Dcommercial -Dmaven.test.redirectTestOutputToFile=false
       - name: Generate test report
-        uses: dorny/test-reporter@df6247429542221bc30d46a036ee47af1102c451 # v2.7.0
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         if: ${{ !cancelled() }}
         with:
           name: QA Linux Test Report
