@@ -49,7 +49,7 @@ jobs:
           version: 2026.3.17
       - uses: SonarSource/ci-github-actions/build-maven@d8400ed2a8b8019e4dfe43d612a7eb6280334968 # 1.3.29
         with:
-          maven-args: -Dcommercial -Dmaven.install.skip=true -Dmaven.deploy.skip=true -P-deploy-sonarsource,-release,-sign
+          maven-args: -Dmaven.install.skip=true -Dmaven.deploy.skip=true -P-deploy-sonarsource,-release,-sign
           artifactory-deployer-role: qa-deployer
           artifactory-reader-role: private-reader
       - name: Generate test report
@@ -76,7 +76,7 @@ jobs:
           artifactory-reader-role: private-reader
           artifactory-deployer-role: qa-deployer
           sonar-platform: none
-          maven-args: -B -e -V -Dcommercial -Dmaven.test.redirectTestOutputToFile=false
+          maven-args: -B -e -V -Dmaven.test.redirectTestOutputToFile=false
       - name: Generate test report
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         if: ${{ !cancelled() }}
