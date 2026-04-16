@@ -102,6 +102,7 @@ public class AnalysisHelper {
   public void handleIssues(Map<URI, List<RaisedFindingDto>> issuesByFileUri) {
     issuesCache.reportIssues(issuesByFileUri);
     issuesByFileUri.forEach((uri, issues) -> {
+      issuesCache.clear(uri);
       diagnosticPublisher.publishDiagnostics(uri, true);
       openNotebooksCache.getFile(uri).ifPresent(notebook -> {
         // clean up old diagnostics
