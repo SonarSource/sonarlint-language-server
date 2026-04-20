@@ -501,7 +501,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(0, 0, 0, 4, "css:S4658", "sonarqube", "Unexpected empty block", DiagnosticSeverity.Warning)));
+        tuple(0, 2, 0, 4, "css:S4658", "sonarqube", "Unexpected empty block", DiagnosticSeverity.Warning)));
   }
 
   @Test
@@ -654,7 +654,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(client.ruleDesc.getCleanCodeAttribute()).isEqualTo(EnumLabelsMapper.cleanCodeAttributeToLabel(CleanCodeAttribute.COMPLETE));
     assertThat(client.ruleDesc.getCleanCodeAttributeCategory()).isEqualTo(EnumLabelsMapper.cleanCodeAttributeCategoryToLabel(CleanCodeAttributeCategory.INTENTIONAL));
     assertThat(client.ruleDesc.getImpacts())
-      .containsExactly(Map.entry(EnumLabelsMapper.softwareQualityToLabel(SoftwareQuality.RELIABILITY), EnumLabelsMapper.impactSeverityToLabel(ImpactSeverity.HIGH)));
+      .containsExactly(Map.entry(EnumLabelsMapper.softwareQualityToLabel(SoftwareQuality.RELIABILITY), EnumLabelsMapper.impactSeverityToLabel(ImpactSeverity.BLOCKER)));
   }
 
   @Test
