@@ -27,7 +27,7 @@
     <sonarlint.core.version>11.2.0.85396</sonarlint.core.version>
     <slf4j.version>2.0.17</slf4j.version>
     <!-- Version used by Xodus -->
-    <kotlin.version>1.9.21</kotlin.version>
+    <kotlin.version>1.9.25</kotlin.version>
     <!-- analyzers used for tests -->
     <sonar.java.version>8.28.0.43176</sonar.java.version>
     <sonar.java.se.version>8.20.0.1864</sonar.java.se.version>
@@ -95,7 +95,7 @@
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
-      <version>1.21.0</version>
+      <version>1.22.0</version>
     </dependency>
     <dependency>
       <groupId>org.eclipse.jgit</groupId>
