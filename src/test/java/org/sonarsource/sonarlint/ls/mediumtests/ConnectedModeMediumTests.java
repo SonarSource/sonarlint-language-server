@@ -760,7 +760,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .setEducationPrinciples(Rules.Rule.EducationPrinciples.newBuilder().build())
         .setSeverity("BLOCKER")
         .setType(Common.RuleType.BUG)
-        .setHtmlDesc("htmlDesc")
         .setImpacts(Rules.Rule.Impacts.newBuilder().build())
         .build())
       .build());
