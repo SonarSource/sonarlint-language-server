@@ -44,7 +44,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
-import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.ClientInfo;
 import org.eclipse.lsp4j.CodeAction;
@@ -191,11 +190,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final NotebookDiagnosticPublisher notebookDiagnosticPublisher;
   private final SonarLintVSCodeClient vsCodeClient;
 
-  /**
-   * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
-   */
-  private TraceValue traceLevel;
-
   private final ModuleEventsProcessor moduleEventsProcessor;
   private final BackendServiceFacade backendServiceFacade;
   private final CountDownLatch shutdownLatch;
@@ -293,7 +287,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
-      this.traceLevel = parseTraceLevel(params.getTrace());
       var initializationOptions = parse(params.getInitializationOptions());
       lsLogOutput.initialize(initializationOptions.showVerboseLogs());
 
@@ -548,14 +541,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void setTrace(SetTraceParams params) {
-    this.traceLevel = parseTraceLevel(params.getValue());
-  }
-
-  private static TraceValue parseTraceLevel(@Nullable String trace) {
-    return ofNullable(trace)
-      .map(String::toUpperCase)
-      .map(TraceValue::valueOf)
-      .orElse(TraceValue.OFF);
+    // No-op: trace level is not currently used
   }
 
   @Override
@@ -609,12 +595,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var configScopeId = maybeWorkspaceFolder.get().getUri().toString();
       backendServiceFacade.getBackendService().didCloseFile(configScopeId, uri);
     }
-  }
-
-  private enum TraceValue {
-    OFF,
-    MESSAGES,
-    VERBOSE
   }
 
   @Override
