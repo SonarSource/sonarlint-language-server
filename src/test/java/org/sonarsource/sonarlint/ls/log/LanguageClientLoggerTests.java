@@ -59,25 +59,16 @@ class LanguageClientLoggerTests {
 
   @Test
   void enable_debug_logs() {
-    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, null, true, null, false, true, "", false));
-
-    underTest.error("error");
-    underTest.warn("warn");
-    underTest.info("info");
-    underTest.debug("debug");
-    underTest.trace("trace");
-
-    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Error - 03:25:45.678] error"));
-    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Warn - 03:25:45.678] warn"));
-    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Info - 03:25:45.678] info"));
-    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Debug - 03:25:45.678] debug"));
-    verify(languageClient).logMessage(new MessageParams(MessageType.Log, "[Trace - 03:25:45.678] trace"));
-    verifyNoMoreInteractions(languageClient);
+    verifyVerboseLogsEnabled(new WorkspaceSettings(false, null, null, null, null, true, null, false, true, "", false));
   }
 
   @Test
   void enable_analyzer_debug_logs() {
-    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, null, true, null, false, true, "", false));
+    verifyVerboseLogsEnabled(new WorkspaceSettings(false, null, null, null, null, true, null, false, true, "", false));
+  }
+
+  private void verifyVerboseLogsEnabled(WorkspaceSettings settings) {
+    underTest.onChange(null, settings);
 
     underTest.error("error");
     underTest.warn("warn");
