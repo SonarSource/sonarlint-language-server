@@ -177,8 +177,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(3, 15, 4, 2, GO_S108, "sonarqube", "Either remove or fill this block of code.", DiagnosticSeverity.Warning),
-        tuple(4, 11, 4, 21, GO_S1862, "sonarqube", "This condition duplicates the one on line 4. [+1 location]", DiagnosticSeverity.Warning)));
+        tuple(3, 16, 4, 3, GO_S108, "sonarqube", "Either remove or fill this block of code.", DiagnosticSeverity.Warning),
+        tuple(4, 12, 4, 22, GO_S1862, "sonarqube", "This condition duplicates the one on line 4. [+1 location]", DiagnosticSeverity.Warning)));
   }
 
   @Test
