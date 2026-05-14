@@ -76,7 +76,7 @@ class DiagnosticPublisherTests {
   private SonarLintExtendedLanguageClient languageClient;
 
   @BeforeEach
-  public void init() {
+  void init() {
     issuesCache = new IssuesCache();
     hotspotsCache = new HotspotsCache();
     languageClient = mock(SonarLintExtendedLanguageClient.class);
