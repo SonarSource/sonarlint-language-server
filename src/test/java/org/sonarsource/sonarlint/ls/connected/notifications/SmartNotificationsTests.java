@@ -49,12 +49,12 @@ class SmartNotificationsTests {
   private SmartNotifications underTest;
 
   @BeforeEach
-  public void setup() {
+  void setup() {
     underTest = new SmartNotifications(client, telemetry);
   }
 
   @AfterEach
-  public void finish() {
+  void finish() {
     verifyNoMoreInteractions(client, telemetry);
   }
 

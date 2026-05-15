@@ -147,7 +147,7 @@ class CommandManagerTests {
   private OpenNotebooksCache openNotebooksCache;
 
   @BeforeEach
-  public void prepareMocks() {
+  void prepareMocks() {
     bindingManager = mock(ProjectBindingManager.class);
     mockSettingsManager = mock(SettingsManager.class);
     mockBinding = mock(ProjectBinding.class);

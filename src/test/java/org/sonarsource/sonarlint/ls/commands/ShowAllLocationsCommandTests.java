@@ -52,7 +52,7 @@ class ShowAllLocationsCommandTests {
   private final String FILE_PYTHON = "myFile.py";
 
   @BeforeEach
-  public void prepare() throws IOException, ExecutionException, InterruptedException {
+  void prepare() throws IOException, ExecutionException, InterruptedException {
     workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
     Files.createDirectories(workspaceFolderPath);
     fileInAWorkspaceFolderPath = workspaceFolderPath.resolve(FILE_PYTHON);
