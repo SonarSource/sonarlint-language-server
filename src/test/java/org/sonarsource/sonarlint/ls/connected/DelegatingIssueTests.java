@@ -42,7 +42,7 @@ class DelegatingIssueTests {
   private DelegatingFinding delegatingFinding;
 
   @BeforeEach
-  public void prepare() {
+  void prepare() {
     when(issue.getSeverityMode()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
     when(issue.getPrimaryMessage()).thenReturn("don't do this");
     when(issue.getRuleKey()).thenReturn("squid:123");
