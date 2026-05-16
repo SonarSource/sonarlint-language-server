@@ -44,7 +44,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.sonar.api.rule.RuleKey;
@@ -638,7 +637,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
       return null;
     }
     var workspacePath = Paths.get(workspaceFolderUri);
-    var pathWithoutWorkspaceFolderPrefix = StringUtils.removeStart(pathToCompileCommands, WORKSPACE_FOLDER_VARIABLE);
+    var pathWithoutWorkspaceFolderPrefix = pathToCompileCommands.substring(WORKSPACE_FOLDER_VARIABLE.length());
     String pathWithoutLeadingSlash = removePossibleLeadingSlash(pathWithoutWorkspaceFolderPrefix);
     return workspacePath.resolve(pathWithoutLeadingSlash).toString();
   }
