@@ -58,7 +58,7 @@ class ForcedAnalysisCoordinatorTests {
   URI workspaceFolderUri = URI.create("file:///my/workspace/folder");
 
   @BeforeEach
-  public void init() {
+  void init() {
     lsLogOutput = mock(LanguageClientLogger.class);
     SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
     when(client.filterOutExcludedFiles(any()))

@@ -72,7 +72,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   }
 
   @BeforeAll
-  public static void initialize() throws Exception {
+  static void initialize() throws Exception {
     System.setProperty("sonarlint.internal.sonarcloud.url", "http://localhost:" + SONAR_CLOUD_PORT);
     System.setProperty("sonarlint.internal.sonarcloud.websocket.url", "http://localhost:40000" + SONAR_CLOUD_PORT);
     System.setProperty("sonarlint.internal.sonarcloud.api.url", "http://localhost:" + SONAR_CLOUD_PORT);
@@ -90,7 +90,7 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   }
 
   @AfterAll
-  public static void resetSonarCloud() {
+  static void resetSonarCloud() {
     System.clearProperty("sonarlint.internal.sonarcloud.websocket.url");
     System.clearProperty("sonarlint.internal.sonarcloud.url");
     System.clearProperty("sonarlint.internal.sonarcloud.api.url");

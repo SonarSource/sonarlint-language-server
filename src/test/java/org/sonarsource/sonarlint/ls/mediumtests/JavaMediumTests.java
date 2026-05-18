@@ -39,7 +39,6 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfi
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidClasspathUpdateParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidJavaServerModeChangeParams;
 
-import static org.apache.commons.lang3.StringUtils.appendIfMissing;
 import static org.apache.commons.lang3.StringUtils.removeEnd;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
@@ -253,7 +252,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     // Emulate vscode-java that returns URI with different format in GetJavaConfigResponse and didClasspathUpdate
     // file:///home/julien/Prog/Projects/plugins/sonar-clirr/
     // file:/home/julien/Prog/Projects/plugins/sonar-clirr
-    var projectRootUri1 = appendIfMissing(projectRootUri, "/");
+    var projectRootUri1 = projectRootUri.endsWith("/") ? projectRootUri : projectRootUri + "/";
     var projectRootUri2 = removeEnd(projectRootUri.replace("file:///", "file:/"), "/");
 
     var javaConfigResponse = new GetJavaConfigResponse();
