@@ -37,7 +37,7 @@ class ServerMainTests {
   private StringWriter cmdOutput;
 
   @BeforeEach
-  public void prepare() {
+  void prepare() {
     underTest = new ServerMain();
     cmd = new CommandLine(underTest);
     cmd.setColorScheme(CommandLine.Help.defaultColorScheme(CommandLine.Help.Ansi.OFF));

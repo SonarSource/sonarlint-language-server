@@ -64,7 +64,7 @@ class SonarLintTelemetryTests {
   public SonarLintLogTester logTester = new SonarLintLogTester();
 
   @BeforeEach
-  public void setUp() {
+  void setUp() {
     this.backendServiceFacade = mock(BackendServiceFacade.class);
     this.backendService = mock(BackendService.class);
     this.telemetryService = mock(TelemetryRpcService.class);
@@ -74,7 +74,7 @@ class SonarLintTelemetryTests {
   }
 
   @AfterEach
-  public void after() {
+  void after() {
     System.clearProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY);
   }
 

@@ -39,7 +39,7 @@ class LanguageClientLoggerTests {
   private final SonarLintExtendedLanguageClient languageClient = mock(SonarLintExtendedLanguageClient.class);
 
   @BeforeEach
-  public void prepare() {
+  void prepare() {
     underTest = new LanguageClientLogger(languageClient, Clock.fixed(Instant.ofEpochMilli(12345678), ZoneOffset.UTC));
   }
 
