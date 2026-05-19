@@ -39,7 +39,6 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.GetJavaConfi
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidClasspathUpdateParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.DidJavaServerModeChangeParams;
 
-import static org.apache.commons.lang3.StringUtils.removeEnd;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.sonarsource.sonarlint.ls.mediumtests.LanguageServerMediumTests.assertAnalysisLogsContains;
@@ -253,7 +252,8 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     // file:///home/julien/Prog/Projects/plugins/sonar-clirr/
     // file:/home/julien/Prog/Projects/plugins/sonar-clirr
     var projectRootUri1 = projectRootUri.endsWith("/") ? projectRootUri : projectRootUri + "/";
-    var projectRootUri2 = removeEnd(projectRootUri.replace("file:///", "file:/"), "/");
+    var replaced = projectRootUri.replace("file:///", "file:/");
+    var projectRootUri2 = replaced.endsWith("/") ? replaced.substring(0, replaced.length() - 1) : replaced;
 
     var javaConfigResponse = new GetJavaConfigResponse();
     javaConfigResponse.setProjectRoot(projectRootUri1);

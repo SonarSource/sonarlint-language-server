@@ -202,7 +202,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         "SECURITY_HOTSPOT&s=key&ps=500&p=1",
       Rules.SearchResponse.newBuilder()
         .setActives(activeBuilder.build())
-        .setTotal(2)
+        .setPaging(Common.Paging.newBuilder().setTotal(2).build())
         .addRules(Rules.Rule.newBuilder()
           .setKey(PYTHON_S1481)
           .setLang("py")
@@ -364,8 +364,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       "/api/rules/show.protobuf?key=python:S1313",
       Rules.ShowResponse.newBuilder()
         .setRule(Rules.Rule.newBuilder()
-          .setSeverity("MINOR")
-          .setType(Common.RuleType.SECURITY_HOTSPOT)
           .setLang("py")
           .build())
         .build());
@@ -423,7 +421,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       "/api/rules/show.protobuf?key=python:S1313",
       Rules.ShowResponse.newBuilder()
         .setRule(Rules.Rule.newBuilder()
-          .setSeverity("MINOR")
           .setType(Common.RuleType.SECURITY_HOTSPOT)
           .setLang("py")
           .build())
