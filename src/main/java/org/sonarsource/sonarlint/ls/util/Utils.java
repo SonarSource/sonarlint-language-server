@@ -32,6 +32,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -174,11 +175,22 @@ public class Utils {
     return str.toUpperCase(Locale.ROOT).split("(?<=\\G.{2})");
   }
 
+  // Default upper bound for blocking RPC-style waits initiated from request handlers.
+  // Calls that exceed this either had an unresponsive backend or a hung downstream LSP request.
+  public static final long DEFAULT_FUTURE_GET_TIMEOUT_MS = 2000;
+
   public static <T> Optional<T> safelyGetCompletableFuture(CompletableFuture<T> future, LanguageClientLogger logOutput) {
+    return safelyGetCompletableFuture(future, logOutput, DEFAULT_FUTURE_GET_TIMEOUT_MS);
+  }
+
+  public static <T> Optional<T> safelyGetCompletableFuture(CompletableFuture<T> future, LanguageClientLogger logOutput, long timeoutMs) {
     try {
-      return Optional.of(future.get());
+      return Optional.of(future.get(timeoutMs, TimeUnit.MILLISECONDS));
     } catch (InterruptedException e) {
       interrupted(e, logOutput);
+    } catch (TimeoutException e) {
+      future.cancel(true);
+      logOutput.warn("Future computation timed out after " + timeoutMs + "ms");
     } catch (ExecutionException e) {
       logOutput.warnWithStackTrace("Future computation completed with an exception", e);
     }
