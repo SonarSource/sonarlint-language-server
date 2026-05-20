@@ -35,6 +35,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.util.Utils.getValidateConnectionParamsForNewConnection;
@@ -100,7 +102,7 @@ class UtilsTests {
   @Test
   void shouldSafelyGetInterruptedFuture() throws Exception {
     var future = mock(CompletableFuture.class);
-    when(future.get()).thenThrow(new InterruptedException());
+    when(future.get(anyLong(), any())).thenThrow(new InterruptedException());
     var futureResult = Utils.safelyGetCompletableFuture(future, logTester.getLogger());
     assertThat(futureResult).isEmpty();
     assertThat(logTester.logs(MessageType.Log)).anyMatch(log -> log.contains("Interrupted!"));
@@ -111,6 +113,15 @@ class UtilsTests {
     var future = CompletableFuture.completedFuture(42);
     var futureResult = Utils.safelyGetCompletableFuture(future, logTester.getLogger());
     assertThat(futureResult).hasValue(42);
+  }
+
+  @Test
+  void shouldTimeOutWhenFutureDoesNotComplete() {
+    var future = new CompletableFuture<Integer>();
+    var futureResult = Utils.safelyGetCompletableFuture(future, logTester.getLogger(), 50);
+    assertThat(futureResult).isEmpty();
+    assertThat(future).isCancelled();
+    assertThat(logTester.logs(MessageType.Log)).anyMatch(log -> log.contains("Future computation timed out"));
   }
 
   @Test
