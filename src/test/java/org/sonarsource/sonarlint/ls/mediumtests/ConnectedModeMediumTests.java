@@ -1305,8 +1305,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       "/api/rules/show.protobuf?key=python:S1313",
       Rules.ShowResponse.newBuilder()
         .setRule(Rules.Rule.newBuilder()
-          .setSeverity("MINOR")
-          .setType(Common.RuleType.SECURITY_HOTSPOT)
           .setLang("py")
           .build())
         .build());
