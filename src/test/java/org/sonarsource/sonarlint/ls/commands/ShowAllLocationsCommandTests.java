@@ -24,7 +24,6 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -49,13 +48,13 @@ class ShowAllLocationsCommandTests {
   Path basedir;
   private Path workspaceFolderPath;
   private Path fileInAWorkspaceFolderPath;
-  private final String FILE_PYTHON = "myFile.py";
+  private final String filePython = "myFile.py";
 
   @BeforeEach
-  public void prepare() throws IOException, ExecutionException, InterruptedException {
+  public void prepare() throws IOException {
     workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
     Files.createDirectories(workspaceFolderPath);
-    fileInAWorkspaceFolderPath = workspaceFolderPath.resolve(FILE_PYTHON);
+    fileInAWorkspaceFolderPath = workspaceFolderPath.resolve(filePython);
     Files.createFile(fileInAWorkspaceFolderPath);
     Files.writeString(fileInAWorkspaceFolderPath, """
       print('1234')
@@ -116,7 +115,7 @@ class ShowAllLocationsCommandTests {
 
   @Test
   void shouldBuildCommandParamsFromShowIssueParams() {
-    var ideFilePath = Path.of(FILE_PYTHON);
+    var ideFilePath = Path.of(filePython);
     var flow1 = mock(FlowDto.class);
     var loc11 = mock(LocationDto.class);
     when(loc11.getTextRange()).thenReturn(new TextRangeDto(1, 0, 1, 7));

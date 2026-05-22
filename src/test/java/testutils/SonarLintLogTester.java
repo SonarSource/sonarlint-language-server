@@ -72,7 +72,7 @@ public class SonarLintLogTester implements BeforeTestExecutionCallback, AfterTes
 
   private final Queue<String> logs = new ConcurrentLinkedQueue<>();
   private final Map<MessageType, Queue<String>> logsByLevel = new ConcurrentHashMap<>();
-  private final LanguageClientLogger LOG;
+  private final LanguageClientLogger log;
 
   public SonarLintLogTester() {
     var client = new LanguageClient() {
@@ -104,7 +104,7 @@ public class SonarLintLogTester implements BeforeTestExecutionCallback, AfterTes
     };
     var logger = new LanguageClientLogger(client);
     logger.initialize(true);
-    LOG = logger;
+    log = logger;
   }
 
 
@@ -139,6 +139,6 @@ public class SonarLintLogTester implements BeforeTestExecutionCallback, AfterTes
   }
 
   public LanguageClientLogger getLogger() {
-    return LOG;
+    return log;
   }
 }

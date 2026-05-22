@@ -169,9 +169,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       package main
       import "fmt"
       func main() {
-      	if condition1 {
-      	} else if condition1 { // Noncompliant
-      	}
+        if condition1 {
+        } else if condition1 { // Noncompliant
+        }
       }
       """);
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
@@ -954,13 +954,13 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void shouldSetConnectionIdForGetRemoteProjectsParams() {
-    String OLD = "old";
-    String NEW = "new";
+    String oldValue = "old";
+    String newValue = "new";
 
-    SonarLintExtendedLanguageServer.GetRemoteProjectsForConnectionParams testParams = new SonarLintExtendedLanguageServer.GetRemoteProjectsForConnectionParams(OLD);
-    testParams.setConnectionId(NEW);
+    SonarLintExtendedLanguageServer.GetRemoteProjectsForConnectionParams testParams = new SonarLintExtendedLanguageServer.GetRemoteProjectsForConnectionParams(oldValue);
+    testParams.setConnectionId(newValue);
 
-    assertThat(testParams.getConnectionId()).isEqualTo(NEW);
+    assertThat(testParams.getConnectionId()).isEqualTo(newValue);
   }
 
   @Test
