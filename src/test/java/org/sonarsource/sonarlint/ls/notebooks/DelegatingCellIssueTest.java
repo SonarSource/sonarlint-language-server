@@ -42,7 +42,7 @@ class DelegatingCellIssueTest {
       "ruleKey",
       "message",
       Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)),
-      Instant.now(),
+      Instant.EPOCH,
       true,
       false,
       null,

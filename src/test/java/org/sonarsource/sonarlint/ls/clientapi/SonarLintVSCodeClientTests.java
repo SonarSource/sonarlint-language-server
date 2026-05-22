@@ -737,23 +737,23 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void shouldLogMessagesWithLogLevel() {
-    underTest.log(new LogParams(LogLevel.ERROR, null, null, null, Instant.now()));
+    underTest.log(new LogParams(LogLevel.ERROR, null, null, null, Instant.EPOCH));
     assertThat(logTester.logs())
       .anyMatch(log -> log.contains("null"));
 
-    underTest.log(new LogParams(LogLevel.ERROR, "Log message", null, null, Instant.now()));
+    underTest.log(new LogParams(LogLevel.ERROR, "Log message", null, null, Instant.EPOCH));
     assertThat(logTester.logs(MessageType.Log))
       .anyMatch(log -> log.contains("null"));
-    underTest.log(new LogParams(LogLevel.WARN, "Log message", null, null, Instant.now()));
+    underTest.log(new LogParams(LogLevel.WARN, "Log message", null, null, Instant.EPOCH));
     assertThat(logTester.logs(MessageType.Log))
       .anyMatch(log -> log.contains("null"));
-    underTest.log(new LogParams(LogLevel.INFO, "Log message", null, null, Instant.now()));
+    underTest.log(new LogParams(LogLevel.INFO, "Log message", null, null, Instant.EPOCH));
     assertThat(logTester.logs(MessageType.Log))
       .anyMatch(log -> log.contains("null"));
-    underTest.log(new LogParams(LogLevel.DEBUG, "Log message", null, null, Instant.now()));
+    underTest.log(new LogParams(LogLevel.DEBUG, "Log message", null, null, Instant.EPOCH));
     assertThat(logTester.logs(MessageType.Log))
       .anyMatch(log -> log.contains("null"));
-    underTest.log(new LogParams(LogLevel.TRACE, "Log message", null, null, Instant.now()));
+    underTest.log(new LogParams(LogLevel.TRACE, "Log message", null, null, Instant.EPOCH));
     assertThat(logTester.logs(MessageType.Log))
       .anyMatch(log -> log.contains("null"));
   }
@@ -1222,7 +1222,7 @@ class SonarLintVSCodeClientTests {
 
   private TaintVulnerabilityDto getTaintDto(UUID uuid) {
     return new TaintVulnerabilityDto(uuid, "serverKey", false, null, "ruleKey", "message",
-      Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
+      Path.of("filePath"), Instant.EPOCH, org.sonarsource.sonarlint.core.rpc.protocol.common.Either
       .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
       List.of(),
       new TextRangeWithHashDto(5, 5, 5, 5, ""), "", true, false);
@@ -1230,7 +1230,7 @@ class SonarLintVSCodeClientTests {
 
   private TaintIssue getTaintIssue(UUID uuid) {
     return new TaintIssue(new TaintVulnerabilityDto(uuid, "serverKey", false, null, "ruleKey", "message",
-      Path.of("filePath"), Instant.now(), org.sonarsource.sonarlint.core.rpc.protocol.common.Either
+      Path.of("filePath"), Instant.EPOCH, org.sonarsource.sonarlint.core.rpc.protocol.common.Either
       .forLeft(new StandardModeDetails(IssueSeverity.MAJOR, RuleType.BUG)),
       List.of(),
       new TextRangeWithHashDto(5, 5, 5, 5, ""), "", true, false), "folderUri", true);
