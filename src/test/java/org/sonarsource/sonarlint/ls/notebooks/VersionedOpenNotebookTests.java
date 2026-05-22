@@ -518,7 +518,7 @@ public class VersionedOpenNotebookTests {
       "ruleKey",
       "message",
       Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)),
-      Instant.now(),
+      Instant.EPOCH,
       true,
       false,
       new TextRangeDto(1, 0, 1, 0),

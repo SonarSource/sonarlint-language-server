@@ -106,7 +106,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private static final String PROJECT_NAME1 = "Project One";
   private static final String PROJECT_KEY2 = "project:key2";
   private static final String PROJECT_NAME2 = "Project Two";
-  private static final long CURRENT_TIME = System.currentTimeMillis();
+  private static final long CURRENT_TIME = Instant.parse("2026-01-01T00:00:00Z").toEpochMilli();
   private static Path bindingSuggestionBaseDir;
 
   private Path folder1BaseDir;
@@ -376,7 +376,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .setKey(hotspotKey)
           .setMessage("Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.")
           .setComponent("someComponentKey")
-          .setCreationDate(DateUtils.formatDateTime(System.currentTimeMillis()))
+          .setCreationDate(DateUtils.formatDateTime(CURRENT_TIME))
           .setStatus("TO_REVIEW")
           .setVulnerabilityProbability("LOW")
           .setTextRange(Common.TextRange.newBuilder()
@@ -440,7 +440,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Hotspots.HotspotLite.newBuilder()
         .setKey(hotspotKey)
         .setFilePath(analyzedFileName)
-        .setCreationDate(System.currentTimeMillis())
+        .setCreationDate(CURRENT_TIME)
         .setStatus("TO_REVIEW")
         .setVulnerabilityProbability("LOW")
         .setMessage("Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.")
@@ -944,7 +944,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Hotspots.HotspotLite.newBuilder()
         .setKey(hotspotKey)
         .setFilePath(analyzedFileName)
-        .setCreationDate(System.currentTimeMillis())
+        .setCreationDate(CURRENT_TIME)
         .setStatus("TO_REVIEW")
         .setVulnerabilityProbability("LOW")
         .setMessage("Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.")
@@ -1001,7 +1001,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Hotspots.HotspotLite.newBuilder()
         .setKey(hotspotKey)
         .setFilePath(analyzedFileName)
-        .setCreationDate(System.currentTimeMillis())
+        .setCreationDate(CURRENT_TIME)
         .setStatus("TO_REVIEW")
         .setVulnerabilityProbability("LOW")
         .setMessage("Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.")
@@ -1076,7 +1076,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       Hotspots.HotspotLite.newBuilder()
         .setKey(hotspotKey)
         .setFilePath(analyzedFileName)
-        .setCreationDate(System.currentTimeMillis())
+        .setCreationDate(CURRENT_TIME)
         .setStatus("TO_REVIEW")
         .setVulnerabilityProbability("LOW")
         .setMessage("Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.")
@@ -1411,7 +1411,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
             .setEndLine(1)
             .setEndLineOffset(2)
             .setHash("hash")))
-        .setCreationDate(Instant.now().toEpochMilli())
+        .setCreationDate(CURRENT_TIME)
         .build());
 
     addConfigScope(folder1BaseDir.toUri().toString());

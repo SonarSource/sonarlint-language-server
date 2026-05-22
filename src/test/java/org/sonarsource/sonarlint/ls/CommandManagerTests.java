@@ -614,7 +614,7 @@ class CommandManagerTests {
       "rule",
       "ruleName",
       Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)),
-      Instant.now(),
+      Instant.EPOCH,
       true,
       false,
       null,
