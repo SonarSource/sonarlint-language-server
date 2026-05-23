@@ -24,7 +24,6 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -52,7 +51,7 @@ class ShowAllLocationsCommandTests {
   private final String FILE_PYTHON = "myFile.py";
 
   @BeforeEach
-  public void prepare() throws IOException, ExecutionException, InterruptedException {
+  public void prepare() throws IOException {
     workspaceFolderPath = basedir.resolve("myWorkspaceFolder");
     Files.createDirectories(workspaceFolderPath);
     fileInAWorkspaceFolderPath = workspaceFolderPath.resolve(FILE_PYTHON);

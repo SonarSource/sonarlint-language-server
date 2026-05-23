@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.clientapi;
 
 import java.net.Authenticator;
+import java.net.URI;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -48,7 +49,7 @@ class SystemPropertiesAuthenticatorTest {
   static void initializeTestVariables() throws Exception {
     defaultAuthenticator = Authenticator.getDefault();
     Authenticator.setDefault(new SystemPropertiesAuthenticator());
-    proxiedUrl = new URL("https://somehost.example.net");
+    proxiedUrl = new URI("https://somehost.example.net").toURL();
   }
 
   @AfterAll
