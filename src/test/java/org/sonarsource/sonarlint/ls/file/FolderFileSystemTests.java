@@ -24,6 +24,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeAll;
@@ -101,7 +102,7 @@ class FolderFileSystemTests {
     var files = folderFileSystem.files();
 
     assertThat(files)
-      .extracting(ClientInputFile::getPath, FolderFileSystemTests::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
+      .extracting(f -> Paths.get(f.uri()).toString(), FolderFileSystemTests::getFileContents, ClientInputFile::isTest, ClientInputFile::getCharset, ClientInputFile::getClientObject,
         ClientInputFile::relativePath, ClientInputFile::uri)
       .containsExactly(tuple(pythonFile.toAbsolutePath().toString(), "", false, StandardCharsets.UTF_8, pythonFile.toUri(), "file.py", pythonFile.toUri()));
   }

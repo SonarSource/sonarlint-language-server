@@ -68,16 +68,12 @@ public final class JavaSdkUtil {
         var jarFiles = listFiles(jarDir, p -> Files.isRegularFile(p) && p.getFileName().toString().endsWith(".jar"));
         for (var jarFile: jarFiles) {
           var jarFileName = jarFile.getFileName().toString();
-          if (jarFileName.equals("alt-rt.jar") || jarFileName.equals("alt-string.jar")) {
-            // filter out alternative implementations
-            continue;
+          if (!jarFileName.equals("alt-rt.jar") && !jarFileName.equals("alt-string.jar")) {
+            var realPath = toRealPathOrNull(jarFile);
+            if (realPath != null && duplicatePathFilter.add(realPath)) {
+              rootFiles.add(jarFile);
+            }
           }
-          var realPath = toRealPathOrNull(jarFile);
-          if (realPath == null || !duplicatePathFilter.add(realPath)) {
-            // filter out duplicate (symbolically linked) .jar files commonly found in OS X JDK distributions
-            continue;
-          }
-          rootFiles.add(jarFile);
         }
       }
     }

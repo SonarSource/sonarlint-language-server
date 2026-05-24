@@ -29,7 +29,6 @@ import java.net.ProxySelector;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -264,7 +263,7 @@ class SonarLintVSCodeClientTests {
   void openUrlInBrowserTest() throws MalformedURLException {
     var params = new OpenUrlInBrowserParams("https://www.sonarsource.com");
 
-    underTest.openUrlInBrowser(new URL("https://www.sonarsource.com"));
+    underTest.openUrlInBrowser(URI.create("https://www.sonarsource.com").toURL());
 
     verify(client).browseTo(params.getUrl());
   }
@@ -872,7 +871,7 @@ class SonarLintVSCodeClientTests {
     });
 
     var response = underTest.getProxyPasswordAuthentication("http://foo", 8085, "protocol",
-      "prompt", "scheme", new URL("http://targethost"));
+      "prompt", "scheme", URI.create("http://targethost").toURL());
     assertThat(response.getProxyUser()).isEqualTo("username");
     assertThat(response.getProxyPassword()).isEqualTo("password");
 
@@ -887,7 +886,7 @@ class SonarLintVSCodeClientTests {
     System.setProperty("http.proxyPassword", "myPass");
 
     var passwordAuth = Authenticator.requestPasswordAuthentication("localhost", null, 1234,
-      "http", "", "", new URL("http://localhost:9000"),
+      "http", "", "", URI.create("http://localhost:9000").toURL(),
       Authenticator.RequestorType.PROXY);
 
     assertThat(passwordAuth.getUserName()).isEqualTo("myUser");
