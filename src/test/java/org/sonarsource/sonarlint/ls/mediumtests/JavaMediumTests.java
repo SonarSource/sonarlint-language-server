@@ -51,16 +51,16 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
   private static Path module2Path;
   private static Path analysisDir;
 
-  private static String MODULE_1_ROOT_URI;
-  private static String MODULE_2_ROOT_URI;
+  private static String module1RootUri;
+  private static String module2RootUri;
 
   @BeforeAll
   static void initialize() throws Exception {
     analysisDir = makeStaticTempDir();
     module1Path = makeStaticTempDir();
     module2Path = makeStaticTempDir();
-    MODULE_1_ROOT_URI = module1Path.toUri().toString();
-    MODULE_2_ROOT_URI = module2Path.toUri().toString();
+    module1RootUri = module1Path.toUri().toString();
+    module2RootUri = module2Path.toUri().toString();
 
     initialize(Map.of(
       "telemetryStorage", "not/exists",
@@ -116,7 +116,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("analyzeSimpleJavaFileOnOpen.java", analysisDir);
 
     var javaConfigResponse = new GetJavaConfigResponse();
-    javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
+    javaConfigResponse.setProjectRoot(module1RootUri);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[]{"/does/not/exist"});
@@ -158,7 +158,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("AnalyzeSimpleJavaFileWithFlows.java", analysisDir);
 
     var javaConfigResponse = new GetJavaConfigResponse();
-    javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
+    javaConfigResponse.setProjectRoot(module1RootUri);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[0]);
@@ -198,7 +198,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("analyzeSimpleJavaFileOnOpen.java", analysisDir);
 
     var javaConfigResponse = new GetJavaConfigResponse();
-    javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
+    javaConfigResponse.setProjectRoot(module1RootUri);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[0]);
@@ -229,7 +229,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
     var uri = getUri("analyzeSimpleJavaTestFileOnOpen.java", analysisDir);
 
     var javaConfigResponse = new GetJavaConfigResponse();
-    javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
+    javaConfigResponse.setProjectRoot(module1RootUri);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(true);
     javaConfigResponse.setClasspath(new String[]{Paths.get(this.getClass().getResource("/junit-4.12.jar").toURI()).toAbsolutePath().toString()});
@@ -309,7 +309,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     // Prepare config response
     var javaConfigResponse = new GetJavaConfigResponse();
-    javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
+    javaConfigResponse.setProjectRoot(module1RootUri);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[0]);
@@ -336,7 +336,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     // Prepare config response
     var javaConfigResponse = new GetJavaConfigResponse();
-    javaConfigResponse.setProjectRoot(MODULE_1_ROOT_URI);
+    javaConfigResponse.setProjectRoot(module1RootUri);
     javaConfigResponse.setSourceLevel("1.8");
     javaConfigResponse.setTest(false);
     javaConfigResponse.setClasspath(new String[0]);
@@ -415,14 +415,14 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
     // Prepare config response
     var javaConfigResponse1 = new GetJavaConfigResponse();
-    javaConfigResponse1.setProjectRoot(MODULE_1_ROOT_URI);
+    javaConfigResponse1.setProjectRoot(module1RootUri);
     javaConfigResponse1.setSourceLevel("1.8");
     javaConfigResponse1.setTest(false);
     javaConfigResponse1.setClasspath(new String[0]);
     client.javaConfigs.put(file1module1, javaConfigResponse1);
 
     var javaConfigResponse2 = new GetJavaConfigResponse();
-    javaConfigResponse2.setProjectRoot(MODULE_2_ROOT_URI);
+    javaConfigResponse2.setProjectRoot(module2RootUri);
     javaConfigResponse2.setSourceLevel("1.8");
     javaConfigResponse2.setTest(false);
     javaConfigResponse2.setClasspath(new String[0]);

@@ -47,20 +47,22 @@ public class WorkspaceSettings {
 
   private final String analysisExcludes;
 
-  public WorkspaceSettings(boolean disableTelemetry, Map<String, ServerConnectionSettings> connections,
-    Collection<RuleKey> excludedRules, Collection<RuleKey> includedRules, Map<RuleKey, Map<String, String>> ruleParameters,
-    boolean showVerboseLogs, String pathToNodeExecutable, boolean focusOnNewCode, boolean automaticAnalysis, String analysisExcludes, boolean ideLabsEnabled) {
-    this.disableTelemetry = disableTelemetry;
-    this.connections = connections;
-    this.excludedRules = excludedRules;
-    this.includedRules = includedRules;
-    this.ruleParameters = ruleParameters;
-    this.showVerboseLogs = showVerboseLogs;
-    this.pathToNodeExecutable = pathToNodeExecutable;
-    this.focusOnNewCode = focusOnNewCode;
-    this.automaticAnalysis = automaticAnalysis;
-    this.analysisExcludes = analysisExcludes;
-    this.ideLabsEnabled = ideLabsEnabled;
+  private WorkspaceSettings(Builder builder) {
+    this.disableTelemetry = builder.disableTelemetry;
+    this.connections = builder.connections;
+    this.excludedRules = builder.excludedRules;
+    this.includedRules = builder.includedRules;
+    this.ruleParameters = builder.ruleParameters;
+    this.showVerboseLogs = builder.showVerboseLogs;
+    this.pathToNodeExecutable = builder.pathToNodeExecutable;
+    this.focusOnNewCode = builder.focusOnNewCode;
+    this.automaticAnalysis = builder.automaticAnalysis;
+    this.analysisExcludes = builder.analysisExcludes;
+    this.ideLabsEnabled = builder.ideLabsEnabled;
+  }
+
+  public static Builder builder() {
+    return new Builder();
   }
 
   public boolean isDisableTelemetry() {
@@ -139,6 +141,79 @@ public class WorkspaceSettings {
   @Override
   public String toString() {
     return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
+  }
+
+  public static class Builder {
+    private boolean disableTelemetry;
+    private Map<String, ServerConnectionSettings> connections;
+    private Collection<RuleKey> excludedRules;
+    private Collection<RuleKey> includedRules;
+    private Map<RuleKey, Map<String, String>> ruleParameters;
+    private boolean showVerboseLogs;
+    private String pathToNodeExecutable;
+    private boolean focusOnNewCode;
+    private boolean automaticAnalysis;
+    private boolean ideLabsEnabled;
+    private String analysisExcludes;
+
+    public Builder disableTelemetry(boolean disableTelemetry) {
+      this.disableTelemetry = disableTelemetry;
+      return this;
+    }
+
+    public Builder connections(Map<String, ServerConnectionSettings> connections) {
+      this.connections = connections;
+      return this;
+    }
+
+    public Builder excludedRules(Collection<RuleKey> excludedRules) {
+      this.excludedRules = excludedRules;
+      return this;
+    }
+
+    public Builder includedRules(Collection<RuleKey> includedRules) {
+      this.includedRules = includedRules;
+      return this;
+    }
+
+    public Builder ruleParameters(Map<RuleKey, Map<String, String>> ruleParameters) {
+      this.ruleParameters = ruleParameters;
+      return this;
+    }
+
+    public Builder showVerboseLogs(boolean showVerboseLogs) {
+      this.showVerboseLogs = showVerboseLogs;
+      return this;
+    }
+
+    public Builder pathToNodeExecutable(String pathToNodeExecutable) {
+      this.pathToNodeExecutable = pathToNodeExecutable;
+      return this;
+    }
+
+    public Builder focusOnNewCode(boolean focusOnNewCode) {
+      this.focusOnNewCode = focusOnNewCode;
+      return this;
+    }
+
+    public Builder automaticAnalysis(boolean automaticAnalysis) {
+      this.automaticAnalysis = automaticAnalysis;
+      return this;
+    }
+
+    public Builder ideLabsEnabled(boolean ideLabsEnabled) {
+      this.ideLabsEnabled = ideLabsEnabled;
+      return this;
+    }
+
+    public Builder analysisExcludes(String analysisExcludes) {
+      this.analysisExcludes = analysisExcludes;
+      return this;
+    }
+
+    public WorkspaceSettings build() {
+      return new WorkspaceSettings(this);
+    }
   }
 
 }

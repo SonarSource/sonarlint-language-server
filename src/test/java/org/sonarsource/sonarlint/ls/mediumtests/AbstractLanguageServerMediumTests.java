@@ -777,7 +777,7 @@ public abstract class AbstractLanguageServerMediumTests {
       .didChange(new DidChangeTextDocumentParams(docId, List.of(new TextDocumentContentChangeEvent(content))));
   }
 
-  protected void didChangeNotebook(String uri, String content) {
+  protected void didChangeNotebook(String uri) {
     var docId = new VersionedNotebookDocumentIdentifier(1, uri);
     lsProxy.getNotebookDocumentService()
       .didChange(new DidChangeNotebookDocumentParams(docId, new NotebookDocumentChangeEvent()));

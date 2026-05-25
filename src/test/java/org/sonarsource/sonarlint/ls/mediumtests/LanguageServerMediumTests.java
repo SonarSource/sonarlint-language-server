@@ -585,7 +585,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     notifyConfigurationChangeOnClient();
 
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
-    // assertLogContainsInOrder( "Telemetry disabled");
+    // 
 
     // Enable telemetry
     setDisableTelemetry(client.globalSettings, false);
