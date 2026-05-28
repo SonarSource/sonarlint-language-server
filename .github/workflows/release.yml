@@ -4,8 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       version:
+        type: string
         description: 'Full version including build number, e.g. 1.2.3.456'
         required: true
+      dryRun:
+        type: boolean
+        description: Flag to enable the dry-run execution
+        default: false
+        required: false
 
 jobs:
   release:
@@ -15,6 +21,7 @@ jobs:
     uses: SonarSource/gh-action_release/.github/workflows/main.yaml@95ca260926950eedcc8c69437f9f12b6f0584de4 # 7.0.1
     with:
       version: ${{ inputs.version }}
+      dryRun: ${{ inputs.dryRun }}
       publishToBinaries: false
       mavenCentralSync: true
       slackChannel: C02E6L5C01H # squad-devex-private
