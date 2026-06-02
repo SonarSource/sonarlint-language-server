@@ -82,7 +82,10 @@ public class WorkspaceFolderWrapper {
   public WorkspaceFolderSettings getSettings() {
     try {
       if (initLatch.await(1, TimeUnit.MINUTES)) {
-        return settings;
+        var folderSettings = settings;
+        if (folderSettings != null) {
+          return folderSettings;
+        }
       }
     } catch (InterruptedException e) {
       logOutput.debugWithStackTrace("Interrupted!", e);

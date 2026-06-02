@@ -144,7 +144,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   public WorkspaceSettings getCurrentSettings() {
     try {
       if (initLatch.await(1, TimeUnit.MINUTES)) {
-        return currentSettings;
+        var settings = currentSettings;
+        if (settings != null) {
+          return settings;
+        }
       }
     } catch (InterruptedException e) {
       interrupted(e, logOutput);
@@ -186,7 +189,10 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   public WorkspaceFolderSettings getCurrentDefaultFolderSettings() {
     try {
       if (initLatch.await(1, TimeUnit.MINUTES)) {
-        return currentDefaultSettings;
+        var settings = currentDefaultSettings;
+        if (settings != null) {
+          return settings;
+        }
       }
     } catch (InterruptedException e) {
       interrupted(e, logOutput);
@@ -223,9 +229,11 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         logOutput.errorWithStackTrace("Unable to update configuration.", e);
       } finally {
         client.settingsApplied();
-        // Ensure latch is counted down even in case of exceptions
-        while (initLatch.getCount() > 0) {
-          initLatch.countDown();
+        // Only unblock waiters when settings were actually loaded; otherwise callers should keep waiting or time out
+        if (currentSettings != null) {
+          while (initLatch.getCount() > 0) {
+            initLatch.countDown();
+          }
         }
       }
     });

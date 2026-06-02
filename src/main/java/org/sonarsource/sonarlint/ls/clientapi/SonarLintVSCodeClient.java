@@ -383,7 +383,12 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   public TelemetryClientLiveAttributesResponse getTelemetryLiveAttributes() {
     try {
       var hasJoinedIdeLabs = client.hasJoinedIdeLabs().get();
-      var hasEnabledIdeLabs = settingsManager.getCurrentSettings().isIdeLabsEnabled();
+      var hasEnabledIdeLabs = false;
+      try {
+        hasEnabledIdeLabs = settingsManager.getCurrentSettings().isIdeLabsEnabled();
+      } catch (IllegalStateException e) {
+        logOutput.debug("Workspace settings not available yet for telemetry attributes");
+      }
       return new TelemetryClientLiveAttributesResponse(
         Map.of("joinedIdeLabs", hasJoinedIdeLabs, "enabledIdeLabs", hasJoinedIdeLabs && hasEnabledIdeLabs));
     } catch (InterruptedException e) {

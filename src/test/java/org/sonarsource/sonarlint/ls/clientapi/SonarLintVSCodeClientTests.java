@@ -1202,6 +1202,18 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
+  void shouldReturnTelemetryLiveAttributesWhenSettingsAreNotInitializedYet() {
+    when(client.hasJoinedIdeLabs()).thenReturn(CompletableFuture.completedFuture(true));
+    when(settingsManager.getCurrentSettings()).thenThrow(new IllegalStateException("Unable to get settings in time"));
+
+    var result = underTest.getTelemetryLiveAttributes();
+
+    assertThat(result).isNotNull();
+    assertThat(result.getAdditionalAttributes()).containsEntry("joinedIdeLabs", true);
+    assertThat(result.getAdditionalAttributes()).containsEntry("enabledIdeLabs", false);
+  }
+
+  @Test
   void shouldForwardDidChangePluginStatusesToClient() {
     var configScopeId = "file:///workspace/folder";
     var pluginStatus = new PluginStatusDto(Language.JAVA, "Java", PluginStateDto.ACTIVE, ArtifactSourceDto.EMBEDDED, "1.0.0", null, "2025.1");

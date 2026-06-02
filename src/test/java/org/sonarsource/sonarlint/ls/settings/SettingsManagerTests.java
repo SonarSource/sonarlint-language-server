@@ -154,6 +154,18 @@ class SettingsManagerTests {
   }
 
   @Test
+  void shouldRecoverFromFailedConfiguration() {
+    doReturn(CompletableFuture.failedFuture(new RuntimeException("config unavailable")))
+      .when(underTest).requestSonarLintAndOmnisharpConfigurationAsync(null);
+    underTest.didChangeConfiguration();
+
+    mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
+    underTest.didChangeConfiguration();
+
+    assertThat(underTest.getCurrentSettings()).isNotNull();
+  }
+
+  @Test
   void shouldParseFullWellFormedJsonWorkspaceFolderSettings() {
     mockConfigurationRequest(null, FULL_SAMPLE_CONFIG);
     underTest.didChangeConfiguration();
