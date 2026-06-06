@@ -107,7 +107,7 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
 
     didChangeNotebook(notebookUri.toString(), "newContent");
 
-    awaitUntilAsserted(() -> waitForLogToContain("Illegal state. Notebook \"file:///some/notebook.ipynb\" is reported changed but we missed the open notification"));
+    awaitUntilAsserted(() -> assertLogContains("Illegal state. Notebook \"file:///some/notebook.ipynb\" is reported changed but we missed the open notification"));
   }
 
   @Test

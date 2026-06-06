@@ -169,9 +169,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       package main
       import "fmt"
       func main() {
-      	if condition1 {
-      	} else if condition1 { // Noncompliant
-      	}
+        if condition1 {
+        } else if condition1 { // Noncompliant
+        }
       }
       """);
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
@@ -591,12 +591,13 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     setDisableTelemetry(client.globalSettings, false);
     notifyConfigurationChangeOnClient();
 
-    waitForLogToContain(
-      String.format(
-        "Global settings updated: WorkspaceSettings[analysisExcludes=,automaticAnalysis=true,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false," +
-          "organizationKey=<null>,region=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,ideLabsEnabled=false,includedRules=[]," +
-          "pathToNodeExecutable=<null>,ruleParameters={},showVerboseLogs=true]",
-        CONNECTION_ID, CONNECTION_ID, mockWebServerExtension.url("/")));
+    var expectedLog = String.format(
+      "Global settings updated: WorkspaceSettings[analysisExcludes=,automaticAnalysis=true,connections={%s=ServerConnectionSettings[connectionId=%s,disableNotifications=false," +
+        "organizationKey=<null>,region=<null>,serverUrl=%s]},disableTelemetry=false,excludedRules=[],focusOnNewCode=false,ideLabsEnabled=false,includedRules=[]," +
+        "pathToNodeExecutable=<null>,ruleParameters={},showVerboseLogs=true]",
+      CONNECTION_ID, CONNECTION_ID, mockWebServerExtension.url("/"));
+    waitForLogToContain(expectedLog);
+    assertLogContains(expectedLog);
     // We are using the global system property to disable telemetry in tests, so this assertion do not pass
     // assertLogContainsInOrder( "Telemetry enabled");
   }
@@ -748,10 +749,12 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
     addFolder(folderUri, "Added");
 
-    waitForLogToContain(
+    var expectedLog =
       "Workspace folder 'WorkspaceFolder[name=Added,uri=file:///added_uri]' configuration updated: WorkspaceFolderSettings[analyzerProperties={sonar.cs.file.suffixes=.cs, sonar" +
         ".cs.internal.loadProjectsTimeout=60, sonar.cs.internal.useNet6=true, sonar.cs.internal.loadProjectOnDemand=false},connectionId=<null>,pathToCompileCommands=<null>," +
-        "projectKey=<null>,testFilePattern=another pattern]");
+        "projectKey=<null>,testFilePattern=another pattern]";
+    waitForLogToContain(expectedLog);
+    assertLogContains(expectedLog);
   }
 
   @Test
@@ -993,6 +996,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     lsProxy.openHotspotInBrowser(new SonarLintExtendedLanguageServer.OpenHotspotInBrowserLsParams("id", "/workspace"));
 
     waitForLogToContain("Can't find workspace folder for file /workspace during attempt to open hotspot in browser.");
+    assertLogContains("Can't find workspace folder for file /workspace during attempt to open hotspot in browser.");
   }
 
   @Test

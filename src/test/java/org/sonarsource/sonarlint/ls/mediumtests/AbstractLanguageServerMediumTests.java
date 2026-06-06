@@ -557,6 +557,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void showSonarLintOutput() {
+      // Intentionally empty: not needed in test fake
     }
 
     @Override
