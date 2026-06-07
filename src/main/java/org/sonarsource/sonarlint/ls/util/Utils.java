@@ -90,18 +90,22 @@ public class Utils {
     Thread.currentThread().interrupt();
   }
 
-  public static void shutdownAndAwait(ExecutorService executor, boolean stopActiveTasks) {
-    if (stopActiveTasks) {
-      executor.shutdownNow();
-    } else {
-      executor.shutdown();
-    }
+  public static void shutdownAndAwait(ExecutorService executor) {
+    executor.shutdown();
+    awaitTermination(executor);
+  }
+
+  public static void shutdownNowAndAwait(ExecutorService executor) {
+    executor.shutdownNow();
+    awaitTermination(executor);
+  }
+
+  private static void awaitTermination(ExecutorService executor) {
     try {
       executor.awaitTermination(1, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }
-
   }
 
   public static String pluralize(long nbItems, String itemName) {

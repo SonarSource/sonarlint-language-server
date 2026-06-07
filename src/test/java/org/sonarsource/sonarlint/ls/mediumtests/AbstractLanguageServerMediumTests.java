@@ -561,10 +561,12 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void openJavaHomeSettings() {
+      // No-op in test fake
     }
 
     @Override
     public void openPathToNodeSettings() {
+      // Intentionally empty: no-op stub for testing purposes
     }
 
     @Override

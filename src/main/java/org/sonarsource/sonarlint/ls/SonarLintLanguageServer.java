@@ -44,7 +44,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
-import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.lsp4j.ClientInfo;
 import org.eclipse.lsp4j.CodeAction;
@@ -175,26 +174,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   private final SettingsManager settingsManager;
   private final ProjectBindingManager bindingManager;
   private final ForcedAnalysisCoordinator forcedAnalysisCoordinator;
-  private final DependencyRisksCache dependencyRisksCache;
-  private final OpenFilesCache openFilesCache;
-  private final OpenNotebooksCache openNotebooksCache;
   private final CommandManager commandManager;
   private final ExecutorService lspThreadPool;
   private final HostInfoProvider hostInfoProvider;
   private final WorkspaceFolderBranchManager branchManager;
-  private final JavaConfigCache javaConfigCache;
-  private final IssuesCache issuesCache;
-  private final HotspotsCache securityHotspotsCache;
   private final DiagnosticPublisher diagnosticPublisher;
   private final LanguageClientLogger lsLogOutput;
 
-  private final NotebookDiagnosticPublisher notebookDiagnosticPublisher;
-  private final SonarLintVSCodeClient vsCodeClient;
-
-  /**
-   * Keep track of value 'sonarlint.trace.server' on client side. Not used currently, but keeping it just in case.
-   */
-  private TraceValue traceLevel;
+  private final ServerCaches serverCaches;
 
   private final ModuleEventsProcessor moduleEventsProcessor;
   private final BackendServiceFacade backendServiceFacade;
@@ -219,20 +206,20 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
     this.client = launcher.getRemoteProxy();
     this.lsLogOutput = new LanguageClientLogger(this.client);
-    this.openFilesCache = new OpenFilesCache(lsLogOutput);
+    var openFilesCache = new OpenFilesCache(lsLogOutput);
 
     this.embeddedServerManager = new EmbeddedServerManager(client);
-    this.issuesCache = new IssuesCache();
-    this.securityHotspotsCache = new HotspotsCache();
+    var issuesCache = new IssuesCache();
+    var securityHotspotsCache = new HotspotsCache();
     var taintVulnerabilitiesCache = new TaintVulnerabilitiesCache();
-    this.dependencyRisksCache = new DependencyRisksCache();
-    this.notebookDiagnosticPublisher = new NotebookDiagnosticPublisher(client, issuesCache);
-    this.openNotebooksCache = new OpenNotebooksCache(lsLogOutput, notebookDiagnosticPublisher);
-    this.notebookDiagnosticPublisher.setOpenNotebooksCache(openNotebooksCache);
+    var dependencyRisksCache = new DependencyRisksCache();
+    var notebookDiagnosticPublisher = new NotebookDiagnosticPublisher(client, issuesCache);
+    var openNotebooksCache = new OpenNotebooksCache(lsLogOutput, notebookDiagnosticPublisher);
+    notebookDiagnosticPublisher.setOpenNotebooksCache(openNotebooksCache);
     this.hostInfoProvider = new HostInfoProvider();
     var skippedPluginsNotifier = new SkippedPluginsNotifier(client, lsLogOutput);
     var promotionalNotifications = new PromotionalNotifications(client);
-    vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, lsLogOutput, taintVulnerabilitiesCache, dependencyRisksCache, skippedPluginsNotifier,
+    var vsCodeClient = new SonarLintVSCodeClient(client, hostInfoProvider, lsLogOutput, taintVulnerabilitiesCache, dependencyRisksCache, skippedPluginsNotifier,
       promotionalNotifications, embeddedServerManager);
     this.backendServiceFacade = new BackendServiceFacade(vsCodeClient, lsLogOutput, client, new EnabledLanguages(analyzers, lsLogOutput));
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
@@ -244,7 +231,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     vsCodeClient.setSettingsManager(settingsManager);
     vsCodeClient.setWorkspaceFoldersManager(workspaceFoldersManager);
     var fileTypeClassifier = new FileTypeClassifier(lsLogOutput);
-    javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
+    var javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
     this.settingsManager.addListener(lsLogOutput);
     this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager,
       client, lsLogOutput, backendServiceFacade, openNotebooksCache);
@@ -276,6 +263,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.workspaceFoldersManager.setBindingManager(bindingManager);
     var cleanAsYouCodeManager = new CleanAsYouCodeManager(diagnosticPublisher, openFilesCache, backendServiceFacade);
     this.settingsManager.addListener(cleanAsYouCodeManager);
+    this.serverCaches = new ServerCaches(issuesCache, securityHotspotsCache, openFilesCache,
+      openNotebooksCache, dependencyRisksCache, javaConfigCache, notebookDiagnosticPublisher);
     this.shutdownLatch = new CountDownLatch(1);
     launcher.startListening();
   }
@@ -293,7 +282,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
     return CompletableFutures.computeAsync(cancelToken -> {
       cancelToken.checkCanceled();
-      this.traceLevel = parseTraceLevel(params.getTrace());
       var initializationOptions = parse(params.getInitializationOptions());
       lsLogOutput.initialize(initializationOptions.showVerboseLogs());
 
@@ -426,7 +414,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void exit() {
-    invokeQuietly(() -> Utils.shutdownAndAwait(lspThreadPool, true));
+    invokeQuietly(() -> Utils.shutdownNowAndAwait(lspThreadPool));
     // The Socket will be closed by the client, and so remaining threads will die and the JVM will terminate
   }
 
@@ -448,11 +436,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var uri = create(params.getTextDocument().getUri());
     client.isOpenInEditor(uri.toString()).thenAccept(isOpen -> {
       if (Boolean.TRUE.equals(isOpen)) {
-        if (openNotebooksCache.isNotebook(uri)) {
+        if (serverCaches.openNotebooksCache.isNotebook(uri)) {
           lsLogOutput.debug(String.format("Skipping text document analysis of notebook \"%s\"", uri));
           return;
         }
-        var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
+        var file = serverCaches.openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
         CompletableFutures.computeAsync(cancelChecker -> {
           String configScopeId;
           moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(file);
@@ -474,8 +462,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public void didChange(DidChangeTextDocumentParams params) {
     var uri = create(params.getTextDocument().getUri());
-    openFilesCache.didChange(uri, params.getContentChanges().get(0).getText(), params.getTextDocument().getVersion());
-    Optional<VersionedOpenFile> file = openFilesCache.getFile(uri);
+    serverCaches.openFilesCache.didChange(uri, params.getContentChanges().get(0).getText(), params.getTextDocument().getVersion());
+    Optional<VersionedOpenFile> file = serverCaches.openFilesCache.getFile(uri);
     if (file.isEmpty()) {
       lsLogOutput.warn("Illegal state: trying to update file that was not open");
     } else {
@@ -548,14 +536,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public void setTrace(SetTraceParams params) {
-    this.traceLevel = parseTraceLevel(params.getValue());
-  }
-
-  private static TraceValue parseTraceLevel(@Nullable String trace) {
-    return ofNullable(trace)
-      .map(String::toUpperCase)
-      .map(TraceValue::valueOf)
-      .orElse(TraceValue.OFF);
+    // Trace level is received but not currently used
   }
 
   @Override
@@ -609,12 +590,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       var configScopeId = maybeWorkspaceFolder.get().getUri().toString();
       backendServiceFacade.getBackendService().didCloseFile(configScopeId, uri);
     }
-  }
-
-  private enum TraceValue {
-    OFF,
-    MESSAGES,
-    VERBOSE
   }
 
   @Override

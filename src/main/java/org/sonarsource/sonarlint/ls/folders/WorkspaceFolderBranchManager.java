@@ -55,7 +55,7 @@ public class WorkspaceFolderBranchManager implements WorkspaceFolderLifecycleLis
   }
 
   public void shutdown() {
-    Utils.shutdownAndAwait(executorService, true);
+    Utils.shutdownNowAndAwait(executorService);
   }
 
   public String matchSonarProjectBranch(String folderUri, String mainBranchName, Set<String> allBranchesNames, SonarLintCancelChecker cancelChecker) {

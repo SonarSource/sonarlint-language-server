@@ -188,7 +188,7 @@ public class WorkspaceFoldersManager {
   }
 
   public void shutdown() {
-    Utils.shutdownAndAwait(executor, true);
+    Utils.shutdownNowAndAwait(executor);
   }
 
   public void updateAnalysisReadiness(Set<String> configurationScopeIds, boolean areReadyForAnalysis) {
