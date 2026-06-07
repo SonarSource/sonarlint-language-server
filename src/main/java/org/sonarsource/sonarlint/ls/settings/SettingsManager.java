@@ -663,7 +663,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
   }
 
   public void shutdown() {
-    Utils.shutdownAndAwait(executor, true);
+    Utils.shutdownNowAndAwait(executor);
   }
 
   public static String connectionIdOrDefault(@Nullable String connectionId) {

@@ -150,7 +150,7 @@ public class ModuleEventsProcessor {
   }
 
   public void shutdown() {
-    Utils.shutdownAndAwait(asyncExecutor, true);
+    Utils.shutdownNowAndAwait(asyncExecutor);
   }
 
 }
