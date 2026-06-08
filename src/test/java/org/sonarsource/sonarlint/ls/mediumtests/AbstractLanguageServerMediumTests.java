@@ -569,7 +569,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void doNotShowMissingRequirementsMessageAgain() {
-
+      // Intentionally empty: no-op stub for tests
     }
 
     @Override
@@ -600,6 +600,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void showHotspot(ShowHotspotParams h) {
+      // Intentionally empty: not needed for tests using this fake client
     }
 
     @Override
@@ -609,6 +610,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void showIssueOrHotspot(ShowAllLocationsCommand.Param params) {
+      // No-op in fake client used for tests
     }
 
     @Override
@@ -618,11 +620,12 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void maybeShowWiderLanguageSupportNotification(List<String> languageLabel) {
-
+      // Intentionally empty: not needed for tests using this fake client
     }
 
     @Override
     public void showFirstSecretDetectionNotification() {
+      // No-op in fake client used for testing
     }
 
     @Override
