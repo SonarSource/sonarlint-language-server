@@ -138,7 +138,7 @@ public abstract class AbstractLanguageServerMediumTests {
   private static ServerSocket serverSocket;
   protected static SonarLintExtendedLanguageServer lsProxy;
   protected static FakeLanguageClient client;
-  private static Map<String, List<SonarLintExtendedLanguageClient.FoundFileDto>> foundFileDtosByFolderUri = new HashMap<>();
+  private static final Map<String, List<SonarLintExtendedLanguageClient.FoundFileDto>> foundFileDtosByFolderUri = new HashMap<>();
 
   @BeforeAll
   static void startServer() throws Exception {
@@ -409,6 +409,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void telemetryEvent(Object object) {
+      // NOP
     }
 
     List<Diagnostic> getDiagnostics(String uri) {
@@ -441,10 +442,6 @@ public abstract class AbstractLanguageServerMediumTests {
     @Override
     public void showMessage(MessageParams messageParams) {
       shownMessages.add(messageParams);
-    }
-
-    public Set<MessageParams> getShownMessages() {
-      return shownMessages;
     }
 
     @Override
@@ -526,6 +523,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void showSoonUnsupportedVersionMessage(ShowSoonUnsupportedVersionMessageParams messageParams) {
+      // NOP
     }
 
     @Override
@@ -557,19 +555,22 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void showSonarLintOutput() {
+      // NOP
     }
 
     @Override
     public void openJavaHomeSettings() {
+      // NOP
     }
 
     @Override
     public void openPathToNodeSettings() {
+      // NOP
     }
 
     @Override
     public void doNotShowMissingRequirementsMessageAgain() {
-
+      // NOP
     }
 
     @Override
@@ -600,6 +601,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void showHotspot(ShowHotspotParams h) {
+      // NOP
     }
 
     @Override
@@ -609,6 +611,7 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void showIssueOrHotspot(ShowAllLocationsCommand.Param params) {
+      // NOP
     }
 
     @Override
@@ -618,11 +621,12 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void maybeShowWiderLanguageSupportNotification(List<String> languageLabel) {
-
+      // NOP
     }
 
     @Override
     public void showFirstSecretDetectionNotification() {
+      // NOP
     }
 
     @Override
@@ -637,11 +641,12 @@ public abstract class AbstractLanguageServerMediumTests {
 
     @Override
     public void openConnectionSettings(boolean isSonarCloud) {
+      // NOP
     }
 
     @Override
     public void removeBindingsForDeletedConnections(List<String> connectionIds) {
-
+      // NOP
     }
 
     @Override
@@ -734,14 +739,6 @@ public abstract class AbstractLanguageServerMediumTests {
     }
   }
 
-  protected static void setAnalyzerProperties(Map<String, Object> config, Map<String, String> analyzerProperties) {
-    if (analyzerProperties.isEmpty()) {
-      config.put("analyzerProperties", analyzerProperties);
-    } else {
-      config.remove("analyzerProperties");
-    }
-  }
-
   protected static void addSonarQubeConnection(Map<String, Object> config, String connectionId, String url, String token) {
     var connectedMode = (Map<String, Object>) config.computeIfAbsent("connectedMode", k -> new HashMap<String, Object>());
     var connections = (Map<String, Object>) connectedMode.computeIfAbsent("connections", k -> new HashMap<String, Object>());
@@ -777,7 +774,7 @@ public abstract class AbstractLanguageServerMediumTests {
       .didChange(new DidChangeTextDocumentParams(docId, List.of(new TextDocumentContentChangeEvent(content))));
   }
 
-  protected void didChangeNotebook(String uri, String content) {
+  protected void didChangeNotebook(String uri) {
     var docId = new VersionedNotebookDocumentIdentifier(1, uri);
     lsProxy.getNotebookDocumentService()
       .didChange(new DidChangeNotebookDocumentParams(docId, new NotebookDocumentChangeEvent()));
@@ -877,14 +874,6 @@ public abstract class AbstractLanguageServerMediumTests {
     public NewCodeDefinitionDto(String newCodeDefinitionOrMessage, boolean isSupported) {
       this.newCodeDefinitionOrMessage = newCodeDefinitionOrMessage;
       this.isSupported = isSupported;
-    }
-
-    public String getNewCodeDefinitionOrMessage() {
-      return newCodeDefinitionOrMessage;
-    }
-
-    public boolean isSupported() {
-      return isSupported;
     }
   }
 }

@@ -105,7 +105,7 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
     var logger = mock(LanguageClientLogger.class);
     doCallRealMethod().when(logger).warn(any());
 
-    didChangeNotebook(notebookUri.toString(), "newContent");
+    didChangeNotebook(notebookUri.toString());
 
     awaitUntilAsserted(() -> waitForLogToContain("Illegal state. Notebook \"file:///some/notebook.ipynb\" is reported changed but we missed the open notification"));
   }
