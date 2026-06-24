@@ -44,11 +44,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import nl.altindag.ssl.util.CertificateUtils;
@@ -379,16 +381,29 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     }
   }
 
+  // Cap the wait for the LSP client to answer hasJoinedIdeLabs. Without this, an unresponsive client
+  // leaks an RPC executor thread per scheduled telemetry call (sonarlint-core invokes this on a 6h
+  // cadence), saturating the cached pool over multi-day sessions.
+  static final long IDE_LABS_QUERY_TIMEOUT_MS = 2000;
+
   @Override
   public TelemetryClientLiveAttributesResponse getTelemetryLiveAttributes() {
+    CompletableFuture<Boolean> pending = null;
     try {
-      var hasJoinedIdeLabs = client.hasJoinedIdeLabs().get();
+      pending = client.hasJoinedIdeLabs();
+      var hasJoinedIdeLabs = pending.get(IDE_LABS_QUERY_TIMEOUT_MS, TimeUnit.MILLISECONDS);
       var hasEnabledIdeLabs = settingsManager.getCurrentSettings().isIdeLabsEnabled();
       return new TelemetryClientLiveAttributesResponse(
         Map.of("joinedIdeLabs", hasJoinedIdeLabs, "enabledIdeLabs", hasJoinedIdeLabs && hasEnabledIdeLabs));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logOutput.errorWithStackTrace("Cannot determine if user has Joined IDE Labs or not", e);
+      return new TelemetryClientLiveAttributesResponse(Map.of());
+    } catch (TimeoutException e) {
+      if (pending != null) {
+        pending.cancel(true);
+      }
+      logOutput.warn("Timed out waiting for hasJoinedIdeLabs from the LSP client; skipping IDE Labs telemetry attributes");
       return new TelemetryClientLiveAttributesResponse(Map.of());
     } catch (ExecutionException e) {
       logOutput.errorWithStackTrace("Cannot determine if user has Joined IDE Labs or not", e);

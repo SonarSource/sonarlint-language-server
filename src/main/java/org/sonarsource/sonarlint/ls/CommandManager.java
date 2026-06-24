@@ -58,6 +58,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcErrorCode;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.EffectiveIssueDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.EffectiveRuleDetailsDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.rules.GetStandaloneRuleDescriptionResponse;
@@ -82,7 +83,6 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ShowRuleDesc
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.DelegatingFinding;
-import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.domain.LSLanguage;
@@ -166,14 +166,45 @@ public class CommandManager {
   }
 
   public List<Either<Command, CodeAction>> computeCodeActions(CodeActionParams params, CancelChecker cancelToken) {
+    var sonarDiagnostics = params.getContext().getDiagnostics().stream()
+      .filter(d -> SONARLINT_SOURCE.equals(d.getSource()))
+      .toList();
+    // Fan out per-diagnostic permission checks so their HTTP round-trips run concurrently
+    // instead of serially blocking the LSP code action handler.
+    var permissionChecks = launchPermissionChecks(sonarDiagnostics, params);
+
     var codeActions = new ArrayList<Either<Command, CodeAction>>();
-    for (var diagnostic : params.getContext().getDiagnostics()) {
+    for (var diagnostic : sonarDiagnostics) {
       cancelToken.checkCanceled();
-      if (SONARLINT_SOURCE.equals(diagnostic.getSource())) {
-        computeCodeActionsForSonarLintIssues(diagnostic, codeActions, params, cancelToken);
-      }
+      computeCodeActionsForSonarLintIssues(diagnostic, codeActions, params, cancelToken, permissionChecks);
     }
     return codeActions;
+  }
+
+  private Map<Diagnostic, CompletableFuture<CheckStatusChangePermittedResponse>> launchPermissionChecks(
+    List<Diagnostic> sonarDiagnostics, CodeActionParams params) {
+    var uri = create(params.getTextDocument().getUri());
+    var binding = bindingManager.getBinding(uri);
+    if (binding.isEmpty() || sonarDiagnostics.isEmpty()) {
+      return Map.of();
+    }
+    var connectionId = binding.get().connectionId();
+    var isNotebookCellUri = openNotebooksCache.isKnownCellUri(uri);
+    var lookupUri = isNotebookCellUri ? openNotebooksCache.getNotebookUriFromCellUri(uri) : uri;
+
+    var futures = new HashMap<Diagnostic, CompletableFuture<CheckStatusChangePermittedResponse>>();
+    for (var diagnostic : sonarDiagnostics) {
+      var finding = issuesCache.getIssueForDiagnostic(lookupUri, diagnostic)
+        .map(DelegatingFinding.class::cast)
+        .or(() -> securityHotspotsCache.getHotspotForDiagnostic(uri, diagnostic).map(DelegatingFinding.class::cast));
+      if (finding.isPresent() && finding.get().getIssueId() != null) {
+        var serverIssueKey = finding.get().getServerIssueKey();
+        var key = serverIssueKey == null ? finding.get().getIssueId().toString() : serverIssueKey;
+        futures.put(diagnostic, backendServiceFacade.getBackendService().checkChangeIssueStatusPermitted(
+          new CheckStatusChangePermittedParams(connectionId, key)));
+      }
+    }
+    return futures;
   }
 
   private void createFixWithAiCodeFixCodeAction(UUID issueId, List<Either<Command, CodeAction>> codeActions, Diagnostic diagnostic, URI fileUri, String message) {
@@ -191,7 +222,8 @@ public class CommandManager {
   }
 
   private void computeCodeActionsForSonarLintIssues(Diagnostic diagnostic, List<Either<Command, CodeAction>> codeActions,
-    CodeActionParams params, CancelChecker cancelToken) {
+    CodeActionParams params, CancelChecker cancelToken,
+    Map<Diagnostic, CompletableFuture<CheckStatusChangePermittedResponse>> permissionChecks) {
     var uri = create(params.getTextDocument().getUri());
     var binding = bindingManager.getBinding(uri);
 
@@ -222,8 +254,7 @@ public class CommandManager {
       });
 
       if (hasBinding) {
-        var projectBindingWrapper = binding.get();
-        var resolveIssueCodeAction = createResolveIssueCodeAction(diagnostic, uri, projectBindingWrapper, ruleKey, finding);
+        var resolveIssueCodeAction = createResolveIssueCodeAction(diagnostic, uri, ruleKey, finding, permissionChecks.get(diagnostic));
         resolveIssueCodeAction.ifPresent(ca -> codeActions.add(Either.forRight(ca)));
       }
 
@@ -241,19 +272,17 @@ public class CommandManager {
     }
   }
 
-  private Optional<CodeAction> createResolveIssueCodeAction(Diagnostic diagnostic, URI uri, ProjectBinding binding, String ruleKey,
-    DelegatingFinding raisedFindingDto) {
-    if (raisedFindingDto.getIssueId() != null) {
-      var issueId = raisedFindingDto.getIssueId();
-      var serverIssueKey = raisedFindingDto.getServerIssueKey();
-      var key = serverIssueKey == null ? issueId.toString() : serverIssueKey;
-      var changeStatusPermittedResponse =
-        Utils.safelyGetCompletableFuture(backendServiceFacade.getBackendService().checkChangeIssueStatusPermitted(
-          new CheckStatusChangePermittedParams(binding.connectionId(), key)
-        ), logOutput);
-      if (changeStatusPermittedResponse.isPresent() && changeStatusPermittedResponse.get().isPermitted()) {
-        return Optional.of(createResolveIssueCodeAction(diagnostic, ruleKey, key, uri, false));
-      }
+  private Optional<CodeAction> createResolveIssueCodeAction(Diagnostic diagnostic, URI uri, String ruleKey,
+    DelegatingFinding raisedFindingDto, @Nullable CompletableFuture<CheckStatusChangePermittedResponse> permissionCheck) {
+    if (raisedFindingDto.getIssueId() == null || permissionCheck == null) {
+      return Optional.empty();
+    }
+    var issueId = raisedFindingDto.getIssueId();
+    var serverIssueKey = raisedFindingDto.getServerIssueKey();
+    var key = serverIssueKey == null ? issueId.toString() : serverIssueKey;
+    var changeStatusPermittedResponse = Utils.safelyGetCompletableFuture(permissionCheck, logOutput);
+    if (changeStatusPermittedResponse.isPresent() && changeStatusPermittedResponse.get().isPermitted()) {
+      return Optional.of(createResolveIssueCodeAction(diagnostic, ruleKey, key, uri, false));
     }
     return Optional.empty();
   }
