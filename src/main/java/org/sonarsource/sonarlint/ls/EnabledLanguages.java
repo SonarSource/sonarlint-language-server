@@ -67,8 +67,10 @@ public class EnabledLanguages {
 
   private static final Set<Language> CONNECTED_ADDITIONAL_LANGUAGES = EnumSet.of(
     Language.APEX,
+    Language.AZUREPIPELINES,
     Language.COBOL,
     Language.PLSQL,
+    Language.SHELL,
     Language.TSQL,
     Language.ANSIBLE,
     Language.TEXT,

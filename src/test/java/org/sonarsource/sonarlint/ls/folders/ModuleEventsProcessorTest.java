@@ -141,6 +141,8 @@ class ModuleEventsProcessorTest {
       Arguments.of("typescript", Language.TS),
       Arguments.of("typescriptreact", Language.TS),
 
+      Arguments.of("azure-pipelines", Language.AZUREPIPELINES),
+
       Arguments.of("html", Language.HTML),
 
       Arguments.of("oraclesql", Language.PLSQL),
@@ -153,6 +155,7 @@ class ModuleEventsProcessorTest {
       Arguments.of("java", Language.JAVA),
       Arguments.of("c", Language.C),
       Arguments.of("cpp", Language.CPP),
+      Arguments.of("shellscript", Language.SHELL),
 
       Arguments.of("yaml", Language.YAML),
 

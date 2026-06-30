@@ -139,7 +139,10 @@ public class ModuleEventsProcessor {
       case "python" -> Language.PYTHON;
       case "typescript", "typescriptreact" -> Language.TS;
       case "html" -> Language.HTML;
+      // See https://github.com/microsoft/azure-pipelines-vscode/blob/master/package.json
+      case "azure-pipelines" -> Language.AZUREPIPELINES;
       case "oraclesql" -> Language.PLSQL;
+      case "shellscript" -> Language.SHELL;
       case "apex", "apex-anon" ->
         // See https://github.com/forcedotcom/salesforcedx-vscode/blob/5e4b7715d1cb3d1ee2780780ed63f70f58e93b20/packages/salesforcedx-vscode-apex/package.json#L273
         Language.APEX;
