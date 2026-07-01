@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
         with:
-          version: 2026.4.11
+          version: 2026.6.14
       - uses: SonarSource/ci-github-actions/build-maven@657e44543f55422ffd28b91d62fe5386f07d6030 # 1.6.0
         with:
           maven-args: -Dmaven.test.skip=true -Dsonar.skip=true
@@ -46,7 +46,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
         with:
-          version: 2026.4.11
+          version: 2026.6.14
       - uses: SonarSource/ci-github-actions/build-maven@657e44543f55422ffd28b91d62fe5386f07d6030 # 1.6.0
         with:
           maven-args: -Dmaven.install.skip=true -Dmaven.deploy.skip=true -P-deploy-sonarsource,-release,-sign
@@ -70,7 +70,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
         with:
-          version: 2026.4.11
+          version: 2026.6.14
       - uses: SonarSource/ci-github-actions/build-maven@657e44543f55422ffd28b91d62fe5386f07d6030 # 1.6.0
         with:
           artifactory-reader-role: private-reader
