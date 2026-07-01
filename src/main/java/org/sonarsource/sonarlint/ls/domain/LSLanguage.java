@@ -28,6 +28,7 @@ import java.util.stream.Stream;
 public enum LSLanguage {
   ABAP("ABAP", "abap"),
   APEX("Apex", "apex"),
+  AZUREPIPELINES("Azure Pipelines", "azurepipelines"),
   AZURERESOURCEMANAGER("AzureResourceManager", "azureresourcemanager"),
   C("C", "c"),
   CLOUDFORMATION("CloudFormation", "cloudformation"),
@@ -55,6 +56,7 @@ public enum LSLanguage {
   RUBY("Ruby", "ruby"),
   SCALA("Scala", "scala"),
   SECRETS("Secrets", "secrets"),
+  SHELL("Shell", "shell"),
   TEXT("Text", "text"),
   SWIFT("Swift", "swift"),
   TERRAFORM("Terraform", "terraform"),

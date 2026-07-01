@@ -40,6 +40,7 @@ class LSLanguageTests {
     return Stream.of(
       Arguments.of(Language.ABAP, "ABAP", "abap"),
       Arguments.of(Language.APEX, "Apex", "apex"),
+      Arguments.of(Language.AZUREPIPELINES, "Azure Pipelines", "azurepipelines"),
       Arguments.of(Language.AZURERESOURCEMANAGER, "AzureResourceManager", "azureresourcemanager"),
       Arguments.of(Language.C, "C", "c"),
       Arguments.of(Language.CLOUDFORMATION, "CloudFormation", "cloudformation"),
@@ -67,6 +68,7 @@ class LSLanguageTests {
       Arguments.of(Language.RUBY, "Ruby", "ruby"),
       Arguments.of(Language.SCALA, "Scala", "scala"),
       Arguments.of(Language.SECRETS, "Secrets", "secrets"),
+      Arguments.of(Language.SHELL, "Shell", "shell"),
       Arguments.of(Language.TEXT, "Text", "text"),
       Arguments.of(Language.SWIFT, "Swift", "swift"),
       Arguments.of(Language.TERRAFORM, "Terraform", "terraform"),
