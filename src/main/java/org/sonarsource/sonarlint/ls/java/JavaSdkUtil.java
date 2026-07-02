@@ -64,21 +64,22 @@ public final class JavaSdkUtil {
 
     var duplicatePathFilter = new HashSet<Path>();
     for (var jarDir : jarDirs) {
-      if (Files.isDirectory(jarDir)) {
-        var jarFiles = listFiles(jarDir, p -> Files.isRegularFile(p) && p.getFileName().toString().endsWith(".jar"));
-        for (var jarFile: jarFiles) {
-          var jarFileName = jarFile.getFileName().toString();
-          if (jarFileName.equals("alt-rt.jar") || jarFileName.equals("alt-string.jar")) {
-            // filter out alternative implementations
-            continue;
-          }
-          var realPath = toRealPathOrNull(jarFile);
-          if (realPath == null || !duplicatePathFilter.add(realPath)) {
-            // filter out duplicate (symbolically linked) .jar files commonly found in OS X JDK distributions
-            continue;
-          }
-          rootFiles.add(jarFile);
+      if (!Files.isDirectory(jarDir)) {
+        continue;
+      }
+      var jarFiles = listFiles(jarDir, p -> Files.isRegularFile(p) && p.getFileName().toString().endsWith(".jar"));
+      for (var jarFile : jarFiles) {
+        var jarFileName = jarFile.getFileName().toString();
+        if (jarFileName.equals("alt-rt.jar") || jarFileName.equals("alt-string.jar")) {
+          // filter out alternative implementations
+          continue;
         }
+        var realPath = toRealPathOrNull(jarFile);
+        if (realPath == null || !duplicatePathFilter.add(realPath)) {
+          // filter out duplicate (symbolically linked) .jar files commonly found in OS X JDK distributions
+          continue;
+        }
+        rootFiles.add(jarFile);
       }
     }
 
