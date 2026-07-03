@@ -78,17 +78,17 @@ public class SonarLintLogTester implements BeforeTestExecutionCallback, AfterTes
     var client = new LanguageClient() {
       @Override
       public void telemetryEvent(Object object) {
-
+        // not used in tests
       }
 
       @Override
       public void publishDiagnostics(PublishDiagnosticsParams diagnostics) {
-
+        // Not needed for tests
       }
 
       @Override
       public void showMessage(MessageParams messageParams) {
-
+        // Not used in tests
       }
 
       @Override
@@ -110,7 +110,7 @@ public class SonarLintLogTester implements BeforeTestExecutionCallback, AfterTes
 
   @Override
   public void beforeTestExecution(ExtensionContext context) throws Exception {
-
+    // nothing to do before test execution, logs are cleared after each test in afterTestExecution
   }
 
   @Override
