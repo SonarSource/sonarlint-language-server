@@ -146,9 +146,10 @@ class NotebookUtilsTests {
     var textChange = newChange(1, 0, 2, 8, "");
 
     var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange));
-    var expectedNewContent = "print(\"hello\")\n" +
-      "\n" +
-      "b = False";
+    var expectedNewContent = """
+      print("hello")
+
+      b = False""";
 
     assertThat(changedContent).isEqualTo(expectedNewContent);
   }
@@ -158,10 +159,11 @@ class NotebookUtilsTests {
     var textChange = newChange(1, 0, 2, 8, "\n");
 
     var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange));
-    var expectedNewContent = "print(\"hello\")\n" +
-      "\n" +
-      "\n" +
-      "b = False";
+    var expectedNewContent = """
+      print("hello")
+
+
+      b = False""";
 
     assertThat(changedContent).isEqualTo(expectedNewContent);
   }
@@ -171,21 +173,23 @@ class NotebookUtilsTests {
     var textChange = newChange(3, 9, 3, 9, "\n");
 
     String changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange));
-    String expectedNewContent = "print(\"hello\")\n" +
-      "\n" +
-      "a = True\n" +
-      "b = False" +
-      "\n";
+    String expectedNewContent = """
+      print("hello")
+
+      a = True
+      b = False
+      """;
     assertThat(changedContent).isEqualTo(expectedNewContent);
     originalCell.setText(changedContent);
 
     textChange = newChange(3, 9, 4, 0, "");
 
     changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange));
-    expectedNewContent = "print(\"hello\")\n" +
-      "\n" +
-      "a = True\n" +
-      "b = False";
+    expectedNewContent = """
+      print("hello")
+
+      a = True
+      b = False""";
     assertThat(changedContent).isEqualTo(expectedNewContent);
   }
 
@@ -194,10 +198,11 @@ class NotebookUtilsTests {
     var textChange = newChange(0, 0, 0, 14, "");
 
     var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange));
-    var expectedNewContent = "\n" +
-      "\n" +
-      "a = True\n" +
-      "b = False";
+    var expectedNewContent = """
+
+      
+      a = True
+      b = False""";
 
     assertThat(changedContent).isEqualTo(expectedNewContent);
   }
