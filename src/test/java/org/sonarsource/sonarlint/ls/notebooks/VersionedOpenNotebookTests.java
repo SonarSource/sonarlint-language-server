@@ -94,9 +94,10 @@ public class VersionedOpenNotebookTests {
 
     assertThat(versionedOpenFile.getVersion()).isEqualTo(underTest.getNotebookVersion());
     assertThat(versionedOpenFile.getUri()).isEqualTo(underTest.getUri());
-    assertThat(versionedOpenFile.getContent()).isEqualTo("" +
-      "cell1 line1\n" +
-      "cell1 line2\n");
+    assertThat(versionedOpenFile.getContent()).isEqualTo("""
+      cell1 line1
+      cell1 line2
+      """);
     assertThat(versionedOpenFile.getLanguageId()).isEqualTo("ipynb");
   }
 
