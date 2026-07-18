@@ -77,7 +77,7 @@ class LanguageClientLoggerTests {
 
   @Test
   void enable_analyzer_debug_logs() {
-    underTest.onChange(null, new WorkspaceSettings(false, null, null, null, null, true, null, false, true, "", false));
+    underTest.initialize(true);
 
     underTest.error("error");
     underTest.warn("warn");
