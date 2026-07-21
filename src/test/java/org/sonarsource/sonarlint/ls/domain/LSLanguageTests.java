@@ -66,6 +66,7 @@ class LSLanguageTests {
       Arguments.of(Language.PYTHON, "Python", "py"),
       Arguments.of(Language.RPG, "RPG", "rpg"),
       Arguments.of(Language.RUBY, "Ruby", "ruby"),
+      Arguments.of(Language.RUST, "Rust", "rust"),
       Arguments.of(Language.SCALA, "Scala", "scala"),
       Arguments.of(Language.SECRETS, "Secrets", "secrets"),
       Arguments.of(Language.SHELL, "Shell", "shell"),

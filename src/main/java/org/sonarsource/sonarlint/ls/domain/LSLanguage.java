@@ -54,6 +54,7 @@ public enum LSLanguage {
   PYTHON("Python", "py"),
   RPG("RPG", "rpg"),
   RUBY("Ruby", "ruby"),
+  RUST("Rust", "rust"),
   SCALA("Scala", "scala"),
   SECRETS("Secrets", "secrets"),
   SHELL("Shell", "shell"),
