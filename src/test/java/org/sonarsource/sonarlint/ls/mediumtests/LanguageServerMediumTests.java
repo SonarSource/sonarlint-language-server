@@ -169,9 +169,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       package main
       import "fmt"
       func main() {
-      	if condition1 {
-      	} else if condition1 { // Noncompliant
-      	}
+        if condition1 {
+        } else if condition1 { // Noncompliant
+        }
       }
       """);
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
@@ -757,7 +757,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void test_analysis_logs_disabled() throws Exception {
     client.folderSettings.computeIfAbsent(analysisDir.toUri().toString(), f -> new HashMap<>());
-    Thread.sleep(1000);
+    notifyConfigurationChangeOnClient();
     client.logs.clear();
 
     var uri = getUri("testAnalysisLogsDisabled.py", analysisDir);
@@ -770,7 +770,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void test_debug_logs_enabled() throws Exception {
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
-    Thread.sleep(1000);
     client.logs.clear();
 
     var uri = getUri("testAnalysisLogsDebugEnabled.py", analysisDir);
@@ -782,7 +781,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void test_analysis_logs_enabled() throws Exception {
     notifyConfigurationChangeOnClient();
-    Thread.sleep(1000);
     client.logs.clear();
 
     var uri = getUri("testAnalysisLogsEnabled.py", analysisDir);
@@ -802,7 +800,6 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void test_analysis_with_debug_logs_enabled() throws Exception {
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
-    Thread.sleep(1000);
     client.logs.clear();
 
     var uri = getUri("testAnalysisLogsWithDebugEnabled.py", analysisDir);
@@ -841,12 +838,10 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       .extracting(withoutTimestamp())
       .contains("[Error] Unable to parse file: [uri=" + uri + "]"));
 
-    Thread.sleep(1000);
-
-    assertThat(client.getDiagnostics(uri))
+    awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
       .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
       .containsExactly(
-        tuple(1, 2, 1, 7, "python:PrintStatementUsage", "sonarqube", "Replace print statement by built-in function.", DiagnosticSeverity.Warning));
+        tuple(1, 2, 1, 7, "python:PrintStatementUsage", "sonarqube", "Replace print statement by built-in function.", DiagnosticSeverity.Warning)));
   }
 
   @Test
