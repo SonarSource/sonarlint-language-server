@@ -104,10 +104,12 @@ class FileUtilsTests {
 
   @Test
   void shouldHandleOutOfBoundsTextRange() {
-    var content = "package devoxx.vulnerability;\n" +
-      "\n" +
-      "// TODO implement the TODO bellow\n" +
-      "// TODO implement this class";
+    var content = """
+      package devoxx.vulnerability;
+      
+      // TODO implement the TODO bellow
+      // TODO implement this class
+      """;
     var textRangeContent = getTextRangeContentOfFile(content.lines().toList(), new TextRangeDto(3, 0, 2, 666));
     var multiLineTextRangeContent = getTextRangeContentOfFile(content.lines().toList(), new TextRangeDto(3, 0, 4, 666));
 

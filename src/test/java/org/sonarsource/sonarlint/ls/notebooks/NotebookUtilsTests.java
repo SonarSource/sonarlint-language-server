@@ -105,10 +105,11 @@ class NotebookUtilsTests {
     var secondChange = newChange(2, 0, 2, 1, "c");
 
     var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(firstChange, secondChange));
-    var expectedNewContent = "print(\"hello\")\n" +
-      "\n" +
-      "c = 0\n" +
-      "b = False";
+    var expectedNewContent = """
+      print("hello")
+      
+      c = 0
+      b = False""";
 
     assertThat(changedContent).isEqualTo(expectedNewContent);
   }
@@ -120,10 +121,11 @@ class NotebookUtilsTests {
     var textChange3 = newChange(0, 7, 0, 9, "hello");
 
     var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange1, textChange2, textChange3));
-    var expectedNewContent = "dat(\"hellollo\")\n" +
-      "\n" +
-      "a = True\n" +
-      "b = False";
+    var expectedNewContent = """
+      dat("hellollo")
+      
+      a = True
+      b = False""";
 
     assertThat(changedContent).isEqualTo(expectedNewContent);
   }
@@ -133,10 +135,11 @@ class NotebookUtilsTests {
     var textChange = newChange(3, 1 ,3, 1, "oo");
 
     var changedContent = NotebookUtils.applyChangeToCellContent(originalCell, List.of(textChange));
-    var expectedNewContent = "print(\"hello\")\n" +
-      "\n" +
-      "a = True\n" +
-      "boo = False";
+    var expectedNewContent = """
+      print("hello")
+      
+      a = True
+      boo = False""";
 
     assertThat(changedContent).isEqualTo(expectedNewContent);
   }
