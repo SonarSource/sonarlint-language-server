@@ -19,15 +19,35 @@
  */
 package org.sonarsource.sonarlint.ls.domain;
 
+import java.util.Arrays;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThatCode;
 
 class LSLanguageTests {
+
+  /**
+   * {@link LSLanguage} mirrors {@link Language} by name: every mapping site calls
+   * {@code LSLanguage.valueOf(language.name())}, so a language added to the backend without a
+   * counterpart here throws IllegalArgumentException at runtime.
+   */
+  @Test
+  void shouldMirrorEveryBackendLanguage() {
+    assertThatCode(() -> Arrays.stream(Language.values()).forEach(language -> LSLanguage.valueOf(language.name())))
+      .doesNotThrowAnyException();
+  }
+
+  @Test
+  void shouldNotDeclareUnknownLanguages() {
+    assertThatCode(() -> Arrays.stream(LSLanguage.values()).forEach(lsLanguage -> Language.valueOf(lsLanguage.name())))
+      .doesNotThrowAnyException();
+  }
 
   @ParameterizedTest
   @MethodSource("shouldHaveMappingForLabelAndKey")
@@ -39,6 +59,7 @@ class LSLanguageTests {
   private static Stream<Arguments> shouldHaveMappingForLabelAndKey() {
     return Stream.of(
       Arguments.of(Language.ABAP, "ABAP", "abap"),
+      Arguments.of(Language.ANSIBLE, "Ansible", "ansible"),
       Arguments.of(Language.APEX, "Apex", "apex"),
       Arguments.of(Language.AZUREPIPELINES, "Azure Pipelines", "azurepipelines"),
       Arguments.of(Language.AZURERESOURCEMANAGER, "AzureResourceManager", "azureresourcemanager"),
@@ -54,6 +75,7 @@ class LSLanguageTests {
       Arguments.of(Language.HTML, "HTML", "web"),
       Arguments.of(Language.IPYTHON, "IPython Notebooks", "ipynb"),
       Arguments.of(Language.JAVA, "Java", "java"),
+      Arguments.of(Language.JCL, "JCL", "jcl"),
       Arguments.of(Language.JS, "JavaScript", "js"),
       Arguments.of(Language.JSON, "JSON", "json"),
       Arguments.of(Language.JSP, "JSP", "jsp"),
@@ -66,6 +88,7 @@ class LSLanguageTests {
       Arguments.of(Language.PYTHON, "Python", "py"),
       Arguments.of(Language.RPG, "RPG", "rpg"),
       Arguments.of(Language.RUBY, "Ruby", "ruby"),
+      Arguments.of(Language.RUST, "Rust", "rust"),
       Arguments.of(Language.SCALA, "Scala", "scala"),
       Arguments.of(Language.SECRETS, "Secrets", "secrets"),
       Arguments.of(Language.SHELL, "Shell", "shell"),

@@ -27,6 +27,7 @@ import java.util.stream.Stream;
 
 public enum LSLanguage {
   ABAP("ABAP", "abap"),
+  ANSIBLE("Ansible", "ansible"),
   APEX("Apex", "apex"),
   AZUREPIPELINES("Azure Pipelines", "azurepipelines"),
   AZURERESOURCEMANAGER("AzureResourceManager", "azureresourcemanager"),
@@ -42,6 +43,7 @@ public enum LSLanguage {
   HTML("HTML", "web"),
   IPYTHON("IPython Notebooks", "ipynb"),
   JAVA("Java", "java"),
+  JCL("JCL", "jcl"),
   JS("JavaScript", "js"),
   JSON("JSON", "json"),
   JSP("JSP", "jsp"),
@@ -54,6 +56,7 @@ public enum LSLanguage {
   PYTHON("Python", "py"),
   RPG("RPG", "rpg"),
   RUBY("Ruby", "ruby"),
+  RUST("Rust", "rust"),
   SCALA("Scala", "scala"),
   SECRETS("Secrets", "secrets"),
   SHELL("Shell", "shell"),
