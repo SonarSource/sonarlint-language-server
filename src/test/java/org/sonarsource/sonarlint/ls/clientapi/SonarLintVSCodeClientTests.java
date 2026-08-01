@@ -62,6 +62,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionOrigin;
@@ -175,11 +176,16 @@ class SonarLintVSCodeClientTests {
   @Captor
   ArgumentCaptor<ShowAllLocationsCommand.Param> paramCaptor;
   BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
-  TaintVulnerabilitiesCache taintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
-  DependencyRisksCache dependencyRisksCache = mock(DependencyRisksCache.class);
-  DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
-  PromotionalNotifications promotionalNotifications = mock(PromotionalNotifications.class);
-  EmbeddedServerManager embeddedServerManager = mock(EmbeddedServerManager.class);
+  @Mock
+  TaintVulnerabilitiesCache taintVulnerabilitiesCache;
+  @Mock
+  DependencyRisksCache dependencyRisksCache;
+  @Mock
+  DiagnosticPublisher diagnosticPublisher;
+  @Mock
+  PromotionalNotifications promotionalNotifications;
+  @Mock
+  EmbeddedServerManager embeddedServerManager;
 
   AnalysisHelper analysisHelper = mock(AnalysisHelper.class);
   WorkspaceFolderBranchManager branchManager = mock(WorkspaceFolderBranchManager.class);
