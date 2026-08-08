@@ -62,6 +62,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionOrigin;
@@ -165,9 +166,12 @@ class SonarLintVSCodeClientTests {
   private Path workspaceFolderPath;
   private Path fileInAWorkspaceFolderPath;
   private final Path filePython = Path.of("myFile.py");
-  SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
-  SettingsManager settingsManager = mock(SettingsManager.class);
-  SmartNotifications smartNotifications = mock(SmartNotifications.class);
+  @Mock
+  SonarLintExtendedLanguageClient client;
+  @Mock
+  SettingsManager settingsManager;
+  @Mock
+  SmartNotifications smartNotifications;
   SonarLintVSCodeClient underTest;
   HostInfoProvider server = mock(HostInfoProvider.class);
   ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
@@ -181,8 +185,10 @@ class SonarLintVSCodeClientTests {
   PromotionalNotifications promotionalNotifications = mock(PromotionalNotifications.class);
   EmbeddedServerManager embeddedServerManager = mock(EmbeddedServerManager.class);
 
-  AnalysisHelper analysisHelper = mock(AnalysisHelper.class);
-  WorkspaceFolderBranchManager branchManager = mock(WorkspaceFolderBranchManager.class);
+  @Mock
+  AnalysisHelper analysisHelper;
+  @Mock
+  WorkspaceFolderBranchManager branchManager;
 
   private static final String PEM = """
     subject=CN=localhost,O=SonarSource SA,L=Geneva,ST=Geneva,C=CH
