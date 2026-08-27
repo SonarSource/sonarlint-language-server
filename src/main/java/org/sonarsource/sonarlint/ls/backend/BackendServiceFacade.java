@@ -65,7 +65,7 @@ import org.sonarsource.sonarlint.ls.settings.RulesConfiguration;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 
-public class BackendServiceFacade {
+public final class BackendServiceFacade {
 
   public static final String MONITORING_ENABLED_PROPERTY_KEY = "sonarlint.monitoring.enabled";
 
