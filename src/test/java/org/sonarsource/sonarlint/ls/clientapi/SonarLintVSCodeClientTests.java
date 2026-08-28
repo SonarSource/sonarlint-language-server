@@ -62,6 +62,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionOrigin;
@@ -169,12 +170,16 @@ class SonarLintVSCodeClientTests {
   SettingsManager settingsManager = mock(SettingsManager.class);
   SmartNotifications smartNotifications = mock(SmartNotifications.class);
   SonarLintVSCodeClient underTest;
-  HostInfoProvider server = mock(HostInfoProvider.class);
-  ProjectBindingManager bindingManager = mock(ProjectBindingManager.class);
-  SkippedPluginsNotifier skippedPluginsNotifier = mock(SkippedPluginsNotifier.class);
+  @Mock
+  HostInfoProvider server;
+  @Mock
+  ProjectBindingManager bindingManager;
+  @Mock
+  SkippedPluginsNotifier skippedPluginsNotifier;
   @Captor
   ArgumentCaptor<ShowAllLocationsCommand.Param> paramCaptor;
-  BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
+  @Mock
+  BackendServiceFacade backendServiceFacade;
   TaintVulnerabilitiesCache taintVulnerabilitiesCache = mock(TaintVulnerabilitiesCache.class);
   DependencyRisksCache dependencyRisksCache = mock(DependencyRisksCache.class);
   DiagnosticPublisher diagnosticPublisher = mock(DiagnosticPublisher.class);
@@ -537,7 +542,8 @@ class SonarLintVSCodeClientTests {
     when(client.workspaceFolders()).thenReturn(CompletableFuture.completedFuture(List.of()));
     when(client.assistCreatingConnection(any()))
       .thenReturn(CompletableFuture.completedFuture(new AssistCreatingConnectionResponse("newConnectionId")));
-    when(settingsManager.getCurrentSettings()).thenReturn(mock(WorkspaceSettings.class));
+    var workspaceSettings = mock(WorkspaceSettings.class);
+    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
     when(backendServiceFacade.getBackendService()).thenReturn(mock(BackendService.class));
     underTest.assistCreatingConnection(assistCreatingConnectionParams, null);
 
