@@ -88,8 +88,8 @@ public class SkippedPluginsNotifier {
   private void showMessageWithOpenSettingsAction(SonarLintExtendedLanguageClient client, String message,
     SkipReason.UnsatisfiedRuntimeRequirement.RuntimeRequirement requirementType, Runnable callback) {
     if (displayedMessages.add(message)) {
-      var params = requirementType == NODEJS ? new ShowMessageRequestParams(List.of(ACTION_OPEN_SETTINGS, ACTION_DONT_SHOW_AGAIN))
-        : new ShowMessageRequestParams(List.of(ACTION_OPEN_SETTINGS));
+      var params = new ShowMessageRequestParams(requirementType == NODEJS ? List.of(ACTION_OPEN_SETTINGS, ACTION_DONT_SHOW_AGAIN)
+        : List.of(ACTION_OPEN_SETTINGS));
       params.setType(MessageType.Error);
       params.setMessage(message);
       client.showMessageRequest(params).thenAccept(action -> {
