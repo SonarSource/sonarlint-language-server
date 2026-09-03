@@ -94,7 +94,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   private static final String PYTHON_S1481 = "python:S1481";
   private static final String PYTHON_S1313 = "python:S1313";
   private static final String PROJECT_KEY = "myProject";
-  public static final String LANGUAGES_LIST = "apex,c,cpp,cs,css,cobol,web,java,js,php,plsql,py,secrets,text,tsql,ts,xml,yaml,json,go,cloudformation,docker,kubernetes,terraform," +
+  public static final String LANGUAGES_LIST = "apex,c,cpp,cs,css,cobol,web,java,js,php,plsql,py,rust,secrets,text,tsql,ts,xml,yaml,json,go,cloudformation,docker,kubernetes,terraform," +
     "azureresourcemanager,ansible,githubactions,shell,azurepipelines";
 
   @RegisterExtension
