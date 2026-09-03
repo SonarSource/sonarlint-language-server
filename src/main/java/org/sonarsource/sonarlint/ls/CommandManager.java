@@ -198,9 +198,8 @@ public class CommandManager {
     var ruleKey = diagnostic.getCode().getLeft();
     var message = diagnostic.getMessage();
     var isNotebookCellUri = openNotebooksCache.isKnownCellUri(uri);
-    var issueForDiagnostic = isNotebookCellUri ?
-      issuesCache.getIssueForDiagnostic(openNotebooksCache.getNotebookUriFromCellUri(uri), diagnostic) :
-      issuesCache.getIssueForDiagnostic(uri, diagnostic);
+    var issueForDiagnostic = issuesCache.getIssueForDiagnostic(
+      isNotebookCellUri ? openNotebooksCache.getNotebookUriFromCellUri(uri) : uri, diagnostic);
     var hotspotForDiagnostic = issueForDiagnostic.isPresent() ? Optional.empty() : securityHotspotsCache.getHotspotForDiagnostic(uri, diagnostic);
     Optional<VersionedOpenNotebook> versionedOpenNotebook = isNotebookCellUri ?
       openNotebooksCache.getFile(openNotebooksCache.getNotebookUriFromCellUri(uri)) :
