@@ -537,8 +537,10 @@ class SonarLintVSCodeClientTests {
     when(client.workspaceFolders()).thenReturn(CompletableFuture.completedFuture(List.of()));
     when(client.assistCreatingConnection(any()))
       .thenReturn(CompletableFuture.completedFuture(new AssistCreatingConnectionResponse("newConnectionId")));
-    when(settingsManager.getCurrentSettings()).thenReturn(mock(WorkspaceSettings.class));
-    when(backendServiceFacade.getBackendService()).thenReturn(mock(BackendService.class));
+    var workspaceSettings = mock(WorkspaceSettings.class);
+    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
+    var backendService = mock(BackendService.class);
+    when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     underTest.assistCreatingConnection(assistCreatingConnectionParams, null);
 
     var argCaptor = ArgumentCaptor.forClass(CreateConnectionParams.class);
@@ -558,8 +560,10 @@ class SonarLintVSCodeClientTests {
     when(client.workspaceFolders()).thenReturn(CompletableFuture.completedFuture(List.of()));
     when(client.assistCreatingConnection(any()))
       .thenReturn(CompletableFuture.completedFuture(new AssistCreatingConnectionResponse("newConnectionId")));
-    when(settingsManager.getCurrentSettings()).thenReturn(mock(WorkspaceSettings.class));
-    when(backendServiceFacade.getBackendService()).thenReturn(mock(BackendService.class));
+    var workspaceSettings = mock(WorkspaceSettings.class);
+    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
+    var backendService = mock(BackendService.class);
+    when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     underTest.assistCreatingConnection(assistCreatingConnectionParams, null);
 
     var argCaptor = ArgumentCaptor.forClass(CreateConnectionParams.class);
@@ -579,8 +583,10 @@ class SonarLintVSCodeClientTests {
     when(client.workspaceFolders()).thenReturn(CompletableFuture.completedFuture(List.of()));
     when(client.assistCreatingConnection(any())).thenReturn(CompletableFuture.completedFuture(
       null));
-    when(settingsManager.getCurrentSettings()).thenReturn(mock(WorkspaceSettings.class));
-    when(backendServiceFacade.getBackendService()).thenReturn(mock(BackendService.class));
+    var workspaceSettings = mock(WorkspaceSettings.class);
+    when(settingsManager.getCurrentSettings()).thenReturn(workspaceSettings);
+    var backendService = mock(BackendService.class);
+    when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     assertThrows(CompletionException.class, () -> underTest.assistCreatingConnection(assistCreatingConnectionParams, null));
 
     var argCaptor = ArgumentCaptor.forClass(CreateConnectionParams.class);
