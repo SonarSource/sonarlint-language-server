@@ -74,7 +74,8 @@ public class EnabledLanguages {
     Language.TSQL,
     Language.ANSIBLE,
     Language.TEXT,
-    Language.GITHUBACTIONS
+    Language.GITHUBACTIONS,
+    Language.RUST
   );
 
 
