@@ -85,11 +85,11 @@ import testutils.MockWebServerExtension;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
@@ -169,9 +169,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       package main
       import "fmt"
       func main() {
-      	if condition1 {
-      	} else if condition1 { // Noncompliant
-      	}
+        if condition1 {
+        } else if condition1 { // Noncompliant
+        }
       }
       """);
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
@@ -602,15 +602,14 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void testUnknownCommand() {
-    try {
-      lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("unknown", Collections.emptyList())).get();
-      fail("Expected exception");
-    } catch (Exception e) {
-      assertThat(e).isInstanceOf(ExecutionException.class).hasCauseInstanceOf(ResponseErrorException.class);
-      var responseError = ((ResponseErrorException) e.getCause()).getResponseError();
-      assertThat(responseError.getCode()).isEqualTo(ResponseErrorCode.InvalidParams.getValue());
-      assertThat(responseError.getMessage()).isEqualTo("Unsupported command: unknown");
-    }
+    assertThatThrownBy(() -> lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("unknown", Collections.emptyList())).get())
+      .isInstanceOf(ExecutionException.class)
+      .hasCauseInstanceOf(ResponseErrorException.class)
+      .satisfies(e -> {
+        var responseError = ((ResponseErrorException) e.getCause()).getResponseError();
+        assertThat(responseError.getCode()).isEqualTo(ResponseErrorCode.InvalidParams.getValue());
+        assertThat(responseError.getMessage()).isEqualTo("Unsupported command: unknown");
+      });
   }
 
   @Test
