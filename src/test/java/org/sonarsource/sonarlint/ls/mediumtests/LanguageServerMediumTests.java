@@ -169,9 +169,9 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       package main
       import "fmt"
       func main() {
-        if condition1 {
-        } else if condition1 { // Noncompliant
-        }
+      	if condition1 {
+      	} else if condition1 { // Noncompliant
+      	}
       }
       """);
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri))
