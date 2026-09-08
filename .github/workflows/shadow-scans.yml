@@ -16,11 +16,11 @@ jobs:
       id-token: write
       contents: write
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
         with:
           version: 2026.4.11
-      - uses: SonarSource/ci-github-actions/build-maven@657e44543f55422ffd28b91d62fe5386f07d6030 # 1.6.0
+      - uses: SonarSource/ci-github-actions/build-maven@d41706a4180f70b6c0d0479795309a6c99726022 # 2.0.0
         with:
           run-shadow-scans: true
           artifactory-deployer-role: qa-deployer
