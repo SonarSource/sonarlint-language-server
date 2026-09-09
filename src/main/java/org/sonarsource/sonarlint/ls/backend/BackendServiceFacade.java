@@ -164,7 +164,7 @@ public final class BackendServiceFacade {
     if (lowerCaseAppName.contains(WINDSURF_APP_NAME.toLowerCase(Locale.ROOT)) || lowerCaseAppName.contains(DEVIN_APP_NAME.toLowerCase(Locale.ROOT))) {
       return WINDSURF_APP_NAME;
     }
-    if (appName.toLowerCase(Locale.ROOT).contains(KIRO_APP_NAME.toLowerCase(Locale.ROOT))) {
+    if (lowerCaseAppName.contains(KIRO_APP_NAME.toLowerCase(Locale.ROOT))) {
       return KIRO_APP_NAME;
     }
     return VSCODE_APP_NAME;
