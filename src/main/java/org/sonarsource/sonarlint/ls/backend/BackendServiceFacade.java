@@ -71,6 +71,7 @@ public final class BackendServiceFacade {
 
   private static final String CURSOR_APP_NAME = "Cursor";
   private static final String WINDSURF_APP_NAME = "Windsurf";
+  private static final String DEVIN_APP_NAME = "Devin";
   private static final String KIRO_APP_NAME = "Kiro";
   private static final String VSCODE_APP_NAME = "Visual Studio Code";
 
@@ -155,10 +156,12 @@ public final class BackendServiceFacade {
   }
 
   static String determineIdeName(String appName) {
-    if (appName.toLowerCase(Locale.ROOT).contains(CURSOR_APP_NAME.toLowerCase(Locale.ROOT))) {
+    var lowerCaseAppName = appName.toLowerCase(Locale.ROOT);
+    if (lowerCaseAppName.contains(CURSOR_APP_NAME.toLowerCase(Locale.ROOT))) {
       return CURSOR_APP_NAME;
     }
-    if (appName.toLowerCase(Locale.ROOT).contains(WINDSURF_APP_NAME.toLowerCase(Locale.ROOT))) {
+    // Windsurf was rebranded to Devin; keep reporting "Windsurf" so the AI hook scripts and config layout stay compatible
+    if (lowerCaseAppName.contains(WINDSURF_APP_NAME.toLowerCase(Locale.ROOT)) || lowerCaseAppName.contains(DEVIN_APP_NAME.toLowerCase(Locale.ROOT))) {
       return WINDSURF_APP_NAME;
     }
     if (appName.toLowerCase(Locale.ROOT).contains(KIRO_APP_NAME.toLowerCase(Locale.ROOT))) {

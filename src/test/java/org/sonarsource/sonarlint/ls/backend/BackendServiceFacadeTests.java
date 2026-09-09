@@ -201,6 +201,20 @@ class BackendServiceFacadeTests {
   }
 
   @Test
+  void should_return_windsurf_as_ide_name_for_devin_rebranded_windsurf() {
+    var ideName = BackendServiceFacade.determineIdeName("Devin");
+
+    assertThat(ideName).isEqualTo("Windsurf");
+  }
+
+  @Test
+  void should_return_windsurf_as_ide_name_when_devin_contained_in_app_name() {
+    var ideName = BackendServiceFacade.determineIdeName("Devin Next");
+
+    assertThat(ideName).isEqualTo("Windsurf");
+  }
+
+  @Test
   void should_return_kiro_as_ide_name_if_present_in_app_name() {
     var ideName = BackendServiceFacade.determineIdeName("kiro");
 
