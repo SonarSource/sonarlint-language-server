@@ -171,13 +171,14 @@ public final class BackendServiceFacade {
   }
 
   static String determineProductKey(String appName, String clientProductKey) {
-    if (appName.toLowerCase(Locale.ROOT).contains(CURSOR_APP_NAME.toLowerCase(Locale.ROOT))) {
+    var lowerCaseAppName = appName.toLowerCase(Locale.ROOT);
+    if (lowerCaseAppName.contains(CURSOR_APP_NAME.toLowerCase(Locale.ROOT))) {
       return CURSOR_APP_NAME.toLowerCase(Locale.ROOT);
     }
-    if (appName.toLowerCase(Locale.ROOT).contains(WINDSURF_APP_NAME.toLowerCase(Locale.ROOT))) {
+    if (lowerCaseAppName.contains(WINDSURF_APP_NAME.toLowerCase(Locale.ROOT)) || lowerCaseAppName.contains(DEVIN_APP_NAME.toLowerCase(Locale.ROOT))) {
       return WINDSURF_APP_NAME.toLowerCase(Locale.ROOT);
     }
-    if (appName.toLowerCase(Locale.ROOT).contains(KIRO_APP_NAME.toLowerCase(Locale.ROOT))) {
+    if (lowerCaseAppName.contains(KIRO_APP_NAME.toLowerCase(Locale.ROOT))) {
       return KIRO_APP_NAME.toLowerCase(Locale.ROOT);
     }
     return clientProductKey;

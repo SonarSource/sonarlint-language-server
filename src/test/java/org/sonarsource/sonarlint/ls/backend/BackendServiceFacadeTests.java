@@ -166,6 +166,13 @@ class BackendServiceFacadeTests {
   }
 
   @Test
+  void should_use_windsurf_as_product_key_for_devin_rebranded_windsurf() {
+    var productKey = BackendServiceFacade.determineProductKey("Devin", "vscode");
+
+    assertThat(productKey).isEqualTo("windsurf");
+  }
+
+  @Test
   void should_use_kiro_as_product_key_if_present_in_app_name() {
     var productKey = BackendServiceFacade.determineProductKey("Kiro", null);
 
