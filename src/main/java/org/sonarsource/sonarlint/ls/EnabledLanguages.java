@@ -70,6 +70,7 @@ public class EnabledLanguages {
     Language.AZUREPIPELINES,
     Language.COBOL,
     Language.PLSQL,
+    Language.RUST,
     Language.SHELL,
     Language.TSQL,
     Language.ANSIBLE,

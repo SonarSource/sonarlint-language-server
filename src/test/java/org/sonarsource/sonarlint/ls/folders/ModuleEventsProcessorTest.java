@@ -155,6 +155,7 @@ class ModuleEventsProcessorTest {
       Arguments.of("java", Language.JAVA),
       Arguments.of("c", Language.C),
       Arguments.of("cpp", Language.CPP),
+      Arguments.of("rust", Language.RUST),
       Arguments.of("shellscript", Language.SHELL),
 
       Arguments.of("yaml", Language.YAML),
