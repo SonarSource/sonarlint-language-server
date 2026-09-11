@@ -39,7 +39,7 @@
     <sonar.text.version>2.42.0.10784</sonar.text.version>
     <sonar.go.version>1.36.0.5922</sonar.go.version>
     <sonar.iac.version>2.8.0.19776</sonar.iac.version>
-    <sonarlint.omnisharp.version>1.45.0.102027</sonarlint.omnisharp.version>
+    <sonarlint.omnisharp.version>1.46.0.102069</sonarlint.omnisharp.version>
     <gitRepositoryName>sonarlint-language-server</gitRepositoryName>
     <!-- Release: enable publication to Bintray -->
     <artifactsToPublish>${project.groupId}:${project.artifactId}:jar</artifactsToPublish>
