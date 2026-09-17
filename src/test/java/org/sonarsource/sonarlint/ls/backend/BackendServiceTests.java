@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.backend;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,8 +39,15 @@ import org.sonarsource.sonarlint.core.issue.IssueNotFoundException;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgent;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgentRpcService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationHost;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationScope;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.CliCommandAction;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetHookScriptContentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdateParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareCliCommandParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalysisRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeVCSChangedFilesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAutomaticAnalysisSettingParams;
@@ -287,6 +295,50 @@ class BackendServiceTests {
     verify(connectionRpcService).getMCPServerConfiguration(argumentCaptor.capture());
     assertThat(argumentCaptor.getValue().getConnectionId()).isEqualTo(connectionId);
     assertThat(argumentCaptor.getValue().getToken()).isEqualTo(token);
+  }
+
+  @Test
+  void shouldForwardAiIntegrationStateRequestToBackend() {
+    var params = new GetAiIntegrationStateParams(AiIntegrationHost.VSCODE, List.of(AiAgent.CURSOR), AiIntegrationScope.GLOBAL, "scope");
+
+    underTest.getIntegrationState(params);
+
+    verify(aiAgentService).getIntegrationState(params);
+  }
+
+  @Test
+  void shouldForwardCliCommandPreparationRequestToBackend() {
+    var params = new PrepareCliCommandParams(CliCommandAction.INTEGRATE, AiAgent.CURSOR, "server", "organization", "connection");
+
+    underTest.prepareCliCommand(params);
+
+    verify(aiAgentService).prepareCliCommand(params);
+  }
+
+  @Test
+  void shouldForwardMcpConfigurationInspectionRequestToBackend() {
+    var params = new McpConfigurationInspectionParams(AiAgent.CURSOR, "{\"mcpServers\": {}}");
+
+    underTest.inspectMcpConfiguration(params);
+
+    verify(aiAgentService).inspectMcpConfiguration(params);
+  }
+
+  @Test
+  void shouldForwardMcpConfigurationUpdatePlanRequestToBackend() {
+    var params = new McpConfigurationUpdateParams(AiAgent.CURSOR, "{\"mcpServers\": {}}", "{\"command\": \"sonar\"}");
+
+    underTest.planMcpConfigurationUpdate(params);
+
+    verify(aiAgentService).planMcpConfigurationUpdate(params);
+  }
+
+  @Test
+  void shouldPropagateFailedAiIntegrationStateRequest() {
+    var params = new GetAiIntegrationStateParams(AiIntegrationHost.VSCODE, List.of(), AiIntegrationScope.GLOBAL, null);
+    when(aiAgentService.getIntegrationState(params)).thenReturn(CompletableFuture.failedFuture(new IllegalStateException()));
+
+    assertThat(underTest.getIntegrationState(params)).isCompletedExceptionally();
   }
 
   @Test
