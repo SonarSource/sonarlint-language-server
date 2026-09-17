@@ -26,12 +26,12 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import jakarta.annotation.Nonnull;
 import mockwebserver3.Dispatcher;
 import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
 import mockwebserver3.RecordedRequest;
 import okio.Buffer;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
@@ -127,9 +127,9 @@ public class MockWebServerExtension implements BeforeAllCallback, AfterAllCallba
 
     protected final Map<String, MockResponse> responsesByPath = new ConcurrentHashMap<>();
 
-    @NotNull
+    @Nonnull
     @Override
-    public MockResponse dispatch(@NotNull RecordedRequest recordedRequest) {
+    public MockResponse dispatch(@Nonnull RecordedRequest recordedRequest) {
       var url = recordedRequest.getUrl();
       var requestPath = url.encodedPath() + (url.encodedQuery() != null ? "?" + url.encodedQuery() : "");
 

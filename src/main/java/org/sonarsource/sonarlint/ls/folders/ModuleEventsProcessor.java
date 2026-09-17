@@ -28,11 +28,11 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
+import jakarta.annotation.Nonnull;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.FileChangeType;
 import org.eclipse.lsp4j.FileEvent;
-import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.ClientFileDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.Language;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
@@ -103,7 +103,7 @@ public class ModuleEventsProcessor {
     backendServiceFacade.getBackendService().updateFileSystem(List.of(), List.of(changedFileDto), List.of());
   }
 
-  @NotNull
+  @Nonnull
   ClientFileDto getClientFileDto(VersionedOpenFile file) {
     AtomicReference<ClientFileDto> clientFileDto = new AtomicReference<>();
     var fileUri = file.getUri();

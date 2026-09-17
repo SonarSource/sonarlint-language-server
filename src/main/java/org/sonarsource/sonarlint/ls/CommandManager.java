@@ -30,6 +30,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+import jakarta.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -55,7 +56,6 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
-import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcErrorCode;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.CheckStatusChangePermittedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.EffectiveIssueDetailsDto;
@@ -257,7 +257,7 @@ public class CommandManager {
     return Optional.empty();
   }
 
-  @NotNull
+  @Nonnull
   private CodeAction createResolveIssueCodeAction(Diagnostic diagnostic, String ruleKey, String issueId, URI fileUri, boolean isTaintIssue) {
     var workspace = workspaceFoldersManager.findFolderForFile(fileUri).orElseThrow(() -> new IllegalStateException("No workspace found"));
     var workspaceUri = workspace.getUri();

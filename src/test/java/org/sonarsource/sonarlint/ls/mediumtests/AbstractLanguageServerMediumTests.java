@@ -50,6 +50,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import jakarta.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
@@ -92,7 +93,6 @@ import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.launch.LSPLauncher;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -225,7 +225,7 @@ public abstract class AbstractLanguageServerMediumTests {
     awaitLatch(client.settingsAppliedLatch);
   }
 
-  @NotNull
+  @Nonnull
   private static InitializeParams getInitializeParams(Map<String, Object> initializeOptions, WorkspaceFolder[] initFolders) {
     var initializeParams = new InitializeParams();
     initializeParams.setTrace("messages");
