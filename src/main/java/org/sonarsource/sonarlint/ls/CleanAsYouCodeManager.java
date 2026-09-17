@@ -19,7 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls;
 
-import org.jetbrains.annotations.Nullable;
+import jakarta.annotation.Nullable;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;

@@ -35,6 +35,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import jakarta.annotation.Nonnull;
 import mockwebserver3.MockResponse;
 import okio.Buffer;
 import org.apache.commons.io.FileUtils;
@@ -49,7 +50,6 @@ import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -223,7 +223,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .build());
   }
 
-  @NotNull
+  @Nonnull
   private static Buffer safeGetSonarPython() {
     try (var inputStream = new FileInputStream(fullPathToJar("sonarpython"))) {
       var buffer = new Buffer();
