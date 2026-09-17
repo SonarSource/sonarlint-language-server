@@ -30,7 +30,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
-import jakarta.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -257,7 +256,6 @@ public class CommandManager {
     return Optional.empty();
   }
 
-  @Nonnull
   private CodeAction createResolveIssueCodeAction(Diagnostic diagnostic, String ruleKey, String issueId, URI fileUri, boolean isTaintIssue) {
     var workspace = workspaceFoldersManager.findFolderForFile(fileUri).orElseThrow(() -> new IllegalStateException("No workspace found"));
     var workspaceUri = workspace.getUri();

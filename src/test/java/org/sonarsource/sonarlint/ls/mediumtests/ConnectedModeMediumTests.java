@@ -35,7 +35,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import jakarta.annotation.Nonnull;
 import mockwebserver3.MockResponse;
 import okio.Buffer;
 import org.apache.commons.io.FileUtils;
@@ -223,7 +222,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .build());
   }
 
-  @Nonnull
   private static Buffer safeGetSonarPython() {
     try (var inputStream = new FileInputStream(fullPathToJar("sonarpython"))) {
       var buffer = new Buffer();

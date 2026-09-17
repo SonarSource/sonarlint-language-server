@@ -26,7 +26,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import jakarta.annotation.Nonnull;
 import mockwebserver3.Dispatcher;
 import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
@@ -127,9 +126,8 @@ public class MockWebServerExtension implements BeforeAllCallback, AfterAllCallba
 
     protected final Map<String, MockResponse> responsesByPath = new ConcurrentHashMap<>();
 
-    @Nonnull
     @Override
-    public MockResponse dispatch(@Nonnull RecordedRequest recordedRequest) {
+    public MockResponse dispatch(RecordedRequest recordedRequest) {
       var url = recordedRequest.getUrl();
       var requestPath = url.encodedPath() + (url.encodedQuery() != null ? "?" + url.encodedQuery() : "");
 

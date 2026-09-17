@@ -28,7 +28,6 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
-import jakarta.annotation.Nonnull;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.FileChangeType;
@@ -103,7 +102,6 @@ public class ModuleEventsProcessor {
     backendServiceFacade.getBackendService().updateFileSystem(List.of(), List.of(changedFileDto), List.of());
   }
 
-  @Nonnull
   ClientFileDto getClientFileDto(VersionedOpenFile file) {
     AtomicReference<ClientFileDto> clientFileDto = new AtomicReference<>();
     var fileUri = file.getUri();

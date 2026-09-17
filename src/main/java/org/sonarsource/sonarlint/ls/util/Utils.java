@@ -33,7 +33,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
-import jakarta.annotation.Nonnull;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -126,7 +125,6 @@ public class Utils {
   }
 
 
-  @Nonnull
   public static ValidateConnectionParams getValidateConnectionParamsForNewConnection(SonarLintExtendedLanguageServer.ConnectionCheckParams params) {
     // Prevent null tokens from being sent to validation
     var token = params.getToken();
@@ -140,7 +138,6 @@ public class Utils {
     ) : new ValidateConnectionParams(new TransientSonarQubeConnectionDto(params.getServerUrl(), credentials));
   }
 
-  @Nonnull
   public static String getConnectionNameFromConnectionCheckParams(SonarLintExtendedLanguageServer.ConnectionCheckParams params) {
     var connectionName = params.getServerUrl() == null ? params.getOrganization() : params.getServerUrl();
     return params.getConnectionId() == null ? connectionName : params.getConnectionId();

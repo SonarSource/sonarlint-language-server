@@ -50,7 +50,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-import jakarta.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
@@ -225,7 +224,6 @@ public abstract class AbstractLanguageServerMediumTests {
     awaitLatch(client.settingsAppliedLatch);
   }
 
-  @Nonnull
   private static InitializeParams getInitializeParams(Map<String, Object> initializeOptions, WorkspaceFolder[] initFolders) {
     var initializeParams = new InitializeParams();
     initializeParams.setTrace("messages");
