@@ -92,7 +92,6 @@ import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.launch.LSPLauncher;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -225,7 +224,6 @@ public abstract class AbstractLanguageServerMediumTests {
     awaitLatch(client.settingsAppliedLatch);
   }
 
-  @NotNull
   private static InitializeParams getInitializeParams(Map<String, Object> initializeOptions, WorkspaceFolder[] initFolders) {
     var initializeParams = new InitializeParams();
     initializeParams.setTrace("messages");
