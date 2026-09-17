@@ -58,7 +58,6 @@ import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
-import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintCancelChecker;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionDto;
@@ -623,7 +622,6 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
     client.suggestConnection(new SuggestConnectionParams(configScopesToConnectionSuggestions));
   }
 
-  @NotNull
   private static ArrayList<TaintIssue> dtosToTaintIssues(String configurationScopeId, List<TaintVulnerabilityDto> t, Boolean isSonarCloud) {
     return t.stream()
       .map(dto -> new TaintIssue(dto, configurationScopeId, isSonarCloud))

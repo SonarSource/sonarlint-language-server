@@ -49,7 +49,6 @@ import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -223,7 +222,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         .build());
   }
 
-  @NotNull
   private static Buffer safeGetSonarPython() {
     try (var inputStream = new FileInputStream(fullPathToJar("sonarpython"))) {
       var buffer = new Buffer();
