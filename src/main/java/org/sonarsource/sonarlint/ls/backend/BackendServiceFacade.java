@@ -36,7 +36,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.rpc.client.ClientJsonRpcLauncher;
 import org.sonarsource.sonarlint.core.rpc.client.SonarLintRpcClientDelegate;
 import org.sonarsource.sonarlint.core.rpc.impl.BackendJsonRpcLauncher;
@@ -180,7 +179,6 @@ public final class BackendServiceFacade {
     return clientProductKey;
   }
 
-  @NotNull
   EnumSet<BackendCapability> getBackendCapabilities() {
     var backendCapabilities = EnumSet.of(BackendCapability.SMART_NOTIFICATIONS, BackendCapability.PROJECT_SYNCHRONIZATION,
       BackendCapability.EMBEDDED_SERVER, BackendCapability.SERVER_SENT_EVENTS, BackendCapability.DATAFLOW_BUG_DETECTION,
@@ -203,7 +201,6 @@ public final class BackendServiceFacade {
     return monitoringEnabledByProperty;
   }
 
-  @NotNull
   private static LanguageSpecificRequirements getLanguageSpecificRequirements(@Nullable Path clientNodeJsPath, @Nullable Path eslintBridgeSeverPath) {
     return new LanguageSpecificRequirements(
       new JsTsRequirementsDto(clientNodeJsPath, eslintBridgeSeverPath),

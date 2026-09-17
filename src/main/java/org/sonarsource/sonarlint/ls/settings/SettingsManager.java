@@ -320,7 +320,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     return Collections.emptyMap();
   }
 
-  static Map<String, Object> updateProperties(@org.jetbrains.annotations.Nullable URI workspaceUri, Map<String, Object> settingsMap) {
+  static Map<String, Object> updateProperties(@Nullable URI workspaceUri, Map<String, Object> settingsMap) {
     var sonarLintSettingsMap = Utils.parseToMap(settingsMap.get(SONARLINT_CONFIGURATION_NAMESPACE));
     var analyzerProperties = (Map<String, String>) (sonarLintSettingsMap == null ? Maps.newHashMap() : sonarLintSettingsMap.getOrDefault(ANALYZER_PROPERTIES, Maps.newHashMap()));
     var analysisExcludes = getStringValue(settingsMap, ANALYSIS_EXCLUDES, "");

@@ -40,7 +40,6 @@ import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
-import org.jetbrains.annotations.NotNull;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.common.TransientSonarCloudConnectionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.common.TransientSonarQubeConnectionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.validate.ValidateConnectionParams;
@@ -126,7 +125,6 @@ public class Utils {
   }
 
 
-  @NotNull
   public static ValidateConnectionParams getValidateConnectionParamsForNewConnection(SonarLintExtendedLanguageServer.ConnectionCheckParams params) {
     // Prevent null tokens from being sent to validation
     var token = params.getToken();
@@ -140,7 +138,6 @@ public class Utils {
     ) : new ValidateConnectionParams(new TransientSonarQubeConnectionDto(params.getServerUrl(), credentials));
   }
 
-  @NotNull
   public static String getConnectionNameFromConnectionCheckParams(SonarLintExtendedLanguageServer.ConnectionCheckParams params) {
     var connectionName = params.getServerUrl() == null ? params.getOrganization() : params.getServerUrl();
     return params.getConnectionId() == null ? connectionName : params.getConnectionId();
