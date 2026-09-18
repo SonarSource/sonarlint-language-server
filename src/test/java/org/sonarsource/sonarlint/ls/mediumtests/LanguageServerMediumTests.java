@@ -65,6 +65,13 @@ import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgent;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationHost;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationScope;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationState;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionOrigin;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AcceptedBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
@@ -129,6 +136,37 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
     mockWebServerExtension.addProtobufResponse("/api/settings/values.protobuf", Settings.Values.newBuilder().build());
     mockWebServerExtension.addStringResponse("/api/authentication/validate?format=json", "{\"valid\": true}");
     mockWebServerExtension.addProtobufResponse("/api/components/search.protobuf?qualifiers=TRK&ps=500&p=1", Components.SearchWsResponse.newBuilder().build());
+  }
+
+  @Test
+  void shouldExposeAiIntegrationOperations() throws Exception {
+    var integrationState = lsProxy.getIntegrationState(new GetAiIntegrationStateParams(AiIntegrationHost.VSCODE,
+      List.of(AiAgent.CLAUDE_CODE), AiIntegrationScope.GLOBAL, null)).get();
+    assertThat(integrationState.getAgents()).singleElement().satisfies(capability -> {
+      assertThat(capability.getAgent()).isEqualTo(AiAgent.CLAUDE_CODE);
+      assertThat(capability.isCliIntegrationSupported()).isTrue();
+    });
+
+    var cliCommand = lsProxy.prepareInstallCliCommand().get();
+    assertThat(cliCommand.isInteractive()).isTrue();
+
+    var content = "{\"mcpServers\": {\"other\": {\"command\": \"other\"}}}";
+    var inspection = lsProxy.inspectMcpConfiguration(new McpConfigurationInspectionParams(AiAgent.CLAUDE_CODE, content)).get();
+    assertThat(inspection.getState()).isEqualTo(McpConfigurationState.NOT_CONFIGURED);
+
+    var sonarMcpConfiguration = """
+      {
+        "command": "docker",
+        "args": ["run", "--init", "--pull=always", "-i", "--rm", "-e", "SONARQUBE_TOKEN", "-e", "SONARQUBE_URL", "-e", "SONARQUBE_IDE_PORT", "sonarsource/sonarqube-mcp"],
+        "env": {
+          "SONARQUBE_URL": "http://localhost",
+          "SONARQUBE_TOKEN": "test-token",
+          "SONARQUBE_IDE_PORT": "64120"
+        }
+      }
+      """;
+    var updatePlan = lsProxy.planMcpConfigurationUpdate(new McpConfigurationUpdateParams(AiAgent.CLAUDE_CODE, content, sonarMcpConfiguration)).get();
+    assertThat(updatePlan.getUpdatedContent()).contains("\"other\"", "\"sonarqube\"");
   }
 
   @Test
