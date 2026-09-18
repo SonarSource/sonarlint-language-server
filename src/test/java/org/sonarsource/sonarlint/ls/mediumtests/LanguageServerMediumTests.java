@@ -68,12 +68,10 @@ import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgent;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationHost;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationScope;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.CliCommandAction;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationState;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdateParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareCliCommandParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionOrigin;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AcceptedBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
@@ -149,7 +147,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       assertThat(capability.isCliIntegrationSupported()).isTrue();
     });
 
-    var cliCommand = lsProxy.prepareCliCommand(new PrepareCliCommandParams(CliCommandAction.INSTALL, null, null, null, null)).get();
+    var cliCommand = lsProxy.prepareInstallCliCommand().get();
     assertThat(cliCommand.isInteractive()).isTrue();
 
     var content = "{\"mcpServers\": {\"other\": {\"command\": \"other\"}}}";

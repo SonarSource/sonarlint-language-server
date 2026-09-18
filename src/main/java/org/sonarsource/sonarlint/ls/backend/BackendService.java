@@ -46,8 +46,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationIn
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdatePlanResponse;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareCliCommandParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareAuthenticateCliCommandParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareCliCommandResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareIntegrateCliCommandParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFileListParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFullProjectParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeVCSChangedFilesParams;
@@ -288,8 +289,16 @@ public class BackendService {
     return backend.getAiAgentService().getIntegrationState(params);
   }
 
-  public CompletableFuture<PrepareCliCommandResponse> prepareCliCommand(PrepareCliCommandParams params) {
-    return backend.getAiAgentService().prepareCliCommand(params);
+  public CompletableFuture<PrepareCliCommandResponse> prepareInstallCliCommand() {
+    return backend.getAiAgentService().prepareInstallCommand();
+  }
+
+  public CompletableFuture<PrepareCliCommandResponse> prepareAuthenticateCliCommand(PrepareAuthenticateCliCommandParams params) {
+    return backend.getAiAgentService().prepareAuthenticateCommand(params);
+  }
+
+  public CompletableFuture<PrepareCliCommandResponse> prepareIntegrateCliCommand(PrepareIntegrateCliCommandParams params) {
+    return backend.getAiAgentService().prepareIntegrateCommand(params);
   }
 
   public CompletableFuture<McpConfigurationInspectionResponse> inspectMcpConfiguration(McpConfigurationInspectionParams params) {

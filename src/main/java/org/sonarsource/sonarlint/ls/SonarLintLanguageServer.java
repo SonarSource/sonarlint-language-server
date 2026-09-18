@@ -98,8 +98,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationIn
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdatePlanResponse;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareCliCommandParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareAuthenticateCliCommandParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareCliCommandResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareIntegrateCliCommandParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
@@ -706,8 +707,18 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   }
 
   @Override
-  public CompletableFuture<PrepareCliCommandResponse> prepareCliCommand(PrepareCliCommandParams params) {
-    return backendServiceFacade.getBackendService().prepareCliCommand(params);
+  public CompletableFuture<PrepareCliCommandResponse> prepareInstallCliCommand() {
+    return backendServiceFacade.getBackendService().prepareInstallCliCommand();
+  }
+
+  @Override
+  public CompletableFuture<PrepareCliCommandResponse> prepareAuthenticateCliCommand(PrepareAuthenticateCliCommandParams params) {
+    return backendServiceFacade.getBackendService().prepareAuthenticateCliCommand(params);
+  }
+
+  @Override
+  public CompletableFuture<PrepareCliCommandResponse> prepareIntegrateCliCommand(PrepareIntegrateCliCommandParams params) {
+    return backendServiceFacade.getBackendService().prepareIntegrateCliCommand(params);
   }
 
   @Override

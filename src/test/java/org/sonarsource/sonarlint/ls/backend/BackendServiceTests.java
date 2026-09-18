@@ -41,13 +41,13 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgent;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgentRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationHost;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationScope;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.CliCommandAction;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetHookScriptContentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdateParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareCliCommandParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareAuthenticateCliCommandParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareIntegrateCliCommandParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalysisRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeVCSChangedFilesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAutomaticAnalysisSettingParams;
@@ -307,12 +307,17 @@ class BackendServiceTests {
   }
 
   @Test
-  void shouldForwardCliCommandPreparationRequestToBackend() {
-    var params = new PrepareCliCommandParams(CliCommandAction.INTEGRATE, AiAgent.CURSOR, "server", "organization", "connection");
+  void shouldForwardCliCommandPreparationRequestsToBackend() {
+    var authenticateParams = new PrepareAuthenticateCliCommandParams("server", "organization", "connection");
+    var integrateParams = new PrepareIntegrateCliCommandParams(AiAgent.CURSOR);
 
-    underTest.prepareCliCommand(params);
+    underTest.prepareInstallCliCommand();
+    underTest.prepareAuthenticateCliCommand(authenticateParams);
+    underTest.prepareIntegrateCliCommand(integrateParams);
 
-    verify(aiAgentService).prepareCliCommand(params);
+    verify(aiAgentService).prepareInstallCommand();
+    verify(aiAgentService).prepareAuthenticateCommand(authenticateParams);
+    verify(aiAgentService).prepareIntegrateCommand(integrateParams);
   }
 
   @Test

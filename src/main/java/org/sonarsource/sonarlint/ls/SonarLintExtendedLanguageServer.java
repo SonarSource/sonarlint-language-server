@@ -40,8 +40,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationIn
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdatePlanResponse;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareCliCommandParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareAuthenticateCliCommandParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareCliCommandResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareIntegrateCliCommandParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
@@ -735,8 +736,14 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonRequest("sonarlint/getAiIntegrationState")
   CompletableFuture<GetAiIntegrationStateResponse> getIntegrationState(GetAiIntegrationStateParams params);
 
-  @JsonRequest("sonarlint/prepareCliCommand")
-  CompletableFuture<PrepareCliCommandResponse> prepareCliCommand(PrepareCliCommandParams params);
+  @JsonRequest("sonarlint/prepareInstallCliCommand")
+  CompletableFuture<PrepareCliCommandResponse> prepareInstallCliCommand();
+
+  @JsonRequest("sonarlint/prepareAuthenticateCliCommand")
+  CompletableFuture<PrepareCliCommandResponse> prepareAuthenticateCliCommand(PrepareAuthenticateCliCommandParams params);
+
+  @JsonRequest("sonarlint/prepareIntegrateCliCommand")
+  CompletableFuture<PrepareCliCommandResponse> prepareIntegrateCliCommand(PrepareIntegrateCliCommandParams params);
 
   @JsonRequest("sonarlint/inspectMcpConfiguration")
   CompletableFuture<McpConfigurationInspectionResponse> inspectMcpConfiguration(McpConfigurationInspectionParams params);
