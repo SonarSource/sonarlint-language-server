@@ -24,7 +24,7 @@
 
   <properties>
     <jdk.min.version>17</jdk.min.version>
-    <sonarlint.core.version>11.11.0.87260</sonarlint.core.version>
+    <sonarlint.core.version>11.11.0.87389</sonarlint.core.version>
     <slf4j.version>2.0.19</slf4j.version>
     <!-- analyzers used for tests -->
     <sonar.java.version>8.28.0.43176</sonar.java.version>
