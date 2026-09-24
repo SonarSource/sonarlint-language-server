@@ -119,6 +119,7 @@ class BackendServiceFacadeTests {
       .contains(BackendCapability.SERVER_SENT_EVENTS)
       .contains(BackendCapability.PROMOTIONAL_CAMPAIGNS)
       .doesNotContain(BackendCapability.TELEMETRY)
+      .doesNotContain(BackendCapability.GESSIE_TELEMETRY)
       .doesNotContain(BackendCapability.MONITORING);
 
   }
@@ -147,6 +148,7 @@ class BackendServiceFacadeTests {
       .contains(BackendCapability.SERVER_SENT_EVENTS)
       .contains(BackendCapability.PROMOTIONAL_CAMPAIGNS)
       .contains(BackendCapability.TELEMETRY)
+      .contains(BackendCapability.GESSIE_TELEMETRY)
       .contains(BackendCapability.MONITORING);
 
   }
