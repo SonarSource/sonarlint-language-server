@@ -32,6 +32,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.GetStatusRe
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AcceptedBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixAppliedForRuleParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiAgentIntegrationStateObservedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationActionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationCliStateObservedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingTriggeredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingType;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificationsClickedParams;
@@ -111,6 +114,34 @@ class SonarLintTelemetryTests {
     telemetry.onChange(null, newWorkspaceSettingsWithTelemetrySetting(false));
 
     verify(backendService).enableTelemetry();
+  }
+
+  @Test
+  void forwardsAiIntegrationNotificationsWhenEnabled() {
+    var action = mock(AiIntegrationActionParams.class);
+    var cliState = mock(AiIntegrationCliStateObservedParams.class);
+    var agentState = mock(AiAgentIntegrationStateObservedParams.class);
+
+    telemetry.aiIntegrationAction(action);
+    telemetry.aiIntegrationCliStateObserved(cliState);
+    telemetry.aiAgentIntegrationStateObserved(agentState);
+
+    verify(telemetryService).aiIntegrationAction(action);
+    verify(telemetryService).aiIntegrationCliStateObserved(cliState);
+    verify(telemetryService).aiAgentIntegrationStateObserved(agentState);
+  }
+
+  @Test
+  void suppressesAiIntegrationNotificationsWhenDisabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+
+    telemetry.aiIntegrationAction(mock(AiIntegrationActionParams.class));
+    telemetry.aiIntegrationCliStateObserved(mock(AiIntegrationCliStateObservedParams.class));
+    telemetry.aiAgentIntegrationStateObserved(mock(AiAgentIntegrationStateObservedParams.class));
+
+    verify(telemetryService, never()).aiIntegrationAction(any());
+    verify(telemetryService, never()).aiIntegrationCliStateObserved(any());
+    verify(telemetryService, never()).aiAgentIntegrationStateObserved(any());
   }
 
   @Test
