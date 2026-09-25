@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.mediumtests;
 import com.google.gson.JsonObject;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -57,7 +58,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonar.api.utils.DateUtils;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.GetMCPServerConfigurationParams;
@@ -124,10 +124,8 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @BeforeEach
-  void setupBeforeEach() throws IOException {
-    folder1BaseDir = makeStaticTempDir();
-    var folder1Uri = folder1BaseDir.toUri().toString();
-    bindProject(getFolderSettings(folder1Uri), CONNECTION_ID, PROJECT_KEY);
+  void setupBeforeEach() {
+    bindProject(getFolderSettings(folder1BaseDir.toUri().toString()), CONNECTION_ID, PROJECT_KEY);
   }
 
   @AfterEach
@@ -141,10 +139,10 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   void mockSonarQube() {
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.7\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"2025.1\", \"id\": \"xzy\"}");
     mockWebServerExtension.addStringResponse("/api/features/list", "[]");
     mockWebServerExtension.addProtobufResponse("/api/settings/values.protobuf", Settings.Values.newBuilder().build());
-    mockWebServerExtension.addResponse("/api/authentication/validate?format=json", new MockResponse.Builder().code(200).build());
+    mockWebServerExtension.addStringResponse("/api/authentication/validate?format=json", "{\"valid\": true}");
     mockWebServerExtension.addResponse("/api/developers/search_events?projects=&from=", new MockResponse.Builder().code(200).build());
     mockWebServerExtension.addProtobufResponse("/api/components/search.protobuf?qualifiers=TRK&ps=500&p=1",
       Components.SearchWsResponse.newBuilder()
@@ -220,6 +218,13 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
           .setType(Common.BranchType.BRANCH)
           .build())
         .build());
+    mockNoIssueAndNoTaintInIncrementalSync();
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build());
+    mockWebServerExtension.addProtobufResponseDelimited(
+      "/api/hotspots/pull?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST + "&changedSince=" + CURRENT_TIME,
+      Hotspots.HotspotPullQueryTimestamp.newBuilder().setQueryTimestamp(CURRENT_TIME).build());
   }
 
   private static Buffer safeGetSonarPython() {
@@ -234,6 +239,12 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
   @Override
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
+    try {
+      folder1BaseDir = makeStaticTempDir();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+    getFolderSettings(folder1BaseDir.toUri().toString());
     mockSonarQube();
     setShowVerboseLogs(client.globalSettings, true);
     addSonarQubeConnection(client.globalSettings, CONNECTION_ID, mockWebServerExtension.url("/"), "xxxxx");
@@ -336,76 +347,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
         Diagnostic::getSeverity)
       .containsExactly(
         tuple(0, 13, 0, 26, PYTHON_S1313, "local-hotspot", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
-          DiagnosticSeverity.Information)));
-  }
-
-  @Test
-  void analysisConnected_find_tracked_hotspot_before_sq_10_1() {
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"10.0\", \"id\": \"xzy\"}");
-    mockNoIssueAndNoTaintInIncrementalSync();
-
-    var analyzedFileName = "analysisConnected_find_tracked_hotspot_before_sq_10_1.py";
-    var hotspotKey = UUID.randomUUID().toString();
-    mockWebServerExtension.addProtobufResponse("/api/measures/component.protobuf?additionalFields=period&metricKeys=projects&component=myProject",
-      Measures.ComponentWsResponse.newBuilder()
-        .setComponent(Measures.Component.newBuilder()
-          .setKey("myProject")
-          .setQualifier("TRK")
-          .build())
-        .setPeriod(Measures.Period.newBuilder()
-          .setMode("PREVIOUS_VERSION")
-          .setDate("2023-08-29T09:37:59+0000")
-          .setParameter("9.2")
-          .build())
-        .build());
-    mockWebServerExtension.addProtobufResponse(
-      "/api/rules/show.protobuf?key=python:S1313",
-      Rules.ShowResponse.newBuilder()
-        .setRule(Rules.Rule.newBuilder()
-          .setSeverity("MINOR")
-          .setType(Common.RuleType.SECURITY_HOTSPOT)
-          .setLang("py")
-          .build())
-        .build());
-    mockWebServerExtension.addProtobufResponse(
-      "/api/hotspots/search.protobuf?projectKey=myProject&files=" + analyzedFileName + "&branch=master&ps=500&p=1",
-      Hotspots.SearchWsResponse.newBuilder()
-        .addHotspots(Hotspots.SearchWsResponse.Hotspot.newBuilder()
-          .setKey(hotspotKey)
-          .setMessage("Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.")
-          .setComponent("someComponentKey")
-          .setCreationDate(DateUtils.formatDateTime(CURRENT_TIME))
-          .setStatus("TO_REVIEW")
-          .setVulnerabilityProbability("LOW")
-          .setTextRange(Common.TextRange.newBuilder()
-            .setStartLine(1)
-            .setStartOffset(13)
-            .setEndLine(1)
-            .setEndOffset(26)
-            .build())
-          .setRuleKey(PYTHON_S1313)
-          .build())
-        .addComponents(Hotspots.Component.newBuilder()
-          .setKey("someComponentKey")
-          .setPath(analyzedFileName)
-          .build())
-        .setPaging(Common.Paging.newBuilder().setTotal(1).build())
-        .build());
-
-    notifyConfigurationChangeOnClient();
-
-    var configScopeId = folder1BaseDir.toUri().toString();
-    addConfigScope(configScopeId);
-    lsProxy.didLocalBranchNameChange(new SonarLintExtendedLanguageServer.DidLocalBranchNameChangeParams(configScopeId, "master"));
-
-    var uriInFolder = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
-    didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
-
-    awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
-        Diagnostic::getSeverity)
-      .containsExactly(
-        tuple(0, 13, 0, 26, PYTHON_S1313, "remote-hotspot", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
           DiagnosticSeverity.Information)));
   }
 
@@ -1391,26 +1332,26 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var issueKey = UUID.randomUUID().toString();
     mockNoIssuesNoHotspotsForProject(analyzedFileName);
     var fileUri = folder1BaseDir.resolve(analyzedFileName).toUri().toString();
-    // Full sync returns the taint
-    mockWebServerExtension.addProtobufResponseDelimited(
-      "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST,
-      Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
-        .setQueryTimestamp(CURRENT_TIME)
-        .build(),
-      Issues.TaintVulnerabilityLite.newBuilder()
-        .setKey(issueKey)
-        .setRuleKey("ruleKey")
-        .setType(Common.RuleType.BUG)
-        .setSeverity(Common.Severity.MAJOR)
-        .setMainLocation(Issues.Location.newBuilder().setFilePath(analyzedFileName).setMessage("message")
-          .setTextRange(Issues.TextRange.newBuilder()
-            .setStartLine(1)
-            .setStartLineOffset(1)
-            .setEndLine(1)
-            .setEndLineOffset(2)
-            .setHash("hash")))
-        .setCreationDate(CURRENT_TIME)
-        .build());
+    var queryTimestamp = Issues.TaintVulnerabilityPullQueryTimestamp.newBuilder()
+      .setQueryTimestamp(CURRENT_TIME)
+      .build();
+    var taint = Issues.TaintVulnerabilityLite.newBuilder()
+      .setKey(issueKey)
+      .setRuleKey("ruleKey")
+      .setType(Common.RuleType.BUG)
+      .setSeverity(Common.Severity.MAJOR)
+      .setMainLocation(Issues.Location.newBuilder().setFilePath(analyzedFileName).setMessage("message")
+        .setTextRange(Issues.TextRange.newBuilder()
+          .setStartLine(1)
+          .setStartLineOffset(1)
+          .setEndLine(1)
+          .setEndLineOffset(2)
+          .setHash("hash")))
+      .setCreationDate(CURRENT_TIME)
+      .build();
+    var pullPath = "/api/issues/pull_taint?projectKey=myProject&branchName=master&languages=" + LANGUAGES_LIST;
+    mockWebServerExtension.addProtobufResponseDelimited(pullPath, queryTimestamp, taint);
+    mockWebServerExtension.addProtobufResponseDelimited(pullPath + "&changedSince=" + CURRENT_TIME, queryTimestamp, taint);
 
     addConfigScope(folder1BaseDir.toUri().toString());
     var content = "def foo():\n  toto = 0\n  plouf = 0\n";
