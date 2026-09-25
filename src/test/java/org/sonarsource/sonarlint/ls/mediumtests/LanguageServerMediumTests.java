@@ -923,6 +923,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void testCheckNewSqConnection() throws ExecutionException, InterruptedException {
+    mockSupportedServerVersion();
     var serverUrl = mockWebServerExtension.url("/");
     SonarLintExtendedLanguageServer.ConnectionCheckParams testParams = new SonarLintExtendedLanguageServer.ConnectionCheckParams(TOKEN, null, serverUrl, null);
     CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> result = lsProxy.checkConnection(testParams);
@@ -935,6 +936,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
 
   @Test
   void testCheckConnectionWithKnownConnection() throws ExecutionException, InterruptedException {
+    mockSupportedServerVersion();
     SonarLintExtendedLanguageServer.ConnectionCheckParams testParams = new SonarLintExtendedLanguageServer.ConnectionCheckParams(CONNECTION_ID);
     CompletableFuture<SonarLintExtendedLanguageClient.ConnectionCheckResult> result = lsProxy.checkConnection(testParams);
 
@@ -1211,6 +1213,10 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void supportedLanguagesPanelCtaClickedShouldCallTelemetry() {
     assertThatCode(() -> lsProxy.supportedLanguagesPanelCtaClicked()).doesNotThrowAnyException();
+  }
+
+  private static void mockSupportedServerVersion() {
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"2025.1\", \"id\": \"xzy\"}");
   }
 
   @Override
