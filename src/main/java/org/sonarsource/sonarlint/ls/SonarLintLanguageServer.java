@@ -126,6 +126,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.ChangeDependencyR
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AcceptedBindingSuggestionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiAgentIntegrationStateObservedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationActionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationCliStateObservedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
@@ -704,6 +707,21 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<GetAiIntegrationStateResponse> getIntegrationState(GetAiIntegrationStateParams params) {
     return backendServiceFacade.getBackendService().getIntegrationState(params);
+  }
+
+  @Override
+  public void aiIntegrationAction(AiIntegrationActionParams params) {
+    telemetry.aiIntegrationAction(params);
+  }
+
+  @Override
+  public void aiIntegrationCliStateObserved(AiIntegrationCliStateObservedParams params) {
+    telemetry.aiIntegrationCliStateObserved(params);
+  }
+
+  @Override
+  public void aiAgentIntegrationStateObserved(AiAgentIntegrationStateObservedParams params) {
+    telemetry.aiAgentIntegrationStateObserved(params);
   }
 
   @Override

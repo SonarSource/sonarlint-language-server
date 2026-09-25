@@ -183,9 +183,10 @@ public final class BackendServiceFacade {
     var backendCapabilities = EnumSet.of(BackendCapability.SMART_NOTIFICATIONS, BackendCapability.PROJECT_SYNCHRONIZATION,
       BackendCapability.EMBEDDED_SERVER, BackendCapability.SERVER_SENT_EVENTS, BackendCapability.DATAFLOW_BUG_DETECTION,
       BackendCapability.FULL_SYNCHRONIZATION, BackendCapability.SECURITY_HOTSPOTS, BackendCapability.ISSUE_STREAMING,
-      BackendCapability.SCA_SYNCHRONIZATION, BackendCapability.GESSIE_TELEMETRY, BackendCapability.PROMOTIONAL_CAMPAIGNS);
+      BackendCapability.SCA_SYNCHRONIZATION, BackendCapability.PROMOTIONAL_CAMPAIGNS);
     if (telemetry != null && telemetry.enabled()) {
       backendCapabilities.add(BackendCapability.TELEMETRY);
+      backendCapabilities.add(BackendCapability.GESSIE_TELEMETRY);
     }
     if (shouldEnableMonitoring()) {
       backendCapabilities.add(BackendCapability.MONITORING);
