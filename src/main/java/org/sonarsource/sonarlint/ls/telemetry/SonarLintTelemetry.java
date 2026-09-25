@@ -24,6 +24,9 @@ import javax.annotation.CheckForNull;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AcceptedBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixAppliedForRuleParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiAgentIntegrationStateObservedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationActionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationCliStateObservedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingTriggeredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingType;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificationsClickedParams;
@@ -72,6 +75,18 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
       logOutput.debug("Telemetry is disabled by system property");
     }
     return !telemetryDisabledBySystemProperty;
+  }
+
+  public void aiIntegrationAction(AiIntegrationActionParams params) {
+    actIfEnabled(service -> service.aiIntegrationAction(params));
+  }
+
+  public void aiIntegrationCliStateObserved(AiIntegrationCliStateObservedParams params) {
+    actIfEnabled(service -> service.aiIntegrationCliStateObserved(params));
+  }
+
+  public void aiAgentIntegrationStateObserved(AiAgentIntegrationStateObservedParams params) {
+    actIfEnabled(service -> service.aiAgentIntegrationStateObserved(params));
   }
 
   public void devNotificationsClicked(String eventType) {

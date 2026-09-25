@@ -59,6 +59,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.ChangeDependencyR
 import org.sonarsource.sonarlint.core.rpc.protocol.client.binding.GetBindingSuggestionsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.connection.GetConnectionSuggestionsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AcceptedBindingSuggestionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiAgentIntegrationStateObservedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationActionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationCliStateObservedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 
 public interface SonarLintExtendedLanguageServer extends LanguageServer {
@@ -735,6 +738,15 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/getAiIntegrationState")
   CompletableFuture<GetAiIntegrationStateResponse> getIntegrationState(GetAiIntegrationStateParams params);
+
+  @JsonNotification("sonarlint/aiIntegrationAction")
+  void aiIntegrationAction(AiIntegrationActionParams params);
+
+  @JsonNotification("sonarlint/aiIntegrationCliStateObserved")
+  void aiIntegrationCliStateObserved(AiIntegrationCliStateObservedParams params);
+
+  @JsonNotification("sonarlint/aiAgentIntegrationStateObserved")
+  void aiAgentIntegrationStateObserved(AiAgentIntegrationStateObservedParams params);
 
   @JsonRequest("sonarlint/prepareInstallCliCommand")
   CompletableFuture<PrepareCliCommandResponse> prepareInstallCliCommand();
