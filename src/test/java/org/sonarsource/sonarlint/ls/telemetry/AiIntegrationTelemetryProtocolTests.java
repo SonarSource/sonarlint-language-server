@@ -29,15 +29,11 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationHost;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.CliAuthenticationStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.CliInstallationStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationState;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.SonarQubeCliState;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiAgentIntegrationStateObservedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationAction;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationActionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationActionStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationCliStateObservedParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationEnvironment;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationFailureCategory;
-import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationObservationTrigger;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,8 +46,7 @@ class AiIntegrationTelemetryProtocolTests {
   void readsActionNotificationWithEnumNames() {
     var message = parse("""
       {"jsonrpc":"2.0","method":"sonarlint/aiIntegrationAction","params":{
-        "action":"INSTALL_CLI","status":"FAILED","failureCategory":"TERMINAL_ERROR",
-        "agent":"CODEX","scope":"GLOBAL","host":"VSCODE","environment":"LOCAL"
+        "action":"INSTALL_CLI","status":"FAILED","agent":"CODEX","host":"VSCODE"
       }}
       """);
 
@@ -59,53 +54,38 @@ class AiIntegrationTelemetryProtocolTests {
     var params = (AiIntegrationActionParams) message.getParams();
     assertThat(params.getAction()).isEqualTo(AiIntegrationAction.INSTALL_CLI);
     assertThat(params.getStatus()).isEqualTo(AiIntegrationActionStatus.FAILED);
-    assertThat(params.getFailureCategory()).isEqualTo(AiIntegrationFailureCategory.TERMINAL_ERROR);
     assertThat(params.getAgent()).isEqualTo(AiAgent.CODEX);
     assertThat(params.getHost()).isEqualTo(AiIntegrationHost.VSCODE);
-    assertThat(params.getEnvironment()).isEqualTo(AiIntegrationEnvironment.LOCAL);
   }
 
   @Test
-  void readsCliObservationWithExplicitFalse() {
+  void readsCliObservation() {
     var message = parse("""
       {"jsonrpc":"2.0","method":"sonarlint/aiIntegrationCliStateObserved","params":{
-        "trigger":"INITIAL_LOAD","installationStatus":"INSTALLED",
-        "authenticationStatus":"AUTHENTICATED","vortexAvailable":false,
-        "host":"VSCODE","environment":"REMOTE"
+        "installationStatus":"INSTALLED","authenticationStatus":"AUTHENTICATED","host":"VSCODE"
       }}
       """);
 
     var params = (AiIntegrationCliStateObservedParams) message.getParams();
-    assertThat(params.getTrigger()).isEqualTo(AiIntegrationObservationTrigger.INITIAL_LOAD);
     assertThat(params.getInstallationStatus()).isEqualTo(CliInstallationStatus.INSTALLED);
     assertThat(params.getAuthenticationStatus()).isEqualTo(CliAuthenticationStatus.AUTHENTICATED);
-    assertThat(params.getVortexAvailable()).isFalse();
-    assertThat(params.getEnvironment()).isEqualTo(AiIntegrationEnvironment.REMOTE);
+    assertThat(params.getHost()).isEqualTo(AiIntegrationHost.VSCODE);
   }
 
   @Test
   void readsAgentObservationWithBothDetectionSources() {
     var message = parse("""
       {"jsonrpc":"2.0","method":"sonarlint/aiAgentIntegrationStateObserved","params":{
-        "trigger":"POST_ACTION","agent":"GITHUB_COPILOT",
-        "detectionSources":["IDE","CLI"],"standaloneMcpState":"UNKNOWN",
-        "host":"VSCODE","environment":"LOCAL"
+        "agent":"GITHUB_COPILOT","detectionSources":["IDE","CLI"],
+        "standaloneMcpState":"UNKNOWN","host":"VSCODE"
       }}
       """);
 
     var params = (AiAgentIntegrationStateObservedParams) message.getParams();
-    assertThat(params.getTrigger()).isEqualTo(AiIntegrationObservationTrigger.POST_ACTION);
     assertThat(params.getAgent()).isEqualTo(AiAgent.GITHUB_COPILOT);
     assertThat(params.getDetectionSources()).containsExactly(AiAgentDetectionSource.IDE, AiAgentDetectionSource.CLI);
     assertThat(params.getStandaloneMcpState()).isEqualTo(McpConfigurationState.UNKNOWN);
-  }
-
-  @Test
-  void serializesVortexAvailabilityInCliState() {
-    var state = new SonarQubeCliState(CliInstallationStatus.INSTALLED,
-      CliAuthenticationStatus.AUTHENTICATED, null, null, null, null, true);
-
-    assertThat(json.getGson().toJson(state)).contains("\"vortexAvailable\":true");
+    assertThat(params.getHost()).isEqualTo(AiIntegrationHost.VSCODE);
   }
 
   private NotificationMessage parse(String text) {
