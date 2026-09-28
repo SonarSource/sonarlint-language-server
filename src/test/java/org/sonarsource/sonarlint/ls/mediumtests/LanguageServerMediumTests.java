@@ -66,14 +66,25 @@ import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgent;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgentDetectionSource;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationHost;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationScope;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.CliAuthenticationStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.CliInstallationStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationState;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdateParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareAuthenticateCliCommandParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareCliCommandResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareIntegrateCliCommandParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionOrigin;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AcceptedBindingSuggestionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiAgentIntegrationStateObservedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationAction;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationActionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationActionStatus;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationCliStateObservedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttribute;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.CleanCodeAttributeCategory;
@@ -167,6 +178,39 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       """;
     var updatePlan = lsProxy.planMcpConfigurationUpdate(new McpConfigurationUpdateParams(AiAgent.CLAUDE_CODE, content, sonarMcpConfiguration)).get();
     assertThat(updatePlan.getUpdatedContent()).contains("\"other\"", "\"sonarqube\"");
+
+    assertPreparedCliCommand(lsProxy.prepareAuthenticateCliCommand(
+      new PrepareAuthenticateCliCommandParams("https://next.sonarqube.com/sonarqube", null, null)));
+    assertPreparedCliCommand(lsProxy.prepareIntegrateCliCommand(new PrepareIntegrateCliCommandParams(AiAgent.CLAUDE_CODE)));
+  }
+
+  @Test
+  void aiIntegrationNotificationsShouldCallTelemetry() throws Exception {
+    assertThatCode(() -> lsProxy.aiIntegrationAction(new AiIntegrationActionParams(
+      AiIntegrationAction.INSTALL_CLI, AiIntegrationActionStatus.SUCCEEDED, AiAgent.CLAUDE_CODE, AiIntegrationHost.VSCODE)))
+      .doesNotThrowAnyException();
+    assertThatCode(() -> lsProxy.aiIntegrationCliStateObserved(new AiIntegrationCliStateObservedParams(
+      CliInstallationStatus.INSTALLED, CliAuthenticationStatus.AUTHENTICATED, AiIntegrationHost.VSCODE)))
+      .doesNotThrowAnyException();
+    assertThatCode(() -> lsProxy.aiAgentIntegrationStateObserved(new AiAgentIntegrationStateObservedParams(
+      AiAgent.CLAUDE_CODE, List.of(AiAgentDetectionSource.IDE), McpConfigurationState.NOT_CONFIGURED, AiIntegrationHost.VSCODE)))
+      .doesNotThrowAnyException();
+
+    // Round-trip so the server has consumed the notifications above before the JVM exits.
+    assertThat(lsProxy.prepareInstallCliCommand().get(60, SECONDS).isInteractive()).isTrue();
+  }
+
+  private static void assertPreparedCliCommand(CompletableFuture<PrepareCliCommandResponse> future) throws Exception {
+    try {
+      var response = future.get(60, SECONDS);
+      assertThat(response.getExecutable()).isNotBlank();
+      assertThat(response.getArguments()).isNotNull();
+    } catch (ExecutionException e) {
+      assertThat(e.getCause()).isInstanceOf(ResponseErrorException.class);
+      var responseError = ((ResponseErrorException) e.getCause()).getResponseError();
+      assertThat(responseError.getCode()).isEqualTo(ResponseErrorCode.InternalError.getValue());
+      assertThat(responseError.getMessage() + responseError.getData()).contains("A working SonarQube CLI installation is required");
+    }
   }
 
   @Test
