@@ -28,10 +28,10 @@ jobs:
     name: Build
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           version: 2026.4.11
-      - uses: SonarSource/ci-github-actions/build-maven@d41706a4180f70b6c0d0479795309a6c99726022 # 2.0.0
+      - uses: SonarSource/ci-github-actions/build-maven@21206070b4306949454171904b8d2b4ec349b0c5 # 2.0.1
         with:
           maven-args: -Dmaven.test.skip=true -Dsonar.skip=true
           deploy-pull-request: true
@@ -44,10 +44,10 @@ jobs:
     name: QA Linux
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           version: 2026.4.11
-      - uses: SonarSource/ci-github-actions/build-maven@d41706a4180f70b6c0d0479795309a6c99726022 # 2.0.0
+      - uses: SonarSource/ci-github-actions/build-maven@21206070b4306949454171904b8d2b4ec349b0c5 # 2.0.1
         with:
           maven-args: -Dmaven.install.skip=true -Dmaven.deploy.skip=true -P-deploy-sonarsource,-release,-sign
           artifactory-deployer-role: qa-deployer
@@ -68,10 +68,10 @@ jobs:
     name: QA Windows
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           version: 2026.4.11
-      - uses: SonarSource/ci-github-actions/build-maven@d41706a4180f70b6c0d0479795309a6c99726022 # 2.0.0
+      - uses: SonarSource/ci-github-actions/build-maven@21206070b4306949454171904b8d2b4ec349b0c5 # 2.0.1
         with:
           artifactory-reader-role: private-reader
           artifactory-deployer-role: qa-deployer
@@ -92,6 +92,6 @@ jobs:
     runs-on: github-ubuntu-latest-s
     name: Promote
     steps:
-      - uses: SonarSource/ci-github-actions/promote@d41706a4180f70b6c0d0479795309a6c99726022 # 2.0.0
+      - uses: SonarSource/ci-github-actions/promote@21206070b4306949454171904b8d2b4ec349b0c5 # 2.0.1
         with:
           promote-pull-request: true
