@@ -143,7 +143,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   void prepare() throws IOException {
     client.isIgnoredByScm = false;
     org.apache.commons.io.FileUtils.cleanDirectory(analysisDir.toFile());
-    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"9.9\", \"id\": \"xzy\"}");
+    mockWebServerExtension.addStringResponse("/api/system/status", "{\"status\": \"UP\", \"version\": \"2025.1\", \"id\": \"xzy\"}");
     mockWebServerExtension.addProtobufResponse("/api/settings/values.protobuf", Settings.Values.newBuilder().build());
     mockWebServerExtension.addStringResponse("/api/authentication/validate?format=json", "{\"valid\": true}");
     mockWebServerExtension.addProtobufResponse("/api/components/search.protobuf?qualifiers=TRK&ps=500&p=1", Components.SearchWsResponse.newBuilder().build());
