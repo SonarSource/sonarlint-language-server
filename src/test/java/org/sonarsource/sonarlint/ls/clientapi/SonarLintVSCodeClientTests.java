@@ -651,7 +651,7 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void testShowSoonUnsupportedVersion() {
-    var doNotShowAgainId = "sonarlint.unsupported.myConnection.8.9.9.id";
+    var doNotShowAgainId = "sonarlint.unsupported.myConnection.2025.1.id";
     var message = "SQ will be unsupported soon";
     var coreParams = new ShowSoonUnsupportedMessageParams(doNotShowAgainId, "configId", message);
     var branchCaptor = ArgumentCaptor.forClass(SonarLintExtendedLanguageClient.ShowSoonUnsupportedVersionMessageParams.class);
