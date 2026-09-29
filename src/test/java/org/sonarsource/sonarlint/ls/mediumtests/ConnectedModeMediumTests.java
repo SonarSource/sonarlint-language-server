@@ -24,7 +24,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -1214,13 +1213,13 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
   }
 
   @Test
-  void shouldChangeLocalIssueStatus() throws URISyntaxException {
+  void shouldChangeLocalIssueStatus() {
     var fileUri = folder1BaseDir.resolve("changeLocalIssueStatus.py").toUri().toString();
     assertLocalIssuesStatusChanged(folder1BaseDir.toUri().toString(), fileUri);
   }
 
   @Test
-  void shouldReopenResolvedLocalIssues() throws URISyntaxException {
+  void shouldReopenResolvedLocalIssues() {
     var fileName = "changeAndReopenLocalIssueStatus.py";
     var fileUri = folder1BaseDir.resolve(fileName).toUri().toString();
     var configScopeId = folder1BaseDir.toUri().toString();
@@ -1246,7 +1245,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     waitForLogToContain("'OmniSharp' skipped because there are no related files in the current project");
   }
 
-  private void assertLocalIssuesStatusChanged(String configScope, String fileUri) throws URISyntaxException {
+  private void assertLocalIssuesStatusChanged(String configScope, String fileUri) {
     mockWebServerExtension.addResponse("/api/issues/anticipated_transitions?projectKey=" + PROJECT_KEY, new MockResponse.Builder().code(202).build());
     mockWebServerExtension.addResponse("/api/issues/add_comment", new MockResponse.Builder().code(200).build());
     mockNoIssueAndNoTaintInIncrementalSync();
