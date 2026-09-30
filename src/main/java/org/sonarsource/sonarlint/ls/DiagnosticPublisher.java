@@ -328,6 +328,6 @@ public class DiagnosticPublisher {
 
   private static Comparator<? super Diagnostic> byLineNumber() {
     return Comparator.comparing((Diagnostic d) -> d.getRange().getStart().getLine())
-      .thenComparing(Diagnostic::getMessage);
+      .thenComparing((Diagnostic d) -> d.getMessage().getLeft());
   }
 }

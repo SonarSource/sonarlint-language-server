@@ -74,7 +74,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
         """);
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(cppFileUri))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(), Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(tuple(1, 8, 1, 9, "cpp:S1481", "sonarqube", "unused variable 'i'", Warning)));
 
     assertThat(client.needCompilationDatabaseCalls.get()).isZero();
@@ -152,7 +152,7 @@ class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
     notifyConfigurationChangeOnClient();
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(cppFileUri))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(), Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(tuple(1, 8, 1, 9, "cpp:S1481", "sonarqube", "unused variable 'i'", Warning)));
 
     assertThat(client.needCompilationDatabaseCalls.get()).isEqualTo(1);
