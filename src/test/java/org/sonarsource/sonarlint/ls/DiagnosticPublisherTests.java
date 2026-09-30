@@ -137,7 +137,7 @@ class DiagnosticPublisherTests {
     assertThat(diagnostic.getRange().getStart().getCharacter()).isZero();
     assertThat(diagnostic.getRange().getEnd().getLine()).isZero();
     assertThat(diagnostic.getRange().getEnd().getCharacter()).isEqualTo(1);
-    assertThat(diagnostic.getMessage()).isEqualTo("Do this, don't do that");
+    assertThat(diagnostic.getMessage().getLeft()).isEqualTo("Do this, don't do that");
     assertThat(diagnostic.getCode().getLeft()).isEqualTo("rule-key");
     assertThat(diagnostic.getSeverity()).isEqualTo(DiagnosticSeverity.Warning);
     assertThat(diagnostic.getData()).isNotNull();

@@ -823,6 +823,10 @@ public abstract class AbstractLanguageServerMediumTests {
     return d -> d.getCode().getLeft();
   }
 
+  protected Function<? super Diagnostic, ?> message() {
+    return d -> d.getMessage().getLeft();
+  }
+
   protected Function<? super Diagnostic, ?> endCharacter() {
     return d -> d.getRange().getEnd().getCharacter();
   }
