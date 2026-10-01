@@ -33,6 +33,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.core.issue.IssueNotFoundException;
@@ -41,6 +42,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgent;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgentRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationHost;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationScope;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AuthenticateCliWithConnectionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AuthenticateCliWithConnectionResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AuthenticateCliWithConnectionResponse.Status;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdateParams;
@@ -77,6 +81,7 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -316,6 +321,40 @@ class BackendServiceTests {
     verify(aiAgentService).prepareInstallCommand();
     verify(aiAgentService).prepareAuthenticateCommand(authenticateParams);
     verify(aiAgentService).prepareIntegrateCommand(integrateParams);
+  }
+
+  @ParameterizedTest
+  @EnumSource(Status.class)
+  void shouldForwardCliAuthenticationResponse(Status status) {
+    var params = new AuthenticateCliWithConnectionParams("connection");
+    var response = new AuthenticateCliWithConnectionResponse(status, "diagnostic");
+    var future = CompletableFuture.completedFuture(response);
+    when(aiAgentService.authenticateCliWithConnection(params)).thenReturn(future);
+
+    var result = underTest.authenticateCliWithConnection(params);
+
+    assertThat(result).isSameAs(future).isCompletedWithValue(response);
+    verify(aiAgentService).authenticateCliWithConnection(params);
+  }
+
+  @Test
+  void shouldPropagateCliAuthenticationFailure() {
+    var params = new AuthenticateCliWithConnectionParams("connection");
+    var failure = new IllegalStateException("authentication failed");
+    when(aiAgentService.authenticateCliWithConnection(params)).thenReturn(CompletableFuture.failedFuture(failure));
+
+    assertThatThrownBy(() -> underTest.authenticateCliWithConnection(params).join()).hasCause(failure);
+  }
+
+  @Test
+  void shouldCancelBackendCliAuthenticationFuture() {
+    var params = new AuthenticateCliWithConnectionParams("connection");
+    var future = new CompletableFuture<AuthenticateCliWithConnectionResponse>();
+    when(aiAgentService.authenticateCliWithConnection(params)).thenReturn(future);
+
+    underTest.authenticateCliWithConnection(params).cancel(true);
+
+    assertThat(future).isCancelled();
   }
 
   @Test
