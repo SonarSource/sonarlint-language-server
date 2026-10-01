@@ -38,10 +38,6 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.core.rpc.protocol.SonarLintRpcServer;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateResponse;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetHookScriptContentParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetHookScriptContentResponse;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdateParams;
@@ -307,14 +303,6 @@ public class BackendService {
 
   public CompletableFuture<McpConfigurationUpdatePlanResponse> planMcpConfigurationUpdate(McpConfigurationUpdateParams params) {
     return backend.getAiAgentService().planMcpConfigurationUpdate(params);
-  }
-
-  public CompletableFuture<GetRuleFileContentResponse> getMCPRuleFileContent(GetRuleFileContentParams params) {
-    return backend.getAiAgentService().getRuleFileContent(params);
-  }
-
-  public CompletableFuture<GetHookScriptContentResponse> getAiAgentHookScriptContent(GetHookScriptContentParams params) {
-    return backend.getAiAgentService().getHookScriptContent(params);
   }
 
   public void didChangeClientNodeJsPath(DidChangeClientNodeJsPathParams params) {

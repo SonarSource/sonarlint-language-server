@@ -42,8 +42,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgentRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationHost;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationScope;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetHookScriptContentParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareAuthenticateCliCommandParams;
@@ -344,30 +342,6 @@ class BackendServiceTests {
     when(aiAgentService.getIntegrationState(params)).thenReturn(CompletableFuture.failedFuture(new IllegalStateException()));
 
     assertThat(underTest.getIntegrationState(params)).isCompletedExceptionally();
-  }
-
-  @Test
-  void shouldForwardMCPRuleFileRequestToBackend() {
-    var aiAgent = AiAgent.CURSOR;
-
-    var argumentCaptor = ArgumentCaptor.forClass(GetRuleFileContentParams.class);
-
-    underTest.getMCPRuleFileContent(new GetRuleFileContentParams(aiAgent));
-
-    verify(aiAgentService).getRuleFileContent(argumentCaptor.capture());
-    assertThat(argumentCaptor.getValue().getAiAgent()).isEqualTo(aiAgent);
-  }
-
-  @Test
-  void shouldForwardAiAgentHookScriptRequestToBackend() {
-    var aiAgent = AiAgent.WINDSURF;
-
-    var argumentCaptor = ArgumentCaptor.forClass(GetHookScriptContentParams.class);
-
-    underTest.getAiAgentHookScriptContent(new GetHookScriptContentParams(aiAgent));
-
-    verify(aiAgentService).getHookScriptContent(argumentCaptor.capture());
-    assertThat(argumentCaptor.getValue().getAiAgent()).isEqualTo(aiAgent);
   }
 
   @Test
