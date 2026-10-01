@@ -86,6 +86,8 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.NotebookDocumentService;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AuthenticateCliWithConnectionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AuthenticateCliWithConnectionResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionParams;
@@ -726,6 +728,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<PrepareCliCommandResponse> prepareAuthenticateCliCommand(PrepareAuthenticateCliCommandParams params) {
     return backendServiceFacade.getBackendService().prepareAuthenticateCliCommand(params);
+  }
+
+  @Override
+  public CompletableFuture<AuthenticateCliWithConnectionResponse> authenticateCliWithConnection(AuthenticateCliWithConnectionParams params) {
+    return backendServiceFacade.getBackendService().authenticateCliWithConnection(params);
   }
 
   @Override

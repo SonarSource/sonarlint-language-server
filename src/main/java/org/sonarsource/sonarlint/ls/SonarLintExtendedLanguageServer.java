@@ -32,6 +32,8 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.util.Preconditions;
 import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
 import org.eclipse.lsp4j.services.LanguageServer;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AuthenticateCliWithConnectionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AuthenticateCliWithConnectionResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionParams;
@@ -751,6 +753,9 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/prepareAuthenticateCliCommand")
   CompletableFuture<PrepareCliCommandResponse> prepareAuthenticateCliCommand(PrepareAuthenticateCliCommandParams params);
+
+  @JsonRequest("sonarlint/authenticateCliWithConnection")
+  CompletableFuture<AuthenticateCliWithConnectionResponse> authenticateCliWithConnection(AuthenticateCliWithConnectionParams params);
 
   @JsonRequest("sonarlint/prepareIntegrateCliCommand")
   CompletableFuture<PrepareCliCommandResponse> prepareIntegrateCliCommand(PrepareIntegrateCliCommandParams params);
