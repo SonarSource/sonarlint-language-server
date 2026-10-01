@@ -33,7 +33,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -87,13 +86,8 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.NotebookDocumentService;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgent;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateResponse;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetHookScriptContentParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetHookScriptContentResponse;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdateParams;
@@ -747,30 +741,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<McpConfigurationUpdatePlanResponse> planMcpConfigurationUpdate(McpConfigurationUpdateParams params) {
     return backendServiceFacade.getBackendService().planMcpConfigurationUpdate(params);
-  }
-
-  @Override
-  public CompletableFuture<GetRuleFileContentResponse> getMCPRuleFileContent(String clientProvidedIde) {
-    try {
-      var aiAgent = AiAgent.valueOf(clientProvidedIde.toUpperCase(Locale.US));
-      var params = new GetRuleFileContentParams(aiAgent);
-      return backendServiceFacade.getBackendService().getMCPRuleFileContent(params);
-    } catch (IllegalArgumentException e) {
-      client.showMessage(new MessageParams(MessageType.Warning, "Rule file creation is not yet supported for AI agent '" + clientProvidedIde + "'."));
-      throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported AI agent: " + clientProvidedIde, e));
-    }
-  }
-
-  @Override
-  public CompletableFuture<GetHookScriptContentResponse> getAiAgentHookScriptContent(String clientProvidedIde) {
-    try {
-      var aiAgent = AiAgent.valueOf(clientProvidedIde.toUpperCase(Locale.US));
-      var params = new GetHookScriptContentParams(aiAgent);
-      return backendServiceFacade.getBackendService().getAiAgentHookScriptContent(params);
-    } catch (IllegalArgumentException e) {
-      client.showMessage(new MessageParams(MessageType.Warning, "Hook script creation is not yet supported for AI agent '" + clientProvidedIde + "'."));
-      throw new ResponseErrorException(new ResponseError(ResponseErrorCode.InvalidParams, "Unsupported AI agent: " + clientProvidedIde, e));
-    }
   }
 
   @Override
