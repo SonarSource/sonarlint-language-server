@@ -34,8 +34,6 @@ import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateResponse;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetHookScriptContentResponse;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetRuleFileContentResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdateParams;
@@ -762,12 +760,6 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/planMcpConfigurationUpdate")
   CompletableFuture<McpConfigurationUpdatePlanResponse> planMcpConfigurationUpdate(McpConfigurationUpdateParams params);
-
-  @JsonRequest("sonarlint/getMCPRuleFileContent")
-  CompletableFuture<GetRuleFileContentResponse> getMCPRuleFileContent(String aiAgent);
-
-  @JsonRequest("sonarlint/getAiAgentHookScriptContent")
-  CompletableFuture<GetHookScriptContentResponse> getAiAgentHookScriptContent(String aiAgent);
 
   @JsonNotification("sonarlint/addedManualBindings")
   void addedManualBindings();

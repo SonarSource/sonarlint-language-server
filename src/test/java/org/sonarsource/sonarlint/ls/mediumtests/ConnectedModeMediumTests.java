@@ -31,7 +31,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import mockwebserver3.MockResponse;
@@ -81,7 +80,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.sonar.api.rules.RuleType.SECURITY_HOTSPOT;
 
@@ -264,66 +262,6 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     assertThat(mcpServerConfig.getJsonConfiguration())
       .isNotEmpty()
       .contains(baseServerUrl);
-  }
-
-  @Test
-  void should_get_mcp_rule_file_content() {
-    var aiAgent = "cursor";
-
-    var ruleFileContent = lsProxy.getMCPRuleFileContent(aiAgent).join();
-
-    assertThat(ruleFileContent.getContent())
-      .isNotEmpty()
-      .contains("SonarQube MCP Server");
-  }
-
-  @Test
-  void should_show_warning_notification_for_unsupported_ide_when_requesting_rule_file_content() {
-    var aiAgent = "unsupported-agent";
-
-    var future = lsProxy.getMCPRuleFileContent(aiAgent);
-
-    assertThrows(CompletionException.class, future::join);
-
-    assertThat(client.shownMessages)
-      .isNotEmpty()
-      .contains(new MessageParams(MessageType.Warning,
-        "Rule file creation is not yet supported for AI agent 'unsupported-agent'."));
-  }
-
-  @Test
-  void should_get_ai_agent_hook_script_content() {
-    var aiAgent = "windsurf";
-
-    var hookScriptContent = lsProxy.getAiAgentHookScriptContent(aiAgent).join();
-
-    assertThat(hookScriptContent.getScriptContent())
-      .isNotEmpty()
-      .contains("SonarQube for IDE")
-      .contains("sonarqube_analysis_hook");
-    assertThat(hookScriptContent.getScriptFileName())
-      .isNotEmpty()
-      .matches(".*\\.(js|py|sh)$");
-    assertThat(hookScriptContent.getConfigContent())
-      .isNotEmpty()
-      .contains("\"post_write_code\"")
-      .contains("{{SCRIPT_PATH}}");
-    assertThat(hookScriptContent.getConfigFileName())
-      .isEqualTo("hooks.json");
-  }
-
-  @Test
-  void should_show_warning_notification_for_unsupported_ide_when_requesting_ai_agent_hook_script() {
-    var aiAgent = "unsupported-agent";
-
-    var future = lsProxy.getAiAgentHookScriptContent(aiAgent);
-
-    assertThrows(CompletionException.class, future::join);
-
-    assertThat(client.shownMessages)
-      .isNotEmpty()
-      .contains(new MessageParams(MessageType.Warning,
-        "Hook script creation is not yet supported for AI agent 'unsupported-agent'."));
   }
 
   @Test
