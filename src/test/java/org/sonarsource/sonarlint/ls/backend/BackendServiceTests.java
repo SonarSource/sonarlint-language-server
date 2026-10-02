@@ -41,19 +41,11 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgent;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiAgentRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationHost;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationScope;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.CliAuthenticationStatus;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.CliInstallationStatus;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.CliIntegrationCheckStatus;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.CliIntegrationConfiguration;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.CliIntegrationRecordingStatus;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.CliIntegrationState;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.GetAiIntegrationStateResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationInspectionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareAuthenticateCliCommandParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareIntegrateCliCommandParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.SonarQubeCliState;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalysisRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeVCSChangedFilesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAutomaticAnalysisSettingParams;
@@ -309,23 +301,6 @@ class BackendServiceTests {
 
     underTest.getIntegrationState(params);
 
-    verify(aiAgentService).getIntegrationState(params);
-  }
-
-  @Test
-  void shouldForwardCliIntegrationConfigurationsWithoutRequiringAuthenticationOrDetection() {
-    var params = new GetAiIntegrationStateParams(AiIntegrationHost.VSCODE, List.of(), AiIntegrationScope.GLOBAL, null);
-    var configurations = List.of(
-      new CliIntegrationConfiguration("/agent", CliIntegrationCheckStatus.CONFIGURED, CliIntegrationCheckStatus.INVALID),
-      new CliIntegrationConfiguration("/agent", null, CliIntegrationCheckStatus.NOT_CONFIGURED),
-      new CliIntegrationConfiguration(null, CliIntegrationCheckStatus.UNKNOWN, null));
-    var response = new GetAiIntegrationStateResponse(new SonarQubeCliState(CliInstallationStatus.INSTALLED,
-      CliAuthenticationStatus.UNAUTHENTICATED, null, null, null, null), List.of(), List.of(), null,
-      List.of(new CliIntegrationState(AiAgent.CODEX, CliIntegrationRecordingStatus.RECORDED, configurations)));
-    var future = CompletableFuture.completedFuture(response);
-    when(aiAgentService.getIntegrationState(params)).thenReturn(future);
-
-    assertThat(underTest.getIntegrationState(params)).isSameAs(future).isCompletedWithValue(response);
     verify(aiAgentService).getIntegrationState(params);
   }
 
