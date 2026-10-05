@@ -97,6 +97,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUp
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareAuthenticateCliCommandParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareCliCommandResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareIntegrateCliCommandParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.UninstallCliResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.GetSupportedFilePatternsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
@@ -723,6 +724,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
   @Override
   public CompletableFuture<PrepareCliCommandResponse> prepareInstallCliCommand() {
     return backendServiceFacade.getBackendService().prepareInstallCliCommand();
+  }
+
+  @Override
+  public CompletableFuture<UninstallCliResponse> uninstallCli() {
+    return backendServiceFacade.getBackendService().uninstallCli();
   }
 
   @Override
