@@ -47,6 +47,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUp
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareAuthenticateCliCommandParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareCliCommandResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareIntegrateCliCommandParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.UninstallCliResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFileListParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeFullProjectParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeVCSChangedFilesParams;
@@ -289,6 +290,10 @@ public class BackendService {
 
   public CompletableFuture<PrepareCliCommandResponse> prepareInstallCliCommand() {
     return backend.getAiAgentService().prepareInstallCommand();
+  }
+
+  public CompletableFuture<UninstallCliResponse> uninstallCli() {
+    return backend.getAiAgentService().uninstallCli();
   }
 
   public CompletableFuture<PrepareCliCommandResponse> prepareAuthenticateCliCommand(PrepareAuthenticateCliCommandParams params) {

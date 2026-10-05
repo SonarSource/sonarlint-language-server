@@ -50,6 +50,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationIn
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.McpConfigurationUpdateParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareAuthenticateCliCommandParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.PrepareIntegrateCliCommandParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.UninstallCliResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalysisRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.AnalyzeVCSChangedFilesParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.analysis.DidChangeAutomaticAnalysisSettingParams;
@@ -335,6 +336,25 @@ class BackendServiceTests {
 
     assertThat(result).isSameAs(future).isCompletedWithValue(response);
     verify(aiAgentService).authenticateCliWithConnection(params);
+  }
+
+  @ParameterizedTest
+  @EnumSource(UninstallCliResponse.Status.class)
+  void shouldForwardCliUninstallResponse(UninstallCliResponse.Status status) {
+    var response = new UninstallCliResponse(status, "reset output", "reset warning", "diagnostic");
+    var future = CompletableFuture.completedFuture(response);
+    when(aiAgentService.uninstallCli()).thenReturn(future);
+
+    assertThat(underTest.uninstallCli()).isSameAs(future).isCompletedWithValue(response);
+    verify(aiAgentService).uninstallCli();
+  }
+
+  @Test
+  void shouldPropagateCliUninstallFailure() {
+    var failure = new IllegalStateException("uninstall failed");
+    when(aiAgentService.uninstallCli()).thenReturn(CompletableFuture.failedFuture(failure));
+
+    assertThatThrownBy(() -> underTest.uninstallCli().join()).hasCause(failure);
   }
 
   @Test
