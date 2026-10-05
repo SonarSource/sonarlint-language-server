@@ -167,6 +167,8 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
       assertThat(capability.getAgent()).isEqualTo(AiAgent.CLAUDE_CODE);
       assertThat(capability.isCliIntegrationSupported()).isTrue();
     });
+    assertThat(integrationState.getCliIntegrations()).extracting(state -> state.getAgent())
+      .containsExactly(AiAgent.CLAUDE_CODE, AiAgent.GITHUB_COPILOT_CLI, AiAgent.CODEX, AiAgent.CURSOR, AiAgent.ANTIGRAVITY);
 
     var cliCommand = lsProxy.prepareInstallCliCommand().get();
     assertThat(cliCommand.isInteractive()).isTrue();
