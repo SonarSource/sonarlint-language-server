@@ -27,13 +27,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.ArgumentCaptor;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.ai.AiIntegrationHost;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingSuggestionOrigin;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.GetStatusResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.telemetry.TelemetryRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AcceptedBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AddQuickFixAppliedForRuleParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiAgentIntegrationStateObservedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationAction;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationActionParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationActionStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationCliStateObservedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingTriggeredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingType;
@@ -132,10 +135,19 @@ class SonarLintTelemetryTests {
   }
 
   @Test
+  void forwardsUninstallActionWhenEnabled() {
+    var action = new AiIntegrationActionParams(AiIntegrationAction.UNINSTALL_CLI, AiIntegrationActionStatus.SUCCEEDED, null, AiIntegrationHost.VSCODE);
+
+    telemetry.aiIntegrationAction(action);
+
+    verify(telemetryService).aiIntegrationAction(action);
+  }
+
+  @Test
   void suppressesAiIntegrationNotificationsWhenDisabled() {
     System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
 
-    telemetry.aiIntegrationAction(mock(AiIntegrationActionParams.class));
+    telemetry.aiIntegrationAction(new AiIntegrationActionParams(AiIntegrationAction.UNINSTALL_CLI, AiIntegrationActionStatus.STARTED, null, AiIntegrationHost.VSCODE));
     telemetry.aiIntegrationCliStateObserved(mock(AiIntegrationCliStateObservedParams.class));
     telemetry.aiAgentIntegrationStateObserved(mock(AiAgentIntegrationStateObservedParams.class));
 
