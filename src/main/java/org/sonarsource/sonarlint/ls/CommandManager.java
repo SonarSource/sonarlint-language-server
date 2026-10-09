@@ -46,6 +46,7 @@ import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.ResourceOperation;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
+import org.eclipse.lsp4j.SnippetTextEdit;
 import org.eclipse.lsp4j.TextDocumentEdit;
 import org.eclipse.lsp4j.TextEdit;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
@@ -195,7 +196,7 @@ public class CommandManager {
     var binding = bindingManager.getBinding(uri);
 
     var ruleKey = diagnostic.getCode().getLeft();
-    var message = diagnostic.getMessage();
+    var message = diagnostic.getMessage().getLeft();
     var isNotebookCellUri = openNotebooksCache.isKnownCellUri(uri);
     var issueForDiagnostic = issuesCache.getIssueForDiagnostic(
       isNotebookCellUri ? openNotebooksCache.getNotebookUriFromCellUri(uri) : uri, diagnostic);
@@ -288,6 +289,7 @@ public class CommandManager {
     documentEdit.setTextDocument(new VersionedTextDocumentIdentifier(fileEdit.target().toString(), documentVersion));
     documentEdit.setEdits(fileEdit.textEdits().stream()
       .map(CommandManager::newLspTextEdit)
+      .map(Either::<TextEdit, SnippetTextEdit>forLeft)
       .toList());
     return Either.forLeft(documentEdit);
   }
