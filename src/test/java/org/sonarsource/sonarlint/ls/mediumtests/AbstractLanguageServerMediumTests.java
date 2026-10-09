@@ -819,6 +819,10 @@ public abstract class AbstractLanguageServerMediumTests {
     return p -> p.getMessage().replaceAll("\\[(\\w*)\\s+-\\s[\\d:.]*\\]", "[$1]").replaceAll("\\d{2,4}ms", "XXXms");
   }
 
+  protected Function<? super Diagnostic, ?> message() {
+    return d -> d.getMessage().getLeft();
+  }
+
   protected Function<? super Diagnostic, ?> code() {
     return d -> d.getCode().getLeft();
   }
