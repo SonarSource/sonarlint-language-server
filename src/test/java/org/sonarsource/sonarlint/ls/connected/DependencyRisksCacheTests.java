@@ -52,7 +52,7 @@ class DependencyRisksCacheTests {
 
     var diagnostic = convert(risk).get();
 
-    assertThat(diagnostic.getMessage()).isEqualTo("[CVE-2020-1234] vulnerable-package 1.0.0");
+    assertThat(diagnostic.getMessage().getLeft()).isEqualTo("[CVE-2020-1234] vulnerable-package 1.0.0");
     assertThat(diagnostic.getSource()).isEqualTo(SONARQUBE_SERVER_SOURCE);
     assertThat(diagnostic.getCode().getLeft()).isEqualTo("VULNERABILITY");
     assertThat(diagnostic.getData().getClass()).isEqualTo(DiagnosticPublisher.DiagnosticData.class);

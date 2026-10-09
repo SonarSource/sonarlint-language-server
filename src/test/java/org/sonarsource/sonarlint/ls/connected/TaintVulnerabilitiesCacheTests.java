@@ -73,7 +73,7 @@ class TaintVulnerabilitiesCacheTests {
 
     var diagnostic = convert(issue).get();
 
-    assertThat(diagnostic.getMessage()).isEqualTo("message [+2 locations]");
+    assertThat(diagnostic.getMessage().getLeft()).isEqualTo("message [+2 locations]");
     assertThat(diagnostic.getSeverity()).isEqualTo(expectedSeverity);
     assertThat(diagnostic.getSource()).isEqualTo(taintSource);
     assertThat(diagnostic.getCode().getLeft()).isEqualTo("ruleKey");

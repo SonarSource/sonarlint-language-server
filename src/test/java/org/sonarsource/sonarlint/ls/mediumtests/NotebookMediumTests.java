@@ -75,7 +75,7 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
       "def foo():\n  print 'toto'\n");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uri + "#2"))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(), Diagnostic::getSeverity)
       .containsExactly(
         tuple(1, 2, 1, 7, "ipython:PrintStatementUsage", "sonarqube", "Replace print statement by built-in function.", DiagnosticSeverity.Warning)));
     assertThat(client.getDiagnostics(uri + "#1")).isEmpty();
@@ -120,7 +120,7 @@ class NotebookMediumTests extends AbstractLanguageServerMediumTests {
       List.of(new TextDocumentItem(fileUri + "#1", "python", 1, "def foo():\n  print 'toto'\n"))));
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri + "#1"))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 7, "ipython:PrintStatementUsage", "sonarqube", "Replace print statement by built-in function.", DiagnosticSeverity.Warning)));

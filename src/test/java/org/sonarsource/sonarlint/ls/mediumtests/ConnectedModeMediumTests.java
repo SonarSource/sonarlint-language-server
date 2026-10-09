@@ -274,7 +274,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
         Diagnostic::getSeverity)
       .containsExactly(
         tuple(0, 13, 0, 26, PYTHON_S1313, "local-hotspot", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
@@ -329,7 +329,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
         Diagnostic::getSeverity)
       .containsExactly(
         tuple(0, 13, 0, 26, PYTHON_S1313, "remote-hotspot", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
@@ -382,7 +382,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     awaitUntilAsserted(() -> {
       assertThat(client.getHotspots(uri1InFolder))
-        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
           Diagnostic::getSeverity)
         .containsExactly(
           tuple(1, 15, 1, 28, PYTHON_S1313, "local-hotspot", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
@@ -390,7 +390,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
       assertThat(client.getDiagnostics(uri1InFolder)).isEmpty();
 
       assertThat(client.getHotspots(uri2InFolder))
-        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
           Diagnostic::getSeverity)
         .containsExactly(
           tuple(1, 15, 1, 28, PYTHON_S1313, "local-hotspot", "Make sure using this hardcoded IP address \"23.45.67.89\" is safe here.",
@@ -409,7 +409,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     awaitUntilAsserted(() -> {
       // File 1 is still open, keeping hotspots
       assertThat(client.getHotspots(uri1InFolder))
-        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+        .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
           Diagnostic::getSeverity)
         .containsExactly(
           tuple(1, 15, 1, 28, PYTHON_S1313, "local-hotspot", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.",
@@ -443,7 +443,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
@@ -512,7 +512,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(uriInFolder, "python", "def foo():\n  toto = 0\n  plouf = 0\n");
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(uriInFolder))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
@@ -720,7 +720,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(fileUri, "python", content);
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
@@ -733,7 +733,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     // Now we expect that one issue is resolved
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
@@ -755,7 +755,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(fileUri, "python", content);
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
@@ -817,7 +817,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(), Diagnostic::getSeverity)
       .containsExactly(
         tuple(0, 13, 0, 26, PYTHON_S1313, "remote-hotspot", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Information)));
     assertThat(client.getHotspots(uriInFolder).get(0).getData().toString()).contains("\"status\":0");
@@ -871,7 +871,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(), Diagnostic::getSeverity)
       .containsExactly(
         tuple(0, 13, 0, 26, PYTHON_S1313, "remote-hotspot", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Information)));
     assertThat(client.getHotspots(uriInFolder).get(0).getData().toString()).contains("\"status\":0");
@@ -943,7 +943,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(), Diagnostic::getSeverity)
       .containsExactly(
         tuple(0, 13, 0, 26, PYTHON_S1313, "remote-hotspot", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Information)));
 
@@ -968,7 +968,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(uriInFolder, "python", "IP_ADDRESS = '12.34.56.78'\n");
 
     awaitUntilAsserted(() -> assertThat(client.getHotspots(uriInFolder))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage, Diagnostic::getSeverity)
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(), Diagnostic::getSeverity)
       .containsExactly(
         tuple(0, 13, 0, 26, PYTHON_S1313, "local-hotspot", "Make sure using this hardcoded IP address \"12.34.56.78\" is safe here.", DiagnosticSeverity.Information)));
 
@@ -1027,7 +1027,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(fileUri, "python", content);
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
@@ -1165,7 +1165,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
 
     lsProxy.reopenResolvedLocalIssues(new SonarLintExtendedLanguageServer.ReopenAllIssuesForFileParams(fileName, fileUri, configScopeId));
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
@@ -1194,21 +1194,21 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(fileUri, "python", content);
 
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning),
         tuple(2, 2, 2, 7, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"plouf\".", DiagnosticSeverity.Warning)));
 
     var diagnostics = client.getDiagnostics(fileUri);
-    var issueKey = ((JsonObject) diagnostics.stream().filter(it -> it.getMessage().equals("Remove the unused local variable \"plouf\"."))
+    var issueKey = ((JsonObject) diagnostics.stream().filter(it -> it.getMessage().getLeft().equals("Remove the unused local variable \"plouf\"."))
       .findFirst().get().getData()).get("entryKey").getAsString();
     lsProxy.changeIssueStatus(new SonarLintExtendedLanguageServer.ChangeIssueStatusParams(configScope, issueKey,
       "False positive", fileUri, "", false));
 
     // Now we expect that one issue is resolved
     awaitUntilAsserted(() -> assertThat(client.getDiagnostics(fileUri))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
         Diagnostic::getSeverity)
       .containsExactlyInAnyOrder(
         tuple(1, 2, 1, 6, PYTHON_S1481, "sonarqube", "Remove the unused local variable \"toto\".", DiagnosticSeverity.Warning)));
@@ -1245,7 +1245,7 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     didOpen(fileUri, "python", content);
 
     awaitUntilAsserted(() -> assertThat(client.getTaints(fileUri))
-      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, Diagnostic::getMessage,
+      .extracting(startLine(), startCharacter(), endLine(), endCharacter(), code(), Diagnostic::getSource, message(),
         Diagnostic::getSeverity)
       .contains(tuple(0, 1, 0, 2, "ruleKey", "Latest SonarQube Server Analysis", "message", DiagnosticSeverity.Error)));
   }
