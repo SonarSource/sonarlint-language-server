@@ -59,6 +59,22 @@ class AiIntegrationTelemetryProtocolTests {
   }
 
   @Test
+  void readsUninstallActionNotificationWithNullAgent() {
+    var message = parse("""
+      {"jsonrpc":"2.0","method":"sonarlint/aiIntegrationAction","params":{
+        "action":"UNINSTALL_CLI","status":"SUCCEEDED","agent":null,"host":"VSCODE"
+      }}
+      """);
+
+    assertThat(message.getMethod()).isEqualTo("sonarlint/aiIntegrationAction");
+    var params = (AiIntegrationActionParams) message.getParams();
+    assertThat(params.getAction()).isEqualTo(AiIntegrationAction.UNINSTALL_CLI);
+    assertThat(params.getStatus()).isEqualTo(AiIntegrationActionStatus.SUCCEEDED);
+    assertThat(params.getAgent()).isNull();
+    assertThat(params.getHost()).isEqualTo(AiIntegrationHost.VSCODE);
+  }
+
+  @Test
   void readsCliObservation() {
     var message = parse("""
       {"jsonrpc":"2.0","method":"sonarlint/aiIntegrationCliStateObserved","params":{
