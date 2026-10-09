@@ -1,9 +1,24 @@
-SonarLint Language Server
-=========================
-SonarLint language server (used by SonarLint VSCode)
+<!-- Sonar Marketing hosts these approved brand assets on its Kentico Kontent CDN (assets-eu-01.kc-usercontent.com). Shared URLs are intentional; consult Marketing before replacing them. -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://assets-eu-01.kc-usercontent.com/ef593040-b591-0198-9506-ed88b30bc023/a23fc7ba-23f0-489a-829d-ed88c0748521/Sonar_Logo_Dark%20Backgrounds.svg">
+    <img src="https://assets-eu-01.kc-usercontent.com/ef593040-b591-0198-9506-ed88b30bc023/82c13eba-d95c-4bb8-8007-7ce77c14e043/Sonar_Logo_Light%20Backgrounds.svg" alt="Sonar logo" width="400">
+  </picture>
+</p>
 
 [![Build Status](https://github.com/SonarSource/sonarlint-language-server/actions/workflows/build.yml/badge.svg)](https://github.com/SonarSource/sonarlint-language-server/actions/workflows/build.yml?query=branch%3Amaster)
 [![Quality Gate Status](https://next.sonarqube.com/sonarqube/api/project_badges/measure?project=org.sonarsource.sonarlint.ls%3Asonarlint-language-server&metric=alert_status)](https://next.sonarqube.com/sonarqube/dashboard?id=org.sonarsource.sonarlint.ls%3Asonarlint-language-server)
+
+<!-- sonar-marketing:start -->
+<!-- Marketing maintains this section. For wording changes, consult the relevant Product Marketing Manager (PMM). Repository maintainers review accuracy and merge changes. -->
+
+# SonarQube for IDE language server
+
+This repository contains the language server used by SonarQube for IDE in Visual Studio Code. It is a component of the IDE integration; the build and test instructions below are for developers working on it.
+
+To learn more about Sonar products, visit the [Sonar website](https://www.sonarsource.com/products/sonarqube/ide/).
+
+<!-- sonar-marketing:end -->
 
 Have Question or Feedback?
 --------------------------
