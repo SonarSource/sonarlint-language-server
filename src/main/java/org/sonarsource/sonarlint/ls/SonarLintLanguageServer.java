@@ -141,8 +141,8 @@ import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.ModuleEventsProcessor;
+import org.sonarsource.sonarlint.ls.folders.MultiProjectConfigService;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
-import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -167,7 +167,6 @@ import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_ISSUE_D
 import static org.sonarsource.sonarlint.ls.CommandManager.SONARLINT_SHOW_SECURITY_HOTSPOT_FLOWS;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.failure;
 import static org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult.success;
-import static org.sonarsource.sonarlint.ls.backend.BackendService.ROOT_CONFIGURATION_SCOPE;
 import static org.sonarsource.sonarlint.ls.util.URIUtils.getFullFileUriFromFragments;
 import static org.sonarsource.sonarlint.ls.util.Utils.getConnectionNameFromConnectionCheckParams;
 import static org.sonarsource.sonarlint.ls.util.Utils.getValidateConnectionParamsForNewConnection;
@@ -252,6 +251,9 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, backendServiceFacade, lsLogOutput);
     vsCodeClient.setSettingsManager(settingsManager);
     vsCodeClient.setWorkspaceFoldersManager(workspaceFoldersManager);
+    var multiProjectConfigService = new MultiProjectConfigService(settingsManager, backendServiceFacade, this.client, lsLogOutput);
+    this.settingsManager.addListener((WorkspaceSettingsChangeListener) multiProjectConfigService);
+    this.workspaceFoldersManager.setMultiProjectConfigService(multiProjectConfigService);
     var fileTypeClassifier = new FileTypeClassifier(lsLogOutput);
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
     this.settingsManager.addListener(lsLogOutput);
@@ -463,14 +465,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         }
         var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
         CompletableFutures.computeAsync(cancelChecker -> {
-          String configScopeId;
           moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(file);
-          var maybeWorkspaceFolder = workspaceFoldersManager.findFolderForFile(uri);
-          if (maybeWorkspaceFolder.isPresent()) {
-            configScopeId = maybeWorkspaceFolder.get().getUri().toString();
-          } else {
-            configScopeId = ROOT_CONFIGURATION_SCOPE;
-          }
+          var configScopeId = workspaceFoldersManager.resolveConfigScopeId(uri);
           backendServiceFacade.getBackendService().didOpenFile(configScopeId, uri);
           return null;
         });
@@ -504,11 +500,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     issuesCache.clear(uri);
     securityHotspotsCache.clear(uri);
     diagnosticPublisher.publishDiagnostics(uri, false);
-    var maybeWorkspaceFolder = workspaceFoldersManager.findFolderForFile(uri);
-    var configScopeId = maybeWorkspaceFolder
-      .map(WorkspaceFolderWrapper::getUri)
-      .map(URI::toString)
-      .orElse(ROOT_CONFIGURATION_SCOPE);
+    var configScopeId = workspaceFoldersManager.resolveConfigScopeId(uri);
     backendServiceFacade.getBackendService().didCloseFile(configScopeId, uri);
   }
 

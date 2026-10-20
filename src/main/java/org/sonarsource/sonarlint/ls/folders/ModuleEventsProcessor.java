@@ -112,9 +112,9 @@ public class ModuleEventsProcessor {
         var settings = folder.getSettings();
         var baseDir = folder.getRootPath();
         var relativePath = baseDir.relativize(fsPath);
-        var folderUri = folder.getUri().toString();
+        var configScopeId = workspaceFoldersManager.resolveConfigScopeId(fileUri);
         var isTest = isTestFile(file, settings);
-        clientFileDto.set(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(), fsPath, file.getContent(), language, true));
+        clientFileDto.set(new ClientFileDto(fileUri, relativePath, configScopeId, isTest, StandardCharsets.UTF_8.name(), fsPath, file.getContent(), language, true));
       }, () -> {
         var isTest = isTestFile(file, settingsManager.getCurrentDefaultFolderSettings());
         clientFileDto.set(new ClientFileDto(fileUri, fsPath, ROOT_CONFIGURATION_SCOPE, isTest, StandardCharsets.UTF_8.name(), fsPath, file.getContent(), language, true));

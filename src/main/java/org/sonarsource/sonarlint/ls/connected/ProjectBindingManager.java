@@ -125,6 +125,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
    */
   public Optional<ProjectBinding> getBinding(URI fileUri) {
     if (!isUriValidAndNotNotebook(fileUri)) return Optional.empty();
+    var subProjectBinding = foldersManager.resolveSubProjectBinding(fileUri);
+    if (subProjectBinding.isPresent()) {
+      return subProjectBinding;
+    }
     var folder = foldersManager.findFolderForFile(fileUri);
     var cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
     return getBinding(folder, cacheKey);
@@ -147,6 +151,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
    */
   public Optional<ProjectBinding> getBindingIfExists(URI fileUri) {
     if (!isUriValidAndNotNotebook(fileUri)) return Optional.empty();
+    var subProjectBinding = foldersManager.resolveSubProjectBinding(fileUri);
+    if (subProjectBinding.isPresent()) {
+      return subProjectBinding;
+    }
     var folder = foldersManager.findFolderForFile(fileUri);
     var cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
     return getBindingIfExists(folder, cacheKey);
