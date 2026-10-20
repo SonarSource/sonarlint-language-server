@@ -226,7 +226,7 @@ public class BackendService {
     addConfigurationScopes(params);
   }
 
-  void addConfigurationScopes(DidAddConfigurationScopesParams params) {
+  public void addConfigurationScopes(DidAddConfigurationScopesParams params) {
     backend.getConfigurationService().didAddConfigurationScopes(params);
   }
 

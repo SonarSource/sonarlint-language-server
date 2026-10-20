@@ -37,6 +37,7 @@ import java.util.function.Function;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -52,6 +53,7 @@ public class WorkspaceFoldersManager {
   private final Map<String, Boolean> analysisReadiness = new ConcurrentHashMap<>();
   private final List<WorkspaceFolderLifecycleListener> listeners = new ArrayList<>();
   private ProjectBindingManager bindingManager;
+  private MultiProjectConfigService multiProjectConfigService;
   private final BackendServiceFacade backendServiceFacade;
   private final LanguageClientLogger logOutput;
   private final ExecutorService executor;
@@ -69,6 +71,10 @@ public class WorkspaceFoldersManager {
 
   public void setBindingManager(ProjectBindingManager bindingManager) {
     this.bindingManager = bindingManager;
+  }
+
+  public void setMultiProjectConfigService(MultiProjectConfigService multiProjectConfigService) {
+    this.multiProjectConfigService = multiProjectConfigService;
   }
 
   public void initialize(@Nullable List<WorkspaceFolder> workspaceFolders) {
@@ -111,6 +117,9 @@ public class WorkspaceFoldersManager {
     if (removed == null) {
       logOutput.warn("Unregistered workspace folder was missing: " + uri);
     }
+    if (multiProjectConfigService != null) {
+      multiProjectConfigService.onFolderRemoved(uri);
+    }
     logOutput.debug(format("Folder %s removed", removed));
   }
 
@@ -121,12 +130,30 @@ public class WorkspaceFoldersManager {
     } else {
       logOutput.debug(format("Folder %s added", addedWrapper));
       this.workspaceFolders.add(added);
+      if (multiProjectConfigService != null) {
+        multiProjectConfigService.onFolderAdded(addedWrapper);
+      }
     }
     return addedWrapper;
   }
 
   private Function<WorkspaceFolder, Optional<ProjectBinding>> getBindingProvider() {
-    return folder -> bindingManager.getBinding(create(folder.getUri()));
+    return folder -> {
+      var uri = create(folder.getUri());
+      // A container folder's own scope must be created already-unbound-with-suggestions-disabled, baked into the
+      // DTO from the start: a later updateBinding call would race the scope's own (async) creation and most likely
+      // arrive before the scope even exists.
+      if (isContainerFolder(uri)) {
+        return Optional.of(new ProjectBinding(null, null));
+      }
+      if (multiProjectConfigService != null) {
+        var rootBinding = multiProjectConfigService.getRootBinding(uri);
+        if (rootBinding.isPresent()) {
+          return rootBinding;
+        }
+      }
+      return bindingManager.getBinding(uri);
+    };
   }
 
   private void removeFolderFromBackend(String removedUri) {
@@ -150,6 +177,40 @@ public class WorkspaceFoldersManager {
 
   public Optional<WorkspaceFolderWrapper> getFolder(URI folderUri) {
     return Optional.ofNullable(folders.get(folderUri));
+  }
+
+  /**
+   * Resolve the effective configuration scope id for a file: the deepest {@code .sonar-config.json}-declared
+   * sub-project scope containing it when its workspace folder has one, otherwise the workspace folder's own
+   * scope id, otherwise {@link BackendService#ROOT_CONFIGURATION_SCOPE}.
+   */
+  public String resolveConfigScopeId(URI fileUri) {
+    var maybeFolder = findFolderForFile(fileUri);
+    if (maybeFolder.isEmpty()) {
+      return BackendService.ROOT_CONFIGURATION_SCOPE;
+    }
+    var folder = maybeFolder.get();
+    return multiProjectConfigService != null ? multiProjectConfigService.resolveConfigScopeId(folder, fileUri) : folder.getUri().toString();
+  }
+
+  /**
+   * Return the sub-project binding for a file, if any {@code .sonar-config.json}-declared sub-project contains it
+   * and currently resolves to a configured connection. Used to override folder-level binding lookups for files
+   * that belong to a sub-project rather than the folder itself.
+   */
+  public Optional<ProjectBinding> resolveSubProjectBinding(URI fileUri) {
+    if (multiProjectConfigService == null) {
+      return Optional.empty();
+    }
+    return findFolderForFile(fileUri).flatMap(folder -> multiProjectConfigService.getSubProjectBinding(folder, fileUri));
+  }
+
+  /**
+   * Whether the given folder's own scope must stay unbound because its {@code .sonar-config.json} declares
+   * sub-projects that carry the real bindings instead.
+   */
+  public boolean isContainerFolder(URI folderUri) {
+    return multiProjectConfigService != null && multiProjectConfigService.isContainerFolder(folderUri);
   }
 
   // Visible for testing
