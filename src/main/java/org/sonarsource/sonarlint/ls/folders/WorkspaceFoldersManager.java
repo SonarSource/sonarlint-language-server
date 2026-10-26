@@ -87,8 +87,16 @@ public class WorkspaceFoldersManager {
   }
 
   public void initialized() {
-    executor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().addWorkspaceFolders(this.workspaceFolders, getBindingProvider()),
-      t -> logOutput.errorWithStackTrace("Failed to initialize workspace folders.", t)));
+    executor.submit(new CatchingRunnable(() -> {
+      backendServiceFacade.getBackendService().addWorkspaceFolders(this.workspaceFolders, getBindingProvider());
+      registerSubProjectScopes(this.workspaceFolders);
+    }, t -> logOutput.errorWithStackTrace("Failed to initialize workspace folders.", t)));
+  }
+
+  private void registerSubProjectScopes(List<WorkspaceFolder> folders) {
+    if (multiProjectConfigService != null) {
+      folders.forEach(folder -> multiProjectConfigService.registerSubProjectScopes(create(folder.getUri())));
+    }
   }
 
   public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
@@ -103,6 +111,7 @@ public class WorkspaceFoldersManager {
     }
     executor.submit(new CatchingRunnable(() -> {
       backendServiceFacade.getBackendService().addWorkspaceFolders(event.getAdded(), getBindingProvider());
+      registerSubProjectScopes(event.getAdded());
       event.getRemoved().forEach(removed -> removeFolderFromBackend(removed.getUri()));
     }, t -> logOutput.errorWithStackTrace("Failed to add workspace folder", t)));
 

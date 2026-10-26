@@ -30,17 +30,19 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpdateBindingParams;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.ConfigurationScopeDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.DidAddConfigurationScopesParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.SubProjectScopeInfo;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.SubProjectScopesChangedParams;
+import org.sonarsource.sonarlint.ls.backend.BackendService.ChildScope;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -69,6 +71,7 @@ public class MultiProjectConfigService implements WorkspaceSettingsChangeListene
 
   private final Map<URI, List<SubProjectScope>> subProjectsByParentFolder = new ConcurrentHashMap<>();
   private final Map<URI, SubProjectScope> rootBindingByFolder = new ConcurrentHashMap<>();
+  private final Set<URI> registeredFolders = ConcurrentHashMap.newKeySet();
 
   public MultiProjectConfigService(SettingsManager settingsManager, BackendServiceFacade backendServiceFacade, SonarLintExtendedLanguageClient client,
     LanguageClientLogger logOutput) {
@@ -126,10 +129,28 @@ public class MultiProjectConfigService implements WorkspaceSettingsChangeListene
     }
     if (!children.isEmpty()) {
       subProjectsByParentFolder.put(folder.getUri(), children);
-      registerScopes(folder.getUri(), children);
-    } else {
-      notifyClientOfScopes(folder.getUri(), Map.of());
     }
+  }
+
+  /**
+   * Creates the child scopes already bound, like {@code addWorkspaceFolders} does for folders. Must run after the
+   * folder's own scope exists and off the LSP handshake thread, since the binding lookup blocks on settings.
+   */
+  public void registerSubProjectScopes(URI folderUri) {
+    var scopes = subProjectsByParentFolder.getOrDefault(folderUri, List.of());
+    if (scopes.isEmpty() && !rootBindingByFolder.containsKey(folderUri)) {
+      return;
+    }
+    var connections = settingsManager.getCurrentSettings().getServerConnections();
+    if (!scopes.isEmpty()) {
+      var scopesById = scopes.stream().collect(Collectors.toMap(scope -> scope.scopeUri().toString(), Function.identity()));
+      var children = scopes.stream().map(scope -> new ChildScope(scope.scopeUri().toString(), scope.projectKey())).toList();
+      backendServiceFacade.getBackendService().addSubProjectScopes(folderUri.toString(), children,
+        child -> Optional.ofNullable(findConnectionId(connections, scopesById.get(child.id()))).map(connectionId -> new ProjectBinding(connectionId, child.name())));
+      logOutput.info(format("[multi-project] Registered %d sub-project scope(s) under %s from '%s'", children.size(), folderUri, SONAR_CONFIG_FILE_NAME));
+    }
+    registeredFolders.add(folderUri);
+    notifyClientOfScopes(folderUri, connections);
   }
 
   /**
@@ -169,6 +190,7 @@ public class MultiProjectConfigService implements WorkspaceSettingsChangeListene
       removed.forEach(scope -> backendServiceFacade.getBackendService().removeWorkspaceFolder(scope.scopeUri().toString()));
     }
     rootBindingByFolder.remove(folderUri);
+    registeredFolders.remove(folderUri);
   }
 
   /**
@@ -212,20 +234,16 @@ public class MultiProjectConfigService implements WorkspaceSettingsChangeListene
   }
 
   /**
-   * Try to (re)bind every tracked sub-scope against the given connections. Called both from {@link #onChange} as
-   * connections are added/edited later, and the first time settings become available after startup — never
-   * synchronously during folder registration, since {@link SettingsManager#getCurrentSettings()} blocks until
-   * settings are pulled from the client, which itself only happens after the LSP {@code initialize} handshake
-   * this registration runs inside of has already completed (a deadlock otherwise).
+   * Rebinds the scopes that already exist in the backend, so connections added or edited after startup take effect.
    */
   private void rebindUnboundScopes(Map<String, ServerConnectionSettings> connections) {
     logOutput.info(format("[multi-project] Attempting to (re)bind sub-project scopes against %d known connection(s): %s",
       connections.size(), connections.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue().getServerUrl()).toList()));
-    subProjectsByParentFolder.values().forEach(scopes -> scopes.forEach(scope -> bindScope(connections, scope)));
-    rootBindingByFolder.values().forEach(entry -> bindScope(connections, entry));
-    Stream.concat(subProjectsByParentFolder.keySet().stream(), rootBindingByFolder.keySet().stream())
-      .distinct()
-      .forEach(folderUri -> notifyClientOfScopes(folderUri, connections));
+    registeredFolders.forEach(folderUri -> {
+      subProjectsByParentFolder.getOrDefault(folderUri, List.of()).forEach(scope -> bindScope(connections, scope));
+      Optional.ofNullable(rootBindingByFolder.get(folderUri)).ifPresent(entry -> bindScope(connections, entry));
+      notifyClientOfScopes(folderUri, connections);
+    });
   }
 
   private void bindScope(Map<String, ServerConnectionSettings> connections, SubProjectScope scope) {
@@ -242,24 +260,11 @@ public class MultiProjectConfigService implements WorkspaceSettingsChangeListene
 
   @Override
   public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
-    if (subProjectsByParentFolder.isEmpty() && rootBindingByFolder.isEmpty()) {
+    if (registeredFolders.isEmpty()) {
       return;
     }
     logOutput.info("[multi-project] Settings changed, re-checking sub-project scope bindings");
     rebindUnboundScopes(newValue.getServerConnections());
-  }
-
-  private void registerScopes(URI parentFolderUri, List<SubProjectScope> scopes) {
-    var dtos = scopes.stream()
-      .map(scope -> new ConfigurationScopeDto(scope.scopeUri().toString(), parentFolderUri.toString(), true, scope.projectKey(),
-        new BindingConfigurationDto(null, null, false)))
-      .toList();
-    backendServiceFacade.getBackendService().addConfigurationScopes(new DidAddConfigurationScopesParams(dtos));
-    dtos.forEach(dto -> logOutput.info(format("[multi-project] Sent addConfigurationScopes: id=%s parentId=%s projectKey=%s (unbound, will try to bind once settings are available)",
-      dto.getId(), dto.getParentId(), dto.getName())));
-    logOutput.info(format("[multi-project] Registered %d sub-project scope(s) under %s from '%s'; binding resolution deferred until settings are available",
-      dtos.size(), parentFolderUri, SONAR_CONFIG_FILE_NAME));
-    notifyClientOfScopes(parentFolderUri, Map.of());
   }
 
   private void notifyClientOfScopes(URI folderUri, Map<String, ServerConnectionSettings> connections) {

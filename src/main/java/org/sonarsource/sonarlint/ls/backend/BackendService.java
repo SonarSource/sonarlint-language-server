@@ -198,15 +198,15 @@ public class BackendService {
   }
 
   public ConfigurationScopeDto getConfigScopeDto(WorkspaceFolder added, Optional<ProjectBinding> bindingOptional) {
-    BindingConfigurationDto bindingConfigurationDto;
+    return new ConfigurationScopeDto(added.getUri(), ROOT_CONFIGURATION_SCOPE, true, added.getName(), toBindingConfigurationDto(bindingOptional));
+  }
+
+  private static BindingConfigurationDto toBindingConfigurationDto(Optional<ProjectBinding> bindingOptional) {
     if (bindingOptional.isPresent()) {
       ProjectBinding bindingWrapper = bindingOptional.get();
-      bindingConfigurationDto = new BindingConfigurationDto(bindingWrapper.connectionId(),
-        bindingWrapper.projectKey(), true);
-    } else {
-      bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
+      return new BindingConfigurationDto(bindingWrapper.connectionId(), bindingWrapper.projectKey(), true);
     }
-    return new ConfigurationScopeDto(added.getUri(), ROOT_CONFIGURATION_SCOPE, true, added.getName(), bindingConfigurationDto);
+    return new BindingConfigurationDto(null, null, false);
   }
 
   public void removeWorkspaceFolder(String removedUri) {
@@ -226,8 +226,18 @@ public class BackendService {
     addConfigurationScopes(params);
   }
 
-  public void addConfigurationScopes(DidAddConfigurationScopesParams params) {
+  public void addSubProjectScopes(String parentScopeId, List<ChildScope> children, Function<ChildScope, Optional<ProjectBinding>> bindingProvider) {
+    List<ConfigurationScopeDto> addedScopeDtos = children.stream()
+      .map(child -> new ConfigurationScopeDto(child.id(), parentScopeId, true, child.name(), toBindingConfigurationDto(bindingProvider.apply(child))))
+      .toList();
+    addConfigurationScopes(new DidAddConfigurationScopesParams(addedScopeDtos));
+  }
+
+  void addConfigurationScopes(DidAddConfigurationScopesParams params) {
     backend.getConfigurationService().didAddConfigurationScopes(params);
+  }
+
+  public record ChildScope(String id, String name) {
   }
 
   public CompletableFuture<GetEffectiveRuleDetailsResponse> getEffectiveRuleDetails(@Nullable String workspaceFolder, String ruleKey, String ruleContextKey) {
