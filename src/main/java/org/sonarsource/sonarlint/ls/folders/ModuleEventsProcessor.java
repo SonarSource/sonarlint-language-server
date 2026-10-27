@@ -110,9 +110,8 @@ public class ModuleEventsProcessor {
     workspaceFoldersManager.findFolderForFile(fileUri)
       .ifPresentOrElse(folder -> {
         var settings = folder.getSettings();
-        var baseDir = folder.getRootPath();
-        var relativePath = baseDir.relativize(fsPath);
         var configScopeId = workspaceFoldersManager.resolveConfigScopeId(fileUri);
+        var relativePath = Paths.get(URI.create(configScopeId)).relativize(fsPath);
         var isTest = isTestFile(file, settings);
         clientFileDto.set(new ClientFileDto(fileUri, relativePath, configScopeId, isTest, StandardCharsets.UTF_8.name(), fsPath, file.getContent(), language, true));
       }, () -> {
