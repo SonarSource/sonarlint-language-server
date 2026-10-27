@@ -20,14 +20,11 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,6 +44,7 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
 import static java.net.URI.create;
+import static org.sonarsource.sonarlint.ls.util.URIUtils.isAncestor;
 
 public class WorkspaceFoldersManager {
   private final Map<URI, WorkspaceFolderWrapper> folders = new ConcurrentHashMap<>();
@@ -56,18 +54,19 @@ public class WorkspaceFoldersManager {
   private final BackendServiceFacade backendServiceFacade;
   private final LanguageClientLogger logOutput;
   private final SonarConfigResolver sonarConfigResolver;
+  private final Set<URI> foldersWithDeclaredSonarConfigScopes = ConcurrentHashMap.newKeySet();
   private final ExecutorService executor;
   private final List<WorkspaceFolder> workspaceFolders = new ArrayList<>();
 
-  public WorkspaceFoldersManager(BackendServiceFacade backendServiceFacade, LanguageClientLogger logOutput) {
-    this(Executors.newCachedThreadPool(Utils.threadFactory("SonarLint folders manager", false)), backendServiceFacade, logOutput);
+  public WorkspaceFoldersManager(BackendServiceFacade backendServiceFacade, LanguageClientLogger logOutput, SonarConfigResolver sonarConfigResolver) {
+    this(Executors.newCachedThreadPool(Utils.threadFactory("SonarLint folders manager", false)), backendServiceFacade, logOutput, sonarConfigResolver);
   }
 
-  WorkspaceFoldersManager(ExecutorService executor, BackendServiceFacade backendServiceFacade, LanguageClientLogger logOutput) {
+  WorkspaceFoldersManager(ExecutorService executor, BackendServiceFacade backendServiceFacade, LanguageClientLogger logOutput, SonarConfigResolver sonarConfigResolver) {
     this.executor = executor;
     this.backendServiceFacade = backendServiceFacade;
     this.logOutput = logOutput;
-    this.sonarConfigResolver = new SonarConfigResolver(logOutput);
+    this.sonarConfigResolver = sonarConfigResolver;
   }
 
   public void setBindingManager(ProjectBindingManager bindingManager) {
@@ -98,7 +97,7 @@ public class WorkspaceFoldersManager {
         if (!subFolders.isEmpty()) {
           backendServiceFacade.getBackendService().addSubFolders(folderUri.toString(), subFolders, getBindingProvider());
         }
-        sonarConfigResolver.markRegistered(folderUri);
+        foldersWithDeclaredSonarConfigScopes.add(folderUri);
         bindingManager.notifySonarConfigScopes(folderUri, config);
       });
     });
@@ -136,6 +135,7 @@ public class WorkspaceFoldersManager {
       logOutput.warn("Unregistered workspace folder was missing: " + uri);
     }
     sonarConfigResolver.forget(uri);
+    foldersWithDeclaredSonarConfigScopes.remove(uri);
     logOutput.debug(format("Folder %s removed", removed));
   }
 
@@ -191,35 +191,11 @@ public class WorkspaceFoldersManager {
     return sonarConfigResolver.scopeUriForFile(maybeFolder.get().getUri(), fileUri).toString();
   }
 
-  public Optional<ResolvedSonarConfig> findSonarConfig(URI fileUri) {
-    return findFolderForFile(fileUri).flatMap(folder -> sonarConfigResolver.findForFile(folder.getUri(), fileUri));
-  }
-
-  public Map<URI, ResolvedSonarConfig> getRegisteredSonarConfigs() {
-    return sonarConfigResolver.registeredConfigs();
-  }
-
-  // Visible for testing
-  static boolean isAncestor(URI folderUri, URI fileUri) {
-    if (folderUri.isOpaque() || fileUri.isOpaque()) {
-      throw new IllegalArgumentException("Only hierarchical URIs are supported");
-    }
-    if (!folderUri.getScheme().equalsIgnoreCase(fileUri.getScheme())) {
-      return false;
-    }
-    if (!Objects.equals(folderUri.getHost(), fileUri.getHost())) {
-      return false;
-    }
-    if (folderUri.getPort() != fileUri.getPort()) {
-      return false;
-    }
-    if (Utils.uriHasFileScheme(folderUri)) {
-      return Paths.get(fileUri).startsWith(Paths.get(folderUri));
-    }
-    // Assume "/" is the separator of "folders"
-    var fileSegments = fileUri.getPath().split("/");
-    var folderSegments = folderUri.getPath().split("/");
-    return folderSegments.length <= fileSegments.length && Arrays.equals(folderSegments, Arrays.copyOfRange(fileSegments, 0, folderSegments.length));
+  /**
+   * Workspace folders whose sub-folder scopes have been declared in the backend, so their scopes can be rebound.
+   */
+  public Set<URI> getFoldersWithDeclaredSonarConfigScopes() {
+    return Set.copyOf(foldersWithDeclaredSonarConfigScopes);
   }
 
   public Collection<WorkspaceFolderWrapper> getAll() {

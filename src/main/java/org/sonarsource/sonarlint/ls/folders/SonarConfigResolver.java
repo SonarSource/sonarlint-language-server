@@ -28,16 +28,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.ls.util.URIUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
@@ -45,7 +44,8 @@ import static java.lang.String.format;
 /**
  * Everything about {@code .sonar-config.json} files as they apply to folders: reads the nearest file at or above a
  * folder (no further than the enclosing git root), classifies its entries against that folder, caches the result per
- * folder, and answers which sub-folder scope a file falls in. Knows nothing about connections or the backend.
+ * folder, and answers which sub-folder scope a file falls in. A shared leaf: it depends on neither the folders manager
+ * nor the binding manager, and knows nothing about connections or the backend.
  */
 public class SonarConfigResolver {
 
@@ -54,7 +54,6 @@ public class SonarConfigResolver {
   private final LanguageClientLogger logOutput;
   private final Gson gson = new Gson();
   private final Map<URI, Optional<ResolvedSonarConfig>> configsByFolder = new ConcurrentHashMap<>();
-  private final Set<URI> registeredFolders = ConcurrentHashMap.newKeySet();
 
   public SonarConfigResolver(LanguageClientLogger logOutput) {
     this.logOutput = logOutput;
@@ -85,7 +84,7 @@ public class SonarConfigResolver {
    */
   public URI scopeUriForFile(URI folderUri, URI fileUri) {
     return subFolderUris(folderUri).stream()
-      .filter(subFolderUri -> WorkspaceFoldersManager.isAncestor(subFolderUri, fileUri))
+      .filter(subFolderUri -> URIUtils.isAncestor(subFolderUri, fileUri))
       .max(Comparator.comparingInt(subFolderUri -> subFolderUri.getPath().length()))
       .orElse(folderUri);
   }
@@ -94,23 +93,9 @@ public class SonarConfigResolver {
     return get(scopeUriForFile(folderUri, fileUri));
   }
 
-  public void markRegistered(URI folderUri) {
-    registeredFolders.add(folderUri);
-  }
-
-  /**
-   * Configs of the workspace folders whose scopes already exist in the backend.
-   */
-  public Map<URI, ResolvedSonarConfig> registeredConfigs() {
-    var registered = new HashMap<URI, ResolvedSonarConfig>();
-    registeredFolders.forEach(folderUri -> get(folderUri).ifPresent(config -> registered.put(folderUri, config)));
-    return registered;
-  }
-
   public void forget(URI folderUri) {
     subFolderUris(folderUri).forEach(configsByFolder::remove);
     configsByFolder.remove(folderUri);
-    registeredFolders.remove(folderUri);
   }
 
   private static String directoryName(SonarConfigProject project) {
