@@ -198,15 +198,18 @@ public class BackendService {
   }
 
   public ConfigurationScopeDto getConfigScopeDto(WorkspaceFolder added, Optional<ProjectBinding> bindingOptional) {
-    BindingConfigurationDto bindingConfigurationDto;
-    if (bindingOptional.isPresent()) {
-      ProjectBinding bindingWrapper = bindingOptional.get();
-      bindingConfigurationDto = new BindingConfigurationDto(bindingWrapper.connectionId(),
-        bindingWrapper.projectKey(), true);
-    } else {
-      bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
+    return getConfigScopeDto(ROOT_CONFIGURATION_SCOPE, added, bindingOptional.orElse(null));
+  }
+
+  private static ConfigurationScopeDto getConfigScopeDto(String parentScopeId, WorkspaceFolder added, @Nullable ProjectBinding binding) {
+    return new ConfigurationScopeDto(added.getUri(), parentScopeId, true, added.getName(), toBindingConfigurationDto(binding));
+  }
+
+  private static BindingConfigurationDto toBindingConfigurationDto(@Nullable ProjectBinding binding) {
+    if (binding != null) {
+      return new BindingConfigurationDto(binding.connectionId(), binding.projectKey(), true);
     }
-    return new ConfigurationScopeDto(added.getUri(), ROOT_CONFIGURATION_SCOPE, true, added.getName(), bindingConfigurationDto);
+    return new BindingConfigurationDto(null, null, false);
   }
 
   public void removeWorkspaceFolder(String removedUri) {
@@ -219,8 +222,16 @@ public class BackendService {
   }
 
   public void addWorkspaceFolders(List<WorkspaceFolder> added, Function<WorkspaceFolder, Optional<ProjectBinding>> bindingProvider) {
-    List<ConfigurationScopeDto> addedScopeDtos = added.stream()
-      .map(folder -> getConfigScopeDto(folder, bindingProvider.apply(folder)))
+    addFolderScopes(ROOT_CONFIGURATION_SCOPE, added, bindingProvider);
+  }
+
+  public void addSubFolders(String parentScopeId, List<WorkspaceFolder> subFolders, Function<WorkspaceFolder, Optional<ProjectBinding>> bindingProvider) {
+    addFolderScopes(parentScopeId, subFolders, bindingProvider);
+  }
+
+  private void addFolderScopes(String parentScopeId, List<WorkspaceFolder> folders, Function<WorkspaceFolder, Optional<ProjectBinding>> bindingProvider) {
+    List<ConfigurationScopeDto> addedScopeDtos = folders.stream()
+      .map(folder -> getConfigScopeDto(parentScopeId, folder, bindingProvider.apply(folder).orElse(null)))
       .toList();
     var params = new DidAddConfigurationScopesParams(addedScopeDtos);
     addConfigurationScopes(params);
