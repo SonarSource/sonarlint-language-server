@@ -22,6 +22,8 @@ package org.sonarsource.sonarlint.ls.util;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Objects;
 
 public class URIUtils {
 
@@ -36,5 +38,27 @@ public class URIUtils {
     return Paths.get(URI.create(workspaceFolderUriString))
       .resolve(fileRelativePath)
       .toUri();
+  }
+
+  public static boolean isAncestor(URI folderUri, URI fileUri) {
+    if (folderUri.isOpaque() || fileUri.isOpaque()) {
+      throw new IllegalArgumentException("Only hierarchical URIs are supported");
+    }
+    if (!folderUri.getScheme().equalsIgnoreCase(fileUri.getScheme())) {
+      return false;
+    }
+    if (!Objects.equals(folderUri.getHost(), fileUri.getHost())) {
+      return false;
+    }
+    if (folderUri.getPort() != fileUri.getPort()) {
+      return false;
+    }
+    if (Utils.uriHasFileScheme(folderUri)) {
+      return Paths.get(fileUri).startsWith(Paths.get(folderUri));
+    }
+    // Assume "/" is the separator of "folders"
+    var fileSegments = fileUri.getPath().split("/");
+    var folderSegments = folderUri.getPath().split("/");
+    return folderSegments.length <= fileSegments.length && Arrays.equals(folderSegments, Arrays.copyOfRange(fileSegments, 0, folderSegments.length));
   }
 }

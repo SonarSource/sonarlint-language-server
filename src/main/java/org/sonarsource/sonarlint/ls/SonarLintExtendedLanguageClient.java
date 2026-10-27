@@ -913,6 +913,15 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("notifyInvalidToken")
   void notifyInvalidToken(NotifyInvalidTokenParams params);
 
+  record SubProjectScopeInfo(String scopeUri, String projectKey, @Nullable String connectionId, String relativePath) {
+  }
+
+  record SubProjectScopesChangedParams(String parentFolderUri, List<SubProjectScopeInfo> scopes) {
+  }
+
+  @JsonNotification("subProjectScopesChanged")
+  void subProjectScopesChanged(SubProjectScopesChangedParams params);
+
   @JsonNotification("embeddedServerStarted")
   void embeddedServerStarted(EmbeddedServerStartedParams params);
 
