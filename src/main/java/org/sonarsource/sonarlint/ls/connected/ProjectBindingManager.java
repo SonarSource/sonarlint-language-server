@@ -32,8 +32,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpdateBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.common.TransientSonarCloudConnectionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.common.TransientSonarQubeConnectionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.GetProjectNamesByKeyResponse;
@@ -47,6 +45,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.connected.ScopeBinding.Origin;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -73,14 +72,19 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private final WorkspaceFoldersManager foldersManager;
   private final SettingsManager settingsManager;
   private final BindingSources sources;
+  private final FolderSettingsBindingSource folderSettings;
   private final LanguageClientLogger globalLogOutput;
   private final SonarLintExtendedLanguageClient client;
   private ForcedAnalysisCoordinator analysisManager;
   private final BackendServiceFacade backendServiceFacade;
   private final OpenNotebooksCache openNotebooksCache;
 
+  /**
+   * @param folderSettings the one source that also binds files outside any workspace folder, and that knows the connection settings
+   */
   public ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
-    LanguageClientLogger globalLogOutput, BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache, BindingSources sources) {
+    LanguageClientLogger globalLogOutput, BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache, BindingSources sources,
+    FolderSettingsBindingSource folderSettings) {
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
     this.client = client;
@@ -88,6 +92,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     this.backendServiceFacade = backendServiceFacade;
     this.openNotebooksCache = openNotebooksCache;
     this.sources = sources;
+    this.folderSettings = folderSettings;
   }
 
   // Can't use constructor injection because of cyclic dependency
@@ -104,7 +109,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     if (!isUriValidAndNotNotebook(fileUri)) return Optional.empty();
     return foldersManager.findFolderForFile(fileUri)
       .map(folder -> sources.bindingOf(folder, fileUri))
-      .orElseGet(() -> sources.settings().bindingOfFile(fileUri));
+      .orElseGet(() -> folderSettings.bindingOfFile(fileUri));
   }
 
   private boolean isUriValidAndNotNotebook(URI fileUri) {
@@ -118,23 +123,11 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   /**
-   * Return the binding of the given file, without computing it when it is not known yet.
-   *
-   * @return empty if the file is unbound
-   */
-  public Optional<ProjectBinding> getBindingIfExists(URI fileUri) {
-    if (!isUriValidAndNotNotebook(fileUri)) return Optional.empty();
-    return foldersManager.findFolderForFile(fileUri)
-      .map(folder -> sources.bindingIfExists(folder, fileUri))
-      .orElseGet(() -> sources.settings().cachedBindingOfFile(fileUri));
-  }
-
-  /**
    * The binding of every scope that has a connection, whichever source declares it.
    */
   public List<ScopeBinding> getBindings() {
     return foldersManager.getAll().stream()
-      .flatMap(folder -> sources.scopesOf(folder).stream())
+      .flatMap(folder -> sources.loadedScopesOf(folder).stream())
       .filter(ScopeBinding::isResolved)
       .toList();
   }
@@ -155,11 +148,11 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   @CheckForNull
   public ServerConnectionSettings getServerConnectionSettingsFor(@Nullable String maybeConnectionId) {
-    return sources.settings().connectionOf(maybeConnectionId);
+    return folderSettings.connectionOf(maybeConnectionId);
   }
 
   public boolean usesConnectedMode() {
-    return sources.settings().cachedBindings().findAny().isPresent();
+    return folderSettings.cachedBindings().findAny().isPresent();
   }
 
   public boolean usesSonarCloud() {
@@ -167,63 +160,49 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   private boolean hasAnyBindingThatMatch(Predicate<ServerConnectionSettings> predicate) {
-    return sources.settings().cachedBindings()
+    return folderSettings.cachedBindings()
       .map(binding -> settingsManager.getCurrentSettings().getServerConnections().get(binding.connectionId()))
       .anyMatch(predicate);
   }
 
   @Override
   public void onChange(@Nullable WorkspaceFolderWrapper folder, @Nullable WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
-    if (oldValue == null || (folder != null && !sources.config().projectsOf(folder).isEmpty())) {
+    if (oldValue == null || !bindingChanged(oldValue, newValue)) {
       return;
     }
-    if (oldValue.hasBinding() && !newValue.hasBinding()) {
-      unbind(folder);
-      client.bindingsChanged();
-    } else if (newValue.hasBinding()
-      && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
-      forceRebindDuringNextAnalysis(folder);
-      if (folder == null) return;
-      updateBinding(folder.getUri(), new BindingConfigurationDto(newValue.getConnectionId(), newValue.getProjectKey(), false));
-      client.bindingsChanged();
-    }
-  }
-
-  private void forceRebindDuringNextAnalysis(@Nullable WorkspaceFolderWrapper folder) {
-    var settingsSource = sources.settings();
-    if (folder != null && settingsSource.hasCachedFolder(folder.getUri())) {
-      settingsSource.forgetFolder(folder.getUri());
-      analysisManager.analyzeAllOpenFilesInFolder(folder);
-    } else if (folder == null && settingsSource.hasCachedFiles()) {
-      settingsSource.forgetFiles();
+    if (folder == null) {
+      folderSettings.onDefaultFolderSettingsChanged();
       analysisManager.analyzeAllOpenFilesInFolder(null);
+      return;
     }
-  }
-
-  private void unbind(@Nullable WorkspaceFolderWrapper folder) {
-    var settingsSource = sources.settings();
-    if (folder != null && settingsSource.hasCachedFolder(folder.getUri())) {
-      unbindFolder(folder);
-    } else if (folder == null && settingsSource.hasCachedFiles()) {
-      unbindFiles();
+    if (isDeclaredBeyondSettings(folder)) {
+      return;
     }
-  }
-
-  private void unbindFiles() {
-    sources.settings().markFilesUnbound();
-    globalLogOutput.debug("All files outside workspace are now unbound");
-    analysisManager.analyzeAllOpenFilesInFolder(null);
-  }
-
-  private void unbindFolder(WorkspaceFolderWrapper folder) {
-    sources.settings().markFolderUnbound(folder.getUri());
-    globalLogOutput.debug(format("Workspace '%s' unbound", folder));
+    sources.onFolderSettingsChanged(folder.getUri());
     analysisManager.analyzeAllOpenFilesInFolder(folder);
-    updateBinding(folder.getUri(), new BindingConfigurationDto(null, null, false));
+    rebind(folder);
+    client.bindingsChanged();
   }
 
-  private void updateBinding(URI scopeUri, BindingConfigurationDto binding) {
-    backendServiceFacade.getBackendService().updateBinding(new DidUpdateBindingParams(scopeUri.toString(), binding));
+  private static boolean bindingChanged(WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
+    return oldValue.hasBinding() != newValue.hasBinding()
+      || (newValue.hasBinding()
+        && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey())));
+  }
+
+  /**
+   * Once another source declares scopes for a folder, its own setting no longer counts.
+   */
+  private boolean isDeclaredBeyondSettings(WorkspaceFolderWrapper folder) {
+    return sources.scopesOf(folder).stream().anyMatch(scope -> scope.origin() != Origin.SETTINGS);
+  }
+
+  private void rebind(WorkspaceFolderWrapper folder) {
+    var scopes = sources.scopesOf(folder);
+    if (scopes.isEmpty()) {
+      backendServiceFacade.getBackendService().unbind(folder.getUri().toString());
+    }
+    scopes.forEach(this::bindScope);
   }
 
   private void handleDeletedConnections(@Nullable WorkspaceSettings oldValue, WorkspaceSettings newValue) {
@@ -242,28 +221,32 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     }
   }
 
-  private void rebindConfigScopes() {
+  private void rebindDeclaredScopes() {
     foldersManager.getAll().stream()
       .filter(WorkspaceFolderWrapper::hasDeclaredScopes)
-      .forEach(folder -> sources.config().scopesOf(folder).forEach(this::bindScope));
+      .forEach(folder -> sources.scopesOf(folder).forEach(this::bindScope));
   }
 
   private void bindScope(ScopeBinding scope) {
-    if (!scope.isResolved()) {
-      globalLogOutput.warn(format("[multi-project] No connection configured for %s, scope %s is unbound", scope.target(), scope.scopeUri()));
-      updateBinding(scope.scopeUri(), new BindingConfigurationDto(null, null, false));
-      return;
-    }
-    globalLogOutput.info(format("[multi-project] Matched connection '%s' for %s -> binding scope %s to projectKey=%s",
-      scope.connectionId(), scope.target(), scope.scopeUri(), scope.projectKey()));
-    updateBinding(scope.scopeUri(), new BindingConfigurationDto(scope.connectionId(), scope.projectKey(), true));
+    var backendService = backendServiceFacade.getBackendService();
+    scope.toProjectBinding().ifPresentOrElse(
+      binding -> {
+        globalLogOutput.info(format("Matched connection '%s' for %s -> binding scope %s to projectKey=%s",
+          binding.connectionId(), scope.target(), scope.scopeUri(), binding.projectKey()));
+        backendService.bind(scope.scopeUri().toString(), binding);
+      },
+      () -> {
+        globalLogOutput.warn(format("No connection configured for %s, scope %s is unbound", scope.target(), scope.scopeUri()));
+        backendService.unbind(scope.scopeUri().toString());
+      });
   }
 
   @Override
   public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
-    if (oldValue == null || !oldValue.getServerConnections().equals(newValue.getServerConnections())) {
-      sources.settings().forgetUnresolved();
-      rebindConfigScopes();
+    var previousConnections = oldValue == null ? Map.<String, ServerConnectionSettings>of() : oldValue.getServerConnections();
+    if (oldValue == null || !previousConnections.equals(newValue.getServerConnections())) {
+      sources.onConnectionsChanged(previousConnections, newValue.getServerConnections());
+      rebindDeclaredScopes();
       client.bindingsChanged();
     }
     handleDeletedConnections(oldValue, newValue);
@@ -273,10 +256,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         this.validateConnection(id);
       } else {
         var oldConnection = oldValue.getServerConnections().get(id);
-        if (oldConnection != null && !oldConnection.equals(value)) {
-          // Settings of the connection have been changed. Remove all cached bindings and force close the engine
-          sources.settings().forgetConnection(id);
-        }
         if (oldConnection == null || !oldConnection.equals(value)) {
           // New connection or changed settings. Validate connection
           validateConnection(id);
@@ -344,7 +323,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   public Optional<URI> fullFilePathFromRelative(Path ideFilePath, String connectionId, String projectKey) {
-    return sources.settings().cachedFolderBoundTo(connectionId, projectKey)
+    return folderSettings.cachedFolderBoundTo(connectionId, projectKey)
       .map(folderUri -> URIUtils.getFullFileUriFromFragments(folderUri.toString(), ideFilePath));
   }
 }

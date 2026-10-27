@@ -259,10 +259,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var fileTypeClassifier = new FileTypeClassifier(lsLogOutput);
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
     this.settingsManager.addListener(lsLogOutput);
-    var bindingSources = new BindingSources(new SonarConfigBindingSource(new SonarConfigResolver(lsLogOutput), settingsManager),
-      new FolderSettingsBindingSource(settingsManager, lsLogOutput));
+    var folderSettingsSource = new FolderSettingsBindingSource(settingsManager, lsLogOutput);
+    var bindingSources = new BindingSources(List.of(new SonarConfigBindingSource(new SonarConfigResolver(lsLogOutput), settingsManager), folderSettingsSource));
     this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager,
-      client, lsLogOutput, backendServiceFacade, openNotebooksCache, bindingSources);
+      client, lsLogOutput, backendServiceFacade, openNotebooksCache, bindingSources, folderSettingsSource);
     this.workspaceFoldersManager.setBindingSources(bindingSources);
     vsCodeClient.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(backendServiceFacade, lsLogOutput);
@@ -289,6 +289,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.branchManager = new WorkspaceFolderBranchManager(backendServiceFacade, lsLogOutput);
     vsCodeClient.setBranchManager(branchManager);
     this.workspaceFoldersManager.addListener(this.branchManager);
+    // todo should this look like that?
     this.workspaceFoldersManager.addListener(new WorkspaceFolderLifecycleListener() {
       @Override
       public void added(WorkspaceFolderWrapper added) {

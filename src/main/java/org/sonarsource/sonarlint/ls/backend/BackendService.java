@@ -221,6 +221,14 @@ public class BackendService {
     backend.getConfigurationService().didUpdateBinding(params);
   }
 
+  public void bind(String configScopeId, ProjectBinding binding) {
+    updateBinding(new DidUpdateBindingParams(configScopeId, toBindingConfigurationDto(binding)));
+  }
+
+  public void unbind(String configScopeId) {
+    updateBinding(new DidUpdateBindingParams(configScopeId, toBindingConfigurationDto(null)));
+  }
+
   public void addWorkspaceFolders(List<WorkspaceFolder> added, Function<WorkspaceFolder, Optional<ProjectBinding>> bindingProvider) {
     addFolderScopes(ROOT_CONFIGURATION_SCOPE, added, bindingProvider);
   }

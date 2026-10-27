@@ -21,19 +21,20 @@ package org.sonarsource.sonarlint.ls.connected;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.Test;
 import org.sonarsource.sonarlint.ls.connected.ScopeBinding.Origin;
-import org.sonarsource.sonarlint.ls.folders.SonarConfigProject;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -44,84 +45,59 @@ class BindingSourcesTests {
   private static final URI NESTED = URI.create("file:///repo/moduleA/nested/");
   private static final WorkspaceFolderWrapper FOLDER = new WorkspaceFolderWrapper(REPO, new WorkspaceFolder(REPO.toString(), "repo"), mock(LanguageClientLogger.class));
 
-  private final SonarConfigBindingSource config = mock(SonarConfigBindingSource.class);
-  private final FolderSettingsBindingSource settings = mock(FolderSettingsBindingSource.class);
-  private final BindingSources underTest = new BindingSources(config, settings);
+  private final BindingSource first = mock(BindingSource.class);
+  private final BindingSource second = mock(BindingSource.class);
+  private final BindingSources underTest = new BindingSources(List.of(first, second));
 
   @Test
-  void scopesOf_is_what_the_config_declares_when_it_applies() {
-    var configScopes = List.of(scope(MODULE_A, "module-a", "connection", Origin.SONAR_CONFIG));
-    when(config.scopesOf(FOLDER)).thenReturn(configScopes);
-    when(settings.scopesOf(FOLDER)).thenReturn(List.of(scope(REPO, "from-settings", "connection", Origin.SETTINGS)));
+  void scopesOf_is_what_the_first_source_that_defines_scopes_says() {
+    var firstScopes = List.of(scope(MODULE_A, "from-first", "connection"));
+    when(first.scopesOf(FOLDER)).thenReturn(firstScopes);
+    when(second.scopesOf(FOLDER)).thenReturn(List.of(scope(REPO, "from-second", "connection")));
 
-    assertThat(underTest.scopesOf(FOLDER)).isEqualTo(configScopes);
+    assertThat(underTest.scopesOf(FOLDER)).isEqualTo(firstScopes);
   }
 
   @Test
-  void scopesOf_falls_back_to_the_folder_settings_without_a_config() {
-    var settingsScopes = List.of(scope(REPO, "from-settings", "connection", Origin.SETTINGS));
-    when(config.scopesOf(FOLDER)).thenReturn(List.of());
-    when(settings.scopesOf(FOLDER)).thenReturn(settingsScopes);
+  void scopesOf_falls_through_to_the_next_source_when_the_first_defines_none() {
+    var secondScopes = List.of(scope(REPO, "from-second", "connection"));
+    when(first.scopesOf(FOLDER)).thenReturn(List.of());
+    when(second.scopesOf(FOLDER)).thenReturn(secondScopes);
 
-    assertThat(underTest.scopesOf(FOLDER)).isEqualTo(settingsScopes);
+    assertThat(underTest.scopesOf(FOLDER)).isEqualTo(secondScopes);
   }
 
   @Test
-  void bindingOf_uses_the_deepest_declared_scope_containing_the_file() {
-    when(config.scopesOf(FOLDER)).thenReturn(List.of(
-      scope(MODULE_A, "module-a", "connection", Origin.SONAR_CONFIG),
-      scope(NESTED, "nested", "connection", Origin.SONAR_CONFIG)));
+  void scopesOf_is_empty_when_no_source_defines_scopes() {
+    assertThat(underTest.scopesOf(FOLDER)).isEmpty();
+  }
+
+  @Test
+  void bindingOf_uses_the_deepest_scope_containing_the_file() {
+    when(first.scopesOf(FOLDER)).thenReturn(List.of(scope(MODULE_A, "module-a", "connection"), scope(NESTED, "nested", "connection")));
 
     assertThat(underTest.bindingOf(FOLDER, URI.create("file:///repo/moduleA/nested/Foo.java"))).contains(new ProjectBinding("connection", "nested"));
     assertThat(underTest.bindingOf(FOLDER, URI.create("file:///repo/moduleA/Foo.java"))).contains(new ProjectBinding("connection", "module-a"));
   }
 
   @Test
-  void bindingOf_is_empty_for_a_file_outside_every_declared_scope() {
-    when(config.scopesOf(FOLDER)).thenReturn(List.of(scope(MODULE_A, "module-a", "connection", Origin.SONAR_CONFIG)));
-    when(settings.bindingOf(FOLDER)).thenReturn(Optional.of(new ProjectBinding("connection", "from-settings")));
+  void bindingOf_is_empty_for_a_file_outside_every_scope() {
+    when(first.scopesOf(FOLDER)).thenReturn(List.of(scope(MODULE_A, "module-a", "connection")));
+    when(second.scopesOf(FOLDER)).thenReturn(List.of(scope(REPO, "from-second", "connection")));
 
     assertThat(underTest.bindingOf(FOLDER, URI.create("file:///repo/Foo.java"))).isEmpty();
   }
 
   @Test
-  void bindingOf_is_empty_when_the_declared_scope_matches_no_connection() {
-    when(config.scopesOf(FOLDER)).thenReturn(List.of(scope(MODULE_A, "module-a", null, Origin.SONAR_CONFIG)));
+  void bindingOf_is_empty_when_the_scope_has_no_connection() {
+    when(first.scopesOf(FOLDER)).thenReturn(List.of(scope(MODULE_A, "module-a", null)));
 
     assertThat(underTest.bindingOf(FOLDER, URI.create("file:///repo/moduleA/Foo.java"))).isEmpty();
   }
 
   @Test
-  void bindingOf_uses_the_folder_settings_without_a_config() {
-    var binding = new ProjectBinding("connection", "from-settings");
-    when(config.scopesOf(FOLDER)).thenReturn(List.of());
-    when(settings.bindingOf(FOLDER)).thenReturn(Optional.of(binding));
-
-    assertThat(underTest.bindingOf(FOLDER, URI.create("file:///repo/Foo.java"))).contains(binding);
-  }
-
-  @Test
-  void bindingIfExists_only_reads_what_the_folder_settings_already_cached() {
-    var binding = new ProjectBinding("connection", "from-settings");
-    when(config.scopesOf(FOLDER)).thenReturn(List.of());
-    when(settings.cachedBindingOf(FOLDER)).thenReturn(Optional.of(binding));
-
-    assertThat(underTest.bindingIfExists(FOLDER, URI.create("file:///repo/Foo.java"))).contains(binding);
-    verify(settings, never()).bindingOf(FOLDER);
-  }
-
-  @Test
-  void bindingIfExists_uses_the_declared_scope_when_a_config_applies() {
-    when(config.scopesOf(FOLDER)).thenReturn(List.of(scope(MODULE_A, "module-a", "connection", Origin.SONAR_CONFIG)));
-
-    assertThat(underTest.bindingIfExists(FOLDER, URI.create("file:///repo/moduleA/Foo.java"))).contains(new ProjectBinding("connection", "module-a"));
-  }
-
-  @Test
-  void bindingOfScope_finds_the_declared_scope() {
-    when(config.scopesOf(FOLDER)).thenReturn(List.of(
-      scope(MODULE_A, "module-a", "connection", Origin.SONAR_CONFIG),
-      scope(NESTED, "nested", null, Origin.SONAR_CONFIG)));
+  void bindingOfScope_finds_the_scope_with_that_uri() {
+    when(first.scopesOf(FOLDER)).thenReturn(List.of(scope(MODULE_A, "module-a", "connection"), scope(NESTED, "nested", null)));
 
     assertThat(underTest.bindingOfScope(FOLDER, MODULE_A)).contains(new ProjectBinding("connection", "module-a"));
     assertThat(underTest.bindingOfScope(FOLDER, NESTED)).isEmpty();
@@ -129,18 +105,8 @@ class BindingSourcesTests {
   }
 
   @Test
-  void bindingOfScope_gives_the_folder_settings_only_to_the_folder_itself() {
-    var binding = new ProjectBinding("connection", "from-settings");
-    when(config.scopesOf(FOLDER)).thenReturn(List.of());
-    when(settings.bindingOf(FOLDER)).thenReturn(Optional.of(binding));
-
-    assertThat(underTest.bindingOfScope(FOLDER, REPO)).contains(binding);
-    assertThat(underTest.bindingOfScope(FOLDER, MODULE_A)).isEmpty();
-  }
-
-  @Test
-  void scopeUriOf_is_the_deepest_declared_scope_containing_the_file_or_the_folder() {
-    when(config.projectsOf(FOLDER)).thenReturn(List.of(project(MODULE_A), project(NESTED)));
+  void scopeUriOf_is_the_deepest_scope_containing_the_file_or_the_folder() {
+    when(first.scopesOf(FOLDER)).thenReturn(List.of(scope(MODULE_A, "module-a", "connection"), scope(NESTED, "nested", "connection")));
 
     assertThat(underTest.scopeUriOf(FOLDER, URI.create("file:///repo/moduleA/nested/Foo.java"))).isEqualTo(NESTED);
     assertThat(underTest.scopeUriOf(FOLDER, URI.create("file:///repo/moduleA/Foo.java"))).isEqualTo(MODULE_A);
@@ -148,32 +114,75 @@ class BindingSourcesTests {
   }
 
   @Test
-  void subFolders_are_the_declared_scopes_below_the_folder_named_after_their_directory() {
-    when(config.projectsOf(FOLDER)).thenReturn(List.of(project(REPO), project(MODULE_A)));
+  void finding_a_scope_does_not_wait_for_the_settings() {
+    when(first.scopesOf(FOLDER)).thenReturn(List.of(scope(MODULE_A, "module-a", "connection")));
+
+    underTest.scopesOf(FOLDER);
+    underTest.scopeUriOf(FOLDER, URI.create("file:///repo/moduleA/Foo.java"));
+    underTest.subFolders(FOLDER);
+
+    verify(first, never()).awaitSettings(FOLDER);
+    verify(second, never()).awaitSettings(FOLDER);
+  }
+
+  @Test
+  void resolving_a_binding_waits_only_for_the_sources_it_asks() {
+    when(first.scopesOf(FOLDER)).thenReturn(List.of(scope(MODULE_A, "module-a", "connection")));
+
+    underTest.bindingOf(FOLDER, URI.create("file:///repo/moduleA/Foo.java"));
+    underTest.bindingOfScope(FOLDER, MODULE_A);
+
+    verify(first, times(2)).awaitSettings(FOLDER);
+    verify(second, never()).awaitSettings(FOLDER);
+  }
+
+  @Test
+  void resolving_a_binding_waits_for_the_next_source_when_the_first_defines_no_scope() {
+    when(second.scopesOf(FOLDER)).thenReturn(List.of(scope(REPO, "from-second", "connection")));
+
+    assertThat(underTest.loadedScopesOf(FOLDER)).hasSize(1);
+
+    verify(first).awaitSettings(FOLDER);
+    verify(second).awaitSettings(FOLDER);
+  }
+
+  @Test
+  void scopeUriOf_does_not_resolve_any_connection() {
+    var scopeWhoseConnectionMustNotBeAsked = new ScopeBinding(MODULE_A, "name", ".", "module-a", () -> {
+      throw new AssertionError("the connection must stay unresolved");
+    }, "target", Origin.SONAR_CONFIG);
+    when(first.scopesOf(FOLDER)).thenReturn(List.of(scopeWhoseConnectionMustNotBeAsked));
+
+    assertThat(underTest.scopeUriOf(FOLDER, URI.create("file:///repo/moduleA/Foo.java"))).isEqualTo(MODULE_A);
+    assertThat(underTest.subFolders(FOLDER)).hasSize(1);
+  }
+
+  @Test
+  void subFolders_are_the_scopes_below_the_folder_named_by_their_source() {
+    when(first.scopesOf(FOLDER)).thenReturn(List.of(scope(REPO, "root-project", "connection"), scope(MODULE_A, "module-a", "connection")));
 
     assertThat(underTest.subFolders(FOLDER)).extracting(WorkspaceFolder::getUri, WorkspaceFolder::getName)
-      .containsExactly(tuple(MODULE_A.toString(), "moduleA"));
+      .containsExactly(tuple(MODULE_A.toString(), "name"));
   }
 
   @Test
-  void forget_clears_both_sources() {
+  void the_hooks_reach_every_source() {
+    Map<String, ServerConnectionSettings> previous = Map.of();
+    Map<String, ServerConnectionSettings> current = Map.of();
+
+    underTest.onConnectionsChanged(previous, current);
+    underTest.onFolderSettingsChanged(REPO);
     underTest.forget(REPO);
 
-    verify(config).forget(REPO);
-    verify(settings).forgetFolder(REPO);
+    verify(first).onConnectionsChanged(previous, current);
+    verify(second).onConnectionsChanged(previous, current);
+    verify(first).onFolderSettingsChanged(REPO);
+    verify(second).onFolderSettingsChanged(REPO);
+    verify(first).forget(REPO);
+    verify(second).forget(REPO);
   }
 
-  @Test
-  void exposes_the_sources() {
-    assertThat(underTest.config()).isSameAs(config);
-    assertThat(underTest.settings()).isSameAs(settings);
-  }
-
-  private static ScopeBinding scope(URI scopeUri, String projectKey, @Nullable String connectionId, Origin origin) {
-    return new ScopeBinding(scopeUri, "name", ".", projectKey, connectionId, "target", origin);
-  }
-
-  private static SonarConfigProject project(URI scopeUri) {
-    return new SonarConfigProject(scopeUri, "key", "https://sonarqube.example.com", null, null, ".");
+  private static ScopeBinding scope(URI scopeUri, String projectKey, @Nullable String connectionId) {
+    return ScopeBinding.of(scopeUri, "name", ".", projectKey, connectionId, "target", Origin.SONAR_CONFIG);
   }
 }

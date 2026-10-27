@@ -712,7 +712,7 @@ class SonarLintVSCodeClientTests {
     var issueDetailsDto = new IssueDetailsDto(textRangeDto, "rule:S1234",
       "issueKey", filePython, "this is wrong", "29.09.2023", "print('ddd')",
       false, List.of());
-    when(bindingManager.getBindingIfExists(fileUri))
+    when(bindingManager.getBinding(fileUri))
       .thenReturn(Optional.empty());
 
     underTest.showIssue(fileUri.toString(), issueDetailsDto);
@@ -730,7 +730,7 @@ class SonarLintVSCodeClientTests {
     var issueDetailsDto = new IssueDetailsDto(textRangeDto, "rule:S1234",
       "issueKey", filePython, "this is wrong", "29.09.2023", "print('ddd')",
       false, List.of());
-    when(bindingManager.getBindingIfExists(fileUri))
+    when(bindingManager.getBinding(fileUri))
       .thenReturn(Optional.of(new ProjectBinding("connectionId", "projectKey")));
 
     underTest.showIssue(fileUri.toString(), issueDetailsDto);

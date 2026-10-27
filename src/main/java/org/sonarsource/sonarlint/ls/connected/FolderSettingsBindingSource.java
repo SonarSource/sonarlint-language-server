@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -42,7 +43,8 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * The binding set in the {@code connectedMode.project} setting. A workspace folder has at most one, and files outside
- * any workspace folder get one from the default folder settings. Resolved bindings are cached until invalidated.
+ * any workspace folder get one from the default folder settings. Resolved bindings are cached until a change of the
+ * settings or of the connections makes them stale.
  */
 public class FolderSettingsBindingSource implements BindingSource {
 
@@ -67,62 +69,41 @@ public class FolderSettingsBindingSource implements BindingSource {
     if (settings == null || !settings.hasBinding()) {
       return List.of();
     }
-    var connectionId = bindingOf(folder).map(ProjectBinding::connectionId).orElse(null);
-    return List.of(new ScopeBinding(folder.getUri(), folderName(folder), ".", requireNonNull(settings.getProjectKey()), connectionId,
+    return List.of(new ScopeBinding(folder.getUri(), folderName(folder), ".", requireNonNull(settings.getProjectKey()),
+      ScopeBinding.lazily(() -> bindingOf(folder).map(ProjectBinding::connectionId).orElse(null)),
       format("connection '%s'", SettingsManager.connectionIdOrDefault(settings.getConnectionId())), Origin.SETTINGS));
   }
 
-  public Optional<ProjectBinding> bindingOf(WorkspaceFolderWrapper folder) {
-    return folderBindingCache.computeIfAbsent(folder.getUri(), k -> resolve(folder.getSettings(), folder.getRootPath()));
+  @Override
+  public void awaitSettings(WorkspaceFolderWrapper folder) {
+    folder.getSettings();
+  }
+
+  @Override
+  public void onConnectionsChanged(Map<String, ServerConnectionSettings> previous, Map<String, ServerConnectionSettings> current) {
+    folderBindingCache.values().removeIf(binding -> isStale(binding, previous, current));
+    fileBindingCache.values().removeIf(binding -> isStale(binding, previous, current));
+  }
+
+  @Override
+  public void onFolderSettingsChanged(URI folderUri) {
+    folderBindingCache.remove(folderUri);
+  }
+
+  @Override
+  public void forget(URI folderUri) {
+    folderBindingCache.remove(folderUri);
   }
 
   public Optional<ProjectBinding> bindingOfFile(URI fileUri) {
     return fileBindingCache.computeIfAbsent(fileUri, k -> resolve(settingsManager.getCurrentDefaultFolderSettings(), Paths.get(fileUri).getParent()));
   }
 
-  public Optional<ProjectBinding> cachedBindingOf(WorkspaceFolderWrapper folder) {
-    return folderBindingCache.getOrDefault(folder.getUri(), Optional.empty());
-  }
-
-  public Optional<ProjectBinding> cachedBindingOfFile(URI fileUri) {
-    return fileBindingCache.getOrDefault(fileUri, Optional.empty());
-  }
-
-  public boolean hasCachedFolder(URI folderUri) {
-    return folderBindingCache.containsKey(folderUri);
-  }
-
-  public boolean hasCachedFiles() {
-    return !fileBindingCache.isEmpty();
-  }
-
-  public void forgetFolder(URI folderUri) {
-    folderBindingCache.remove(folderUri);
-  }
-
-  public void forgetFiles() {
-    fileBindingCache.clear();
-  }
-
-  public void markFolderUnbound(URI folderUri) {
-    folderBindingCache.put(folderUri, Optional.empty());
-  }
-
-  public void markFilesUnbound() {
-    fileBindingCache.replaceAll((uri, binding) -> Optional.empty());
-  }
-
-  public void forgetConnection(String connectionId) {
-    folderBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().connectionId().equals(connectionId));
-    fileBindingCache.entrySet().removeIf(e -> e.getValue().isPresent() && e.getValue().get().connectionId().equals(connectionId));
-  }
-
   /**
-   * Drops the cached results that found no binding, so that a connection added later is taken into account.
+   * The default folder settings changed, which is what the files outside any workspace folder are bound by.
    */
-  public void forgetUnresolved() {
-    folderBindingCache.values().removeIf(Optional::isEmpty);
-    fileBindingCache.values().removeIf(Optional::isEmpty);
+  public void onDefaultFolderSettingsChanged() {
+    fileBindingCache.clear();
   }
 
   public Optional<URI> cachedFolderBoundTo(String connectionId, String projectKey) {
@@ -147,6 +128,10 @@ public class FolderSettingsBindingSource implements BindingSource {
     return serverConnectionSettings;
   }
 
+  private Optional<ProjectBinding> bindingOf(WorkspaceFolderWrapper folder) {
+    return folderBindingCache.computeIfAbsent(folder.getUri(), k -> resolve(folder.getSettings(), folder.getRootPath()));
+  }
+
   private Optional<ProjectBinding> resolve(WorkspaceFolderSettings settings, Path folderRoot) {
     if (!settings.hasBinding()) {
       return Optional.empty();
@@ -159,6 +144,10 @@ public class FolderSettingsBindingSource implements BindingSource {
     var projectKey = requireNonNull(settings.getProjectKey());
     logOutput.debug(format("Resolved binding %s for folder %s", projectKey, folderRoot));
     return Optional.of(new ProjectBinding(connectionId, projectKey));
+  }
+
+  private static boolean isStale(Optional<ProjectBinding> binding, Map<String, ServerConnectionSettings> previous, Map<String, ServerConnectionSettings> current) {
+    return binding.map(ProjectBinding::connectionId).map(id -> !Objects.equals(previous.get(id), current.get(id))).orElse(true);
   }
 
   private static String folderName(WorkspaceFolderWrapper folder) {

@@ -273,7 +273,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public void showIssue(String folderUri, IssueDetailsDto issueDetails) {
-    var maybeBinding = bindingManager.getBindingIfExists(URI.create(folderUri));
+    var maybeBinding = bindingManager.getBinding(URI.create(folderUri));
     if (maybeBinding.isPresent()) {
       logOutput.debug("Show issue with description");
       var projectBinding = maybeBinding.get();
@@ -490,6 +490,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       .forEach(taintIssue -> taintVulnerabilitiesCache.removeTaintIssue(
         getFullFileUriFromFragments(folderUri, taintIssue.getIdeFilePath()).toString(), taintIssue.getSonarServerKey()));
 
+    // todo how does this work
     bindingManager.getBinding(URI.create(folderUri))
       .map(binding -> Objects.requireNonNull(bindingManager.getServerConnectionSettingsFor(binding.connectionId())).isSonarCloudAlias())
       .ifPresent(isSonarCloud -> updateTaintVulnerabilitiesCache(addedTaintVulnerabilitiesByFile, updatedTaintVulnerabilitiesByFile, folderUri, isSonarCloud));

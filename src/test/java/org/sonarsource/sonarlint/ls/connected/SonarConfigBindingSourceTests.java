@@ -39,7 +39,10 @@ import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -60,29 +63,26 @@ class SonarConfigBindingSourceTests {
   }
 
   @Test
-  void projectsOf_is_empty_without_a_config() {
+  void scopesOf_is_empty_without_a_config() {
     when(resolver.get(REPO)).thenReturn(Optional.empty());
 
-    assertThat(underTest.projectsOf(FOLDER)).isEmpty();
     assertThat(underTest.scopesOf(FOLDER)).isEmpty();
   }
 
   @Test
-  void projectsOf_lists_the_direct_project_and_the_nested_ones() {
-    var direct = server(REPO, "root-project", ".");
-    var nested = server(MODULE_A, "module-a", "moduleA");
-    when(resolver.get(REPO)).thenReturn(Optional.of(new ResolvedSonarConfig(direct, List.of(nested))));
+  void scopesOf_lists_the_direct_project_and_the_nested_ones() {
+    when(resolver.get(REPO)).thenReturn(Optional.of(new ResolvedSonarConfig(server(REPO, "root-project", "."), List.of(server(MODULE_A, "module-a", "moduleA")))));
 
-    assertThat(underTest.projectsOf(FOLDER)).containsExactly(direct, nested);
+    assertThat(underTest.scopesOf(FOLDER)).extracting(ScopeBinding::scopeUri, ScopeBinding::projectKey).containsExactly(
+      tuple(REPO, "root-project"),
+      tuple(MODULE_A, "module-a"));
   }
 
   @Test
   void scopesOf_binds_each_project_to_the_matching_connection() {
     when(resolver.get(REPO)).thenReturn(Optional.of(new ResolvedSonarConfig(null, List.of(server(MODULE_A, "module-a", "moduleA")))));
 
-    var scopes = underTest.scopesOf(FOLDER);
-
-    assertThat(scopes).singleElement().satisfies(scope -> {
+    assertThat(underTest.scopesOf(FOLDER)).singleElement().satisfies(scope -> {
       assertThat(scope.scopeUri()).isEqualTo(MODULE_A);
       assertThat(scope.name()).isEqualTo("moduleA");
       assertThat(scope.relativePath()).isEqualTo("moduleA");
@@ -105,6 +105,18 @@ class SonarConfigBindingSourceTests {
       assertThat(scope.toProjectBinding()).isEmpty();
       assertThat(scope.target()).isEqualTo("organization=my-org region=US");
     });
+  }
+
+  @Test
+  void scopesOf_does_not_read_the_settings_until_the_connection_is_asked_for() {
+    when(resolver.get(REPO)).thenReturn(Optional.of(new ResolvedSonarConfig(null, List.of(server(MODULE_A, "module-a", "moduleA")))));
+
+    var scope = underTest.scopesOf(FOLDER).get(0);
+
+    verify(settingsManager, never()).getCurrentSettings();
+    scope.connectionId();
+    scope.connectionId();
+    verify(settingsManager, times(1)).getCurrentSettings();
   }
 
   @Test

@@ -21,12 +21,10 @@ package org.sonarsource.sonarlint.ls.connected;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
 import org.sonarsource.sonarlint.ls.connected.ScopeBinding.Origin;
 import org.sonarsource.sonarlint.ls.folders.SonarConfigProject;
 import org.sonarsource.sonarlint.ls.folders.SonarConfigResolver;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
-import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 
 /**
@@ -43,29 +41,21 @@ public class SonarConfigBindingSource implements BindingSource {
     this.settingsManager = settingsManager;
   }
 
-  /**
-   * The projects the config declares for the folder, without resolving their connections.
-   */
-  public List<SonarConfigProject> projectsOf(WorkspaceFolderWrapper folder) {
-    return resolver.get(folder.getUri()).map(config -> config.allProjects()).orElse(List.of());
+  @Override
+  public List<ScopeBinding> scopesOf(WorkspaceFolderWrapper folder) {
+    return resolver.get(folder.getUri())
+      .map(config -> config.allProjects().stream().map(this::toScope).toList())
+      .orElse(List.of());
   }
 
   @Override
-  public List<ScopeBinding> scopesOf(WorkspaceFolderWrapper folder) {
-    var projects = projectsOf(folder);
-    if (projects.isEmpty()) {
-      return List.of();
-    }
-    var connections = settingsManager.getCurrentSettings().getServerConnections();
-    return projects.stream().map(project -> toScope(project, connections)).toList();
-  }
-
   public void forget(URI folderUri) {
     resolver.forget(folderUri);
   }
 
-  private static ScopeBinding toScope(SonarConfigProject project, Map<String, ServerConnectionSettings> connections) {
+  private ScopeBinding toScope(SonarConfigProject project) {
     return new ScopeBinding(project.scopeUri(), project.directoryName(), project.relativePath(), project.projectKey(),
-      SonarConfigConnectionMatcher.findConnectionId(connections, project), project.describeTarget(), Origin.SONAR_CONFIG);
+      ScopeBinding.lazily(() -> SonarConfigConnectionMatcher.findConnectionId(settingsManager.getCurrentSettings().getServerConnections(), project)),
+      project.describeTarget(), Origin.SONAR_CONFIG);
   }
 }

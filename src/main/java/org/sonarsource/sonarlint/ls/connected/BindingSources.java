@@ -22,80 +22,87 @@ package org.sonarsource.sonarlint.ls.connected;
 import java.net.URI;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.eclipse.lsp4j.WorkspaceFolder;
-import org.sonarsource.sonarlint.ls.folders.SonarConfigProject;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.util.URIUtils;
 
 /**
- * The binding sources in order of precedence. Once a {@code .sonar-config.json} declares scopes for a folder it is the
- * only source for that folder; otherwise the folder's own setting applies. Only the config declares scopes below a
- * workspace folder.
+ * The binding sources in order of precedence: the scopes of a folder are those of the first source that defines any.
+ * Everything else is a selection over those scopes.
  */
 public class BindingSources implements BindingSource {
 
-  private final SonarConfigBindingSource config;
-  private final FolderSettingsBindingSource settings;
+  private final List<BindingSource> sources;
 
-  public BindingSources(SonarConfigBindingSource config, FolderSettingsBindingSource settings) {
-    this.config = config;
-    this.settings = settings;
-  }
-
-  public SonarConfigBindingSource config() {
-    return config;
-  }
-
-  public FolderSettingsBindingSource settings() {
-    return settings;
+  public BindingSources(List<BindingSource> sources) {
+    this.sources = List.copyOf(sources);
   }
 
   @Override
   public List<ScopeBinding> scopesOf(WorkspaceFolderWrapper folder) {
-    var configScopes = config.scopesOf(folder);
-    return configScopes.isEmpty() ? settings.scopesOf(folder) : configScopes;
+    return sources.stream()
+      .map(source -> source.scopesOf(folder))
+      .filter(scopes -> !scopes.isEmpty())
+      .findFirst()
+      .orElse(List.of());
+  }
+
+  /**
+   * Like {@link #scopesOf}, but first waits for what each source it asks reads about the folder. The first source that
+   * defines scopes ends the search, so the settings of the sources after it are not waited for.
+   */
+  public List<ScopeBinding> loadedScopesOf(WorkspaceFolderWrapper folder) {
+    for (var source : sources) {
+      source.awaitSettings(folder);
+      var scopes = source.scopesOf(folder);
+      if (!scopes.isEmpty()) {
+        return scopes;
+      }
+    }
+    return List.of();
   }
 
   public Optional<ProjectBinding> bindingOf(WorkspaceFolderWrapper folder, URI fileUri) {
-    var configScopes = config.scopesOf(folder);
-    return configScopes.isEmpty() ? settings.bindingOf(folder) : deepestContaining(configScopes, fileUri).flatMap(ScopeBinding::toProjectBinding);
-  }
-
-  public Optional<ProjectBinding> bindingIfExists(WorkspaceFolderWrapper folder, URI fileUri) {
-    var configScopes = config.scopesOf(folder);
-    return configScopes.isEmpty() ? settings.cachedBindingOf(folder) : deepestContaining(configScopes, fileUri).flatMap(ScopeBinding::toProjectBinding);
+    return deepestContaining(loadedScopesOf(folder), fileUri).flatMap(ScopeBinding::toProjectBinding);
   }
 
   public Optional<ProjectBinding> bindingOfScope(WorkspaceFolderWrapper folder, URI scopeUri) {
-    var configScopes = config.scopesOf(folder);
-    if (!configScopes.isEmpty()) {
-      return configScopes.stream().filter(scope -> scope.scopeUri().equals(scopeUri)).findFirst().flatMap(ScopeBinding::toProjectBinding);
-    }
-    return scopeUri.equals(folder.getUri()) ? settings.bindingOf(folder) : Optional.empty();
+    return loadedScopesOf(folder).stream()
+      .filter(scope -> scope.scopeUri().equals(scopeUri))
+      .findFirst()
+      .flatMap(ScopeBinding::toProjectBinding);
   }
 
   /**
    * The scope a file belongs to: the deepest declared scope containing it, otherwise the workspace folder itself.
    */
   public URI scopeUriOf(WorkspaceFolderWrapper folder, URI fileUri) {
-    return config.projectsOf(folder).stream()
-      .map(SonarConfigProject::scopeUri)
-      .filter(scopeUri -> URIUtils.isAncestor(scopeUri, fileUri))
-      .max(Comparator.comparingInt(scopeUri -> scopeUri.getPath().length()))
-      .orElse(folder.getUri());
+    return deepestContaining(scopesOf(folder), fileUri).map(ScopeBinding::scopeUri).orElse(folder.getUri());
   }
 
   public List<WorkspaceFolder> subFolders(WorkspaceFolderWrapper folder) {
-    return config.projectsOf(folder).stream()
-      .filter(project -> !project.scopeUri().equals(folder.getUri()))
-      .map(project -> new WorkspaceFolder(project.scopeUri().toString(), project.directoryName()))
+    return scopesOf(folder).stream()
+      .filter(scope -> !scope.scopeUri().equals(folder.getUri()))
+      .map(scope -> new WorkspaceFolder(scope.scopeUri().toString(), scope.name()))
       .toList();
   }
 
+  @Override
+  public void onConnectionsChanged(Map<String, ServerConnectionSettings> previous, Map<String, ServerConnectionSettings> current) {
+    sources.forEach(source -> source.onConnectionsChanged(previous, current));
+  }
+
+  @Override
+  public void onFolderSettingsChanged(URI folderUri) {
+    sources.forEach(source -> source.onFolderSettingsChanged(folderUri));
+  }
+
+  @Override
   public void forget(URI folderUri) {
-    config.forget(folderUri);
-    settings.forgetFolder(folderUri);
+    sources.forEach(source -> source.forget(folderUri));
   }
 
   private static Optional<ScopeBinding> deepestContaining(List<ScopeBinding> scopes, URI fileUri) {

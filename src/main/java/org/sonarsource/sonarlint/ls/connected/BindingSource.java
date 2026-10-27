@@ -19,14 +19,36 @@
  */
 package org.sonarsource.sonarlint.ls.connected;
 
+import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
+import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 /**
  * Where a binding can come from. A source describes the scopes it defines for a workspace folder; it is empty when the
- * source does not apply to the folder.
+ * source does not apply to the folder. The hooks let a source drop what it kept.
  */
 public interface BindingSource {
 
+  /**
+   * Never waits for the settings: the connection of each scope is resolved lazily.
+   */
   List<ScopeBinding> scopesOf(WorkspaceFolderWrapper folder);
+
+  /**
+   * Waits until what the source reads about the folder has been loaded. The callers that resolve a binding use it,
+   * the lookups of a scope do not.
+   */
+  default void awaitSettings(WorkspaceFolderWrapper folder) {
+  }
+
+  default void onConnectionsChanged(Map<String, ServerConnectionSettings> previous, Map<String, ServerConnectionSettings> current) {
+  }
+
+  default void onFolderSettingsChanged(URI folderUri) {
+  }
+
+  default void forget(URI folderUri) {
+  }
 }

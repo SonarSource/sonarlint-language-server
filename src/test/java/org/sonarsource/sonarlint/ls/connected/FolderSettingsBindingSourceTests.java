@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,7 @@ import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -69,51 +71,7 @@ class FolderSettingsBindingSourceTests {
     when(settingsManager.getCurrentSettings()).thenReturn(new WorkspaceSettings(false, servers, Collections.emptyList(), Collections.emptyList(),
       Collections.emptyMap(), false, "", false, true, "", false));
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(UNBOUND);
-    folder = spy(new WorkspaceFolderWrapper(basedir.toUri(), new WorkspaceFolder(basedir.toUri().toString(), "folder"), logTester.getLogger()));
-  }
-
-  @Test
-  void bindingOf_resolves_the_binding_of_a_bound_folder_and_caches_it() {
-    connection();
-    folder.setSettings(BOUND);
-
-    assertThat(underTest.bindingOf(folder)).contains(new ProjectBinding(CONNECTION_ID, "myProject"));
-    assertThat(underTest.bindingOf(folder)).contains(new ProjectBinding(CONNECTION_ID, "myProject"));
-
-    verify(folder, times(1)).getSettings();
-    assertThat(underTest.hasCachedFolder(basedir.toUri())).isTrue();
-    assertThat(underTest.cachedBindingOf(folder)).isPresent();
-  }
-
-  @Test
-  void bindingOf_is_empty_for_a_folder_without_binding() {
-    folder.setSettings(UNBOUND);
-
-    assertThat(underTest.bindingOf(folder)).isEmpty();
-  }
-
-  @Test
-  void bindingOf_is_empty_and_logs_when_the_connection_is_unknown() {
-    folder.setSettings(BOUND);
-
-    assertThat(underTest.bindingOf(folder)).isEmpty();
-    assertThat(logTester.logs())
-      .anyMatch(log -> log.contains("The specified connection id 'myServer' doesn't exist."))
-      .anyMatch(log -> log.contains("Invalid binding for"));
-  }
-
-  @Test
-  void bindingOfFile_uses_the_default_folder_settings_and_caches_the_result() {
-    connection();
-    when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(BOUND);
-    var file = basedir.resolve("Foo.java").toUri();
-
-    assertThat(underTest.bindingOfFile(file)).contains(new ProjectBinding(CONNECTION_ID, "myProject"));
-    assertThat(underTest.bindingOfFile(file)).isPresent();
-
-    verify(settingsManager, times(1)).getCurrentDefaultFolderSettings();
-    assertThat(underTest.hasCachedFiles()).isTrue();
-    assertThat(underTest.cachedBindingOfFile(file)).isPresent();
+    folder = spy(newFolder("folder"));
   }
 
   @Test
@@ -130,8 +88,8 @@ class FolderSettingsBindingSourceTests {
     folder.setSettings(BOUND);
 
     assertThat(underTest.scopesOf(folder)).singleElement().satisfies(scope -> {
-      assertThat(scope.scopeUri()).isEqualTo(basedir.toUri());
-      assertThat(scope.name()).isEqualTo(basedir.getFileName().toString());
+      assertThat(scope.scopeUri()).isEqualTo(folder.getUri());
+      assertThat(scope.name()).isEqualTo("folder");
       assertThat(scope.relativePath()).isEqualTo(".");
       assertThat(scope.projectKey()).isEqualTo("myProject");
       assertThat(scope.connectionId()).isEqualTo(CONNECTION_ID);
@@ -148,91 +106,163 @@ class FolderSettingsBindingSourceTests {
       assertThat(scope.connectionId()).isNull();
       assertThat(scope.projectKey()).isEqualTo("myProject");
     });
+    assertThat(logTester.logs())
+      .anyMatch(log -> log.contains("The specified connection id 'myServer' doesn't exist."))
+      .anyMatch(log -> log.contains("Invalid binding for"));
   }
 
   @Test
-  void a_cached_folder_can_be_forgotten_or_marked_unbound() {
+  void scopesOf_does_not_resolve_the_connection_until_it_is_asked_for() {
     connection();
     folder.setSettings(BOUND);
-    underTest.bindingOf(folder);
 
-    underTest.markFolderUnbound(basedir.toUri());
-    assertThat(underTest.cachedBindingOf(folder)).isEmpty();
-    assertThat(underTest.hasCachedFolder(basedir.toUri())).isTrue();
+    var scope = underTest.scopesOf(folder).get(0);
 
-    underTest.forgetFolder(basedir.toUri());
-    assertThat(underTest.hasCachedFolder(basedir.toUri())).isFalse();
+    verify(folder, never()).getSettings();
+    assertThat(scope.connectionId()).isEqualTo(CONNECTION_ID);
+    assertThat(scope.connectionId()).isEqualTo(CONNECTION_ID);
+    verify(folder, times(1)).getSettings();
   }
 
   @Test
-  void cached_files_can_be_forgotten_or_marked_unbound() {
+  void awaitSettings_waits_for_the_settings_of_the_folder() {
+    folder.setSettings(BOUND);
+
+    underTest.awaitSettings(folder);
+
+    verify(folder).getSettings();
+  }
+
+  @Test
+  void the_resolved_binding_is_kept_until_the_folder_settings_change() {
+    connection();
+    folder.setSettings(BOUND);
+    underTest.scopesOf(folder).get(0).connectionId();
+    underTest.scopesOf(folder).get(0).connectionId();
+    verify(folder, times(1)).getSettings();
+
+    underTest.onFolderSettingsChanged(folder.getUri());
+    underTest.scopesOf(folder).get(0).connectionId();
+
+    verify(folder, times(2)).getSettings();
+  }
+
+  @Test
+  void forget_drops_the_resolved_binding_of_the_folder() {
+    connection();
+    folder.setSettings(BOUND);
+    underTest.scopesOf(folder).get(0).connectionId();
+
+    underTest.forget(folder.getUri());
+    underTest.scopesOf(folder).get(0).connectionId();
+
+    verify(folder, times(2)).getSettings();
+  }
+
+  @Test
+  void bindingOfFile_uses_the_default_folder_settings_and_keeps_the_result() {
+    connection();
+    when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(BOUND);
+    var file = basedir.resolve("Foo.java").toUri();
+
+    assertThat(underTest.bindingOfFile(file)).contains(new ProjectBinding(CONNECTION_ID, "myProject"));
+    assertThat(underTest.bindingOfFile(file)).isPresent();
+
+    verify(settingsManager, times(1)).getCurrentDefaultFolderSettings();
+  }
+
+  @Test
+  void a_change_of_the_default_folder_settings_drops_the_bindings_of_the_files() {
     connection();
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(BOUND);
     var file = basedir.resolve("Foo.java").toUri();
     underTest.bindingOfFile(file);
 
-    underTest.markFilesUnbound();
-    assertThat(underTest.cachedBindingOfFile(file)).isEmpty();
-    assertThat(underTest.hasCachedFiles()).isTrue();
+    underTest.onDefaultFolderSettingsChanged();
+    underTest.bindingOfFile(file);
 
-    underTest.forgetFiles();
-    assertThat(underTest.hasCachedFiles()).isFalse();
+    verify(settingsManager, times(2)).getCurrentDefaultFolderSettings();
   }
 
   @Test
-  void forgetConnection_drops_only_the_bindings_of_that_connection() {
-    connection();
+  void a_changed_or_removed_connection_drops_the_bindings_that_used_it_and_keeps_the_others() {
+    var other = spy(newFolder("other"));
+    other.setSettings(new WorkspaceFolderSettings("otherServer", "otherProject", Collections.emptyMap(), null, null));
     folder.setSettings(BOUND);
-    underTest.bindingOf(folder);
-    var other = new WorkspaceFolderWrapper(basedir.resolve("other").toUri(), new WorkspaceFolder(basedir.resolve("other").toUri().toString(), "other"), logTester.getLogger());
-    other.setSettings(UNBOUND);
-    underTest.bindingOf(other);
+    var changed = server(CONNECTION_ID, "http://foo");
+    var unchanged = server("otherServer", "http://bar");
+    servers.put(CONNECTION_ID, changed);
+    servers.put("otherServer", unchanged);
+    underTest.scopesOf(folder).get(0).connectionId();
+    underTest.scopesOf(other).get(0).connectionId();
 
-    underTest.forgetConnection(CONNECTION_ID);
+    underTest.onConnectionsChanged(Map.of(CONNECTION_ID, changed, "otherServer", unchanged), Map.of(CONNECTION_ID, server(CONNECTION_ID, "http://moved"), "otherServer", unchanged));
 
-    assertThat(underTest.hasCachedFolder(basedir.toUri())).isFalse();
-    assertThat(underTest.hasCachedFolder(other.getUri())).isTrue();
+    assertThat(underTest.cachedBindings()).containsExactly(new ProjectBinding("otherServer", "otherProject"));
   }
 
   @Test
-  void forgetUnresolved_drops_the_results_that_found_no_binding_so_that_a_new_connection_counts() {
+  void a_removed_connection_drops_the_bindings_that_used_it() {
     folder.setSettings(BOUND);
-    assertThat(underTest.bindingOf(folder)).isEmpty();
+    var existing = server(CONNECTION_ID, "http://foo");
+    servers.put(CONNECTION_ID, existing);
+    underTest.scopesOf(folder).get(0).connectionId();
+
+    underTest.onConnectionsChanged(Map.of(CONNECTION_ID, existing), Map.of());
+
+    assertThat(underTest.cachedBindings()).isEmpty();
+  }
+
+  @Test
+  void a_new_connection_makes_the_bindings_that_were_waiting_for_it_resolve() {
+    folder.setSettings(BOUND);
+    assertThat(underTest.scopesOf(folder).get(0).connectionId()).isNull();
 
     connection();
-    underTest.forgetUnresolved();
+    underTest.onConnectionsChanged(Map.of(), servers);
 
-    assertThat(underTest.bindingOf(folder)).contains(new ProjectBinding(CONNECTION_ID, "myProject"));
+    assertThat(underTest.scopesOf(folder).get(0).connectionId()).isEqualTo(CONNECTION_ID);
   }
 
   @Test
   void cachedFolderBoundTo_finds_the_folder_with_that_binding() {
     connection();
     folder.setSettings(BOUND);
-    underTest.bindingOf(folder);
+    underTest.scopesOf(folder).get(0).connectionId();
 
-    assertThat(underTest.cachedFolderBoundTo(CONNECTION_ID, "myProject")).contains(basedir.toUri());
+    assertThat(underTest.cachedFolderBoundTo(CONNECTION_ID, "myProject")).contains(folder.getUri());
     assertThat(underTest.cachedFolderBoundTo(CONNECTION_ID, "unknown")).isEmpty();
     assertThat(underTest.cachedFolderBoundTo("other", "myProject")).isEmpty();
     assertThat(underTest.cachedBindings()).containsExactly(new ProjectBinding(CONNECTION_ID, "myProject"));
   }
 
   @Test
-  void connectionOf_defaults_to_the_default_connection_id() {
+  void connectionOf_logs_when_the_connection_does_not_exist() {
     assertThat(underTest.connectionOf(null)).isNull();
     assertThat(logTester.logs()).anyMatch(log -> log.contains("doesn't exist"));
   }
 
   @Test
   void the_cache_can_be_provided() {
-    var cache = new java.util.concurrent.ConcurrentHashMap<URI, Optional<ProjectBinding>>();
-    cache.put(basedir.toUri(), Optional.of(new ProjectBinding(CONNECTION_ID, "cached")));
+    var cache = new ConcurrentHashMap<URI, Optional<ProjectBinding>>();
+    cache.put(folder.getUri(), Optional.of(new ProjectBinding(CONNECTION_ID, "cached")));
     var source = new FolderSettingsBindingSource(settingsManager, logTester.getLogger(), cache);
+    folder.setSettings(BOUND);
 
-    assertThat(source.bindingOf(folder)).contains(new ProjectBinding(CONNECTION_ID, "cached"));
+    assertThat(source.scopesOf(folder).get(0).connectionId()).isEqualTo(CONNECTION_ID);
+    assertThat(source.cachedBindings()).containsExactly(new ProjectBinding(CONNECTION_ID, "cached"));
+  }
+
+  private WorkspaceFolderWrapper newFolder(String name) {
+    var path = basedir.resolve(name);
+    return new WorkspaceFolderWrapper(path.toUri(), new WorkspaceFolder(path.toUri().toString(), name), logTester.getLogger());
   }
 
   private void connection() {
-    servers.put(CONNECTION_ID, new ServerConnectionSettings(CONNECTION_ID, "http://foo", "token", null, true, SonarCloudRegion.EU));
+    servers.put(CONNECTION_ID, server(CONNECTION_ID, "http://foo"));
+  }
+
+  private static ServerConnectionSettings server(String id, String url) {
+    return new ServerConnectionSettings(id, url, "token", null, true, SonarCloudRegion.EU);
   }
 }

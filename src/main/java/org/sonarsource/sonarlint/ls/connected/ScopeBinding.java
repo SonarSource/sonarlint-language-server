@@ -21,24 +21,51 @@ package org.sonarsource.sonarlint.ls.connected;
 
 import java.net.URI;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 
 /**
- * What a binding source says about one configuration scope. The connection is {@code null} while the binding cannot be
- * resolved to a configured connection; {@code target} says what the source wanted to bind to.
+ * What a binding source says about one configuration scope. Everything but the connection is known without the
+ * settings; the connection is resolved when it is first asked for, because that waits until the settings are loaded.
+ * It is {@code null} while the binding matches no configured connection; {@code target} says what the source wanted
+ * to bind to.
  */
-public record ScopeBinding(URI scopeUri, String name, String relativePath, String projectKey, @Nullable String connectionId, String target, Origin origin) {
+public record ScopeBinding(URI scopeUri, String name, String relativePath, String projectKey, Supplier<String> connection, String target, Origin origin) {
 
   public enum Origin {
     SETTINGS,
     SONAR_CONFIG
   }
 
+  public static ScopeBinding of(URI scopeUri, String name, String relativePath, String projectKey, @Nullable String connectionId, String target, Origin origin) {
+    return new ScopeBinding(scopeUri, name, relativePath, projectKey, () -> connectionId, target, origin);
+  }
+
+  /**
+   * Resolves the connection once, on first use.
+   */
+  public static Supplier<String> lazily(Supplier<String> resolution) {
+    var resolved = new AtomicReference<Optional<String>>();
+    return () -> {
+      if (resolved.get() == null) {
+        resolved.compareAndSet(null, Optional.ofNullable(resolution.get()));
+      }
+      return resolved.get().orElse(null);
+    };
+  }
+
+  @CheckForNull
+  public String connectionId() {
+    return connection.get();
+  }
+
   public boolean isResolved() {
-    return connectionId != null;
+    return connectionId() != null;
   }
 
   public Optional<ProjectBinding> toProjectBinding() {
-    return connectionId == null ? Optional.empty() : Optional.of(new ProjectBinding(connectionId, projectKey));
+    return Optional.ofNullable(connectionId()).map(connectionId -> new ProjectBinding(connectionId, projectKey));
   }
 }
