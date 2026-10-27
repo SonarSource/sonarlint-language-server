@@ -37,6 +37,7 @@ import java.util.function.Function;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -54,6 +55,7 @@ public class WorkspaceFoldersManager {
   private ProjectBindingManager bindingManager;
   private final BackendServiceFacade backendServiceFacade;
   private final LanguageClientLogger logOutput;
+  private final SonarConfigResolver sonarConfigResolver;
   private final ExecutorService executor;
   private final List<WorkspaceFolder> workspaceFolders = new ArrayList<>();
 
@@ -65,6 +67,7 @@ public class WorkspaceFoldersManager {
     this.executor = executor;
     this.backendServiceFacade = backendServiceFacade;
     this.logOutput = logOutput;
+    this.sonarConfigResolver = new SonarConfigResolver(logOutput);
   }
 
   public void setBindingManager(ProjectBindingManager bindingManager) {
@@ -81,14 +84,33 @@ public class WorkspaceFoldersManager {
   }
 
   public void initialized() {
-    executor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().addWorkspaceFolders(this.workspaceFolders, getBindingProvider()),
-      t -> logOutput.errorWithStackTrace("Failed to initialize workspace folders.", t)));
+    executor.submit(new CatchingRunnable(() -> {
+      backendServiceFacade.getBackendService().addWorkspaceFolders(this.workspaceFolders, getBindingProvider());
+      registerSubFolders(this.workspaceFolders);
+    }, t -> logOutput.errorWithStackTrace("Failed to initialize workspace folders.", t)));
+  }
+
+  private void registerSubFolders(List<WorkspaceFolder> addedFolders) {
+    addedFolders.forEach(folder -> {
+      var folderUri = create(folder.getUri());
+      sonarConfigResolver.get(folderUri).ifPresent(config -> {
+        var subFolders = sonarConfigResolver.subFolders(folderUri);
+        if (!subFolders.isEmpty()) {
+          backendServiceFacade.getBackendService().addSubFolders(folderUri.toString(), subFolders, getBindingProvider());
+        }
+        sonarConfigResolver.markRegistered(folderUri);
+        bindingManager.notifySonarConfigScopes(folderUri, config);
+      });
+    });
   }
 
   public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
     logOutput.debug("Processing didChangeWorkspaceFolders event");
+    var removedSubFolderIds = new ArrayList<String>();
     for (var removed : event.getRemoved()) {
-      removeFolder(create(removed.getUri()));
+      var removedUri = create(removed.getUri());
+      sonarConfigResolver.subFolderUris(removedUri).forEach(subFolderUri -> removedSubFolderIds.add(subFolderUri.toString()));
+      removeFolder(removedUri);
     }
     for (var added : event.getAdded()) {
       var uri = create(added.getUri());
@@ -97,7 +119,9 @@ public class WorkspaceFoldersManager {
     }
     executor.submit(new CatchingRunnable(() -> {
       backendServiceFacade.getBackendService().addWorkspaceFolders(event.getAdded(), getBindingProvider());
+      registerSubFolders(event.getAdded());
       event.getRemoved().forEach(removed -> removeFolderFromBackend(removed.getUri()));
+      removedSubFolderIds.forEach(this::removeFolderFromBackend);
     }, t -> logOutput.errorWithStackTrace("Failed to add workspace folder", t)));
 
   }
@@ -111,6 +135,7 @@ public class WorkspaceFoldersManager {
     if (removed == null) {
       logOutput.warn("Unregistered workspace folder was missing: " + uri);
     }
+    sonarConfigResolver.forget(uri);
     logOutput.debug(format("Folder %s removed", removed));
   }
 
@@ -121,6 +146,7 @@ public class WorkspaceFoldersManager {
     } else {
       logOutput.debug(format("Folder %s added", addedWrapper));
       this.workspaceFolders.add(added);
+      sonarConfigResolver.get(uri);
     }
     return addedWrapper;
   }
@@ -150,6 +176,27 @@ public class WorkspaceFoldersManager {
 
   public Optional<WorkspaceFolderWrapper> getFolder(URI folderUri) {
     return Optional.ofNullable(folders.get(folderUri));
+  }
+
+  /**
+   * Resolve the effective configuration scope id for a file: the deepest {@code .sonar-config.json}-declared
+   * sub-project scope containing it when its workspace folder has one, otherwise the workspace folder's own
+   * scope id, otherwise {@link BackendService#ROOT_CONFIGURATION_SCOPE}.
+   */
+  public String resolveConfigScopeId(URI fileUri) {
+    var maybeFolder = findFolderForFile(fileUri);
+    if (maybeFolder.isEmpty()) {
+      return BackendService.ROOT_CONFIGURATION_SCOPE;
+    }
+    return sonarConfigResolver.scopeUriForFile(maybeFolder.get().getUri(), fileUri).toString();
+  }
+
+  public Optional<ResolvedSonarConfig> findSonarConfig(URI fileUri) {
+    return findFolderForFile(fileUri).flatMap(folder -> sonarConfigResolver.findForFile(folder.getUri(), fileUri));
+  }
+
+  public Map<URI, ResolvedSonarConfig> getRegisteredSonarConfigs() {
+    return sonarConfigResolver.registeredConfigs();
   }
 
   // Visible for testing
