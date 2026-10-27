@@ -19,11 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.folders;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
-import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -32,35 +28,36 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import javax.annotation.CheckForNull;
-import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.util.URIUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
+import static org.sonarsource.sonarlint.ls.folders.SonarConfigLoader.SONAR_CONFIG_FILE_NAME;
 
 /**
- * Everything about {@code .sonar-config.json} files as they apply to folders: reads the nearest file at or above a
- * folder (no further than the enclosing git root), classifies its entries against that folder, caches the result per
- * folder, and answers which sub-folder scope a file falls in. A shared leaf: it depends on neither the folders manager
- * nor the binding manager, and knows nothing about connections or the backend.
+ * What {@code .sonar-config.json} files say about the workspace folders: classifies the entries of the loaded file
+ * against each folder, keeps the result per folder, and answers which sub-folder scope a file falls in. A shared leaf:
+ * it depends on neither the folders manager nor the binding manager, and knows nothing about connections or the backend.
  */
 public class SonarConfigResolver {
 
-  public static final String SONAR_CONFIG_FILE_NAME = ".sonar-config.json";
-
   private final LanguageClientLogger logOutput;
-  private final Gson gson = new Gson();
+  private final SonarConfigLoader loader;
   private final Map<URI, Optional<ResolvedSonarConfig>> configsByFolder = new ConcurrentHashMap<>();
 
   public SonarConfigResolver(LanguageClientLogger logOutput) {
+    this(logOutput, new SonarConfigLoader(logOutput));
+  }
+
+  SonarConfigResolver(LanguageClientLogger logOutput, SonarConfigLoader loader) {
     this.logOutput = logOutput;
+    this.loader = loader;
   }
 
   /**
-   * The config as it applies to a folder, resolved on first use and then cached, empty results included.
+   * The config as it applies to a folder, resolved on first use and then kept, empty results included.
    */
   public Optional<ResolvedSonarConfig> get(URI folderUri) {
     return configsByFolder.computeIfAbsent(folderUri, this::resolve);
@@ -107,20 +104,14 @@ public class SonarConfigResolver {
       return Optional.empty();
     }
     var folderPath = Paths.get(folderUri).toAbsolutePath().normalize();
-    var configPath = findSonarConfigFile(folderPath);
-    if (configPath == null) {
-      logOutput.info(format("[multi-project] No '%s' found at or above %s (up to the git root), folder registered normally", SONAR_CONFIG_FILE_NAME, folderPath));
-      return Optional.empty();
-    }
-    var configFile = readSonarConfigFile(configPath);
-    if (configFile == null || configFile.projects == null) {
-      logOutput.warn(format("[multi-project] '%s' at %s was found but could not be parsed into a 'projects' array", SONAR_CONFIG_FILE_NAME, configPath));
-      return Optional.empty();
-    }
-    logOutput.info(format("[multi-project] Found '%s' at %s declaring %d project entr(y/ies)", SONAR_CONFIG_FILE_NAME, configPath, configFile.projects.size()));
-    var resolved = classifyEntries(folderUri, folderPath, configPath.getParent(), configFile.projects);
+    return loader.load(folderPath).flatMap(file -> classify(folderUri, folderPath, file));
+  }
+
+  private Optional<ResolvedSonarConfig> classify(URI folderUri, Path folderPath, SonarConfigFile file) {
+    logOutput.info(format("[multi-project] Found '%s' at %s declaring %d project entr(y/ies)", SONAR_CONFIG_FILE_NAME, file.path(), file.projects().size()));
+    var resolved = classifyEntries(folderUri, folderPath, file.path().getParent(), file.projects());
     if (resolved.allProjects().isEmpty()) {
-      logOutput.info(format("[multi-project] '%s' at %s has no entry matching folder %s, folder registered normally", SONAR_CONFIG_FILE_NAME, configPath, folderPath));
+      logOutput.info(format("[multi-project] '%s' at %s has no entry matching folder %s, folder registered normally", SONAR_CONFIG_FILE_NAME, file.path(), folderPath));
       return Optional.empty();
     }
     var binding = resolved.direct() != null ? "bound to projectKey=" + resolved.direct().projectKey() : "container without own binding";
@@ -128,90 +119,32 @@ public class SonarConfigResolver {
     return Optional.of(resolved);
   }
 
-  private ResolvedSonarConfig classifyEntries(URI folderUri, Path folderPath, Path configDir, List<ProjectEntry> entries) {
+  private ResolvedSonarConfig classifyEntries(URI folderUri, Path folderPath, Path configDir, List<SonarConfigEntry> entries) {
     var children = new ArrayList<SonarConfigProject>();
     SonarConfigProject direct = null;
     Path directPath = null;
     for (var entry : entries) {
       if (!entry.isValid()) {
         logOutput.warn(format("[multi-project] Ignoring invalid entry in '%s' for folder %s: projectKey=%s path=%s serverUrl=%s organization=%s "
-          + "(need either serverUrl or organization)", SONAR_CONFIG_FILE_NAME, folderUri, entry.projectKey, entry.path, entry.serverUrl, entry.organization));
+          + "(need either serverUrl or organization)", SONAR_CONFIG_FILE_NAME, folderUri, entry.projectKey(), entry.path(), entry.serverUrl(), entry.organization()));
         continue;
       }
-      var entryPath = configDir.resolve(entry.path).normalize();
+      var entryPath = configDir.resolve(entry.path()).normalize();
       if (folderPath.startsWith(entryPath)) {
         if (directPath == null || entryPath.getNameCount() > directPath.getNameCount()) {
           logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s contains the folder -> its own configuration scope is bound directly, no sub-folder needed",
-            entry.projectKey, entry.path));
-          direct = new SonarConfigProject(folderUri, entry.projectKey, entry.serverUrl, entry.organization, entry.region, ".");
+            entry.projectKey(), entry.path()));
+          direct = new SonarConfigProject(folderUri, entry.projectKey(), entry.serverUrl(), entry.organization(), entry.region(), ".");
           directPath = entryPath;
         }
       } else if (entryPath.startsWith(folderPath)) {
         var relativePath = folderPath.relativize(entryPath).toString().replace('\\', '/');
-        logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s is nested in the folder -> sub-folder %s", entry.projectKey, entry.path, entryPath.toUri()));
-        children.add(new SonarConfigProject(entryPath.toUri(), entry.projectKey, entry.serverUrl, entry.organization, entry.region, relativePath));
+        logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s is nested in the folder -> sub-folder %s", entry.projectKey(), entry.path(), entryPath.toUri()));
+        children.add(new SonarConfigProject(entryPath.toUri(), entry.projectKey(), entry.serverUrl(), entry.organization(), entry.region(), relativePath));
       } else {
-        logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s is unrelated to folder %s, skipped", entry.projectKey, entry.path, folderPath));
+        logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s is unrelated to folder %s, skipped", entry.projectKey(), entry.path(), folderPath));
       }
     }
     return new ResolvedSonarConfig(direct, children);
-  }
-
-  @CheckForNull
-  private static Path findSonarConfigFile(Path folderPath) {
-    var gitRoot = findGitRoot(folderPath);
-    for (var dir = folderPath; dir != null; dir = dir.getParent()) {
-      var candidate = dir.resolve(SONAR_CONFIG_FILE_NAME);
-      if (Files.isRegularFile(candidate)) {
-        return candidate;
-      }
-      if (gitRoot == null || dir.equals(gitRoot)) {
-        return null;
-      }
-    }
-    return null;
-  }
-
-  @CheckForNull
-  private static Path findGitRoot(Path folderPath) {
-    for (var dir = folderPath; dir != null; dir = dir.getParent()) {
-      if (Files.exists(dir.resolve(".git"))) {
-        return dir;
-      }
-    }
-    return null;
-  }
-
-  @CheckForNull
-  private SonarConfigFile readSonarConfigFile(Path configPath) {
-    try {
-      var content = Files.readString(configPath);
-      return gson.fromJson(content, SonarConfigFile.class);
-    } catch (IOException | JsonSyntaxException e) {
-      logOutput.warn(format("Failed to read '%s': %s", configPath, e.getMessage()));
-      return null;
-    }
-  }
-
-  private static class SonarConfigFile {
-    @Nullable
-    List<ProjectEntry> projects;
-  }
-
-  private static class ProjectEntry {
-    @Nullable
-    String projectKey;
-    @Nullable
-    String path;
-    @Nullable
-    String serverUrl;
-    @Nullable
-    String organization;
-    @Nullable
-    String region;
-
-    boolean isValid() {
-      return projectKey != null && path != null && (serverUrl != null || organization != null);
-    }
   }
 }
