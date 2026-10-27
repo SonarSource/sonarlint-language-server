@@ -174,10 +174,6 @@ public class WorkspaceFoldersManager {
     return Optional.of(folders.get(folderUriCandidates.get(0)));
   }
 
-  public Optional<WorkspaceFolderWrapper> getFolder(URI folderUri) {
-    return Optional.ofNullable(folders.get(folderUri));
-  }
-
   /**
    * Resolve the effective configuration scope id for a file: the deepest {@code .sonar-config.json}-declared
    * sub-project scope containing it when its workspace folder has one, otherwise the workspace folder's own
