@@ -198,7 +198,11 @@ public class BackendService {
   }
 
   public ConfigurationScopeDto getConfigScopeDto(WorkspaceFolder added, Optional<ProjectBinding> bindingOptional) {
-    return new ConfigurationScopeDto(added.getUri(), ROOT_CONFIGURATION_SCOPE, true, added.getName(), toBindingConfigurationDto(bindingOptional));
+    return getConfigScopeDto(ROOT_CONFIGURATION_SCOPE, added, bindingOptional);
+  }
+
+  private static ConfigurationScopeDto getConfigScopeDto(String parentScopeId, WorkspaceFolder added, Optional<ProjectBinding> bindingOptional) {
+    return new ConfigurationScopeDto(added.getUri(), parentScopeId, true, added.getName(), toBindingConfigurationDto(bindingOptional));
   }
 
   private static BindingConfigurationDto toBindingConfigurationDto(Optional<ProjectBinding> bindingOptional) {
@@ -219,25 +223,23 @@ public class BackendService {
   }
 
   public void addWorkspaceFolders(List<WorkspaceFolder> added, Function<WorkspaceFolder, Optional<ProjectBinding>> bindingProvider) {
-    List<ConfigurationScopeDto> addedScopeDtos = added.stream()
-      .map(folder -> getConfigScopeDto(folder, bindingProvider.apply(folder)))
+    addFolderScopes(ROOT_CONFIGURATION_SCOPE, added, bindingProvider);
+  }
+
+  public void addSubFolders(String parentScopeId, List<WorkspaceFolder> subFolders, Function<WorkspaceFolder, Optional<ProjectBinding>> bindingProvider) {
+    addFolderScopes(parentScopeId, subFolders, bindingProvider);
+  }
+
+  private void addFolderScopes(String parentScopeId, List<WorkspaceFolder> folders, Function<WorkspaceFolder, Optional<ProjectBinding>> bindingProvider) {
+    List<ConfigurationScopeDto> addedScopeDtos = folders.stream()
+      .map(folder -> getConfigScopeDto(parentScopeId, folder, bindingProvider.apply(folder)))
       .toList();
     var params = new DidAddConfigurationScopesParams(addedScopeDtos);
     addConfigurationScopes(params);
   }
 
-  public void addSubProjectScopes(String parentScopeId, List<ChildScope> children, Function<ChildScope, Optional<ProjectBinding>> bindingProvider) {
-    List<ConfigurationScopeDto> addedScopeDtos = children.stream()
-      .map(child -> new ConfigurationScopeDto(child.id(), parentScopeId, true, child.name(), toBindingConfigurationDto(bindingProvider.apply(child))))
-      .toList();
-    addConfigurationScopes(new DidAddConfigurationScopesParams(addedScopeDtos));
-  }
-
   void addConfigurationScopes(DidAddConfigurationScopesParams params) {
     backend.getConfigurationService().didAddConfigurationScopes(params);
-  }
-
-  public record ChildScope(String id, String name) {
   }
 
   public CompletableFuture<GetEffectiveRuleDetailsResponse> getEffectiveRuleDetails(@Nullable String workspaceFolder, String ruleKey, String ruleContextKey) {

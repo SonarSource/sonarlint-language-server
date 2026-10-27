@@ -141,7 +141,6 @@ import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.ModuleEventsProcessor;
-import org.sonarsource.sonarlint.ls.folders.MultiProjectConfigService;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
@@ -251,9 +250,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager = new SettingsManager(this.client, this.workspaceFoldersManager, backendServiceFacade, lsLogOutput);
     vsCodeClient.setSettingsManager(settingsManager);
     vsCodeClient.setWorkspaceFoldersManager(workspaceFoldersManager);
-    var multiProjectConfigService = new MultiProjectConfigService(settingsManager, backendServiceFacade, this.client, lsLogOutput);
-    this.settingsManager.addListener((WorkspaceSettingsChangeListener) multiProjectConfigService);
-    this.workspaceFoldersManager.setMultiProjectConfigService(multiProjectConfigService);
     var fileTypeClassifier = new FileTypeClassifier(lsLogOutput);
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
     this.settingsManager.addListener(lsLogOutput);

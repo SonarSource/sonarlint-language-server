@@ -20,11 +20,13 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -52,10 +54,12 @@ public class WorkspaceFoldersManager {
   private final Map<URI, WorkspaceFolderWrapper> folders = new ConcurrentHashMap<>();
   private final Map<String, Boolean> analysisReadiness = new ConcurrentHashMap<>();
   private final List<WorkspaceFolderLifecycleListener> listeners = new ArrayList<>();
+  private final Map<URI, Optional<ResolvedSonarConfig>> sonarConfigs = new ConcurrentHashMap<>();
+  private final Set<URI> foldersWithRegisteredSonarConfig = ConcurrentHashMap.newKeySet();
   private ProjectBindingManager bindingManager;
-  private MultiProjectConfigService multiProjectConfigService;
   private final BackendServiceFacade backendServiceFacade;
   private final LanguageClientLogger logOutput;
+  private final SonarConfigResolver sonarConfigResolver;
   private final ExecutorService executor;
   private final List<WorkspaceFolder> workspaceFolders = new ArrayList<>();
 
@@ -67,14 +71,11 @@ public class WorkspaceFoldersManager {
     this.executor = executor;
     this.backendServiceFacade = backendServiceFacade;
     this.logOutput = logOutput;
+    this.sonarConfigResolver = new SonarConfigResolver(logOutput);
   }
 
   public void setBindingManager(ProjectBindingManager bindingManager) {
     this.bindingManager = bindingManager;
-  }
-
-  public void setMultiProjectConfigService(MultiProjectConfigService multiProjectConfigService) {
-    this.multiProjectConfigService = multiProjectConfigService;
   }
 
   public void initialize(@Nullable List<WorkspaceFolder> workspaceFolders) {
@@ -89,20 +90,37 @@ public class WorkspaceFoldersManager {
   public void initialized() {
     executor.submit(new CatchingRunnable(() -> {
       backendServiceFacade.getBackendService().addWorkspaceFolders(this.workspaceFolders, getBindingProvider());
-      registerSubProjectScopes(this.workspaceFolders);
+      registerSubFolders(this.workspaceFolders);
     }, t -> logOutput.errorWithStackTrace("Failed to initialize workspace folders.", t)));
   }
 
-  private void registerSubProjectScopes(List<WorkspaceFolder> folders) {
-    if (multiProjectConfigService != null) {
-      folders.forEach(folder -> multiProjectConfigService.registerSubProjectScopes(create(folder.getUri())));
-    }
+  private void registerSubFolders(List<WorkspaceFolder> addedFolders) {
+    addedFolders.forEach(folder -> {
+      var folderUri = create(folder.getUri());
+      getSonarConfig(folderUri).ifPresent(config -> {
+        var subFolders = config.children().stream()
+          .map(project -> new WorkspaceFolder(project.scopeUri().toString(), directoryName(project)))
+          .toList();
+        if (!subFolders.isEmpty()) {
+          backendServiceFacade.getBackendService().addSubFolders(folderUri.toString(), subFolders, getBindingProvider());
+        }
+        foldersWithRegisteredSonarConfig.add(folderUri);
+        bindingManager.notifySonarConfigScopes(folderUri, config);
+      });
+    });
+  }
+
+  private static String directoryName(SonarConfigProject project) {
+    return Optional.ofNullable(Paths.get(project.scopeUri()).getFileName()).map(Path::toString).orElse(project.projectKey());
   }
 
   public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
     logOutput.debug("Processing didChangeWorkspaceFolders event");
+    var removedSubFolderIds = new ArrayList<String>();
     for (var removed : event.getRemoved()) {
-      removeFolder(create(removed.getUri()));
+      var removedUri = create(removed.getUri());
+      subFolderUris(removedUri).forEach(subFolderUri -> removedSubFolderIds.add(subFolderUri.toString()));
+      removeFolder(removedUri);
     }
     for (var added : event.getAdded()) {
       var uri = create(added.getUri());
@@ -111,10 +129,21 @@ public class WorkspaceFoldersManager {
     }
     executor.submit(new CatchingRunnable(() -> {
       backendServiceFacade.getBackendService().addWorkspaceFolders(event.getAdded(), getBindingProvider());
-      registerSubProjectScopes(event.getAdded());
+      registerSubFolders(event.getAdded());
       event.getRemoved().forEach(removed -> removeFolderFromBackend(removed.getUri()));
+      removedSubFolderIds.forEach(this::removeFolderFromBackend);
     }, t -> logOutput.errorWithStackTrace("Failed to add workspace folder", t)));
 
+  }
+
+  private Optional<ResolvedSonarConfig> getSonarConfig(URI folderUri) {
+    return sonarConfigs.computeIfAbsent(folderUri, sonarConfigResolver::resolve);
+  }
+
+  private List<URI> subFolderUris(URI folderUri) {
+    return getSonarConfig(folderUri)
+      .map(config -> config.children().stream().map(SonarConfigProject::scopeUri).toList())
+      .orElse(List.of());
   }
 
   private void removeFolder(URI uri) {
@@ -126,9 +155,9 @@ public class WorkspaceFoldersManager {
     if (removed == null) {
       logOutput.warn("Unregistered workspace folder was missing: " + uri);
     }
-    if (multiProjectConfigService != null) {
-      multiProjectConfigService.onFolderRemoved(uri);
-    }
+    subFolderUris(uri).forEach(sonarConfigs::remove);
+    sonarConfigs.remove(uri);
+    foldersWithRegisteredSonarConfig.remove(uri);
     logOutput.debug(format("Folder %s removed", removed));
   }
 
@@ -139,30 +168,13 @@ public class WorkspaceFoldersManager {
     } else {
       logOutput.debug(format("Folder %s added", addedWrapper));
       this.workspaceFolders.add(added);
-      if (multiProjectConfigService != null) {
-        multiProjectConfigService.onFolderAdded(addedWrapper);
-      }
+      getSonarConfig(uri);
     }
     return addedWrapper;
   }
 
   private Function<WorkspaceFolder, Optional<ProjectBinding>> getBindingProvider() {
-    return folder -> {
-      var uri = create(folder.getUri());
-      // A container folder's own scope must be created already-unbound-with-suggestions-disabled, baked into the
-      // DTO from the start: a later updateBinding call would race the scope's own (async) creation and most likely
-      // arrive before the scope even exists.
-      if (isContainerFolder(uri)) {
-        return Optional.of(new ProjectBinding(null, null));
-      }
-      if (multiProjectConfigService != null) {
-        var rootBinding = multiProjectConfigService.getRootBinding(uri);
-        if (rootBinding.isPresent()) {
-          return rootBinding;
-        }
-      }
-      return bindingManager.getBinding(uri);
-    };
+    return folder -> bindingManager.getBinding(create(folder.getUri()));
   }
 
   private void removeFolderFromBackend(String removedUri) {
@@ -198,28 +210,31 @@ public class WorkspaceFoldersManager {
     if (maybeFolder.isEmpty()) {
       return BackendService.ROOT_CONFIGURATION_SCOPE;
     }
-    var folder = maybeFolder.get();
-    return multiProjectConfigService != null ? multiProjectConfigService.resolveConfigScopeId(folder, fileUri) : folder.getUri().toString();
+    return scopeUriForFile(maybeFolder.get().getUri(), fileUri).toString();
   }
 
   /**
-   * Return the sub-project binding for a file, if any {@code .sonar-config.json}-declared sub-project contains it
-   * and currently resolves to a configured connection. Used to override folder-level binding lookups for files
-   * that belong to a sub-project rather than the folder itself.
+   * The {@code .sonar-config.json} that applies to a file, found from the scope that contains it: its workspace
+   * folder or a sub-folder declared below it.
    */
-  public Optional<ProjectBinding> resolveSubProjectBinding(URI fileUri) {
-    if (multiProjectConfigService == null) {
-      return Optional.empty();
-    }
-    return findFolderForFile(fileUri).flatMap(folder -> multiProjectConfigService.getSubProjectBinding(folder, fileUri));
+  public Optional<ResolvedSonarConfig> findSonarConfig(URI fileUri) {
+    return findFolderForFile(fileUri).flatMap(folder -> getSonarConfig(scopeUriForFile(folder.getUri(), fileUri)));
   }
 
   /**
-   * Whether the given folder's own scope must stay unbound because its {@code .sonar-config.json} declares
-   * sub-projects that carry the real bindings instead.
+   * Resolved configs of the folders whose scopes already exist in the backend.
    */
-  public boolean isContainerFolder(URI folderUri) {
-    return multiProjectConfigService != null && multiProjectConfigService.isContainerFolder(folderUri);
+  public Map<URI, ResolvedSonarConfig> getRegisteredSonarConfigs() {
+    var registered = new HashMap<URI, ResolvedSonarConfig>();
+    foldersWithRegisteredSonarConfig.forEach(folderUri -> getSonarConfig(folderUri).ifPresent(config -> registered.put(folderUri, config)));
+    return registered;
+  }
+
+  private URI scopeUriForFile(URI folderUri, URI fileUri) {
+    return subFolderUris(folderUri).stream()
+      .filter(subFolderUri -> isAncestor(subFolderUri, fileUri))
+      .max(Comparator.comparingInt(subFolderUri -> subFolderUri.getPath().length()))
+      .orElse(folderUri);
   }
 
   // Visible for testing
