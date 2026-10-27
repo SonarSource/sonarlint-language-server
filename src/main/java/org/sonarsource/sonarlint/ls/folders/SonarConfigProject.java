@@ -20,10 +20,17 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.Optional;
 import javax.annotation.Nullable;
 
 public record SonarConfigProject(URI scopeUri, String projectKey, @Nullable String serverUrl, @Nullable String organization, @Nullable String region, String relativePath) {
+
+  public String directoryName() {
+    return Optional.ofNullable(Paths.get(scopeUri).getFileName()).map(Path::toString).orElse(projectKey);
+  }
 
   public String describeTarget() {
     if (serverUrl != null) {

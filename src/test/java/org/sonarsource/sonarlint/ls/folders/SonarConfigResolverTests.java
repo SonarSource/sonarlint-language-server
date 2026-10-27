@@ -29,7 +29,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -163,43 +162,6 @@ class SonarConfigResolverTests {
   }
 
   @Test
-  void subFolders_are_named_after_their_directory() {
-    loaded(REPO, entry("module-b-api", "moduleB/api"));
-
-    var api = REPO.resolve("moduleB/api").toUri();
-    assertThat(underTest.subFolderUris(REPO_URI)).containsExactly(api);
-    assertThat(underTest.subFolders(REPO_URI))
-      .extracting(folder -> folder.getUri(), folder -> folder.getName())
-      .containsExactly(tuple(api.toString(), "api"));
-  }
-
-  @Test
-  void sub_folders_are_empty_without_config() {
-    when(loader.load(REPO)).thenReturn(Optional.empty());
-
-    assertThat(underTest.subFolderUris(REPO_URI)).isEmpty();
-    assertThat(underTest.subFolders(REPO_URI)).isEmpty();
-  }
-
-  @Test
-  void scopeUriForFile_is_the_deepest_sub_folder_containing_the_file() {
-    loaded(REPO, entry("module-a", "moduleA"), entry("nested", "moduleA/nested"));
-
-    assertThat(underTest.scopeUriForFile(REPO_URI, MODULE_A.resolve("nested/Foo.java").toUri())).isEqualTo(MODULE_A.resolve("nested").toUri());
-    assertThat(underTest.scopeUriForFile(REPO_URI, MODULE_A.resolve("Foo.java").toUri())).isEqualTo(MODULE_A.toUri());
-    assertThat(underTest.scopeUriForFile(REPO_URI, REPO.resolve("Foo.java").toUri())).isEqualTo(REPO_URI);
-  }
-
-  @Test
-  void findForFile_returns_the_config_of_the_scope_containing_the_file() {
-    loaded(REPO, entry("module-a", "moduleA"));
-    when(loader.load(MODULE_A)).thenReturn(Optional.of(fileIn(REPO, entry("module-a", "moduleA"))));
-
-    assertThat(underTest.findForFile(REPO_URI, MODULE_A.resolve("Foo.java").toUri()).orElseThrow().direct().projectKey()).isEqualTo("module-a");
-    assertThat(underTest.findForFile(REPO_URI, REPO.resolve("Foo.java").toUri()).orElseThrow().direct()).isNull();
-  }
-
-  @Test
   void forget_makes_the_folder_load_again() {
     when(loader.load(REPO)).thenReturn(Optional.empty());
     underTest.get(REPO_URI);
@@ -208,19 +170,6 @@ class SonarConfigResolverTests {
     underTest.get(REPO_URI);
 
     verify(loader, times(2)).load(REPO);
-  }
-
-  @Test
-  void forget_also_drops_the_sub_folders() {
-    loaded(REPO, entry("module-a", "moduleA"));
-    when(loader.load(MODULE_A)).thenReturn(Optional.empty());
-    underTest.get(REPO_URI);
-    underTest.get(MODULE_A.toUri());
-
-    underTest.forget(REPO_URI);
-    underTest.get(MODULE_A.toUri());
-
-    verify(loader, times(2)).load(MODULE_A);
   }
 
   private void loaded(Path folder, SonarConfigEntry... entries) {

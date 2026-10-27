@@ -23,14 +23,11 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
-import org.sonarsource.sonarlint.ls.util.URIUtils;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
@@ -38,7 +35,7 @@ import static org.sonarsource.sonarlint.ls.folders.SonarConfigLoader.SONAR_CONFI
 
 /**
  * What {@code .sonar-config.json} files say about the workspace folders: classifies the entries of the loaded file
- * against each folder, keeps the result per folder, and answers which sub-folder scope a file falls in. A shared leaf:
+ * against each folder and keeps the result per folder. A shared leaf:
  * it depends on neither the folders manager nor the binding manager, and knows nothing about connections or the backend.
  */
 public class SonarConfigResolver {
@@ -63,40 +60,8 @@ public class SonarConfigResolver {
     return configsByFolder.computeIfAbsent(folderUri, this::resolve);
   }
 
-  public List<URI> subFolderUris(URI folderUri) {
-    return get(folderUri)
-      .map(config -> config.children().stream().map(SonarConfigProject::scopeUri).toList())
-      .orElse(List.of());
-  }
-
-  public List<WorkspaceFolder> subFolders(URI folderUri) {
-    return get(folderUri)
-      .map(config -> config.children().stream().map(project -> new WorkspaceFolder(project.scopeUri().toString(), directoryName(project))).toList())
-      .orElse(List.of());
-  }
-
-  /**
-   * The scope a file belongs to: the deepest sub-folder of the workspace folder that contains it, otherwise the
-   * workspace folder itself.
-   */
-  public URI scopeUriForFile(URI folderUri, URI fileUri) {
-    return subFolderUris(folderUri).stream()
-      .filter(subFolderUri -> URIUtils.isAncestor(subFolderUri, fileUri))
-      .max(Comparator.comparingInt(subFolderUri -> subFolderUri.getPath().length()))
-      .orElse(folderUri);
-  }
-
-  public Optional<ResolvedSonarConfig> findForFile(URI folderUri, URI fileUri) {
-    return get(scopeUriForFile(folderUri, fileUri));
-  }
-
   public void forget(URI folderUri) {
-    subFolderUris(folderUri).forEach(configsByFolder::remove);
     configsByFolder.remove(folderUri);
-  }
-
-  private static String directoryName(SonarConfigProject project) {
-    return Optional.ofNullable(Paths.get(project.scopeUri()).getFileName()).map(Path::toString).orElse(project.projectKey());
   }
 
   private Optional<ResolvedSonarConfig> resolve(URI folderUri) {

@@ -364,7 +364,7 @@ public abstract class AbstractLanguageServerMediumTests {
     Map<String, List<Diagnostic>> dependencyRisks = new ConcurrentHashMap<>();
     Map<String, List<Diagnostic>> hotspots = new ConcurrentHashMap<>();
     Queue<MessageParams> logs = new ConcurrentLinkedQueue<>();
-    Queue<SubProjectScopesChangedParams> subProjectScopes = new ConcurrentLinkedQueue<>();
+    AtomicInteger bindingsChangedCount = new AtomicInteger();
     Map<String, Object> globalSettings = new HashMap<>();
     Map<String, Map<String, Object>> folderSettings = new HashMap<>();
     Map<String, GetJavaConfigResponse> javaConfigs = new HashMap<>();
@@ -536,8 +536,8 @@ public abstract class AbstractLanguageServerMediumTests {
     }
 
     @Override
-    public void subProjectScopesChanged(SubProjectScopesChangedParams params) {
-      subProjectScopes.add(params);
+    public void bindingsChanged() {
+      bindingsChangedCount.incrementAndGet();
     }
 
     @Override

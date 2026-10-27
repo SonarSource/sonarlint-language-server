@@ -28,12 +28,15 @@ import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
  * Finds which configured connection a project declared in {@code .sonar-config.json} belongs to: by server URL for
  * SonarQube Server, or by organization and region for SonarQube Cloud.
  */
-class SonarConfigConnectionMatcher {
+final class SonarConfigConnectionMatcher {
 
   private static final String DEFAULT_CLOUD_REGION = "EU";
 
+  private SonarConfigConnectionMatcher() {
+  }
+
   @CheckForNull
-  String findConnectionId(Map<String, ServerConnectionSettings> connections, SonarConfigProject project) {
+  static String findConnectionId(Map<String, ServerConnectionSettings> connections, SonarConfigProject project) {
     return connections.entrySet().stream()
       .filter(e -> matches(e.getValue(), project))
       .map(Map.Entry::getKey)

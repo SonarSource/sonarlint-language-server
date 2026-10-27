@@ -132,7 +132,10 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCh
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient;
 import org.sonarsource.sonarlint.ls.connected.DependencyRisksCache;
+import org.sonarsource.sonarlint.ls.connected.BindingSources;
+import org.sonarsource.sonarlint.ls.connected.FolderSettingsBindingSource;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.connected.SonarConfigBindingSource;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
 import org.sonarsource.sonarlint.ls.connected.notifications.SmartNotifications;
@@ -143,6 +146,8 @@ import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.ModuleEventsProcessor;
 import org.sonarsource.sonarlint.ls.folders.SonarConfigResolver;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -244,8 +249,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       promotionalNotifications, embeddedServerManager);
     this.backendServiceFacade = new BackendServiceFacade(vsCodeClient, lsLogOutput, client, new EnabledLanguages(analyzers, lsLogOutput));
     vsCodeClient.setBackendServiceFacade(backendServiceFacade);
-    var sonarConfigResolver = new SonarConfigResolver(lsLogOutput);
-    this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, lsLogOutput, sonarConfigResolver);
+    this.workspaceFoldersManager = new WorkspaceFoldersManager(backendServiceFacade, lsLogOutput);
     this.diagnosticPublisher = new DiagnosticPublisher(client, taintVulnerabilitiesCache, issuesCache,
       securityHotspotsCache, openNotebooksCache, dependencyRisksCache);
     vsCodeClient.setDiagnosticPublisher(diagnosticPublisher);
@@ -255,8 +259,11 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var fileTypeClassifier = new FileTypeClassifier(lsLogOutput);
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
     this.settingsManager.addListener(lsLogOutput);
+    var bindingSources = new BindingSources(new SonarConfigBindingSource(new SonarConfigResolver(lsLogOutput), settingsManager),
+      new FolderSettingsBindingSource(settingsManager, lsLogOutput));
     this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager,
-      client, lsLogOutput, backendServiceFacade, openNotebooksCache, sonarConfigResolver);
+      client, lsLogOutput, backendServiceFacade, openNotebooksCache, bindingSources);
+    this.workspaceFoldersManager.setBindingSources(bindingSources);
     vsCodeClient.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(backendServiceFacade, lsLogOutput);
     this.backendServiceFacade.setTelemetry(telemetry);
@@ -282,7 +289,17 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.branchManager = new WorkspaceFolderBranchManager(backendServiceFacade, lsLogOutput);
     vsCodeClient.setBranchManager(branchManager);
     this.workspaceFoldersManager.addListener(this.branchManager);
-    this.workspaceFoldersManager.setBindingManager(bindingManager);
+    this.workspaceFoldersManager.addListener(new WorkspaceFolderLifecycleListener() {
+      @Override
+      public void added(WorkspaceFolderWrapper added) {
+        // nothing to tell the client yet: the folder has no declared scopes
+      }
+
+      @Override
+      public void scopesDeclared(WorkspaceFolderWrapper folder) {
+        client.bindingsChanged();
+      }
+    });
     var cleanAsYouCodeManager = new CleanAsYouCodeManager(diagnosticPublisher, openFilesCache, backendServiceFacade);
     this.settingsManager.addListener(cleanAsYouCodeManager);
     this.shutdownLatch = new CountDownLatch(1);
@@ -757,6 +774,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       bindingManager.validateConnection(onTokenUpdateNotificationParams.getConnectionId());
       return null;
     });
+  }
+
+  @Override
+  public CompletableFuture<List<BindingInfo>> getBindings() {
+    return CompletableFutures.computeAsync(cancelToken -> bindingManager.getBindings().stream()
+      .map(scope -> new BindingInfo(scope.scopeUri().toString(), scope.name(), scope.relativePath(), scope.projectKey(), scope.connectionId(), scope.origin().name()))
+      .toList());
   }
 
   @Override

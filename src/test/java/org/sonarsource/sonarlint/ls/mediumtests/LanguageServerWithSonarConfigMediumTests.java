@@ -25,12 +25,15 @@ import java.util.Map;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.SubProjectScopeInfo;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.BindingInfo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 
 class LanguageServerWithSonarConfigMediumTests extends AbstractLanguageServerMediumTests {
+
+  private static final String CONNECTION_ID = "sq";
+  private static final String SERVER_URL = "http://localhost:1";
 
   private static Path repoDir;
 
@@ -39,8 +42,10 @@ class LanguageServerWithSonarConfigMediumTests extends AbstractLanguageServerMed
     repoDir = makeStaticTempDir();
     Files.createDirectory(repoDir.resolve(".git"));
     Files.createDirectory(repoDir.resolve("moduleA"));
+    Files.createDirectory(repoDir.resolve("moduleB"));
     Files.writeString(repoDir.resolve(".sonar-config.json"),
-      "{\"projects\":[{\"projectKey\":\"module-a\",\"path\":\"moduleA\",\"serverUrl\":\"https://sonarqube.example.com\"}]}");
+      "{\"projects\":[{\"projectKey\":\"module-a\",\"path\":\"moduleA\",\"serverUrl\":\"" + SERVER_URL + "\"},"
+        + "{\"projectKey\":\"module-b\",\"path\":\"moduleB\",\"serverUrl\":\"http://no-connection-for-this-server\"}]}");
     initialize(Map.of(
         "telemetryStorage", "not/exists",
         "productName", "SLCORE tests",
@@ -50,23 +55,30 @@ class LanguageServerWithSonarConfigMediumTests extends AbstractLanguageServerMed
   }
 
   @Override
+  protected void setupGlobalSettings(Map<String, Object> globalSettings) {
+    addSonarQubeConnection(globalSettings, CONNECTION_ID, SERVER_URL, "token");
+  }
+
+  @Override
   protected void setUpFolderSettings(Map<String, Map<String, Object>> folderSettings) {
     setTestFilePattern(getFolderSettings(repoDir.toUri().toString()), "**/*Test.py");
   }
 
   @Test
-  void declaresTheSubProjectsOfTheSonarConfigAsChildScopes() {
-    awaitUntilAsserted(() -> assertThat(client.subProjectScopes).isNotEmpty().allSatisfy(params -> {
-      assertThat(params.parentFolderUri()).isEqualTo(repoDir.toUri().toString());
-      assertThat(params.scopes())
-        .extracting(SubProjectScopeInfo::scopeUri, SubProjectScopeInfo::projectKey, SubProjectScopeInfo::connectionId, SubProjectScopeInfo::relativePath)
-        .containsExactly(tuple(repoDir.resolve("moduleA").toUri().toString(), "module-a", null, "moduleA"));
-    }));
+  void tellsTheClientToRequestTheBindingsOnceTheScopesAreDeclared() {
+    awaitUntilAsserted(() -> assertThat(client.bindingsChangedCount.get()).isPositive());
   }
 
   @Test
-  void analyzesAFileInASubProject() {
-    var uriInSubProject = repoDir.resolve("moduleA").resolve("inSubProject.py").toUri().toString();
+  void listsOnlyTheBindingsWithAConnectionThroughTheRequest() {
+    awaitUntilAsserted(() -> assertThat(lsProxy.getBindings().join())
+      .extracting(BindingInfo::scopeUri, BindingInfo::projectKey, BindingInfo::connectionId, BindingInfo::relativePath, BindingInfo::source)
+      .containsExactly(tuple(repoDir.resolve("moduleA").toUri().toString(), "module-a", CONNECTION_ID, "moduleA", "SONAR_CONFIG")));
+  }
+
+  @Test
+  void analyzesAFileInAnUnboundSubProject() {
+    var uriInSubProject = repoDir.resolve("moduleB").resolve("inSubProject.py").toUri().toString();
 
     didOpen(uriInSubProject, "python", "def foo():\n  toto = 0\n");
 

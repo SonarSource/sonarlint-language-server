@@ -32,26 +32,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class SonarConfigConnectionMatcherTests {
 
-  private final SonarConfigConnectionMatcher underTest = new SonarConfigConnectionMatcher();
-
   @Test
   void matches_a_server_by_url() {
     var connections = Map.of("sq", server("https://sonarqube.example.com"));
 
-    assertThat(underTest.findConnectionId(connections, serverProject("https://sonarqube.example.com"))).isEqualTo("sq");
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, serverProject("https://sonarqube.example.com"))).isEqualTo("sq");
   }
 
   @Test
   void ignores_a_trailing_slash_on_either_side() {
-    assertThat(underTest.findConnectionId(Map.of("sq", server("https://sonarqube.example.com/")), serverProject("https://sonarqube.example.com")))
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(Map.of("sq", server("https://sonarqube.example.com/")), serverProject("https://sonarqube.example.com")))
       .isEqualTo("sq");
-    assertThat(underTest.findConnectionId(Map.of("sq", server("https://sonarqube.example.com")), serverProject("https://sonarqube.example.com/")))
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(Map.of("sq", server("https://sonarqube.example.com")), serverProject("https://sonarqube.example.com/")))
       .isEqualTo("sq");
   }
 
   @Test
   void finds_nothing_for_another_server() {
-    assertThat(underTest.findConnectionId(Map.of("sq", server("https://sonarqube.example.com")), serverProject("https://other.example.com"))).isNull();
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(Map.of("sq", server("https://sonarqube.example.com")), serverProject("https://other.example.com"))).isNull();
   }
 
   @Test
@@ -60,44 +58,44 @@ class SonarConfigConnectionMatcherTests {
     connections.put("first", server("https://sonarqube.example.com"));
     connections.put("second", server("https://sonarqube.example.com"));
 
-    assertThat(underTest.findConnectionId(connections, serverProject("https://sonarqube.example.com"))).isEqualTo("first");
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, serverProject("https://sonarqube.example.com"))).isEqualTo("first");
   }
 
   @Test
   void matches_a_cloud_organization_in_the_default_eu_region() {
     var connections = Map.of("sc", cloud(ServerConnectionSettings.getSonarCloudUrl(), "my-org", null));
 
-    assertThat(underTest.findConnectionId(connections, cloudProject("my-org", null))).isEqualTo("sc");
-    assertThat(underTest.findConnectionId(connections, cloudProject("MY-ORG", "eu"))).isEqualTo("sc");
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("my-org", null))).isEqualTo("sc");
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("MY-ORG", "eu"))).isEqualTo("sc");
   }
 
   @Test
   void matches_a_cloud_organization_in_the_us_region() {
     var connections = Map.of("sc-us", cloud(ServerConnectionSettings.getSonarCloudUSUrl(), "my-org", SonarCloudRegion.US));
 
-    assertThat(underTest.findConnectionId(connections, cloudProject("my-org", "us"))).isEqualTo("sc-us");
-    assertThat(underTest.findConnectionId(connections, cloudProject("my-org", null))).isNull();
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("my-org", "us"))).isEqualTo("sc-us");
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("my-org", null))).isNull();
   }
 
   @Test
   void does_not_match_a_cloud_organization_of_another_name() {
     var connections = Map.of("sc", cloud(ServerConnectionSettings.getSonarCloudUrl(), "my-org", null));
 
-    assertThat(underTest.findConnectionId(connections, cloudProject("other-org", null))).isNull();
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("other-org", null))).isNull();
   }
 
   @Test
   void does_not_match_a_cloud_project_against_a_server_connection() {
     var connections = Map.of("sq", new ServerConnectionSettings("sq", "https://sonarqube.example.com", "token", "my-org", false, null));
 
-    assertThat(underTest.findConnectionId(connections, cloudProject("my-org", null))).isNull();
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("my-org", null))).isNull();
   }
 
   @Test
   void does_not_match_a_cloud_project_against_a_cloud_connection_without_organization() {
     var connections = Map.of("sc", cloud(ServerConnectionSettings.getSonarCloudUrl(), null, null));
 
-    assertThat(underTest.findConnectionId(connections, cloudProject("my-org", null))).isNull();
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("my-org", null))).isNull();
   }
 
   private static ServerConnectionSettings server(String url) {
