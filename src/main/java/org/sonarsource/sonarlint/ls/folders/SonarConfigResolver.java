@@ -27,18 +27,25 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
 
 /**
- * Reads the nearest {@code .sonar-config.json} at or above a workspace folder (no further than the enclosing git
- * root) and classifies its entries against that folder. Stateless: it knows nothing about connections or the backend.
+ * Everything about {@code .sonar-config.json} files as they apply to folders: reads the nearest file at or above a
+ * folder (no further than the enclosing git root), classifies its entries against that folder, caches the result per
+ * folder, and answers which sub-folder scope a file falls in. Knows nothing about connections or the backend.
  */
 public class SonarConfigResolver {
 
@@ -46,12 +53,71 @@ public class SonarConfigResolver {
 
   private final LanguageClientLogger logOutput;
   private final Gson gson = new Gson();
+  private final Map<URI, Optional<ResolvedSonarConfig>> configsByFolder = new ConcurrentHashMap<>();
+  private final Set<URI> registeredFolders = ConcurrentHashMap.newKeySet();
 
   public SonarConfigResolver(LanguageClientLogger logOutput) {
     this.logOutput = logOutput;
   }
 
-  public Optional<ResolvedSonarConfig> resolve(URI folderUri) {
+  /**
+   * The config as it applies to a folder, resolved on first use and then cached, empty results included.
+   */
+  public Optional<ResolvedSonarConfig> get(URI folderUri) {
+    return configsByFolder.computeIfAbsent(folderUri, this::resolve);
+  }
+
+  public List<URI> subFolderUris(URI folderUri) {
+    return get(folderUri)
+      .map(config -> config.children().stream().map(SonarConfigProject::scopeUri).toList())
+      .orElse(List.of());
+  }
+
+  public List<WorkspaceFolder> subFolders(URI folderUri) {
+    return get(folderUri)
+      .map(config -> config.children().stream().map(project -> new WorkspaceFolder(project.scopeUri().toString(), directoryName(project))).toList())
+      .orElse(List.of());
+  }
+
+  /**
+   * The scope a file belongs to: the deepest sub-folder of the workspace folder that contains it, otherwise the
+   * workspace folder itself.
+   */
+  public URI scopeUriForFile(URI folderUri, URI fileUri) {
+    return subFolderUris(folderUri).stream()
+      .filter(subFolderUri -> WorkspaceFoldersManager.isAncestor(subFolderUri, fileUri))
+      .max(Comparator.comparingInt(subFolderUri -> subFolderUri.getPath().length()))
+      .orElse(folderUri);
+  }
+
+  public Optional<ResolvedSonarConfig> findForFile(URI folderUri, URI fileUri) {
+    return get(scopeUriForFile(folderUri, fileUri));
+  }
+
+  public void markRegistered(URI folderUri) {
+    registeredFolders.add(folderUri);
+  }
+
+  /**
+   * Configs of the workspace folders whose scopes already exist in the backend.
+   */
+  public Map<URI, ResolvedSonarConfig> registeredConfigs() {
+    var registered = new HashMap<URI, ResolvedSonarConfig>();
+    registeredFolders.forEach(folderUri -> get(folderUri).ifPresent(config -> registered.put(folderUri, config)));
+    return registered;
+  }
+
+  public void forget(URI folderUri) {
+    subFolderUris(folderUri).forEach(configsByFolder::remove);
+    configsByFolder.remove(folderUri);
+    registeredFolders.remove(folderUri);
+  }
+
+  private static String directoryName(SonarConfigProject project) {
+    return Optional.ofNullable(Paths.get(project.scopeUri()).getFileName()).map(Path::toString).orElse(project.projectKey());
+  }
+
+  private Optional<ResolvedSonarConfig> resolve(URI folderUri) {
     if (!Utils.uriHasFileScheme(folderUri)) {
       return Optional.empty();
     }

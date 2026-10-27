@@ -20,13 +20,11 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -54,8 +52,6 @@ public class WorkspaceFoldersManager {
   private final Map<URI, WorkspaceFolderWrapper> folders = new ConcurrentHashMap<>();
   private final Map<String, Boolean> analysisReadiness = new ConcurrentHashMap<>();
   private final List<WorkspaceFolderLifecycleListener> listeners = new ArrayList<>();
-  private final Map<URI, Optional<ResolvedSonarConfig>> sonarConfigs = new ConcurrentHashMap<>();
-  private final Set<URI> foldersWithRegisteredSonarConfig = ConcurrentHashMap.newKeySet();
   private ProjectBindingManager bindingManager;
   private final BackendServiceFacade backendServiceFacade;
   private final LanguageClientLogger logOutput;
@@ -97,21 +93,15 @@ public class WorkspaceFoldersManager {
   private void registerSubFolders(List<WorkspaceFolder> addedFolders) {
     addedFolders.forEach(folder -> {
       var folderUri = create(folder.getUri());
-      getSonarConfig(folderUri).ifPresent(config -> {
-        var subFolders = config.children().stream()
-          .map(project -> new WorkspaceFolder(project.scopeUri().toString(), directoryName(project)))
-          .toList();
+      sonarConfigResolver.get(folderUri).ifPresent(config -> {
+        var subFolders = sonarConfigResolver.subFolders(folderUri);
         if (!subFolders.isEmpty()) {
           backendServiceFacade.getBackendService().addSubFolders(folderUri.toString(), subFolders, getBindingProvider());
         }
-        foldersWithRegisteredSonarConfig.add(folderUri);
+        sonarConfigResolver.markRegistered(folderUri);
         bindingManager.notifySonarConfigScopes(folderUri, config);
       });
     });
-  }
-
-  private static String directoryName(SonarConfigProject project) {
-    return Optional.ofNullable(Paths.get(project.scopeUri()).getFileName()).map(Path::toString).orElse(project.projectKey());
   }
 
   public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
@@ -119,7 +109,7 @@ public class WorkspaceFoldersManager {
     var removedSubFolderIds = new ArrayList<String>();
     for (var removed : event.getRemoved()) {
       var removedUri = create(removed.getUri());
-      subFolderUris(removedUri).forEach(subFolderUri -> removedSubFolderIds.add(subFolderUri.toString()));
+      sonarConfigResolver.subFolderUris(removedUri).forEach(subFolderUri -> removedSubFolderIds.add(subFolderUri.toString()));
       removeFolder(removedUri);
     }
     for (var added : event.getAdded()) {
@@ -136,16 +126,6 @@ public class WorkspaceFoldersManager {
 
   }
 
-  private Optional<ResolvedSonarConfig> getSonarConfig(URI folderUri) {
-    return sonarConfigs.computeIfAbsent(folderUri, sonarConfigResolver::resolve);
-  }
-
-  private List<URI> subFolderUris(URI folderUri) {
-    return getSonarConfig(folderUri)
-      .map(config -> config.children().stream().map(SonarConfigProject::scopeUri).toList())
-      .orElse(List.of());
-  }
-
   private void removeFolder(URI uri) {
     var removed = folders.remove(uri);
     var workspaceFolder = this.workspaceFolders.stream().filter(wf -> wf.getUri().equalsIgnoreCase(uri.toString())).findFirst().orElse(null);
@@ -155,9 +135,7 @@ public class WorkspaceFoldersManager {
     if (removed == null) {
       logOutput.warn("Unregistered workspace folder was missing: " + uri);
     }
-    subFolderUris(uri).forEach(sonarConfigs::remove);
-    sonarConfigs.remove(uri);
-    foldersWithRegisteredSonarConfig.remove(uri);
+    sonarConfigResolver.forget(uri);
     logOutput.debug(format("Folder %s removed", removed));
   }
 
@@ -168,7 +146,7 @@ public class WorkspaceFoldersManager {
     } else {
       logOutput.debug(format("Folder %s added", addedWrapper));
       this.workspaceFolders.add(added);
-      getSonarConfig(uri);
+      sonarConfigResolver.get(uri);
     }
     return addedWrapper;
   }
@@ -210,31 +188,15 @@ public class WorkspaceFoldersManager {
     if (maybeFolder.isEmpty()) {
       return BackendService.ROOT_CONFIGURATION_SCOPE;
     }
-    return scopeUriForFile(maybeFolder.get().getUri(), fileUri).toString();
+    return sonarConfigResolver.scopeUriForFile(maybeFolder.get().getUri(), fileUri).toString();
   }
 
-  /**
-   * The {@code .sonar-config.json} that applies to a file, found from the scope that contains it: its workspace
-   * folder or a sub-folder declared below it.
-   */
   public Optional<ResolvedSonarConfig> findSonarConfig(URI fileUri) {
-    return findFolderForFile(fileUri).flatMap(folder -> getSonarConfig(scopeUriForFile(folder.getUri(), fileUri)));
+    return findFolderForFile(fileUri).flatMap(folder -> sonarConfigResolver.findForFile(folder.getUri(), fileUri));
   }
 
-  /**
-   * Resolved configs of the folders whose scopes already exist in the backend.
-   */
   public Map<URI, ResolvedSonarConfig> getRegisteredSonarConfigs() {
-    var registered = new HashMap<URI, ResolvedSonarConfig>();
-    foldersWithRegisteredSonarConfig.forEach(folderUri -> getSonarConfig(folderUri).ifPresent(config -> registered.put(folderUri, config)));
-    return registered;
-  }
-
-  private URI scopeUriForFile(URI folderUri, URI fileUri) {
-    return subFolderUris(folderUri).stream()
-      .filter(subFolderUri -> isAncestor(subFolderUri, fileUri))
-      .max(Comparator.comparingInt(subFolderUri -> subFolderUri.getPath().length()))
-      .orElse(folderUri);
+    return sonarConfigResolver.registeredConfigs();
   }
 
   // Visible for testing
