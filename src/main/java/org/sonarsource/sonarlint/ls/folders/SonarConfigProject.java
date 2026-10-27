@@ -20,11 +20,15 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
+import java.util.Objects;
 import javax.annotation.Nullable;
 
 public record SonarConfigProject(URI scopeUri, String projectKey, @Nullable String serverUrl, @Nullable String organization, @Nullable String region, String relativePath) {
 
   public String describeTarget() {
-    return serverUrl != null ? "serverUrl=" + serverUrl : "organization=" + organization + " region=" + (region != null ? region : "EU");
+    if (serverUrl != null) {
+      return "serverUrl=" + serverUrl;
+    }
+    return "organization=" + organization + " region=" + Objects.requireNonNullElse(region, "EU");
   }
 }

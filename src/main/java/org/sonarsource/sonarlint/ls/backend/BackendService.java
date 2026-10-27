@@ -198,17 +198,16 @@ public class BackendService {
   }
 
   public ConfigurationScopeDto getConfigScopeDto(WorkspaceFolder added, Optional<ProjectBinding> bindingOptional) {
-    return getConfigScopeDto(ROOT_CONFIGURATION_SCOPE, added, bindingOptional);
+    return getConfigScopeDto(ROOT_CONFIGURATION_SCOPE, added, bindingOptional.orElse(null));
   }
 
-  private static ConfigurationScopeDto getConfigScopeDto(String parentScopeId, WorkspaceFolder added, Optional<ProjectBinding> bindingOptional) {
-    return new ConfigurationScopeDto(added.getUri(), parentScopeId, true, added.getName(), toBindingConfigurationDto(bindingOptional));
+  private static ConfigurationScopeDto getConfigScopeDto(String parentScopeId, WorkspaceFolder added, @Nullable ProjectBinding binding) {
+    return new ConfigurationScopeDto(added.getUri(), parentScopeId, true, added.getName(), toBindingConfigurationDto(binding));
   }
 
-  private static BindingConfigurationDto toBindingConfigurationDto(Optional<ProjectBinding> bindingOptional) {
-    if (bindingOptional.isPresent()) {
-      ProjectBinding bindingWrapper = bindingOptional.get();
-      return new BindingConfigurationDto(bindingWrapper.connectionId(), bindingWrapper.projectKey(), true);
+  private static BindingConfigurationDto toBindingConfigurationDto(@Nullable ProjectBinding binding) {
+    if (binding != null) {
+      return new BindingConfigurationDto(binding.connectionId(), binding.projectKey(), true);
     }
     return new BindingConfigurationDto(null, null, false);
   }
@@ -232,7 +231,7 @@ public class BackendService {
 
   private void addFolderScopes(String parentScopeId, List<WorkspaceFolder> folders, Function<WorkspaceFolder, Optional<ProjectBinding>> bindingProvider) {
     List<ConfigurationScopeDto> addedScopeDtos = folders.stream()
-      .map(folder -> getConfigScopeDto(parentScopeId, folder, bindingProvider.apply(folder)))
+      .map(folder -> getConfigScopeDto(parentScopeId, folder, bindingProvider.apply(folder).orElse(null)))
       .toList();
     var params = new DidAddConfigurationScopesParams(addedScopeDtos);
     addConfigurationScopes(params);

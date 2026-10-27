@@ -118,14 +118,24 @@ public class SonarConfigResolver {
       return Optional.empty();
     }
     logOutput.info(format("[multi-project] Found '%s' at %s declaring %d project entr(y/ies)", SONAR_CONFIG_FILE_NAME, configPath, configFile.projects.size()));
-    var configDir = configPath.getParent();
+    var resolved = classifyEntries(folderUri, folderPath, configPath.getParent(), configFile.projects);
+    if (resolved.allProjects().isEmpty()) {
+      logOutput.info(format("[multi-project] '%s' at %s has no entry matching folder %s, folder registered normally", SONAR_CONFIG_FILE_NAME, configPath, folderPath));
+      return Optional.empty();
+    }
+    var binding = resolved.direct() != null ? "bound to projectKey=" + resolved.direct().projectKey() : "container without own binding";
+    logOutput.info(format("[multi-project] Folder %s: %s, %d sub-folder(s)", folderPath, binding, resolved.children().size()));
+    return Optional.of(resolved);
+  }
+
+  private ResolvedSonarConfig classifyEntries(URI folderUri, Path folderPath, Path configDir, List<ProjectEntry> entries) {
     var children = new ArrayList<SonarConfigProject>();
     SonarConfigProject direct = null;
     Path directPath = null;
-    for (var entry : configFile.projects) {
-      if (entry.projectKey == null || entry.path == null || (entry.serverUrl == null && entry.organization == null)) {
-        logOutput.warn(format("[multi-project] Ignoring invalid entry in '%s' for folder %s: projectKey=%s path=%s serverUrl=%s organization=%s (need either serverUrl or organization)",
-          SONAR_CONFIG_FILE_NAME, folderUri, entry.projectKey, entry.path, entry.serverUrl, entry.organization));
+    for (var entry : entries) {
+      if (!entry.isValid()) {
+        logOutput.warn(format("[multi-project] Ignoring invalid entry in '%s' for folder %s: projectKey=%s path=%s serverUrl=%s organization=%s "
+          + "(need either serverUrl or organization)", SONAR_CONFIG_FILE_NAME, folderUri, entry.projectKey, entry.path, entry.serverUrl, entry.organization));
         continue;
       }
       var entryPath = configDir.resolve(entry.path).normalize();
@@ -144,13 +154,7 @@ public class SonarConfigResolver {
         logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s is unrelated to folder %s, skipped", entry.projectKey, entry.path, folderPath));
       }
     }
-    if (children.isEmpty() && direct == null) {
-      logOutput.info(format("[multi-project] '%s' at %s has no entry matching folder %s, folder registered normally", SONAR_CONFIG_FILE_NAME, configPath, folderPath));
-      return Optional.empty();
-    }
-    logOutput.info(format("[multi-project] Folder %s: %s, %d sub-folder(s)", folderPath,
-      direct != null ? "bound to projectKey=" + direct.projectKey() : "container without own binding", children.size()));
-    return Optional.of(new ResolvedSonarConfig(direct, children));
+    return new ResolvedSonarConfig(direct, children);
   }
 
   @CheckForNull
@@ -205,5 +209,9 @@ public class SonarConfigResolver {
     String organization;
     @Nullable
     String region;
+
+    boolean isValid() {
+      return projectKey != null && path != null && (serverUrl != null || organization != null);
+    }
   }
 }

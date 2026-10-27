@@ -135,7 +135,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   public Optional<ProjectBinding> getBinding(URI fileUri) {
     if (!isUriValidAndNotNotebook(fileUri)) return Optional.empty();
     var folder = foldersManager.findFolderForFile(fileUri);
-    var sonarConfig = findSonarConfig(folder, fileUri);
+    var sonarConfig = findSonarConfig(fileUri);
     if (sonarConfig.isPresent()) {
       return bindingFromSonarConfig(sonarConfig.get());
     }
@@ -161,7 +161,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   public Optional<ProjectBinding> getBindingIfExists(URI fileUri) {
     if (!isUriValidAndNotNotebook(fileUri)) return Optional.empty();
     var folder = foldersManager.findFolderForFile(fileUri);
-    var sonarConfig = findSonarConfig(folder, fileUri);
+    var sonarConfig = findSonarConfig(fileUri);
     if (sonarConfig.isPresent()) {
       return bindingFromSonarConfig(sonarConfig.get());
     }
@@ -327,8 +327,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     }
   }
 
-  private Optional<ResolvedSonarConfig> findSonarConfig(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {
-    return folder.flatMap(workspaceFolder -> sonarConfigResolver.findForFile(workspaceFolder.getUri(), fileUri));
+  private Optional<ResolvedSonarConfig> findSonarConfig(URI fileUri) {
+    return foldersManager.findFolderForFile(fileUri).flatMap(folder -> sonarConfigResolver.findForFile(folder.getUri(), fileUri));
   }
 
   /**
@@ -350,7 +350,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private void notifySonarConfigScopes(URI folderUri, ResolvedSonarConfig config, Map<String, ServerConnectionSettings> connections) {
     var scopeInfos = config.allProjects().stream()
-      .map(project -> new SubProjectScopeInfo(project.scopeUri().toString(), project.projectKey(), connectionMatcher.findConnectionId(connections, project), project.relativePath()))
+      .map(project -> new SubProjectScopeInfo(project.scopeUri().toString(), project.projectKey(),
+        connectionMatcher.findConnectionId(connections, project), project.relativePath()))
       .toList();
     client.subProjectScopesChanged(new SubProjectScopesChangedParams(folderUri.toString(), scopeInfos));
   }
