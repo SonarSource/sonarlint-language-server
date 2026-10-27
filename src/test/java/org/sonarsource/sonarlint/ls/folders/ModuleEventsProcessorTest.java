@@ -81,6 +81,7 @@ class ModuleEventsProcessorTest {
     var fileUri = URI.create("file:///tmp/test.py");
     var mockFolder = mock(WorkspaceFolderWrapper.class);
     when(workspaceFoldersManager.findFolderForFile(fileUri)).thenReturn(Optional.of(mockFolder));
+    when(workspaceFoldersManager.resolveConfigScopeId(fileUri)).thenReturn("file:///tmp/");
     when(mockFolder.getRootPath()).thenReturn(Path.of(URI.create("file:///tmp/").getPath()));
     when(mockFolder.getUri()).thenReturn(URI.create("file:///tmp/"));
     when(mockFolder.getSettings()).thenReturn(null);
@@ -94,6 +95,22 @@ class ModuleEventsProcessorTest {
     assertThat(clientFileDto.getConfigScopeId()).isEqualTo("file:///tmp/");
     assertThat(clientFileDto.getUri()).hasToString(testFile1.getUri().toString());
     assertThat(clientFileDto.getCharset()).isEqualTo(StandardCharsets.UTF_8.name());
+  }
+
+  @Test
+  void should_get_client_file_dto_relative_to_sub_project_scope() {
+    var fileUri = URI.create("file:///tmp/moduleA/src/Foo.java");
+    var mockFolder = mock(WorkspaceFolderWrapper.class);
+    when(workspaceFoldersManager.findFolderForFile(fileUri)).thenReturn(Optional.of(mockFolder));
+    when(workspaceFoldersManager.resolveConfigScopeId(fileUri)).thenReturn("file:///tmp/moduleA/");
+    when(mockFolder.getRootPath()).thenReturn(Path.of(URI.create("file:///tmp/").getPath()));
+    when(mockFolder.getUri()).thenReturn(URI.create("file:///tmp/"));
+    when(mockFolder.getSettings()).thenReturn(null);
+
+    var clientFileDto = moduleEventsProcessor.getClientFileDto(new VersionedOpenFile(fileUri, "java", 1, "class Foo {}"));
+
+    assertThat(clientFileDto.getConfigScopeId()).isEqualTo("file:///tmp/moduleA/");
+    assertThat(clientFileDto.getIdeRelativePath()).isEqualTo(Path.of("src", "Foo.java"));
   }
 
   @Test

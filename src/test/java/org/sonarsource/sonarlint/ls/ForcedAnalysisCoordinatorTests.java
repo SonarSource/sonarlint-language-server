@@ -71,6 +71,7 @@ class ForcedAnalysisCoordinatorTests {
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     when(workspaceFoldersManager.findFolderForFile(any())).thenReturn(Optional.of(new WorkspaceFolderWrapper(workspaceFolderUri,
       new WorkspaceFolder("file:///my/workspace/folder", "folder"), lsLogOutput)));
+    when(workspaceFoldersManager.resolveConfigScopeId(any())).thenReturn(workspaceFolderUri.toString());
 
   }
 
