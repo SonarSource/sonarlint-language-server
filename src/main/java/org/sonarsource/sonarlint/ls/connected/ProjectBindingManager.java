@@ -80,8 +80,7 @@ import static org.sonarsource.sonarlint.ls.util.Utils.uriHasFileScheme;
  * Files that are opened alone will have their own binding.
  */
 public class ProjectBindingManager implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
-  private static final String DEFAULT_CLOUD_REGION = "EU";
-
+  private final SonarConfigConnectionMatcher connectionMatcher = new SonarConfigConnectionMatcher();
   private final WorkspaceFoldersManager foldersManager;
   private final SettingsManager settingsManager;
   private final ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache;
@@ -333,7 +332,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   private Optional<ProjectBinding> resolveBinding(SonarConfigProject project) {
-    return Optional.ofNullable(findConnectionId(settingsManager.getCurrentSettings().getServerConnections(), project))
+    return Optional.ofNullable(connectionMatcher.findConnectionId(settingsManager.getCurrentSettings().getServerConnections(), project))
       .map(connectionId -> new ProjectBinding(connectionId, project.projectKey()));
   }
 
@@ -343,7 +342,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   private void notifySonarConfigScopes(URI folderUri, ResolvedSonarConfig config, Map<String, ServerConnectionSettings> connections) {
     var scopeInfos = config.allProjects().stream()
-      .map(project -> new SubProjectScopeInfo(project.scopeUri().toString(), project.projectKey(), findConnectionId(connections, project), project.relativePath()))
+      .map(project -> new SubProjectScopeInfo(project.scopeUri().toString(), project.projectKey(), connectionMatcher.findConnectionId(connections, project), project.relativePath()))
       .toList();
     client.subProjectScopesChanged(new SubProjectScopesChangedParams(folderUri.toString(), scopeInfos));
   }
@@ -356,7 +355,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   }
 
   private void bindSonarConfigProject(Map<String, ServerConnectionSettings> connections, SonarConfigProject project) {
-    var connectionId = findConnectionId(connections, project);
+    var connectionId = connectionMatcher.findConnectionId(connections, project);
     if (connectionId == null) {
       globalLogOutput.warn(format("[multi-project] No connection configured for %s, scope %s stays unbound", project.describeTarget(), project.scopeUri()));
       return;
@@ -365,31 +364,6 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       connectionId, project.describeTarget(), project.scopeUri(), project.projectKey()));
     var bindingConfigurationDto = new BindingConfigurationDto(connectionId, project.projectKey(), true);
     backendServiceFacade.getBackendService().updateBinding(new DidUpdateBindingParams(project.scopeUri().toString(), bindingConfigurationDto));
-  }
-
-  @CheckForNull
-  private static String findConnectionId(Map<String, ServerConnectionSettings> connections, SonarConfigProject project) {
-    return connections.entrySet().stream()
-      .filter(e -> matches(e.getValue(), project))
-      .map(Map.Entry::getKey)
-      .findFirst()
-      .orElse(null);
-  }
-
-  private static boolean matches(ServerConnectionSettings connection, SonarConfigProject project) {
-    if (project.serverUrl() != null) {
-      return withoutTrailingSlash(connection.getServerUrl()).equals(withoutTrailingSlash(project.serverUrl()));
-    }
-    if (!connection.isSonarCloudAlias() || connection.getOrganizationKey() == null) {
-      return false;
-    }
-    var connectionRegion = connection.getRegion() != null ? connection.getRegion().name() : DEFAULT_CLOUD_REGION;
-    var projectRegion = project.region() != null ? project.region() : DEFAULT_CLOUD_REGION;
-    return connection.getOrganizationKey().equalsIgnoreCase(project.organization()) && connectionRegion.equalsIgnoreCase(projectRegion);
-  }
-
-  private static String withoutTrailingSlash(String url) {
-    return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
   }
 
   @Override
