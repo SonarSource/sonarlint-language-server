@@ -47,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager.isAncestor;
+import static org.sonarsource.sonarlint.ls.util.URIUtils.isAncestor;
 
 class WorkspaceFoldersManagerTests {
 
@@ -57,7 +57,8 @@ class WorkspaceFoldersManagerTests {
   BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   BackendService backendService = mock(BackendService.class);
 
-  private final WorkspaceFoldersManager underTest = new WorkspaceFoldersManager(new ImmediateExecutorService(), backendServiceFacade, logTester.getLogger());
+  private final WorkspaceFoldersManager underTest = new WorkspaceFoldersManager(new ImmediateExecutorService(), backendServiceFacade, logTester.getLogger(),
+    new SonarConfigResolver(logTester.getLogger()));
 
   @BeforeEach
   void prepare() {

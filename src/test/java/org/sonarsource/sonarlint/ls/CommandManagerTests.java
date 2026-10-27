@@ -160,6 +160,7 @@ class CommandManagerTests {
     securityHotspotsCache = mock(HotspotsCache.class);
     backendServiceFacade = mock(BackendServiceFacade.class);
     workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
+    when(workspaceFoldersManager.resolveConfigScopeId(any())).thenReturn("file:///");
     openNotebooksCache = mock(OpenNotebooksCache.class);
     backendService = mock(BackendService.class);
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);

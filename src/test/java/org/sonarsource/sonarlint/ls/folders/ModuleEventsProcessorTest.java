@@ -81,6 +81,7 @@ class ModuleEventsProcessorTest {
     var fileUri = URI.create("file:///tmp/test.py");
     var mockFolder = mock(WorkspaceFolderWrapper.class);
     when(workspaceFoldersManager.findFolderForFile(fileUri)).thenReturn(Optional.of(mockFolder));
+    when(workspaceFoldersManager.resolveConfigScopeId(fileUri)).thenReturn("file:///tmp/");
     when(mockFolder.getRootPath()).thenReturn(Path.of(URI.create("file:///tmp/").getPath()));
     when(mockFolder.getUri()).thenReturn(URI.create("file:///tmp/"));
     when(mockFolder.getSettings()).thenReturn(null);

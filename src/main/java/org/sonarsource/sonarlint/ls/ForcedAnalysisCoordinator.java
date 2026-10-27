@@ -83,14 +83,11 @@ public class ForcedAnalysisCoordinator implements WorkspaceSettingsChangeListene
         var notIgnoredFiles = files
           .stream().filter(it -> notIgnoredFileUris.getFileUris().contains(it.getUri().toString()))
           .toList();
-        var filesByMaybeFolderUri = notIgnoredFiles.stream().collect(groupingBy(f -> workspaceFoldersManager.findFolderForFile(f.getUri())));
-        for (var entry : filesByMaybeFolderUri.entrySet()) {
-          var maybeFolderUri = entry.getKey();
+        var filesInAFolder = notIgnoredFiles.stream().filter(f -> workspaceFoldersManager.findFolderForFile(f.getUri()).isPresent()).toList();
+        var filesByConfigScopeId = filesInAFolder.stream().collect(groupingBy(f -> workspaceFoldersManager.resolveConfigScopeId(f.getUri())));
+        for (var entry : filesByConfigScopeId.entrySet()) {
           var filesToAnalyse = entry.getValue().stream().map(VersionedOpenFile::getUri).toList();
-          if (maybeFolderUri.isPresent()) {
-            var folderUri = maybeFolderUri.get().getUri();
-            backendServiceFacade.getBackendService().analyzeFilesList(folderUri.toString(), filesToAnalyse);
-          }
+          backendServiceFacade.getBackendService().analyzeFilesList(entry.getKey(), filesToAnalyse);
         }
       });
   }

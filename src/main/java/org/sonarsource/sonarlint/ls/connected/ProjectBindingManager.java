@@ -50,8 +50,13 @@ import org.sonarsource.sonarlint.core.serverconnection.DownloadException;
 import org.sonarsource.sonarlint.ls.ForcedAnalysisCoordinator;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.SubProjectScopeInfo;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.SubProjectScopesChangedParams;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.folders.ResolvedSonarConfig;
+import org.sonarsource.sonarlint.ls.folders.SonarConfigProject;
+import org.sonarsource.sonarlint.ls.folders.SonarConfigResolver;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -76,6 +81,7 @@ import static org.sonarsource.sonarlint.ls.util.Utils.uriHasFileScheme;
  * Files that are opened alone will have their own binding.
  */
 public class ProjectBindingManager implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
+  private final SonarConfigConnectionMatcher connectionMatcher = new SonarConfigConnectionMatcher();
   private final WorkspaceFoldersManager foldersManager;
   private final SettingsManager settingsManager;
   private final ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache;
@@ -85,16 +91,18 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private ForcedAnalysisCoordinator analysisManager;
   private final BackendServiceFacade backendServiceFacade;
   private final OpenNotebooksCache openNotebooksCache;
+  private final SonarConfigResolver sonarConfigResolver;
 
   public ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
-    LanguageClientLogger globalLogOutput, BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache) {
+    LanguageClientLogger globalLogOutput, BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache,
+    SonarConfigResolver sonarConfigResolver) {
     this(foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput,
-      backendServiceFacade, openNotebooksCache);
+      backendServiceFacade, openNotebooksCache, sonarConfigResolver);
   }
 
   public ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
     ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache, LanguageClientLogger globalLogOutput, BackendServiceFacade backendServiceFacade,
-    OpenNotebooksCache openNotebooksCache) {
+    OpenNotebooksCache openNotebooksCache, SonarConfigResolver sonarConfigResolver) {
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
     this.client = client;
@@ -102,6 +110,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     this.globalLogOutput = globalLogOutput;
     this.backendServiceFacade = backendServiceFacade;
     this.openNotebooksCache = openNotebooksCache;
+    this.sonarConfigResolver = sonarConfigResolver;
   }
 
   // Can't use constructor injection because of cyclic dependency
@@ -126,6 +135,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   public Optional<ProjectBinding> getBinding(URI fileUri) {
     if (!isUriValidAndNotNotebook(fileUri)) return Optional.empty();
     var folder = foldersManager.findFolderForFile(fileUri);
+    var sonarConfig = findSonarConfig(folder, fileUri);
+    if (sonarConfig.isPresent()) {
+      return bindingFromSonarConfig(sonarConfig.get());
+    }
     var cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
     return getBinding(folder, cacheKey);
   }
@@ -148,6 +161,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   public Optional<ProjectBinding> getBindingIfExists(URI fileUri) {
     if (!isUriValidAndNotNotebook(fileUri)) return Optional.empty();
     var folder = foldersManager.findFolderForFile(fileUri);
+    var sonarConfig = findSonarConfig(folder, fileUri);
+    if (sonarConfig.isPresent()) {
+      return bindingFromSonarConfig(sonarConfig.get());
+    }
     var cacheKey = folder.map(WorkspaceFolderWrapper::getUri).orElse(fileUri);
     return getBindingIfExists(folder, cacheKey);
   }
@@ -310,8 +327,56 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     }
   }
 
+  private Optional<ResolvedSonarConfig> findSonarConfig(Optional<WorkspaceFolderWrapper> folder, URI fileUri) {
+    return folder.flatMap(workspaceFolder -> sonarConfigResolver.findForFile(workspaceFolder.getUri(), fileUri));
+  }
+
+  /**
+   * Once a {@code .sonar-config.json} applies it is the only source: a project that matches no configured connection,
+   * or a folder that only contains projects, is unbound rather than left to the folder's settings.
+   */
+  private Optional<ProjectBinding> bindingFromSonarConfig(ResolvedSonarConfig config) {
+    return Optional.ofNullable(config.direct()).flatMap(this::resolveBinding);
+  }
+
+  private Optional<ProjectBinding> resolveBinding(SonarConfigProject project) {
+    return Optional.ofNullable(connectionMatcher.findConnectionId(settingsManager.getCurrentSettings().getServerConnections(), project))
+      .map(connectionId -> new ProjectBinding(connectionId, project.projectKey()));
+  }
+
+  public void notifySonarConfigScopes(URI folderUri, ResolvedSonarConfig config) {
+    notifySonarConfigScopes(folderUri, config, settingsManager.getCurrentSettings().getServerConnections());
+  }
+
+  private void notifySonarConfigScopes(URI folderUri, ResolvedSonarConfig config, Map<String, ServerConnectionSettings> connections) {
+    var scopeInfos = config.allProjects().stream()
+      .map(project -> new SubProjectScopeInfo(project.scopeUri().toString(), project.projectKey(), connectionMatcher.findConnectionId(connections, project), project.relativePath()))
+      .toList();
+    client.subProjectScopesChanged(new SubProjectScopesChangedParams(folderUri.toString(), scopeInfos));
+  }
+
+  private void rebindSonarConfigScopes(Map<String, ServerConnectionSettings> connections) {
+    foldersManager.getFoldersWithDeclaredSonarConfigScopes().forEach(folderUri -> sonarConfigResolver.get(folderUri).ifPresent(config -> {
+      config.allProjects().forEach(project -> bindSonarConfigProject(connections, project));
+      notifySonarConfigScopes(folderUri, config, connections);
+    }));
+  }
+
+  private void bindSonarConfigProject(Map<String, ServerConnectionSettings> connections, SonarConfigProject project) {
+    var connectionId = connectionMatcher.findConnectionId(connections, project);
+    if (connectionId == null) {
+      globalLogOutput.warn(format("[multi-project] No connection configured for %s, scope %s stays unbound", project.describeTarget(), project.scopeUri()));
+      return;
+    }
+    globalLogOutput.info(format("[multi-project] Matched connection '%s' for %s -> binding scope %s to projectKey=%s",
+      connectionId, project.describeTarget(), project.scopeUri(), project.projectKey()));
+    var bindingConfigurationDto = new BindingConfigurationDto(connectionId, project.projectKey(), true);
+    backendServiceFacade.getBackendService().updateBinding(new DidUpdateBindingParams(project.scopeUri().toString(), bindingConfigurationDto));
+  }
+
   @Override
   public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
+    rebindSonarConfigScopes(newValue.getServerConnections());
     handleDeletedConnections(oldValue, newValue);
     newValue.getServerConnections().forEach((id, value) -> {
       if (oldValue == null) {
