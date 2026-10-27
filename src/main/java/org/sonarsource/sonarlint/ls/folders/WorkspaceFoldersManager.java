@@ -20,38 +20,38 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.connected.BindingSources;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.util.CatchingRunnable;
 import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
 import static java.net.URI.create;
+import static org.sonarsource.sonarlint.ls.util.URIUtils.isAncestor;
 
 public class WorkspaceFoldersManager {
   private final Map<URI, WorkspaceFolderWrapper> folders = new ConcurrentHashMap<>();
   private final Map<String, Boolean> analysisReadiness = new ConcurrentHashMap<>();
-  private final List<WorkspaceFolderLifecycleListener> listeners = new ArrayList<>();
-  private ProjectBindingManager bindingManager;
+  private final List<WorkspaceFolderLifecycleListener> listeners = new CopyOnWriteArrayList<>();
+  private BindingSources sources;
   private final BackendServiceFacade backendServiceFacade;
   private final LanguageClientLogger logOutput;
   private final ExecutorService executor;
@@ -67,8 +67,9 @@ public class WorkspaceFoldersManager {
     this.logOutput = logOutput;
   }
 
-  public void setBindingManager(ProjectBindingManager bindingManager) {
-    this.bindingManager = bindingManager;
+  // Can't use constructor injection because of cyclic dependency
+  public void setBindingSources(BindingSources sources) {
+    this.sources = sources;
   }
 
   public void initialize(@Nullable List<WorkspaceFolder> workspaceFolders) {
@@ -81,14 +82,31 @@ public class WorkspaceFoldersManager {
   }
 
   public void initialized() {
-    executor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().addWorkspaceFolders(this.workspaceFolders, getBindingProvider()),
-      t -> logOutput.errorWithStackTrace("Failed to initialize workspace folders.", t)));
+    executor.submit(new CatchingRunnable(() -> {
+      backendServiceFacade.getBackendService().addWorkspaceFolders(this.workspaceFolders, getBindingProvider());
+      declareSubScopes(this.workspaceFolders);
+    }, t -> logOutput.errorWithStackTrace("Failed to initialize workspace folders.", t)));
+  }
+
+  private void declareSubScopes(List<WorkspaceFolder> addedFolders) {
+    addedFolders.forEach(folder -> Optional.ofNullable(folders.get(create(folder.getUri()))).ifPresent(owner -> {
+      var subFolders = sources.subFolders(owner);
+      if (!subFolders.isEmpty()) {
+        backendServiceFacade.getBackendService().addSubFolders(owner.getUri().toString(), subFolders,
+          subFolder -> sources.bindingOfScope(owner, create(subFolder.getUri())));
+      }
+      owner.markScopesDeclared();
+      listeners.forEach(l -> l.scopesDeclared(owner));
+    }));
   }
 
   public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
     logOutput.debug("Processing didChangeWorkspaceFolders event");
+    var removedSubFolderIds = new ArrayList<String>();
     for (var removed : event.getRemoved()) {
-      removeFolder(create(removed.getUri()));
+      var removedUri = create(removed.getUri());
+      Optional.ofNullable(folders.get(removedUri)).ifPresent(wrapper -> sources.subFolders(wrapper).forEach(subFolder -> removedSubFolderIds.add(subFolder.getUri())));
+      removeFolder(removedUri);
     }
     for (var added : event.getAdded()) {
       var uri = create(added.getUri());
@@ -97,7 +115,9 @@ public class WorkspaceFoldersManager {
     }
     executor.submit(new CatchingRunnable(() -> {
       backendServiceFacade.getBackendService().addWorkspaceFolders(event.getAdded(), getBindingProvider());
+      declareSubScopes(event.getAdded());
       event.getRemoved().forEach(removed -> removeFolderFromBackend(removed.getUri()));
+      removedSubFolderIds.forEach(this::removeFolderFromBackend);
     }, t -> logOutput.errorWithStackTrace("Failed to add workspace folder", t)));
 
   }
@@ -111,6 +131,7 @@ public class WorkspaceFoldersManager {
     if (removed == null) {
       logOutput.warn("Unregistered workspace folder was missing: " + uri);
     }
+    sources.forget(uri);
     logOutput.debug(format("Folder %s removed", removed));
   }
 
@@ -126,7 +147,10 @@ public class WorkspaceFoldersManager {
   }
 
   private Function<WorkspaceFolder, Optional<ProjectBinding>> getBindingProvider() {
-    return folder -> bindingManager.getBinding(create(folder.getUri()));
+    return folder -> {
+      var uri = create(folder.getUri());
+      return Optional.ofNullable(folders.get(uri)).flatMap(owner -> sources.bindingOfScope(owner, uri));
+    };
   }
 
   private void removeFolderFromBackend(String removedUri) {
@@ -148,31 +172,15 @@ public class WorkspaceFoldersManager {
     return Optional.of(folders.get(folderUriCandidates.get(0)));
   }
 
-  public Optional<WorkspaceFolderWrapper> getFolder(URI folderUri) {
-    return Optional.ofNullable(folders.get(folderUri));
-  }
-
-  // Visible for testing
-  static boolean isAncestor(URI folderUri, URI fileUri) {
-    if (folderUri.isOpaque() || fileUri.isOpaque()) {
-      throw new IllegalArgumentException("Only hierarchical URIs are supported");
-    }
-    if (!folderUri.getScheme().equalsIgnoreCase(fileUri.getScheme())) {
-      return false;
-    }
-    if (!Objects.equals(folderUri.getHost(), fileUri.getHost())) {
-      return false;
-    }
-    if (folderUri.getPort() != fileUri.getPort()) {
-      return false;
-    }
-    if (Utils.uriHasFileScheme(folderUri)) {
-      return Paths.get(fileUri).startsWith(Paths.get(folderUri));
-    }
-    // Assume "/" is the separator of "folders"
-    var fileSegments = fileUri.getPath().split("/");
-    var folderSegments = folderUri.getPath().split("/");
-    return folderSegments.length <= fileSegments.length && Arrays.equals(folderSegments, Arrays.copyOfRange(fileSegments, 0, folderSegments.length));
+  /**
+   * Resolve the effective configuration scope id for a file: the deepest declared sub-project scope containing it when
+   * its workspace folder has one, otherwise the workspace folder's own scope id, otherwise
+   * {@link BackendService#ROOT_CONFIGURATION_SCOPE}.
+   */
+  public String resolveConfigScopeId(URI fileUri) {
+    return findFolderForFile(fileUri)
+      .map(folder -> sources.scopeUriOf(folder, fileUri).toString())
+      .orElse(BackendService.ROOT_CONFIGURATION_SCOPE);
   }
 
   public Collection<WorkspaceFolderWrapper> getAll() {
