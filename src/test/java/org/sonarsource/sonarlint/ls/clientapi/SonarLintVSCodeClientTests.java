@@ -768,15 +768,13 @@ class SonarLintVSCodeClientTests {
   void shouldUpdateTaintsCacheOnTaintsChangedAndPublishDiagnostics() {
     var filePath = Path.of("filePath");
     var workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
-    var workspaceFolderWrapper = mock(WorkspaceFolderWrapper.class);
-    var workspaceFolderSettings = mock(WorkspaceFolderSettings.class);
     var serverConnectionSettings = mock(ServerConnectionSettings.class);
     when(serverConnectionSettings.isSonarCloudAlias()).thenReturn(true);
-    when(workspaceFolderSettings.getConnectionId()).thenReturn("connectionId");
     when(bindingManager.getServerConnectionSettingsFor("connectionId")).thenReturn(serverConnectionSettings);
-    when(workspaceFolderWrapper.getSettings()).thenReturn(workspaceFolderSettings);
+    var fakeBinding = mock(ProjectBinding.class);
+    when(fakeBinding.connectionId()).thenReturn("connectionId");
+    when(bindingManager.getBinding(workspaceFolderPath.toUri())).thenReturn(Optional.of(fakeBinding));
     underTest.setWorkspaceFoldersManager(workspaceFoldersManager);
-    when(workspaceFoldersManager.getFolder(workspaceFolderPath.toUri())).thenReturn(Optional.of(workspaceFolderWrapper));
     var uuid1 = UUID.randomUUID();
     var uuid2 = UUID.randomUUID();
     var uuid3 = UUID.randomUUID();

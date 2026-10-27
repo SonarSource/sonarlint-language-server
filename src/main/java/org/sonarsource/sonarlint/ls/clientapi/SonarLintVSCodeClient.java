@@ -490,9 +490,8 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
       .forEach(taintIssue -> taintVulnerabilitiesCache.removeTaintIssue(
         getFullFileUriFromFragments(folderUri, taintIssue.getIdeFilePath()).toString(), taintIssue.getSonarServerKey()));
 
-    workspaceFoldersManager.getFolder(URI.create(folderUri))
-      .map(workspaceFolderWrapper -> Objects.requireNonNull(bindingManager
-        .getServerConnectionSettingsFor(workspaceFolderWrapper.getSettings().getConnectionId())).isSonarCloudAlias())
+    bindingManager.getBinding(URI.create(folderUri))
+      .map(binding -> Objects.requireNonNull(bindingManager.getServerConnectionSettingsFor(binding.connectionId())).isSonarCloudAlias())
       .ifPresent(isSonarCloud -> updateTaintVulnerabilitiesCache(addedTaintVulnerabilitiesByFile, updatedTaintVulnerabilitiesByFile, folderUri, isSonarCloud));
   }
 
