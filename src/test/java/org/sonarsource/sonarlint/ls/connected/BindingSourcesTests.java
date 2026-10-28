@@ -31,6 +31,7 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -116,6 +117,8 @@ class BindingSourcesTests {
     when(first.scopesOf(FOLDER)).thenReturn(List.of(scope(MODULE_A, "module-a", "connection")));
 
     underTest.scopesOf(FOLDER);
+    underTest.scopeUriOf(FOLDER, URI.create("file:///repo/moduleA/Foo.java"));
+    underTest.subFolders(FOLDER);
 
     verify(second, never()).scopesOf(FOLDER);
   }
@@ -128,6 +131,15 @@ class BindingSourcesTests {
     when(first.scopesOf(FOLDER)).thenReturn(List.of(scopeWhoseConnectionMustNotBeAsked));
 
     assertThat(underTest.scopeUriOf(FOLDER, URI.create("file:///repo/moduleA/Foo.java"))).isEqualTo(MODULE_A);
+    assertThat(underTest.subFolders(FOLDER)).hasSize(1);
+  }
+
+  @Test
+  void subFolders_are_the_scopes_below_the_folder_named_by_their_source() {
+    when(first.scopesOf(FOLDER)).thenReturn(List.of(scope(REPO, "root-project", "connection"), scope(MODULE_A, "module-a", "connection")));
+
+    assertThat(underTest.subFolders(FOLDER)).extracting(WorkspaceFolder::getUri, WorkspaceFolder::getName)
+      .containsExactly(tuple(MODULE_A.toString(), "name"));
   }
 
   @Test

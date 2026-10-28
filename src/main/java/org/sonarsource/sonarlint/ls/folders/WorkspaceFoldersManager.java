@@ -84,12 +84,17 @@ public class WorkspaceFoldersManager {
   public void initialized() {
     executor.submit(new CatchingRunnable(() -> {
       backendServiceFacade.getBackendService().addWorkspaceFolders(this.workspaceFolders, getBindingProvider());
-      markScopesDeclared(this.workspaceFolders);
+      declareSubScopes(this.workspaceFolders);
     }, t -> logOutput.errorWithStackTrace("Failed to initialize workspace folders.", t)));
   }
 
-  private void markScopesDeclared(List<WorkspaceFolder> addedFolders) {
+  private void declareSubScopes(List<WorkspaceFolder> addedFolders) {
     addedFolders.forEach(folder -> Optional.ofNullable(folders.get(create(folder.getUri()))).ifPresent(owner -> {
+      var subFolders = sources.subFolders(owner);
+      if (!subFolders.isEmpty()) {
+        backendServiceFacade.getBackendService().addSubFolders(owner.getUri().toString(), subFolders,
+          subFolder -> sources.bindingOfScope(owner, create(subFolder.getUri())));
+      }
       owner.markScopesDeclared();
       listeners.forEach(l -> l.scopesDeclared(owner));
     }));
@@ -97,8 +102,11 @@ public class WorkspaceFoldersManager {
 
   public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
     logOutput.debug("Processing didChangeWorkspaceFolders event");
+    var removedSubFolderIds = new ArrayList<String>();
     for (var removed : event.getRemoved()) {
-      removeFolder(create(removed.getUri()));
+      var removedUri = create(removed.getUri());
+      Optional.ofNullable(folders.get(removedUri)).ifPresent(wrapper -> sources.subFolders(wrapper).forEach(subFolder -> removedSubFolderIds.add(subFolder.getUri())));
+      removeFolder(removedUri);
     }
     for (var added : event.getAdded()) {
       var uri = create(added.getUri());
@@ -107,8 +115,9 @@ public class WorkspaceFoldersManager {
     }
     executor.submit(new CatchingRunnable(() -> {
       backendServiceFacade.getBackendService().addWorkspaceFolders(event.getAdded(), getBindingProvider());
-      markScopesDeclared(event.getAdded());
+      declareSubScopes(event.getAdded());
       event.getRemoved().forEach(removed -> removeFolderFromBackend(removed.getUri()));
+      removedSubFolderIds.forEach(this::removeFolderFromBackend);
     }, t -> logOutput.errorWithStackTrace("Failed to add workspace folder", t)));
 
   }

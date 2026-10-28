@@ -47,6 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.util.URIUtils.isAncestor;
@@ -225,15 +226,29 @@ class WorkspaceFoldersManagerTests {
   }
 
   @Test
-  void initialized_marks_the_scopes_declared_and_tells_the_listeners() {
+  void initialized_declares_the_sub_folders_and_tells_the_listeners() {
     var basedir = Paths.get("path/to/base").toAbsolutePath();
+    var subFolder = new WorkspaceFolder(basedir.resolve("moduleA").toUri().toString(), "moduleA");
+    when(sources.subFolders(any())).thenReturn(List.of(subFolder));
     var listener = mock(WorkspaceFolderLifecycleListener.class);
     underTest.addListener(listener);
     underTest.initialize(List.of(mockWorkspaceFolder(basedir.toUri())));
 
     underTest.initialized();
 
+    verify(backendService).addSubFolders(eq(basedir.toUri().toString()), eq(List.of(subFolder)), any());
     verify(listener).scopesDeclared(any());
+    assertThat(underTest.getAll()).allMatch(WorkspaceFolderWrapper::hasDeclaredScopes);
+  }
+
+  @Test
+  void initialized_declares_no_sub_folders_when_there_are_none() {
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    underTest.initialize(List.of(mockWorkspaceFolder(basedir.toUri())));
+
+    underTest.initialized();
+
+    verify(backendService, never()).addSubFolders(any(), any(), any());
     assertThat(underTest.getAll()).allMatch(WorkspaceFolderWrapper::hasDeclaredScopes);
   }
 
@@ -254,15 +269,18 @@ class WorkspaceFoldersManagerTests {
   }
 
   @Test
-  void removing_a_folder_makes_the_sources_forget_it_and_removes_it_from_the_backend() {
+  void removing_a_folder_removes_its_sub_folders_from_the_backend() {
     var basedir = Paths.get("path/to/base").toAbsolutePath();
     var workspaceFolder = mockWorkspaceFolder(basedir.toUri());
+    var subFolder = new WorkspaceFolder(basedir.resolve("moduleA").toUri().toString(), "moduleA");
+    when(sources.subFolders(any())).thenReturn(List.of(subFolder));
     underTest.initialize(List.of(workspaceFolder));
 
     underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(Collections.emptyList(), List.of(workspaceFolder)));
 
     verify(sources).forget(basedir.toUri());
     verify(backendService).removeWorkspaceFolder(workspaceFolder.getUri());
+    verify(backendService).removeWorkspaceFolder(subFolder.getUri());
   }
 
   @Test
