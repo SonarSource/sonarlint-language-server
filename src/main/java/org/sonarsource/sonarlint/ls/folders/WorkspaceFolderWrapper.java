@@ -37,6 +37,7 @@ public class WorkspaceFolderWrapper {
   private final WorkspaceFolder lspFolder;
   private final LanguageClientLogger logOutput;
   private WorkspaceFolderSettings settings;
+  private volatile boolean scopesDeclared;
   private final CountDownLatch initLatch = new CountDownLatch(1);
 
   public WorkspaceFolderWrapper(URI uri, WorkspaceFolder lspFolder, LanguageClientLogger logOutput) {
@@ -89,6 +90,14 @@ public class WorkspaceFolderWrapper {
       Thread.currentThread().interrupt();
     }
     throw new IllegalStateException("Unable to get settings in time");
+  }
+
+  public void markScopesDeclared() {
+    this.scopesDeclared = true;
+  }
+
+  public boolean hasDeclaredScopes() {
+    return scopesDeclared;
   }
 
   @CheckForNull
