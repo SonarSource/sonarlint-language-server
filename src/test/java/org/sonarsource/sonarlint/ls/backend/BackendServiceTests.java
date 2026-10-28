@@ -139,6 +139,30 @@ class BackendServiceTests {
   }
 
   @Test
+  void bind_updates_the_binding_of_the_scope() {
+    underTest.bind("scopeId", new ProjectBinding("connectionId", "projectKey"));
+
+    var captor = org.mockito.ArgumentCaptor.forClass(DidUpdateBindingParams.class);
+    verify(configurationService).didUpdateBinding(captor.capture());
+    assertThat(captor.getValue().getConfigScopeId()).isEqualTo("scopeId");
+    assertThat(captor.getValue().getUpdatedBinding().getConnectionId()).isEqualTo("connectionId");
+    assertThat(captor.getValue().getUpdatedBinding().getSonarProjectKey()).isEqualTo("projectKey");
+    assertThat(captor.getValue().getUpdatedBinding().isBindingSuggestionDisabled()).isTrue();
+  }
+
+  @Test
+  void unbind_clears_the_binding_of_the_scope() {
+    underTest.unbind("scopeId");
+
+    var captor = org.mockito.ArgumentCaptor.forClass(DidUpdateBindingParams.class);
+    verify(configurationService).didUpdateBinding(captor.capture());
+    assertThat(captor.getValue().getConfigScopeId()).isEqualTo("scopeId");
+    assertThat(captor.getValue().getUpdatedBinding().getConnectionId()).isNull();
+    assertThat(captor.getValue().getUpdatedBinding().getSonarProjectKey()).isNull();
+    assertThat(captor.getValue().getUpdatedBinding().isBindingSuggestionDisabled()).isFalse();
+  }
+
+  @Test
   void getConfigScopeDtoWithBinding() {
     var workspaceUri = "/workspace";
     var connectionId = "connectionId";
