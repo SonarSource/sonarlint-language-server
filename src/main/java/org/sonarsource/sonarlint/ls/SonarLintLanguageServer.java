@@ -129,6 +129,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegratio
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionStatus;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
+import org.sonarsource.sonarlint.ls.backend.BackendLogLevelSynchronizer;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient;
 import org.sonarsource.sonarlint.ls.connected.DependencyRisksCache;
@@ -260,6 +261,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var folderSettingsSource = new FolderSettingsBindingSource(settingsManager, lsLogOutput);
     var bindingSources = new BindingSources(List.of(folderSettingsSource));
     this.configurationScopeManager = new ConfigurationScopeManager(workspaceFoldersManager, bindingSources, backendServiceFacade, lsLogOutput);
+    this.settingsManager.addListener(new BackendLogLevelSynchronizer(backendServiceFacade));
     this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager,
       client, lsLogOutput, backendServiceFacade, openNotebooksCache, configurationScopeManager);
     this.configurationScopeManager.addListener(bindingManager);
