@@ -37,6 +37,7 @@ import java.util.function.Function;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
@@ -131,6 +132,16 @@ public class WorkspaceFoldersManager {
 
   private void removeFolderFromBackend(String removedUri) {
     backendServiceFacade.getBackendService().removeWorkspaceFolder(removedUri);
+  }
+
+  /**
+   * The configuration scope a file belongs to: its workspace folder, or {@link BackendService#ROOT_CONFIGURATION_SCOPE}
+   * for a file outside every workspace folder.
+   */
+  public String resolveConfigScopeId(URI fileUri) {
+    return findFolderForFile(fileUri)
+      .map(folder -> folder.getUri().toString())
+      .orElse(BackendService.ROOT_CONFIGURATION_SCOPE);
   }
 
   public Optional<WorkspaceFolderWrapper> findFolderForFile(URI uri) {

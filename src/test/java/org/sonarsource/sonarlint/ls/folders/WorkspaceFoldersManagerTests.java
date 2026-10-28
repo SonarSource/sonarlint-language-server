@@ -100,6 +100,21 @@ class WorkspaceFoldersManagerTests {
   }
 
   @Test
+  void resolveConfigScopeId_is_the_uri_of_the_folder_containing_the_file() {
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    underTest.initialize(List.of(mockWorkspaceFolder(basedir.toUri())));
+
+    assertThat(underTest.resolveConfigScopeId(basedir.resolve("some/file.java").toUri())).isEqualTo(basedir.toUri().toString());
+  }
+
+  @Test
+  void resolveConfigScopeId_is_the_root_scope_for_a_file_outside_every_folder() {
+    underTest.initialize(List.of(mockWorkspaceFolder(Paths.get("other/path").toAbsolutePath().toUri())));
+
+    assertThat(underTest.resolveConfigScopeId(Paths.get("path/to/base/file.java").toAbsolutePath().toUri())).isEqualTo(BackendService.ROOT_CONFIGURATION_SCOPE);
+  }
+
+  @Test
   void findBaseDir_finds_deepest_nested_folder() {
     var basedir = Paths.get("path/to/base").toAbsolutePath();
     var subFolder = basedir.resolve("sub");
