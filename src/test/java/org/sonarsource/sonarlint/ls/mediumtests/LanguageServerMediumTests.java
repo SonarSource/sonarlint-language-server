@@ -117,7 +117,7 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   private static final String TOKEN = "token";
   private static final String PYTHON_S1481 = "python:S1481";
   private static final String PYTHON_S139 = "python:S139";
-  private static final String JAVA_S2095 = "java:S2095";
+  private static final String JAVA_S2168 = "java:S2168";
   private static final String GO_S1862 = "go:S1862";
   private static final String GO_S108 = "go:S108";
   @RegisterExtension
@@ -739,10 +739,10 @@ class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
   @Test
   void test_clean_code_taxonomy_fields_are_present() throws Exception {
     client.showRuleDescriptionLatch = new CountDownLatch(1);
-    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", List.of(JAVA_S2095))).get();
+    lsProxy.getWorkspaceService().executeCommand(new ExecuteCommandParams("SonarLint.OpenStandaloneRuleDesc", List.of(JAVA_S2168))).get();
     assertTrue(client.showRuleDescriptionLatch.await(1, TimeUnit.MINUTES));
 
-    assertThat(client.ruleDesc.getKey()).isEqualTo(JAVA_S2095);
+    assertThat(client.ruleDesc.getKey()).isEqualTo(JAVA_S2168);
     assertThat(client.ruleDesc.getCleanCodeAttribute()).isEqualTo(EnumLabelsMapper.cleanCodeAttributeToLabel(CleanCodeAttribute.COMPLETE));
     assertThat(client.ruleDesc.getCleanCodeAttributeCategory()).isEqualTo(EnumLabelsMapper.cleanCodeAttributeCategoryToLabel(CleanCodeAttributeCategory.INTENTIONAL));
     assertThat(client.ruleDesc.getImpacts())
