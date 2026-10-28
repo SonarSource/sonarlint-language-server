@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -62,10 +63,12 @@ import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -95,6 +98,7 @@ class ProjectBindingManagerTests {
   private Path fileNotInAWorkspaceFolderPath;
   ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache;
   private ProjectBindingManager underTest;
+  private BackendService backendService;
   private final SettingsManager settingsManager = mock(SettingsManager.class);
   private final WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
   private final Map<String, ServerConnectionSettings> servers = new HashMap<>();
@@ -121,7 +125,7 @@ class ProjectBindingManagerTests {
       .thenReturn(newWorkspaceSettingsWithServers(servers));
     when(settingsManager.getCurrentDefaultFolderSettings()).thenReturn(UNBOUND_SETTINGS);
 
-    BackendService backendService = mock(BackendService.class);
+    backendService = mock(BackendService.class);
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token"));
 
@@ -129,8 +133,10 @@ class ProjectBindingManagerTests {
 
     when(openNotebooksCache.getFile(any(URI.class))).thenReturn(Optional.empty());
 
-    underTest = new ProjectBindingManager(foldersManager, settingsManager, client, folderBindingCache, logTester.getLogger(),
-      backendServiceFacade, openNotebooksCache);
+    var folderSettingsSource = new FolderSettingsBindingSource(settingsManager, logTester.getLogger(), folderBindingCache);
+    var sources = new BindingSources(List.of(folderSettingsSource));
+    underTest = new ProjectBindingManager(foldersManager, settingsManager, client, logTester.getLogger(),
+      backendServiceFacade, openNotebooksCache, sources, folderSettingsSource);
     underTest.setAnalysisManager(analysisManager);
   }
 
@@ -169,10 +175,9 @@ class ProjectBindingManagerTests {
     folder.setSettings(UNBOUND_SETTINGS);
 
     assertThat(underTest.getBinding(fileInAWorkspaceFolderPath.toUri())).isEmpty();
-
-    // Second call is cached
     assertThat(underTest.getBinding(fileInAWorkspaceFolderPath.toUri())).isEmpty();
-    verify(folder, times(1)).getSettings();
+
+    verify(folder, times(2)).getSettings();
   }
 
   @Test
@@ -235,41 +240,21 @@ class ProjectBindingManagerTests {
   }
 
   @Test
-  void ignore_change_if_folder_binding_not_cached() {
-    var folder = mockFileInABoundWorkspaceFolder();
-    when(folder.getSettings()).thenReturn(UNBOUND_SETTINGS);
-
-    underTest.onChange(folder, BOUND_SETTINGS, UNBOUND_SETTINGS);
-    verifyNoInteractions(settingsManager);
-    assertThat(logTester.logs()).isEmpty();
-  }
-
-  @Test
-  void ignore_change_if_file_binding_not_cached() {
-    mockFileOutsideFolder();
-
-    underTest.onChange(null, BOUND_SETTINGS, UNBOUND_SETTINGS);
-    verifyNoInteractions(settingsManager);
-    assertThat(logTester.logs()).isEmpty();
-  }
-
-  @Test
   void test_unbind_folder() {
     var folder = mockFileInABoundWorkspaceFolder();
 
     var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     assertThat(binding).isNotEmpty();
 
-    when(folder.getSettings()).thenReturn(UNBOUND_SETTINGS);
+    folder.setSettings(UNBOUND_SETTINGS);
     underTest.onChange(folder, BOUND_SETTINGS, UNBOUND_SETTINGS);
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder);
+    verify(backendService).unbind(workspaceFolderPath.toUri().toString());
 
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
     assertThat(binding).isEmpty();
-    assertThat(logTester.logs())
-      .anyMatch(log -> log.contains("Workspace 'WorkspaceFolder[name=" + workspaceFolderPath.getFileName().toString() + ",uri=" + workspaceFolderPath.toUri() + "]' unbound"));
   }
 
   @Test
@@ -289,7 +274,6 @@ class ProjectBindingManagerTests {
     binding = underTest.getBinding(fileNotInAWorkspaceFolderPath.toUri());
 
     assertThat(binding).isEmpty();
-    assertThat(logTester.logs()).anyMatch(log -> log.contains("All files outside workspace are now unbound"));
   }
 
   @Test
@@ -300,11 +284,12 @@ class ProjectBindingManagerTests {
     var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     assertThat(binding).isNotEmpty();
 
-    when(folder.getSettings()).thenReturn(BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
+    folder.setSettings(BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
 
     underTest.onChange(folder, BOUND_SETTINGS, BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder);
+    verify(backendService).bind(workspaceFolderPath.toUri().toString(), new ProjectBinding(CONNECTION_ID, PROJECT_KEY2));
 
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
@@ -446,29 +431,6 @@ class ProjectBindingManagerTests {
   }
 
   @Test
-  void should_get_binding_if_existis_empty() {
-    var uri = URI.create("file:///folderUri");
-
-    var maybeBinding = underTest.getBindingIfExists(uri);
-
-    assertThat(maybeBinding).isEmpty();
-  }
-
-  @Test
-  void should_get_binding_if_existis() {
-    var fileUri = URI.create("file:///fileUri");
-    var folderUri = URI.create("file:///folderUri");
-    when(foldersManager.findFolderForFile(fileUri))
-      .thenReturn(Optional.of(new WorkspaceFolderWrapper(folderUri, null, null)));
-    folderBindingCache.put(folderUri, Optional.of(new ProjectBinding("connectionId",
-      "projectKey")));
-    var maybeBinding = underTest.getBindingIfExists(fileUri);
-
-    assertThat(maybeBinding.get().connectionId()).isEqualTo("connectionId");
-    assertThat(maybeBinding.get().projectKey()).isEqualTo("projectKey");
-  }
-
-  @Test
   void validateConnection_should_handle_null_token_exception() {
     var connectionId = "connectionWithNullToken";
     var serverConnectionSettings = new ServerConnectionSettings(connectionId, "http://localhost:8080", null, null, false, null);
@@ -502,6 +464,95 @@ class ProjectBindingManagerTests {
 
     // Should not call reportConnectionCheckResult for unknown connections
     verifyNoInteractions(client);
+  }
+
+  @Test
+  void adding_a_connection_binds_the_declared_folders_and_tells_the_client() {
+    var folder = mockFileInAFolder();
+    folder.setSettings(BOUND_SETTINGS);
+    folder.markScopesDeclared();
+    when(foldersManager.getAll()).thenReturn(List.of(folder));
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+
+    underTest.onChange(newWorkspaceSettingsWithServers(Map.of()), newWorkspaceSettingsWithServers(servers));
+
+    verify(backendService).bind(workspaceFolderPath.toUri().toString(), new ProjectBinding(CONNECTION_ID, PROJECT_KEY));
+  }
+
+  @Test
+  void removing_a_connection_unbinds_the_declared_folders_that_used_it() {
+    var folder = mockFileInAFolder();
+    folder.setSettings(BOUND_SETTINGS);
+    folder.markScopesDeclared();
+    when(foldersManager.getAll()).thenReturn(List.of(folder));
+
+    underTest.onChange(newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS)), newWorkspaceSettingsWithServers(Map.of()));
+
+    verify(backendService).unbind(workspaceFolderPath.toUri().toString());
+    assertThat(logTester.logs()).anyMatch(log -> log.contains("No connection configured for connection 'myServer'"));
+    verify(client).removeBindingsForDeletedConnections(List.of(CONNECTION_ID));
+  }
+
+  @Test
+  void a_settings_change_that_leaves_the_connections_alone_binds_nothing() {
+    var folder = mockFileInAFolder();
+    folder.setSettings(BOUND_SETTINGS);
+    folder.markScopesDeclared();
+    when(foldersManager.getAll()).thenReturn(List.of(folder));
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+    var settings = newWorkspaceSettingsWithServers(servers);
+
+    underTest.onChange(settings, settings);
+
+    verify(backendService, never()).bind(any(), any());
+    verify(backendService, never()).unbind(any());
+  }
+
+  @Test
+  void folders_whose_scopes_are_not_declared_yet_are_not_rebound() {
+    var folder = mockFileInAFolder();
+    folder.setSettings(BOUND_SETTINGS);
+    when(foldersManager.getAll()).thenReturn(List.of(folder));
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+
+    underTest.onChange(newWorkspaceSettingsWithServers(Map.of()), newWorkspaceSettingsWithServers(servers));
+
+    verify(backendService, never()).bind(any(), any());
+    verify(backendService, never()).unbind(any());
+  }
+
+  @Test
+  void adding_a_connection_resolves_the_settings_bindings_that_were_waiting_for_it() {
+    var folder = mockFileInAFolder();
+    folder.setSettings(BOUND_SETTINGS);
+    assertThat(underTest.getBinding(fileInAWorkspaceFolderPath.toUri())).isEmpty();
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+
+    underTest.onChange(newWorkspaceSettingsWithServers(Map.of()), newWorkspaceSettingsWithServers(servers));
+
+    assertThat(underTest.getBinding(fileInAWorkspaceFolderPath.toUri())).contains(new ProjectBinding(CONNECTION_ID, PROJECT_KEY));
+  }
+
+  @Test
+  void a_folder_settings_change_rebinds_the_folder_and_tells_the_client() {
+    var folder = mockFileInAFolder();
+    folder.setSettings(BOUND_SETTINGS);
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+
+    underTest.onChange(folder, UNBOUND_SETTINGS, BOUND_SETTINGS);
+
+    verify(backendService).bind(workspaceFolderPath.toUri().toString(), new ProjectBinding(CONNECTION_ID, PROJECT_KEY));
+  }
+
+  @Test
+  void a_folder_settings_change_that_leaves_the_binding_alone_does_nothing() {
+    var folder = mockFileInAFolder();
+
+    underTest.onChange(folder, BOUND_SETTINGS, BOUND_SETTINGS);
+
+    verify(backendService, never()).bind(any(), any());
+    verify(backendService, never()).unbind(any());
+    verify(analysisManager, never()).analyzeAllOpenFilesInFolder(any());
   }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {
