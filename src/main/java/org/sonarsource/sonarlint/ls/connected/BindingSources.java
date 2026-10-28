@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.eclipse.lsp4j.WorkspaceFolder;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.util.URIUtils;
@@ -65,6 +66,13 @@ public class BindingSources implements BindingSource {
    */
   public URI scopeUriOf(WorkspaceFolderWrapper folder, URI fileUri) {
     return deepestContaining(scopesOf(folder), fileUri).map(ScopeBinding::scopeUri).orElse(folder.getUri());
+  }
+
+  public List<WorkspaceFolder> subFolders(WorkspaceFolderWrapper folder) {
+    return scopesOf(folder).stream()
+      .filter(scope -> !scope.scopeUri().equals(folder.getUri()))
+      .map(scope -> new WorkspaceFolder(scope.scopeUri().toString(), scope.name()))
+      .toList();
   }
 
   @Override
