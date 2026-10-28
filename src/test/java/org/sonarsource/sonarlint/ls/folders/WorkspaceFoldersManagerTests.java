@@ -25,6 +25,7 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,11 +33,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.ConfigurationScopeDto;
+import org.mockito.ArgumentCaptor;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.connected.BindingSources;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import testutils.ImmediateExecutorService;
 import testutils.SonarLintLogTester;
@@ -45,15 +45,17 @@ import static java.net.URI.create;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager.isAncestor;
+import static org.sonarsource.sonarlint.ls.util.URIUtils.isAncestor;
 
 class WorkspaceFoldersManagerTests {
 
   @RegisterExtension
   SonarLintLogTester logTester = new SonarLintLogTester();
-  ProjectBindingManager bindingManager;
+  BindingSources sources = mock(BindingSources.class);
   BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   BackendService backendService = mock(BackendService.class);
 
@@ -61,13 +63,8 @@ class WorkspaceFoldersManagerTests {
 
   @BeforeEach
   void prepare() {
-    bindingManager = mock(ProjectBindingManager.class);
-    when(bindingManager.getBinding(URI.create(""))).thenReturn(Optional.of(mock(ProjectBinding.class)));
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
-    when(backendService.getConfigScopeDto(any(), any()))
-      .thenReturn(new ConfigurationScopeDto("id", BackendService.ROOT_CONFIGURATION_SCOPE, true, "name",
-        new BindingConfigurationDto("connectionId", "projectKey", true)));
-    underTest.setBindingManager(bindingManager);
+    underTest.setBindingSources(sources);
   }
 
   @Test
@@ -97,21 +94,6 @@ class WorkspaceFoldersManagerTests {
       mockWorkspaceFolder(Paths.get("other/path2").toAbsolutePath().toUri())));
 
     assertThat(underTest.findFolderForFile(file.toUri())).isEmpty();
-  }
-
-  @Test
-  void resolveConfigScopeId_is_the_uri_of_the_folder_containing_the_file() {
-    var basedir = Paths.get("path/to/base").toAbsolutePath();
-    underTest.initialize(List.of(mockWorkspaceFolder(basedir.toUri())));
-
-    assertThat(underTest.resolveConfigScopeId(basedir.resolve("some/file.java").toUri())).isEqualTo(basedir.toUri().toString());
-  }
-
-  @Test
-  void resolveConfigScopeId_is_the_root_scope_for_a_file_outside_every_folder() {
-    underTest.initialize(List.of(mockWorkspaceFolder(Paths.get("other/path").toAbsolutePath().toUri())));
-
-    assertThat(underTest.resolveConfigScopeId(Paths.get("path/to/base/file.java").toAbsolutePath().toUri())).isEqualTo(BackendService.ROOT_CONFIGURATION_SCOPE);
   }
 
   @Test
@@ -226,6 +208,56 @@ class WorkspaceFoldersManagerTests {
     assertThat(logTester.logs())
       .anyMatch(log -> log.contains("Processing didChangeWorkspaceFolders event"))
       .anyMatch(log -> log.contains("Unregistered workspace folder was missing: " + basedir.toUri()));
+  }
+
+  @Test
+  void initialized_marks_the_scopes_declared() {
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    underTest.initialize(List.of(mockWorkspaceFolder(basedir.toUri())));
+
+    underTest.initialized();
+
+    assertThat(underTest.getAll()).allMatch(WorkspaceFolderWrapper::hasDeclaredScopes);
+  }
+
+  @Test
+  void binding_provider_asks_the_sources_for_the_binding_of_the_scope() {
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    var workspaceFolder = mockWorkspaceFolder(basedir.toUri());
+    var binding = new ProjectBinding("connectionId", "projectKey");
+    when(sources.bindingOfScope(any(), eq(basedir.toUri()))).thenReturn(Optional.of(binding));
+    underTest.initialize(List.of(workspaceFolder));
+    underTest.initialized();
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Function<WorkspaceFolder, Optional<ProjectBinding>>> provider = ArgumentCaptor.forClass(Function.class);
+    verify(backendService).addWorkspaceFolders(any(), provider.capture());
+
+    assertThat(provider.getValue().apply(workspaceFolder)).contains(binding);
+  }
+
+  @Test
+  void removing_a_folder_makes_the_sources_forget_it_and_removes_it_from_the_backend() {
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    var workspaceFolder = mockWorkspaceFolder(basedir.toUri());
+    underTest.initialize(List.of(workspaceFolder));
+
+    underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(Collections.emptyList(), List.of(workspaceFolder)));
+
+    verify(sources).forget(basedir.toUri());
+    verify(backendService).removeWorkspaceFolder(workspaceFolder.getUri());
+  }
+
+  @Test
+  void resolveConfigScopeId_is_the_scope_of_the_sources_inside_a_folder_and_the_root_outside() {
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    var fileInSubProject = basedir.resolve("moduleA/Foo.java").toUri();
+    var subProjectScope = basedir.resolve("moduleA").toUri();
+    when(sources.scopeUriOf(any(), eq(fileInSubProject))).thenReturn(subProjectScope);
+    underTest.initialize(List.of(mockWorkspaceFolder(basedir.toUri())));
+
+    assertThat(underTest.resolveConfigScopeId(fileInSubProject)).isEqualTo(subProjectScope.toString());
+    assertThat(underTest.resolveConfigScopeId(Paths.get("other/Foo.java").toAbsolutePath().toUri())).isEqualTo(BackendService.ROOT_CONFIGURATION_SCOPE);
   }
 
   private static WorkspaceFolder mockWorkspaceFolder(URI uri) {
