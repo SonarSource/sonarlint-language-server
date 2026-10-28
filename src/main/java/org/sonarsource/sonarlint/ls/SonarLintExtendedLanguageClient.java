@@ -913,6 +913,12 @@ public interface SonarLintExtendedLanguageClient extends LanguageClient {
   @JsonNotification("notifyInvalidToken")
   void notifyInvalidToken(NotifyInvalidTokenParams params);
 
+  /**
+   * The bindings changed on the language server's side, the client should request them again.
+   */
+  @JsonNotification("bindingsChanged")
+  void bindingsChanged();
+
   @JsonNotification("embeddedServerStarted")
   void embeddedServerStarted(EmbeddedServerStartedParams params);
 
