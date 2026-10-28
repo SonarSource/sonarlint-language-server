@@ -45,6 +45,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCheckResult;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.connected.ScopeBinding.Origin;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -174,6 +175,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
       analysisManager.analyzeAllOpenFilesInFolder(null);
       return;
     }
+    if (isDeclaredBeyondSettings(folder)) {
+      return;
+    }
     sources.onFolderSettingsChanged(folder.getUri());
     analysisManager.analyzeAllOpenFilesInFolder(folder);
     rebind(folder);
@@ -184,6 +188,13 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return oldValue.hasBinding() != newValue.hasBinding()
       || (newValue.hasBinding()
         && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey())));
+  }
+
+  /**
+   * Once another source declares scopes for a folder, its own setting no longer counts.
+   */
+  private boolean isDeclaredBeyondSettings(WorkspaceFolderWrapper folder) {
+    return sources.scopesOf(folder).stream().anyMatch(scope -> scope.origin() != Origin.SETTINGS);
   }
 
   private void rebind(WorkspaceFolderWrapper folder) {
