@@ -198,15 +198,14 @@ public class BackendService {
   }
 
   public ConfigurationScopeDto getConfigScopeDto(WorkspaceFolder added, Optional<ProjectBinding> bindingOptional) {
-    BindingConfigurationDto bindingConfigurationDto;
-    if (bindingOptional.isPresent()) {
-      ProjectBinding bindingWrapper = bindingOptional.get();
-      bindingConfigurationDto = new BindingConfigurationDto(bindingWrapper.connectionId(),
-        bindingWrapper.projectKey(), true);
-    } else {
-      bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
+    return new ConfigurationScopeDto(added.getUri(), ROOT_CONFIGURATION_SCOPE, true, added.getName(), toBindingConfigurationDto(bindingOptional.orElse(null)));
+  }
+
+  private static BindingConfigurationDto toBindingConfigurationDto(@Nullable ProjectBinding binding) {
+    if (binding != null) {
+      return new BindingConfigurationDto(binding.connectionId(), binding.projectKey(), true);
     }
-    return new ConfigurationScopeDto(added.getUri(), ROOT_CONFIGURATION_SCOPE, true, added.getName(), bindingConfigurationDto);
+    return new BindingConfigurationDto(null, null, false);
   }
 
   public void removeWorkspaceFolder(String removedUri) {
@@ -216,6 +215,14 @@ public class BackendService {
 
   public void updateBinding(DidUpdateBindingParams params) {
     backend.getConfigurationService().didUpdateBinding(params);
+  }
+
+  public void bind(String configScopeId, ProjectBinding binding) {
+    updateBinding(new DidUpdateBindingParams(configScopeId, toBindingConfigurationDto(binding)));
+  }
+
+  public void unbind(String configScopeId) {
+    updateBinding(new DidUpdateBindingParams(configScopeId, toBindingConfigurationDto(null)));
   }
 
   public void addWorkspaceFolders(List<WorkspaceFolder> added, Function<WorkspaceFolder, Optional<ProjectBinding>> bindingProvider) {
