@@ -249,6 +249,7 @@ class ProjectBindingManagerTests {
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder);
     verify(backendService).unbind(workspaceFolderPath.toUri().toString());
+    verify(client).bindingsChanged();
 
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
@@ -465,6 +466,30 @@ class ProjectBindingManagerTests {
   }
 
   @Test
+  void getBindings_lists_the_folders_bound_by_their_settings() {
+    var folder = mockFileInABoundWorkspaceFolder();
+    when(foldersManager.getAll()).thenReturn(List.of(folder));
+
+    var bindings = underTest.getBindings();
+
+    assertThat(bindings).singleElement().satisfies(scope -> {
+      assertThat(scope.scopeUri()).isEqualTo(workspaceFolderPath.toUri());
+      assertThat(scope.projectKey()).isEqualTo(PROJECT_KEY);
+      assertThat(scope.connectionId()).isEqualTo(CONNECTION_ID);
+      assertThat(scope.origin()).isEqualTo(ScopeBinding.Origin.SETTINGS);
+    });
+  }
+
+  @Test
+  void getBindings_skips_a_settings_binding_whose_connection_does_not_exist() {
+    var folder = mockFileInAFolder();
+    folder.setSettings(BOUND_SETTINGS);
+    when(foldersManager.getAll()).thenReturn(List.of(folder));
+
+    assertThat(underTest.getBindings()).isEmpty();
+  }
+
+  @Test
   void adding_a_connection_binds_the_declared_folders_and_tells_the_client() {
     var folder = mockFileInAFolder();
     folder.setSettings(BOUND_SETTINGS);
@@ -475,6 +500,7 @@ class ProjectBindingManagerTests {
     underTest.onChange(newWorkspaceSettingsWithServers(Map.of()), newWorkspaceSettingsWithServers(servers));
 
     verify(backendService).bind(workspaceFolderPath.toUri().toString(), new ProjectBinding(CONNECTION_ID, PROJECT_KEY));
+    verify(client).bindingsChanged();
   }
 
   @Test
@@ -504,6 +530,7 @@ class ProjectBindingManagerTests {
 
     verify(backendService, never()).bind(any(), any());
     verify(backendService, never()).unbind(any());
+    verify(client, never()).bindingsChanged();
   }
 
   @Test
@@ -540,6 +567,7 @@ class ProjectBindingManagerTests {
     underTest.onChange(folder, UNBOUND_SETTINGS, BOUND_SETTINGS);
 
     verify(backendService).bind(workspaceFolderPath.toUri().toString(), new ProjectBinding(CONNECTION_ID, PROJECT_KEY));
+    verify(client).bindingsChanged();
   }
 
   @Test
