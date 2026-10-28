@@ -54,7 +54,6 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarCloud
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarQubeCloudRegionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SslConfigurationDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.TelemetryClientConstantAttributesDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.log.LogLevel;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.EnabledLanguages;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
@@ -150,7 +149,11 @@ public final class BackendServiceFacade {
       languageSpecificRequirements,
       initializationOptions.automaticAnalysis(),
       null,
-      LogLevel.DEBUG);
+      initializationOptions.showVerboseLogs() ? BackendLogLevel.whenVerbose() : BackendLogLevel.whenNotVerbose());
+  }
+
+  public void syncBackendLogLevel(boolean verboseEnabled) {
+    backendService.syncBackendLogLevel(verboseEnabled ? BackendLogLevel.whenVerbose() : BackendLogLevel.whenNotVerbose());
   }
 
   static String determineIdeName(String appName) {
