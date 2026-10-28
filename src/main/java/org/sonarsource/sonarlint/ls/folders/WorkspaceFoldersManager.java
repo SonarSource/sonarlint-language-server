@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
@@ -49,7 +50,7 @@ import static org.sonarsource.sonarlint.ls.util.URIUtils.isAncestor;
 public class WorkspaceFoldersManager {
   private final Map<URI, WorkspaceFolderWrapper> folders = new ConcurrentHashMap<>();
   private final Map<String, Boolean> analysisReadiness = new ConcurrentHashMap<>();
-  private final List<WorkspaceFolderLifecycleListener> listeners = new ArrayList<>();
+  private final List<WorkspaceFolderLifecycleListener> listeners = new CopyOnWriteArrayList<>();
   private BindingSources sources;
   private final BackendServiceFacade backendServiceFacade;
   private final LanguageClientLogger logOutput;
@@ -88,7 +89,10 @@ public class WorkspaceFoldersManager {
   }
 
   private void markScopesDeclared(List<WorkspaceFolder> addedFolders) {
-    addedFolders.forEach(folder -> Optional.ofNullable(folders.get(create(folder.getUri()))).ifPresent(WorkspaceFolderWrapper::markScopesDeclared));
+    addedFolders.forEach(folder -> Optional.ofNullable(folders.get(create(folder.getUri()))).ifPresent(owner -> {
+      owner.markScopesDeclared();
+      listeners.forEach(l -> l.scopesDeclared(owner));
+    }));
   }
 
   public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
