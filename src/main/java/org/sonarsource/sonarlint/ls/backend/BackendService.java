@@ -98,6 +98,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.CheckStatusCh
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.CheckStatusChangePermittedResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.InitializeParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.log.LogLevel;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.log.SetLogLevelParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.ChangeIssueStatusParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.GetEffectiveIssueDetailsParams;
@@ -164,6 +166,10 @@ public class BackendService {
     } catch (TimeoutException e) {
       throw new IllegalStateException("Could not initialize SonarLint Backend in time", e);
     }
+  }
+
+  public void syncBackendLogLevel(LogLevel level) {
+    backend.getLogService().setLogLevel(new SetLogLevelParams(level));
   }
 
   public void openHotspotInBrowser(OpenHotspotInBrowserParams params) {
