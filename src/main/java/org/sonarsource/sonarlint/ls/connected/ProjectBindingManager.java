@@ -121,6 +121,16 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return true;
   }
 
+  /**
+   * The binding of every scope that has a connection, whichever source declares it.
+   */
+  public List<ScopeBinding> getBindings() {
+    return foldersManager.getAll().stream()
+      .flatMap(folder -> sources.scopesOf(folder).stream())
+      .filter(ScopeBinding::isResolved)
+      .toList();
+  }
+
   @CheckForNull
   public EndpointParams getEndpointParamsFor(@Nullable String connectionId) {
     return Optional.ofNullable(getServerConnectionSettingsFor(connectionId))
@@ -167,6 +177,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     sources.onFolderSettingsChanged(folder.getUri());
     analysisManager.analyzeAllOpenFilesInFolder(folder);
     rebind(folder);
+    client.bindingsChanged();
   }
 
   private static boolean bindingChanged(WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
@@ -225,6 +236,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     if (oldValue == null || !previousConnections.equals(newValue.getServerConnections())) {
       sources.onConnectionsChanged(previousConnections, newValue.getServerConnections());
       rebindDeclaredScopes();
+      client.bindingsChanged();
     }
     handleDeletedConnections(oldValue, newValue);
     newValue.getServerConnections().forEach((id, value) -> {
