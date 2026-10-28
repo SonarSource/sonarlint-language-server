@@ -21,7 +21,6 @@ package org.sonarsource.sonarlint.ls.backend;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
@@ -167,7 +166,7 @@ class BackendServiceTests {
     var workspaceUri = "/workspace";
     var connectionId = "connectionId";
     var bindingWrapper = new ProjectBinding(connectionId, "projectKey");
-    var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri, workspaceUri), Optional.of(bindingWrapper));
+    var result = BackendService.getConfigScopeDto(BackendService.ROOT_CONFIGURATION_SCOPE, new WorkspaceFolder(workspaceUri, workspaceUri), bindingWrapper);
 
     assertThat(result.getId()).isEqualTo(workspaceUri);
     assertThat(result.getParentId()).isEqualTo(BackendService.ROOT_CONFIGURATION_SCOPE);
@@ -177,7 +176,7 @@ class BackendServiceTests {
   @Test
   void getConfigScopeDtoWithoutBinding() {
     var workspaceUri = "/workspace";
-    var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri, workspaceUri), Optional.empty());
+    var result = BackendService.getConfigScopeDto(BackendService.ROOT_CONFIGURATION_SCOPE, new WorkspaceFolder(workspaceUri, workspaceUri), null);
 
     assertThat(result.getId()).isEqualTo(workspaceUri);
     assertThat(result.getParentId()).isEqualTo(BackendService.ROOT_CONFIGURATION_SCOPE);
