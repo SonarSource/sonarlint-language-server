@@ -211,12 +211,15 @@ class WorkspaceFoldersManagerTests {
   }
 
   @Test
-  void initialized_marks_the_scopes_declared() {
+  void initialized_marks_the_scopes_declared_and_tells_the_listeners() {
     var basedir = Paths.get("path/to/base").toAbsolutePath();
+    var listener = mock(WorkspaceFolderLifecycleListener.class);
+    underTest.addListener(listener);
     underTest.initialize(List.of(mockWorkspaceFolder(basedir.toUri())));
 
     underTest.initialized();
 
+    verify(listener).scopesDeclared(any());
     assertThat(underTest.getAll()).allMatch(WorkspaceFolderWrapper::hasDeclaredScopes);
   }
 
