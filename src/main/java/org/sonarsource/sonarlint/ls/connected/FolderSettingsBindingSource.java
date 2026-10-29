@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -44,10 +45,15 @@ public class FolderSettingsBindingSource implements BindingSource {
   }
 
   @Override
-  public Optional<ScopeBinding> bindingOf(WorkspaceFolderWrapper folder, Scope scope) {
+  public List<Scope> scopesOf(WorkspaceFolderWrapper folder) {
     if (!Utils.uriHasFileScheme(folder.getUri())) {
-      return Optional.empty();
+      return List.of();
     }
+    return List.of(new Scope(folder.getUri(), folderName(folder), ".", Origin.SETTINGS, this));
+  }
+
+  @Override
+  public Optional<ScopeBinding> bindingOf(WorkspaceFolderWrapper folder, Scope scope) {
     var settings = folder.getSettings();
     if (!settings.hasBinding()) {
       return Optional.empty();
@@ -69,5 +75,9 @@ public class FolderSettingsBindingSource implements BindingSource {
     var projectKey = requireNonNull(settings.getProjectKey());
     logOutput.debug(format("Resolved binding %s for folder %s", projectKey, folderRoot));
     return Optional.of(new ProjectBinding(connectionId, projectKey));
+  }
+
+  private static String folderName(WorkspaceFolderWrapper folder) {
+    return Optional.ofNullable(folder.getRootPath().getFileName()).map(Path::toString).orElse(folder.getUri().toString());
   }
 }
