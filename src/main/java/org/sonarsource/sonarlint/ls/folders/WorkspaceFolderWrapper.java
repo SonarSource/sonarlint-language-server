@@ -54,6 +54,10 @@ public class WorkspaceFolderWrapper {
     return uri;
   }
 
+  public WorkspaceFolder getLspFolder() {
+    return lspFolder;
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(uri);

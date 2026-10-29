@@ -39,6 +39,7 @@ import org.sonarsource.sonarlint.ls.domain.LSLanguage;
 import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.util.Utils;
@@ -52,13 +53,15 @@ public class ModuleEventsProcessor {
   private final BackendServiceFacade backendServiceFacade;
 
   private final WorkspaceFoldersManager workspaceFoldersManager;
+  private final ConfigurationScopeManager scopeManager;
   private final ExecutorService asyncExecutor;
 
   private final SettingsManager settingsManager;
 
-  public ModuleEventsProcessor(WorkspaceFoldersManager workspaceFoldersManager,
+  public ModuleEventsProcessor(WorkspaceFoldersManager workspaceFoldersManager, ConfigurationScopeManager scopeManager,
     FileTypeClassifier fileTypeClassifier, JavaConfigCache javaConfigCache, BackendServiceFacade backendServiceFacade, SettingsManager settingsManager) {
     this.workspaceFoldersManager = workspaceFoldersManager;
+    this.scopeManager = scopeManager;
     this.fileTypeClassifier = fileTypeClassifier;
     this.javaConfigCache = javaConfigCache;
     this.backendServiceFacade = backendServiceFacade;
@@ -110,11 +113,10 @@ public class ModuleEventsProcessor {
     workspaceFoldersManager.findFolderForFile(fileUri)
       .ifPresentOrElse(folder -> {
         var settings = folder.getSettings();
-        var baseDir = folder.getRootPath();
-        var relativePath = baseDir.relativize(fsPath);
-        var folderUri = folder.getUri().toString();
+        var configScopeId = scopeManager.resolveConfigScopeId(fileUri);
+        var relativePath = Paths.get(URI.create(configScopeId)).relativize(fsPath);
         var isTest = isTestFile(file, settings);
-        clientFileDto.set(new ClientFileDto(fileUri, relativePath, folderUri, isTest, StandardCharsets.UTF_8.name(), fsPath, file.getContent(), language, true));
+        clientFileDto.set(new ClientFileDto(fileUri, relativePath, configScopeId, isTest, StandardCharsets.UTF_8.name(), fsPath, file.getContent(), language, true));
       }, () -> {
         var isTest = isTestFile(file, settingsManager.getCurrentDefaultFolderSettings());
         clientFileDto.set(new ClientFileDto(fileUri, fsPath, ROOT_CONFIGURATION_SCOPE, isTest, StandardCharsets.UTF_8.name(), fsPath, file.getContent(), language, true));
