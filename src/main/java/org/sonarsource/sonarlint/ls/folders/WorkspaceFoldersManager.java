@@ -20,34 +20,31 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
-import org.sonarsource.sonarlint.ls.util.Utils;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 import static java.lang.String.format;
 import static java.net.URI.create;
+import static org.sonarsource.sonarlint.ls.util.URIUtils.isAncestor;
 
 public class WorkspaceFoldersManager {
   private final Map<URI, WorkspaceFolderWrapper> folders = new ConcurrentHashMap<>();
   private final Map<String, Boolean> analysisReadiness = new ConcurrentHashMap<>();
-  private final List<WorkspaceFolderLifecycleListener> listeners = new ArrayList<>();
+  private final List<WorkspaceFolderLifecycleListener> listeners = new CopyOnWriteArrayList<>();
   private final LanguageClientLogger logOutput;
-
   private ConfigurationScopeManager scopeManager;
 
   public WorkspaceFoldersManager(LanguageClientLogger logOutput) {
@@ -61,10 +58,7 @@ public class WorkspaceFoldersManager {
 
   public void initialize(@Nullable List<WorkspaceFolder> workspaceFolders) {
     if (workspaceFolders != null) {
-      workspaceFolders.forEach(wf -> {
-        var uri = create(wf.getUri());
-        addFolder(wf, uri);
-      });
+      workspaceFolders.forEach(wf -> addFolder(wf, create(wf.getUri())));
     }
   }
 
@@ -104,21 +98,6 @@ public class WorkspaceFoldersManager {
     return addedWrapper;
   }
 
-  /**
-   * The configuration scope a file belongs to: its workspace folder, or {@link BackendService#ROOT_CONFIGURATION_SCOPE}
-   * for a file outside every workspace folder.
-   */
-  public String resolveConfigScopeId(URI fileUri) {
-    return findConfigScopeId(fileUri).orElse(BackendService.ROOT_CONFIGURATION_SCOPE);
-  }
-
-  /**
-   * The configuration scope of a file inside a workspace folder, empty for a file outside every folder.
-   */
-  public Optional<String> findConfigScopeId(URI fileUri) {
-    return findFolderForFile(fileUri).map(scopeManager::scopeIdOf);
-  }
-
   public Optional<WorkspaceFolderWrapper> findFolderForFile(URI uri) {
     var folderUriCandidates = folders.keySet().stream()
       .filter(wfRoot -> isAncestor(wfRoot, uri))
@@ -134,31 +113,20 @@ public class WorkspaceFoldersManager {
     return Optional.of(folders.get(folderUriCandidates.get(0)));
   }
 
-  public Optional<WorkspaceFolderWrapper> getFolder(URI folderUri) {
-    return Optional.ofNullable(folders.get(folderUri));
+  /**
+   * Resolve the effective configuration scope id for a file: the deepest declared sub-project scope containing it when
+   * its workspace folder has one, otherwise the workspace folder's own scope id, otherwise
+   * {@link BackendService#ROOT_CONFIGURATION_SCOPE}.
+   */
+  public String resolveConfigScopeId(URI fileUri) {
+    return findConfigScopeId(fileUri).orElse(BackendService.ROOT_CONFIGURATION_SCOPE);
   }
 
-  // Visible for testing
-  static boolean isAncestor(URI folderUri, URI fileUri) {
-    if (folderUri.isOpaque() || fileUri.isOpaque()) {
-      throw new IllegalArgumentException("Only hierarchical URIs are supported");
-    }
-    if (!folderUri.getScheme().equalsIgnoreCase(fileUri.getScheme())) {
-      return false;
-    }
-    if (!Objects.equals(folderUri.getHost(), fileUri.getHost())) {
-      return false;
-    }
-    if (folderUri.getPort() != fileUri.getPort()) {
-      return false;
-    }
-    if (Utils.uriHasFileScheme(folderUri)) {
-      return Paths.get(fileUri).startsWith(Paths.get(folderUri));
-    }
-    // Assume "/" is the separator of "folders"
-    var fileSegments = fileUri.getPath().split("/");
-    var folderSegments = folderUri.getPath().split("/");
-    return folderSegments.length <= fileSegments.length && Arrays.equals(folderSegments, Arrays.copyOfRange(fileSegments, 0, folderSegments.length));
+  /**
+   * The configuration scope of a file inside a workspace folder, empty for a file outside every folder.
+   */
+  public Optional<String> findConfigScopeId(URI fileUri) {
+    return findFolderForFile(fileUri).map(folder -> scopeManager.scopeIdOf(folder, fileUri));
   }
 
   public Collection<WorkspaceFolderWrapper> getAll() {
@@ -172,7 +140,6 @@ public class WorkspaceFoldersManager {
   public void removeListener(WorkspaceFolderLifecycleListener listener) {
     listeners.remove(listener);
   }
-
 
   public void updateAnalysisReadiness(Set<String> configurationScopeIds, boolean areReadyForAnalysis) {
     configurationScopeIds.forEach(s -> logOutput.debug(format("Analysis readiness changed for config scope `%s` to %b", s, areReadyForAnalysis)));
