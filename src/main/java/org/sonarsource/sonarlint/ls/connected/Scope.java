@@ -21,5 +21,5 @@ package org.sonarsource.sonarlint.ls.connected;
 
 import java.net.URI;
 
-public record Scope(URI uri, String name, String relativePath, Origin origin) {
+public record Scope(URI uri, String name, String relativePath, Origin origin, BindingSource owner) {
 }

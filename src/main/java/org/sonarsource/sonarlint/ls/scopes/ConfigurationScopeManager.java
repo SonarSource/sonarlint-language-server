@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.scopes;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -191,7 +192,7 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
     state.scopes.set(desired);
     state.firstDeclaration.complete(null);
     try {
-      declare(declared, desired);
+      declare(folder, declared, desired);
     } catch (RuntimeException e) {
       state.scopes.set(declared);
       throw e;
@@ -204,8 +205,19 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
   }
 
   private List<ConfiguredScope> desiredScopes(WorkspaceFolderWrapper folder) {
-    var scope = new Scope(folder.getUri(), folder.getLspFolder().getName(), ".", Origin.SETTINGS);
-    return List.of(new ConfiguredScope(scope.uri(), scope.name(), scope.relativePath(), scope.origin(), resolveBinding(folder, scope)));
+    var folderUri = folder.getUri();
+    var folderName = folder.getLspFolder().getName();
+    var declared = sources.scopesOf(folder);
+    var scopes = new ArrayList<ConfiguredScope>();
+    var ownScope = declared.stream().filter(scope -> scope.uri().equals(folderUri)).findFirst();
+    scopes.add(ownScope
+      .map(scope -> new ConfiguredScope(folderUri, folderName, scope.relativePath(), scope.origin(), resolveBinding(folder, scope)))
+      .orElseGet(() -> new ConfiguredScope(folderUri, folderName, ".", declared.isEmpty() ? Origin.SETTINGS : declared.get(0).origin(), null)));
+    declared.stream()
+      .filter(scope -> !scope.uri().equals(folderUri))
+      .map(scope -> new ConfiguredScope(scope.uri(), scope.name(), scope.relativePath(), scope.origin(), resolveBinding(folder, scope)))
+      .forEach(scopes::add);
+    return List.copyOf(scopes);
   }
 
   private ProjectBinding resolveBinding(WorkspaceFolderWrapper folder, Scope scope) {
@@ -218,7 +230,7 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
     }).orElse(null);
   }
 
-  private void declare(List<ConfiguredScope> declared, List<ConfiguredScope> desired) {
+  private void declare(WorkspaceFolderWrapper folder, List<ConfiguredScope> declared, List<ConfiguredScope> desired) {
     var backendService = backendServiceFacade.getBackendService();
     var declaredByUri = byUri(declared);
     var desiredByUri = byUri(desired);
@@ -227,7 +239,7 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
       .forEach(scope -> backendService.removeConfigurationScope(scope.uri().toString()));
     desired.stream()
       .filter(scope -> !declaredByUri.containsKey(scope.uri()))
-      .forEach(scope -> backendService.addConfigurationScope(scope.uri().toString(), BackendService.ROOT_CONFIGURATION_SCOPE, scope.name(), scope.binding()));
+      .forEach(scope -> backendService.addConfigurationScope(scope.uri().toString(), parentIdOf(folder, scope), scope.name(), scope.binding()));
     desired.stream()
       .filter(scope -> declaredByUri.containsKey(scope.uri()) && !Objects.equals(declaredByUri.get(scope.uri()).binding(), scope.binding()))
       .forEach(this::rebind);
@@ -245,7 +257,7 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
   }
 
   private void close(FolderScopes state) {
-    declare(state.scopes.getAndSet(List.of()), List.of());
+    declare(state.folder, state.scopes.getAndSet(List.of()), List.of());
     listeners.forEach(ConfigurationScopeListener::scopesChanged);
   }
 
@@ -258,6 +270,10 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
     } catch (ExecutionException | TimeoutException e) {
       logOutput.errorWithStackTrace(format("The configuration scopes of folder %s were not declared in time", state.folder.getUri()), e);
     }
+  }
+
+  private static String parentIdOf(WorkspaceFolderWrapper folder, ConfiguredScope scope) {
+    return scope.uri().equals(folder.getUri()) ? BackendService.ROOT_CONFIGURATION_SCOPE : folderScopeId(folder);
   }
 
   private static String folderScopeId(WorkspaceFolderWrapper folder) {

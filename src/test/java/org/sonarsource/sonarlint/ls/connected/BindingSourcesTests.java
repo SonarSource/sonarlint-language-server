@@ -36,34 +36,52 @@ import static org.mockito.Mockito.when;
 class BindingSourcesTests {
 
   private static final URI REPO = URI.create("file:///repo/");
+  private static final URI MODULE_A = URI.create("file:///repo/moduleA/");
   private static final WorkspaceFolderWrapper FOLDER = new WorkspaceFolderWrapper(REPO, new WorkspaceFolder(REPO.toString(), "repo"), mock(LanguageClientLogger.class));
-  private static final Scope SCOPE = new Scope(REPO, "repo", ".", Origin.SETTINGS);
 
   private final BindingSource first = mock(BindingSource.class);
   private final BindingSource second = mock(BindingSource.class);
   private final BindingSources underTest = new BindingSources(List.of(first, second));
 
   @Test
-  void bindingOf_is_the_binding_of_the_first_source_that_has_one() {
-    var firstBinding = ScopeBinding.of("first", "connection", "target");
-    when(first.bindingOf(FOLDER, SCOPE)).thenReturn(Optional.of(firstBinding));
-    when(second.bindingOf(FOLDER, SCOPE)).thenReturn(Optional.of(ScopeBinding.of("second", "connection", "target")));
+  void scopesOf_is_what_the_first_source_that_defines_scopes_says() {
+    var firstScopes = List.of(new Scope(MODULE_A, "module-a", "moduleA", Origin.SONAR_CONFIG, first));
+    when(first.scopesOf(FOLDER)).thenReturn(firstScopes);
+    when(second.scopesOf(FOLDER)).thenReturn(List.of(new Scope(REPO, "repo", ".", Origin.SONAR_CONFIG, second)));
 
-    assertThat(underTest.bindingOf(FOLDER, SCOPE)).contains(firstBinding);
-    verify(second, never()).bindingOf(FOLDER, SCOPE);
+    assertThat(underTest.scopesOf(FOLDER)).isEqualTo(firstScopes);
+    verify(second, never()).scopesOf(FOLDER);
   }
 
   @Test
-  void bindingOf_falls_through_to_the_next_source_when_the_first_has_none() {
-    var secondBinding = ScopeBinding.of("second", "connection", "target");
-    when(first.bindingOf(FOLDER, SCOPE)).thenReturn(Optional.empty());
-    when(second.bindingOf(FOLDER, SCOPE)).thenReturn(Optional.of(secondBinding));
+  void scopesOf_falls_through_to_the_next_source_when_the_first_defines_none() {
+    var secondScopes = List.of(new Scope(REPO, "repo", ".", Origin.SONAR_CONFIG, second));
+    when(first.scopesOf(FOLDER)).thenReturn(List.of());
+    when(second.scopesOf(FOLDER)).thenReturn(secondScopes);
 
-    assertThat(underTest.bindingOf(FOLDER, SCOPE)).contains(secondBinding);
+    assertThat(underTest.scopesOf(FOLDER)).isEqualTo(secondScopes);
   }
 
   @Test
-  void bindingOf_is_empty_when_no_source_has_a_binding() {
-    assertThat(underTest.bindingOf(FOLDER, SCOPE)).isEmpty();
+  void scopesOf_is_empty_when_no_source_defines_scopes() {
+    assertThat(underTest.scopesOf(FOLDER)).isEmpty();
+  }
+
+  @Test
+  void bindingOf_is_the_binding_given_by_the_source_that_owns_the_scope() {
+    var scope = new Scope(MODULE_A, "module-a", "moduleA", Origin.SONAR_CONFIG, second);
+    var binding = ScopeBinding.of("module-a", "connection", "target");
+    when(second.bindingOf(FOLDER, scope)).thenReturn(Optional.of(binding));
+
+    assertThat(underTest.bindingOf(FOLDER, scope)).contains(binding);
+    verify(first, never()).bindingOf(FOLDER, scope);
+  }
+
+  @Test
+  void bindingOf_is_empty_when_the_owner_says_the_scope_is_unbound() {
+    var scope = new Scope(REPO, "repo", ".", Origin.SONAR_CONFIG, first);
+    when(first.bindingOf(FOLDER, scope)).thenReturn(Optional.empty());
+
+    assertThat(underTest.bindingOf(FOLDER, scope)).isEmpty();
   }
 }
