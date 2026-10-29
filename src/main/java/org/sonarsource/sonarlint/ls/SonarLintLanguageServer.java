@@ -132,6 +132,9 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient.ConnectionCh
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient;
 import org.sonarsource.sonarlint.ls.connected.DependencyRisksCache;
+import org.sonarsource.sonarlint.ls.connected.BindingSources;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
+import org.sonarsource.sonarlint.ls.connected.FolderSettingsBindingSource;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
 import org.sonarsource.sonarlint.ls.connected.api.HostInfoProvider;
@@ -148,7 +151,6 @@ import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
-import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
@@ -255,10 +257,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var fileTypeClassifier = new FileTypeClassifier(lsLogOutput);
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
     this.settingsManager.addListener(lsLogOutput);
-    this.configurationScopeManager = new ConfigurationScopeManager(backendServiceFacade, lsLogOutput);
+    var folderSettingsSource = new FolderSettingsBindingSource(settingsManager, lsLogOutput);
+    var bindingSources = new BindingSources(List.of(folderSettingsSource));
+    this.configurationScopeManager = new ConfigurationScopeManager(bindingSources, backendServiceFacade, lsLogOutput);
     this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager,
-      client, lsLogOutput, backendServiceFacade, openNotebooksCache, configurationScopeManager);
-    this.configurationScopeManager.setBindingResolver(bindingManager::getBinding);
+      client, lsLogOutput, backendServiceFacade, openNotebooksCache, configurationScopeManager, folderSettingsSource);
+    // todo should this look like that?
+    this.workspaceFoldersManager.setConfigurationScopeManager(configurationScopeManager);
     vsCodeClient.setBindingManager(bindingManager);
     this.telemetry = new SonarLintTelemetry(backendServiceFacade, lsLogOutput);
     this.backendServiceFacade.setTelemetry(telemetry);
@@ -284,7 +289,6 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.branchManager = new WorkspaceFolderBranchManager(backendServiceFacade, lsLogOutput);
     vsCodeClient.setBranchManager(branchManager);
     this.workspaceFoldersManager.addListener(this.branchManager);
-    this.workspaceFoldersManager.setConfigurationScopeManager(configurationScopeManager);
     var cleanAsYouCodeManager = new CleanAsYouCodeManager(diagnosticPublisher, openFilesCache, backendServiceFacade);
     this.settingsManager.addListener(cleanAsYouCodeManager);
     this.shutdownLatch = new CountDownLatch(1);
@@ -466,7 +470,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         var file = openFilesCache.didOpen(uri, params.getTextDocument().getLanguageId(), params.getTextDocument().getText(), params.getTextDocument().getVersion());
         CompletableFutures.computeAsync(cancelChecker -> {
           moduleEventsProcessor.notifyBackendWithFileLanguageAndContent(file);
-          backendServiceFacade.getBackendService().didOpenFile(workspaceFoldersManager.resolveConfigScopeId(uri), uri);
+          var configScopeId = workspaceFoldersManager.resolveConfigScopeId(uri);
+          backendServiceFacade.getBackendService().didOpenFile(configScopeId, uri);
           return null;
         });
       } else {
@@ -499,7 +504,8 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     issuesCache.clear(uri);
     securityHotspotsCache.clear(uri);
     diagnosticPublisher.publishDiagnostics(uri, false);
-    backendServiceFacade.getBackendService().didCloseFile(workspaceFoldersManager.resolveConfigScopeId(uri), uri);
+    var configScopeId = workspaceFoldersManager.resolveConfigScopeId(uri);
+    backendServiceFacade.getBackendService().didCloseFile(configScopeId, uri);
   }
 
   @Override
@@ -784,17 +790,17 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
         client.showMessage(new MessageParams(MessageType.Error, message));
         return null;
       }
-      var workspaceFolderUri = folderForFileOptional.get().getUri();
-      var branchNameOptional = bindingManager.resolveBranchNameForFolder(workspaceFolderUri);
+      var configScopeUri = URI.create(workspaceFoldersManager.resolveConfigScopeId(fileUri));
+      var branchNameOptional = bindingManager.resolveBranchNameForFolder(configScopeUri);
       if (branchNameOptional.isEmpty()) {
         var message = "Can't find branch for workspace folder "
-          + workspaceFolderUri.getPath() + " during attempt to open hotspot in browser.";
+          + configScopeUri.getPath() + " during attempt to open hotspot in browser.";
         lsLogOutput.error(message);
         client.showMessage(new MessageParams(MessageType.Error, message));
         return null;
       }
       var raisedHotspotDto = requireNonNull(securityHotspotsCache.get(fileUri).get(hotspotId));
-      var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(workspaceFolderUri.toString(), requireNonNull(raisedHotspotDto.getServerIssueKey()));
+      var openHotspotInBrowserParams = new OpenHotspotInBrowserParams(configScopeUri.toString(), requireNonNull(raisedHotspotDto.getServerIssueKey()));
       backendServiceFacade.getBackendService().openHotspotInBrowser(openHotspotInBrowserParams);
       return null;
     });
@@ -993,12 +999,12 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public CompletableFuture<Void> changeHotspotStatus(ChangeHotspotStatusParams params) {
-    var workspace = workspaceFoldersManager.findFolderForFile(create(params.getFileUri()))
+    workspaceFoldersManager.findFolderForFile(create(params.getFileUri()))
       .orElseThrow(() -> new IllegalStateException("No workspace found"));
-    var workspaceUri = workspace.getUri();
+    var configScopeId = workspaceFoldersManager.resolveConfigScopeId(create(params.getFileUri()));
     var hotspotStatus = hotspotStatusOfTitle(params.getNewStatus());
     var coreParams = new org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.ChangeHotspotStatusParams(
-      workspaceUri.toString(), params.getHotspotKey(), hotspotStatus);
+      configScopeId, params.getHotspotKey(), hotspotStatus);
     return backendServiceFacade.getBackendService().changeHotspotStatus(coreParams).thenAccept(nothing -> {
       var key = params.getHotspotKey();
       if (hotspotStatus != HotspotStatus.TO_REVIEW && hotspotStatus != HotspotStatus.ACKNOWLEDGED) {
