@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.scopes;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -28,6 +29,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -66,6 +68,7 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
   private final LanguageClientLogger logOutput;
   private final ExecutorService executor;
   private final Map<URI, FolderScopes> folders = new ConcurrentHashMap<>();
+  private final List<ConfigurationScopeListener> listeners = new CopyOnWriteArrayList<>();
 
   public ConfigurationScopeManager(WorkspaceFoldersManager foldersManager, BindingSources sources, BackendServiceFacade backendServiceFacade,
     LanguageClientLogger logOutput) {
@@ -81,6 +84,10 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
     this.logOutput = logOutput;
   }
 
+  public void addListener(ConfigurationScopeListener listener) {
+    listeners.add(listener);
+  }
+
   @Override
   public void initialized(Collection<WorkspaceFolderWrapper> initial) {
     initial.forEach(this::added);
@@ -88,7 +95,7 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
 
   @Override
   public void added(WorkspaceFolderWrapper added) {
-    folders.put(added.getUri(), new FolderScopes(added));
+    folders.computeIfAbsent(added.getUri(), uri -> new FolderScopes(added));
     update(added);
   }
 
@@ -107,20 +114,29 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
    * @return whether the scopes or their bindings changed
    */
   public CompletableFuture<Boolean> update(WorkspaceFolderWrapper folder) {
+    return updateScopes(folder).thenApply(changes -> !changes.isEmpty());
+  }
+
+  /**
+   * @return what the update did to each scope that differs
+   */
+  public CompletableFuture<List<ScopeChange>> updateAll() {
+    var updates = folders.values().stream().map(state -> updateScopes(state.folder)).toList();
+    return CompletableFuture.allOf(updates.toArray(new CompletableFuture[0]))
+      .thenApply(done -> updates.stream().flatMap(update -> update.join().stream()).toList());
+  }
+
+  private CompletableFuture<List<ScopeChange>> updateScopes(WorkspaceFolderWrapper folder) {
     var state = folders.get(folder.getUri());
     if (state == null) {
-      return CompletableFuture.completedFuture(false);
+      return CompletableFuture.completedFuture(List.of());
     }
     return CompletableFuture.supplyAsync(() -> apply(state), executor)
       .exceptionally(t -> {
         logOutput.errorWithStackTrace(format("Failed to update the configuration scopes of folder %s", folder.getUri()), t);
         state.firstDeclaration.complete(null);
-        return false;
+        return List.of();
       });
-  }
-
-  public CompletableFuture<Void> updateAll() {
-    return CompletableFuture.allOf(folders.values().stream().map(state -> update(state.folder)).toArray(CompletableFuture[]::new));
   }
 
   /**
@@ -154,6 +170,14 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
       .map(ConfigurationScope::binding);
   }
 
+  public Optional<ProjectBinding> bindingOfScope(String configScopeId) {
+    return folders.values().stream()
+      .flatMap(state -> state.scopes.get().stream())
+      .filter(scope -> scope.uri().toString().equals(configScopeId))
+      .findFirst()
+      .map(ConfigurationScope::binding);
+  }
+
   public List<ConfigurationScope> boundScopes() {
     return folders.values().stream()
       .flatMap(state -> state.scopes.get().stream())
@@ -173,38 +197,60 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
     return folders.get(state.folder.getUri()) != state;
   }
 
-  private boolean apply(FolderScopes state) {
+  private List<ScopeChange> apply(FolderScopes state) {
     var folder = state.folder;
     if (isSuperseded(state)) {
       state.firstDeclaration.complete(null);
-      return false;
+      return List.of();
     }
     var declared = state.scopes.get();
     var desired = sources.scopesOf(folder);
     state.scopes.set(desired);
     state.firstDeclaration.complete(null);
+    List<ScopeChange> changes;
     try {
-      declare(declared, desired);
+      changes = declare(declared, desired);
     } catch (RuntimeException e) {
       state.scopes.set(declared);
+      if (!declared.equals(desired)) {
+        notifyScopesChanged(List.of());
+      }
       throw e;
     }
-    return !declared.equals(desired);
+    if (!changes.isEmpty()) {
+      notifyScopesChanged(changes);
+    }
+    return changes;
   }
 
-  private void declare(List<ConfigurationScope> declared, List<ConfigurationScope> desired) {
+  private void notifyScopesChanged(List<ScopeChange> changes) {
+    listeners.forEach(listener -> listener.scopesChanged(changes));
+  }
+
+  private List<ScopeChange> declare(List<ConfigurationScope> declared, List<ConfigurationScope> desired) {
     var backendService = backendServiceFacade.getBackendService();
     var declaredByUri = byUri(declared);
     var desiredByUri = byUri(desired);
+    var changes = new ArrayList<ScopeChange>();
     declared.stream()
       .filter(scope -> !desiredByUri.containsKey(scope.uri()))
-      .forEach(scope -> backendService.removeConfigurationScope(scope.uri().toString()));
+      .forEach(scope -> {
+        backendService.removeConfigurationScope(scope.uri().toString());
+        changes.add(new ScopeChange(scope, null));
+      });
     desired.stream()
       .filter(scope -> !declaredByUri.containsKey(scope.uri()))
-      .forEach(scope -> backendService.addConfigurationScope(scope.uri().toString(), BackendService.ROOT_CONFIGURATION_SCOPE, scope.name(), scope.binding()));
+      .forEach(scope -> {
+        backendService.addConfigurationScope(scope.uri().toString(), BackendService.ROOT_CONFIGURATION_SCOPE, scope.name(), scope.binding());
+        changes.add(new ScopeChange(null, scope));
+      });
     desired.stream()
       .filter(scope -> declaredByUri.containsKey(scope.uri()) && !Objects.equals(declaredByUri.get(scope.uri()).binding(), scope.binding()))
-      .forEach(this::rebind);
+      .forEach(scope -> {
+        rebind(scope);
+        changes.add(new ScopeChange(declaredByUri.get(scope.uri()), scope));
+      });
+    return changes;
   }
 
   private void rebind(ConfigurationScope scope) {
@@ -219,7 +265,15 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
   }
 
   private void close(FolderScopes state) {
-    declare(state.scopes.getAndSet(List.of()), List.of());
+    var previous = state.scopes.getAndSet(List.of());
+    var changes = List.<ScopeChange>of();
+    try {
+      changes = declare(previous, List.of());
+    } finally {
+      if (!previous.isEmpty()) {
+        notifyScopesChanged(changes);
+      }
+    }
   }
 
   private void awaitFirstDeclaration(FolderScopes state) {
