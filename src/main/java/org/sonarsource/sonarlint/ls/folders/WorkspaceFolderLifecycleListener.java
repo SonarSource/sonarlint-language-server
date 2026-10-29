@@ -21,4 +21,10 @@ package org.sonarsource.sonarlint.ls.folders;
 
 public interface WorkspaceFolderLifecycleListener {
   void added(WorkspaceFolderWrapper added);
+
+  /**
+   * The folder's scopes, including those below it, have been declared in the backend.
+   */
+  default void scopesDeclared(WorkspaceFolderWrapper folder) {
+  }
 }
