@@ -194,11 +194,11 @@ public class BackendService {
       .toList();
   }
 
-  private static BindingConfigurationDto toBindingConfigurationDto(@Nullable ProjectBinding binding) {
+  private static BindingConfigurationDto toBindingConfigurationDto(@Nullable ProjectBinding binding, boolean bindingSuggestionDisabled) {
     if (binding != null) {
       return new BindingConfigurationDto(binding.connectionId(), binding.projectKey(), true);
     }
-    return new BindingConfigurationDto(null, null, false);
+    return new BindingConfigurationDto(null, null, bindingSuggestionDisabled);
   }
 
   public void removeConfigurationScope(String configScopeId) {
@@ -207,19 +207,20 @@ public class BackendService {
   }
 
   public void bind(String configScopeId, ProjectBinding binding) {
-    updateBinding(new DidUpdateBindingParams(configScopeId, toBindingConfigurationDto(binding)));
+    updateBinding(new DidUpdateBindingParams(configScopeId, toBindingConfigurationDto(binding, true)));
   }
 
-  public void unbind(String configScopeId) {
-    updateBinding(new DidUpdateBindingParams(configScopeId, toBindingConfigurationDto(null)));
+  public void unbind(String configScopeId, boolean bindingSuggestionDisabled) {
+    updateBinding(new DidUpdateBindingParams(configScopeId, toBindingConfigurationDto(null, bindingSuggestionDisabled)));
   }
 
   private void updateBinding(DidUpdateBindingParams params) {
     backend.getConfigurationService().didUpdateBinding(params);
   }
 
-  public void addConfigurationScope(String configScopeId, String parentScopeId, String name, @Nullable ProjectBinding binding) {
-    var scope = new ConfigurationScopeDto(configScopeId, parentScopeId, true, name, toBindingConfigurationDto(binding));
+  public void addConfigurationScope(String configScopeId, String parentScopeId, String name, @Nullable ProjectBinding binding,
+    boolean bindingSuggestionDisabled) {
+    var scope = new ConfigurationScopeDto(configScopeId, parentScopeId, true, name, toBindingConfigurationDto(binding, bindingSuggestionDisabled));
     addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(scope)));
   }
 
