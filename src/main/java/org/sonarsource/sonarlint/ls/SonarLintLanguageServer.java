@@ -144,6 +144,8 @@ import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.ModuleEventsProcessor;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
@@ -285,6 +287,23 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.branchManager = new WorkspaceFolderBranchManager(backendServiceFacade, lsLogOutput);
     vsCodeClient.setBranchManager(branchManager);
     this.workspaceFoldersManager.addListener(this.branchManager);
+    // todo should this look like that?
+    this.workspaceFoldersManager.addListener(new WorkspaceFolderLifecycleListener() {
+      @Override
+      public void added(WorkspaceFolderWrapper added) {
+        // nothing to tell the client yet: the folder has no declared scopes
+      }
+
+      @Override
+      public void removed(WorkspaceFolderWrapper removed) {
+        client.bindingsChanged();
+      }
+
+      @Override
+      public void scopesDeclared(WorkspaceFolderWrapper folder) {
+        client.bindingsChanged();
+      }
+    });
     var cleanAsYouCodeManager = new CleanAsYouCodeManager(diagnosticPublisher, openFilesCache, backendServiceFacade);
     this.settingsManager.addListener(cleanAsYouCodeManager);
     this.shutdownLatch = new CountDownLatch(1);
@@ -759,6 +778,13 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       bindingManager.validateConnection(onTokenUpdateNotificationParams.getConnectionId());
       return null;
     });
+  }
+
+  @Override
+  public CompletableFuture<List<BindingInfo>> getBindings() {
+    return CompletableFutures.computeAsync(cancelToken -> bindingManager.getBindings().stream()
+      .map(scope -> new BindingInfo(scope.scopeUri().toString(), scope.name(), scope.relativePath(), scope.projectKey(), scope.connectionId(), scope.origin().name()))
+      .toList());
   }
 
   @Override
