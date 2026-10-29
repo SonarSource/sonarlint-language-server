@@ -50,6 +50,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
+import org.sonarsource.sonarlint.ls.scopes.ConfiguredScope;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.settings.EndpointParams;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
@@ -123,6 +124,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return true;
   }
 
+  public List<ConfiguredScope> getBindings() {
+    return scopeManager.boundScopes();
+  }
 
   @CheckForNull
   public EndpointParams getEndpointParamsFor(@Nullable String connectionId) {

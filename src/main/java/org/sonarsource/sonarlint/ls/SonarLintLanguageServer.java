@@ -259,7 +259,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.settingsManager.addListener(lsLogOutput);
     var folderSettingsSource = new FolderSettingsBindingSource(settingsManager, lsLogOutput);
     var bindingSources = new BindingSources(List.of(folderSettingsSource));
-    this.configurationScopeManager = new ConfigurationScopeManager(bindingSources, backendServiceFacade, lsLogOutput);
+    this.configurationScopeManager = new ConfigurationScopeManager(bindingSources, backendServiceFacade, client, lsLogOutput);
     this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager,
       client, lsLogOutput, backendServiceFacade, openNotebooksCache, configurationScopeManager, folderSettingsSource);
     // todo should this look like that?
@@ -763,6 +763,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       bindingManager.validateConnection(onTokenUpdateNotificationParams.getConnectionId());
       return null;
     });
+  }
+
+  @Override
+  public CompletableFuture<List<BindingInfo>> getBindings() {
+    return CompletableFutures.computeAsync(cancelToken -> bindingManager.getBindings().stream()
+      .map(scope -> new BindingInfo(scope.uri().toString(), scope.name(), scope.relativePath(), scope.binding().projectKey(),
+        scope.binding().connectionId(), scope.origin().name()))
+      .toList());
   }
 
   @Override

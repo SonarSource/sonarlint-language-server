@@ -39,6 +39,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.lsp4j.WorkspaceFolder;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.BindingSources;
 import org.sonarsource.sonarlint.ls.connected.Origin;
@@ -61,20 +62,22 @@ public class ConfigurationScopeManager {
 
   private final BindingSources sources;
   private final BackendServiceFacade backendServiceFacade;
+  private final SonarLintExtendedLanguageClient client;
   private final LanguageClientLogger logOutput;
   private final ExecutorService executor;
   private final Map<URI, FolderScopes> folders = new ConcurrentHashMap<>();
 
-  public ConfigurationScopeManager(BindingSources sources, BackendServiceFacade backendServiceFacade,
+  public ConfigurationScopeManager(BindingSources sources, BackendServiceFacade backendServiceFacade, SonarLintExtendedLanguageClient client,
     LanguageClientLogger logOutput) {
-    this(Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint configuration scopes", false)), sources, backendServiceFacade, logOutput);
+    this(Executors.newSingleThreadExecutor(Utils.threadFactory("SonarLint configuration scopes", false)), sources, backendServiceFacade, client, logOutput);
   }
 
   public ConfigurationScopeManager(ExecutorService executor, BindingSources sources, BackendServiceFacade backendServiceFacade,
-    LanguageClientLogger logOutput) {
+    SonarLintExtendedLanguageClient client, LanguageClientLogger logOutput) {
     this.executor = executor;
     this.sources = sources;
     this.backendServiceFacade = backendServiceFacade;
+    this.client = client;
     this.logOutput = logOutput;
   }
 
@@ -165,7 +168,11 @@ public class ConfigurationScopeManager {
       state.scopes = declared;
       throw e;
     }
-    return !declared.equals(desired);
+    var changed = !declared.equals(desired);
+    if (changed) {
+      client.bindingsChanged();
+    }
+    return changed;
   }
 
   private List<ConfiguredScope> desiredScopes(WorkspaceFolderWrapper folder) {
@@ -232,6 +239,7 @@ public class ConfigurationScopeManager {
     var backendService = backendServiceFacade.getBackendService();
     state.scopes.forEach(scope -> backendService.removeWorkspaceFolder(scope.uri().toString()));
     state.scopes = List.of();
+    client.bindingsChanged();
   }
 
   private void awaitFirstDeclaration(FolderScopes state) {
