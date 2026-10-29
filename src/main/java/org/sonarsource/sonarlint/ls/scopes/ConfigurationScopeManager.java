@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -64,6 +65,7 @@ public class ConfigurationScopeManager {
   private final LanguageClientLogger logOutput;
   private final ExecutorService executor;
   private final Map<URI, FolderScopes> folders = new ConcurrentHashMap<>();
+  private final List<ConfigurationScopeListener> listeners = new CopyOnWriteArrayList<>();
 
   public ConfigurationScopeManager(BindingSources sources, BackendServiceFacade backendServiceFacade,
     LanguageClientLogger logOutput) {
@@ -76,6 +78,10 @@ public class ConfigurationScopeManager {
     this.sources = sources;
     this.backendServiceFacade = backendServiceFacade;
     this.logOutput = logOutput;
+  }
+
+  public void addListener(ConfigurationScopeListener listener) {
+    listeners.add(listener);
   }
 
   public void foldersAdded(Collection<WorkspaceFolderWrapper> added) {
@@ -165,7 +171,11 @@ public class ConfigurationScopeManager {
       state.scopes = declared;
       throw e;
     }
-    return !declared.equals(desired);
+    var changed = !declared.equals(desired);
+    if (changed) {
+      listeners.forEach(ConfigurationScopeListener::scopesChanged);
+    }
+    return changed;
   }
 
   private List<ConfiguredScope> desiredScopes(WorkspaceFolderWrapper folder) {
@@ -232,6 +242,7 @@ public class ConfigurationScopeManager {
     var backendService = backendServiceFacade.getBackendService();
     state.scopes.forEach(scope -> backendService.removeWorkspaceFolder(scope.uri().toString()));
     state.scopes = List.of();
+    listeners.forEach(ConfigurationScopeListener::scopesChanged);
   }
 
   private void awaitFirstDeclaration(FolderScopes state) {
