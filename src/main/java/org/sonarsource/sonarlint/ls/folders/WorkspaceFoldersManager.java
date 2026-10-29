@@ -20,97 +20,70 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.function.Function;
+import java.util.concurrent.CopyOnWriteArrayList;
 import javax.annotation.Nullable;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
-import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
-import org.sonarsource.sonarlint.ls.util.CatchingRunnable;
-import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
 import static java.net.URI.create;
+import static org.sonarsource.sonarlint.ls.util.URIUtils.isAncestor;
 
 public class WorkspaceFoldersManager {
   private final Map<URI, WorkspaceFolderWrapper> folders = new ConcurrentHashMap<>();
   private final Map<String, Boolean> analysisReadiness = new ConcurrentHashMap<>();
-  private final List<WorkspaceFolderLifecycleListener> listeners = new ArrayList<>();
-  private ProjectBindingManager bindingManager;
-  private final BackendServiceFacade backendServiceFacade;
+  private final List<WorkspaceFolderLifecycleListener> listeners = new CopyOnWriteArrayList<>();
   private final LanguageClientLogger logOutput;
-  private final ExecutorService executor;
-  private final List<WorkspaceFolder> workspaceFolders = new ArrayList<>();
+  private ConfigurationScopeManager scopeManager;
 
-  public WorkspaceFoldersManager(BackendServiceFacade backendServiceFacade, LanguageClientLogger logOutput) {
-    this(Executors.newCachedThreadPool(Utils.threadFactory("SonarLint folders manager", false)), backendServiceFacade, logOutput);
-  }
-
-  WorkspaceFoldersManager(ExecutorService executor, BackendServiceFacade backendServiceFacade, LanguageClientLogger logOutput) {
-    this.executor = executor;
-    this.backendServiceFacade = backendServiceFacade;
+  public WorkspaceFoldersManager(LanguageClientLogger logOutput) {
     this.logOutput = logOutput;
   }
 
-  public void setBindingManager(ProjectBindingManager bindingManager) {
-    this.bindingManager = bindingManager;
+  // Can't use constructor injection because of cyclic dependency
+  public void setConfigurationScopeManager(ConfigurationScopeManager scopeManager) {
+    this.scopeManager = scopeManager;
   }
 
   public void initialize(@Nullable List<WorkspaceFolder> workspaceFolders) {
     if (workspaceFolders != null) {
-      workspaceFolders.forEach(wf -> {
-        var uri = create(wf.getUri());
-        addFolder(wf, uri);
-      });
+      workspaceFolders.forEach(wf -> addFolder(wf, create(wf.getUri())));
     }
   }
 
   public void initialized() {
-    executor.submit(new CatchingRunnable(() -> backendServiceFacade.getBackendService().addWorkspaceFolders(this.workspaceFolders, getBindingProvider()),
-      t -> logOutput.errorWithStackTrace("Failed to initialize workspace folders.", t)));
+    scopeManager.foldersAdded(getAll());
   }
 
   public void didChangeWorkspaceFolders(WorkspaceFoldersChangeEvent event) {
     logOutput.debug("Processing didChangeWorkspaceFolders event");
-    for (var removed : event.getRemoved()) {
-      removeFolder(create(removed.getUri()));
-    }
+    event.getRemoved().forEach(removed -> removeFolder(create(removed.getUri())));
+    var addedWrappers = new ArrayList<WorkspaceFolderWrapper>();
     for (var added : event.getAdded()) {
-      var uri = create(added.getUri());
-      var addedWrapper = addFolder(added, uri);
+      var addedWrapper = addFolder(added, create(added.getUri()));
       listeners.forEach(l -> l.added(addedWrapper));
+      addedWrappers.add(addedWrapper);
     }
-    executor.submit(new CatchingRunnable(() -> {
-      backendServiceFacade.getBackendService().addWorkspaceFolders(event.getAdded(), getBindingProvider());
-      event.getRemoved().forEach(removed -> removeFolderFromBackend(removed.getUri()));
-    }, t -> logOutput.errorWithStackTrace("Failed to add workspace folder", t)));
-
+    scopeManager.foldersAdded(addedWrappers);
   }
 
   private void removeFolder(URI uri) {
     var removed = folders.remove(uri);
-    var workspaceFolder = this.workspaceFolders.stream().filter(wf -> wf.getUri().equalsIgnoreCase(uri.toString())).findFirst().orElse(null);
-    if (workspaceFolder != null) {
-      this.workspaceFolders.remove(workspaceFolder);
-    }
     if (removed == null) {
       logOutput.warn("Unregistered workspace folder was missing: " + uri);
+    } else {
+      scopeManager.folderRemoved(removed);
     }
     logOutput.debug(format("Folder %s removed", removed));
   }
@@ -121,27 +94,8 @@ public class WorkspaceFoldersManager {
       logOutput.warn(format("Registered workspace folder %s was already added", addedWrapper));
     } else {
       logOutput.debug(format("Folder %s added", addedWrapper));
-      this.workspaceFolders.add(added);
     }
     return addedWrapper;
-  }
-
-  private Function<WorkspaceFolder, Optional<ProjectBinding>> getBindingProvider() {
-    return folder -> bindingManager.getBinding(create(folder.getUri()));
-  }
-
-  private void removeFolderFromBackend(String removedUri) {
-    backendServiceFacade.getBackendService().removeWorkspaceFolder(removedUri);
-  }
-
-  /**
-   * The configuration scope a file belongs to: its workspace folder, or {@link BackendService#ROOT_CONFIGURATION_SCOPE}
-   * for a file outside every workspace folder.
-   */
-  public String resolveConfigScopeId(URI fileUri) {
-    return findFolderForFile(fileUri)
-      .map(folder -> folder.getUri().toString())
-      .orElse(BackendService.ROOT_CONFIGURATION_SCOPE);
   }
 
   public Optional<WorkspaceFolderWrapper> findFolderForFile(URI uri) {
@@ -159,31 +113,15 @@ public class WorkspaceFoldersManager {
     return Optional.of(folders.get(folderUriCandidates.get(0)));
   }
 
-  public Optional<WorkspaceFolderWrapper> getFolder(URI folderUri) {
-    return Optional.ofNullable(folders.get(folderUri));
-  }
-
-  // Visible for testing
-  static boolean isAncestor(URI folderUri, URI fileUri) {
-    if (folderUri.isOpaque() || fileUri.isOpaque()) {
-      throw new IllegalArgumentException("Only hierarchical URIs are supported");
-    }
-    if (!folderUri.getScheme().equalsIgnoreCase(fileUri.getScheme())) {
-      return false;
-    }
-    if (!Objects.equals(folderUri.getHost(), fileUri.getHost())) {
-      return false;
-    }
-    if (folderUri.getPort() != fileUri.getPort()) {
-      return false;
-    }
-    if (Utils.uriHasFileScheme(folderUri)) {
-      return Paths.get(fileUri).startsWith(Paths.get(folderUri));
-    }
-    // Assume "/" is the separator of "folders"
-    var fileSegments = fileUri.getPath().split("/");
-    var folderSegments = folderUri.getPath().split("/");
-    return folderSegments.length <= fileSegments.length && Arrays.equals(folderSegments, Arrays.copyOfRange(fileSegments, 0, folderSegments.length));
+  /**
+   * Resolve the effective configuration scope id for a file: the deepest declared sub-project scope containing it when
+   * its workspace folder has one, otherwise the workspace folder's own scope id, otherwise
+   * {@link BackendService#ROOT_CONFIGURATION_SCOPE}.
+   */
+  public String resolveConfigScopeId(URI fileUri) {
+    return findFolderForFile(fileUri)
+      .map(folder -> scopeManager.scopeIdOf(folder, fileUri))
+      .orElse(BackendService.ROOT_CONFIGURATION_SCOPE);
   }
 
   public Collection<WorkspaceFolderWrapper> getAll() {
@@ -196,10 +134,6 @@ public class WorkspaceFoldersManager {
 
   public void removeListener(WorkspaceFolderLifecycleListener listener) {
     listeners.remove(listener);
-  }
-
-  public void shutdown() {
-    Utils.shutdownAndAwait(executor, true);
   }
 
   public void updateAnalysisReadiness(Set<String> configurationScopeIds, boolean areReadyForAnalysis) {

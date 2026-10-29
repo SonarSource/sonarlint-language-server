@@ -21,7 +21,6 @@ package org.sonarsource.sonarlint.ls.backend;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
@@ -139,11 +138,35 @@ class BackendServiceTests {
   }
 
   @Test
+  void bind_updates_the_binding_of_the_scope() {
+    underTest.bind("scopeId", new ProjectBinding("connectionId", "projectKey"));
+
+    var captor = org.mockito.ArgumentCaptor.forClass(DidUpdateBindingParams.class);
+    verify(configurationService).didUpdateBinding(captor.capture());
+    assertThat(captor.getValue().getConfigScopeId()).isEqualTo("scopeId");
+    assertThat(captor.getValue().getUpdatedBinding().getConnectionId()).isEqualTo("connectionId");
+    assertThat(captor.getValue().getUpdatedBinding().getSonarProjectKey()).isEqualTo("projectKey");
+    assertThat(captor.getValue().getUpdatedBinding().isBindingSuggestionDisabled()).isTrue();
+  }
+
+  @Test
+  void unbind_clears_the_binding_of_the_scope() {
+    underTest.unbind("scopeId");
+
+    var captor = org.mockito.ArgumentCaptor.forClass(DidUpdateBindingParams.class);
+    verify(configurationService).didUpdateBinding(captor.capture());
+    assertThat(captor.getValue().getConfigScopeId()).isEqualTo("scopeId");
+    assertThat(captor.getValue().getUpdatedBinding().getConnectionId()).isNull();
+    assertThat(captor.getValue().getUpdatedBinding().getSonarProjectKey()).isNull();
+    assertThat(captor.getValue().getUpdatedBinding().isBindingSuggestionDisabled()).isFalse();
+  }
+
+  @Test
   void getConfigScopeDtoWithBinding() {
     var workspaceUri = "/workspace";
     var connectionId = "connectionId";
     var bindingWrapper = new ProjectBinding(connectionId, "projectKey");
-    var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri, workspaceUri), Optional.of(bindingWrapper));
+    var result = BackendService.getConfigScopeDto(BackendService.ROOT_CONFIGURATION_SCOPE, new WorkspaceFolder(workspaceUri, workspaceUri), bindingWrapper);
 
     assertThat(result.getId()).isEqualTo(workspaceUri);
     assertThat(result.getParentId()).isEqualTo(BackendService.ROOT_CONFIGURATION_SCOPE);
@@ -153,7 +176,7 @@ class BackendServiceTests {
   @Test
   void getConfigScopeDtoWithoutBinding() {
     var workspaceUri = "/workspace";
-    var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri, workspaceUri), Optional.empty());
+    var result = BackendService.getConfigScopeDto(BackendService.ROOT_CONFIGURATION_SCOPE, new WorkspaceFolder(workspaceUri, workspaceUri), null);
 
     assertThat(result.getId()).isEqualTo(workspaceUri);
     assertThat(result.getParentId()).isEqualTo(BackendService.ROOT_CONFIGURATION_SCOPE);
