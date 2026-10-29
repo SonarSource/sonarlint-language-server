@@ -486,11 +486,11 @@ class CommandManagerTests {
   @Test
   void showTaintVulnerabilityFlows() {
     var issueKey = "someIssueKey";
-    var connectionId = "connectionId";
     var issue = mock(TaintIssue.class);
     when(issue.getRuleKey()).thenReturn("ruleKey");
     var filePath = Path.of("path");
     when(issue.getWorkspaceFolderUri()).thenReturn("file:///user/folder");
+    when(bindingManager.getBindingOfScope("file:///user/folder")).thenReturn(Optional.of(new ProjectBinding("connectionId", "projectKey")));
     when(issue.getIdeFilePath()).thenReturn(filePath);
     when(issue.getIntroductionDate()).thenReturn(Instant.EPOCH);
     when(issue.getSeverityMode()).thenReturn(Either.forLeft(new StandardModeDetails(IssueSeverity.BLOCKER, RuleType.BUG)));
@@ -501,10 +501,13 @@ class CommandManagerTests {
     when(flow.getLocations()).thenReturn(List.of(location));
     when(mockTaintVulnerabilitiesCache.getTaintVulnerabilityByKey(issueKey)).thenReturn(Optional.of(issue));
 
-    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(new JsonPrimitive(issueKey), new JsonPrimitive(connectionId))),
+    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(new JsonPrimitive(issueKey))),
       NOP_CANCEL_TOKEN);
     verify(mockTaintVulnerabilitiesCache).getTaintVulnerabilityByKey(issueKey);
     verify(mockTelemetry).taintVulnerabilitiesInvestigatedLocally();
+    var locationsCaptor = ArgumentCaptor.forClass(ShowAllLocationsCommand.Param.class);
+    verify(mockClient).showIssueOrHotspot(locationsCaptor.capture());
+    assertThat(locationsCaptor.getValue().getConnectionId()).isEqualTo("connectionId");
   }
 
   @Test
@@ -577,7 +580,6 @@ class CommandManagerTests {
   @Test
   void showTaintVulnerabilityFlows_MQR() {
     var issueKey = "someIssueKey";
-    var connectionId = "connectionId";
     var issue = mock(TaintIssue.class);
     when(issue.getRuleKey()).thenReturn("ruleKey");
     var filePath = Path.of("path");
@@ -592,7 +594,7 @@ class CommandManagerTests {
     when(flow.getLocations()).thenReturn(List.of(location));
     when(mockTaintVulnerabilitiesCache.getTaintVulnerabilityByKey(issueKey)).thenReturn(Optional.of(issue));
 
-    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(new JsonPrimitive(issueKey), new JsonPrimitive(connectionId))),
+    underTest.executeCommand(new ExecuteCommandParams(SONARLINT_SHOW_TAINT_VULNERABILITY_FLOWS, List.of(new JsonPrimitive(issueKey))),
       NOP_CANCEL_TOKEN);
     verify(mockTaintVulnerabilitiesCache).getTaintVulnerabilityByKey(issueKey);
     verify(mockTelemetry).taintVulnerabilitiesInvestigatedLocally();
