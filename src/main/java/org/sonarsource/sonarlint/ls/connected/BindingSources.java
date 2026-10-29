@@ -24,7 +24,7 @@ import java.util.Optional;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 
 /**
- * The binding sources in order of precedence: the binding of a scope is the one of the first source that has one.
+ * The binding sources in order of precedence: the scopes of a folder are those of the first source that defines any.
  */
 public class BindingSources {
 
@@ -34,10 +34,15 @@ public class BindingSources {
     this.sources = List.copyOf(sources);
   }
 
-  public Optional<ScopeBinding> bindingOf(WorkspaceFolderWrapper folder, Scope scope) {
+  public List<Scope> scopesOf(WorkspaceFolderWrapper folder) {
     return sources.stream()
-      .map(source -> source.bindingOf(folder, scope))
-      .flatMap(Optional::stream)
-      .findFirst();
+      .map(source -> source.scopesOf(folder))
+      .filter(scopes -> !scopes.isEmpty())
+      .findFirst()
+      .orElse(List.of());
+  }
+
+  public Optional<ScopeBinding> bindingOf(WorkspaceFolderWrapper folder, Scope scope) {
+    return scope.owner().bindingOf(folder, scope);
   }
 }

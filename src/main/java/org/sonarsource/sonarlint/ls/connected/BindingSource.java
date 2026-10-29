@@ -19,10 +19,13 @@
  */
 package org.sonarsource.sonarlint.ls.connected;
 
+import java.util.List;
 import java.util.Optional;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 
 public interface BindingSource {
+
+  List<Scope> scopesOf(WorkspaceFolderWrapper folder);
 
   Optional<ScopeBinding> bindingOf(WorkspaceFolderWrapper folder, Scope scope);
 }
