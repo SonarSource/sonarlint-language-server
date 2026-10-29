@@ -1,0 +1,228 @@
+/*
+ * SonarLint Language Server
+ * Copyright (C) SonarSource Sàrl
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+package org.sonarsource.sonarlint.ls.scopes;
+
+import java.net.URI;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import org.eclipse.lsp4j.WorkspaceFolder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.mockito.ArgumentCaptor;
+import org.sonarsource.sonarlint.ls.backend.BackendService;
+import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
+import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
+import testutils.ImmediateExecutorService;
+import testutils.SonarLintLogTester;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+class ConfigurationScopeManagerTests {
+
+  private static final URI REPO = URI.create("file:///repo/");
+  private static final ProjectBinding BINDING = new ProjectBinding("connection", "root");
+
+  @RegisterExtension
+  SonarLintLogTester logTester = new SonarLintLogTester();
+
+  private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
+  private final BackendService backendService = mock(BackendService.class);
+  private final WorkspaceFolderWrapper folder = new WorkspaceFolderWrapper(REPO, new WorkspaceFolder(REPO.toString(), "repo"), logTester.getLogger());
+  private ConfigurationScopeManager underTest;
+  private Optional<ProjectBinding> binding = Optional.empty();
+
+  @BeforeEach
+  void prepare() {
+    when(backendServiceFacade.getBackendService()).thenReturn(backendService);
+    underTest = new ConfigurationScopeManager(new ImmediateExecutorService(), backendServiceFacade, logTester.getLogger());
+    underTest.setBindingResolver(addedFolder -> binding);
+  }
+
+  @Test
+  void adding_a_folder_opens_its_scope_with_the_binding_of_the_folder() {
+    binding = Optional.of(BINDING);
+
+    underTest.foldersAdded(List.of(folder));
+
+    assertThat(openedWith(new WorkspaceFolder(REPO.toString(), "repo")).apply(new WorkspaceFolder(REPO.toString(), "repo"))).contains(BINDING);
+  }
+
+  @Test
+  void a_folder_without_a_binding_is_opened_unbound() {
+    underTest.foldersAdded(List.of(folder));
+
+    assertThat(openedWith(new WorkspaceFolder(REPO.toString(), "repo")).apply(new WorkspaceFolder(REPO.toString(), "repo"))).isEmpty();
+  }
+
+  @Test
+  void updating_binds_the_scope_when_the_folder_got_a_binding() {
+    underTest.foldersAdded(List.of(folder));
+    clearInvocations(backendService);
+    binding = Optional.of(BINDING);
+
+    var changed = underTest.update(folder).join();
+
+    assertThat(changed).isTrue();
+    verify(backendService).bind(REPO.toString(), BINDING);
+  }
+
+  @Test
+  void updating_rebinds_the_scope_when_the_binding_changed() {
+    binding = Optional.of(BINDING);
+    underTest.foldersAdded(List.of(folder));
+    clearInvocations(backendService);
+    var other = new ProjectBinding("connection", "other");
+    binding = Optional.of(other);
+
+    assertThat(underTest.update(folder).join()).isTrue();
+
+    verify(backendService).bind(REPO.toString(), other);
+  }
+
+  @Test
+  void updating_unbinds_the_scope_when_the_folder_lost_its_binding() {
+    binding = Optional.of(BINDING);
+    underTest.foldersAdded(List.of(folder));
+    clearInvocations(backendService);
+    binding = Optional.empty();
+
+    assertThat(underTest.update(folder).join()).isTrue();
+
+    verify(backendService).unbind(REPO.toString());
+  }
+
+  @Test
+  void updating_without_a_difference_touches_nothing() {
+    binding = Optional.of(BINDING);
+    underTest.foldersAdded(List.of(folder));
+    clearInvocations(backendService);
+
+    assertThat(underTest.update(folder).join()).isFalse();
+
+    verify(backendService, never()).addWorkspaceFolders(any(), any());
+    verify(backendService, never()).bind(any(), any());
+    verify(backendService, never()).unbind(any());
+  }
+
+  @Test
+  void removing_a_folder_closes_its_scope() {
+    underTest.foldersAdded(List.of(folder));
+
+    underTest.folderRemoved(folder);
+
+    verify(backendService).removeWorkspaceFolder(REPO.toString());
+  }
+
+  @Test
+  void removing_a_folder_that_was_not_added_does_nothing() {
+    underTest.folderRemoved(folder);
+
+    verify(backendService, never()).removeWorkspaceFolder(any());
+  }
+
+  @Test
+  void the_binding_of_a_folder_is_computed_once_and_kept() {
+    var resolutions = new AtomicInteger();
+    underTest.setBindingResolver(resolved -> {
+      resolutions.incrementAndGet();
+      return Optional.of(BINDING);
+    });
+
+    assertThat(underTest.bindingIfExists(folder)).isEmpty();
+    assertThat(underTest.bindingOf(folder)).contains(BINDING);
+    assertThat(underTest.bindingOf(folder)).contains(BINDING);
+
+    assertThat(resolutions).hasValue(1);
+    assertThat(underTest.bindingIfExists(folder)).contains(BINDING);
+  }
+
+
+  @Test
+  void the_bindings_of_a_connection_can_be_forgotten() {
+    binding = Optional.of(BINDING);
+    underTest.bindingOf(folder);
+
+    underTest.forgetBindingsOf("other-connection");
+    assertThat(underTest.bindingIfExists(folder)).contains(BINDING);
+
+    underTest.forgetBindingsOf("connection");
+    assertThat(underTest.bindingIfExists(folder)).isEmpty();
+  }
+
+  @Test
+  void the_folder_bound_to_a_project_of_a_connection_can_be_found() {
+    binding = Optional.of(BINDING);
+    underTest.bindingOf(folder);
+
+    assertThat(underTest.bindings()).containsExactly(BINDING);
+    assertThat(underTest.folderBoundTo("connection", "root")).contains(REPO);
+    assertThat(underTest.folderBoundTo("connection", "unknown")).isEmpty();
+    assertThat(underTest.folderBoundTo("other-connection", "root")).isEmpty();
+  }
+
+  @Test
+  void a_removed_folder_is_not_updated_again() {
+    underTest.foldersAdded(List.of(folder));
+    underTest.folderRemoved(folder);
+    clearInvocations(backendService);
+    binding = Optional.of(BINDING);
+
+    assertThat(underTest.update(folder).join()).isFalse();
+
+    verify(backendService, never()).addWorkspaceFolders(any(), any());
+    verify(backendService, never()).bind(any(), any());
+  }
+
+  @Test
+  void the_scope_id_of_a_folder_is_its_uri() {
+    assertThat(underTest.scopeIdOf(folder)).isEqualTo(REPO.toString());
+  }
+
+  @Test
+  void a_failure_of_the_backend_is_logged_and_the_scope_is_opened_on_the_next_change() {
+    doThrow(new IllegalStateException("backend down")).doNothing().when(backendService).addWorkspaceFolders(any(), any());
+    underTest.foldersAdded(List.of(folder));
+    assertThat(logTester.logs()).anyMatch(log -> log.contains("Failed to update the configuration scope of folder " + REPO));
+
+    assertThat(underTest.update(folder).join()).isTrue();
+
+    verify(backendService, times(2)).addWorkspaceFolders(any(), any());
+  }
+
+  @SuppressWarnings("unchecked")
+  private Function<WorkspaceFolder, Optional<ProjectBinding>> openedWith(WorkspaceFolder opened) {
+    ArgumentCaptor<Function<WorkspaceFolder, Optional<ProjectBinding>>> provider = ArgumentCaptor.forClass(Function.class);
+    verify(backendService).addWorkspaceFolders(eq(List.of(opened)), provider.capture());
+    return provider.getValue();
+  }
+}
