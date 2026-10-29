@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.backend;
 
 import org.junit.jupiter.api.Test;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.log.LogLevel;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
 import static org.mockito.Mockito.mock;
@@ -38,7 +39,7 @@ class BackendLogLevelSynchronizerTests {
 
     underTest.onChange(oldSettings, newSettings);
 
-    verify(backendServiceFacade).syncBackendLogLevel(true);
+    verify(backendServiceFacade).syncBackendLogLevel(LogLevel.DEBUG);
   }
 
   @Test
