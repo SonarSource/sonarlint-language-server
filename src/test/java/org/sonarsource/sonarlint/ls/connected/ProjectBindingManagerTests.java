@@ -54,6 +54,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
@@ -101,6 +102,7 @@ class ProjectBindingManagerTests {
   private final ForcedAnalysisCoordinator analysisManager = mock(ForcedAnalysisCoordinator.class);
   SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   private final OpenNotebooksCache openNotebooksCache = mock(OpenNotebooksCache.class);
+  private final ConfigurationScopeManager scopeManager = mock(ConfigurationScopeManager.class);
 
   @BeforeEach
   void prepare() throws IOException {
@@ -130,7 +132,7 @@ class ProjectBindingManagerTests {
     when(openNotebooksCache.getFile(any(URI.class))).thenReturn(Optional.empty());
 
     underTest = new ProjectBindingManager(foldersManager, settingsManager, client, folderBindingCache, logTester.getLogger(),
-      backendServiceFacade, openNotebooksCache);
+      backendServiceFacade, openNotebooksCache, scopeManager);
     underTest.setAnalysisManager(analysisManager);
   }
 
@@ -264,6 +266,7 @@ class ProjectBindingManagerTests {
     underTest.onChange(folder, BOUND_SETTINGS, UNBOUND_SETTINGS);
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder);
+    verify(scopeManager).reconcile(folder);
 
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
@@ -305,6 +308,7 @@ class ProjectBindingManagerTests {
     underTest.onChange(folder, BOUND_SETTINGS, BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder);
+    verify(scopeManager).reconcile(folder);
 
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
