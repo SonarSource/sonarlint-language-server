@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.backend;
 
 import javax.annotation.CheckForNull;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.log.LogLevel;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 
@@ -36,6 +37,12 @@ public class BackendLogLevelSynchronizer implements WorkspaceSettingsChangeListe
     if (oldValue != null && oldValue.showVerboseLogs() == newValue.showVerboseLogs()) {
       return;
     }
-    backendServiceFacade.syncBackendLogLevel(newValue.showVerboseLogs());
+    LogLevel logLevel;
+    if (newValue.showVerboseLogs()) {
+      logLevel = BackendLogLevel.whenVerbose();
+    } else {
+      logLevel = BackendLogLevel.whenNotVerbose();
+    }
+    backendServiceFacade.syncBackendLogLevel(logLevel);
   }
 }

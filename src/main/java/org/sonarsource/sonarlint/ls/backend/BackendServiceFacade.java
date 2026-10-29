@@ -53,6 +53,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.LanguageSp
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarCloudAlternativeEnvironmentDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SonarQubeCloudRegionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.SslConfigurationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.log.LogLevel;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.initialize.TelemetryClientConstantAttributesDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.EnabledLanguages;
@@ -149,11 +150,18 @@ public final class BackendServiceFacade {
       languageSpecificRequirements,
       initializationOptions.automaticAnalysis(),
       null,
-      initializationOptions.showVerboseLogs() ? BackendLogLevel.whenVerbose() : BackendLogLevel.whenNotVerbose());
+      logLevelForShowVerboseLogs(initializationOptions.showVerboseLogs()));
   }
 
-  public void syncBackendLogLevel(boolean verboseEnabled) {
-    backendService.syncBackendLogLevel(verboseEnabled ? BackendLogLevel.whenVerbose() : BackendLogLevel.whenNotVerbose());
+  public void syncBackendLogLevel(LogLevel level) {
+    backendService.syncBackendLogLevel(level);
+  }
+
+  private static LogLevel logLevelForShowVerboseLogs(boolean showVerboseLogs) {
+    if (showVerboseLogs) {
+      return BackendLogLevel.whenVerbose();
+    }
+    return BackendLogLevel.whenNotVerbose();
   }
 
   static String determineIdeName(String appName) {
