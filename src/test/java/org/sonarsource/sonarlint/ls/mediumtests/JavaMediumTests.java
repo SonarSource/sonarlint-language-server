@@ -66,7 +66,8 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
       "telemetryStorage", "not/exists",
       "productName", "SLCORE tests",
       "productVersion", "0.1",
-      "productKey", "productKey"), new WorkspaceFolder(analysisDir.toUri().toString(), "AnalysisDir"));
+      "productKey", "productKey",
+      "showVerboseLogs", true), new WorkspaceFolder(analysisDir.toUri().toString(), "AnalysisDir"));
   }
 
   @BeforeEach
@@ -77,7 +78,7 @@ class JavaMediumTests extends AbstractLanguageServerMediumTests {
 
   @Override
   protected void setupGlobalSettings(Map<String, Object> globalSettings) {
-    setShowVerboseLogs(client.globalSettings, true);
+    setShowVerboseLogs(globalSettings, true);
   }
 
   @Test
