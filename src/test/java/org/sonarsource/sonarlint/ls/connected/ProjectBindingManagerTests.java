@@ -66,6 +66,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -133,7 +134,7 @@ class ProjectBindingManagerTests {
 
     var folderSettingsSource = new FolderSettingsBindingSource(settingsManager, logTester.getLogger());
     var sources = new BindingSources(List.of(folderSettingsSource));
-    scopeManager = new ConfigurationScopeManager(new ImmediateExecutorService(), sources, backendServiceFacade, logTester.getLogger());
+    scopeManager = new ConfigurationScopeManager(new ImmediateExecutorService(), sources, backendServiceFacade, client, logTester.getLogger());
     underTest = new ProjectBindingManager(foldersManager, settingsManager, client, logTester.getLogger(),
       backendServiceFacade, openNotebooksCache, scopeManager, folderSettingsSource);
     underTest.setAnalysisManager(analysisManager);
@@ -244,12 +245,14 @@ class ProjectBindingManagerTests {
 
     var binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
     assertThat(binding).isNotEmpty();
+    clearInvocations(client);
 
     folder.setSettings(UNBOUND_SETTINGS);
     underTest.onChange(folder, BOUND_SETTINGS, UNBOUND_SETTINGS);
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder);
     verify(backendService).unbind(workspaceFolderPath.toUri().toString());
+    verify(client).bindingsChanged();
 
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
 
@@ -473,7 +476,28 @@ class ProjectBindingManagerTests {
 
 
 
+  @Test
+  void getBindings_reports_what_was_declared_and_not_what_the_settings_say_now() {
+    var folder = mockFileInABoundWorkspaceFolder();
+    scopeManager.foldersAdded(List.of(folder));
 
+    folder.setSettings(BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
+
+    assertThat(underTest.getBindings()).singleElement().satisfies(scope -> {
+      assertThat(scope.uri()).isEqualTo(workspaceFolderPath.toUri());
+      assertThat(scope.binding()).isEqualTo(new ProjectBinding(CONNECTION_ID, PROJECT_KEY));
+      assertThat(scope.origin()).isEqualTo(Origin.SETTINGS);
+    });
+  }
+
+  @Test
+  void getBindings_skips_a_settings_binding_whose_connection_does_not_exist() {
+    var folder = mockFileInAFolder();
+    folder.setSettings(BOUND_SETTINGS);
+    scopeManager.foldersAdded(List.of(folder));
+
+    assertThat(underTest.getBindings()).isEmpty();
+  }
 
 
 
@@ -497,12 +521,14 @@ class ProjectBindingManagerTests {
     var folder = mockFileInAFolder();
     folder.setSettings(UNBOUND_SETTINGS);
     scopeManager.foldersAdded(List.of(folder));
+    clearInvocations(client);
     folder.setSettings(BOUND_SETTINGS);
     servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
 
     underTest.onChange(folder, UNBOUND_SETTINGS, BOUND_SETTINGS);
 
     verify(backendService).bind(workspaceFolderPath.toUri().toString(), new ProjectBinding(CONNECTION_ID, PROJECT_KEY));
+    verify(client).bindingsChanged();
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder);
   }
 

@@ -28,6 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.ArgumentCaptor;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.BindingSource;
@@ -68,13 +69,14 @@ class ConfigurationScopeManagerTests {
   private final BindingSources sources = mock(BindingSources.class);
   private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   private final BackendService backendService = mock(BackendService.class);
+  private final SonarLintExtendedLanguageClient client = mock(SonarLintExtendedLanguageClient.class);
   private final WorkspaceFolderWrapper folder = new WorkspaceFolderWrapper(REPO, new WorkspaceFolder(REPO.toString(), "repo"), mock(LanguageClientLogger.class));
   private ConfigurationScopeManager underTest;
 
   @BeforeEach
   void prepare() {
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
-    underTest = new ConfigurationScopeManager(new ImmediateExecutorService(), sources, backendServiceFacade, logTester.getLogger());
+    underTest = new ConfigurationScopeManager(new ImmediateExecutorService(), sources, backendServiceFacade, client, logTester.getLogger());
   }
 
   @Test
@@ -89,6 +91,7 @@ class ConfigurationScopeManagerTests {
     assertThat(folderProvider.apply(new WorkspaceFolder(REPO.toString(), "repo"))).contains(ROOT_BINDING);
     var subFolderProvider = openedSubFolders(List.of(new WorkspaceFolder(MODULE_A.toString(), "moduleA")));
     assertThat(subFolderProvider.apply(new WorkspaceFolder(MODULE_A.toString(), "moduleA"))).contains(MODULE_A_BINDING);
+    verify(client).bindingsChanged();
   }
 
   @Test
@@ -118,7 +121,7 @@ class ConfigurationScopeManagerTests {
   void reconciling_closes_the_scopes_that_disappeared_and_opens_the_new_ones() {
     declare(scope(REPO, "repo", ".", Origin.SONAR_CONFIG), scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG));
     underTest.foldersAdded(List.of(folder));
-    clearInvocations(backendService);
+    clearInvocations(backendService, client);
     declare(scope(REPO, "repo", ".", Origin.SONAR_CONFIG), scope(MODULE_B, "moduleB", "moduleB", Origin.SONAR_CONFIG));
 
     var changed = underTest.reconcile(folder).join();
@@ -127,6 +130,7 @@ class ConfigurationScopeManagerTests {
     verify(backendService).removeWorkspaceFolder(MODULE_A.toString());
     openedSubFolders(List.of(new WorkspaceFolder(MODULE_B.toString(), "moduleB")));
     verify(backendService, never()).addWorkspaceFolders(any(), any());
+    verify(client).bindingsChanged();
   }
 
   @Test
@@ -134,13 +138,14 @@ class ConfigurationScopeManagerTests {
     declare(scope(REPO, "repo", ".", Origin.SETTINGS));
     bound(REPO, ROOT_BINDING);
     underTest.foldersAdded(List.of(folder));
-    clearInvocations(backendService);
+    clearInvocations(backendService, client);
     bound(REPO, new ProjectBinding("connection", "other"));
 
     var changed = underTest.reconcile(folder).join();
 
     assertThat(changed).isTrue();
     verify(backendService).bind(REPO.toString(), new ProjectBinding("connection", "other"));
+    verify(client).bindingsChanged();
   }
 
   @Test
@@ -161,7 +166,7 @@ class ConfigurationScopeManagerTests {
     declare(scope(REPO, "repo", ".", Origin.SETTINGS), scope(MODULE_A, "moduleA", "moduleA", Origin.SETTINGS));
     bound(MODULE_A, MODULE_A_BINDING);
     underTest.foldersAdded(List.of(folder));
-    clearInvocations(backendService);
+    clearInvocations(backendService, client);
 
     var changed = underTest.reconcile(folder).join();
 
@@ -171,6 +176,7 @@ class ConfigurationScopeManagerTests {
     verify(backendService, never()).removeWorkspaceFolder(any());
     verify(backendService, never()).bind(any(), any());
     verify(backendService, never()).unbind(any());
+    verify(client, never()).bindingsChanged();
   }
 
   @Test
@@ -185,15 +191,16 @@ class ConfigurationScopeManagerTests {
   }
 
   @Test
-  void removing_a_folder_closes_all_its_scopes() {
+  void removing_a_folder_closes_all_its_scopes_and_tells_the_client() {
     declare(scope(REPO, "repo", ".", Origin.SETTINGS), scope(MODULE_A, "moduleA", "moduleA", Origin.SETTINGS));
     underTest.foldersAdded(List.of(folder));
-    clearInvocations(backendService);
+    clearInvocations(backendService, client);
 
     underTest.folderRemoved(folder);
 
     verify(backendService).removeWorkspaceFolder(REPO.toString());
     verify(backendService).removeWorkspaceFolder(MODULE_A.toString());
+    verify(client).bindingsChanged();
     assertThat(underTest.boundScopes()).isEmpty();
   }
 
@@ -202,6 +209,7 @@ class ConfigurationScopeManagerTests {
     underTest.folderRemoved(folder);
 
     verify(backendService, never()).removeWorkspaceFolder(any());
+    verify(client, never()).bindingsChanged();
   }
 
   @Test
