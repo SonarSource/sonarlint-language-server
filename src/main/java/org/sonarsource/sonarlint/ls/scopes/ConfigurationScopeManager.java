@@ -41,6 +41,7 @@ import java.util.stream.Stream;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.connected.BindingSources;
+import org.sonarsource.sonarlint.ls.connected.Origin;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderLifecycleListener;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -186,12 +187,12 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
       return false;
     }
     var declared = state.scopes.get();
-    var desired = sources.scopesOf(folder);
+    var desired = desiredScopes(folder);
     state.scopes.set(desired);
     state.firstDeclaration.complete(null);
     var changed = !declared.equals(desired);
     try {
-      declare(declared, desired);
+      declare(folder, declared, desired);
     } catch (RuntimeException e) {
       state.scopes.set(declared);
       if (changed) {
@@ -209,7 +210,17 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
     listeners.forEach(ConfigurationScopeListener::scopesChanged);
   }
 
-  private void declare(List<ConfigurationScope> declared, List<ConfigurationScope> desired) {
+  private List<ConfigurationScope> desiredScopes(WorkspaceFolderWrapper folder) {
+    var declared = sources.scopesOf(folder);
+    if (declared.stream().anyMatch(scope -> scope.uri().equals(folder.getUri()))) {
+      return declared;
+    }
+    var origin = declared.isEmpty() ? Origin.SETTINGS : declared.get(0).origin();
+    var folderScope = new ConfigurationScope(folder.getUri(), folder.getLspFolder().getName(), ".", origin, null);
+    return Stream.concat(Stream.of(folderScope), declared.stream()).toList();
+  }
+
+  private void declare(WorkspaceFolderWrapper folder, List<ConfigurationScope> declared, List<ConfigurationScope> desired) {
     var backendService = backendServiceFacade.getBackendService();
     var declaredByUri = byUri(declared);
     var desiredByUri = byUri(desired);
@@ -218,17 +229,26 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
       .forEach(scope -> backendService.removeConfigurationScope(scope.uri().toString()));
     desired.stream()
       .filter(scope -> !declaredByUri.containsKey(scope.uri()))
-      .forEach(scope -> backendService.addConfigurationScope(scope.uri().toString(), BackendService.ROOT_CONFIGURATION_SCOPE, scope.name(), scope.binding()));
+      .forEach(scope -> backendService.addConfigurationScope(scope.uri().toString(), parentIdOf(folder, scope), scope.name(), scope.binding(),
+        bindingSuggestionDisabled(scope)));
     desired.stream()
-      .filter(scope -> declaredByUri.containsKey(scope.uri()) && !Objects.equals(declaredByUri.get(scope.uri()).binding(), scope.binding()))
+      .filter(scope -> declaredByUri.containsKey(scope.uri()) && isRebindNeeded(declaredByUri.get(scope.uri()), scope))
       .forEach(this::rebind);
+  }
+
+  private static boolean isRebindNeeded(ConfigurationScope declared, ConfigurationScope desired) {
+    return !Objects.equals(declared.binding(), desired.binding()) || bindingSuggestionDisabled(declared) != bindingSuggestionDisabled(desired);
+  }
+
+  private static boolean bindingSuggestionDisabled(ConfigurationScope scope) {
+    return scope.origin() == Origin.SONAR_CONFIG;
   }
 
   private void rebind(ConfigurationScope scope) {
     var backendService = backendServiceFacade.getBackendService();
     var binding = scope.binding();
     if (binding == null) {
-      backendService.unbind(scope.uri().toString());
+      backendService.unbind(scope.uri().toString(), bindingSuggestionDisabled(scope));
     } else {
       logOutput.info(format("Binding scope %s to projectKey=%s of connection '%s'", scope.uri(), binding.projectKey(), binding.connectionId()));
       backendService.bind(scope.uri().toString(), binding);
@@ -238,7 +258,7 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
   private void close(FolderScopes state) {
     var previous = state.scopes.getAndSet(List.of());
     try {
-      declare(previous, List.of());
+      declare(state.folder, previous, List.of());
     } finally {
       if (!previous.isEmpty()) {
         notifyScopesChanged();
@@ -255,6 +275,10 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
     } catch (ExecutionException | TimeoutException e) {
       logOutput.errorWithStackTrace(format("The configuration scopes of folder %s were not declared in time", state.folder.getUri()), e);
     }
+  }
+
+  private static String parentIdOf(WorkspaceFolderWrapper folder, ConfigurationScope scope) {
+    return scope.uri().equals(folder.getUri()) ? BackendService.ROOT_CONFIGURATION_SCOPE : folderScopeId(folder);
   }
 
   private static String folderScopeId(WorkspaceFolderWrapper folder) {
