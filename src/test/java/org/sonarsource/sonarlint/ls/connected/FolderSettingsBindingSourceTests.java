@@ -70,20 +70,29 @@ class FolderSettingsBindingSourceTests {
   }
 
   @Test
-  void bindingOf_is_empty_for_a_folder_outside_the_local_filesystem() {
-    var remoteUri = URI.create("vscode-vfs://github/org/repo");
-    var remoteFolder = new WorkspaceFolderWrapper(remoteUri, new WorkspaceFolder(remoteUri.toString(), "repo"), logTester.getLogger());
-    remoteFolder.setSettings(BOUND);
-
-    assertThat(underTest.bindingOf(remoteFolder)).isEmpty();
+  void scopesOf_is_the_folder_itself_without_reading_its_settings() {
+    assertThat(underTest.scopesOf(folder)).singleElement().satisfies(scope -> {
+      assertThat(scope.uri()).isEqualTo(folder.getUri());
+      assertThat(scope.name()).isEqualTo("folder");
+      assertThat(scope.relativePath()).isEqualTo(".");
+      assertThat(scope.owner()).isSameAs(underTest);
+    });
+    verify(folder, never()).getSettings();
   }
 
+  @Test
+  void scopesOf_is_empty_for_a_folder_outside_the_local_filesystem() {
+    var remoteUri = URI.create("vscode-vfs://github/org/repo");
+    var remoteFolder = new WorkspaceFolderWrapper(remoteUri, new WorkspaceFolder(remoteUri.toString(), "repo"), logTester.getLogger());
+
+    assertThat(underTest.scopesOf(remoteFolder)).isEmpty();
+  }
 
   @Test
   void bindingOf_is_empty_without_binding() {
     folder.setSettings(UNBOUND);
 
-    assertThat(underTest.bindingOf(folder)).isEmpty();
+    assertThat(underTest.bindingOf(folder, underTest.scopesOf(folder).get(0))).isEmpty();
   }
 
   @Test
@@ -91,7 +100,7 @@ class FolderSettingsBindingSourceTests {
     connection();
     folder.setSettings(BOUND);
 
-    assertThat(underTest.bindingOf(folder)).hasValueSatisfying(binding -> {
+    assertThat(underTest.bindingOf(folder, underTest.scopesOf(folder).get(0))).hasValueSatisfying(binding -> {
       assertThat(binding.projectKey()).isEqualTo("myProject");
       assertThat(binding.connectionId()).isEqualTo(CONNECTION_ID);
       assertThat(binding.target()).isEqualTo("connection 'myServer'");
@@ -102,7 +111,7 @@ class FolderSettingsBindingSourceTests {
   void bindingOf_keeps_the_binding_but_not_the_connection_when_the_connection_is_unknown() {
     folder.setSettings(BOUND);
 
-    assertThat(underTest.bindingOf(folder)).hasValueSatisfying(binding -> {
+    assertThat(underTest.bindingOf(folder, underTest.scopesOf(folder).get(0))).hasValueSatisfying(binding -> {
       assertThat(binding.connectionId()).isNull();
       assertThat(binding.projectKey()).isEqualTo("myProject");
     });
@@ -133,7 +142,7 @@ class FolderSettingsBindingSourceTests {
   }
 
   private static ScopeBinding binding(FolderSettingsBindingSource source, WorkspaceFolderWrapper boundFolder) {
-    return source.bindingOf(boundFolder).orElseThrow();
+    return source.bindingOf(boundFolder, source.scopesOf(boundFolder).get(0)).orElseThrow();
   }
 
   private void connection() {
