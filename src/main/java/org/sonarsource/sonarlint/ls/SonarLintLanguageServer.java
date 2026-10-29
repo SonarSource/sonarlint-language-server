@@ -262,6 +262,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.configurationScopeManager = new ConfigurationScopeManager(bindingSources, backendServiceFacade, lsLogOutput);
     this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager,
       client, lsLogOutput, backendServiceFacade, openNotebooksCache, configurationScopeManager, folderSettingsSource);
+    this.configurationScopeManager.addListener(bindingManager);
     // todo should this look like that?
     this.workspaceFoldersManager.setConfigurationScopeManager(configurationScopeManager);
     vsCodeClient.setBindingManager(bindingManager);
@@ -763,6 +764,14 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
       bindingManager.validateConnection(onTokenUpdateNotificationParams.getConnectionId());
       return null;
     });
+  }
+
+  @Override
+  public CompletableFuture<List<BindingInfo>> getBindings() {
+    return CompletableFutures.computeAsync(cancelToken -> bindingManager.getBindings().stream()
+      .map(scope -> new BindingInfo(scope.uri().toString(), scope.name(), scope.relativePath(), scope.binding().projectKey(),
+        scope.binding().connectionId(), scope.origin().name()))
+      .toList());
   }
 
   @Override
