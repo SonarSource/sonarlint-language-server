@@ -94,6 +94,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
@@ -144,6 +145,7 @@ class CommandManagerTests {
   private BackendServiceFacade backendServiceFacade;
   private BackendService backendService;
   private WorkspaceFoldersManager workspaceFoldersManager;
+  private ConfigurationScopeManager scopeManager;
   private OpenNotebooksCache openNotebooksCache;
 
   @BeforeEach
@@ -160,11 +162,13 @@ class CommandManagerTests {
     securityHotspotsCache = mock(HotspotsCache.class);
     backendServiceFacade = mock(BackendServiceFacade.class);
     workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
+    scopeManager = mock(ConfigurationScopeManager.class);
+    when(scopeManager.resolveConfigScopeId(any())).thenReturn("file:///");
     openNotebooksCache = mock(OpenNotebooksCache.class);
     backendService = mock(BackendService.class);
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     underTest = new CommandManager(mockClient, mockSettingsManager, bindingManager, mockTelemetry,
-      mockTaintVulnerabilitiesCache, issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, openNotebooksCache, logTester.getLogger());
+      mockTaintVulnerabilitiesCache, issuesCache, securityHotspotsCache, backendServiceFacade, workspaceFoldersManager, scopeManager, openNotebooksCache, logTester.getLogger());
   }
 
   @Test
