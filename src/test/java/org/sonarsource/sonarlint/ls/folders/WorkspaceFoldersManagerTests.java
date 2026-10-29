@@ -24,7 +24,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,13 +31,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.ConfigurationScopeDto;
-import org.sonarsource.sonarlint.ls.backend.BackendService;
-import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
-import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
-import testutils.ImmediateExecutorService;
 import testutils.SonarLintLogTester;
 
 import static java.net.URI.create;
@@ -46,6 +38,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager.isAncestor;
 
@@ -53,21 +47,13 @@ class WorkspaceFoldersManagerTests {
 
   @RegisterExtension
   SonarLintLogTester logTester = new SonarLintLogTester();
-  ProjectBindingManager bindingManager;
-  BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
-  BackendService backendService = mock(BackendService.class);
+  WorkspaceFolderLifecycleListener listener = mock(WorkspaceFolderLifecycleListener.class);
 
-  private final WorkspaceFoldersManager underTest = new WorkspaceFoldersManager(new ImmediateExecutorService(), backendServiceFacade, logTester.getLogger());
+  private final WorkspaceFoldersManager underTest = new WorkspaceFoldersManager(logTester.getLogger());
 
   @BeforeEach
   void prepare() {
-    bindingManager = mock(ProjectBindingManager.class);
-    when(bindingManager.getBinding(URI.create(""))).thenReturn(Optional.of(mock(ProjectBinding.class)));
-    when(backendServiceFacade.getBackendService()).thenReturn(backendService);
-    when(backendService.getConfigScopeDto(any(), any()))
-      .thenReturn(new ConfigurationScopeDto("id", BackendService.ROOT_CONFIGURATION_SCOPE, true, "name",
-        new BindingConfigurationDto("connectionId", "projectKey", true)));
-    underTest.setBindingManager(bindingManager);
+    underTest.addListener(listener);
   }
 
   @Test
@@ -211,6 +197,39 @@ class WorkspaceFoldersManagerTests {
     assertThat(logTester.logs())
       .anyMatch(log -> log.contains("Processing didChangeWorkspaceFolders event"))
       .anyMatch(log -> log.contains("Unregistered workspace folder was missing: " + basedir.toUri()));
+  }
+
+  @Test
+  void removing_a_folder_tells_the_listeners_once() {
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    var workspaceFolder = mockWorkspaceFolder(basedir.toUri());
+    underTest.initialize(List.of(workspaceFolder));
+    var folder = underTest.getAll().iterator().next();
+
+    underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(Collections.emptyList(), List.of(workspaceFolder)));
+    underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(Collections.emptyList(), List.of(workspaceFolder)));
+
+    verify(listener).removed(folder);
+    verify(listener, times(1)).removed(any());
+  }
+
+  @Test
+  void initialized_tells_the_listeners_about_every_folder() {
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+    underTest.initialize(List.of(mockWorkspaceFolder(basedir.toUri())));
+
+    underTest.initialized();
+
+    verify(listener).initialized(underTest.getAll());
+  }
+
+  @Test
+  void added_folders_tell_the_listeners() {
+    var basedir = Paths.get("path/to/base").toAbsolutePath();
+
+    underTest.didChangeWorkspaceFolders(new WorkspaceFoldersChangeEvent(List.of(mockWorkspaceFolder(basedir.toUri())), Collections.emptyList()));
+
+    verify(listener).added(any());
   }
 
   private static WorkspaceFolder mockWorkspaceFolder(URI uri) {

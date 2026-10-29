@@ -89,6 +89,7 @@ import org.sonarsource.sonarlint.ls.domain.LSLanguage;
 import org.sonarsource.sonarlint.ls.domain.MQRModeDetails;
 import org.sonarsource.sonarlint.ls.domain.StandardModeDetails;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
@@ -99,7 +100,6 @@ import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.net.URI.create;
 import static org.sonarsource.sonarlint.core.client.utils.CleanCodeAttribute.fromDto;
-import static org.sonarsource.sonarlint.ls.backend.BackendService.ROOT_CONFIGURATION_SCOPE;
 import static org.sonarsource.sonarlint.ls.clientapi.SonarLintVSCodeClient.SONARLINT_SOURCE;
 import static org.sonarsource.sonarlint.ls.util.EnumLabelsMapper.cleanCodeAttributeToLabel;
 import static org.sonarsource.sonarlint.ls.util.Utils.interrupted;
@@ -145,12 +145,13 @@ public class CommandManager {
   private final HotspotsCache securityHotspotsCache;
   private final BackendServiceFacade backendServiceFacade;
   private final WorkspaceFoldersManager workspaceFoldersManager;
+  private final ConfigurationScopeManager scopeManager;
   private final OpenNotebooksCache openNotebooksCache;
   private final LanguageClientLogger logOutput;
 
   CommandManager(SonarLintExtendedLanguageClient client, SettingsManager settingsManager, ProjectBindingManager bindingManager,
     SonarLintTelemetry telemetry, TaintVulnerabilitiesCache taintVulnerabilitiesCache, IssuesCache issuesCache,
-    HotspotsCache securityHotspotsCache, BackendServiceFacade backendServiceFacade, WorkspaceFoldersManager workspaceFoldersManager,
+    HotspotsCache securityHotspotsCache, BackendServiceFacade backendServiceFacade, WorkspaceFoldersManager workspaceFoldersManager, ConfigurationScopeManager scopeManager,
     OpenNotebooksCache openNotebooksCache, LanguageClientLogger logOutput) {
     this.client = client;
     this.settingsManager = settingsManager;
@@ -161,6 +162,7 @@ public class CommandManager {
     this.securityHotspotsCache = securityHotspotsCache;
     this.backendServiceFacade = backendServiceFacade;
     this.workspaceFoldersManager = workspaceFoldersManager;
+    this.scopeManager = scopeManager;
     this.openNotebooksCache = openNotebooksCache;
     this.logOutput = logOutput;
   }
@@ -179,8 +181,7 @@ public class CommandManager {
   private void createFixWithAiCodeFixCodeAction(UUID issueId, List<Either<Command, CodeAction>> codeActions, Diagnostic diagnostic, URI fileUri, String message) {
     var croppedMessage = message.length() > AI_CODEFIX_ISSUE_MESSAGE_MAX_LENGTH ?
       StringUtils.substring(message, 0, AI_CODEFIX_ISSUE_MESSAGE_MAX_LENGTH).concat("...") : message;
-    var workspace = workspaceFoldersManager.findFolderForFile(fileUri).orElse(null);
-    var configScopeId = workspace == null ? ROOT_CONFIGURATION_SCOPE : workspace.getUri().toString();
+    var configScopeId = scopeManager.resolveConfigScopeId(fileUri);
     var aiCodeFixCodeAction = new CodeAction(String.format(SONARLINT_ACTION_PREFIX + "✧˖° Fix with AI CodeFix '%s'", croppedMessage));
     aiCodeFixCodeAction.setKind(CodeActionKind.QuickFix);
     aiCodeFixCodeAction.setIsPreferred(true);
@@ -258,12 +259,12 @@ public class CommandManager {
   }
 
   private CodeAction createResolveIssueCodeAction(Diagnostic diagnostic, String ruleKey, String issueId, URI fileUri, boolean isTaintIssue) {
-    var workspace = workspaceFoldersManager.findFolderForFile(fileUri).orElseThrow(() -> new IllegalStateException("No workspace found"));
-    var workspaceUri = workspace.getUri();
+    workspaceFoldersManager.findFolderForFile(fileUri).orElseThrow(() -> new IllegalStateException("No workspace found"));
+    var configScopeId = scopeManager.resolveConfigScopeId(fileUri);
     var resolveIssueAction = new CodeAction(String.format(SONARLINT_ACTION_PREFIX + "Resolve issue violating rule '%s' as...", ruleKey));
     resolveIssueAction.setKind(CodeActionKind.QuickFix);
     resolveIssueAction.setDiagnostics(List.of(diagnostic));
-    resolveIssueAction.setCommand(new Command("Resolve this issue", RESOLVE_ISSUE, List.of(workspaceUri.toString(), issueId, fileUri, isTaintIssue)));
+    resolveIssueAction.setCommand(new Command("Resolve this issue", RESOLVE_ISSUE, List.of(configScopeId, issueId, fileUri, isTaintIssue)));
     return resolveIssueAction;
   }
 
@@ -355,9 +356,9 @@ public class CommandManager {
   }
 
   public CompletableFuture<ShowRuleDescriptionParams> getFindingDetails(String fileUri, String issueKey) {
-    var workspaceFolder = getWorkspaceFolderFromFileUri(fileUri);
+    var configScopeId = scopeManager.resolveConfigScopeId(create(fileUri));
 
-    return backendServiceFacade.getBackendService().getEffectiveIssueDetails(workspaceFolder, UUID.fromString(issueKey))
+    return backendServiceFacade.getBackendService().getEffectiveIssueDetails(configScopeId, UUID.fromString(issueKey))
       .thenApply(detailsResponse -> createShowRuleDescriptionParams(detailsResponse.getDetails()))
       .exceptionally(e -> {
         var message = "Can't show issue details for unknown issue with key: " + issueKey;
@@ -368,9 +369,9 @@ public class CommandManager {
   }
 
   public CompletableFuture<ShowRuleDescriptionParams> getEffectiveRuleDetails(String fileUri, String ruleKey) {
-    var workspaceFolder = getWorkspaceFolderFromFileUri(fileUri);
+    var configScopeId = scopeManager.resolveConfigScopeId(create(fileUri));
 
-    return backendServiceFacade.getBackendService().getEffectiveRuleDetails(workspaceFolder, ruleKey, "")
+    return backendServiceFacade.getBackendService().getEffectiveRuleDetails(configScopeId, ruleKey, "")
       .thenApply(detailsResponse -> {
         var details = detailsResponse.details();
         return createShowRuleDescriptionParams(details);
@@ -381,15 +382,6 @@ public class CommandManager {
         logOutput.errorWithStackTrace(message, e);
         return null;
       });
-  }
-
-  private @Nullable String getWorkspaceFolderFromFileUri(String fileUri) {
-    return Optional.of(fileUri)
-      .map(URI::create)
-      .map(workspaceFoldersManager::findFolderForFile)
-      .filter(Optional::isPresent)
-      .map(w -> w.get().getUri().toString())
-      .orElse(null);
   }
 
   private void showStandaloneRuleDescription(String ruleKey, GetStandaloneRuleDescriptionResponse ruleDetails) {
@@ -582,8 +574,7 @@ public class CommandManager {
   private void handleSuggestFixCommand(ExecuteCommandParams params) {
     var issueId = getAsString(params.getArguments().get(0));
     var fileUri = getAsString(params.getArguments().get(1));
-    var workspace = workspaceFoldersManager.findFolderForFile(create(fileUri)).orElse(null);
-    var configScopeId = workspace == null ? ROOT_CONFIGURATION_SCOPE : workspace.getUri().toString();
+    var configScopeId = scopeManager.resolveConfigScopeId(create(fileUri));
     handleSuggestFixFromCodeActionCommand(new ExecuteCommandParams(SONARLINT_SUGGEST_FIX_FROM_CODE_ACTION_COMMAND,
       List.of(new JsonPrimitive(configScopeId), new JsonPrimitive(issueId), new JsonPrimitive(fileUri))));
   }
