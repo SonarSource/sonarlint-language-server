@@ -124,7 +124,7 @@ public class AnalysisHelper {
   public Map<String, String> getInferredAnalysisProperties(String configurationScopeId, List<URI> filesToAnalyzeUris) {
     // Need to analyze files outside any workspace folder as well
     var workspaceFolder = configurationScopeId.equals(ROOT_CONFIGURATION_SCOPE) ?
-      Optional.empty() : workspaceFoldersManager.getFolder(URI.create(configurationScopeId));
+      Optional.empty() : workspaceFoldersManager.findFolderForFile(URI.create(configurationScopeId));
     var settings = workspaceFolder.map(f -> ((WorkspaceFolderWrapper) f).getSettings())
       .orElseGet(() -> CompletableFutures.computeAsync(c -> settingsManager.getCurrentDefaultFolderSettings()).join());
 
