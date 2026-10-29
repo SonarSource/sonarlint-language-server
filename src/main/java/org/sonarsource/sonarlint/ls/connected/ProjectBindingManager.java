@@ -48,6 +48,8 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeListener;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScope;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.settings.EndpointParams;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
@@ -65,7 +67,7 @@ import static org.sonarsource.sonarlint.ls.util.Utils.uriHasFileScheme;
 /**
  * Answers which project a file is bound to, and keeps the scope manager up to date when the settings change.
  */
-public class ProjectBindingManager implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
+public class ProjectBindingManager implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener, ConfigurationScopeListener {
   private final WorkspaceFoldersManager foldersManager;
   private final SettingsManager settingsManager;
   private final ConfigurationScopeManager scopeManager;
@@ -112,6 +114,14 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return true;
   }
 
+  @Override
+  public void scopesChanged() {
+    client.bindingsChanged();
+  }
+
+  public List<ConfigurationScope> getBindings() {
+    return scopeManager.boundScopes();
+  }
 
   @CheckForNull
   public EndpointParams getEndpointParamsFor(@Nullable String connectionId) {
