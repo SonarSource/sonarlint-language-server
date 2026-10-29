@@ -37,8 +37,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.BindingConfigurationDto;
-import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpdateBindingParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.common.TransientSonarCloudConnectionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.common.TransientSonarQubeConnectionDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.GetProjectNamesByKeyResponse;
@@ -56,6 +54,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
 import org.sonarsource.sonarlint.ls.settings.EndpointParams;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -85,16 +84,19 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
   private ForcedAnalysisCoordinator analysisManager;
   private final BackendServiceFacade backendServiceFacade;
   private final OpenNotebooksCache openNotebooksCache;
+  private final ConfigurationScopeManager scopeManager;
 
   public ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
-    LanguageClientLogger globalLogOutput, BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache) {
+    LanguageClientLogger globalLogOutput, BackendServiceFacade backendServiceFacade, OpenNotebooksCache openNotebooksCache,
+    ConfigurationScopeManager scopeManager) {
     this(foldersManager, settingsManager, client, new ConcurrentHashMap<>(), globalLogOutput,
-      backendServiceFacade, openNotebooksCache);
+      backendServiceFacade, openNotebooksCache, scopeManager);
   }
 
   public ProjectBindingManager(WorkspaceFoldersManager foldersManager, SettingsManager settingsManager, SonarLintExtendedLanguageClient client,
     ConcurrentMap<URI, Optional<ProjectBinding>> folderBindingCache, LanguageClientLogger globalLogOutput, BackendServiceFacade backendServiceFacade,
-    OpenNotebooksCache openNotebooksCache) {
+    OpenNotebooksCache openNotebooksCache, ConfigurationScopeManager scopeManager) {
+    this.scopeManager = scopeManager;
     this.foldersManager = foldersManager;
     this.settingsManager = settingsManager;
     this.client = client;
@@ -238,10 +240,9 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     } else if (newValue.hasBinding()
       && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey()))) {
       forceRebindDuringNextAnalysis(folder);
-      if (folder == null) return;
-      var bindingConfigurationDto = new BindingConfigurationDto(newValue.getConnectionId(), newValue.getProjectKey(), false);
-      var params = new DidUpdateBindingParams(folder.getUri().toString(), bindingConfigurationDto);
-      backendServiceFacade.getBackendService().updateBinding(params);
+      if (folder != null) {
+        scopeManager.reconcile(folder);
+      }
     }
   }
 
@@ -284,9 +285,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     folderBindingCache.put(folder.getUri(), Optional.empty());
     globalLogOutput.debug(format("Workspace '%s' unbound", folder));
     analysisManager.analyzeAllOpenFilesInFolder(folder);
-    var bindingConfigurationDto = new BindingConfigurationDto(null, null, false);
-    var params = new DidUpdateBindingParams(folder.getUri().toString(), bindingConfigurationDto);
-    backendServiceFacade.getBackendService().updateBinding(params);
+    scopeManager.reconcile(folder);
   }
 
   private void clearCaches(String connectionId) {
