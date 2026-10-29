@@ -150,18 +150,11 @@ public final class BackendServiceFacade {
       languageSpecificRequirements,
       initializationOptions.automaticAnalysis(),
       null,
-      logLevelForShowVerboseLogs(initializationOptions.showVerboseLogs()));
+      initializationOptions.showVerboseLogs() ? LogLevel.DEBUG : LogLevel.INFO);
   }
 
   public void syncBackendLogLevel(LogLevel level) {
     backendService.syncBackendLogLevel(level);
-  }
-
-  private static LogLevel logLevelForShowVerboseLogs(boolean showVerboseLogs) {
-    if (showVerboseLogs) {
-      return BackendLogLevel.whenVerbose();
-    }
-    return BackendLogLevel.whenNotVerbose();
   }
 
   static String determineIdeName(String appName) {

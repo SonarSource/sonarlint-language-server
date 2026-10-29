@@ -37,12 +37,7 @@ public class BackendLogLevelSynchronizer implements WorkspaceSettingsChangeListe
     if (oldValue != null && oldValue.showVerboseLogs() == newValue.showVerboseLogs()) {
       return;
     }
-    LogLevel logLevel;
-    if (newValue.showVerboseLogs()) {
-      logLevel = BackendLogLevel.whenVerbose();
-    } else {
-      logLevel = BackendLogLevel.whenNotVerbose();
-    }
+    var logLevel = newValue.showVerboseLogs() ? LogLevel.DEBUG : LogLevel.INFO;
     backendServiceFacade.syncBackendLogLevel(logLevel);
   }
 }
