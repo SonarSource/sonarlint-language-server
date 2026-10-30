@@ -29,6 +29,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -958,6 +959,27 @@ class SettingsManagerTests {
       entry("sonar.cs.internal.loadProjectOnDemand", "false"),
       entry("sonar.cs.internal.loadProjectsTimeout", "60"));
     assertThat(analyzerProperties.get("sonar.cs.internal.solutionPath")).isNull();
+  }
+
+  @Test
+  void connectionOf_is_the_connection_with_that_id_or_the_default_one() {
+    var connection = new ServerConnectionSettings("sq", "http://localhost:9000", "token", null, false, null);
+    var defaultConnection = new ServerConnectionSettings(SettingsManager.connectionIdOrDefault(null), "http://localhost:9001", "token", null, false, null);
+    doReturn(new WorkspaceSettings(false, Map.of("sq", connection, defaultConnection.getConnectionId(), defaultConnection), Collections.emptyList(), Collections.emptyList(),
+      Collections.emptyMap(), false, "", false, true, "", false)).when(underTest).getCurrentSettings();
+
+    assertThat(underTest.connectionOf("sq")).isSameAs(connection);
+    assertThat(underTest.connectionOf(null)).isSameAs(defaultConnection);
+  }
+
+  @Test
+  void connectionOf_logs_when_the_connection_does_not_exist() {
+    doReturn(new WorkspaceSettings(false, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(),
+      Collections.emptyMap(), false, "", false, true, "", false)).when(underTest).getCurrentSettings();
+
+    assertThat(underTest.connectionOf("unknown")).isNull();
+
+    assertThat(logTester.logs(MessageType.Log)).anyMatch(log -> log.contains("The specified connection id 'unknown' doesn't exist."));
   }
 
   @Test
