@@ -666,6 +666,17 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
     Utils.shutdownAndAwait(executor, true);
   }
 
+  @CheckForNull
+  public ServerConnectionSettings connectionOf(@Nullable String maybeConnectionId) {
+    var connectionId = connectionIdOrDefault(maybeConnectionId);
+    var serverConnectionSettings = getCurrentSettings().getServerConnections().get(connectionId);
+    if (serverConnectionSettings == null) {
+      logOutput.error(format("The specified connection id '%s' doesn't exist.", connectionId));
+      return null;
+    }
+    return serverConnectionSettings;
+  }
+
   public static String connectionIdOrDefault(@Nullable String connectionId) {
     return connectionId == null ? DEFAULT_CONNECTION_ID : connectionId;
   }
