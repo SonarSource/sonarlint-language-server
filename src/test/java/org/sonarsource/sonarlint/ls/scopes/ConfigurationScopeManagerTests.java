@@ -21,7 +21,9 @@ package org.sonarsource.sonarlint.ls.scopes;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.WorkspaceFolder;
@@ -47,19 +49,25 @@ import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ConfigurationScopeManagerTests {
 
   private static final URI REPO = URI.create("file:///repo/");
+  private static final URI MODULE_A = URI.create("file:///repo/moduleA/");
+  private static final URI NESTED = URI.create("file:///repo/moduleA/nested/");
+  private static final URI MODULE_B = URI.create("file:///repo/moduleB/");
   private static final ProjectBinding ROOT_BINDING = new ProjectBinding("connection", "root");
-  private static final ProjectBinding OTHER_BINDING = new ProjectBinding("connection", "other");
+  private static final ProjectBinding MODULE_A_BINDING = new ProjectBinding("connection", "module-a");
 
   @RegisterExtension
   SonarLintLogTester logTester = new SonarLintLogTester();
 
   private final BindingSources sources = mock(BindingSources.class);
+  private final Map<URI, ProjectBinding> bindings = new HashMap<>();
+  private List<ConfigurationScope> declared = List.of();
   private final WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
   private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   private final BackendService backendService = mock(BackendService.class);
@@ -70,35 +78,67 @@ class ConfigurationScopeManagerTests {
   @BeforeEach
   void prepare() {
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
-    unbound();
     underTest = new ConfigurationScopeManager(new ImmediateExecutorService(), foldersManager, sources, backendServiceFacade, logTester.getLogger());
     underTest.addListener(listener);
   }
 
   @Test
-  void adding_a_folder_opens_its_scope_with_the_binding_of_the_folder() {
-    bound(ROOT_BINDING);
+  void adding_a_folder_opens_its_scope_and_the_scopes_below_it_with_their_bindings() {
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS), scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG));
+    bound(MODULE_A, MODULE_A_BINDING);
+    bound(REPO, ROOT_BINDING);
 
     underTest.added(folder);
 
     verify(backendService).addConfigurationScope(REPO.toString(), BackendService.ROOT_CONFIGURATION_SCOPE, "repo", ROOT_BINDING);
+    verify(backendService).addConfigurationScope(MODULE_A.toString(), REPO.toString(), "moduleA", MODULE_A_BINDING);
     verify(listener).scopesChanged();
   }
 
   @Test
-  void a_folder_without_binding_is_opened_unbound() {
+  void a_folder_no_source_declares_is_still_opened_unbound() {
+    declare();
 
     underTest.added(folder);
 
     verify(backendService).addConfigurationScope(REPO.toString(), BackendService.ROOT_CONFIGURATION_SCOPE, "repo", null);
+    verify(backendService, times(1)).addConfigurationScope(any(), any(), any(), any());
+  }
+
+  @Test
+  void a_folder_whose_sources_declare_only_scopes_below_it_is_opened_unbound() {
+    declare(scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG));
+    bound(MODULE_A, MODULE_A_BINDING);
+
+    underTest.added(folder);
+
+    verify(backendService).addConfigurationScope(REPO.toString(), BackendService.ROOT_CONFIGURATION_SCOPE, "repo", null);
+    assertThat(underTest.boundScopes()).extracting(ConfigurationScope::uri).containsExactly(MODULE_A);
+  }
+
+  @Test
+  void updating_closes_the_scopes_that_disappeared_and_opens_the_new_ones() {
+    declare(scope(REPO, "repo", ".", Origin.SONAR_CONFIG), scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG));
+    underTest.added(folder);
+    clearInvocations(backendService, listener);
+    declare(scope(REPO, "repo", ".", Origin.SONAR_CONFIG), scope(MODULE_B, "moduleB", "moduleB", Origin.SONAR_CONFIG));
+
+    var changed = underTest.update(folder).join();
+
+    assertThat(changed).isTrue();
+    verify(backendService).removeConfigurationScope(MODULE_A.toString());
+    verify(backendService).addConfigurationScope(MODULE_B.toString(), REPO.toString(), "moduleB", null);
+    verify(backendService, never()).addConfigurationScope(eq(REPO.toString()), any(), any(), any());
+    verify(listener).scopesChanged();
   }
 
   @Test
   void updating_rebinds_the_scopes_whose_binding_changed() {
-    bound(ROOT_BINDING);
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS));
+    bound(REPO, ROOT_BINDING);
     underTest.added(folder);
     clearInvocations(backendService, listener);
-    bound(new ProjectBinding("connection", "other"));
+    bound(REPO, new ProjectBinding("connection", "other"));
 
     var changed = underTest.update(folder).join();
 
@@ -109,10 +149,11 @@ class ConfigurationScopeManagerTests {
 
   @Test
   void updating_unbinds_a_scope_that_lost_its_binding() {
-    bound(ROOT_BINDING);
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS));
+    bound(REPO, ROOT_BINDING);
     underTest.added(folder);
     clearInvocations(backendService, listener);
-    unbound();
+    unbound(REPO);
 
     underTest.update(folder).join();
 
@@ -121,6 +162,8 @@ class ConfigurationScopeManagerTests {
 
   @Test
   void updating_without_a_difference_touches_nothing() {
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS), scope(MODULE_A, "moduleA", "moduleA", Origin.SETTINGS));
+    bound(MODULE_A, MODULE_A_BINDING);
     underTest.added(folder);
     clearInvocations(backendService, listener);
 
@@ -135,13 +178,15 @@ class ConfigurationScopeManagerTests {
   }
 
   @Test
-  void removing_a_folder_closes_its_scope_and_tells_the_listeners() {
+  void removing_a_folder_closes_its_scopes_and_tells_the_listeners() {
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS), scope(MODULE_A, "moduleA", "moduleA", Origin.SETTINGS));
     underTest.added(folder);
     clearInvocations(backendService, listener);
 
     underTest.removed(folder);
 
     verify(backendService).removeConfigurationScope(REPO.toString());
+    verify(backendService).removeConfigurationScope(MODULE_A.toString());
     verify(listener).scopesChanged();
   }
 
@@ -197,6 +242,7 @@ class ConfigurationScopeManagerTests {
 
   @Test
   void a_removed_folder_is_not_updated_again() {
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS));
     underTest.added(folder);
     underTest.removed(folder);
     clearInvocations(backendService, listener);
@@ -204,6 +250,17 @@ class ConfigurationScopeManagerTests {
     assertThat(underTest.update(folder).join()).isFalse();
 
     verify(backendService, never()).addConfigurationScope(any(), any(), any(), any());
+  }
+
+  @Test
+  void scopeIdOf_is_the_deepest_declared_scope_containing_the_file_or_the_folder() {
+    declare(scope(REPO, "repo", ".", Origin.SONAR_CONFIG), scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG),
+      scope(NESTED, "nested", "moduleA/nested", Origin.SONAR_CONFIG));
+    underTest.added(folder);
+
+    assertThat(underTest.scopeIdOf(folder, URI.create("file:///repo/moduleA/nested/Foo.java"))).isEqualTo(NESTED.toString());
+    assertThat(underTest.scopeIdOf(folder, URI.create("file:///repo/moduleA/Foo.java"))).isEqualTo(MODULE_A.toString());
+    assertThat(underTest.scopeIdOf(folder, URI.create("file:///repo/Foo.java"))).isEqualTo(REPO.toString());
   }
 
   @Test
@@ -215,11 +272,12 @@ class ConfigurationScopeManagerTests {
   void findConfigScopeId_is_the_scope_of_the_file_inside_a_folder_and_empty_outside_every_folder() {
     var inFolder = URI.create("file:///repo/moduleA/Foo.java");
     var outside = URI.create("file:///other/Foo.java");
+    declare(scope(REPO, "repo", ".", Origin.SONAR_CONFIG), scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG));
     underTest.added(folder);
     when(foldersManager.findFolderForFile(inFolder)).thenReturn(Optional.of(folder));
     when(foldersManager.findFolderForFile(outside)).thenReturn(Optional.empty());
 
-    assertThat(underTest.findConfigScopeId(inFolder)).contains(REPO.toString());
+    assertThat(underTest.findConfigScopeId(inFolder)).contains(MODULE_A.toString());
     assertThat(underTest.findConfigScopeId(outside)).isEmpty();
   }
 
@@ -233,6 +291,7 @@ class ConfigurationScopeManagerTests {
 
   @Test
   void the_folder_events_open_and_close_the_scopes() {
+    declare();
 
     underTest.initialized(List.of(folder));
     verify(backendService).addConfigurationScope(eq(REPO.toString()), eq(BackendService.ROOT_CONFIGURATION_SCOPE), eq("repo"), any());
@@ -243,6 +302,7 @@ class ConfigurationScopeManagerTests {
 
   @Test
   void an_added_folder_opens_its_scope() {
+    declare();
 
     underTest.added(folder);
 
@@ -250,19 +310,23 @@ class ConfigurationScopeManagerTests {
   }
 
   @Test
-  void bindingOf_is_the_declared_binding_of_the_folder() {
-    bound(ROOT_BINDING);
+  void bindingOf_is_the_declared_binding_of_the_deepest_scope_containing_the_file() {
+    declare(scope(REPO, "repo", ".", Origin.SONAR_CONFIG), scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG));
+    bound(REPO, ROOT_BINDING);
+    bound(MODULE_A, MODULE_A_BINDING);
     underTest.added(folder);
 
+    assertThat(underTest.bindingOf(folder, URI.create("file:///repo/moduleA/Foo.java"))).contains(MODULE_A_BINDING);
     assertThat(underTest.bindingOf(folder, URI.create("file:///repo/Foo.java"))).contains(ROOT_BINDING);
   }
 
   @Test
   void bindingOf_does_not_follow_what_the_sources_say_after_the_declaration() {
-    bound(ROOT_BINDING);
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS));
+    bound(REPO, ROOT_BINDING);
     underTest.added(folder);
 
-    bound(OTHER_BINDING);
+    bound(REPO, MODULE_A_BINDING);
 
     assertThat(underTest.bindingOf(folder, URI.create("file:///repo/Foo.java"))).contains(ROOT_BINDING);
   }
@@ -274,16 +338,21 @@ class ConfigurationScopeManagerTests {
 
   @Test
   void the_bound_scopes_and_what_they_are_bound_to_can_be_listed() {
-    bound(ROOT_BINDING);
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS), scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG));
+    bound(REPO, ROOT_BINDING);
+    bound(MODULE_A, MODULE_A_BINDING);
     underTest.added(folder);
 
-    assertThat(underTest.boundScopes()).containsExactly(new ConfigurationScope(REPO, "repo", ".", Origin.SETTINGS, ROOT_BINDING));
-    assertThat(underTest.bindings()).containsExactly(ROOT_BINDING);
+    assertThat(underTest.boundScopes()).containsExactlyInAnyOrder(
+      new ConfigurationScope(REPO, "repo", ".", Origin.SETTINGS, ROOT_BINDING),
+      new ConfigurationScope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG, MODULE_A_BINDING));
+    assertThat(underTest.bindings()).containsExactlyInAnyOrder(ROOT_BINDING, MODULE_A_BINDING);
   }
 
   @Test
   void what_the_backend_refused_is_not_remembered() {
-    bound(ROOT_BINDING);
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS));
+    bound(REPO, ROOT_BINDING);
     doThrow(new IllegalStateException("backend down")).when(backendService).addConfigurationScope(any(), any(), any(), any());
 
     underTest.added(folder);
@@ -304,14 +373,40 @@ class ConfigurationScopeManagerTests {
 
   @Test
   void updating_every_folder_updates_each_registered_one() {
-    bound(ROOT_BINDING);
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS));
+    bound(REPO, ROOT_BINDING);
     underTest.added(folder);
     clearInvocations(backendService, listener);
-    bound(OTHER_BINDING);
+    bound(REPO, MODULE_A_BINDING);
 
     underTest.updateAll().join();
 
-    verify(backendService).bind(REPO.toString(), OTHER_BINDING);
+    verify(backendService).bind(REPO.toString(), MODULE_A_BINDING);
+  }
+
+  private void declare(ConfigurationScope... scopes) {
+    declared = List.of(scopes);
+    stubSources();
+  }
+
+  private ConfigurationScope scope(URI uri, String name, String relativePath, Origin origin) {
+    return new ConfigurationScope(uri, name, relativePath, origin, null);
+  }
+
+  private void bound(URI scopeUri, ProjectBinding binding) {
+    bindings.put(scopeUri, binding);
+    stubSources();
+  }
+
+  private void unbound(URI scopeUri) {
+    bindings.remove(scopeUri);
+    stubSources();
+  }
+
+  private void stubSources() {
+    when(sources.scopesOf(folder)).thenReturn(declared.stream()
+      .map(scope -> new ConfigurationScope(scope.uri(), scope.name(), scope.relativePath(), scope.origin(), bindings.get(scope.uri())))
+      .toList());
   }
 
   @Test
@@ -322,13 +417,5 @@ class ConfigurationScopeManagerTests {
     underTest.removed(folder);
 
     assertThat(logTester.logs()).anyMatch(log -> log.contains("Failed to close the configuration scopes of folder " + REPO));
-  }
-
-  private void bound(ProjectBinding binding) {
-    when(sources.scopesOf(folder)).thenReturn(List.of(new ConfigurationScope(REPO, "repo", ".", Origin.SETTINGS, binding)));
-  }
-
-  private void unbound() {
-    bound(null);
   }
 }
