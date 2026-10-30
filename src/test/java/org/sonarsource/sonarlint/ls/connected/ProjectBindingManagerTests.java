@@ -48,6 +48,7 @@ import org.sonarsource.sonarlint.ls.ForcedAnalysisCoordinator;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
+import org.sonarsource.sonarlint.ls.folders.SonarConfigResolver;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
@@ -63,6 +64,7 @@ import testutils.SonarLintLogTester;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
@@ -98,6 +100,7 @@ class ProjectBindingManagerTests {
   private ProjectBindingManager underTest;
   private ConfigurationScopeManager scopeManager;
   private BackendService backendService;
+  private SonarConfigResolver sonarConfigResolver;
   private final SettingsManager settingsManager = mock(SettingsManager.class);
   private final WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
   private final Map<String, ServerConnectionSettings> servers = new HashMap<>();
@@ -128,11 +131,12 @@ class ProjectBindingManagerTests {
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token"));
     when(settingsManager.connectionOf(any())).thenAnswer(invocation -> servers.get(SettingsManager.connectionIdOrDefault(invocation.getArgument(0))));
 
+    sonarConfigResolver = new SonarConfigResolver(logTester.getLogger());
 
     when(openNotebooksCache.getFile(any(URI.class))).thenReturn(Optional.empty());
 
     var folderSettingsSource = new FolderSettingsBindingSource(settingsManager, logTester.getLogger());
-    var sources = new BindingSources(List.of(folderSettingsSource));
+    var sources = new BindingSources(List.of(new SonarConfigBindingSource(sonarConfigResolver, settingsManager, logTester.getLogger()), folderSettingsSource));
     scopeManager = new ConfigurationScopeManager(new ImmediateExecutorService(), foldersManager, sources, backendServiceFacade, logTester.getLogger());
     underTest = new ProjectBindingManager(foldersManager, settingsManager, client, logTester.getLogger(),
       backendServiceFacade, openNotebooksCache, scopeManager);
@@ -248,7 +252,7 @@ class ProjectBindingManagerTests {
     underTest.onChange(folder, BOUND_SETTINGS, UNBOUND_SETTINGS);
 
     verify(analysisManager).analyzeAllOpenFilesInFolder(folder);
-    verify(backendService).unbind(workspaceFolderPath.toUri().toString());
+    verify(backendService).unbind(workspaceFolderPath.toUri().toString(), false);
     verify(client).bindingsChanged();
 
     binding = underTest.getBinding(fileInAWorkspaceFolderPath.toUri());
@@ -405,10 +409,65 @@ class ProjectBindingManagerTests {
     verifyNoInteractions(client);
   }
 
+  @Test
+  void get_binding_uses_the_sonar_config_instead_of_the_folder_settings() throws IOException {
+    var folder = mockFileInAFolder();
+    folder.setSettings(BOUND_SETTINGS_DIFFERENT_PROJECT_KEY);
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+    writeSonarConfig(sonarConfigEntry("configProject", "."));
 
+    assertThat(underTest.getBinding(fileInAWorkspaceFolderPath.toUri())).contains(new ProjectBinding(CONNECTION_ID, "configProject"));
+  }
 
+  @Test
+  void get_binding_is_empty_when_the_sonar_config_project_matches_no_connection() throws IOException {
+    var folder = mockFileInAFolder();
+    folder.setSettings(BOUND_SETTINGS);
+    writeSonarConfig(sonarConfigEntry("configProject", "."));
 
+    assertThat(underTest.getBinding(fileInAWorkspaceFolderPath.toUri())).isEmpty();
+  }
 
+  @Test
+  void get_binding_is_empty_for_a_folder_that_only_contains_sonar_config_projects() throws IOException {
+    var folder = mockFileInAFolder();
+    folder.setSettings(BOUND_SETTINGS);
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+    Files.createDirectories(workspaceFolderPath.resolve("sub"));
+    writeSonarConfig(sonarConfigEntry("subProject", "sub"));
+
+    assertThat(underTest.getBinding(fileInAWorkspaceFolderPath.toUri())).isEmpty();
+  }
+
+  @Test
+  void get_binding_of_a_file_in_a_sonar_config_sub_project_uses_the_sub_project() throws IOException {
+    var folder = mockFileInAFolder();
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+    var subFolder = Files.createDirectories(workspaceFolderPath.resolve("sub"));
+    var fileInSubProject = Files.createFile(subFolder.resolve(FILE_PHP));
+    when(foldersManager.findFolderForFile(fileInSubProject.toUri())).thenReturn(Optional.of(folder));
+    writeSonarConfig(sonarConfigEntry("subProject", "sub"));
+    scopeManager.added(folder);
+
+    assertThat(underTest.getBinding(fileInSubProject.toUri())).contains(new ProjectBinding(CONNECTION_ID, "subProject"));
+  }
+
+  @Test
+  void getBindings_lists_the_bound_scopes_of_a_config_and_skips_the_unresolved_ones() throws IOException {
+    var folder = mockFileInAFolder();
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+    var subFolder = Files.createDirectories(workspaceFolderPath.resolve("sub"));
+    Files.createDirectories(workspaceFolderPath.resolve("other"));
+    writeSonarConfig(sonarConfigEntry("subProject", "sub") + ",{\"projectKey\":\"unknown\",\"path\":\"other\",\"serverUrl\":\"http://other\"}");
+    scopeManager.added(folder);
+
+    assertThat(underTest.getBindings()).singleElement().satisfies(scope -> {
+      assertThat(scope.uri()).isEqualTo(subFolder.toUri());
+      assertThat(scope.relativePath()).isEqualTo("sub");
+      assertThat(scope.binding()).isEqualTo(new ProjectBinding(CONNECTION_ID, "subProject"));
+      assertThat(scope.origin()).isEqualTo(Origin.SONAR_CONFIG);
+    });
+  }
 
   @Test
   void a_change_of_the_scopes_tells_the_client() {
@@ -440,9 +499,66 @@ class ProjectBindingManagerTests {
     assertThat(underTest.getBindings()).isEmpty();
   }
 
+  @Test
+  void adding_a_connection_binds_the_config_scopes_and_tells_the_client() throws IOException {
+    var folder = mockFileInAFolder();
+    var subFolder = Files.createDirectories(workspaceFolderPath.resolve("sub"));
+    writeSonarConfig(sonarConfigEntry("subProject", "sub"));
+    scopeManager.added(folder);
+    clearInvocations(client);
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
 
+    underTest.onChange(newWorkspaceSettingsWithServers(Map.of()), newWorkspaceSettingsWithServers(servers));
 
+    verify(backendService).bind(subFolder.toUri().toString(), new ProjectBinding(CONNECTION_ID, "subProject"));
+    verify(client).bindingsChanged();
+  }
 
+  @Test
+  void removing_a_connection_unbinds_the_config_scopes_that_used_it() throws IOException {
+    var folder = mockFileInAFolder();
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+    var subFolder = Files.createDirectories(workspaceFolderPath.resolve("sub"));
+    writeSonarConfig(sonarConfigEntry("subProject", "sub"));
+    scopeManager.added(folder);
+    servers.clear();
+
+    underTest.onChange(newWorkspaceSettingsWithServers(Map.of(CONNECTION_ID, GLOBAL_SETTINGS)), newWorkspaceSettingsWithServers(Map.of()));
+
+    verify(backendService).unbind(subFolder.toUri().toString(), true);
+    assertThat(logTester.logs()).anyMatch(log -> log.contains("No connection configured for serverUrl=http://foo"));
+    verify(client).removeBindingsForDeletedConnections(List.of(CONNECTION_ID));
+  }
+
+  @Test
+  void a_settings_change_that_leaves_the_connections_alone_binds_nothing() throws IOException {
+    var folder = mockFileInAFolder();
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+    Files.createDirectories(workspaceFolderPath.resolve("sub"));
+    writeSonarConfig(sonarConfigEntry("subProject", "sub"));
+    scopeManager.added(folder);
+    clearInvocations(backendService, client);
+    var settings = newWorkspaceSettingsWithServers(servers);
+
+    underTest.onChange(settings, settings);
+
+    verify(backendService, never()).bind(any(), any());
+    verify(backendService, never()).unbind(any(), anyBoolean());
+    verify(client, never()).bindingsChanged();
+  }
+
+  @Test
+  void folders_that_are_not_registered_are_not_rebound() throws IOException {
+    mockFileInAFolder();
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+    Files.createDirectories(workspaceFolderPath.resolve("sub"));
+    writeSonarConfig(sonarConfigEntry("subProject", "sub"));
+
+    underTest.onChange(newWorkspaceSettingsWithServers(Map.of()), newWorkspaceSettingsWithServers(servers));
+
+    verify(backendService, never()).bind(any(), any());
+    verify(backendService, never()).unbind(any(), anyBoolean());
+  }
 
   @Test
   void adding_a_connection_resolves_the_settings_bindings_that_were_waiting_for_it() {
@@ -456,6 +572,20 @@ class ProjectBindingManagerTests {
     assertThat(underTest.getBinding(fileInAWorkspaceFolderPath.toUri())).contains(new ProjectBinding(CONNECTION_ID, PROJECT_KEY));
   }
 
+  @Test
+  void a_folder_settings_change_is_ignored_when_a_config_declares_the_folder() throws IOException {
+    var folder = mockFileInAFolder();
+    servers.put(CONNECTION_ID, GLOBAL_SETTINGS);
+    writeSonarConfig(sonarConfigEntry("configProject", "."));
+    scopeManager.added(folder);
+    clearInvocations(backendService, client);
+
+    underTest.onChange(folder, UNBOUND_SETTINGS, BOUND_SETTINGS);
+
+    verify(backendService, never()).bind(any(), any());
+    verify(backendService, never()).unbind(any(), anyBoolean());
+    verify(client, never()).bindingsChanged();
+  }
 
   @Test
   void a_folder_settings_change_rebinds_the_folder_and_tells_the_client() {
@@ -480,11 +610,18 @@ class ProjectBindingManagerTests {
     underTest.onChange(folder, BOUND_SETTINGS, BOUND_SETTINGS);
 
     verify(backendService, never()).bind(any(), any());
-    verify(backendService, never()).unbind(any());
+    verify(backendService, never()).unbind(any(), anyBoolean());
     verify(analysisManager, never()).analyzeAllOpenFilesInFolder(any());
   }
 
+  private void writeSonarConfig(String projectEntries) throws IOException {
+    Files.createDirectories(workspaceFolderPath.resolve(".git"));
+    Files.writeString(workspaceFolderPath.resolve(".sonar-config.json"), "{\"projects\":[" + projectEntries + "]}");
+  }
 
+  private static String sonarConfigEntry(String projectKey, String path) {
+    return "{\"projectKey\":\"" + projectKey + "\",\"path\":\"" + path + "\",\"serverUrl\":\"http://foo\"}";
+  }
 
   private WorkspaceFolderWrapper mockFileInABoundWorkspaceFolder() {
     var folder = mockFileInAFolder();

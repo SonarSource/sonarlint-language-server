@@ -20,5 +20,6 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 public enum Origin {
-  SETTINGS
+  SETTINGS,
+  SONAR_CONFIG
 }
