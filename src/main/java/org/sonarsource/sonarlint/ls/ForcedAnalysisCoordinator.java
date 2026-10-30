@@ -30,6 +30,7 @@ import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -49,14 +50,16 @@ public class ForcedAnalysisCoordinator implements WorkspaceSettingsChangeListene
   private final OpenNotebooksCache openNotebooksCache;
 
   private final WorkspaceFoldersManager workspaceFoldersManager;
+  private final ConfigurationScopeManager scopeManager;
   private final ProjectBindingManager bindingManager;
   private final SonarLintExtendedLanguageClient client;
   private final BackendServiceFacade backendServiceFacade;
   private final SettingsManager settingsManager;
 
-  public ForcedAnalysisCoordinator(WorkspaceFoldersManager workspaceFoldersManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
+  public ForcedAnalysisCoordinator(WorkspaceFoldersManager workspaceFoldersManager, ConfigurationScopeManager scopeManager, ProjectBindingManager bindingManager, OpenFilesCache openFilesCache,
     OpenNotebooksCache openNotebooksCache, SonarLintExtendedLanguageClient client, BackendServiceFacade backendServiceFacade, SettingsManager settingsManager) {
     this.workspaceFoldersManager = workspaceFoldersManager;
+    this.scopeManager = scopeManager;
     this.bindingManager = bindingManager;
     this.openFilesCache = openFilesCache;
     this.openNotebooksCache = openNotebooksCache;
@@ -83,14 +86,11 @@ public class ForcedAnalysisCoordinator implements WorkspaceSettingsChangeListene
         var notIgnoredFiles = files
           .stream().filter(it -> notIgnoredFileUris.getFileUris().contains(it.getUri().toString()))
           .toList();
-        var filesByMaybeFolderUri = notIgnoredFiles.stream().collect(groupingBy(f -> workspaceFoldersManager.findFolderForFile(f.getUri())));
-        for (var entry : filesByMaybeFolderUri.entrySet()) {
-          var maybeFolderUri = entry.getKey();
+        var filesInAFolder = notIgnoredFiles.stream().filter(f -> workspaceFoldersManager.findFolderForFile(f.getUri()).isPresent()).toList();
+        var filesByConfigScopeId = filesInAFolder.stream().collect(groupingBy(f -> scopeManager.resolveConfigScopeId(f.getUri())));
+        for (var entry : filesByConfigScopeId.entrySet()) {
           var filesToAnalyse = entry.getValue().stream().map(VersionedOpenFile::getUri).toList();
-          if (maybeFolderUri.isPresent()) {
-            var folderUri = maybeFolderUri.get().getUri();
-            backendServiceFacade.getBackendService().analyzeFilesList(folderUri.toString(), filesToAnalyse);
-          }
+          backendServiceFacade.getBackendService().analyzeFilesList(entry.getKey(), filesToAnalyse);
         }
       });
   }

@@ -19,6 +19,16 @@
  */
 package org.sonarsource.sonarlint.ls.folders;
 
+import java.util.Collection;
+
 public interface WorkspaceFolderLifecycleListener {
+  default void initialized(Collection<WorkspaceFolderWrapper> folders) {
+    // nothing by default
+  }
+
   void added(WorkspaceFolderWrapper added);
+
+  default void removed(WorkspaceFolderWrapper removed) {
+    // nothing by default
+  }
 }
