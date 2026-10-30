@@ -64,6 +64,7 @@ class ConfigurationScopeManagerTests {
   private final WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
   private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   private final BackendService backendService = mock(BackendService.class);
+  private final ConfigurationScopeListener listener = mock(ConfigurationScopeListener.class);
   private final WorkspaceFolderWrapper folder = new WorkspaceFolderWrapper(REPO, new WorkspaceFolder(REPO.toString(), "repo"), mock(LanguageClientLogger.class));
   private ConfigurationScopeManager underTest;
 
@@ -71,6 +72,7 @@ class ConfigurationScopeManagerTests {
   void prepare() {
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     underTest = new ConfigurationScopeManager(new ImmediateExecutorService(), foldersManager, sources, backendServiceFacade, logTester.getLogger());
+    underTest.addListener(listener);
   }
 
   @Test
@@ -80,6 +82,7 @@ class ConfigurationScopeManagerTests {
     underTest.foldersAdded(List.of(folder));
 
     verify(backendService).addConfigurationScope(REPO.toString(), BackendService.ROOT_CONFIGURATION_SCOPE, "repo", ROOT_BINDING);
+    verify(listener).scopesChanged();
   }
 
   @Test
@@ -94,20 +97,21 @@ class ConfigurationScopeManagerTests {
   void updating_rebinds_the_scopes_whose_binding_changed() {
     bound(ROOT_BINDING);
     underTest.foldersAdded(List.of(folder));
-    clearInvocations(backendService);
+    clearInvocations(backendService, listener);
     bound(new ProjectBinding("connection", "other"));
 
     var changed = underTest.update(folder).join();
 
     assertThat(changed).isTrue();
     verify(backendService).bind(REPO.toString(), new ProjectBinding("connection", "other"));
+    verify(listener).scopesChanged();
   }
 
   @Test
   void updating_unbinds_a_scope_that_lost_its_binding() {
     bound(ROOT_BINDING);
     underTest.foldersAdded(List.of(folder));
-    clearInvocations(backendService);
+    clearInvocations(backendService, listener);
     unbound();
 
     underTest.update(folder).join();
@@ -118,7 +122,7 @@ class ConfigurationScopeManagerTests {
   @Test
   void updating_without_a_difference_touches_nothing() {
     underTest.foldersAdded(List.of(folder));
-    clearInvocations(backendService);
+    clearInvocations(backendService, listener);
 
     var changed = underTest.update(folder).join();
 
@@ -127,6 +131,7 @@ class ConfigurationScopeManagerTests {
     verify(backendService, never()).removeConfigurationScope(any());
     verify(backendService, never()).bind(any(), any());
     verify(backendService, never()).unbind(any());
+    verify(listener, never()).scopesChanged();
   }
 
   @Test
@@ -140,13 +145,14 @@ class ConfigurationScopeManagerTests {
   }
 
   @Test
-  void removing_a_folder_closes_its_scope() {
+  void removing_a_folder_closes_its_scope_and_tells_the_listeners() {
     underTest.foldersAdded(List.of(folder));
-    clearInvocations(backendService);
+    clearInvocations(backendService, listener);
 
     underTest.folderRemoved(folder);
 
     verify(backendService).removeConfigurationScope(REPO.toString());
+    verify(listener).scopesChanged();
     assertThat(underTest.boundScopes()).isEmpty();
   }
 
@@ -155,6 +161,7 @@ class ConfigurationScopeManagerTests {
     underTest.folderRemoved(folder);
 
     verify(backendService, never()).removeConfigurationScope(any());
+    verify(listener, never()).scopesChanged();
   }
 
   @Test
@@ -203,7 +210,7 @@ class ConfigurationScopeManagerTests {
   void a_removed_folder_is_not_updated_again() {
     underTest.foldersAdded(List.of(folder));
     underTest.folderRemoved(folder);
-    clearInvocations(backendService);
+    clearInvocations(backendService, listener);
 
     assertThat(underTest.update(folder).join()).isFalse();
 
@@ -310,7 +317,7 @@ class ConfigurationScopeManagerTests {
   void updating_every_folder_updates_each_registered_one() {
     bound(ROOT_BINDING);
     underTest.foldersAdded(List.of(folder));
-    clearInvocations(backendService);
+    clearInvocations(backendService, listener);
     bound(OTHER_BINDING);
 
     underTest.updateAll().join();
