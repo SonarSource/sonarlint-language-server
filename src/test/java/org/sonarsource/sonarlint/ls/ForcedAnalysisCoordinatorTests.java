@@ -37,6 +37,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
@@ -54,6 +55,7 @@ class ForcedAnalysisCoordinatorTests {
   private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   private final BackendService backendService = mock(BackendService.class);
   private final WorkspaceFoldersManager workspaceFoldersManager = mock(WorkspaceFoldersManager.class);
+  private final ConfigurationScopeManager scopeManager = mock(ConfigurationScopeManager.class);
   private final SettingsManager settingsManager = mock(SettingsManager.class);
   URI workspaceFolderUri = URI.create("file:///my/workspace/folder");
 
@@ -66,11 +68,12 @@ class ForcedAnalysisCoordinatorTests {
         new SonarLintExtendedLanguageClient.FileUrisResult(List.of("file://Foo1.java", "file://Foo2.java"))));
     openFilesCache = new OpenFilesCache(lsLogOutput);
     OpenNotebooksCache openNotebooksCache = new OpenNotebooksCache(lsLogOutput, mock(NotebookDiagnosticPublisher.class));
-    underTest = new ForcedAnalysisCoordinator(workspaceFoldersManager, mock(ProjectBindingManager.class), openFilesCache,
+    underTest = new ForcedAnalysisCoordinator(workspaceFoldersManager, scopeManager, mock(ProjectBindingManager.class), openFilesCache,
       openNotebooksCache, client, backendServiceFacade, settingsManager);
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     when(workspaceFoldersManager.findFolderForFile(any())).thenReturn(Optional.of(new WorkspaceFolderWrapper(workspaceFolderUri,
       new WorkspaceFolder("file:///my/workspace/folder", "folder"), lsLogOutput)));
+    when(scopeManager.resolveConfigScopeId(any())).thenReturn(workspaceFolderUri.toString());
 
   }
 

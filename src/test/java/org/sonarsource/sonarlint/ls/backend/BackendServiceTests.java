@@ -21,13 +21,11 @@ package org.sonarsource.sonarlint.ls.backend;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
-import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,6 +56,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.BindingRpcSer
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.ConfigurationRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpdateBindingParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.ConfigurationScopeDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.DidAddConfigurationScopesParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.scope.DidRemoveConfigurationScopeParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.ConnectionRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.GetMCPServerConfigurationParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.ListUserOrganizationsParams;
@@ -131,36 +132,67 @@ class BackendServiceTests {
   }
 
   @Test
-  void updateBinding() {
-    underTest.updateBinding(mock(DidUpdateBindingParams.class));
+  void bind_updates_the_binding_of_the_scope() {
+    underTest.bind("scopeId", new ProjectBinding("connectionId", "projectKey"));
 
-    verify(backend).getConfigurationService();
-    verify(configurationService).didUpdateBinding(any());
+    var captor = org.mockito.ArgumentCaptor.forClass(DidUpdateBindingParams.class);
+    verify(configurationService).didUpdateBinding(captor.capture());
+    assertThat(captor.getValue().getConfigScopeId()).isEqualTo("scopeId");
+    assertThat(captor.getValue().getUpdatedBinding().getConnectionId()).isEqualTo("connectionId");
+    assertThat(captor.getValue().getUpdatedBinding().getSonarProjectKey()).isEqualTo("projectKey");
+    assertThat(captor.getValue().getUpdatedBinding().isBindingSuggestionDisabled()).isTrue();
   }
 
   @Test
-  void getConfigScopeDtoWithBinding() {
-    var workspaceUri = "/workspace";
-    var connectionId = "connectionId";
-    var bindingWrapper = new ProjectBinding(connectionId, "projectKey");
-    var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri, workspaceUri), Optional.of(bindingWrapper));
+  void unbind_clears_the_binding_of_the_scope() {
+    underTest.unbind("scopeId");
 
-    assertThat(result.getId()).isEqualTo(workspaceUri);
-    assertThat(result.getParentId()).isEqualTo(BackendService.ROOT_CONFIGURATION_SCOPE);
-    assertThat(result.getBinding().getConnectionId()).isEqualTo(connectionId);
+    var captor = org.mockito.ArgumentCaptor.forClass(DidUpdateBindingParams.class);
+    verify(configurationService).didUpdateBinding(captor.capture());
+    assertThat(captor.getValue().getConfigScopeId()).isEqualTo("scopeId");
+    assertThat(captor.getValue().getUpdatedBinding().getConnectionId()).isNull();
+    assertThat(captor.getValue().getUpdatedBinding().getSonarProjectKey()).isNull();
+    assertThat(captor.getValue().getUpdatedBinding().isBindingSuggestionDisabled()).isFalse();
   }
 
   @Test
-  void getConfigScopeDtoWithoutBinding() {
-    var workspaceUri = "/workspace";
-    var result = underTest.getConfigScopeDto(new WorkspaceFolder(workspaceUri, workspaceUri), Optional.empty());
+  void addConfigurationScope_declares_the_scope_with_its_binding() {
+    underTest.addConfigurationScope("scopeId", BackendService.ROOT_CONFIGURATION_SCOPE, "name", new ProjectBinding("connectionId", "projectKey"));
 
-    assertThat(result.getId()).isEqualTo(workspaceUri);
+    var result = declaredScope();
+    assertThat(result.getId()).isEqualTo("scopeId");
     assertThat(result.getParentId()).isEqualTo(BackendService.ROOT_CONFIGURATION_SCOPE);
+    assertThat(result.getName()).isEqualTo("name");
+    assertThat(result.getBinding().getConnectionId()).isEqualTo("connectionId");
+    assertThat(result.getBinding().getSonarProjectKey()).isEqualTo("projectKey");
+  }
+
+  @Test
+  void addConfigurationScope_declares_the_scope_without_binding() {
+    underTest.addConfigurationScope("scopeId", "parentId", "name", null);
+
+    var result = declaredScope();
+    assertThat(result.getParentId()).isEqualTo("parentId");
     assertThat(result.getBinding().getConnectionId()).isNull();
     assertThat(result.getBinding().getSonarProjectKey()).isNull();
     assertThat(result.getBinding().isBindingSuggestionDisabled()).isFalse();
   }
+
+  @Test
+  void removeConfigurationScope_removes_the_scope() {
+    underTest.removeConfigurationScope("scopeId");
+
+    var captor = org.mockito.ArgumentCaptor.forClass(DidRemoveConfigurationScopeParams.class);
+    verify(configurationService).didRemoveConfigurationScope(captor.capture());
+    assertThat(captor.getValue().getRemovedId()).isEqualTo("scopeId");
+  }
+
+  private ConfigurationScopeDto declaredScope() {
+    var captor = org.mockito.ArgumentCaptor.forClass(DidAddConfigurationScopesParams.class);
+    verify(configurationService).didAddConfigurationScopes(captor.capture());
+    return captor.getValue().getAddedScopes().get(0);
+  }
+
 
   @Test
   void getSharedConnectedModeFileContents() {
