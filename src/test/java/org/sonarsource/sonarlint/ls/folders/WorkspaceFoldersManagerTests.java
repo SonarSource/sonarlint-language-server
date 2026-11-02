@@ -41,7 +41,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager.isAncestor;
+import static org.sonarsource.sonarlint.ls.util.URIUtils.isAncestor;
 
 class WorkspaceFoldersManagerTests {
 
