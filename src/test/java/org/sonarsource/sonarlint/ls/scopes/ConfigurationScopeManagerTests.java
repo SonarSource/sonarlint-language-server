@@ -63,6 +63,7 @@ class ConfigurationScopeManagerTests {
   private final WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
   private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
   private final BackendService backendService = mock(BackendService.class);
+  private final ConfigurationScopeListener listener = mock(ConfigurationScopeListener.class);
   private final WorkspaceFolderWrapper folder = new WorkspaceFolderWrapper(REPO, new WorkspaceFolder(REPO.toString(), "repo"), mock(LanguageClientLogger.class));
   private ConfigurationScopeManager underTest;
 
@@ -71,6 +72,7 @@ class ConfigurationScopeManagerTests {
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     unbound();
     underTest = new ConfigurationScopeManager(new ImmediateExecutorService(), foldersManager, sources, backendServiceFacade, logTester.getLogger());
+    underTest.addListener(listener);
   }
 
   @Test
@@ -80,6 +82,7 @@ class ConfigurationScopeManagerTests {
     underTest.added(folder);
 
     verify(backendService).addConfigurationScope(REPO.toString(), BackendService.ROOT_CONFIGURATION_SCOPE, "repo", ROOT_BINDING);
+    verify(listener).scopesChanged();
   }
 
   @Test
@@ -94,20 +97,21 @@ class ConfigurationScopeManagerTests {
   void updating_rebinds_the_scopes_whose_binding_changed() {
     bound(ROOT_BINDING);
     underTest.added(folder);
-    clearInvocations(backendService);
+    clearInvocations(backendService, listener);
     bound(new ProjectBinding("connection", "other"));
 
     var changed = underTest.update(folder).join();
 
     assertThat(changed).isTrue();
     verify(backendService).bind(REPO.toString(), new ProjectBinding("connection", "other"));
+    verify(listener).scopesChanged();
   }
 
   @Test
   void updating_unbinds_a_scope_that_lost_its_binding() {
     bound(ROOT_BINDING);
     underTest.added(folder);
-    clearInvocations(backendService);
+    clearInvocations(backendService, listener);
     unbound();
 
     underTest.update(folder).join();
@@ -116,9 +120,59 @@ class ConfigurationScopeManagerTests {
   }
 
   @Test
+  void bindingOfScope_is_the_binding_declared_for_that_scope() {
+    bound(ROOT_BINDING);
+    underTest.added(folder);
+
+    assertThat(underTest.bindingOfScope(REPO.toString())).contains(ROOT_BINDING);
+    assertThat(underTest.bindingOfScope("file:///elsewhere/")).isEmpty();
+  }
+
+  @Test
+  void bindingOfScope_is_empty_for_an_unbound_scope() {
+    underTest.added(folder);
+
+    assertThat(underTest.bindingOfScope(REPO.toString())).isEmpty();
+  }
+
+  @Test
+  void updating_every_folder_reports_the_scopes_that_lost_their_binding_as_they_were_declared() {
+    bound(ROOT_BINDING);
+    underTest.added(folder);
+    unbound();
+
+    var changes = underTest.updateAll().join();
+
+    assertThat(changes).containsExactly(new ScopeChange(
+      new ConfigurationScope(REPO, "repo", ".", Origin.SETTINGS, ROOT_BINDING),
+      new ConfigurationScope(REPO, "repo", ".", Origin.SETTINGS, null)));
+    assertThat(changes).allMatch(ScopeChange::lostItsBinding);
+  }
+
+  @Test
+  void updating_every_folder_reports_a_rebinding_but_not_as_a_lost_binding() {
+    bound(ROOT_BINDING);
+    underTest.added(folder);
+    bound(OTHER_BINDING);
+
+    var changes = underTest.updateAll().join();
+
+    assertThat(changes).hasSize(1);
+    assertThat(changes).noneMatch(ScopeChange::lostItsBinding);
+  }
+
+  @Test
+  void updating_every_folder_reports_nothing_when_nothing_changed() {
+    bound(ROOT_BINDING);
+    underTest.added(folder);
+
+    assertThat(underTest.updateAll().join()).isEmpty();
+  }
+
+  @Test
   void updating_without_a_difference_touches_nothing() {
     underTest.added(folder);
-    clearInvocations(backendService);
+    clearInvocations(backendService, listener);
 
     var changed = underTest.update(folder).join();
 
@@ -127,16 +181,18 @@ class ConfigurationScopeManagerTests {
     verify(backendService, never()).removeConfigurationScope(any());
     verify(backendService, never()).bind(any(), any());
     verify(backendService, never()).unbind(any());
+    verify(listener, never()).scopesChanged();
   }
 
   @Test
-  void removing_a_folder_closes_its_scope() {
+  void removing_a_folder_closes_its_scope_and_tells_the_listeners() {
     underTest.added(folder);
-    clearInvocations(backendService);
+    clearInvocations(backendService, listener);
 
     underTest.removed(folder);
 
     verify(backendService).removeConfigurationScope(REPO.toString());
+    verify(listener).scopesChanged();
   }
 
   @Test
@@ -144,6 +200,7 @@ class ConfigurationScopeManagerTests {
     underTest.removed(folder);
 
     verify(backendService, never()).removeConfigurationScope(any());
+    verify(listener, never()).scopesChanged();
   }
 
   @Test
@@ -192,7 +249,7 @@ class ConfigurationScopeManagerTests {
   void a_removed_folder_is_not_updated_again() {
     underTest.added(folder);
     underTest.removed(folder);
-    clearInvocations(backendService);
+    clearInvocations(backendService, listener);
 
     assertThat(underTest.update(folder).join()).isFalse();
 
@@ -299,7 +356,7 @@ class ConfigurationScopeManagerTests {
   void updating_every_folder_updates_each_registered_one() {
     bound(ROOT_BINDING);
     underTest.added(folder);
-    clearInvocations(backendService);
+    clearInvocations(backendService, listener);
     bound(OTHER_BINDING);
 
     underTest.updateAll().join();
@@ -315,6 +372,40 @@ class ConfigurationScopeManagerTests {
     underTest.removed(folder);
 
     assertThat(logTester.logs()).anyMatch(log -> log.contains("Failed to close the configuration scopes of folder " + REPO));
+  }
+
+  @Test
+  void a_failed_update_still_tells_the_listeners_what_changed() {
+    bound(ROOT_BINDING);
+    doThrow(new IllegalStateException("backend down")).when(backendService).addConfigurationScope(any(), any(), any(), any());
+
+    underTest.added(folder);
+
+    verify(listener).scopesChanged();
+  }
+
+  @Test
+  void a_failed_removal_still_tells_the_listeners() {
+    underTest.added(folder);
+    clearInvocations(backendService, listener);
+    doThrow(new IllegalStateException("backend down")).when(backendService).removeConfigurationScope(any());
+
+    underTest.removed(folder);
+
+    verify(listener).scopesChanged();
+  }
+
+  @Test
+  void removing_a_folder_that_declared_nothing_does_not_tell_the_listeners() {
+    var queued = new ArrayList<Runnable>();
+    underTest = new ConfigurationScopeManager(queuingExecutor(queued), foldersManager, sources, backendServiceFacade, logTester.getLogger());
+    underTest.addListener(listener);
+    underTest.added(folder);
+
+    underTest.removed(folder);
+    queued.forEach(Runnable::run);
+
+    verify(listener, never()).scopesChanged();
   }
 
   private void bound(ProjectBinding binding) {

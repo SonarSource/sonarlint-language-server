@@ -28,6 +28,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -66,6 +67,7 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
   private final LanguageClientLogger logOutput;
   private final ExecutorService executor;
   private final Map<URI, FolderScopes> folders = new ConcurrentHashMap<>();
+  private final List<ConfigurationScopeListener> listeners = new CopyOnWriteArrayList<>();
 
   public ConfigurationScopeManager(WorkspaceFoldersManager foldersManager, BindingSources sources, BackendServiceFacade backendServiceFacade,
     LanguageClientLogger logOutput) {
@@ -79,6 +81,10 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
     this.sources = sources;
     this.backendServiceFacade = backendServiceFacade;
     this.logOutput = logOutput;
+  }
+
+  public void addListener(ConfigurationScopeListener listener) {
+    listeners.add(listener);
   }
 
   @Override
@@ -107,20 +113,29 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
    * @return whether the scopes or their bindings changed
    */
   public CompletableFuture<Boolean> update(WorkspaceFolderWrapper folder) {
+    return updateScopes(folder).thenApply(changes -> !changes.isEmpty());
+  }
+
+  /**
+   * @return what the update did to each scope that differs
+   */
+  public CompletableFuture<List<ScopeChange>> updateAll() {
+    var updates = folders.values().stream().map(state -> updateScopes(state.folder)).toList();
+    return CompletableFuture.allOf(updates.toArray(new CompletableFuture[0]))
+      .thenApply(done -> updates.stream().flatMap(update -> update.join().stream()).toList());
+  }
+
+  private CompletableFuture<List<ScopeChange>> updateScopes(WorkspaceFolderWrapper folder) {
     var state = folders.get(folder.getUri());
     if (state == null) {
-      return CompletableFuture.completedFuture(false);
+      return CompletableFuture.completedFuture(List.of());
     }
     return CompletableFuture.supplyAsync(() -> apply(state), executor)
       .exceptionally(t -> {
         logOutput.errorWithStackTrace(format("Failed to update the configuration scopes of folder %s", folder.getUri()), t);
         state.firstDeclaration.complete(null);
-        return false;
+        return List.of();
       });
-  }
-
-  public CompletableFuture<Void> updateAll() {
-    return CompletableFuture.allOf(folders.values().stream().map(state -> update(state.folder)).toArray(CompletableFuture[]::new));
   }
 
   /**
@@ -154,6 +169,14 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
       .map(ConfigurationScope::binding);
   }
 
+  public Optional<ProjectBinding> bindingOfScope(String configScopeId) {
+    return folders.values().stream()
+      .flatMap(state -> state.scopes.get().stream())
+      .filter(scope -> scope.uri().toString().equals(configScopeId))
+      .findFirst()
+      .map(ConfigurationScope::binding);
+  }
+
   public List<ConfigurationScope> boundScopes() {
     return folders.values().stream()
       .flatMap(state -> state.scopes.get().stream())
@@ -173,23 +196,45 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
     return folders.get(state.folder.getUri()) != state;
   }
 
-  private boolean apply(FolderScopes state) {
+  private List<ScopeChange> apply(FolderScopes state) {
     var folder = state.folder;
     if (isSuperseded(state)) {
       state.firstDeclaration.complete(null);
-      return false;
+      return List.of();
     }
     var declared = state.scopes.get();
     var desired = sources.scopesOf(folder);
     state.scopes.set(desired);
     state.firstDeclaration.complete(null);
+    var changes = changesBetween(declared, desired);
     try {
       declare(declared, desired);
     } catch (RuntimeException e) {
       state.scopes.set(declared);
+      if (!changes.isEmpty()) {
+        notifyScopesChanged();
+      }
       throw e;
     }
-    return !declared.equals(desired);
+    if (!changes.isEmpty()) {
+      notifyScopesChanged();
+    }
+    return changes;
+  }
+
+  private static List<ScopeChange> changesBetween(List<ConfigurationScope> declared, List<ConfigurationScope> desired) {
+    var declaredByUri = byUri(declared);
+    var desiredByUri = byUri(desired);
+    return Stream.concat(declared.stream(), desired.stream())
+      .map(ConfigurationScope::uri)
+      .distinct()
+      .map(uri -> new ScopeChange(declaredByUri.get(uri), desiredByUri.get(uri)))
+      .filter(change -> !Objects.equals(change.before(), change.after()))
+      .toList();
+  }
+
+  private void notifyScopesChanged() {
+    listeners.forEach(ConfigurationScopeListener::scopesChanged);
   }
 
   private void declare(List<ConfigurationScope> declared, List<ConfigurationScope> desired) {
@@ -219,7 +264,14 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
   }
 
   private void close(FolderScopes state) {
-    declare(state.scopes.getAndSet(List.of()), List.of());
+    var previous = state.scopes.getAndSet(List.of());
+    try {
+      declare(previous, List.of());
+    } finally {
+      if (!previous.isEmpty()) {
+        notifyScopesChanged();
+      }
+    }
   }
 
   private void awaitFirstDeclaration(FolderScopes state) {

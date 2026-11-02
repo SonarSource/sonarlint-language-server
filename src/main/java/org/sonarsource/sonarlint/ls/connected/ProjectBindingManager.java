@@ -20,11 +20,11 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Predicate;
@@ -48,6 +48,9 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
+import org.sonarsource.sonarlint.ls.scopes.ScopeChange;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeListener;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScope;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.settings.EndpointParams;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
@@ -65,7 +68,7 @@ import static org.sonarsource.sonarlint.ls.util.Utils.uriHasFileScheme;
 /**
  * Answers which project a file is bound to, and keeps the scope manager up to date when the settings change.
  */
-public class ProjectBindingManager implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener {
+public class ProjectBindingManager implements WorkspaceSettingsChangeListener, WorkspaceFolderSettingsChangeListener, ConfigurationScopeListener {
   private final WorkspaceFoldersManager foldersManager;
   private final SettingsManager settingsManager;
   private final ConfigurationScopeManager scopeManager;
@@ -112,6 +115,18 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return true;
   }
 
+  @Override
+  public void scopesChanged() {
+    client.bindingsChanged();
+  }
+
+  public Optional<ProjectBinding> getBindingOfScope(String configScopeId) {
+    return scopeManager.bindingOfScope(configScopeId);
+  }
+
+  public List<ConfigurationScope> getBindings() {
+    return scopeManager.boundScopes();
+  }
 
   @CheckForNull
   public EndpointParams getEndpointParamsFor(@Nullable String connectionId) {
@@ -164,28 +179,37 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         && (!Objects.equals(oldValue.getConnectionId(), newValue.getConnectionId()) || !Objects.equals(oldValue.getProjectKey(), newValue.getProjectKey())));
   }
 
-  private void handleDeletedConnections(@Nullable WorkspaceSettings oldValue, WorkspaceSettings newValue) {
-    if (oldValue != null && !oldValue.getServerConnections().isEmpty()) {
-      List<String> deletedConnectionIds = new ArrayList<>();
-      // there used to be connections
-      oldValue.getServerConnections().forEach((id, value) -> {
-        if (!newValue.getServerConnections().containsKey(id)) {
-          // connection was deleted
-          deletedConnectionIds.add(id);
-        }
-      });
-      if (!deletedConnectionIds.isEmpty()) {
-        client.removeBindingsForDeletedConnections(deletedConnectionIds);
-      }
+  private void updateScopes(@Nullable WorkspaceSettings oldValue, WorkspaceSettings newValue) {
+    var deletedConnectionIds = deletedConnectionIds(oldValue, newValue);
+    scopeManager.updateAll().thenAccept(changes -> clearSettingsBindingsLostWith(deletedConnectionIds, changes));
+  }
+
+  private void clearSettingsBindingsLostWith(Set<String> deletedConnectionIds, List<ScopeChange> changes) {
+    var settingsBindingsToClear = changes.stream()
+      .filter(ScopeChange::lostItsBinding)
+      .map(ScopeChange::before)
+      .filter(scope -> scope.origin() == Origin.SETTINGS && deletedConnectionIds.contains(scope.binding().connectionId()))
+      .map(scope -> scope.uri().toString())
+      .toList();
+    if (!settingsBindingsToClear.isEmpty()) {
+      client.removeBindingsForDeletedConnections(settingsBindingsToClear);
     }
+  }
+
+  private static Set<String> deletedConnectionIds(@Nullable WorkspaceSettings oldValue, WorkspaceSettings newValue) {
+    if (oldValue == null) {
+      return Set.of();
+    }
+    return oldValue.getServerConnections().keySet().stream()
+      .filter(id -> !newValue.getServerConnections().containsKey(id))
+      .collect(Collectors.toSet());
   }
 
   @Override
   public void onChange(@CheckForNull WorkspaceSettings oldValue, WorkspaceSettings newValue) {
     if (oldValue == null || !oldValue.getServerConnections().equals(newValue.getServerConnections())) {
-      scopeManager.updateAll();
+      updateScopes(oldValue, newValue);
     }
-    handleDeletedConnections(oldValue, newValue);
     newValue.getServerConnections().forEach((id, value) -> {
       if (oldValue == null) {
         // initial sync
