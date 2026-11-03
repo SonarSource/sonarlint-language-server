@@ -145,7 +145,7 @@ class BackendServiceTests {
 
   @Test
   void unbind_clears_the_binding_of_the_scope() {
-    underTest.unbind("scopeId");
+    underTest.unbind("scopeId", false);
 
     var captor = org.mockito.ArgumentCaptor.forClass(DidUpdateBindingParams.class);
     verify(configurationService).didUpdateBinding(captor.capture());
@@ -157,7 +157,7 @@ class BackendServiceTests {
 
   @Test
   void addConfigurationScope_declares_the_scope_with_its_binding() {
-    underTest.addConfigurationScope("scopeId", BackendService.ROOT_CONFIGURATION_SCOPE, "name", new ProjectBinding("connectionId", "projectKey"));
+    underTest.addConfigurationScope("scopeId", BackendService.ROOT_CONFIGURATION_SCOPE, "name", new ProjectBinding("connectionId", "projectKey"), false);
 
     var result = declaredScope();
     assertThat(result.getId()).isEqualTo("scopeId");
@@ -169,13 +169,29 @@ class BackendServiceTests {
 
   @Test
   void addConfigurationScope_declares_the_scope_without_binding() {
-    underTest.addConfigurationScope("scopeId", "parentId", "name", null);
+    underTest.addConfigurationScope("scopeId", "parentId", "name", null, false);
 
     var result = declaredScope();
     assertThat(result.getParentId()).isEqualTo("parentId");
     assertThat(result.getBinding().getConnectionId()).isNull();
     assertThat(result.getBinding().getSonarProjectKey()).isNull();
     assertThat(result.getBinding().isBindingSuggestionDisabled()).isFalse();
+  }
+
+  @Test
+  void unbind_can_disable_the_binding_suggestions_of_the_scope() {
+    underTest.unbind("scopeId", true);
+
+    var captor = org.mockito.ArgumentCaptor.forClass(DidUpdateBindingParams.class);
+    verify(configurationService).didUpdateBinding(captor.capture());
+    assertThat(captor.getValue().getUpdatedBinding().isBindingSuggestionDisabled()).isTrue();
+  }
+
+  @Test
+  void addConfigurationScope_can_disable_the_binding_suggestions_of_an_unbound_scope() {
+    underTest.addConfigurationScope("scopeId", "parentId", "name", null, true);
+
+    assertThat(declaredScope().getBinding().isBindingSuggestionDisabled()).isTrue();
   }
 
   @Test
