@@ -130,6 +130,16 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
     }
   }
 
+  /**
+   * The binding of every scope that has a connection, whichever source declares it (the folder settings or a
+   * {@code .sonar-config.json}).
+   */
+  @JsonRequest("sonarlint/getBindings")
+  CompletableFuture<List<BindingInfo>> getBindings();
+
+  record BindingInfo(String scopeUri, String name, String relativePath, String projectKey, String connectionId, String source) {
+  }
+
   @JsonRequest("sonarlint/getRemoteProjectsForConnection")
   CompletableFuture<Map<String, String>> getRemoteProjectsForConnection(GetRemoteProjectsForConnectionParams getRemoteProjectsForConnectionParams);
 

@@ -593,10 +593,10 @@ public class CommandManager {
 
   private void handleShowTaintVulnerabilityFlows(ExecuteCommandParams params) {
     var issueKey = getAsString(params.getArguments().get(0));
-    var connectionId = getAsString(params.getArguments().get(1));
     taintVulnerabilitiesCache.getTaintVulnerabilityByKey(issueKey)
       .ifPresent(issue -> {
         telemetry.taintVulnerabilitiesInvestigatedLocally();
+        var connectionId = bindingManager.getBindingOfScope(issue.getWorkspaceFolderUri()).map(ProjectBinding::connectionId).orElse(null);
         client.showIssueOrHotspot(ShowAllLocationsCommand.params(issue, connectionId));
       });
   }
