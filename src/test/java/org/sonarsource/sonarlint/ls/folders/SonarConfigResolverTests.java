@@ -110,6 +110,15 @@ class SonarConfigResolverTests {
   }
 
   @Test
+  void get_keeps_the_first_entry_when_several_point_at_the_same_directory() {
+    loaded(REPO, entry("module-a", "moduleA"), entry("module-a-again", "./moduleA"), entry("module-b", "moduleB"));
+
+    var config = underTest.get(REPO_URI).orElseThrow();
+
+    assertThat(config.children()).extracting(SonarConfigProject::projectKey).containsExactly("module-a", "module-b");
+  }
+
+  @Test
   void get_keeps_cloud_entries() {
     loaded(REPO, new SonarConfigEntry("module-a", "moduleA", null, "my-org", "US"));
 

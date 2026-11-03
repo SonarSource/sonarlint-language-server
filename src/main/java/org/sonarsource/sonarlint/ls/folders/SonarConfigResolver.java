@@ -89,6 +89,11 @@ public class SonarConfigResolver {
           directPath = entryPath;
         }
       } else if (entryPath.startsWith(folderPath)) {
+        if (children.stream().anyMatch(child -> child.scopeUri().equals(entryPath.toUri()))) {
+          logOutput.warn(format("[multi-project] Ignoring entry projectKey=%s in '%s' for folder %s: path %s is already declared by an earlier entry",
+            entry.projectKey(), SONAR_CONFIG_FILE_NAME, folderUri, entry.path()));
+          continue;
+        }
         var relativePath = folderPath.relativize(entryPath).toString().replace('\\', '/');
         logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s is nested in the folder -> sub-folder %s", entry.projectKey(), entry.path(), entryPath.toUri()));
         children.add(new SonarConfigProject(entryPath.toUri(), entry.projectKey(), entry.serverUrl(), entry.organization(), entry.region(), relativePath));
