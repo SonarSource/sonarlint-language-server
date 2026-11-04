@@ -25,7 +25,6 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -253,11 +252,11 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
       .filter(scope -> !declaredByUri.containsKey(scope.uri()))
       .forEach(scope -> {
         backendService.addConfigurationScope(scope.uri().toString(), parentIdOf(folder, scope), scope.name(), scope.binding(),
-          bindingSuggestionDisabled(scope));
+          scope.bindingSuggestionDisabled());
         changes.add(new ScopeChange(null, scope));
       });
     desired.stream()
-      .filter(scope -> declaredByUri.containsKey(scope.uri()) && isRebindNeeded(declaredByUri.get(scope.uri()), scope))
+      .filter(scope -> declaredByUri.containsKey(scope.uri()) && scope.bindingConfigurationDiffersFrom(declaredByUri.get(scope.uri())))
       .forEach(scope -> {
         rebind(scope);
         changes.add(new ScopeChange(declaredByUri.get(scope.uri()), scope));
@@ -265,19 +264,11 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
     return changes;
   }
 
-  private static boolean isRebindNeeded(ConfigurationScope declared, ConfigurationScope desired) {
-    return !Objects.equals(declared.binding(), desired.binding()) || bindingSuggestionDisabled(declared) != bindingSuggestionDisabled(desired);
-  }
-
-  private static boolean bindingSuggestionDisabled(ConfigurationScope scope) {
-    return scope.origin() == Origin.SONAR_CONFIG;
-  }
-
   private void rebind(ConfigurationScope scope) {
     var backendService = backendServiceFacade.getBackendService();
     var binding = scope.binding();
     if (binding == null) {
-      backendService.unbind(scope.uri().toString(), bindingSuggestionDisabled(scope));
+      backendService.unbind(scope.uri().toString(), scope.bindingSuggestionDisabled());
     } else {
       logOutput.info(format("Binding scope %s to projectKey=%s of connection '%s'", scope.uri(), binding.projectKey(), binding.connectionId()));
       backendService.bind(scope.uri().toString(), binding);
