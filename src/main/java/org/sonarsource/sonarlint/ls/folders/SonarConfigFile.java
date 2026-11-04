@@ -72,12 +72,7 @@ public class SonarConfigFile {
     var children = new ArrayList<SonarConfigProject>();
     SonarConfigProject direct = null;
     Path directPath = null;
-    for (var entry : projects) {
-      if (entry == null || !entry.isValid()) {
-        logOutput.warn(format("[multi-project] Ignoring invalid entry in '%s' for folder %s: %s (need a projectKey, a path, and either serverUrl or organization)",
-          SONAR_CONFIG_FILE_NAME, folderUri, entry));
-        continue;
-      }
+    for (var entry : validEntries(folderUri)) {
       var entryPath = configDir.resolve(entry.path()).normalize();
       if (folderPath.startsWith(entryPath)) {
         if (directPath == null || entryPath.getNameCount() > directPath.getNameCount()) {
@@ -87,18 +82,35 @@ public class SonarConfigFile {
           directPath = entryPath;
         }
       } else if (entryPath.startsWith(folderPath)) {
-        if (children.stream().anyMatch(child -> child.scopeUri().equals(entryPath.toUri()))) {
-          logOutput.warn(format("[multi-project] Ignoring entry projectKey=%s in '%s' for folder %s: path %s is already declared by an earlier entry",
-            entry.projectKey(), SONAR_CONFIG_FILE_NAME, folderUri, entry.path()));
-          continue;
-        }
-        var relativePath = folderPath.relativize(entryPath).toString().replace('\\', '/');
-        logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s is nested in the folder -> sub-folder %s", entry.projectKey(), entry.path(), entryPath.toUri()));
-        children.add(new SonarConfigProject(entryPath.toUri(), entry.projectKey(), entry.serverUrl(), entry.organization(), entry.region(), relativePath));
+        addChildUnlessDeclared(children, folderUri, folderPath, entryPath, entry);
       } else {
         logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s is unrelated to folder %s, skipped", entry.projectKey(), entry.path(), folderPath));
       }
     }
     return new ResolvedSonarConfig(direct, children);
+  }
+
+  private List<SonarConfigEntry> validEntries(URI folderUri) {
+    return projects.stream()
+      .filter(entry -> {
+        var valid = entry != null && entry.isValid();
+        if (!valid) {
+          logOutput.warn(format("[multi-project] Ignoring invalid entry in '%s' for folder %s: %s (need a projectKey, a path, and either serverUrl or organization)",
+            SONAR_CONFIG_FILE_NAME, folderUri, entry));
+        }
+        return valid;
+      })
+      .toList();
+  }
+
+  private void addChildUnlessDeclared(List<SonarConfigProject> children, URI folderUri, Path folderPath, Path entryPath, SonarConfigEntry entry) {
+    if (children.stream().anyMatch(child -> child.scopeUri().equals(entryPath.toUri()))) {
+      logOutput.warn(format("[multi-project] Ignoring entry projectKey=%s in '%s' for folder %s: path %s is already declared by an earlier entry",
+        entry.projectKey(), SONAR_CONFIG_FILE_NAME, folderUri, entry.path()));
+    } else {
+      var relativePath = folderPath.relativize(entryPath).toString().replace('\\', '/');
+      logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s is nested in the folder -> sub-folder %s", entry.projectKey(), entry.path(), entryPath.toUri()));
+      children.add(new SonarConfigProject(entryPath.toUri(), entry.projectKey(), entry.serverUrl(), entry.organization(), entry.region(), relativePath));
+    }
   }
 }
