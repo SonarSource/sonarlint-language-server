@@ -92,8 +92,8 @@ class ConfigurationScopeManagerTests {
 
     underTest.added(folder);
 
-    verify(backendService).addConfigurationScope(REPO.toString(), BackendService.ROOT_CONFIGURATION_SCOPE, "repo", ROOT_BINDING, false);
-    verify(backendService).addConfigurationScope(MODULE_A.toString(), REPO.toString(), "moduleA", MODULE_A_BINDING, true);
+    verify(backendService).addConfigurationScope(REPO.toString(), BackendService.ROOT_CONFIGURATION_SCOPE, "repo", ROOT_BINDING, true, false);
+    verify(backendService).addConfigurationScope(MODULE_A.toString(), REPO.toString(), "moduleA", MODULE_A_BINDING, false, true);
     verify(listener).scopesChanged(anyList());
   }
 
@@ -103,8 +103,8 @@ class ConfigurationScopeManagerTests {
 
     underTest.added(folder);
 
-    verify(backendService).addConfigurationScope(REPO.toString(), BackendService.ROOT_CONFIGURATION_SCOPE, "repo", null, false);
-    verify(backendService, times(1)).addConfigurationScope(any(), any(), any(), any(), anyBoolean());
+    verify(backendService).addConfigurationScope(REPO.toString(), BackendService.ROOT_CONFIGURATION_SCOPE, "repo", null, true, false);
+    verify(backendService, times(1)).addConfigurationScope(any(), any(), any(), any(), anyBoolean(), anyBoolean());
   }
 
   @Test
@@ -114,7 +114,7 @@ class ConfigurationScopeManagerTests {
 
     underTest.added(folder);
 
-    verify(backendService).addConfigurationScope(REPO.toString(), BackendService.ROOT_CONFIGURATION_SCOPE, "repo", null, true);
+    verify(backendService).addConfigurationScope(REPO.toString(), BackendService.ROOT_CONFIGURATION_SCOPE, "repo", null, false, true);
     assertThat(underTest.boundScopes()).extracting(ConfigurationScope::uri).containsExactly(MODULE_A);
   }
 
@@ -129,8 +129,8 @@ class ConfigurationScopeManagerTests {
 
     assertThat(changed).isTrue();
     verify(backendService).removeConfigurationScope(MODULE_A.toString());
-    verify(backendService).addConfigurationScope(MODULE_B.toString(), REPO.toString(), "moduleB", null, true);
-    verify(backendService, never()).addConfigurationScope(eq(REPO.toString()), any(), any(), any(), anyBoolean());
+    verify(backendService).addConfigurationScope(MODULE_B.toString(), REPO.toString(), "moduleB", null, false, true);
+    verify(backendService, never()).addConfigurationScope(eq(REPO.toString()), any(), any(), any(), anyBoolean(), anyBoolean());
     verify(listener).scopesChanged(anyList());
   }
 
@@ -169,8 +169,8 @@ class ConfigurationScopeManagerTests {
 
     underTest.added(folder);
 
-    verify(backendService).addConfigurationScope(REPO.toString(), BackendService.ROOT_CONFIGURATION_SCOPE, "repo", null, true);
-    verify(backendService).addConfigurationScope(MODULE_A.toString(), REPO.toString(), "moduleA", null, true);
+    verify(backendService).addConfigurationScope(REPO.toString(), BackendService.ROOT_CONFIGURATION_SCOPE, "repo", null, false, true);
+    verify(backendService).addConfigurationScope(MODULE_A.toString(), REPO.toString(), "moduleA", null, false, true);
   }
 
   @Test
@@ -265,7 +265,7 @@ class ConfigurationScopeManagerTests {
     var changed = underTest.update(folder).join();
 
     assertThat(changed).isFalse();
-    verify(backendService, never()).addConfigurationScope(any(), any(), any(), any(), anyBoolean());
+    verify(backendService, never()).addConfigurationScope(any(), any(), any(), any(), anyBoolean(), anyBoolean());
     verify(backendService, never()).removeConfigurationScope(any());
     verify(backendService, never()).bind(any(), any());
     verify(backendService, never()).unbind(any(), anyBoolean());
@@ -344,7 +344,7 @@ class ConfigurationScopeManagerTests {
 
     assertThat(underTest.update(folder).join()).isFalse();
 
-    verify(backendService, never()).addConfigurationScope(any(), any(), any(), any(), anyBoolean());
+    verify(backendService, never()).addConfigurationScope(any(), any(), any(), any(), anyBoolean(), anyBoolean());
   }
 
   @Test
@@ -389,7 +389,7 @@ class ConfigurationScopeManagerTests {
     declare();
 
     underTest.initialized(List.of(folder));
-    verify(backendService).addConfigurationScope(eq(REPO.toString()), eq(BackendService.ROOT_CONFIGURATION_SCOPE), eq("repo"), any(), anyBoolean());
+    verify(backendService).addConfigurationScope(eq(REPO.toString()), eq(BackendService.ROOT_CONFIGURATION_SCOPE), eq("repo"), any(), anyBoolean(), anyBoolean());
 
     underTest.removed(folder);
     verify(backendService).removeConfigurationScope(REPO.toString());
@@ -401,7 +401,7 @@ class ConfigurationScopeManagerTests {
 
     underTest.added(folder);
 
-    verify(backendService).addConfigurationScope(eq(REPO.toString()), eq(BackendService.ROOT_CONFIGURATION_SCOPE), eq("repo"), any(), anyBoolean());
+    verify(backendService).addConfigurationScope(eq(REPO.toString()), eq(BackendService.ROOT_CONFIGURATION_SCOPE), eq("repo"), any(), anyBoolean(), anyBoolean());
   }
 
   @Test
@@ -448,7 +448,7 @@ class ConfigurationScopeManagerTests {
   void what_the_backend_refused_is_not_remembered() {
     declare(scope(REPO, "repo", ".", Origin.SETTINGS));
     bound(REPO, ROOT_BINDING);
-    doThrow(new IllegalStateException("backend down")).when(backendService).addConfigurationScope(any(), any(), any(), any(), anyBoolean());
+    doThrow(new IllegalStateException("backend down")).when(backendService).addConfigurationScope(any(), any(), any(), any(), anyBoolean(), anyBoolean());
 
     underTest.added(folder);
 
@@ -518,7 +518,7 @@ class ConfigurationScopeManagerTests {
   void a_failed_update_still_tells_the_listeners_what_changed() {
     declare(scope(REPO, "repo", ".", Origin.SETTINGS));
     bound(REPO, ROOT_BINDING);
-    doThrow(new IllegalStateException("backend down")).when(backendService).addConfigurationScope(any(), any(), any(), any(), anyBoolean());
+    doThrow(new IllegalStateException("backend down")).when(backendService).addConfigurationScope(any(), any(), any(), any(), anyBoolean(), anyBoolean());
 
     underTest.added(folder);
 

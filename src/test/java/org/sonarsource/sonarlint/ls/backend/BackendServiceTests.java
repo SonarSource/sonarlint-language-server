@@ -157,7 +157,7 @@ class BackendServiceTests {
 
   @Test
   void addConfigurationScope_declares_the_scope_with_its_binding() {
-    underTest.addConfigurationScope("scopeId", BackendService.ROOT_CONFIGURATION_SCOPE, "name", new ProjectBinding("connectionId", "projectKey"), false);
+    underTest.addConfigurationScope("scopeId", BackendService.ROOT_CONFIGURATION_SCOPE, "name", new ProjectBinding("connectionId", "projectKey"), true, false);
 
     var result = declaredScope();
     assertThat(result.getId()).isEqualTo("scopeId");
@@ -168,8 +168,22 @@ class BackendServiceTests {
   }
 
   @Test
+  void addConfigurationScope_declares_a_scope_the_client_can_bind() {
+    underTest.addConfigurationScope("scopeId", "parentId", "name", null, true, false);
+
+    assertThat(declaredScope().isBindable()).isTrue();
+  }
+
+  @Test
+  void addConfigurationScope_declares_a_scope_the_client_cannot_bind() {
+    underTest.addConfigurationScope("scopeId", "parentId", "name", null, false, false);
+
+    assertThat(declaredScope().isBindable()).isFalse();
+  }
+
+  @Test
   void addConfigurationScope_declares_the_scope_without_binding() {
-    underTest.addConfigurationScope("scopeId", "parentId", "name", null, false);
+    underTest.addConfigurationScope("scopeId", "parentId", "name", null, true, false);
 
     var result = declaredScope();
     assertThat(result.getParentId()).isEqualTo("parentId");
@@ -189,7 +203,7 @@ class BackendServiceTests {
 
   @Test
   void addConfigurationScope_can_disable_the_binding_suggestions_of_an_unbound_scope() {
-    underTest.addConfigurationScope("scopeId", "parentId", "name", null, true);
+    underTest.addConfigurationScope("scopeId", "parentId", "name", null, true, true);
 
     assertThat(declaredScope().getBinding().isBindingSuggestionDisabled()).isTrue();
   }

@@ -32,6 +32,12 @@ class ConfigurationScopeTests {
   private static final ProjectBinding BINDING = new ProjectBinding("sq", "project");
 
   @Test
+  void scopes_declared_by_a_sonar_config_are_not_bindable_by_the_client() {
+    assertThat(scope(Origin.SONAR_CONFIG, BINDING).bindable()).isFalse();
+    assertThat(scope(Origin.SETTINGS, null).bindable()).isTrue();
+  }
+
+  @Test
   void binding_suggestions_are_only_disabled_for_scopes_declared_by_a_sonar_config() {
     assertThat(scope(Origin.SONAR_CONFIG, null).bindingSuggestionDisabled()).isTrue();
     assertThat(scope(Origin.SETTINGS, null).bindingSuggestionDisabled()).isFalse();

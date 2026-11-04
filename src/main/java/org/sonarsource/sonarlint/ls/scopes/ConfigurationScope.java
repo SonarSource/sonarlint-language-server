@@ -30,6 +30,10 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
  */
 public record ConfigurationScope(URI uri, String name, String relativePath, Origin origin, @Nullable ProjectBinding binding) {
 
+  public boolean bindable() {
+    return origin != Origin.SONAR_CONFIG;
+  }
+
   public boolean bindingSuggestionDisabled() {
     return origin == Origin.SONAR_CONFIG;
   }

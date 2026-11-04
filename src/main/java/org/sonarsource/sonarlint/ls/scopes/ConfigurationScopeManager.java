@@ -252,7 +252,7 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
       .filter(scope -> !declaredByUri.containsKey(scope.uri()))
       .forEach(scope -> {
         backendService.addConfigurationScope(scope.uri().toString(), parentIdOf(folder, scope), scope.name(), scope.binding(),
-          scope.bindingSuggestionDisabled());
+          scope.bindable(), scope.bindingSuggestionDisabled());
         changes.add(new ScopeChange(null, scope));
       });
     desired.stream()

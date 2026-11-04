@@ -219,8 +219,8 @@ public class BackendService {
   }
 
   public void addConfigurationScope(String configScopeId, String parentScopeId, String name, @Nullable ProjectBinding binding,
-    boolean bindingSuggestionDisabled) {
-    var scope = new ConfigurationScopeDto(configScopeId, parentScopeId, true, name, toBindingConfigurationDto(binding, bindingSuggestionDisabled));
+    boolean bindable, boolean bindingSuggestionDisabled) {
+    var scope = new ConfigurationScopeDto(configScopeId, parentScopeId, bindable, name, toBindingConfigurationDto(binding, bindingSuggestionDisabled));
     addConfigurationScopes(new DidAddConfigurationScopesParams(List.of(scope)));
   }
 
