@@ -165,14 +165,13 @@ public abstract class AbstractLanguageServerMediumTests {
     var iac = fullPathToJar("sonariac");
     var html = fullPathToJar("sonarhtml");
     var java = fullPathToJar("sonarjava");
-    var javasymbolicexecution = fullPathToJar("sonarjavasymbolicexecution");
     var js = fullPathToJar("sonarjs");
     var php = fullPathToJar("sonarphp");
     var py = fullPathToJar("sonarpython");
     var text = fullPathToJar("sonartext");
     var xml = fullPathToJar("sonarxml");
     var omnisharp = fullPathToJar("sonarlintomnisharp");
-    var languageServerArgs = new String[] {"-port", "" + port, "-analyzers", go, java, javasymbolicexecution, js, php, py, html, xml, text, iac, omnisharp};
+    var languageServerArgs = new String[] {"-port", "" + port, "-analyzers", go, java, js, php, py, html, xml, text, iac, omnisharp};
 
     try {
       var cmd = new CommandLine(new ServerMain());
