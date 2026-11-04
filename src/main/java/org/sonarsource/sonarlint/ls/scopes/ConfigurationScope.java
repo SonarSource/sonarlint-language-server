@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.scopes;
 
 import java.net.URI;
+import java.util.Objects;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.ls.connected.Origin;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
@@ -28,4 +29,16 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
  * A configuration scope and what it is bound to; the binding is {@code null} while the scope is unbound.
  */
 public record ConfigurationScope(URI uri, String name, String relativePath, Origin origin, @Nullable ProjectBinding binding) {
+
+  public boolean bindable() {
+    return origin != Origin.SONAR_CONFIG;
+  }
+
+  public boolean bindingSuggestionDisabled() {
+    return origin == Origin.SONAR_CONFIG;
+  }
+
+  public boolean bindingConfigurationDiffersFrom(ConfigurationScope other) {
+    return !Objects.equals(binding, other.binding) || bindingSuggestionDisabled() != other.bindingSuggestionDisabled();
+  }
 }
