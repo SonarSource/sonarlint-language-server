@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,8 +51,21 @@ class SonarConfigLoaderTests {
   void load_is_empty_when_no_config_file_is_found() throws IOException {
     var folder = directory("moduleA");
 
-    assertThat(underTest.load(folder)).isEmpty();
+    assertThat(underTest.load(folder.toUri())).isEmpty();
     assertThat(logTester.logs()).anyMatch(log -> log.contains("No '.sonar-config.json' found"));
+  }
+
+  @Test
+  void load_is_empty_for_a_non_file_uri() {
+    assertThat(underTest.load(URI.create("vscode-vfs://github/org/repo"))).isEmpty();
+  }
+
+  @Test
+  void load_finds_the_config_of_a_folder_given_by_uri() throws IOException {
+    var folder = directory("moduleA");
+    writeConfig(repo, "{\"projectKey\":\"a\",\"path\":\"moduleA\",\"serverUrl\":\"https://sonarqube.example.com\"}");
+
+    assertThat(underTest.load(folder.toUri()).orElseThrow().path()).isEqualTo(repo.resolve(".sonar-config.json"));
   }
 
   @Test
@@ -60,7 +74,7 @@ class SonarConfigLoaderTests {
     Files.createDirectory(nestedRepo.resolve(".git"));
     writeConfig(repo, "{\"projectKey\":\"outer\",\"path\":\"nested\",\"serverUrl\":\"https://sonarqube.example.com\"}");
 
-    assertThat(underTest.load(nestedRepo)).isEmpty();
+    assertThat(underTest.load(nestedRepo.toUri())).isEmpty();
   }
 
   @Test
@@ -70,14 +84,14 @@ class SonarConfigLoaderTests {
     var folder = Files.createDirectory(outsideRepo.resolve("moduleA"));
     writeConfig(outsideRepo, "{\"projectKey\":\"a\",\"path\":\"moduleA\",\"serverUrl\":\"https://sonarqube.example.com\"}");
 
-    assertThat(underTest.load(folder)).isEmpty();
+    assertThat(underTest.load(folder.toUri())).isEmpty();
   }
 
   @Test
   void load_is_empty_when_config_cannot_be_parsed() throws IOException {
     Files.writeString(repo.resolve(".sonar-config.json"), "not json");
 
-    assertThat(underTest.load(repo)).isEmpty();
+    assertThat(underTest.load(repo.toUri())).isEmpty();
     assertThat(logTester.logs()).anyMatch(log -> log.contains("could not be parsed"));
   }
 
@@ -85,7 +99,7 @@ class SonarConfigLoaderTests {
   void load_is_empty_when_config_has_no_projects_array() throws IOException {
     Files.writeString(repo.resolve(".sonar-config.json"), "{}");
 
-    assertThat(underTest.load(repo)).isEmpty();
+    assertThat(underTest.load(repo.toUri())).isEmpty();
   }
 
   @Test
@@ -94,7 +108,7 @@ class SonarConfigLoaderTests {
       + "{\"projectKey\":\"cloud\",\"path\":\"b\",\"organization\":\"my-org\",\"region\":\"US\"},"
       + "{\"path\":\"incomplete\"}");
 
-    var file = underTest.load(repo).orElseThrow();
+    var file = underTest.load(repo.toUri()).orElseThrow();
 
     assertThat(file.path()).isEqualTo(repo.resolve(".sonar-config.json"));
     assertThat(file.projects()).containsExactly(
@@ -108,7 +122,7 @@ class SonarConfigLoaderTests {
     var folder = directory("moduleA/src");
     writeConfig(repo, "{\"projectKey\":\"a\",\"path\":\"moduleA\",\"serverUrl\":\"https://sonarqube.example.com\"}");
 
-    assertThat(underTest.load(folder).orElseThrow().path()).isEqualTo(repo.resolve(".sonar-config.json"));
+    assertThat(underTest.load(folder.toUri()).orElseThrow().path()).isEqualTo(repo.resolve(".sonar-config.json"));
   }
 
   @Test
@@ -117,17 +131,17 @@ class SonarConfigLoaderTests {
     writeConfig(repo, "{\"projectKey\":\"outer\",\"path\":\".\",\"serverUrl\":\"https://sonarqube.example.com\"}");
     writeConfig(folder, "{\"projectKey\":\"inner\",\"path\":\".\",\"serverUrl\":\"https://sonarqube.example.com\"}");
 
-    assertThat(underTest.load(folder).orElseThrow().projects()).extracting(SonarConfigEntry::projectKey).containsExactly("inner");
+    assertThat(underTest.load(folder.toUri()).orElseThrow().projects()).extracting(SonarConfigEntry::projectKey).containsExactly("inner");
   }
 
   @Test
   void load_reads_the_file_system_on_every_call() {
     writeConfig(repo, "{\"projectKey\":\"first\",\"path\":\".\",\"serverUrl\":\"https://sonarqube.example.com\"}");
-    assertThat(underTest.load(repo).orElseThrow().projects()).extracting(SonarConfigEntry::projectKey).containsExactly("first");
+    assertThat(underTest.load(repo.toUri()).orElseThrow().projects()).extracting(SonarConfigEntry::projectKey).containsExactly("first");
 
     writeConfig(repo, "{\"projectKey\":\"second\",\"path\":\".\",\"serverUrl\":\"https://sonarqube.example.com\"}");
 
-    assertThat(underTest.load(repo).orElseThrow().projects()).extracting(SonarConfigEntry::projectKey).containsExactly("second");
+    assertThat(underTest.load(repo.toUri()).orElseThrow().projects()).extracting(SonarConfigEntry::projectKey).containsExactly("second");
   }
 
   private Path directory(String relativePath) throws IOException {

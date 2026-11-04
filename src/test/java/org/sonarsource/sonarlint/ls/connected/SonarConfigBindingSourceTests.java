@@ -31,7 +31,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.folders.ResolvedSonarConfig;
 import org.sonarsource.sonarlint.ls.folders.SonarConfigProject;
-import org.sonarsource.sonarlint.ls.folders.SonarConfigResolver;
+import org.sonarsource.sonarlint.ls.folders.SonarConfigFile;
+import org.sonarsource.sonarlint.ls.folders.SonarConfigLoader;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.scopes.ConfigurationScope;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
@@ -52,26 +53,27 @@ class SonarConfigBindingSourceTests {
   SonarLintLogTester logTester = new SonarLintLogTester();
 
   private final WorkspaceFolderWrapper folder = new WorkspaceFolderWrapper(REPO, new WorkspaceFolder(REPO.toString(), "my repo"), logTester.getLogger());
-  private final SonarConfigResolver resolver = mock(SonarConfigResolver.class);
+  private final SonarConfigLoader loader = mock(SonarConfigLoader.class);
+  private final SonarConfigFile configFile = mock(SonarConfigFile.class);
   private final SettingsManager settingsManager = mock(SettingsManager.class);
   private SonarConfigBindingSource underTest;
 
   @BeforeEach
   void prepare() {
-    underTest = new SonarConfigBindingSource(resolver, settingsManager, logTester.getLogger());
+    underTest = new SonarConfigBindingSource(loader, settingsManager, logTester.getLogger());
     connections(Map.of("sq", new ServerConnectionSettings("sq", "https://sonarqube.example.com", "token", null, false, null)));
   }
 
   @Test
   void scopesOf_is_empty_without_a_config() {
-    when(resolver.get(REPO)).thenReturn(Optional.empty());
+    when(loader.load(REPO)).thenReturn(Optional.empty());
 
     assertThat(underTest.scopesOf(folder)).isEmpty();
   }
 
   @Test
   void scopesOf_lists_the_direct_project_and_the_nested_ones_bound_to_the_matching_connection() {
-    when(resolver.get(REPO)).thenReturn(Optional.of(new ResolvedSonarConfig(server(REPO, "root-project", "."), List.of(server(MODULE_A, "module-a", "moduleA")))));
+    resolved(new ResolvedSonarConfig(server(REPO, "root-project", "."), List.of(server(MODULE_A, "module-a", "moduleA"))));
 
     assertThat(underTest.scopesOf(folder)).containsExactly(
       new ConfigurationScope(REPO, "my repo", ".", Origin.SONAR_CONFIG, new ProjectBinding("sq", "root-project")),
@@ -81,10 +83,15 @@ class SonarConfigBindingSourceTests {
   @Test
   void scopesOf_leaves_a_scope_unbound_and_says_so_when_no_connection_matches() {
     var cloudProject = new SonarConfigProject(MODULE_A, "module-a", null, "my-org", SonarCloudRegion.US.name(), "moduleA");
-    when(resolver.get(REPO)).thenReturn(Optional.of(new ResolvedSonarConfig(null, List.of(cloudProject))));
+    resolved(new ResolvedSonarConfig(null, List.of(cloudProject)));
 
     assertThat(underTest.scopesOf(folder)).containsExactly(new ConfigurationScope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG, null));
     assertThat(logTester.logs()).anyMatch(log -> log.contains("No connection configured for organization=my-org region=US, scope " + MODULE_A + " is unbound"));
+  }
+
+  private void resolved(ResolvedSonarConfig config) {
+    when(loader.load(REPO)).thenReturn(Optional.of(configFile));
+    when(configFile.resolveFor(REPO)).thenReturn(Optional.of(config));
   }
 
   private void connections(Map<String, ServerConnectionSettings> servers) {

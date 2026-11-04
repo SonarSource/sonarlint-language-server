@@ -22,20 +22,13 @@ package org.sonarsource.sonarlint.ls.folders;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Optional;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
-class SonarConfigResolverTests {
+class SonarConfigFileTests {
 
   private static final String SERVER_URL = "https://sonarqube.example.com";
   private static final Path REPO = Path.of("repo").toAbsolutePath().normalize();
@@ -45,33 +38,9 @@ class SonarConfigResolverTests {
   @RegisterExtension
   SonarLintLogTester logTester = new SonarLintLogTester();
 
-  private final SonarConfigLoader loader = mock(SonarConfigLoader.class);
-  private SonarConfigResolver underTest;
-
-  @BeforeEach
-  void prepare() {
-    underTest = new SonarConfigResolver(logTester.getLogger(), loader);
-  }
-
   @Test
-  void get_is_empty_for_a_non_file_uri_without_loading() {
-    assertThat(underTest.get(URI.create("ftp://example.com/folder"))).isEmpty();
-
-    verifyNoInteractions(loader);
-  }
-
-  @Test
-  void get_is_empty_when_there_is_no_config_file() {
-    when(loader.load(REPO)).thenReturn(Optional.empty());
-
-    assertThat(underTest.get(REPO_URI)).isEmpty();
-  }
-
-  @Test
-  void get_binds_the_folder_directly_when_an_entry_points_at_it() {
-    loaded(REPO, entry("root-project", "."));
-
-    var config = underTest.get(REPO_URI).orElseThrow();
+  void resolveFor_binds_the_folder_directly_when_an_entry_points_at_it() {
+    var config = fileIn(REPO, entry("root-project", ".")).resolveFor(REPO_URI).orElseThrow();
 
     assertThat(config.children()).isEmpty();
     assertThat(config.direct().scopeUri()).isEqualTo(REPO_URI);
@@ -80,28 +49,25 @@ class SonarConfigResolverTests {
   }
 
   @Test
-  void get_binds_a_folder_below_the_config_directly() {
-    when(loader.load(MODULE_A)).thenReturn(Optional.of(fileIn(REPO, entry("module-a", "moduleA"))));
-
-    var config = underTest.get(MODULE_A.toUri()).orElseThrow();
+  void resolveFor_binds_a_folder_below_the_config_directly() {
+    var config = fileIn(REPO, entry("module-a", "moduleA")).resolveFor(MODULE_A.toUri()).orElseThrow();
 
     assertThat(config.direct().projectKey()).isEqualTo("module-a");
     assertThat(config.children()).isEmpty();
   }
 
   @Test
-  void get_prefers_the_deepest_entry_containing_the_folder() {
+  void resolveFor_prefers_the_deepest_entry_containing_the_folder() {
     var folder = MODULE_A.resolve("src");
-    when(loader.load(folder)).thenReturn(Optional.of(fileIn(REPO, entry("root-project", "."), entry("module-a", "moduleA"))));
 
-    assertThat(underTest.get(folder.toUri()).orElseThrow().direct().projectKey()).isEqualTo("module-a");
+    var config = fileIn(REPO, entry("root-project", "."), entry("module-a", "moduleA")).resolveFor(folder.toUri()).orElseThrow();
+
+    assertThat(config.direct().projectKey()).isEqualTo("module-a");
   }
 
   @Test
-  void get_declares_nested_entries_as_children() {
-    loaded(REPO, entry("module-a", "moduleA"), entry("module-b-api", "moduleB/api"));
-
-    var config = underTest.get(REPO_URI).orElseThrow();
+  void resolveFor_declares_nested_entries_as_children() {
+    var config = fileIn(REPO, entry("module-a", "moduleA"), entry("module-b-api", "moduleB/api")).resolveFor(REPO_URI).orElseThrow();
 
     assertThat(config.direct()).isNull();
     assertThat(config.children()).extracting(SonarConfigProject::scopeUri)
@@ -110,19 +76,16 @@ class SonarConfigResolverTests {
   }
 
   @Test
-  void get_keeps_the_first_entry_when_several_point_at_the_same_directory() {
-    loaded(REPO, entry("module-a", "moduleA"), entry("module-a-again", "./moduleA"), entry("module-b", "moduleB"));
-
-    var config = underTest.get(REPO_URI).orElseThrow();
+  void resolveFor_keeps_the_first_entry_when_several_point_at_the_same_directory() {
+    var config = fileIn(REPO, entry("module-a", "moduleA"), entry("module-a-again", "./moduleA"), entry("module-b", "moduleB"))
+      .resolveFor(REPO_URI).orElseThrow();
 
     assertThat(config.children()).extracting(SonarConfigProject::projectKey).containsExactly("module-a", "module-b");
   }
 
   @Test
-  void get_keeps_cloud_entries() {
-    loaded(REPO, new SonarConfigEntry("module-a", "moduleA", null, "my-org", "US"));
-
-    var project = underTest.get(REPO_URI).orElseThrow().children().get(0);
+  void resolveFor_keeps_cloud_entries() {
+    var project = fileIn(REPO, new SonarConfigEntry("module-a", "moduleA", null, "my-org", "US")).resolveFor(REPO_URI).orElseThrow().children().get(0);
 
     assertThat(project.serverUrl()).isNull();
     assertThat(project.organization()).isEqualTo("my-org");
@@ -130,44 +93,26 @@ class SonarConfigResolverTests {
   }
 
   @Test
-  void get_ignores_invalid_entries() {
-    loaded(REPO,
+  void resolveFor_ignores_invalid_entries() {
+    var config = fileIn(REPO,
       new SonarConfigEntry(null, "moduleA", SERVER_URL, null, null),
       new SonarConfigEntry("no-path", null, SERVER_URL, null, null),
       new SonarConfigEntry("no-target", "moduleA", null, null, null),
       null,
-      entry("valid", "moduleA"));
-
-    var config = underTest.get(REPO_URI).orElseThrow();
+      entry("valid", "moduleA")).resolveFor(REPO_URI).orElseThrow();
 
     assertThat(config.children()).extracting(SonarConfigProject::projectKey).containsExactly("valid");
     assertThat(logTester.logs()).filteredOn(log -> log.contains("Ignoring invalid entry")).hasSize(4);
   }
 
   @Test
-  void get_is_empty_when_no_entry_relates_to_the_folder() {
-    when(loader.load(MODULE_A)).thenReturn(Optional.of(fileIn(REPO, entry("other", "other"))));
-
-    assertThat(underTest.get(MODULE_A.toUri())).isEmpty();
+  void resolveFor_is_empty_when_no_entry_relates_to_the_folder() {
+    assertThat(fileIn(REPO, entry("other", "other")).resolveFor(MODULE_A.toUri())).isEmpty();
     assertThat(logTester.logs()).anyMatch(log -> log.contains("has no entry matching folder"));
   }
 
-  @Test
-  void get_reads_the_file_again_on_every_call() {
-    loaded(REPO, entry("module-a", "moduleA"));
-
-    underTest.get(REPO_URI);
-    underTest.get(REPO_URI);
-
-    verify(loader, times(2)).load(REPO);
-  }
-
-  private void loaded(Path folder, SonarConfigEntry... entries) {
-    when(loader.load(folder)).thenReturn(Optional.of(fileIn(folder, entries)));
-  }
-
-  private static SonarConfigFile fileIn(Path directory, SonarConfigEntry... entries) {
-    return new SonarConfigFile(directory.resolve(".sonar-config.json"), Arrays.asList(entries));
+  private SonarConfigFile fileIn(Path directory, SonarConfigEntry... entries) {
+    return new SonarConfigFile(directory.resolve(".sonar-config.json"), Arrays.asList(entries), logTester.getLogger());
   }
 
   private static SonarConfigEntry entry(String projectKey, String path) {

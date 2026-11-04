@@ -22,8 +22,8 @@ package org.sonarsource.sonarlint.ls.connected;
 import java.util.List;
 import javax.annotation.CheckForNull;
 import org.sonarsource.sonarlint.ls.folders.ResolvedSonarConfig;
+import org.sonarsource.sonarlint.ls.folders.SonarConfigLoader;
 import org.sonarsource.sonarlint.ls.folders.SonarConfigProject;
-import org.sonarsource.sonarlint.ls.folders.SonarConfigResolver;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.scopes.ConfigurationScope;
@@ -33,19 +33,19 @@ import static java.lang.String.format;
 
 public class SonarConfigBindingSource implements BindingSource {
 
-  private final SonarConfigResolver resolver;
+  private final SonarConfigLoader loader;
   private final SettingsManager settingsManager;
   private final LanguageClientLogger logOutput;
 
-  public SonarConfigBindingSource(SonarConfigResolver resolver, SettingsManager settingsManager, LanguageClientLogger logOutput) {
-    this.resolver = resolver;
+  public SonarConfigBindingSource(SonarConfigLoader loader, SettingsManager settingsManager, LanguageClientLogger logOutput) {
+    this.loader = loader;
     this.settingsManager = settingsManager;
     this.logOutput = logOutput;
   }
 
   @Override
   public List<ConfigurationScope> scopesOf(WorkspaceFolderWrapper folder) {
-    return resolver.get(folder.getUri()).map(ResolvedSonarConfig::allProjects).orElse(List.of()).stream()
+    return loader.load(folder.getUri()).flatMap(file -> file.resolveFor(folder.getUri())).map(ResolvedSonarConfig::allProjects).orElse(List.of()).stream()
       .map(project -> toScope(folder, project))
       .toList();
   }

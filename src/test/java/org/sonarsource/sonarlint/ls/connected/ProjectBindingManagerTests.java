@@ -48,7 +48,7 @@ import org.sonarsource.sonarlint.ls.ForcedAnalysisCoordinator;
 import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageClient;
 import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
-import org.sonarsource.sonarlint.ls.folders.SonarConfigResolver;
+import org.sonarsource.sonarlint.ls.folders.SonarConfigLoader;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
@@ -100,7 +100,7 @@ class ProjectBindingManagerTests {
   private ProjectBindingManager underTest;
   private ConfigurationScopeManager scopeManager;
   private BackendService backendService;
-  private SonarConfigResolver sonarConfigResolver;
+  private SonarConfigLoader sonarConfigLoader;
   private final SettingsManager settingsManager = mock(SettingsManager.class);
   private final WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
   private final Map<String, ServerConnectionSettings> servers = new HashMap<>();
@@ -131,12 +131,12 @@ class ProjectBindingManagerTests {
     when(client.getTokenForServer(any())).thenReturn(CompletableFuture.supplyAsync(() -> "token"));
     when(settingsManager.connectionOf(any())).thenAnswer(invocation -> servers.get(SettingsManager.connectionIdOrDefault(invocation.getArgument(0))));
 
-    sonarConfigResolver = new SonarConfigResolver(logTester.getLogger());
+    sonarConfigLoader = new SonarConfigLoader(logTester.getLogger());
 
     when(openNotebooksCache.getFile(any(URI.class))).thenReturn(Optional.empty());
 
     var folderSettingsSource = new FolderSettingsBindingSource(settingsManager, logTester.getLogger());
-    var sources = new BindingSources(List.of(new SonarConfigBindingSource(sonarConfigResolver, settingsManager, logTester.getLogger()), folderSettingsSource));
+    var sources = new BindingSources(List.of(new SonarConfigBindingSource(sonarConfigLoader, settingsManager, logTester.getLogger()), folderSettingsSource));
     scopeManager = new ConfigurationScopeManager(new ImmediateExecutorService(), foldersManager, sources, backendServiceFacade, logTester.getLogger());
     underTest = new ProjectBindingManager(foldersManager, settingsManager, client, logTester.getLogger(),
       backendServiceFacade, openNotebooksCache, scopeManager);

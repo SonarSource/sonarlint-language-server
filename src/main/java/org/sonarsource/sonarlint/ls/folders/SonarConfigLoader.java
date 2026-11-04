@@ -22,13 +22,16 @@ package org.sonarsource.sonarlint.ls.folders;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.ls.util.Utils;
 
 import static java.lang.String.format;
 
@@ -36,18 +39,22 @@ import static java.lang.String.format;
  * Finds the nearest {@code .sonar-config.json} at or above a folder (no further than the enclosing git root) and parses
  * it. Stateless, and unaware of what the entries mean: every call reads the file system again.
  */
-class SonarConfigLoader {
+public class SonarConfigLoader {
 
   static final String SONAR_CONFIG_FILE_NAME = ".sonar-config.json";
 
   private final LanguageClientLogger logOutput;
   private final Gson gson = new Gson();
 
-  SonarConfigLoader(LanguageClientLogger logOutput) {
+  public SonarConfigLoader(LanguageClientLogger logOutput) {
     this.logOutput = logOutput;
   }
 
-  Optional<SonarConfigFile> load(Path folderPath) {
+  public Optional<SonarConfigFile> load(URI folderUri) {
+    if (!Utils.uriHasFileScheme(folderUri)) {
+      return Optional.empty();
+    }
+    var folderPath = Paths.get(folderUri).toAbsolutePath().normalize();
     var configPath = findSonarConfigFile(folderPath);
     if (configPath == null) {
       logOutput.info(format("[multi-project] No '%s' found at or above %s (up to the git root), folder registered normally", SONAR_CONFIG_FILE_NAME, folderPath));
@@ -58,7 +65,7 @@ class SonarConfigLoader {
       logOutput.warn(format("[multi-project] '%s' at %s was found but could not be parsed into a 'projects' array", SONAR_CONFIG_FILE_NAME, configPath));
       return Optional.empty();
     }
-    return Optional.of(new SonarConfigFile(configPath, parsed.projects));
+    return Optional.of(new SonarConfigFile(configPath, parsed.projects, logOutput));
   }
 
   @CheckForNull

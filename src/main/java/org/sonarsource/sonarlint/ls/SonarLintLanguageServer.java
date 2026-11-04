@@ -145,7 +145,7 @@ import org.sonarsource.sonarlint.ls.file.FileTypeClassifier;
 import org.sonarsource.sonarlint.ls.file.OpenFilesCache;
 import org.sonarsource.sonarlint.ls.file.VersionedOpenFile;
 import org.sonarsource.sonarlint.ls.folders.ModuleEventsProcessor;
-import org.sonarsource.sonarlint.ls.folders.SonarConfigResolver;
+import org.sonarsource.sonarlint.ls.folders.SonarConfigLoader;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.java.JavaConfigCache;
@@ -260,7 +260,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
     this.settingsManager.addListener(lsLogOutput);
     var folderSettingsSource = new FolderSettingsBindingSource(settingsManager, lsLogOutput);
-    var bindingSources = new BindingSources(List.of(new SonarConfigBindingSource(new SonarConfigResolver(lsLogOutput), settingsManager, lsLogOutput), folderSettingsSource));
+    var bindingSources = new BindingSources(List.of(new SonarConfigBindingSource(new SonarConfigLoader(lsLogOutput), settingsManager, lsLogOutput), folderSettingsSource));
     this.configurationScopeManager = new ConfigurationScopeManager(workspaceFoldersManager, bindingSources, backendServiceFacade, lsLogOutput);
     this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager,
       client, lsLogOutput, backendServiceFacade, openNotebooksCache, configurationScopeManager);
