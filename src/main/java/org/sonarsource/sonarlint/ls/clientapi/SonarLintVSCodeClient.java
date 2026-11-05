@@ -615,10 +615,13 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
 
   @Override
   public void suggestConnection(Map<String, List<ConnectionSuggestionDto>> configScopesToConnectionSuggestions) {
-    if (configScopesToConnectionSuggestions.isEmpty()) {
+    var relevantSuggestions = configScopesToConnectionSuggestions.entrySet().stream()
+      .filter(entry -> !bindingManager.hasReadOnlyBinding(entry.getKey()))
+      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    if (relevantSuggestions.isEmpty()) {
       return;
     }
-    client.suggestConnection(new SuggestConnectionParams(configScopesToConnectionSuggestions));
+    client.suggestConnection(new SuggestConnectionParams(relevantSuggestions));
   }
 
   private static ArrayList<TaintIssue> dtosToTaintIssues(String configurationScopeId, List<TaintVulnerabilityDto> t, Boolean isSonarCloud) {

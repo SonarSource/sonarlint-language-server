@@ -99,6 +99,14 @@ class FolderSettingsBindingSourceTests {
     assertThat(logTester.logs()).anyMatch(log -> log.contains("Invalid binding for"));
   }
 
+  @Test
+  void scopesOf_remembers_what_the_folder_was_bound_to_when_the_connection_is_unknown() {
+    folder.setSettings(BOUND);
+
+    assertThat(underTest.scopesOf(folder)).extracting(ConfigurationScope::unresolved)
+      .containsExactly(new ConfigurationScope.UnresolvedBinding("myProject", "connection 'myServer'"));
+  }
+
   private WorkspaceFolderWrapper newFolder(String name) {
     var path = basedir.resolve(name);
     return new WorkspaceFolderWrapper(path.toUri(), new WorkspaceFolder(path.toUri().toString(), name), logTester.getLogger());

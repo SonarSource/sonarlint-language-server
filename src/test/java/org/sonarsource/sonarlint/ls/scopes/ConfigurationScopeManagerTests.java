@@ -186,6 +186,16 @@ class ConfigurationScopeManagerTests {
   }
 
   @Test
+  void hasReadOnlyBinding_is_true_for_a_known_scope_whose_binding_cannot_be_edited() {
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS), scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG));
+    underTest.added(folder);
+
+    assertThat(underTest.hasReadOnlyBinding(MODULE_A.toString())).isTrue();
+    assertThat(underTest.hasReadOnlyBinding(REPO.toString())).isFalse();
+    assertThat(underTest.hasReadOnlyBinding("file:///unknown/")).isFalse();
+  }
+
+  @Test
   void bindingOfScope_is_the_binding_declared_for_that_scope() {
     declare(scope(REPO, "repo", ".", Origin.SONAR_CONFIG), scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG));
     bound(REPO, ROOT_BINDING);

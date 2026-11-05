@@ -52,7 +52,9 @@ public class SonarConfigBindingSource implements BindingSource {
 
   private ConfigurationScope toScope(WorkspaceFolderWrapper folder, SonarConfigProject project) {
     var name = project.scopeUri().equals(folder.getUri()) ? folder.getLspFolder().getName() : project.directoryName();
-    return new ConfigurationScope(project.scopeUri(), name, project.relativePath(), Origin.SONAR_CONFIG, bindingOf(project));
+    var binding = bindingOf(project);
+    var unresolved = binding == null ? new ConfigurationScope.UnresolvedBinding(project.projectKey(), project.displayTarget()) : null;
+    return new ConfigurationScope(project.scopeUri(), name, project.relativePath(), Origin.SONAR_CONFIG, binding, unresolved);
   }
 
   @CheckForNull
