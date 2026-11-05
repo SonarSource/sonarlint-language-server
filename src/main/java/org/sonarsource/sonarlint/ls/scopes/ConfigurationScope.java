@@ -51,4 +51,12 @@ public record ConfigurationScope(URI uri, String name, String relativePath, Orig
   public boolean bindingConfigurationDiffersFrom(ConfigurationScope other) {
     return !Objects.equals(binding, other.binding) || editable() != other.editable();
   }
+
+  /**
+   * Whether the clients have something new to show about this scope: its binding configuration, or what it was
+   * declared bound to while it has no binding.
+   */
+  public boolean bindingStateDiffersFrom(ConfigurationScope other) {
+    return bindingConfigurationDiffersFrom(other) || !Objects.equals(unresolved, other.unresolved);
+  }
 }

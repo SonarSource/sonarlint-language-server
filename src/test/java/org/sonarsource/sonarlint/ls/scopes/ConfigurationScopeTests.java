@@ -55,6 +55,17 @@ class ConfigurationScopeTests {
     assertThat(renamed.bindingConfigurationDiffersFrom(scope(Origin.SETTINGS, BINDING))).isFalse();
   }
 
+  @Test
+  void the_binding_state_differs_when_only_the_unresolved_binding_differs() {
+    var unresolved = new ConfigurationScope(URI_A, "name", ".", Origin.SETTINGS, null, new ConfigurationScope.UnresolvedBinding("project", "connection 'a'"));
+    var otherTarget = new ConfigurationScope(URI_A, "name", ".", Origin.SETTINGS, null, new ConfigurationScope.UnresolvedBinding("project", "connection 'b'"));
+
+    assertThat(unresolved.bindingConfigurationDiffersFrom(otherTarget)).isFalse();
+    assertThat(unresolved.bindingStateDiffersFrom(otherTarget)).isTrue();
+    assertThat(unresolved.bindingStateDiffersFrom(scope(Origin.SETTINGS, null))).isTrue();
+    assertThat(unresolved.bindingStateDiffersFrom(unresolved)).isFalse();
+  }
+
   private static ConfigurationScope scope(Origin origin, ProjectBinding binding) {
     return new ConfigurationScope(URI_A, "name", ".", origin, binding);
   }

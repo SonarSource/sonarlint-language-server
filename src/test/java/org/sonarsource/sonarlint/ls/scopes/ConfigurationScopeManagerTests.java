@@ -69,6 +69,7 @@ class ConfigurationScopeManagerTests {
 
   private final BindingSources sources = mock(BindingSources.class);
   private final Map<URI, ProjectBinding> bindings = new HashMap<>();
+  private final Map<URI, ConfigurationScope.UnresolvedBinding> unresolvedBindings = new HashMap<>();
   private List<ConfigurationScope> declared = List.of();
   private final WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
   private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
@@ -251,6 +252,52 @@ class ConfigurationScopeManagerTests {
     underTest.added(folder);
 
     assertThat(underTest.updateAll().join()).isEmpty();
+  }
+
+  @Test
+  void updating_every_folder_reports_a_scope_that_is_no_longer_declared_bound_to_something_unresolved() {
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS));
+    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", "connection 'old'"));
+    underTest.added(folder);
+    clearInvocations(backendService, listener);
+    resolved(REPO);
+
+    var changes = underTest.updateAll().join();
+
+    assertThat(changes).containsExactly(new ScopeChange(
+      new ConfigurationScope(REPO, "repo", ".", Origin.SETTINGS, null, new ConfigurationScope.UnresolvedBinding("root", "connection 'old'")),
+      new ConfigurationScope(REPO, "repo", ".", Origin.SETTINGS, null)));
+    verify(listener).scopesChanged(anyList());
+  }
+
+  @Test
+  void updating_every_folder_reports_a_scope_whose_unresolved_target_changed() {
+    declare(scope(REPO, "repo", ".", Origin.SONAR_CONFIG));
+    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", "SonarQube Server http://a"));
+    underTest.added(folder);
+    clearInvocations(backendService, listener);
+    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", "SonarQube Server http://b"));
+
+    var changes = underTest.updateAll().join();
+
+    assertThat(changes).hasSize(1);
+    verify(listener).scopesChanged(anyList());
+  }
+
+  @Test
+  void a_change_of_the_unresolved_binding_alone_does_not_touch_the_backend() {
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS));
+    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", "connection 'old'"));
+    underTest.added(folder);
+    clearInvocations(backendService, listener);
+    resolved(REPO);
+
+    underTest.updateAll().join();
+
+    verify(backendService, never()).bind(any(), any());
+    verify(backendService, never()).unbind(any(), anyBoolean());
+    verify(backendService, never()).addConfigurationScope(any(), any(), any(), any(), anyBoolean(), anyBoolean());
+    verify(backendService, never()).removeConfigurationScope(any());
   }
 
   @Test
@@ -508,9 +555,20 @@ class ConfigurationScopeManagerTests {
     stubSources();
   }
 
+  private void unresolved(URI scopeUri, ConfigurationScope.UnresolvedBinding unresolved) {
+    unresolvedBindings.put(scopeUri, unresolved);
+    stubSources();
+  }
+
+  private void resolved(URI scopeUri) {
+    unresolvedBindings.remove(scopeUri);
+    stubSources();
+  }
+
   private void stubSources() {
     when(sources.scopesOf(folder)).thenReturn(declared.stream()
-      .map(scope -> new ConfigurationScope(scope.uri(), scope.name(), scope.relativePath(), scope.origin(), bindings.get(scope.uri())))
+      .map(scope -> new ConfigurationScope(scope.uri(), scope.name(), scope.relativePath(), scope.origin(), bindings.get(scope.uri()),
+        unresolvedBindings.get(scope.uri())))
       .toList());
   }
 

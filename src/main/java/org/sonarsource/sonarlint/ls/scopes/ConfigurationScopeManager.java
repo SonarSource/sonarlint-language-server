@@ -269,10 +269,13 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
         changes.add(new ScopeChange(null, scope));
       });
     desired.stream()
-      .filter(scope -> declaredByUri.containsKey(scope.uri()) && scope.bindingConfigurationDiffersFrom(declaredByUri.get(scope.uri())))
+      .filter(scope -> declaredByUri.containsKey(scope.uri()) && scope.bindingStateDiffersFrom(declaredByUri.get(scope.uri())))
       .forEach(scope -> {
-        rebind(scope);
-        changes.add(new ScopeChange(declaredByUri.get(scope.uri()), scope));
+        var before = declaredByUri.get(scope.uri());
+        if (scope.bindingConfigurationDiffersFrom(before)) {
+          rebind(scope);
+        }
+        changes.add(new ScopeChange(before, scope));
       });
     return changes;
   }
