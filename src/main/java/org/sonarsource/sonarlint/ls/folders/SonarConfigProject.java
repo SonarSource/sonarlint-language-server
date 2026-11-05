@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.folders;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import javax.annotation.Nullable;
@@ -37,5 +38,12 @@ public record SonarConfigProject(URI scopeUri, String projectKey, @Nullable Stri
       return "serverUrl=" + serverUrl;
     }
     return "organization=" + organization + " region=" + Objects.requireNonNullElse(region, "EU");
+  }
+
+  public String displayTarget() {
+    if (serverUrl != null) {
+      return "SonarQube Server " + serverUrl;
+    }
+    return "SonarQube Cloud organization '" + organization + "' (" + Objects.requireNonNullElse(region, "EU").toUpperCase(Locale.ROOT) + ")";
   }
 }
