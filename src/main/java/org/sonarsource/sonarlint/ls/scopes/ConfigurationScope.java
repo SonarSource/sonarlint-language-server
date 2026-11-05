@@ -26,19 +26,37 @@ import org.sonarsource.sonarlint.ls.connected.Origin;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 
 /**
- * A configuration scope and what it is bound to; the binding is {@code null} while the scope is unbound.
+ * A configuration scope and what it is bound to; the binding is {@code null} while the scope is unbound. A scope that
+ * is declared bound to something that cannot be resolved (e.g. a connection that does not exist) is unbound too, but
+ * remembers what it was declared to be bound to.
  */
-public record ConfigurationScope(URI uri, String name, String relativePath, Origin origin, @Nullable ProjectBinding binding) {
+public record ConfigurationScope(URI uri, String name, String relativePath, Origin origin, @Nullable ProjectBinding binding,
+  @Nullable UnresolvedBinding unresolved) {
 
-  public boolean bindable() {
+  public ConfigurationScope(URI uri, String name, String relativePath, Origin origin, @Nullable ProjectBinding binding) {
+    this(uri, name, relativePath, origin, binding, null);
+  }
+
+  public record UnresolvedBinding(String projectKey, String target) {
+  }
+
+  /**
+   * Whether the user can change the binding from the IDE. It cannot when the binding comes from a file that is
+   * maintained outside of the IDE.
+   */
+  public boolean editable() {
     return origin != Origin.SONAR_CONFIG;
   }
 
-  public boolean bindingSuggestionDisabled() {
-    return origin == Origin.SONAR_CONFIG;
+  public boolean bindingConfigurationDiffersFrom(ConfigurationScope other) {
+    return !Objects.equals(binding, other.binding) || editable() != other.editable();
   }
 
-  public boolean bindingConfigurationDiffersFrom(ConfigurationScope other) {
-    return !Objects.equals(binding, other.binding) || bindingSuggestionDisabled() != other.bindingSuggestionDisabled();
+  /**
+   * Whether the clients have something new to show about this scope: its binding configuration, or what it was
+   * declared bound to while it has no binding.
+   */
+  public boolean bindingStateDiffersFrom(ConfigurationScope other) {
+    return bindingConfigurationDiffersFrom(other) || !Objects.equals(unresolved, other.unresolved);
   }
 }

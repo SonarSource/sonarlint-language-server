@@ -32,15 +32,9 @@ class ConfigurationScopeTests {
   private static final ProjectBinding BINDING = new ProjectBinding("sq", "project");
 
   @Test
-  void scopes_declared_by_a_sonar_config_are_not_bindable_by_the_client() {
-    assertThat(scope(Origin.SONAR_CONFIG, BINDING).bindable()).isFalse();
-    assertThat(scope(Origin.SETTINGS, null).bindable()).isTrue();
-  }
-
-  @Test
-  void binding_suggestions_are_only_disabled_for_scopes_declared_by_a_sonar_config() {
-    assertThat(scope(Origin.SONAR_CONFIG, null).bindingSuggestionDisabled()).isTrue();
-    assertThat(scope(Origin.SETTINGS, null).bindingSuggestionDisabled()).isFalse();
+  void the_binding_cannot_be_edited_when_it_comes_from_a_file_maintained_outside_of_the_ide() {
+    assertThat(scope(Origin.SONAR_CONFIG, BINDING).editable()).isFalse();
+    assertThat(scope(Origin.SETTINGS, BINDING).editable()).isTrue();
   }
 
   @Test
@@ -50,7 +44,7 @@ class ConfigurationScopeTests {
   }
 
   @Test
-  void the_binding_configuration_differs_when_only_the_binding_suggestions_differ() {
+  void the_binding_configuration_differs_when_only_the_editability_differs() {
     assertThat(scope(Origin.SONAR_CONFIG, BINDING).bindingConfigurationDiffersFrom(scope(Origin.SETTINGS, BINDING))).isTrue();
   }
 
@@ -59,6 +53,17 @@ class ConfigurationScopeTests {
     var renamed = new ConfigurationScope(URI_A, "other name", "sub", Origin.SETTINGS, BINDING);
 
     assertThat(renamed.bindingConfigurationDiffersFrom(scope(Origin.SETTINGS, BINDING))).isFalse();
+  }
+
+  @Test
+  void the_binding_state_differs_when_only_the_unresolved_binding_differs() {
+    var unresolved = new ConfigurationScope(URI_A, "name", ".", Origin.SETTINGS, null, new ConfigurationScope.UnresolvedBinding("project", "connection 'a'"));
+    var otherTarget = new ConfigurationScope(URI_A, "name", ".", Origin.SETTINGS, null, new ConfigurationScope.UnresolvedBinding("project", "connection 'b'"));
+
+    assertThat(unresolved.bindingConfigurationDiffersFrom(otherTarget)).isFalse();
+    assertThat(unresolved.bindingStateDiffersFrom(otherTarget)).isTrue();
+    assertThat(unresolved.bindingStateDiffersFrom(scope(Origin.SETTINGS, null))).isTrue();
+    assertThat(unresolved.bindingStateDiffersFrom(unresolved)).isFalse();
   }
 
   private static ConfigurationScope scope(Origin origin, ProjectBinding binding) {
