@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 import java.util.List;
+import java.util.Optional;
 import javax.annotation.CheckForNull;
 import org.sonarsource.sonarlint.ls.folders.ResolvedSonarConfig;
 import org.sonarsource.sonarlint.ls.folders.SonarConfigLoader;
@@ -54,7 +55,8 @@ public class SonarConfigBindingSource implements BindingSource {
     var name = project.scopeUri().equals(folder.getUri()) ? folder.getLspFolder().getName() : project.directoryName();
     var binding = bindingOf(project);
     var unresolved = binding == null ? unresolvedBindingOf(project) : null;
-    return new ConfigurationScope(project.scopeUri(), name, project.relativePath(), Origin.SONAR_CONFIG, binding, unresolved, project.pathToCompileCommands());
+    var pathToCompileCommands = Optional.ofNullable(project.pathToCompileCommands()).orElseGet(() -> folder.getSettings().getPathToCompileCommands());
+    return new ConfigurationScope(project.scopeUri(), name, project.relativePath(), Origin.SONAR_CONFIG, binding, unresolved, pathToCompileCommands);
   }
 
   private static ConfigurationScope.UnresolvedBinding unresolvedBindingOf(SonarConfigProject project) {
