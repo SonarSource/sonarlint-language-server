@@ -243,7 +243,7 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
       return declared;
     }
     var origin = declared.isEmpty() ? Origin.SETTINGS : declared.get(0).origin();
-    var folderScope = new ConfigurationScope(folder.getUri(), folder.getLspFolder().getName(), ".", origin, null);
+    var folderScope = new ConfigurationScope(folder.getUri(), folder.getLspFolder().getName(), ".", origin, null, null, folder.getSettings().getPathToCompileCommands());
     return Stream.concat(Stream.of(folderScope), declared.stream()).toList();
   }
 
