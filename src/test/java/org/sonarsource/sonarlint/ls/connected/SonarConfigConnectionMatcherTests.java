@@ -65,37 +65,37 @@ class SonarConfigConnectionMatcherTests {
   void matches_a_cloud_organization_in_the_default_eu_region() {
     var connections = Map.of("sc", cloud(ServerConnectionSettings.getSonarCloudUrl(), "my-org", null));
 
-    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("my-org", null))).isEqualTo("sc");
-    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("MY-ORG", "eu"))).isEqualTo("sc");
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("my-org", SonarCloudRegion.EU))).isEqualTo("sc");
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("MY-ORG", SonarCloudRegion.EU))).isEqualTo("sc");
   }
 
   @Test
   void matches_a_cloud_organization_in_the_us_region() {
     var connections = Map.of("sc-us", cloud(ServerConnectionSettings.getSonarCloudUSUrl(), "my-org", SonarCloudRegion.US));
 
-    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("my-org", "us"))).isEqualTo("sc-us");
-    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("my-org", null))).isNull();
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("my-org", SonarCloudRegion.US))).isEqualTo("sc-us");
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("my-org", SonarCloudRegion.EU))).isNull();
   }
 
   @Test
   void does_not_match_a_cloud_organization_of_another_name() {
     var connections = Map.of("sc", cloud(ServerConnectionSettings.getSonarCloudUrl(), "my-org", null));
 
-    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("other-org", null))).isNull();
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("other-org", SonarCloudRegion.EU))).isNull();
   }
 
   @Test
   void does_not_match_a_cloud_project_against_a_server_connection() {
     var connections = Map.of("sq", new ServerConnectionSettings("sq", "https://sonarqube.example.com", "token", "my-org", false, null));
 
-    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("my-org", null))).isNull();
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("my-org", SonarCloudRegion.EU))).isNull();
   }
 
   @Test
   void does_not_match_a_cloud_project_against_a_cloud_connection_without_organization() {
     var connections = Map.of("sc", cloud(ServerConnectionSettings.getSonarCloudUrl(), null, null));
 
-    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("my-org", null))).isNull();
+    assertThat(SonarConfigConnectionMatcher.findConnectionId(connections, cloudProject("my-org", SonarCloudRegion.EU))).isNull();
   }
 
   private static ServerConnectionSettings server(String url) {
@@ -110,7 +110,7 @@ class SonarConfigConnectionMatcherTests {
     return new SonarConfigProject(URI.create("file:///repo/"), "key", serverUrl, null, null, ".");
   }
 
-  private static SonarConfigProject cloudProject(String organization, @Nullable String region) {
+  private static SonarConfigProject cloudProject(String organization, SonarCloudRegion region) {
     return new SonarConfigProject(URI.create("file:///repo/"), "key", null, organization, region, ".");
   }
 }

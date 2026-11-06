@@ -64,6 +64,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiAgentInteg
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationActionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationCliStateObservedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 
 public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
@@ -137,7 +138,10 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   @JsonRequest("sonarlint/getBindings")
   CompletableFuture<List<BindingInfo>> getBindings();
 
-  record BindingInfo(String scopeUri, String name, String relativePath, String projectKey, String connectionId, String source) {
+  record BindingInfo(String scopeUri, String name, String relativePath, String projectKey, @Nullable String connectionId, String source,
+    String status, @Nullable String serverUrl, @Nullable String organization, @Nullable SonarCloudRegion region) {
+    public static final String BOUND = "BOUND";
+    public static final String MISSING_CONNECTION = "MISSING_CONNECTION";
   }
 
   @JsonRequest("sonarlint/getRemoteProjectsForConnection")

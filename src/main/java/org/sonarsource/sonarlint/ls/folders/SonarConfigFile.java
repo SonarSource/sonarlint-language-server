@@ -25,6 +25,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import javax.annotation.CheckForNull;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 import static java.lang.String.format;
@@ -78,7 +80,7 @@ public class SonarConfigFile {
         if (directPath == null || entryPath.getNameCount() > directPath.getNameCount()) {
           logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s contains the folder -> its own configuration scope is bound directly, no sub-folder needed",
             entry.projectKey(), entry.path()));
-          direct = new SonarConfigProject(folderUri, entry.projectKey(), entry.serverUrl(), entry.organization(), entry.region(), ".");
+          direct = new SonarConfigProject(folderUri, entry.projectKey(), entry.serverUrl(), entry.organization(), regionOf(entry), ".");
           directPath = entryPath;
         }
       } else if (entryPath.startsWith(folderPath)) {
@@ -95,7 +97,7 @@ public class SonarConfigFile {
       .filter(entry -> {
         var valid = entry != null && entry.isValid();
         if (!valid) {
-          logOutput.warn(format("[multi-project] Ignoring invalid entry in '%s' for folder %s: %s (need a projectKey, a path, and either serverUrl or organization)",
+          logOutput.warn(format("[multi-project] Ignoring invalid entry in '%s' for folder %s: %s (need a projectKey, a path, and either a serverUrl or an organization with a known region)",
             SONAR_CONFIG_FILE_NAME, folderUri, entry));
         }
         return valid;
@@ -110,7 +112,12 @@ public class SonarConfigFile {
     } else {
       var relativePath = folderPath.relativize(entryPath).toString().replace('\\', '/');
       logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s is nested in the folder -> sub-folder %s", entry.projectKey(), entry.path(), entryPath.toUri()));
-      children.add(new SonarConfigProject(entryPath.toUri(), entry.projectKey(), entry.serverUrl(), entry.organization(), entry.region(), relativePath));
+      children.add(new SonarConfigProject(entryPath.toUri(), entry.projectKey(), entry.serverUrl(), entry.organization(), regionOf(entry), relativePath));
     }
+  }
+
+  @CheckForNull
+  private static SonarCloudRegion regionOf(SonarConfigEntry entry) {
+    return entry.serverUrl() == null ? entry.cloudRegion().orElse(null) : null;
   }
 }

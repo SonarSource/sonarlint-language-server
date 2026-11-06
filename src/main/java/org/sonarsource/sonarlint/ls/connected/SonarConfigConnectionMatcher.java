@@ -20,7 +20,9 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 import java.util.Map;
+import java.util.Objects;
 import javax.annotation.CheckForNull;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.folders.SonarConfigProject;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 
@@ -29,8 +31,6 @@ import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
  * SonarQube Server, or by organization and region for SonarQube Cloud.
  */
 final class SonarConfigConnectionMatcher {
-
-  private static final String DEFAULT_CLOUD_REGION = "EU";
 
   private SonarConfigConnectionMatcher() {
   }
@@ -51,9 +51,9 @@ final class SonarConfigConnectionMatcher {
     if (!connection.isSonarCloudAlias() || connection.getOrganizationKey() == null) {
       return false;
     }
-    var connectionRegion = connection.getRegion() != null ? connection.getRegion().name() : DEFAULT_CLOUD_REGION;
-    var projectRegion = project.region() != null ? project.region() : DEFAULT_CLOUD_REGION;
-    return connection.getOrganizationKey().equalsIgnoreCase(project.organization()) && connectionRegion.equalsIgnoreCase(projectRegion);
+    var connectionRegion = Objects.requireNonNullElse(connection.getRegion(), SonarCloudRegion.EU);
+    var projectRegion = Objects.requireNonNullElse(project.region(), SonarCloudRegion.EU);
+    return connection.getOrganizationKey().equalsIgnoreCase(project.organization()) && connectionRegion == projectRegion;
   }
 
   private static String withoutTrailingSlash(String url) {
