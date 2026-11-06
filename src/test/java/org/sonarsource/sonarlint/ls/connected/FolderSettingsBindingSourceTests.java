@@ -104,7 +104,7 @@ class FolderSettingsBindingSourceTests {
     folder.setSettings(BOUND);
 
     assertThat(underTest.scopesOf(folder)).extracting(ConfigurationScope::unresolved)
-      .containsExactly(new ConfigurationScope.UnresolvedBinding("myProject", "connection 'myServer'"));
+      .containsExactly(new ConfigurationScope.UnresolvedBinding("myProject", "myServer", null, null, null));
   }
 
   private WorkspaceFolderWrapper newFolder(String name) {

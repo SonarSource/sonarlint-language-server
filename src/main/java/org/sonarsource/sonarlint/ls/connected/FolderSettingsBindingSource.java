@@ -57,7 +57,7 @@ public class FolderSettingsBindingSource implements BindingSource {
     var projectKey = requireNonNull(settings.getProjectKey());
     if (settingsManager.connectionOf(connectionId) == null) {
       logOutput.error(format("Invalid binding for '%s'", folder.getRootPath()));
-      var unresolved = new ConfigurationScope.UnresolvedBinding(projectKey, "connection '" + connectionId + "'");
+      var unresolved = new ConfigurationScope.UnresolvedBinding(projectKey, connectionId, null, null, null);
       return new ConfigurationScope(folder.getUri(), name, ".", Origin.SETTINGS, null, unresolved);
     }
     logOutput.debug(format("Resolved binding %s for folder %s", projectKey, folder.getRootPath()));

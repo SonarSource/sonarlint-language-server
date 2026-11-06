@@ -40,10 +40,7 @@ public record SonarConfigProject(URI scopeUri, String projectKey, @Nullable Stri
     return "organization=" + organization + " region=" + Objects.requireNonNullElse(region, "EU");
   }
 
-  public String displayTarget() {
-    if (serverUrl != null) {
-      return "SonarQube Server " + serverUrl;
-    }
-    return "SonarQube Cloud organization '" + organization + "' (" + Objects.requireNonNullElse(region, "EU").toUpperCase(Locale.ROOT) + ")";
+  public String cloudRegion() {
+    return Objects.requireNonNullElse(region, "EU").toUpperCase(Locale.ROOT);
   }
 }

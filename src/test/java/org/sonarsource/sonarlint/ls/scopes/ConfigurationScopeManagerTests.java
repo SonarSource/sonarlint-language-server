@@ -257,7 +257,7 @@ class ConfigurationScopeManagerTests {
   @Test
   void updating_every_folder_reports_a_scope_that_is_no_longer_declared_bound_to_something_unresolved() {
     declare(scope(REPO, "repo", ".", Origin.SETTINGS));
-    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", "connection 'old'"));
+    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", "old", null, null, null));
     underTest.added(folder);
     clearInvocations(backendService, listener);
     resolved(REPO);
@@ -265,7 +265,7 @@ class ConfigurationScopeManagerTests {
     var changes = underTest.updateAll().join();
 
     assertThat(changes).containsExactly(new ScopeChange(
-      new ConfigurationScope(REPO, "repo", ".", Origin.SETTINGS, null, new ConfigurationScope.UnresolvedBinding("root", "connection 'old'")),
+      new ConfigurationScope(REPO, "repo", ".", Origin.SETTINGS, null, new ConfigurationScope.UnresolvedBinding("root", "old", null, null, null)),
       new ConfigurationScope(REPO, "repo", ".", Origin.SETTINGS, null)));
     verify(listener).scopesChanged(anyList());
   }
@@ -273,10 +273,10 @@ class ConfigurationScopeManagerTests {
   @Test
   void updating_every_folder_reports_a_scope_whose_unresolved_target_changed() {
     declare(scope(REPO, "repo", ".", Origin.SONAR_CONFIG));
-    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", "SonarQube Server http://a"));
+    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", null, "http://a", null, null));
     underTest.added(folder);
     clearInvocations(backendService, listener);
-    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", "SonarQube Server http://b"));
+    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", null, "http://b", null, null));
 
     var changes = underTest.updateAll().join();
 
@@ -287,7 +287,7 @@ class ConfigurationScopeManagerTests {
   @Test
   void a_change_of_the_unresolved_binding_alone_does_not_touch_the_backend() {
     declare(scope(REPO, "repo", ".", Origin.SETTINGS));
-    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", "connection 'old'"));
+    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", "old", null, null, null));
     underTest.added(folder);
     clearInvocations(backendService, listener);
     resolved(REPO);

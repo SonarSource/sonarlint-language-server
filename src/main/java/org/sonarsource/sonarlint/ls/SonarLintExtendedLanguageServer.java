@@ -138,7 +138,7 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
   CompletableFuture<List<BindingInfo>> getBindings();
 
   record BindingInfo(String scopeUri, String name, String relativePath, String projectKey, @Nullable String connectionId, String source,
-    String status, @Nullable String target) {
+    String status, @Nullable String serverUrl, @Nullable String organization, @Nullable String region) {
     public static final String BOUND = "BOUND";
     public static final String MISSING_CONNECTION = "MISSING_CONNECTION";
   }

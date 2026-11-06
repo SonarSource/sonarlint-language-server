@@ -73,11 +73,11 @@ class LanguageServerWithSonarConfigMediumTests extends AbstractLanguageServerMed
   void listsTheBindingsAndTheOnesWithoutConnectionThroughTheRequest() {
     awaitUntilAsserted(() -> assertThat(lsProxy.getBindings().join())
       .extracting(BindingInfo::scopeUri, BindingInfo::projectKey, BindingInfo::connectionId, BindingInfo::relativePath, BindingInfo::source, BindingInfo::status,
-        BindingInfo::target)
+        BindingInfo::serverUrl, BindingInfo::organization, BindingInfo::region)
       .containsExactlyInAnyOrder(
-        tuple(repoDir.resolve("moduleA").toUri().toString(), "module-a", CONNECTION_ID, "moduleA", "SONAR_CONFIG", "BOUND", null),
+        tuple(repoDir.resolve("moduleA").toUri().toString(), "module-a", CONNECTION_ID, "moduleA", "SONAR_CONFIG", "BOUND", null, null, null),
         tuple(repoDir.resolve("moduleB").toUri().toString(), "module-b", null, "moduleB", "SONAR_CONFIG", "MISSING_CONNECTION",
-          "SonarQube Server http://no-connection-for-this-server")));
+          "http://no-connection-for-this-server", null, null)));
   }
 
   @Test

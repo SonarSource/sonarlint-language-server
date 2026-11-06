@@ -86,7 +86,7 @@ class SonarConfigBindingSourceTests {
     resolved(new ResolvedSonarConfig(null, List.of(cloudProject)));
 
     assertThat(underTest.scopesOf(folder)).containsExactly(new ConfigurationScope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG, null,
-      new ConfigurationScope.UnresolvedBinding("module-a", "SonarQube Cloud organization 'my-org' (US)")));
+      new ConfigurationScope.UnresolvedBinding("module-a", null, null, "my-org", "US")));
     assertThat(logTester.logs()).anyMatch(log -> log.contains("No connection configured for organization=my-org region=US, scope " + MODULE_A + " is unbound"));
   }
 
