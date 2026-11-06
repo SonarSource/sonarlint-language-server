@@ -129,8 +129,8 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return scopeManager.boundScopes();
   }
 
-  public boolean hasReadOnlyBinding(String configScopeId) {
-    return scopeManager.hasReadOnlyBinding(configScopeId);
+  public Optional<ConfigurationScope> getScopeById(String configScopeId) {
+    return scopeManager.scopeById(configScopeId);
   }
 
   public List<ConfigurationScope> getUnresolvedBindings() {

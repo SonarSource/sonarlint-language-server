@@ -170,18 +170,15 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
       .map(ConfigurationScope::binding);
   }
 
-  public Optional<ProjectBinding> bindingOfScope(String configScopeId) {
+  public Optional<ConfigurationScope> scopeById(String configScopeId) {
     return folders.values().stream()
       .flatMap(state -> state.scopes.get().stream())
       .filter(scope -> scope.uri().toString().equals(configScopeId))
-      .findFirst()
-      .map(ConfigurationScope::binding);
+      .findFirst();
   }
 
-  public boolean hasReadOnlyBinding(String configScopeId) {
-    return folders.values().stream()
-      .flatMap(state -> state.scopes.get().stream())
-      .anyMatch(scope -> !scope.editable() && scope.uri().toString().equals(configScopeId));
+  public Optional<ProjectBinding> bindingOfScope(String configScopeId) {
+    return scopeById(configScopeId).map(ConfigurationScope::binding);
   }
 
   public List<ConfigurationScope> boundScopes() {

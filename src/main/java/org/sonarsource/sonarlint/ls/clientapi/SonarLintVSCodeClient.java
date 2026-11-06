@@ -118,6 +118,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.progress.LSProgressMonitor;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScope;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.standalone.notifications.PromotionalNotifications;
 import org.sonarsource.sonarlint.ls.util.Utils;
@@ -616,7 +617,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public void suggestConnection(Map<String, List<ConnectionSuggestionDto>> configScopesToConnectionSuggestions) {
     var relevantSuggestions = configScopesToConnectionSuggestions.entrySet().stream()
-      .filter(entry -> !bindingManager.hasReadOnlyBinding(entry.getKey()))
+      .filter(entry -> bindingManager.getScopeById(entry.getKey()).map(ConfigurationScope::editable).orElse(true))
       .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     if (relevantSuggestions.isEmpty()) {
       return;

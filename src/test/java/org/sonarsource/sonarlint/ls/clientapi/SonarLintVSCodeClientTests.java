@@ -115,6 +115,7 @@ import org.sonarsource.sonarlint.ls.backend.BackendService;
 import org.sonarsource.sonarlint.ls.backend.BackendServiceFacade;
 import org.sonarsource.sonarlint.ls.commands.ShowAllLocationsCommand;
 import org.sonarsource.sonarlint.ls.connected.DependencyRisksCache;
+import org.sonarsource.sonarlint.ls.connected.Origin;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.connected.ProjectBindingManager;
 import org.sonarsource.sonarlint.ls.connected.TaintVulnerabilitiesCache;
@@ -125,6 +126,7 @@ import org.sonarsource.sonarlint.ls.domain.TaintIssue;
 import org.sonarsource.sonarlint.ls.embeddedserver.EmbeddedServerManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderBranchManager;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScope;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -320,7 +322,7 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void shouldNotSuggestConnectionForScopesWithAReadOnlyBinding() {
-    when(bindingManager.hasReadOnlyBinding("subProject")).thenReturn(true);
+    when(bindingManager.getScopeById("subProject")).thenReturn(Optional.of(readOnlyScope()));
     var suggestions = new HashMap<String, List<ConnectionSuggestionDto>>();
     suggestions.put("subProject", List.of());
     suggestions.put("folder", List.of());
@@ -334,11 +336,15 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void shouldNotSuggestConnectionWhenEveryScopeHasAReadOnlyBinding() {
-    when(bindingManager.hasReadOnlyBinding("subProject")).thenReturn(true);
+    when(bindingManager.getScopeById("subProject")).thenReturn(Optional.of(readOnlyScope()));
 
     underTest.suggestConnection(Map.of("subProject", List.of()));
 
     verify(client, never()).suggestConnection(any());
+  }
+
+  private static ConfigurationScope readOnlyScope() {
+    return new ConfigurationScope(URI.create("file:///repo/subProject/"), "subProject", "subProject", Origin.SONAR_CONFIG, null);
   }
 
   @Test

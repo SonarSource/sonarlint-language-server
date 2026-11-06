@@ -187,13 +187,21 @@ class ConfigurationScopeManagerTests {
   }
 
   @Test
-  void hasReadOnlyBinding_is_true_for_a_known_scope_whose_binding_cannot_be_edited() {
+  void scopeById_is_the_scope_declared_with_that_id() {
     declare(scope(REPO, "repo", ".", Origin.SETTINGS), scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG));
     underTest.added(folder);
 
-    assertThat(underTest.hasReadOnlyBinding(MODULE_A.toString())).isTrue();
-    assertThat(underTest.hasReadOnlyBinding(REPO.toString())).isFalse();
-    assertThat(underTest.hasReadOnlyBinding("file:///unknown/")).isFalse();
+    assertThat(underTest.scopeById(MODULE_A.toString())).contains(scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG));
+    assertThat(underTest.scopeById(REPO.toString())).map(ConfigurationScope::editable).contains(true);
+    assertThat(underTest.scopeById(MODULE_A.toString())).map(ConfigurationScope::editable).contains(false);
+  }
+
+  @Test
+  void scopeById_is_empty_for_an_unknown_scope() {
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS));
+    underTest.added(folder);
+
+    assertThat(underTest.scopeById("file:///unknown/")).isEmpty();
   }
 
   @Test
