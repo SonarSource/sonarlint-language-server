@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -80,7 +81,8 @@ public class SonarConfigFile {
         if (directPath == null || entryPath.getNameCount() > directPath.getNameCount()) {
           logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s contains the folder -> its own configuration scope is bound directly, no sub-folder needed",
             entry.projectKey(), entry.path()));
-          direct = new SonarConfigProject(folderUri, entry.projectKey(), entry.serverUrl(), entry.organization(), regionOf(entry), ".");
+          direct = new SonarConfigProject(folderUri, entry.projectKey(), entry.serverUrl(), entry.organization(), regionOf(entry), ".",
+            pathToCompileCommandsOf(entry, entryPath));
           directPath = entryPath;
         }
       } else if (entryPath.startsWith(folderPath)) {
@@ -112,12 +114,28 @@ public class SonarConfigFile {
     } else {
       var relativePath = folderPath.relativize(entryPath).toString().replace('\\', '/');
       logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s is nested in the folder -> sub-folder %s", entry.projectKey(), entry.path(), entryPath.toUri()));
-      children.add(new SonarConfigProject(entryPath.toUri(), entry.projectKey(), entry.serverUrl(), entry.organization(), regionOf(entry), relativePath));
+      children.add(new SonarConfigProject(entryPath.toUri(), entry.projectKey(), entry.serverUrl(), entry.organization(), regionOf(entry), relativePath,
+        pathToCompileCommandsOf(entry, entryPath)));
     }
   }
 
   @CheckForNull
   private static SonarCloudRegion regionOf(SonarConfigEntry entry) {
     return entry.serverUrl() == null ? entry.cloudRegion().orElse(null) : null;
+  }
+
+  @CheckForNull
+  private String pathToCompileCommandsOf(SonarConfigEntry entry, Path projectRoot) {
+    var pathToCompileCommands = entry.compileCommands();
+    if (pathToCompileCommands == null) {
+      return null;
+    }
+    try {
+      return projectRoot.resolve(pathToCompileCommands).normalize().toString();
+    } catch (InvalidPathException e) {
+      logOutput.warn(format("[multi-project] Ignoring invalid %s '%s' of entry projectKey=%s: %s", SonarConfigEntry.COMPILE_COMMANDS_PROPERTY, pathToCompileCommands,
+        entry.projectKey(), e.getMessage()));
+      return null;
+    }
   }
 }
