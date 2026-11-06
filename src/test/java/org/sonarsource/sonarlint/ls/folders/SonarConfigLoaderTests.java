@@ -118,6 +118,19 @@ class SonarConfigLoaderTests {
   }
 
   @Test
+  void load_returns_the_settings_of_an_entry() {
+    writeConfig(repo, "{\"projectKey\":\"a\",\"path\":\"a\",\"serverUrl\":\"https://sonarqube.example.com\","
+      + "\"settings\":{\"pathToCompileCommands\":\"build/compile_commands.json\"}},"
+      + "{\"projectKey\":\"b\",\"path\":\"b\",\"serverUrl\":\"https://sonarqube.example.com\",\"settings\":{}}");
+
+    var entries = underTest.load(repo.toUri()).orElseThrow().projects();
+
+    assertThat(entries).extracting(SonarConfigEntry::settings).containsExactly(
+      new SonarConfigEntry.Settings("build/compile_commands.json"),
+      new SonarConfigEntry.Settings(null));
+  }
+
+  @Test
   void load_finds_the_config_in_a_parent_folder() throws IOException {
     var folder = directory("moduleA/src");
     writeConfig(repo, "{\"projectKey\":\"a\",\"path\":\"moduleA\",\"serverUrl\":\"https://sonarqube.example.com\"}");

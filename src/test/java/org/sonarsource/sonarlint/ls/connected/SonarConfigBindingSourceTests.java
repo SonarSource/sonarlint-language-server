@@ -81,6 +81,14 @@ class SonarConfigBindingSourceTests {
   }
 
   @Test
+  void scopesOf_carries_the_path_to_compile_commands_of_the_project() {
+    var project = new SonarConfigProject(MODULE_A, "module-a", "https://sonarqube.example.com", null, null, "moduleA", "/repo/moduleA/build/compile_commands.json");
+    resolved(new ResolvedSonarConfig(null, List.of(project)));
+
+    assertThat(underTest.scopesOf(folder)).extracting(ConfigurationScope::pathToCompileCommands).containsExactly("/repo/moduleA/build/compile_commands.json");
+  }
+
+  @Test
   void scopesOf_leaves_a_scope_unbound_and_says_so_when_no_connection_matches() {
     var cloudProject = new SonarConfigProject(MODULE_A, "module-a", null, "my-org", SonarCloudRegion.US, "moduleA");
     resolved(new ResolvedSonarConfig(null, List.of(cloudProject)));

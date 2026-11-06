@@ -117,6 +117,46 @@ class SonarConfigFileTests {
   }
 
   @Test
+  void resolveFor_resolves_the_path_to_compile_commands_against_the_root_of_the_project() {
+    var config = fileIn(REPO, entryWithCompileCommands("module-a", "moduleA", "build/compile_commands.json")).resolveFor(REPO_URI).orElseThrow();
+
+    assertThat(config.children().get(0).pathToCompileCommands()).isEqualTo(MODULE_A.resolve("build/compile_commands.json").toString());
+  }
+
+  @Test
+  void resolveFor_resolves_it_against_the_root_of_the_project_rather_than_the_folder_below_it() {
+    var folder = MODULE_A.resolve("src");
+
+    var config = fileIn(REPO, entryWithCompileCommands("module-a", "moduleA", "compile_commands.json")).resolveFor(folder.toUri()).orElseThrow();
+
+    assertThat(config.direct().pathToCompileCommands()).isEqualTo(MODULE_A.resolve("compile_commands.json").toString());
+  }
+
+  @Test
+  void resolveFor_resolves_it_for_the_project_of_the_folder_itself() {
+    var config = fileIn(REPO, entryWithCompileCommands("root-project", ".", "build/compile_commands.json")).resolveFor(REPO_URI).orElseThrow();
+
+    assertThat(config.direct().pathToCompileCommands()).isEqualTo(REPO.resolve("build/compile_commands.json").toString());
+  }
+
+  @Test
+  void resolveFor_keeps_an_absolute_path_to_compile_commands() {
+    var elsewhere = REPO.resolve("elsewhere/compile_commands.json").toAbsolutePath();
+
+    var config = fileIn(REPO, entryWithCompileCommands("module-a", "moduleA", elsewhere.toString())).resolveFor(REPO_URI).orElseThrow();
+
+    assertThat(config.children().get(0).pathToCompileCommands()).isEqualTo(elsewhere.toString());
+  }
+
+  @Test
+  void resolveFor_has_no_path_to_compile_commands_without_settings() {
+    var config = fileIn(REPO, entry("module-a", "moduleA"), new SonarConfigEntry("module-b", "moduleB", SERVER_URL, null, null, new SonarConfigEntry.Settings(null)))
+      .resolveFor(REPO_URI).orElseThrow();
+
+    assertThat(config.children()).extracting(SonarConfigProject::pathToCompileCommands).containsOnlyNulls();
+  }
+
+  @Test
   void resolveFor_ignores_invalid_entries() {
     var config = fileIn(REPO,
       new SonarConfigEntry(null, "moduleA", SERVER_URL, null, null),
@@ -141,5 +181,9 @@ class SonarConfigFileTests {
 
   private static SonarConfigEntry entry(String projectKey, String path) {
     return new SonarConfigEntry(projectKey, path, SERVER_URL, null, null);
+  }
+
+  private static SonarConfigEntry entryWithCompileCommands(String projectKey, String path, String pathToCompileCommands) {
+    return new SonarConfigEntry(projectKey, path, SERVER_URL, null, null, new SonarConfigEntry.Settings(pathToCompileCommands));
   }
 }
