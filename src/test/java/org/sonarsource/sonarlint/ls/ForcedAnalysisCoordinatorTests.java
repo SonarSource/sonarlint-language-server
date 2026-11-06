@@ -39,10 +39,12 @@ import org.sonarsource.sonarlint.ls.notebooks.NotebookDiagnosticPublisher;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -139,6 +141,68 @@ class ForcedAnalysisCoordinatorTests {
     underTest.analyzeAllUnboundOpenFiles();
 
     verify(backendService, times(0)).analyzeFilesList(any(), any());
+  }
+
+  @Test
+  void aChangeOfThePathToCompileCommandsUpdatesTheScopesOfTheFolderBeforeAnalyzingItsCAndCppFiles() {
+    enableAutomaticAnalysis();
+    var cFile = URI.create("file://Foo1.java");
+    openFilesCache.didOpen(cFile, "c", "int main() { return 0; }", 1);
+    openFilesCache.didOpen(URI.create("file://Foo2.java"), "java", "class Foo2 {}", 1);
+    var folder = workspaceFoldersManager.findFolderForFile(cFile).orElseThrow();
+    var scopesUpdated = new CompletableFuture<Boolean>();
+    when(scopeManager.update(folder)).thenReturn(scopesUpdated);
+
+    underTest.onChange(folder, folderSettings(null), folderSettings("/build/compile_commands.json"));
+
+    verify(backendService, never()).analyzeFilesList(any(), any());
+    scopesUpdated.complete(false);
+    verify(backendService).analyzeFilesList(workspaceFolderUri.toString(), List.of(cFile));
+  }
+
+  @Test
+  void theCAndCppFilesAreStillAnalyzedWhenTheUpdateOfTheScopesFails() {
+    enableAutomaticAnalysis();
+    var cFile = URI.create("file://Foo1.java");
+    openFilesCache.didOpen(cFile, "c", "int main() { return 0; }", 1);
+    var folder = workspaceFoldersManager.findFolderForFile(cFile).orElseThrow();
+    when(scopeManager.update(folder)).thenReturn(CompletableFuture.failedFuture(new IllegalStateException("backend down")));
+
+    underTest.onChange(folder, folderSettings(null), folderSettings("/build/compile_commands.json"));
+
+    verify(backendService).analyzeFilesList(workspaceFolderUri.toString(), List.of(cFile));
+  }
+
+  @Test
+  void nothingIsUpdatedNorAnalyzedWhenThePathToCompileCommandsDoesNotChange() {
+    enableAutomaticAnalysis();
+    var cFile = URI.create("file://Foo1.java");
+    openFilesCache.didOpen(cFile, "c", "int main() { return 0; }", 1);
+    var folder = workspaceFoldersManager.findFolderForFile(cFile).orElseThrow();
+
+    underTest.onChange(folder, folderSettings("/build/compile_commands.json"), folderSettings("/build/compile_commands.json"));
+
+    verify(scopeManager, never()).update(any());
+    verify(backendService, never()).analyzeFilesList(any(), any());
+  }
+
+  @Test
+  void noScopeIsUpdatedWhenThePathToCompileCommandsOfTheDefaultSettingsChanges() {
+    enableAutomaticAnalysis();
+
+    underTest.onChange(null, folderSettings(null), folderSettings("/build/compile_commands.json"));
+
+    verify(scopeManager, never()).update(any());
+  }
+
+  private void enableAutomaticAnalysis() {
+    when(settingsManager.getCurrentSettings())
+      .thenReturn(new WorkspaceSettings(true, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(),
+        false, "", true, true, "", false));
+  }
+
+  private static WorkspaceFolderSettings folderSettings(String pathToCompileCommands) {
+    return new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null, pathToCompileCommands);
   }
 
 }
