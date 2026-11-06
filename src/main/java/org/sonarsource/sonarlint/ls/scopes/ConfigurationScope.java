@@ -28,17 +28,26 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 /**
  * A configuration scope and what it is bound to; the binding is {@code null} while the scope is unbound.
  */
-public record ConfigurationScope(URI uri, String name, String relativePath, Origin origin, @Nullable ProjectBinding binding) {
+public record ConfigurationScope(URI uri, String name, String relativePath, Origin origin, @Nullable ProjectBinding binding,
+  @Nullable UnresolvedBinding unresolved) {
 
-  public boolean bindable() {
+  public ConfigurationScope(URI uri, String name, String relativePath, Origin origin, @Nullable ProjectBinding binding) {
+    this(uri, name, relativePath, origin, binding, null);
+  }
+
+  public record UnresolvedBinding(String projectKey, @Nullable String connectionId, @Nullable String serverUrl,
+    @Nullable String organization, @Nullable String region) {
+  }
+
+  public boolean editable() {
     return origin != Origin.SONAR_CONFIG;
   }
 
-  public boolean bindingSuggestionDisabled() {
-    return origin == Origin.SONAR_CONFIG;
+  public boolean bindingConfigurationDiffersFrom(ConfigurationScope other) {
+    return !Objects.equals(binding, other.binding) || editable() != other.editable();
   }
 
-  public boolean bindingConfigurationDiffersFrom(ConfigurationScope other) {
-    return !Objects.equals(binding, other.binding) || bindingSuggestionDisabled() != other.bindingSuggestionDisabled();
+  public boolean bindingStateDiffersFrom(ConfigurationScope other) {
+    return bindingConfigurationDiffersFrom(other) || !Objects.equals(unresolved, other.unresolved);
   }
 }
