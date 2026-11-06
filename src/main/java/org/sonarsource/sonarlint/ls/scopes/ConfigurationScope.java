@@ -30,10 +30,15 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
  * A configuration scope and what it is bound to; the binding is {@code null} while the scope is unbound.
  */
 public record ConfigurationScope(URI uri, String name, String relativePath, Origin origin, @Nullable ProjectBinding binding,
-  @Nullable UnresolvedBinding unresolved) {
+  @Nullable UnresolvedBinding unresolved, @Nullable String pathToCompileCommands) {
+
+  public ConfigurationScope(URI uri, String name, String relativePath, Origin origin, @Nullable ProjectBinding binding,
+    @Nullable UnresolvedBinding unresolved) {
+    this(uri, name, relativePath, origin, binding, unresolved, null);
+  }
 
   public ConfigurationScope(URI uri, String name, String relativePath, Origin origin, @Nullable ProjectBinding binding) {
-    this(uri, name, relativePath, origin, binding, null);
+    this(uri, name, relativePath, origin, binding, null, null);
   }
 
   public record UnresolvedBinding(String projectKey, @Nullable String connectionId, @Nullable String serverUrl,

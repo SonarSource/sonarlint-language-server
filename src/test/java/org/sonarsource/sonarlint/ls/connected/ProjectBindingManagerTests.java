@@ -691,6 +691,7 @@ class ProjectBindingManagerTests {
   private WorkspaceFolderWrapper mockFileInAFolder() {
     var folderWrapper = spy(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(),
       new WorkspaceFolder(workspaceFolderPath.toUri().toString(), workspaceFolderPath.getFileName().toString()), logTester.getLogger()));
+    folderWrapper.setSettings(UNBOUND_SETTINGS);
     var registered = new AtomicBoolean();
     when(foldersManager.findFolderForFile(fileInAWorkspaceFolderPath.toUri())).thenAnswer(invocation -> {
       if (registered.compareAndSet(false, true)) {

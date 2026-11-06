@@ -28,7 +28,12 @@ import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 
 public record SonarConfigProject(URI scopeUri, String projectKey, @Nullable String serverUrl, @Nullable String organization, @Nullable SonarCloudRegion region,
-  String relativePath) {
+  String relativePath, @Nullable String pathToCompileCommands) {
+
+  public SonarConfigProject(URI scopeUri, String projectKey, @Nullable String serverUrl, @Nullable String organization, @Nullable SonarCloudRegion region,
+    String relativePath) {
+    this(scopeUri, projectKey, serverUrl, organization, region, relativePath, null);
+  }
 
   public String directoryName() {
     return Optional.ofNullable(Paths.get(scopeUri).getFileName()).map(Path::toString).orElse(projectKey);

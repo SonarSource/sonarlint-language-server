@@ -20,14 +20,28 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 
 /**
  * One element of the {@code projects} array of a {@code .sonar-config.json}, exactly as written in the file.
  */
-record SonarConfigEntry(@Nullable String projectKey, @Nullable String path, @Nullable String serverUrl, @Nullable String organization, @Nullable String region) {
+record SonarConfigEntry(@Nullable String projectKey, @Nullable String path, @Nullable String serverUrl, @Nullable String organization, @Nullable String region,
+  @Nullable Map<String, String> settings) {
+
+  static final String COMPILE_COMMANDS_PROPERTY = "sonar.cfamily.compile-commands";
+
+  SonarConfigEntry(@Nullable String projectKey, @Nullable String path, @Nullable String serverUrl, @Nullable String organization, @Nullable String region) {
+    this(projectKey, path, serverUrl, organization, region, null);
+  }
+
+  @CheckForNull
+  String compileCommands() {
+    return settings == null ? null : settings.get(COMPILE_COMMANDS_PROPERTY);
+  }
 
   Optional<SonarCloudRegion> cloudRegion() {
     if (region == null) {
