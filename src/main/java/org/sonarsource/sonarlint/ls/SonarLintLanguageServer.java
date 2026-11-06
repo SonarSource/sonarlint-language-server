@@ -280,7 +280,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     this.moduleEventsProcessor = new ModuleEventsProcessor(workspaceFoldersManager, configurationScopeManager, fileTypeClassifier, javaConfigCache, backendServiceFacade, settingsManager);
     var analysisHelper = new AnalysisHelper(client, lsLogOutput, workspaceFoldersManager, javaConfigCache, settingsManager,
       issuesCache, securityHotspotsCache, diagnosticPublisher,
-      openNotebooksCache, notebookDiagnosticPublisher, openFilesCache);
+      openNotebooksCache, notebookDiagnosticPublisher, openFilesCache, configurationScopeManager);
     vsCodeClient.setAnalysisTaskExecutor(analysisHelper);
     this.forcedAnalysisCoordinator = new ForcedAnalysisCoordinator(workspaceFoldersManager, configurationScopeManager, bindingManager, openFilesCache,
       openNotebooksCache, client, backendServiceFacade, settingsManager);

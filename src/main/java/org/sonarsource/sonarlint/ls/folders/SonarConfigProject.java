@@ -27,7 +27,12 @@ import java.util.Objects;
 import java.util.Optional;
 import javax.annotation.Nullable;
 
-public record SonarConfigProject(URI scopeUri, String projectKey, @Nullable String serverUrl, @Nullable String organization, @Nullable String region, String relativePath) {
+public record SonarConfigProject(URI scopeUri, String projectKey, @Nullable String serverUrl, @Nullable String organization, @Nullable String region, String relativePath,
+  @Nullable String pathToCompileCommands) {
+
+  public SonarConfigProject(URI scopeUri, String projectKey, @Nullable String serverUrl, @Nullable String organization, @Nullable String region, String relativePath) {
+    this(scopeUri, projectKey, serverUrl, organization, region, relativePath, null);
+  }
 
   public String directoryName() {
     return Optional.ofNullable(Paths.get(scopeUri).getFileName()).map(Path::toString).orElse(projectKey);
