@@ -134,6 +134,42 @@ class SonarConfigLoaderTests {
   }
 
   @Test
+  void load_drops_the_settings_that_are_not_strings_and_keeps_every_entry() {
+    writeConfig(repo, "{\"projectKey\":\"a\",\"path\":\"a\",\"serverUrl\":\"https://sonarqube.example.com\","
+      + "\"settings\":{\"sonar.exclusions\":[\"a\",\"b\"],\"sonar.nested\":{\"key\":\"value\"},\"sonar.number\":1,\"sonar.flag\":true,"
+      + "\"sonar.cfamily.compile-commands\":\"build/compile_commands.json\"}},"
+      + "{\"projectKey\":\"b\",\"path\":\"b\",\"serverUrl\":\"https://sonarqube.example.com\"}");
+
+    var entries = underTest.load(repo.toUri()).orElseThrow().projects();
+
+    assertThat(entries).extracting(SonarConfigEntry::projectKey).containsExactly("a", "b");
+    assertThat(entries.get(0).settings()).containsExactly(Map.entry("sonar.cfamily.compile-commands", "build/compile_commands.json"));
+  }
+
+  @Test
+  void load_ignores_a_path_to_compile_commands_that_is_not_a_string() {
+    writeConfig(repo, "{\"projectKey\":\"a\",\"path\":\"a\",\"serverUrl\":\"https://sonarqube.example.com\","
+      + "\"settings\":{\"sonar.cfamily.compile-commands\":[\"build/compile_commands.json\"]}},"
+      + "{\"projectKey\":\"b\",\"path\":\"b\",\"serverUrl\":\"https://sonarqube.example.com\"}");
+
+    var entries = underTest.load(repo.toUri()).orElseThrow().projects();
+
+    assertThat(entries).extracting(SonarConfigEntry::projectKey).containsExactly("a", "b");
+    assertThat(entries.get(0).compileCommands()).isNull();
+  }
+
+  @Test
+  void load_ignores_settings_that_are_not_an_object_and_keeps_every_entry() {
+    writeConfig(repo, "{\"projectKey\":\"a\",\"path\":\"a\",\"serverUrl\":\"https://sonarqube.example.com\",\"settings\":\"not an object\"},"
+      + "{\"projectKey\":\"b\",\"path\":\"b\",\"serverUrl\":\"https://sonarqube.example.com\",\"settings\":[\"nor\",\"this\"]}");
+
+    var entries = underTest.load(repo.toUri()).orElseThrow().projects();
+
+    assertThat(entries).extracting(SonarConfigEntry::projectKey).containsExactly("a", "b");
+    assertThat(entries).extracting(SonarConfigEntry::settings).containsOnlyNulls();
+  }
+
+  @Test
   void load_ignores_the_old_name_of_the_path_to_compile_commands() {
     writeConfig(repo, "{\"projectKey\":\"a\",\"path\":\"a\",\"serverUrl\":\"https://sonarqube.example.com\","
       + "\"settings\":{\"pathToCompileCommands\":\"build/compile_commands.json\"}}");

@@ -19,6 +19,7 @@
  */
 package org.sonarsource.sonarlint.ls.folders;
 
+import com.google.gson.annotations.JsonAdapter;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -30,7 +31,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
  * One element of the {@code projects} array of a {@code .sonar-config.json}, exactly as written in the file.
  */
 record SonarConfigEntry(@Nullable String projectKey, @Nullable String path, @Nullable String serverUrl, @Nullable String organization, @Nullable String region,
-  @Nullable Map<String, String> settings) {
+  @Nullable @JsonAdapter(StringValuesOnlyAdapter.class) Map<String, String> settings) {
 
   static final String COMPILE_COMMANDS_PROPERTY = "sonar.cfamily.compile-commands";
 
