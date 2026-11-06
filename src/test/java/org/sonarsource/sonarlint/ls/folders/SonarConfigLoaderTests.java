@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -120,14 +121,26 @@ class SonarConfigLoaderTests {
   @Test
   void load_returns_the_settings_of_an_entry() {
     writeConfig(repo, "{\"projectKey\":\"a\",\"path\":\"a\",\"serverUrl\":\"https://sonarqube.example.com\","
-      + "\"settings\":{\"pathToCompileCommands\":\"build/compile_commands.json\"}},"
-      + "{\"projectKey\":\"b\",\"path\":\"b\",\"serverUrl\":\"https://sonarqube.example.com\",\"settings\":{}}");
+      + "\"settings\":{\"sonar.cfamily.compile-commands\":\"build/compile_commands.json\",\"sonar.some.future.property\":\"value\"}},"
+      + "{\"projectKey\":\"b\",\"path\":\"b\",\"serverUrl\":\"https://sonarqube.example.com\",\"settings\":{}},"
+      + "{\"projectKey\":\"c\",\"path\":\"c\",\"serverUrl\":\"https://sonarqube.example.com\"}");
 
     var entries = underTest.load(repo.toUri()).orElseThrow().projects();
 
     assertThat(entries).extracting(SonarConfigEntry::settings).containsExactly(
-      new SonarConfigEntry.Settings("build/compile_commands.json"),
-      new SonarConfigEntry.Settings(null));
+      Map.of("sonar.cfamily.compile-commands", "build/compile_commands.json", "sonar.some.future.property", "value"),
+      Map.of(),
+      null);
+  }
+
+  @Test
+  void load_ignores_the_old_name_of_the_path_to_compile_commands() {
+    writeConfig(repo, "{\"projectKey\":\"a\",\"path\":\"a\",\"serverUrl\":\"https://sonarqube.example.com\","
+      + "\"settings\":{\"pathToCompileCommands\":\"build/compile_commands.json\"}}");
+
+    var entry = underTest.load(repo.toUri()).orElseThrow().projects().get(0);
+
+    assertThat(entry.compileCommands()).isNull();
   }
 
   @Test

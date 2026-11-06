@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.folders;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
@@ -151,7 +152,7 @@ class SonarConfigFileTests {
 
   @Test
   void resolveFor_has_no_path_to_compile_commands_without_settings() {
-    var config = fileIn(REPO, entry("module-a", "moduleA"), new SonarConfigEntry("module-b", "moduleB", SERVER_URL, null, null, new SonarConfigEntry.Settings(null)))
+    var config = fileIn(REPO, entry("module-a", "moduleA"), new SonarConfigEntry("module-b", "moduleB", SERVER_URL, null, null, Map.of("sonar.some.future.property", "value")))
       .resolveFor(REPO_URI).orElseThrow();
 
     assertThat(config.children()).extracting(SonarConfigProject::pathToCompileCommands).containsOnlyNulls();
@@ -162,7 +163,7 @@ class SonarConfigFileTests {
     var config = fileIn(REPO, entryWithCompileCommands("module-a", "moduleA", "build/\0compile_commands.json")).resolveFor(REPO_URI).orElseThrow();
 
     assertThat(config.children()).extracting(SonarConfigProject::projectKey, SonarConfigProject::pathToCompileCommands).containsExactly(tuple("module-a", null));
-    assertThat(logTester.logs()).anyMatch(log -> log.contains("Ignoring invalid pathToCompileCommands") && log.contains("module-a"));
+    assertThat(logTester.logs()).anyMatch(log -> log.contains("Ignoring invalid sonar.cfamily.compile-commands") && log.contains("module-a"));
   }
 
   @Test
@@ -193,6 +194,6 @@ class SonarConfigFileTests {
   }
 
   private static SonarConfigEntry entryWithCompileCommands(String projectKey, String path, String pathToCompileCommands) {
-    return new SonarConfigEntry(projectKey, path, SERVER_URL, null, null, new SonarConfigEntry.Settings(pathToCompileCommands));
+    return new SonarConfigEntry(projectKey, path, SERVER_URL, null, null, Map.of("sonar.cfamily.compile-commands", pathToCompileCommands));
   }
 }

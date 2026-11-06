@@ -126,14 +126,15 @@ public class SonarConfigFile {
 
   @CheckForNull
   private String pathToCompileCommandsOf(SonarConfigEntry entry, Path projectRoot) {
-    var pathToCompileCommands = Optional.ofNullable(entry.settings()).map(SonarConfigEntry.Settings::pathToCompileCommands).orElse(null);
+    var pathToCompileCommands = entry.compileCommands();
     if (pathToCompileCommands == null) {
       return null;
     }
     try {
       return projectRoot.resolve(pathToCompileCommands).normalize().toString();
     } catch (InvalidPathException e) {
-      logOutput.warn(format("[multi-project] Ignoring invalid pathToCompileCommands '%s' of entry projectKey=%s: %s", pathToCompileCommands, entry.projectKey(), e.getMessage()));
+      logOutput.warn(format("[multi-project] Ignoring invalid %s '%s' of entry projectKey=%s: %s", SonarConfigEntry.COMPILE_COMMANDS_PROPERTY, pathToCompileCommands,
+        entry.projectKey(), e.getMessage()));
       return null;
     }
   }
