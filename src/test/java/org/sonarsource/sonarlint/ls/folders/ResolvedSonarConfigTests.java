@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.folders;
 import java.net.URI;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -53,6 +54,6 @@ class ResolvedSonarConfigTests {
   @Test
   void describeTarget_names_the_organization_and_defaults_the_region_to_eu() {
     assertThat(new SonarConfigProject(SCOPE, "key", null, "my-org", null, ".").describeTarget()).isEqualTo("organization=my-org region=EU");
-    assertThat(new SonarConfigProject(SCOPE, "key", null, "my-org", "US", ".").describeTarget()).isEqualTo("organization=my-org region=US");
+    assertThat(new SonarConfigProject(SCOPE, "key", null, "my-org", SonarCloudRegion.US, ".").describeTarget()).isEqualTo("organization=my-org region=US");
   }
 }

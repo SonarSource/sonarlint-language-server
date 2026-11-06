@@ -25,8 +25,10 @@ import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.Optional;
 import javax.annotation.Nullable;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 
-public record SonarConfigProject(URI scopeUri, String projectKey, @Nullable String serverUrl, @Nullable String organization, @Nullable String region, String relativePath) {
+public record SonarConfigProject(URI scopeUri, String projectKey, @Nullable String serverUrl, @Nullable String organization, @Nullable SonarCloudRegion region,
+  String relativePath) {
 
   public String directoryName() {
     return Optional.ofNullable(Paths.get(scopeUri).getFileName()).map(Path::toString).orElse(projectKey);
@@ -36,6 +38,6 @@ public record SonarConfigProject(URI scopeUri, String projectKey, @Nullable Stri
     if (serverUrl != null) {
       return "serverUrl=" + serverUrl;
     }
-    return "organization=" + organization + " region=" + Objects.requireNonNullElse(region, "EU");
+    return "organization=" + organization + " region=" + Objects.requireNonNullElse(region, SonarCloudRegion.EU);
   }
 }

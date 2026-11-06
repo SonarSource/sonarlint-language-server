@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Stream;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -765,10 +766,25 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
 
   @Override
   public CompletableFuture<List<BindingInfo>> getBindings() {
-    return CompletableFutures.computeAsync(cancelToken -> bindingManager.getBindings().stream()
-      .map(scope -> new BindingInfo(scope.uri().toString(), scope.name(), scope.relativePath(), scope.binding().projectKey(),
-        scope.binding().connectionId(), scope.origin().name()))
-      .toList());
+    return CompletableFutures.computeAsync(cancelToken -> {
+      cancelToken.checkCanceled();
+      return Stream.concat(
+        bindingManager.getBindings().stream()
+          .map(scope -> {
+            cancelToken.checkCanceled();
+            return new BindingInfo(scope.uri().toString(), scope.name(), scope.relativePath(), scope.binding().projectKey(),
+              scope.binding().connectionId(), scope.origin().name(), BindingInfo.BOUND, null, null, null);
+          }),
+        bindingManager.getUnresolvedBindings().stream()
+          .map(scope -> {
+            cancelToken.checkCanceled();
+            var unresolved = scope.unresolved();
+            return new BindingInfo(scope.uri().toString(), scope.name(), scope.relativePath(), unresolved.projectKey(),
+              unresolved.connectionId(), scope.origin().name(), BindingInfo.MISSING_CONNECTION,
+              unresolved.serverUrl(), unresolved.organization(), unresolved.region());
+          }))
+        .toList();
+    });
   }
 
   @Override

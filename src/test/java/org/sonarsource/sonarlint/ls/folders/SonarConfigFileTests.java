@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -89,7 +90,30 @@ class SonarConfigFileTests {
 
     assertThat(project.serverUrl()).isNull();
     assertThat(project.organization()).isEqualTo("my-org");
-    assertThat(project.region()).isEqualTo("US");
+    assertThat(project.region()).isEqualTo(SonarCloudRegion.US);
+  }
+
+  @Test
+  void resolveFor_defaults_a_cloud_entry_to_the_eu_region_and_reads_the_region_whatever_its_case() {
+    var config = fileIn(REPO, new SonarConfigEntry("module-a", "moduleA", null, "my-org", null), new SonarConfigEntry("module-b", "moduleB", null, "my-org", "us"))
+      .resolveFor(REPO_URI).orElseThrow();
+
+    assertThat(config.children()).extracting(SonarConfigProject::region).containsExactly(SonarCloudRegion.EU, SonarCloudRegion.US);
+  }
+
+  @Test
+  void resolveFor_has_no_region_for_a_server_entry() {
+    var config = fileIn(REPO, new SonarConfigEntry("module-a", "moduleA", SERVER_URL, null, "US")).resolveFor(REPO_URI).orElseThrow();
+
+    assertThat(config.children()).extracting(SonarConfigProject::region).containsOnlyNulls();
+  }
+
+  @Test
+  void resolveFor_ignores_a_cloud_entry_of_an_unknown_region() {
+    var config = fileIn(REPO, new SonarConfigEntry("module-a", "moduleA", null, "my-org", "mars"), entry("module-b", "moduleB")).resolveFor(REPO_URI).orElseThrow();
+
+    assertThat(config.children()).extracting(SonarConfigProject::projectKey).containsExactly("module-b");
+    assertThat(logTester.logs()).anyMatch(log -> log.contains("Ignoring invalid entry") && log.contains("module-a"));
   }
 
   @Test

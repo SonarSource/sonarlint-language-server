@@ -129,6 +129,14 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
     return scopeManager.boundScopes();
   }
 
+  public Optional<ConfigurationScope> getScopeById(String configScopeId) {
+    return scopeManager.scopeById(configScopeId);
+  }
+
+  public List<ConfigurationScope> getUnresolvedBindings() {
+    return scopeManager.unresolvedScopes();
+  }
+
   @CheckForNull
   public EndpointParams getEndpointParamsFor(@Nullable String connectionId) {
     return Optional.ofNullable(getServerConnectionSettingsFor(connectionId))

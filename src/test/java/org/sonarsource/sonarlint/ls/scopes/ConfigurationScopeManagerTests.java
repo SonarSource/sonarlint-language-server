@@ -69,6 +69,7 @@ class ConfigurationScopeManagerTests {
 
   private final BindingSources sources = mock(BindingSources.class);
   private final Map<URI, ProjectBinding> bindings = new HashMap<>();
+  private final Map<URI, ConfigurationScope.UnresolvedBinding> unresolvedBindings = new HashMap<>();
   private List<ConfigurationScope> declared = List.of();
   private final WorkspaceFoldersManager foldersManager = mock(WorkspaceFoldersManager.class);
   private final BackendServiceFacade backendServiceFacade = mock(BackendServiceFacade.class);
@@ -186,6 +187,24 @@ class ConfigurationScopeManagerTests {
   }
 
   @Test
+  void scopeById_is_the_scope_declared_with_that_id() {
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS), scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG));
+    underTest.added(folder);
+
+    assertThat(underTest.scopeById(MODULE_A.toString())).contains(scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG));
+    assertThat(underTest.scopeById(REPO.toString())).map(ConfigurationScope::editable).contains(true);
+    assertThat(underTest.scopeById(MODULE_A.toString())).map(ConfigurationScope::editable).contains(false);
+  }
+
+  @Test
+  void scopeById_is_empty_for_an_unknown_scope() {
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS));
+    underTest.added(folder);
+
+    assertThat(underTest.scopeById("file:///unknown/")).isEmpty();
+  }
+
+  @Test
   void bindingOfScope_is_the_binding_declared_for_that_scope() {
     declare(scope(REPO, "repo", ".", Origin.SONAR_CONFIG), scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG));
     bound(REPO, ROOT_BINDING);
@@ -241,6 +260,52 @@ class ConfigurationScopeManagerTests {
     underTest.added(folder);
 
     assertThat(underTest.updateAll().join()).isEmpty();
+  }
+
+  @Test
+  void updating_every_folder_reports_a_scope_that_is_no_longer_declared_bound_to_something_unresolved() {
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS));
+    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", "old", null, null, null));
+    underTest.added(folder);
+    clearInvocations(backendService, listener);
+    resolved(REPO);
+
+    var changes = underTest.updateAll().join();
+
+    assertThat(changes).containsExactly(new ScopeChange(
+      new ConfigurationScope(REPO, "repo", ".", Origin.SETTINGS, null, new ConfigurationScope.UnresolvedBinding("root", "old", null, null, null)),
+      new ConfigurationScope(REPO, "repo", ".", Origin.SETTINGS, null)));
+    verify(listener).scopesChanged(anyList());
+  }
+
+  @Test
+  void updating_every_folder_reports_a_scope_whose_unresolved_target_changed() {
+    declare(scope(REPO, "repo", ".", Origin.SONAR_CONFIG));
+    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", null, "http://a", null, null));
+    underTest.added(folder);
+    clearInvocations(backendService, listener);
+    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", null, "http://b", null, null));
+
+    var changes = underTest.updateAll().join();
+
+    assertThat(changes).hasSize(1);
+    verify(listener).scopesChanged(anyList());
+  }
+
+  @Test
+  void a_change_of_the_unresolved_binding_alone_does_not_touch_the_backend() {
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS));
+    unresolved(REPO, new ConfigurationScope.UnresolvedBinding("root", "old", null, null, null));
+    underTest.added(folder);
+    clearInvocations(backendService, listener);
+    resolved(REPO);
+
+    underTest.updateAll().join();
+
+    verify(backendService, never()).bind(any(), any());
+    verify(backendService, never()).unbind(any(), anyBoolean());
+    verify(backendService, never()).addConfigurationScope(any(), any(), any(), any(), anyBoolean(), anyBoolean());
+    verify(backendService, never()).removeConfigurationScope(any());
   }
 
   @Test
@@ -498,9 +563,20 @@ class ConfigurationScopeManagerTests {
     stubSources();
   }
 
+  private void unresolved(URI scopeUri, ConfigurationScope.UnresolvedBinding unresolved) {
+    unresolvedBindings.put(scopeUri, unresolved);
+    stubSources();
+  }
+
+  private void resolved(URI scopeUri) {
+    unresolvedBindings.remove(scopeUri);
+    stubSources();
+  }
+
   private void stubSources() {
     when(sources.scopesOf(folder)).thenReturn(declared.stream()
-      .map(scope -> new ConfigurationScope(scope.uri(), scope.name(), scope.relativePath(), scope.origin(), bindings.get(scope.uri())))
+      .map(scope -> new ConfigurationScope(scope.uri(), scope.name(), scope.relativePath(), scope.origin(), bindings.get(scope.uri()),
+        unresolvedBindings.get(scope.uri())))
       .toList());
   }
 
