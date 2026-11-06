@@ -53,6 +53,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.notebooks.OpenNotebooksCache;
 import org.sonarsource.sonarlint.ls.notebooks.VersionedOpenNotebook;
+import org.sonarsource.sonarlint.ls.scopes.ConfigurationScope;
 import org.sonarsource.sonarlint.ls.scopes.ConfigurationScopeManager;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
@@ -280,6 +281,21 @@ class ProjectBindingManagerTests {
     assertThat(binding).isNotEmpty();
     assertThat(logTester.logs())
       .anyMatch(log -> log.contains("Resolved binding myProject2 for folder " + workspaceFolderPath.toString()));
+  }
+
+  @Test
+  void a_change_of_the_path_to_compile_commands_alone_updates_the_scopes_of_the_folder() {
+    var folder = mockFileInABoundWorkspaceFolder();
+    when(foldersManager.getAll()).thenReturn(List.of(folder));
+    assertThat(underTest.getBinding(fileInAWorkspaceFolderPath.toUri())).isNotEmpty();
+    var withPath = new WorkspaceFolderSettings(BOUND_SETTINGS.getConnectionId(), BOUND_SETTINGS.getProjectKey(), BOUND_SETTINGS.getAnalyzerProperties(),
+      null, "/folder/compile_commands.json");
+    folder.setSettings(withPath);
+
+    underTest.onChange(folder, BOUND_SETTINGS, withPath);
+
+    assertThat(scopeManager.scopeById(workspaceFolderPath.toUri().toString())).map(ConfigurationScope::pathToCompileCommands)
+      .contains("/folder/compile_commands.json");
   }
 
   @Test
@@ -691,6 +707,7 @@ class ProjectBindingManagerTests {
   private WorkspaceFolderWrapper mockFileInAFolder() {
     var folderWrapper = spy(new WorkspaceFolderWrapper(workspaceFolderPath.toUri(),
       new WorkspaceFolder(workspaceFolderPath.toUri().toString(), workspaceFolderPath.getFileName().toString()), logTester.getLogger()));
+    folderWrapper.setSettings(UNBOUND_SETTINGS);
     var registered = new AtomicBoolean();
     when(foldersManager.findFolderForFile(fileInAWorkspaceFolderPath.toUri())).thenAnswer(invocation -> {
       if (registered.compareAndSet(false, true)) {

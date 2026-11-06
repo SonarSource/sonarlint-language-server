@@ -21,6 +21,7 @@ package org.sonarsource.sonarlint.ls.scopes;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,7 @@ import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFoldersManager;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import testutils.ImmediateExecutorService;
 import testutils.SonarLintLogTester;
 
@@ -83,6 +85,27 @@ class ConfigurationScopeManagerTests {
     when(backendServiceFacade.getBackendService()).thenReturn(backendService);
     underTest = new ConfigurationScopeManager(new ImmediateExecutorService(), foldersManager, sources, backendServiceFacade, logTester.getLogger());
     underTest.addListener(listener);
+    folder.setSettings(folderSettingsWithCompileCommands(null));
+  }
+
+  @Test
+  void the_scope_of_a_folder_no_source_declares_carries_the_path_to_compile_commands_of_the_folder_settings() {
+    folder.setSettings(folderSettingsWithCompileCommands("/repo/compile_commands.json"));
+    declare();
+
+    underTest.added(folder);
+
+    assertThat(underTest.scopeById(REPO.toString())).map(ConfigurationScope::pathToCompileCommands).contains("/repo/compile_commands.json");
+  }
+
+  @Test
+  void the_scope_of_a_folder_whose_sources_declare_only_scopes_below_it_carries_the_path_to_compile_commands_of_the_folder_settings() {
+    folder.setSettings(folderSettingsWithCompileCommands("/repo/compile_commands.json"));
+    declare(scope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG));
+
+    underTest.added(folder);
+
+    assertThat(underTest.scopeById(REPO.toString())).map(ConfigurationScope::pathToCompileCommands).contains("/repo/compile_commands.json");
   }
 
   @Test
@@ -542,6 +565,10 @@ class ConfigurationScopeManagerTests {
     underTest.updateAll().join();
 
     verify(backendService).bind(REPO.toString(), MODULE_A_BINDING);
+  }
+
+  private static WorkspaceFolderSettings folderSettingsWithCompileCommands(String pathToCompileCommands) {
+    return new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null, pathToCompileCommands);
   }
 
   private void declare(ConfigurationScope... scopes) {

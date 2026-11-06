@@ -25,6 +25,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import javax.annotation.CheckForNull;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 
 import static java.lang.String.format;
@@ -78,7 +79,8 @@ public class SonarConfigFile {
         if (directPath == null || entryPath.getNameCount() > directPath.getNameCount()) {
           logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s contains the folder -> its own configuration scope is bound directly, no sub-folder needed",
             entry.projectKey(), entry.path()));
-          direct = new SonarConfigProject(folderUri, entry.projectKey(), entry.serverUrl(), entry.organization(), entry.region(), ".");
+          direct = new SonarConfigProject(folderUri, entry.projectKey(), entry.serverUrl(), entry.organization(), entry.region(), ".",
+            pathToCompileCommandsOf(entry, entryPath));
           directPath = entryPath;
         }
       } else if (entryPath.startsWith(folderPath)) {
@@ -110,7 +112,16 @@ public class SonarConfigFile {
     } else {
       var relativePath = folderPath.relativize(entryPath).toString().replace('\\', '/');
       logOutput.debug(format("[multi-project] Entry projectKey=%s path=%s is nested in the folder -> sub-folder %s", entry.projectKey(), entry.path(), entryPath.toUri()));
-      children.add(new SonarConfigProject(entryPath.toUri(), entry.projectKey(), entry.serverUrl(), entry.organization(), entry.region(), relativePath));
+      children.add(new SonarConfigProject(entryPath.toUri(), entry.projectKey(), entry.serverUrl(), entry.organization(), entry.region(), relativePath,
+        pathToCompileCommandsOf(entry, entryPath)));
     }
+  }
+
+  @CheckForNull
+  private static String pathToCompileCommandsOf(SonarConfigEntry entry, Path projectRoot) {
+    return Optional.ofNullable(entry.settings())
+      .map(SonarConfigEntry.Settings::pathToCompileCommands)
+      .map(pathToCompileCommands -> projectRoot.resolve(pathToCompileCommands).normalize().toString())
+      .orElse(null);
   }
 }
