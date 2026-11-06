@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 import java.util.List;
-import javax.annotation.CheckForNull;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
 import org.sonarsource.sonarlint.ls.scopes.ConfigurationScope;
@@ -45,22 +44,23 @@ public class FolderSettingsBindingSource implements BindingSource {
 
   @Override
   public List<ConfigurationScope> scopesOf(WorkspaceFolderWrapper folder) {
-    return List.of(new ConfigurationScope(folder.getUri(), folder.getLspFolder().getName(), ".", Origin.SETTINGS, bindingOf(folder)));
+    return List.of(scopeOf(folder));
   }
 
-  @CheckForNull
-  private ProjectBinding bindingOf(WorkspaceFolderWrapper folder) {
+  private ConfigurationScope scopeOf(WorkspaceFolderWrapper folder) {
+    var name = folder.getLspFolder().getName();
     var settings = folder.getSettings();
     if (!Utils.uriHasFileScheme(folder.getUri()) || !settings.hasBinding()) {
-      return null;
+      return new ConfigurationScope(folder.getUri(), name, ".", Origin.SETTINGS, null);
     }
     var connectionId = requireNonNull(settings.getConnectionId());
+    var projectKey = requireNonNull(settings.getProjectKey());
     if (settingsManager.connectionOf(connectionId) == null) {
       logOutput.error(format("Invalid binding for '%s'", folder.getRootPath()));
-      return null;
+      var unresolved = new ConfigurationScope.UnresolvedBinding(projectKey, connectionId, null, null, null);
+      return new ConfigurationScope(folder.getUri(), name, ".", Origin.SETTINGS, null, unresolved);
     }
-    var projectKey = requireNonNull(settings.getProjectKey());
     logOutput.debug(format("Resolved binding %s for folder %s", projectKey, folder.getRootPath()));
-    return new ProjectBinding(connectionId, projectKey);
+    return new ConfigurationScope(folder.getUri(), name, ".", Origin.SETTINGS, new ProjectBinding(connectionId, projectKey));
   }
 }

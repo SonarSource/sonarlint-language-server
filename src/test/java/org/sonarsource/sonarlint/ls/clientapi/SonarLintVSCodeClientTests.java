@@ -319,6 +319,29 @@ class SonarLintVSCodeClientTests {
   }
 
   @Test
+  void shouldNotSuggestConnectionForScopesWithAReadOnlyBinding() {
+    when(bindingManager.hasReadOnlyBinding("subProject")).thenReturn(true);
+    var suggestions = new HashMap<String, List<ConnectionSuggestionDto>>();
+    suggestions.put("subProject", List.of());
+    suggestions.put("folder", List.of());
+
+    underTest.suggestConnection(suggestions);
+
+    var captor = ArgumentCaptor.forClass(SuggestConnectionParams.class);
+    verify(client).suggestConnection(captor.capture());
+    assertThat(captor.getValue().getSuggestionsByConfigScopeId()).containsOnlyKeys("folder");
+  }
+
+  @Test
+  void shouldNotSuggestConnectionWhenEveryScopeHasAReadOnlyBinding() {
+    when(bindingManager.hasReadOnlyBinding("subProject")).thenReturn(true);
+
+    underTest.suggestConnection(Map.of("subProject", List.of()));
+
+    verify(client, never()).suggestConnection(any());
+  }
+
+  @Test
   void shouldSkipEmptySuggestionConnection() {
     underTest.suggestConnection(Map.of());
 
