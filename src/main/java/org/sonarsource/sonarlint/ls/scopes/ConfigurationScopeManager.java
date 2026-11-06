@@ -170,18 +170,28 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
       .map(ConfigurationScope::binding);
   }
 
-  public Optional<ProjectBinding> bindingOfScope(String configScopeId) {
+  public Optional<ConfigurationScope> scopeById(String configScopeId) {
     return folders.values().stream()
       .flatMap(state -> state.scopes.get().stream())
       .filter(scope -> scope.uri().toString().equals(configScopeId))
-      .findFirst()
-      .map(ConfigurationScope::binding);
+      .findFirst();
+  }
+
+  public Optional<ProjectBinding> bindingOfScope(String configScopeId) {
+    return scopeById(configScopeId).map(ConfigurationScope::binding);
   }
 
   public List<ConfigurationScope> boundScopes() {
     return folders.values().stream()
       .flatMap(state -> state.scopes.get().stream())
       .filter(scope -> scope.binding() != null)
+      .toList();
+  }
+
+  public List<ConfigurationScope> unresolvedScopes() {
+    return folders.values().stream()
+      .flatMap(state -> state.scopes.get().stream())
+      .filter(scope -> scope.binding() == null && scope.unresolved() != null)
       .toList();
   }
 
@@ -252,14 +262,17 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
       .filter(scope -> !declaredByUri.containsKey(scope.uri()))
       .forEach(scope -> {
         backendService.addConfigurationScope(scope.uri().toString(), parentIdOf(folder, scope), scope.name(), scope.binding(),
-          scope.bindable(), scope.bindingSuggestionDisabled());
+          scope.editable(), !scope.editable());
         changes.add(new ScopeChange(null, scope));
       });
     desired.stream()
-      .filter(scope -> declaredByUri.containsKey(scope.uri()) && scope.bindingConfigurationDiffersFrom(declaredByUri.get(scope.uri())))
+      .filter(scope -> declaredByUri.containsKey(scope.uri()) && scope.bindingStateDiffersFrom(declaredByUri.get(scope.uri())))
       .forEach(scope -> {
-        rebind(scope);
-        changes.add(new ScopeChange(declaredByUri.get(scope.uri()), scope));
+        var before = declaredByUri.get(scope.uri());
+        if (scope.bindingConfigurationDiffersFrom(before)) {
+          rebind(scope);
+        }
+        changes.add(new ScopeChange(before, scope));
       });
     return changes;
   }
@@ -268,7 +281,7 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
     var backendService = backendServiceFacade.getBackendService();
     var binding = scope.binding();
     if (binding == null) {
-      backendService.unbind(scope.uri().toString(), scope.bindingSuggestionDisabled());
+      backendService.unbind(scope.uri().toString(), !scope.editable());
     } else {
       logOutput.info(format("Binding scope %s to projectKey=%s of connection '%s'", scope.uri(), binding.projectKey(), binding.connectionId()));
       backendService.bind(scope.uri().toString(), binding);
