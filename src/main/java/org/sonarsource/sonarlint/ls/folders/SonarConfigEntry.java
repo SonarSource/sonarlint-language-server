@@ -27,7 +27,15 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 /**
  * One element of the {@code projects} array of a {@code .sonar-config.json}, exactly as written in the file.
  */
-record SonarConfigEntry(@Nullable String projectKey, @Nullable String path, @Nullable String serverUrl, @Nullable String organization, @Nullable String region) {
+record SonarConfigEntry(@Nullable String projectKey, @Nullable String path, @Nullable String serverUrl, @Nullable String organization, @Nullable String region,
+  @Nullable Settings settings) {
+
+  record Settings(@Nullable String pathToCompileCommands) {
+  }
+
+  SonarConfigEntry(@Nullable String projectKey, @Nullable String path, @Nullable String serverUrl, @Nullable String organization, @Nullable String region) {
+    this(projectKey, path, serverUrl, organization, region, null);
+  }
 
   Optional<SonarCloudRegion> cloudRegion() {
     if (region == null) {

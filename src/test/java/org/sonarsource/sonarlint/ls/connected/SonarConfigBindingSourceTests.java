@@ -37,6 +37,7 @@ import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
 import org.sonarsource.sonarlint.ls.scopes.ConfigurationScope;
 import org.sonarsource.sonarlint.ls.settings.ServerConnectionSettings;
 import org.sonarsource.sonarlint.ls.settings.SettingsManager;
+import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettings;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import testutils.SonarLintLogTester;
 
@@ -61,6 +62,7 @@ class SonarConfigBindingSourceTests {
   @BeforeEach
   void prepare() {
     underTest = new SonarConfigBindingSource(loader, settingsManager, logTester.getLogger());
+    folder.setSettings(folderSettingsWithCompileCommands(null));
     connections(Map.of("sq", new ServerConnectionSettings("sq", "https://sonarqube.example.com", "token", null, false, null)));
   }
 
@@ -81,6 +83,32 @@ class SonarConfigBindingSourceTests {
   }
 
   @Test
+  void scopesOf_carries_the_path_to_compile_commands_of_the_project() {
+    var project = new SonarConfigProject(MODULE_A, "module-a", "https://sonarqube.example.com", null, null, "moduleA", "/repo/moduleA/build/compile_commands.json");
+    resolved(new ResolvedSonarConfig(null, List.of(project)));
+
+    assertThat(underTest.scopesOf(folder)).extracting(ConfigurationScope::pathToCompileCommands).containsExactly("/repo/moduleA/build/compile_commands.json");
+  }
+
+  @Test
+  void scopesOf_gives_a_project_without_a_path_to_compile_commands_the_one_of_the_folder_settings() {
+    folder.setSettings(folderSettingsWithCompileCommands("/repo/compile_commands.json"));
+    resolved(new ResolvedSonarConfig(server(REPO, "root-project", "."), List.of(server(MODULE_A, "module-a", "moduleA"))));
+
+    assertThat(underTest.scopesOf(folder)).extracting(ConfigurationScope::pathToCompileCommands)
+      .containsExactly("/repo/compile_commands.json", "/repo/compile_commands.json");
+  }
+
+  @Test
+  void scopesOf_prefers_the_path_to_compile_commands_of_the_project_to_the_one_of_the_folder_settings() {
+    folder.setSettings(folderSettingsWithCompileCommands("/repo/compile_commands.json"));
+    var project = new SonarConfigProject(MODULE_A, "module-a", "https://sonarqube.example.com", null, null, "moduleA", "/repo/moduleA/compile_commands.json");
+    resolved(new ResolvedSonarConfig(null, List.of(project)));
+
+    assertThat(underTest.scopesOf(folder)).extracting(ConfigurationScope::pathToCompileCommands).containsExactly("/repo/moduleA/compile_commands.json");
+  }
+
+  @Test
   void scopesOf_leaves_a_scope_unbound_and_says_so_when_no_connection_matches() {
     var cloudProject = new SonarConfigProject(MODULE_A, "module-a", null, "my-org", SonarCloudRegion.US, "moduleA");
     resolved(new ResolvedSonarConfig(null, List.of(cloudProject)));
@@ -88,6 +116,10 @@ class SonarConfigBindingSourceTests {
     assertThat(underTest.scopesOf(folder)).containsExactly(new ConfigurationScope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG, null,
       new ConfigurationScope.UnresolvedBinding("module-a", null, null, "my-org", SonarCloudRegion.US)));
     assertThat(logTester.logs()).anyMatch(log -> log.contains("No connection configured for organization=my-org region=US, scope " + MODULE_A + " is unbound"));
+  }
+
+  private static WorkspaceFolderSettings folderSettingsWithCompileCommands(String pathToCompileCommands) {
+    return new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null, pathToCompileCommands);
   }
 
   private void resolved(ResolvedSonarConfig config) {

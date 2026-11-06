@@ -172,7 +172,7 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
 
   @Override
   public void onChange(@Nullable WorkspaceFolderWrapper folder, @Nullable WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
-    if (folder == null || oldValue == null || !bindingChanged(oldValue, newValue)) {
+    if (folder == null || oldValue == null || !(bindingChanged(oldValue, newValue) || pathToCompileCommandsChanged(oldValue, newValue))) {
       return;
     }
     scopeManager.update(folder).thenAccept(changed -> {
@@ -180,6 +180,10 @@ public class ProjectBindingManager implements WorkspaceSettingsChangeListener, W
         analysisManager.analyzeAllOpenFilesInFolder(folder);
       }
     });
+  }
+
+  private static boolean pathToCompileCommandsChanged(WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
+    return !Objects.equals(oldValue.getPathToCompileCommands(), newValue.getPathToCompileCommands());
   }
 
   private static boolean bindingChanged(WorkspaceFolderSettings oldValue, WorkspaceFolderSettings newValue) {
