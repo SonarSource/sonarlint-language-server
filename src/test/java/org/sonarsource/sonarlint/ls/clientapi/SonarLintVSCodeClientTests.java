@@ -310,6 +310,7 @@ class SonarLintVSCodeClientTests {
 
   @Test
   void shouldSuggestConnection() {
+    when(bindingManager.getScopeById("key")).thenReturn(Optional.of(editableScope()));
     var suggestions = new HashMap<String, List<ConnectionSuggestionDto>>();
     suggestions.put("key", List.of());
 
@@ -323,6 +324,7 @@ class SonarLintVSCodeClientTests {
   @Test
   void shouldNotSuggestConnectionForScopesWithAReadOnlyBinding() {
     when(bindingManager.getScopeById("subProject")).thenReturn(Optional.of(readOnlyScope()));
+    when(bindingManager.getScopeById("folder")).thenReturn(Optional.of(editableScope()));
     var suggestions = new HashMap<String, List<ConnectionSuggestionDto>>();
     suggestions.put("subProject", List.of());
     suggestions.put("folder", List.of());
@@ -343,8 +345,19 @@ class SonarLintVSCodeClientTests {
     verify(client, never()).suggestConnection(any());
   }
 
+  @Test
+  void shouldNotSuggestConnectionForAScopeTheScopeManagerDoesNotKnow() {
+    underTest.suggestConnection(Map.of("gone", List.of()));
+
+    verify(client, never()).suggestConnection(any());
+  }
+
   private static ConfigurationScope readOnlyScope() {
     return new ConfigurationScope(URI.create("file:///repo/subProject/"), "subProject", "subProject", Origin.SONAR_CONFIG, null);
+  }
+
+  private static ConfigurationScope editableScope() {
+    return new ConfigurationScope(URI.create("file:///repo/"), "repo", ".", Origin.SETTINGS, null);
   }
 
   @Test

@@ -617,7 +617,7 @@ public class SonarLintVSCodeClient implements SonarLintRpcClientDelegate {
   @Override
   public void suggestConnection(Map<String, List<ConnectionSuggestionDto>> configScopesToConnectionSuggestions) {
     var relevantSuggestions = configScopesToConnectionSuggestions.entrySet().stream()
-      .filter(entry -> bindingManager.getScopeById(entry.getKey()).map(ConfigurationScope::editable).orElse(true))
+      .filter(entry -> bindingManager.getScopeById(entry.getKey()).map(ConfigurationScope::editable).orElse(false))
       .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     if (relevantSuggestions.isEmpty()) {
       return;
