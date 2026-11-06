@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import java.net.URI;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -124,10 +125,16 @@ public class SonarConfigFile {
   }
 
   @CheckForNull
-  private static String pathToCompileCommandsOf(SonarConfigEntry entry, Path projectRoot) {
-    return Optional.ofNullable(entry.settings())
-      .map(SonarConfigEntry.Settings::pathToCompileCommands)
-      .map(pathToCompileCommands -> projectRoot.resolve(pathToCompileCommands).normalize().toString())
-      .orElse(null);
+  private String pathToCompileCommandsOf(SonarConfigEntry entry, Path projectRoot) {
+    var pathToCompileCommands = Optional.ofNullable(entry.settings()).map(SonarConfigEntry.Settings::pathToCompileCommands).orElse(null);
+    if (pathToCompileCommands == null) {
+      return null;
+    }
+    try {
+      return projectRoot.resolve(pathToCompileCommands).normalize().toString();
+    } catch (InvalidPathException e) {
+      logOutput.warn(format("[multi-project] Ignoring invalid pathToCompileCommands '%s' of entry projectKey=%s: %s", pathToCompileCommands, entry.projectKey(), e.getMessage()));
+      return null;
+    }
   }
 }

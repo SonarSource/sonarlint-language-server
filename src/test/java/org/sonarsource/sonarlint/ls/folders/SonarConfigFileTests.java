@@ -28,6 +28,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 class SonarConfigFileTests {
 
@@ -154,6 +155,14 @@ class SonarConfigFileTests {
       .resolveFor(REPO_URI).orElseThrow();
 
     assertThat(config.children()).extracting(SonarConfigProject::pathToCompileCommands).containsOnlyNulls();
+  }
+
+  @Test
+  void resolveFor_ignores_an_invalid_path_to_compile_commands_and_keeps_the_project() {
+    var config = fileIn(REPO, entryWithCompileCommands("module-a", "moduleA", "build/\0compile_commands.json")).resolveFor(REPO_URI).orElseThrow();
+
+    assertThat(config.children()).extracting(SonarConfigProject::projectKey, SonarConfigProject::pathToCompileCommands).containsExactly(tuple("module-a", null));
+    assertThat(logTester.logs()).anyMatch(log -> log.contains("Ignoring invalid pathToCompileCommands") && log.contains("module-a"));
   }
 
   @Test
