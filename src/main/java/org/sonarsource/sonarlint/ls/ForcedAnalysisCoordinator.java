@@ -121,7 +121,11 @@ public class ForcedAnalysisCoordinator implements WorkspaceSettingsChangeListene
       return;
     }
     if (!Objects.equals(oldValue.getPathToCompileCommands(), newValue.getPathToCompileCommands())) {
-      analyzeAllOpenCOrCppFilesInFolder(folder);
+      if (folder == null) {
+        analyzeAllOpenCOrCppFilesInFolder(null);
+      } else {
+        scopeManager.update(folder).whenComplete((changed, error) -> analyzeAllOpenCOrCppFilesInFolder(folder));
+      }
     }
   }
 

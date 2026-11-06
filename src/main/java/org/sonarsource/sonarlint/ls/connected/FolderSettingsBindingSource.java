@@ -50,17 +50,18 @@ public class FolderSettingsBindingSource implements BindingSource {
   private ConfigurationScope scopeOf(WorkspaceFolderWrapper folder) {
     var name = folder.getLspFolder().getName();
     var settings = folder.getSettings();
+    var pathToCompileCommands = settings.getPathToCompileCommands();
     if (!Utils.uriHasFileScheme(folder.getUri()) || !settings.hasBinding()) {
-      return new ConfigurationScope(folder.getUri(), name, ".", Origin.SETTINGS, null);
+      return new ConfigurationScope(folder.getUri(), name, ".", Origin.SETTINGS, null, null, pathToCompileCommands);
     }
     var connectionId = requireNonNull(settings.getConnectionId());
     var projectKey = requireNonNull(settings.getProjectKey());
     if (settingsManager.connectionOf(connectionId) == null) {
       logOutput.error(format("Invalid binding for '%s'", folder.getRootPath()));
       var unresolved = new ConfigurationScope.UnresolvedBinding(projectKey, connectionId, null, null, null);
-      return new ConfigurationScope(folder.getUri(), name, ".", Origin.SETTINGS, null, unresolved);
+      return new ConfigurationScope(folder.getUri(), name, ".", Origin.SETTINGS, null, unresolved, pathToCompileCommands);
     }
     logOutput.debug(format("Resolved binding %s for folder %s", projectKey, folder.getRootPath()));
-    return new ConfigurationScope(folder.getUri(), name, ".", Origin.SETTINGS, new ProjectBinding(connectionId, projectKey));
+    return new ConfigurationScope(folder.getUri(), name, ".", Origin.SETTINGS, new ProjectBinding(connectionId, projectKey), null, pathToCompileCommands);
   }
 }

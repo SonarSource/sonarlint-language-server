@@ -92,6 +92,28 @@ class FolderSettingsBindingSourceTests {
   }
 
   @Test
+  void scopesOf_carries_the_path_to_compile_commands_of_the_folder_settings_to_a_bound_scope() {
+    connection();
+    folder.setSettings(new WorkspaceFolderSettings(CONNECTION_ID, "myProject", Collections.emptyMap(), null, "/folder/compile_commands.json"));
+
+    assertThat(underTest.scopesOf(folder)).extracting(ConfigurationScope::pathToCompileCommands).containsExactly("/folder/compile_commands.json");
+  }
+
+  @Test
+  void scopesOf_carries_the_path_to_compile_commands_of_the_folder_settings_to_an_unbound_scope() {
+    folder.setSettings(new WorkspaceFolderSettings(null, null, Collections.emptyMap(), null, "/folder/compile_commands.json"));
+
+    assertThat(underTest.scopesOf(folder)).extracting(ConfigurationScope::pathToCompileCommands).containsExactly("/folder/compile_commands.json");
+  }
+
+  @Test
+  void scopesOf_carries_the_path_to_compile_commands_of_the_folder_settings_when_the_connection_is_unknown() {
+    folder.setSettings(new WorkspaceFolderSettings(CONNECTION_ID, "myProject", Collections.emptyMap(), null, "/folder/compile_commands.json"));
+
+    assertThat(underTest.scopesOf(folder)).extracting(ConfigurationScope::pathToCompileCommands).containsExactly("/folder/compile_commands.json");
+  }
+
+  @Test
   void scopesOf_leaves_the_folder_scope_unbound_when_the_connection_is_unknown() {
     folder.setSettings(BOUND);
 
