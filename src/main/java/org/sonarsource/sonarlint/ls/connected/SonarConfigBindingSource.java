@@ -58,8 +58,7 @@ public class SonarConfigBindingSource implements BindingSource {
   }
 
   private static ConfigurationScope.UnresolvedBinding unresolvedBindingOf(SonarConfigProject project) {
-    var region = project.organization() != null ? project.cloudRegion() : null;
-    return new ConfigurationScope.UnresolvedBinding(project.projectKey(), null, project.serverUrl(), project.organization(), region);
+    return new ConfigurationScope.UnresolvedBinding(project.projectKey(), null, project.serverUrl(), project.organization(), project.region());
   }
 
   @CheckForNull

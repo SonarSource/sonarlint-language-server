@@ -22,6 +22,7 @@ package org.sonarsource.sonarlint.ls.scopes;
 import java.net.URI;
 import java.util.Objects;
 import javax.annotation.Nullable;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 import org.sonarsource.sonarlint.ls.connected.Origin;
 import org.sonarsource.sonarlint.ls.connected.ProjectBinding;
 
@@ -36,7 +37,7 @@ public record ConfigurationScope(URI uri, String name, String relativePath, Orig
   }
 
   public record UnresolvedBinding(String projectKey, @Nullable String connectionId, @Nullable String serverUrl,
-    @Nullable String organization, @Nullable String region) {
+    @Nullable String organization, @Nullable SonarCloudRegion region) {
   }
 
   public boolean editable() {

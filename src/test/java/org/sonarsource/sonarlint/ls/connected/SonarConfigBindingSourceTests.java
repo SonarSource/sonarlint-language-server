@@ -82,11 +82,11 @@ class SonarConfigBindingSourceTests {
 
   @Test
   void scopesOf_leaves_a_scope_unbound_and_says_so_when_no_connection_matches() {
-    var cloudProject = new SonarConfigProject(MODULE_A, "module-a", null, "my-org", SonarCloudRegion.US.name(), "moduleA");
+    var cloudProject = new SonarConfigProject(MODULE_A, "module-a", null, "my-org", SonarCloudRegion.US, "moduleA");
     resolved(new ResolvedSonarConfig(null, List.of(cloudProject)));
 
     assertThat(underTest.scopesOf(folder)).containsExactly(new ConfigurationScope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG, null,
-      new ConfigurationScope.UnresolvedBinding("module-a", null, null, "my-org", "US")));
+      new ConfigurationScope.UnresolvedBinding("module-a", null, null, "my-org", SonarCloudRegion.US)));
     assertThat(logTester.logs()).anyMatch(log -> log.contains("No connection configured for organization=my-org region=US, scope " + MODULE_A + " is unbound"));
   }
 

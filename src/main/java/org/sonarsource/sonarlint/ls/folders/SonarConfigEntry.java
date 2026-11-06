@@ -19,14 +19,28 @@
  */
 package org.sonarsource.sonarlint.ls.folders;
 
+import java.util.Locale;
+import java.util.Optional;
 import javax.annotation.Nullable;
+import org.sonarsource.sonarlint.core.rpc.protocol.common.SonarCloudRegion;
 
 /**
  * One element of the {@code projects} array of a {@code .sonar-config.json}, exactly as written in the file.
  */
 record SonarConfigEntry(@Nullable String projectKey, @Nullable String path, @Nullable String serverUrl, @Nullable String organization, @Nullable String region) {
 
+  Optional<SonarCloudRegion> cloudRegion() {
+    if (region == null) {
+      return Optional.of(SonarCloudRegion.EU);
+    }
+    try {
+      return Optional.of(SonarCloudRegion.valueOf(region.toUpperCase(Locale.ROOT)));
+    } catch (IllegalArgumentException e) {
+      return Optional.empty();
+    }
+  }
+
   boolean isValid() {
-    return projectKey != null && path != null && (serverUrl != null || organization != null);
+    return projectKey != null && path != null && (serverUrl != null || (organization != null && cloudRegion().isPresent()));
   }
 }
