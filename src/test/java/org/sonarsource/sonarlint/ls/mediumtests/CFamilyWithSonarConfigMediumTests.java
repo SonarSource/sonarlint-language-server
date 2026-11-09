@@ -20,7 +20,6 @@
 package org.sonarsource.sonarlint.ls.mediumtests;
 
 import com.google.gson.Gson;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -31,6 +30,7 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.BindingInfo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -81,6 +81,7 @@ class CFamilyWithSonarConfigMediumTests extends AbstractLanguageServerMediumTest
   @Test
   void analyzesACppFileWithThePathToCompileCommandsOfTheSonarConfig() {
     var cppFileUri = cppFile.toUri().toString();
+    awaitUntilScopesAreDeclared();
 
     didOpen(cppFileUri, "cpp", CPP_CODE);
 
@@ -95,6 +96,7 @@ class CFamilyWithSonarConfigMediumTests extends AbstractLanguageServerMediumTest
     var cppFileUri = brokenModuleCppFile.toUri().toString();
     setShowVerboseLogs(client.globalSettings, true);
     notifyConfigurationChangeOnClient();
+    awaitUntilScopesAreDeclared();
 
     didOpen(cppFileUri, "cpp", CPP_CODE);
 
@@ -102,6 +104,11 @@ class CFamilyWithSonarConfigMediumTests extends AbstractLanguageServerMediumTest
     awaitUntilAsserted(() -> assertLogContains("\"sonar.cfamily.compile-commands\" is not set to a valid file: " + missingFile));
     assertThat(client.getDiagnostics(cppFileUri)).isEmpty();
     assertThat(client.needCompilationDatabaseCalls.get()).isPositive();
+  }
+
+  private void awaitUntilScopesAreDeclared() {
+    awaitUntilAsserted(() -> assertThat(lsProxy.getBindings().join()).extracting(BindingInfo::scopeUri)
+      .contains(moduleDir.toUri().toString(), brokenModuleCppFile.getParent().toUri().toString()));
   }
 
   private static String compilationDatabaseContent() {
