@@ -20,6 +20,7 @@
 package org.sonarsource.sonarlint.ls.folders;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonSyntaxException;
 import java.io.IOException;
 import java.net.URI;
@@ -61,11 +62,31 @@ public class SonarConfigLoader {
       return Optional.empty();
     }
     var parsed = parse(configPath);
-    if (parsed == null || parsed.projects == null) {
-      logOutput.warn(format("[multi-project] '%s' at %s was found but could not be parsed into a 'projects' array", SONAR_CONFIG_FILE_NAME, configPath));
+    var projects = parsed == null ? null : projectsOf(parsed);
+    if (projects == null) {
+      logOutput.warn(format("[multi-project] '%s' at %s was found but could not be parsed into a 'projects' array or a 'project' entry", SONAR_CONFIG_FILE_NAME, configPath));
       return Optional.empty();
     }
-    return Optional.of(new SonarConfigFile(configPath, parsed.projects, logOutput));
+    return Optional.of(new SonarConfigFile(configPath, projects, logOutput));
+  }
+
+  /**
+   * Like SonarQube CLI, {@code projects} takes precedence over the single {@code project} entry.
+   */
+  @CheckForNull
+  private List<SonarConfigEntry> projectsOf(ParsedFile parsed) {
+    if (parsed.projects != null) {
+      return parsed.projects;
+    }
+    if (parsed.project == null || !parsed.project.isJsonObject()) {
+      return null;
+    }
+    try {
+      return List.of(gson.fromJson(parsed.project, SonarConfigEntry.class));
+    } catch (JsonSyntaxException e) {
+      logOutput.warn(format("Failed to read the 'project' entry: %s", e.getMessage()));
+      return null;
+    }
   }
 
   @CheckForNull
@@ -106,5 +127,7 @@ public class SonarConfigLoader {
   private static class ParsedFile {
     @Nullable
     List<SonarConfigEntry> projects;
+    @Nullable
+    JsonElement project;
   }
 }
