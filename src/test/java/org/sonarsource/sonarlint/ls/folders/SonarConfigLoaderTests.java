@@ -104,6 +104,36 @@ class SonarConfigLoaderTests {
   }
 
   @Test
+  void load_reads_the_single_project_entry_like_a_projects_array_of_one() throws IOException {
+    Files.writeString(repo.resolve(".sonar-config.json"),
+      "{\"project\":{\"projectKey\":\"a\",\"path\":\".\",\"serverUrl\":\"https://sonarqube.example.com\",\"settings\":{\"sonar.cfamily.compile-commands\":\"build/cc.json\"}}}");
+
+    var file = underTest.load(repo.toUri()).orElseThrow();
+
+    assertThat(file.projects()).containsExactly(
+      new SonarConfigEntry("a", ".", "https://sonarqube.example.com", null, null, Map.of("sonar.cfamily.compile-commands", "build/cc.json")));
+  }
+
+  @Test
+  void load_prefers_the_projects_array_over_the_single_project_entry() throws IOException {
+    Files.writeString(repo.resolve(".sonar-config.json"),
+      "{\"project\":{\"projectKey\":\"single\",\"path\":\".\",\"serverUrl\":\"https://sonarqube.example.com\"},"
+        + "\"projects\":[{\"projectKey\":\"many\",\"path\":\"a\",\"serverUrl\":\"https://sonarqube.example.com\"}]}");
+
+    var file = underTest.load(repo.toUri()).orElseThrow();
+
+    assertThat(file.projects()).extracting(SonarConfigEntry::projectKey).containsExactly("many");
+  }
+
+  @Test
+  void load_is_empty_when_the_single_project_entry_is_not_an_object() throws IOException {
+    Files.writeString(repo.resolve(".sonar-config.json"), "{\"project\":\"my-project\"}");
+
+    assertThat(underTest.load(repo.toUri())).isEmpty();
+    assertThat(logTester.logs()).anyMatch(log -> log.contains("could not be parsed"));
+  }
+
+  @Test
   void load_returns_the_entries_as_written_and_where_the_file_is() {
     writeConfig(repo, "{\"projectKey\":\"server\",\"path\":\"a\",\"serverUrl\":\"https://sonarqube.example.com\"},"
       + "{\"projectKey\":\"cloud\",\"path\":\"b\",\"organization\":\"my-org\",\"region\":\"US\"},"
