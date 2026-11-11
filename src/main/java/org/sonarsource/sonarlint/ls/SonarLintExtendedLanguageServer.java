@@ -53,6 +53,8 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.GetMCPServ
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.GetMCPServerConfigurationResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.auth.HelpGenerateUserTokenResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.OrganizationDto;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.FuzzySearchProjectsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.FuzzySearchProjectsResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.labs.JoinIdeLabsProgramParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.labs.JoinIdeLabsProgramResponse;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.plugin.GetPluginStatusesResponse;
@@ -146,6 +148,9 @@ public interface SonarLintExtendedLanguageServer extends LanguageServer {
 
   @JsonRequest("sonarlint/getRemoteProjectsForConnection")
   CompletableFuture<Map<String, String>> getRemoteProjectsForConnection(GetRemoteProjectsForConnectionParams getRemoteProjectsForConnectionParams);
+
+  @JsonRequest("sonarlint/fuzzySearchProjects")
+  CompletableFuture<FuzzySearchProjectsResponse> fuzzySearchProjects(FuzzySearchProjectsParams params);
 
   class GetRemoteProjectsForConnectionParams {
     private String connectionId;

@@ -58,6 +58,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetBindingSuggestionParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.binding.GetSharedConnectedModeConfigFileParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.GetMCPServerConfigurationParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.FuzzySearchProjectsParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotStatus;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.ChangeDependencyRiskStatusParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.sca.DependencyRiskTransition;
@@ -583,6 +584,56 @@ class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
     var future = lsProxy.getRemoteProjectsForConnection(testParams);
 
     awaitUntilAsserted(() -> assertThat(future).isCompletedExceptionally());
+  }
+
+  @Test
+  void shouldSearchBeyondTheInitialCatalogueAndPreserveRanking() {
+    var catalogue = lsProxy.getRemoteProjectsForConnection(new SonarLintExtendedLanguageServer.GetRemoteProjectsForConnectionParams(CONNECTION_ID)).join();
+    assertThat(catalogue).doesNotContainKey("outside-catalogue");
+    mockProjectSearch("needle");
+
+    var response = lsProxy.fuzzySearchProjects(new FuzzySearchProjectsParams(CONNECTION_ID, "needle")).join();
+
+    assertThat(response.getTopResults()).extracting("key", "name")
+      .containsExactly(tuple("outside-catalogue", "Zebra"), tuple("another", "Alpha"));
+  }
+
+  @Test
+  void shouldSearchUsingNewlyConfiguredAndDefaultConnections() {
+    addSonarQubeConnection(client.globalSettings, "new-connection", mockWebServerExtension.url("/"), "xxxxx");
+    addSonarQubeConnection(client.globalSettings, "", mockWebServerExtension.url("/"), "xxxxx");
+    notifyConfigurationChangeOnClient();
+    mockProjectSearch("new-project");
+
+    for (var connectionId : List.of("new-connection", "<default>")) {
+      awaitUntilAsserted(() -> assertThat(lsProxy.fuzzySearchProjects(new FuzzySearchProjectsParams(connectionId, "new-project")).join().getTopResults())
+        .extracting("key").containsExactly("outside-catalogue", "another"));
+    }
+  }
+
+  @Test
+  void shouldReturnEmptyProjectSearchResultsForBlankAndNoMatches() {
+    assertThat(lsProxy.fuzzySearchProjects(new FuzzySearchProjectsParams(CONNECTION_ID, "  ")).join().getTopResults()).isEmpty();
+    mockWebServerExtension.addProtobufResponse("/api/components/search.protobuf?qualifiers=TRK&q=no-match&p=1&ps=10", Components.SearchWsResponse.newBuilder().build());
+
+    assertThat(lsProxy.fuzzySearchProjects(new FuzzySearchProjectsParams(CONNECTION_ID, "no-match")).join().getTopResults()).isEmpty();
+  }
+
+  @Test
+  void shouldPropagateProjectSearchErrors() {
+    var unknownConnection = lsProxy.fuzzySearchProjects(new FuzzySearchProjectsParams("unknown", "needle"));
+    awaitUntilAsserted(() -> assertThat(unknownConnection).isCompletedExceptionally());
+    mockWebServerExtension.addResponse("/api/components/search.protobuf?qualifiers=TRK&q=server-error&p=1&ps=10", new MockResponse.Builder().code(500).build());
+    var serverError = lsProxy.fuzzySearchProjects(new FuzzySearchProjectsParams(CONNECTION_ID, "server-error"));
+    awaitUntilAsserted(() -> assertThat(serverError).isCompletedExceptionally());
+  }
+
+  private void mockProjectSearch(String searchText) {
+    mockWebServerExtension.addProtobufResponse("/api/components/search.protobuf?qualifiers=TRK&q=" + searchText + "&p=1&ps=10",
+      Components.SearchWsResponse.newBuilder()
+        .addComponents(Components.Component.newBuilder().setKey("outside-catalogue").setName("Zebra"))
+        .addComponents(Components.Component.newBuilder().setKey("another").setName("Alpha"))
+        .build());
   }
 
   @Test
