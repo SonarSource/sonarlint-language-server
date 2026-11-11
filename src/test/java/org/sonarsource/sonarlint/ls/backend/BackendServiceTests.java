@@ -61,6 +61,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.backend.config.binding.DidUpd
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.ConnectionRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.GetMCPServerConfigurationParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.org.ListUserOrganizationsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.FuzzySearchProjectsParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.FuzzySearchProjectsResponse;
+import org.sonarsource.sonarlint.core.rpc.protocol.backend.connection.projects.SonarProjectDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.HotspotRpcService;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.hotspot.OpenHotspotInBrowserParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.backend.issue.AddIssueCommentParams;
@@ -299,6 +302,30 @@ class BackendServiceTests {
     verify(connectionRpcService).getMCPServerConfiguration(argumentCaptor.capture());
     assertThat(argumentCaptor.getValue().getConnectionId()).isEqualTo(connectionId);
     assertThat(argumentCaptor.getValue().getToken()).isEqualTo(token);
+  }
+
+  @Test
+  void shouldForwardProjectSearchWithoutReplacingTheBackendFuture() {
+    var params = new FuzzySearchProjectsParams("<default>", "needle");
+    var response = new CompletableFuture<FuzzySearchProjectsResponse>();
+    when(connectionRpcService.fuzzySearchProjects(params)).thenReturn(response);
+
+    assertThat(underTest.fuzzySearchProjects(params)).isSameAs(response).isNotDone();
+    var projects = List.of(new SonarProjectDto("outside-catalogue", "Zebra"), new SonarProjectDto("another", "Alpha"));
+    response.complete(new FuzzySearchProjectsResponse(projects));
+    assertThat(response.join().getTopResults()).containsExactlyElementsOf(projects);
+    verify(connectionRpcService).fuzzySearchProjects(params);
+  }
+
+  @Test
+  void shouldPreserveProjectSearchFailures() {
+    var params = new FuzzySearchProjectsParams("unknown", "needle");
+    var failure = new IllegalArgumentException("Unknown connection");
+    var response = CompletableFuture.<FuzzySearchProjectsResponse>failedFuture(failure);
+    when(connectionRpcService.fuzzySearchProjects(params)).thenReturn(response);
+
+    assertThat(underTest.fuzzySearchProjects(params)).isSameAs(response);
+    assertThatThrownBy(response::join).hasCause(failure);
   }
 
   @Test
