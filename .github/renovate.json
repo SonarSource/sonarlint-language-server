@@ -2,16 +2,5 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "github>SonarSource/renovate-config:ide-xp-team"
-  ],
-  "packageRules": [
-    {
-      "matchUpdateTypes": [
-        "major",
-        "minor"
-      ],
-      "addLabels": [
-        "renovate-major-minor"
-      ]
-    }
   ]
 }
