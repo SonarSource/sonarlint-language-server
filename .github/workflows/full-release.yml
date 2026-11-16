@@ -37,15 +37,26 @@ jobs:
     needs:
       - release
     permissions:
+      id-token: write # for SonarSource/ci-github-actions/config-maven
       contents: write # write for peter-evans/create-pull-request, read for actions/checkout
       pull-requests: write # write for peter-evans/create-pull-request
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Resolve dependencies through Artifactory instead of hitting Maven Central directly (avoids HTTP 429)
+      - uses: SonarSource/ci-github-actions/config-maven@21206070b4306949454171904b8d2b4ec349b0c5 # 2.0.1
+        env:
+          CURRENT_VERSION: skip
+          PROJECT_VERSION: skip
+        with:
+          artifactory-reader-role: private-reader
       - name: bump-version
         env:
           NEW_VERSION: ${{ needs.release.outputs.new-version }}
         run: |
           mvn versions:set -DgenerateBackupPoms=false -DnewVersion="$NEW_VERSION-SNAPSHOT"
+          # config-maven leaves .actions/ symlinks (absolute runner paths) in the workspace;
+          # remove them so create-pull-request's `git add -A` does not commit them
+          rm -rf .actions .build_number.txt
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           author: ${{ github.actor }} <${{ github.actor }}>
