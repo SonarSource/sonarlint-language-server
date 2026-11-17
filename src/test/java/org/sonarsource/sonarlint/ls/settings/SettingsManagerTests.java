@@ -315,6 +315,40 @@ class SettingsManagerTests {
   }
 
   @Test
+  void shouldParseAUSonarCloudConnection() {
+    mockConfigurationRequest(null, """
+      {
+        "connectedMode": {
+          "connections": {
+            "sonarcloud": [
+              { "connectionId": "auConn", "token": "ab12", "organizationKey": "myOrga1", "region": "AU" }      ]
+          }
+        }
+      }
+      """);
+    underTest.didChangeConfiguration();
+
+    var settings = underTest.getCurrentSettings();
+    assertThat(settings.getServerConnections()).containsKeys("auConn");
+    assertThat(settings.getServerConnections().get("auConn").getRegion()).isEqualTo(SonarCloudRegion.AU);
+    assertThat(settings.getServerConnections().get("auConn").getServerUrl()).isEqualTo("https://sonarqube.au");
+    assertThat(settings.getServerConnections().get("auConn").isSonarCloudAlias()).isTrue();
+  }
+
+  @Test
+  void shouldParseSonarCloudConnectionsWithoutTokenForEachRegion() {
+    var connections = underTest.parseSonarCloudConnectionsWithoutToken(Map.of("sonarcloud",
+      List.of(Map.of("connectionId", "auConn", "organizationKey", "myOrga1", "region", "AU"),
+        Map.of("connectionId", "euConn", "organizationKey", "myOrga2", "region", "EU"),
+        Map.of("connectionId", "usConn", "organizationKey", "myOrga3", "region", "US"))));
+
+    assertThat(connections.get("auConn").getRegion()).isEqualTo(SonarCloudRegion.AU);
+    assertThat(connections.get("auConn").getServerUrl()).isEqualTo("https://sonarqube.au");
+    assertThat(connections.get("euConn").getServerUrl()).isEqualTo("https://sonarcloud.io");
+    assertThat(connections.get("usConn").getServerUrl()).isEqualTo("https://sonarqube.us");
+  }
+
+  @Test
   void shouldLogErrorIfDuplicateConnectionsWithoutId() {
     mockConfigurationRequest(null, """
       {
@@ -986,10 +1020,12 @@ class SettingsManagerTests {
   void shouldParseRegion() {
     var validRegionEU = "EU";
     var validRegionUS = "US";
+    var validRegionAU = "AU";
     var invalidRegion = "invalid";
 
     assertThat(underTest.parseRegion(validRegionEU)).isEqualTo(SonarCloudRegion.EU);
     assertThat(underTest.parseRegion(validRegionUS)).isEqualTo(SonarCloudRegion.US);
+    assertThat(underTest.parseRegion(validRegionAU)).isEqualTo(SonarCloudRegion.AU);
     assertThat(underTest.parseRegion(invalidRegion)).isEqualTo(SonarCloudRegion.EU);
   }
 

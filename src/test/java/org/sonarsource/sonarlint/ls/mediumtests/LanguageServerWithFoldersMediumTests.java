@@ -60,6 +60,10 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
   @RegisterExtension
   private static final MockWebServerExtension sonarCloudUSWebServer = MockWebServerExtension.onPort(SONARCLOUD_US_PORT);
 
+  private static final int SONARCLOUD_AU_PORT = findAvailablePort();
+  @RegisterExtension
+  private static final MockWebServerExtension sonarCloudAUWebServer = MockWebServerExtension.onPort(SONARCLOUD_AU_PORT);
+
   private static int findAvailablePort() {
     try {
       ServerSocket socket = new ServerSocket(0);
@@ -79,6 +83,9 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     System.setProperty("sonarlint.internal.sonarcloud.us.url", "http://localhost:" + SONARCLOUD_US_PORT);
     System.setProperty("sonarlint.internal.sonarcloud.us.websocket.url", "http://localhost:40000" + SONARCLOUD_US_PORT);
     System.setProperty("sonarlint.internal.sonarcloud.us.api.url", "http://localhost:" + SONARCLOUD_US_PORT);
+    System.setProperty("sonarlint.internal.sonarcloud.au.url", "http://localhost:" + SONARCLOUD_AU_PORT);
+    System.setProperty("sonarlint.internal.sonarcloud.au.websocket.url", "http://localhost:40000" + SONARCLOUD_AU_PORT);
+    System.setProperty("sonarlint.internal.sonarcloud.au.api.url", "http://localhost:" + SONARCLOUD_AU_PORT);
     folder1BaseDir = makeStaticTempDir();
     folder2BaseDir = makeStaticTempDir();
     initialize(Map.of(
@@ -97,6 +104,9 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
     System.clearProperty("sonarlint.internal.sonarcloud.us.url");
     System.clearProperty("sonarlint.internal.sonarcloud.us.websocket.url");
     System.clearProperty("sonarlint.internal.sonarcloud.us.api.url");
+    System.clearProperty("sonarlint.internal.sonarcloud.au.url");
+    System.clearProperty("sonarlint.internal.sonarcloud.au.websocket.url");
+    System.clearProperty("sonarlint.internal.sonarcloud.au.api.url");
   }
 
   @Override
@@ -276,6 +286,28 @@ class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumT
         .build());
     var token = "123456";
     var result = lsProxy.listUserOrganizations(new SonarLintExtendedLanguageServer.ListUserOrganizationsParams(token, SonarCloudRegion.US.name())).join();
+    assertThat(result).hasSize(1);
+    assertThat(result.get(0).getKey()).isEqualTo("key");
+  }
+
+  @Test
+  void list_user_organizations_AU() {
+    var paging = Common.Paging.newBuilder()
+      .setPageSize(500)
+      .setTotal(1)
+      .setPageIndex(1)
+      .build();
+    var organization = Organizations.Organization.newBuilder()
+      .setKey("key")
+      .setName("name")
+      .build();
+    sonarCloudAUWebServer.addProtobufResponse("/api/organizations/search.protobuf?member=true&ps=500&p=1",
+      Organizations.SearchWsResponse.newBuilder()
+        .addAllOrganizations(List.of(organization))
+        .setPaging(paging)
+        .build());
+    var token = "123456";
+    var result = lsProxy.listUserOrganizations(new SonarLintExtendedLanguageServer.ListUserOrganizationsParams(token, SonarCloudRegion.AU.name())).join();
     assertThat(result).hasSize(1);
     assertThat(result.get(0).getKey()).isEqualTo("key");
   }

@@ -512,7 +512,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         var parsedRegion = parseRegion(region);
         addIfUniqueConnectionId(serverConnections, connectionId,
           new ServerConnectionSettings(connectionId,
-            parsedRegion == SonarCloudRegion.US ? ServerConnectionSettings.getSonarCloudUSUrl() : ServerConnectionSettings.getSonarCloudUrl(),
+            ServerConnectionSettings.getSonarCloudUrl(parsedRegion),
             token, organizationKey, disableNotifs, parsedRegion));
       }
     });
@@ -531,7 +531,7 @@ public class SettingsManager implements WorkspaceFolderLifecycleListener {
         var parsedRegion = parseRegion(region);
         addIfUniqueConnectionId(serverConnections, connectionId,
           new ServerConnectionSettings(connectionId,
-            parsedRegion == SonarCloudRegion.US ? ServerConnectionSettings.getSonarCloudUSUrl() : ServerConnectionSettings.getSonarCloudUrl(),
+            ServerConnectionSettings.getSonarCloudUrl(parsedRegion),
             null, organizationKey, disableNotifs, parsedRegion));
       }
     });

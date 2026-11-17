@@ -81,6 +81,36 @@ class ServerConnectionSettingsTests {
   }
 
   @Test
+  void testIsSonarCloudAliasForAU() {
+    Assertions.assertTrue(ServerConnectionSettings.isSonarCloudAlias("https://sonarqube.au"));
+    Assertions.assertFalse(ServerConnectionSettings.isSonarCloudAlias("http://localhost:4321"));
+
+    System.setProperty("sonarlint.internal.sonarcloud.au.url", "http://localhost:4321");
+    try {
+      Assertions.assertTrue(ServerConnectionSettings.isSonarCloudAlias("http://localhost:4321"));
+      assertThat(ServerConnectionSettings.getSonarCloudAUUrl()).isEqualTo("http://localhost:4321");
+    } finally {
+      System.clearProperty("sonarlint.internal.sonarcloud.au.url");
+    }
+    assertThat(ServerConnectionSettings.getSonarCloudAUUrl()).isEqualTo("https://sonarqube.au");
+  }
+
+  @Test
+  void shouldResolveSonarCloudUrlByRegion() {
+    assertThat(ServerConnectionSettings.getSonarCloudUrl(SonarCloudRegion.EU)).isEqualTo("https://sonarcloud.io");
+    assertThat(ServerConnectionSettings.getSonarCloudUrl(SonarCloudRegion.US)).isEqualTo("https://sonarqube.us");
+    assertThat(ServerConnectionSettings.getSonarCloudUrl(SonarCloudRegion.AU)).isEqualTo("https://sonarqube.au");
+  }
+
+  @Test
+  void shouldBuildSonarCloudValidationParamsForAU() {
+    var settings = new ServerConnectionSettings("au", ServerConnectionSettings.getSonarCloudUrl(SonarCloudRegion.AU), "token", "org", false, SonarCloudRegion.AU);
+    assertThat(settings.isSonarCloudAlias()).isTrue();
+    assertThat(settings.getValidateConnectionParams().getTransientConnection().isRight()).isTrue();
+    assertThat(settings.getValidateConnectionParams().getTransientConnection().getRight().getRegion()).isEqualTo(SonarCloudRegion.AU);
+  }
+
+  @Test
   void testToStringHidesToken() {
     assertThat(WITH_ORG).hasToString("ServerConnectionSettings[connectionId=serverId,disableNotifications=false,organizationKey=myOrg,region=EU,serverUrl=serverUrl]");
   }
