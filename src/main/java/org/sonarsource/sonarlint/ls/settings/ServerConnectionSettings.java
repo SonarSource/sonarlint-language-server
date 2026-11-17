@@ -113,9 +113,22 @@ public class ServerConnectionSettings {
       System.getProperty("sonarlint.internal.sonarcloud.us.url") : "https://sonarqube.us";
   }
 
+  public static String getSonarCloudAUUrl() {
+    return System.getProperty("sonarlint.internal.sonarcloud.au.url") != null ?
+      System.getProperty("sonarlint.internal.sonarcloud.au.url") : "https://sonarqube.au";
+  }
+
+  public static String getSonarCloudUrl(SonarCloudRegion region) {
+    return switch (region) {
+      case EU -> getSonarCloudUrl();
+      case US -> getSonarCloudUSUrl();
+      case AU -> getSonarCloudAUUrl();
+    };
+  }
+
   public static boolean isSonarCloudAlias(String serverUrl) {
     var possibleSonarCloudUrls = List.of("https://sonarqube.com", "https://www.sonarqube.com", "https://www.sonarcloud.io",
-      getSonarCloudUSUrl(), getSonarCloudUrl());
+      getSonarCloudUSUrl(), getSonarCloudAUUrl(), getSonarCloudUrl());
     return possibleSonarCloudUrls.contains(serverUrl);
   }
 
