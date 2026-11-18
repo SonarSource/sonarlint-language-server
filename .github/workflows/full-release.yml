@@ -31,11 +31,26 @@ jobs:
       branch: ${{ inputs.branch }}
       slack-channel: "C04UA29K9HQ" #squad-ide-vscode-bots
 
+  get-build-number:
+    name: Get build number
+    runs-on: sonar-xs
+    needs:
+      - release
+    permissions:
+      id-token: write
+      contents: write
+    outputs:
+      BUILD_NUMBER: ${{ steps.get-build-number.outputs.BUILD_NUMBER }}
+    steps:
+      - uses: SonarSource/ci-github-actions/get-build-number@43609e4795f6400aa0b66dc1f5277f1fc3fb4768 # 2.6.0
+        id: get-build-number
+
   bump-version:
     name: Create a PR to bump version
     runs-on: github-ubuntu-latest-s
     needs:
       - release
+      - get-build-number
     permissions:
       id-token: write # for SonarSource/ci-github-actions/config-maven
       contents: write # write for peter-evans/create-pull-request, read for actions/checkout
@@ -45,9 +60,7 @@ jobs:
       # Resolve dependencies through Artifactory instead of hitting Maven Central directly (avoids HTTP 429)
       - uses: SonarSource/ci-github-actions/config-maven@43609e4795f6400aa0b66dc1f5277f1fc3fb4768 # 2.6.0
         env:
-          # A provided value makes get-build-number skip its increment of the shared build_number property.
-          # The Maven version update is already skipped, so this value is unused.
-          BUILD_NUMBER: "0"
+          BUILD_NUMBER: ${{ needs.get-build-number.outputs.BUILD_NUMBER }}
           CURRENT_VERSION: skip
           PROJECT_VERSION: skip
         with:
