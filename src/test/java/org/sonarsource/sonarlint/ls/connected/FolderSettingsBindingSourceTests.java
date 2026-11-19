@@ -41,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class FolderSettingsBindingSourceTests {
@@ -56,13 +57,14 @@ class FolderSettingsBindingSourceTests {
   Path basedir;
 
   private final SettingsManager settingsManager = mock(SettingsManager.class);
+  private final BindingSourceObserver observer = mock(BindingSourceObserver.class);
   private final Map<String, ServerConnectionSettings> servers = new HashMap<>();
   private FolderSettingsBindingSource underTest;
   private WorkspaceFolderWrapper folder;
 
   @BeforeEach
   void prepare() {
-    underTest = new FolderSettingsBindingSource(settingsManager, logTester.getLogger());
+    underTest = new FolderSettingsBindingSource(settingsManager, observer, logTester.getLogger());
     when(settingsManager.connectionOf(any())).thenAnswer(invocation -> servers.get(SettingsManager.connectionIdOrDefault(invocation.getArgument(0))));
     folder = spy(newFolder("folder"));
   }
@@ -127,6 +129,29 @@ class FolderSettingsBindingSourceTests {
 
     assertThat(underTest.scopesOf(folder)).extracting(ConfigurationScope::unresolved)
       .containsExactly(new ConfigurationScope.UnresolvedBinding("myProject", "myServer", null, null, null));
+  }
+
+  @Test
+  void scopesOf_tells_the_observer_the_folder_is_bound_by_its_settings() {
+    connection();
+    folder.setSettings(BOUND);
+
+    underTest.scopesOf(folder);
+
+    verify(observer).boundBySettings(folder);
+  }
+
+  @Test
+  void scopesOf_tells_the_observer_the_folder_is_unbound_without_binding_or_with_an_unknown_connection() {
+    var unknownConnection = spy(newFolder("other"));
+    unknownConnection.setSettings(BOUND);
+    folder.setSettings(UNBOUND);
+
+    underTest.scopesOf(folder);
+    underTest.scopesOf(unknownConnection);
+
+    verify(observer).unbound(folder);
+    verify(observer).unbound(unknownConnection);
   }
 
   private WorkspaceFolderWrapper newFolder(String name) {
