@@ -20,6 +20,8 @@
 package org.sonarsource.sonarlint.ls.connected;
 
 import java.net.URI;
+import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +44,10 @@ import org.sonarsource.sonarlint.ls.settings.WorkspaceSettings;
 import testutils.SonarLintLogTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class SonarConfigBindingSourceTests {
@@ -57,11 +62,12 @@ class SonarConfigBindingSourceTests {
   private final SonarConfigLoader loader = mock(SonarConfigLoader.class);
   private final SonarConfigFile configFile = mock(SonarConfigFile.class);
   private final SettingsManager settingsManager = mock(SettingsManager.class);
+  private final BindingSourceObserver observer = mock(BindingSourceObserver.class);
   private SonarConfigBindingSource underTest;
 
   @BeforeEach
   void prepare() {
-    underTest = new SonarConfigBindingSource(loader, settingsManager, logTester.getLogger());
+    underTest = new SonarConfigBindingSource(loader, settingsManager, observer, logTester.getLogger());
     folder.setSettings(folderSettingsWithCompileCommands(null));
     connections(Map.of("sq", new ServerConnectionSettings("sq", "https://sonarqube.example.com", "token", null, false, null)));
   }
@@ -116,6 +122,36 @@ class SonarConfigBindingSourceTests {
     assertThat(underTest.scopesOf(folder)).containsExactly(new ConfigurationScope(MODULE_A, "moduleA", "moduleA", Origin.SONAR_CONFIG, null,
       new ConfigurationScope.UnresolvedBinding("module-a", null, null, "my-org", SonarCloudRegion.US)));
     assertThat(logTester.logs()).anyMatch(log -> log.contains("No connection configured for organization=my-org region=US, scope " + MODULE_A + " is unbound"));
+  }
+
+  @Test
+  void scopesOf_tells_the_observer_the_folder_is_bound_by_the_config_with_all_its_entries() {
+    var configPath = Path.of("repo", ".sonar-config.json");
+    when(configFile.path()).thenReturn(configPath);
+    doReturn(Arrays.asList(null, null, null)).when(configFile).projects();
+    resolved(new ResolvedSonarConfig(null, List.of(server(MODULE_A, "module-a", "moduleA"))));
+
+    underTest.scopesOf(folder);
+
+    verify(observer).boundBySonarConfig(folder, configPath, 3);
+  }
+
+  @Test
+  void scopesOf_tells_the_observer_the_folder_is_unbound_when_no_connection_matches() {
+    resolved(new ResolvedSonarConfig(null, List.of(new SonarConfigProject(MODULE_A, "module-a", null, "my-org", SonarCloudRegion.US, "moduleA"))));
+
+    underTest.scopesOf(folder);
+
+    verify(observer).unbound(folder);
+  }
+
+  @Test
+  void scopesOf_tells_the_observer_nothing_when_there_is_no_config() {
+    when(loader.load(REPO)).thenReturn(Optional.empty());
+
+    underTest.scopesOf(folder);
+
+    verifyNoInteractions(observer);
   }
 
   private static WorkspaceFolderSettings folderSettingsWithCompileCommands(String pathToCompileCommands) {

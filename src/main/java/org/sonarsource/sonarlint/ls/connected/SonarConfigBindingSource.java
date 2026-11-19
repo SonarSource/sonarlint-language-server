@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import javax.annotation.CheckForNull;
 import org.sonarsource.sonarlint.ls.folders.ResolvedSonarConfig;
+import org.sonarsource.sonarlint.ls.folders.SonarConfigFile;
 import org.sonarsource.sonarlint.ls.folders.SonarConfigLoader;
 import org.sonarsource.sonarlint.ls.folders.SonarConfigProject;
 import org.sonarsource.sonarlint.ls.folders.WorkspaceFolderWrapper;
@@ -36,19 +37,31 @@ public class SonarConfigBindingSource implements BindingSource {
 
   private final SonarConfigLoader loader;
   private final SettingsManager settingsManager;
+  private final BindingSourceObserver observer;
   private final LanguageClientLogger logOutput;
 
-  public SonarConfigBindingSource(SonarConfigLoader loader, SettingsManager settingsManager, LanguageClientLogger logOutput) {
+  public SonarConfigBindingSource(SonarConfigLoader loader, SettingsManager settingsManager, BindingSourceObserver observer, LanguageClientLogger logOutput) {
     this.loader = loader;
     this.settingsManager = settingsManager;
+    this.observer = observer;
     this.logOutput = logOutput;
   }
 
   @Override
   public List<ConfigurationScope> scopesOf(WorkspaceFolderWrapper folder) {
-    return loader.load(folder.getUri()).flatMap(file -> file.resolveFor(folder.getUri())).map(ResolvedSonarConfig::allProjects).orElse(List.of()).stream()
+    return loader.load(folder.getUri()).map(file -> scopesOf(folder, file)).orElse(List.of());
+  }
+
+  private List<ConfigurationScope> scopesOf(WorkspaceFolderWrapper folder, SonarConfigFile file) {
+    var scopes = file.resolveFor(folder.getUri()).map(ResolvedSonarConfig::allProjects).orElse(List.of()).stream()
       .map(project -> toScope(folder, project))
       .toList();
+    if (scopes.stream().anyMatch(scope -> scope.binding() != null)) {
+      observer.boundBySonarConfig(folder, file.path(), file.projects().size());
+    } else if (!scopes.isEmpty()) {
+      observer.unbound(folder);
+    }
+    return scopes;
   }
 
   private ConfigurationScope toScope(WorkspaceFolderWrapper folder, SonarConfigProject project) {
