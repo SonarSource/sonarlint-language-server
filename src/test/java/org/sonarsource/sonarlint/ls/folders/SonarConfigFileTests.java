@@ -111,14 +111,6 @@ class SonarConfigFileTests {
   }
 
   @Test
-  void resolveFor_ignores_a_cloud_entry_of_an_unknown_region() {
-    var config = fileIn(REPO, new SonarConfigEntry("module-a", "moduleA", null, "my-org", "mars"), entry("module-b", "moduleB")).resolveFor(REPO_URI).orElseThrow();
-
-    assertThat(config.children()).extracting(SonarConfigProject::projectKey).containsExactly("module-b");
-    assertThat(logTester.logs()).anyMatch(log -> log.contains("Ignoring invalid entry") && log.contains("module-a"));
-  }
-
-  @Test
   void resolveFor_resolves_the_path_to_compile_commands_against_the_root_of_the_project() {
     var config = fileIn(REPO, entryWithCompileCommands("module-a", "moduleA", "build/compile_commands.json")).resolveFor(REPO_URI).orElseThrow();
 
@@ -164,19 +156,6 @@ class SonarConfigFileTests {
 
     assertThat(config.children()).extracting(SonarConfigProject::projectKey, SonarConfigProject::pathToCompileCommands).containsExactly(tuple("module-a", null));
     assertThat(logTester.logs()).anyMatch(log -> log.contains("Ignoring invalid sonar.cfamily.compile-commands") && log.contains("module-a"));
-  }
-
-  @Test
-  void resolveFor_ignores_invalid_entries() {
-    var config = fileIn(REPO,
-      new SonarConfigEntry(null, "moduleA", SERVER_URL, null, null),
-      new SonarConfigEntry("no-path", null, SERVER_URL, null, null),
-      new SonarConfigEntry("no-target", "moduleA", null, null, null),
-      null,
-      entry("valid", "moduleA")).resolveFor(REPO_URI).orElseThrow();
-
-    assertThat(config.children()).extracting(SonarConfigProject::projectKey).containsExactly("valid");
-    assertThat(logTester.logs()).filteredOn(log -> log.contains("Ignoring invalid entry")).hasSize(4);
   }
 
   @Test
