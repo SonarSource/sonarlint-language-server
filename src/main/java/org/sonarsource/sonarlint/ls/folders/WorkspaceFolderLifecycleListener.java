@@ -26,7 +26,9 @@ public interface WorkspaceFolderLifecycleListener {
     // nothing by default
   }
 
-  void added(WorkspaceFolderWrapper added);
+  default void added(WorkspaceFolderWrapper added) {
+    // nothing by default
+  }
 
   default void removed(WorkspaceFolderWrapper removed) {
     // nothing by default

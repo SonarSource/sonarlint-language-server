@@ -161,6 +161,8 @@ import org.sonarsource.sonarlint.ls.settings.SettingsManager;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceFolderSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.settings.WorkspaceSettingsChangeListener;
 import org.sonarsource.sonarlint.ls.standalone.notifications.PromotionalNotifications;
+import org.sonarsource.sonarlint.ls.telemetry.BindingSourceObservations;
+import org.sonarsource.sonarlint.ls.telemetry.BindingSourceTelemetry;
 import org.sonarsource.sonarlint.ls.telemetry.SonarLintTelemetry;
 import org.sonarsource.sonarlint.ls.util.CatchingRunnable;
 import org.sonarsource.sonarlint.ls.util.EnumLabelsMapper;
@@ -263,8 +265,10 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     var fileTypeClassifier = new FileTypeClassifier(lsLogOutput);
     javaConfigCache = new JavaConfigCache(client, openFilesCache, lsLogOutput);
     this.settingsManager.addListener(lsLogOutput);
-    var folderSettingsSource = new FolderSettingsBindingSource(settingsManager, lsLogOutput);
-    var bindingSources = new BindingSources(List.of(new SonarConfigBindingSource(new SonarConfigLoader(lsLogOutput), settingsManager, lsLogOutput), folderSettingsSource));
+    var bindingSourceObservations = new BindingSourceObservations();
+    var folderSettingsSource = new FolderSettingsBindingSource(settingsManager, bindingSourceObservations, lsLogOutput);
+    var bindingSources = new BindingSources(List.of(
+      new SonarConfigBindingSource(new SonarConfigLoader(lsLogOutput), settingsManager, bindingSourceObservations, lsLogOutput), folderSettingsSource));
     this.configurationScopeManager = new ConfigurationScopeManager(workspaceFoldersManager, bindingSources, backendServiceFacade, lsLogOutput);
     this.settingsManager.addListener(new BackendLogLevelSynchronizer(backendServiceFacade));
     this.bindingManager = new ProjectBindingManager(workspaceFoldersManager, settingsManager,
@@ -296,6 +300,7 @@ public class SonarLintLanguageServer implements SonarLintExtendedLanguageServer,
     vsCodeClient.setBranchManager(branchManager);
     this.workspaceFoldersManager.addListener(this.branchManager);
     this.workspaceFoldersManager.addListener(configurationScopeManager);
+    this.workspaceFoldersManager.addListener(new BindingSourceTelemetry(workspaceFoldersManager, configurationScopeManager, bindingSourceObservations, telemetry));
     var cleanAsYouCodeManager = new CleanAsYouCodeManager(diagnosticPublisher, openFilesCache, backendServiceFacade);
     this.settingsManager.addListener(cleanAsYouCodeManager);
     this.shutdownLatch = new CountDownLatch(1);
