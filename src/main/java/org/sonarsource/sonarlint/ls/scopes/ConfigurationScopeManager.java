@@ -170,6 +170,15 @@ public class ConfigurationScopeManager implements WorkspaceFolderLifecycleListen
       .map(ConfigurationScope::binding);
   }
 
+  /**
+   * Completes once the scopes of a folder are first declared, or failed to be; right away for a folder that is not known.
+   */
+  public CompletableFuture<Void> firstDeclarationOf(WorkspaceFolderWrapper folder) {
+    return stateOf(folder)
+      .map(state -> state.firstDeclaration.copy())
+      .orElseGet(() -> CompletableFuture.completedFuture(null));
+  }
+
   public Optional<ConfigurationScope> scopeById(String configScopeId) {
     return folders.values().stream()
       .flatMap(state -> state.scopes.get().stream())

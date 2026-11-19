@@ -19,7 +19,9 @@
  */
 package org.sonarsource.sonarlint.ls.telemetry;
 
+import java.nio.file.Path;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.AfterEach;
@@ -40,6 +42,9 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegratio
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationCliStateObservedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingTriggeredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingType;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.BindingSource;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.BindingSourcesObservedParams;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.ObservedBindingSourceDto;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificationsClickedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
@@ -307,6 +312,23 @@ class SonarLintTelemetryTests {
     telemetry.acceptedBindingSuggestion(new AcceptedBindingSuggestionParams(BindingSuggestionOrigin.PROJECT_NAME));
 
     verify(telemetryService, never()).acceptedBindingSuggestion(any());
+  }
+
+  @Test
+  void bindingSourcesObserved_when_enabled() {
+    var params = new BindingSourcesObservedParams(List.of(new ObservedBindingSourceDto(Path.of("folder"), BindingSource.SONAR_CONFIG, 3)));
+
+    telemetry.bindingSourcesObserved(params);
+
+    verify(telemetryService).bindingSourcesObserved(params);
+  }
+
+  @Test
+  void bindingSourcesObserved_when_disabled() {
+    System.setProperty(SonarLintTelemetry.DISABLE_PROPERTY_KEY, "true");
+    telemetry.bindingSourcesObserved(new BindingSourcesObservedParams(List.of(new ObservedBindingSourceDto(Path.of("folder"), BindingSource.IDE_SETTINGS, 1))));
+
+    verify(telemetryService, never()).bindingSourcesObserved(any());
   }
 
   @Test
