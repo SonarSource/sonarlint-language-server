@@ -49,11 +49,11 @@ public class SonarConfigFile {
     this.logOutput = logOutput;
   }
 
-  Path path() {
+  public Path path() {
     return path;
   }
 
-  List<SonarConfigEntry> projects() {
+  public List<SonarConfigEntry> projects() {
     return projects;
   }
 
@@ -75,7 +75,7 @@ public class SonarConfigFile {
     var children = new ArrayList<SonarConfigProject>();
     SonarConfigProject direct = null;
     Path directPath = null;
-    for (var entry : validEntries(folderUri)) {
+    for (var entry : projects) {
       var entryPath = configDir.resolve(entry.path()).normalize();
       if (folderPath.startsWith(entryPath)) {
         if (directPath == null || entryPath.getNameCount() > directPath.getNameCount()) {
@@ -92,19 +92,6 @@ public class SonarConfigFile {
       }
     }
     return new ResolvedSonarConfig(direct, children);
-  }
-
-  private List<SonarConfigEntry> validEntries(URI folderUri) {
-    return projects.stream()
-      .filter(entry -> {
-        var valid = entry != null && entry.isValid();
-        if (!valid) {
-          logOutput.warn(format("[multi-project] Ignoring invalid entry in '%s' for folder %s: %s (need a projectKey, a path, and either a serverUrl or an organization with a known region)",
-            SONAR_CONFIG_FILE_NAME, folderUri, entry));
-        }
-        return valid;
-      })
-      .toList();
   }
 
   private void addChildUnlessDeclared(List<SonarConfigProject> children, URI folderUri, Path folderPath, Path entryPath, SonarConfigEntry entry) {

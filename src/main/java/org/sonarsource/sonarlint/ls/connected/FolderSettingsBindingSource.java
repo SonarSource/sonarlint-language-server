@@ -35,16 +35,24 @@ import static java.util.Objects.requireNonNull;
 public class FolderSettingsBindingSource implements BindingSource {
 
   private final SettingsManager settingsManager;
+  private final BindingSourceObserver observer;
   private final LanguageClientLogger logOutput;
 
-  public FolderSettingsBindingSource(SettingsManager settingsManager, LanguageClientLogger logOutput) {
+  public FolderSettingsBindingSource(SettingsManager settingsManager, BindingSourceObserver observer, LanguageClientLogger logOutput) {
     this.settingsManager = settingsManager;
+    this.observer = observer;
     this.logOutput = logOutput;
   }
 
   @Override
   public List<ConfigurationScope> scopesOf(WorkspaceFolderWrapper folder) {
-    return List.of(scopeOf(folder));
+    var scope = scopeOf(folder);
+    if (scope.binding() == null) {
+      observer.unbound(folder);
+    } else {
+      observer.boundBySettings(folder);
+    }
+    return List.of(scope);
   }
 
   private ConfigurationScope scopeOf(WorkspaceFolderWrapper folder) {

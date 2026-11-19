@@ -29,6 +29,7 @@ import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegratio
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AiIntegrationCliStateObservedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingTriggeredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.AnalysisReportingType;
+import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.BindingSourcesObservedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.DevNotificationsClickedParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FindingsFilteredParams;
 import org.sonarsource.sonarlint.core.rpc.protocol.client.telemetry.FixSuggestionResolvedParams;
@@ -87,6 +88,10 @@ public class SonarLintTelemetry implements WorkspaceSettingsChangeListener {
 
   public void aiAgentIntegrationStateObserved(AiAgentIntegrationStateObservedParams params) {
     actIfEnabled(service -> service.aiAgentIntegrationStateObserved(params));
+  }
+
+  public void bindingSourcesObserved(BindingSourcesObservedParams params) {
+    actIfEnabled(service -> service.bindingSourcesObserved(params));
   }
 
   public void devNotificationsClicked(String eventType) {

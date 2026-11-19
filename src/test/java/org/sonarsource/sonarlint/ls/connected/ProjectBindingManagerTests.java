@@ -135,8 +135,8 @@ class ProjectBindingManagerTests {
 
     when(openNotebooksCache.getFile(any(URI.class))).thenReturn(Optional.empty());
 
-    var folderSettingsSource = new FolderSettingsBindingSource(settingsManager, logTester.getLogger());
-    var sources = new BindingSources(List.of(new SonarConfigBindingSource(sonarConfigLoader, settingsManager, logTester.getLogger()), folderSettingsSource));
+    var folderSettingsSource = new FolderSettingsBindingSource(settingsManager, mock(BindingSourceObserver.class), logTester.getLogger());
+    var sources = new BindingSources(List.of(new SonarConfigBindingSource(sonarConfigLoader, settingsManager, mock(BindingSourceObserver.class), logTester.getLogger()), folderSettingsSource));
     scopeManager = new ConfigurationScopeManager(new ImmediateExecutorService(), foldersManager, sources, backendServiceFacade, logTester.getLogger());
     underTest = new ProjectBindingManager(foldersManager, settingsManager, client, logTester.getLogger(),
       backendServiceFacade, openNotebooksCache, scopeManager);

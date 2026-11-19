@@ -136,16 +136,29 @@ class SonarConfigLoaderTests {
   @Test
   void load_returns_the_entries_as_written_and_where_the_file_is() {
     writeConfig(repo, "{\"projectKey\":\"server\",\"path\":\"a\",\"serverUrl\":\"https://sonarqube.example.com\"},"
-      + "{\"projectKey\":\"cloud\",\"path\":\"b\",\"organization\":\"my-org\",\"region\":\"US\"},"
-      + "{\"path\":\"incomplete\"}");
+      + "{\"projectKey\":\"cloud\",\"path\":\"b\",\"organization\":\"my-org\",\"region\":\"US\"}");
 
     var file = underTest.load(repo.toUri()).orElseThrow();
 
     assertThat(file.path()).isEqualTo(repo.resolve(".sonar-config.json"));
     assertThat(file.projects()).containsExactly(
       new SonarConfigEntry("server", "a", "https://sonarqube.example.com", null, null),
-      new SonarConfigEntry("cloud", "b", null, "my-org", "US"),
-      new SonarConfigEntry(null, "incomplete", null, null, null));
+      new SonarConfigEntry("cloud", "b", null, "my-org", "US"));
+  }
+
+  @Test
+  void load_drops_the_invalid_entries_with_a_warning() {
+    writeConfig(repo, "{\"path\":\"no-key\",\"serverUrl\":\"https://sonarqube.example.com\"},"
+      + "{\"projectKey\":\"no-path\",\"serverUrl\":\"https://sonarqube.example.com\"},"
+      + "{\"projectKey\":\"no-target\",\"path\":\"a\"},"
+      + "{\"projectKey\":\"unknown-region\",\"path\":\"a\",\"organization\":\"my-org\",\"region\":\"mars\"},"
+      + "null,"
+      + "{\"projectKey\":\"valid\",\"path\":\"a\",\"serverUrl\":\"https://sonarqube.example.com\"}");
+
+    var file = underTest.load(repo.toUri()).orElseThrow();
+
+    assertThat(file.projects()).extracting(SonarConfigEntry::projectKey).containsExactly("valid");
+    assertThat(logTester.logs()).filteredOn(log -> log.contains("Ignoring invalid entry")).hasSize(5);
   }
 
   @Test
