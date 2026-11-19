@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.junit.jupiter.api.BeforeEach;
@@ -552,6 +553,25 @@ class ConfigurationScopeManagerTests {
 
     assertThat(underTest.bindingOf(folder, URI.create("file:///repo/Foo.java"))).isEmpty();
     assertThat(underTest.scopeIdOf(folder, URI.create("file:///repo/Foo.java"))).isEqualTo(REPO.toString());
+  }
+
+  @Test
+  void the_first_declaration_of_a_folder_completes_once_it_is_declared() {
+    var pendingExecutor = mock(ExecutorService.class);
+    var pendingManager = new ConfigurationScopeManager(pendingExecutor, foldersManager, sources, backendServiceFacade, logTester.getLogger());
+    declare(scope(REPO, "repo", ".", Origin.SETTINGS));
+    pendingManager.added(folder);
+
+    assertThat(pendingManager.firstDeclarationOf(folder)).isNotDone();
+
+    underTest.added(folder);
+
+    assertThat(underTest.firstDeclarationOf(folder)).isDone();
+  }
+
+  @Test
+  void the_first_declaration_of_a_folder_that_is_not_known_is_already_complete() {
+    assertThat(underTest.firstDeclarationOf(folder)).isDone();
   }
 
   @Test

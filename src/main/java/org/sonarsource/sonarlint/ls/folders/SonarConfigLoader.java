@@ -67,7 +67,20 @@ public class SonarConfigLoader {
       logOutput.warn(format("[multi-project] '%s' at %s was found but could not be parsed into a 'projects' array or a 'project' entry", SONAR_CONFIG_FILE_NAME, configPath));
       return Optional.empty();
     }
-    return Optional.of(new SonarConfigFile(configPath, projects, logOutput));
+    return Optional.of(new SonarConfigFile(configPath, validEntries(projects, configPath), logOutput));
+  }
+
+  private List<SonarConfigEntry> validEntries(List<SonarConfigEntry> entries, Path configPath) {
+    return entries.stream()
+      .filter(entry -> {
+        var valid = entry != null && entry.isValid();
+        if (!valid) {
+          logOutput.warn(format("[multi-project] Ignoring invalid entry in %s: %s (need a projectKey, a path, and either a serverUrl or an organization with a known region)",
+            configPath, entry));
+        }
+        return valid;
+      })
+      .toList();
   }
 
   /**
