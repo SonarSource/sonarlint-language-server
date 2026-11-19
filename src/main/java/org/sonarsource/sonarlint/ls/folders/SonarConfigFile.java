@@ -49,11 +49,11 @@ public class SonarConfigFile {
     this.logOutput = logOutput;
   }
 
-  Path path() {
+  public Path path() {
     return path;
   }
 
-  List<SonarConfigEntry> projects() {
+  public List<SonarConfigEntry> projects() {
     return projects;
   }
 
