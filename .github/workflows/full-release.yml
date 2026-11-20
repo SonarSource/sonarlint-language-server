@@ -16,7 +16,7 @@ on:
 jobs:
   release:
     name: Release
-    uses: SonarSource/release-github-actions/.github/workflows/ide-automated-release.yml@279e14e6c7636163516a5ccb93b0e29005bbd776 # 1.9.15
+    uses: SonarSource/release-github-actions/.github/workflows/ide-automated-release.yml@2a1e042a4d9084dd8298d999469851c412e56c43 # 1.9.17
     if: always() && !failure() && !cancelled()
     permissions:
       statuses: read
@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Resolve dependencies through Artifactory instead of hitting Maven Central directly (avoids HTTP 429)
-      - uses: SonarSource/ci-github-actions/config-maven@e2032bdce92b0675c839fd6a697c8bb0078985d5 # 2.5.2
+      - uses: SonarSource/ci-github-actions/config-maven@43609e4795f6400aa0b66dc1f5277f1fc3fb4768 # 2.6.0
         env:
           # A provided value makes get-build-number skip its increment of the shared build_number property.
           # The Maven version update is already skipped, so this value is unused.
@@ -60,7 +60,7 @@ jobs:
           # config-maven leaves .actions/ symlinks (absolute runner paths) in the workspace;
           # remove them so create-pull-request's `git add -A` does not commit them
           rm -rf .actions .build_number.txt
-      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+      - uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
         with:
           author: ${{ github.actor }} <${{ github.actor }}>
           commit-message: Prepare next development iteration
