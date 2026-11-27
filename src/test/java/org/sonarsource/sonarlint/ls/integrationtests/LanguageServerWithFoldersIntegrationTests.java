@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls.mediumtests;
+package org.sonarsource.sonarlint.ls.integrationtests;
 
 import com.google.gson.JsonObject;
 import java.net.ServerSocket;
@@ -43,9 +43,9 @@ import testutils.MockWebServerExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
-import static org.sonarsource.sonarlint.ls.mediumtests.LanguageServerMediumTests.assertAnalysisLogsContains;
+import static org.sonarsource.sonarlint.ls.integrationtests.LanguageServerIntegrationTests.assertAnalysisLogsContains;
 
-class LanguageServerWithFoldersMediumTests extends AbstractLanguageServerMediumTests {
+class LanguageServerWithFoldersIntegrationTests extends AbstractLanguageServerIntegrationTests {
 
   private static final String PYTHON_S1481 = "python:S1481";
 

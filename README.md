@@ -47,11 +47,16 @@ Building
 
 To build sources locally follow these instructions.
 
-### Build and Run Unit Tests
+### Build and run unit and LSP integration tests
 
 Execute from project base directory:
 
     mvn verify
+
+The LSP integration tests start the language server in-process, load real analyzers and
+drive the server over an LSP socket with a test client. Run a single integration test class with:
+
+    mvn test -Dtest=LanguageServerIntegrationTests
 
 License
 -------

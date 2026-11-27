@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls.mediumtests;
+package org.sonarsource.sonarlint.ls.integrationtests;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.eclipse.lsp4j.DiagnosticSeverity.Warning;
 
-class CFamilyMediumTests extends AbstractLanguageServerMediumTests {
+class CFamilyIntegrationTests extends AbstractLanguageServerIntegrationTests {
   @BeforeAll
   static void initialize() throws Exception {
     initialize(Map.of(

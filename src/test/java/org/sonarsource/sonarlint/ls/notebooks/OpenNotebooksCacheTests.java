@@ -23,13 +23,13 @@ import java.net.URI;
 import java.util.List;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.junit.jupiter.api.Test;
+import org.sonarsource.sonarlint.ls.integrationtests.AbstractLanguageServerIntegrationTests;
 import org.sonarsource.sonarlint.ls.log.LanguageClientLogger;
-import org.sonarsource.sonarlint.ls.mediumtests.AbstractLanguageServerMediumTests;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-class OpenNotebooksCacheTests extends AbstractLanguageServerMediumTests {
+class OpenNotebooksCacheTests extends AbstractLanguageServerIntegrationTests {
   @Test
   void shouldStoreAndRemoveOpenedNotebook() {
     var notebookUri = URI.create("file:///some/notebook.ipynb");

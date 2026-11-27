@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls.mediumtests;
+package org.sonarsource.sonarlint.ls.integrationtests;
 
 import com.google.gson.Gson;
 import java.nio.file.Files;
@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.eclipse.lsp4j.DiagnosticSeverity.Warning;
 
-class CFamilyWithSonarConfigMediumTests extends AbstractLanguageServerMediumTests {
+class CFamilyWithSonarConfigIntegrationTests extends AbstractLanguageServerIntegrationTests {
 
   private static final String CPP_CODE = """
     int main() {
