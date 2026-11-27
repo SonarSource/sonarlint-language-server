@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls.mediumtests;
+package org.sonarsource.sonarlint.ls.integrationtests;
 
 import java.net.URI;
 import java.nio.file.Path;
@@ -39,7 +39,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
 
-class NotebookMediumTests extends AbstractLanguageServerMediumTests {
+class NotebookIntegrationTests extends AbstractLanguageServerIntegrationTests {
   private static Path analysisDir;
 
   @BeforeAll

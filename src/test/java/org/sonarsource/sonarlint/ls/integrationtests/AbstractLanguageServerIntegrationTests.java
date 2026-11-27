@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls.mediumtests;
+package org.sonarsource.sonarlint.ls.integrationtests;
 
 import com.google.gson.JsonNull;
 import java.io.IOException;
@@ -126,7 +126,7 @@ import static org.sonarsource.sonarlint.ls.settings.SettingsManager.SONARLINT_CO
 import static org.sonarsource.sonarlint.ls.settings.SettingsManager.VSCODE_FILE_EXCLUDES;
 
 @ExtendWith(LogTestStartAndEnd.class)
-public abstract class AbstractLanguageServerMediumTests {
+public abstract class AbstractLanguageServerIntegrationTests {
 
   private static final Set<Path> staticTempDirs = new HashSet<>();
   private final Set<Path> instanceTempDirs = new HashSet<>();
@@ -231,7 +231,7 @@ public abstract class AbstractLanguageServerMediumTests {
     initializeParams.setInitializationOptions(actualInitOptions);
 
     initializeParams.setWorkspaceFolders(List.of(initFolders));
-    initializeParams.setClientInfo(new ClientInfo("SonarLint LS Medium tests", "1.0"));
+    initializeParams.setClientInfo(new ClientInfo("SonarLint LS integration tests", "1.0"));
     var clientCapabilities = new ClientCapabilities();
     var notebookDocument = new NotebookDocumentClientCapabilities();
     var synchronization = new NotebookDocumentSyncClientCapabilities();

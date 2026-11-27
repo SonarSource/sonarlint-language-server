@@ -56,7 +56,7 @@ jobs:
         uses: step-security/test-reporter@033644e32639f3077b48dc7c3a692b15fb929c8d # v3.0.0
         if: ${{ !cancelled() }}
         with:
-          name: QA Linux Test Report
+          name: Linux Unit and LSP Integration Test Report
           reporter: java-junit
           path: '**/target/surefire-reports/TEST-*.xml'
           list-suites: failed
@@ -81,7 +81,7 @@ jobs:
         uses: step-security/test-reporter@033644e32639f3077b48dc7c3a692b15fb929c8d # v3.0.0
         if: ${{ !cancelled() }}
         with:
-          name: QA Linux Test Report
+          name: Windows Unit and LSP Integration Test Report
           reporter: java-junit
           path: '**/target/surefire-reports/TEST-*.xml'
           list-suites: failed

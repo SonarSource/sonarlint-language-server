@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls.mediumtests;
+package org.sonarsource.sonarlint.ls.integrationtests;
 
 import com.google.gson.JsonObject;
 import java.io.FileInputStream;
@@ -84,7 +84,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.sonar.api.rules.RuleType.SECURITY_HOTSPOT;
 
-class ConnectedModeMediumTests extends AbstractLanguageServerMediumTests {
+class ConnectedModeIntegrationTests extends AbstractLanguageServerIntegrationTests {
 
   private static final String QPROFILE_KEY = "AXDEr5Q7LjElHiH99ZhW";
   private static final String PYTHON_S1481 = "python:S1481";

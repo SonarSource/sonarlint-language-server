@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls.mediumtests;
+package org.sonarsource.sonarlint.ls.integrationtests;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
@@ -111,7 +111,7 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class LanguageServerMediumTests extends AbstractLanguageServerMediumTests {
+class LanguageServerIntegrationTests extends AbstractLanguageServerIntegrationTests {
 
   private static final String CONNECTION_ID = "known";
   private static final String TOKEN = "token";

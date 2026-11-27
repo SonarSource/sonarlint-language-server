@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonarsource.sonarlint.ls.mediumtests;
+package org.sonarsource.sonarlint.ls.integrationtests;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,7 +30,7 @@ import org.sonarsource.sonarlint.ls.SonarLintExtendedLanguageServer.BindingInfo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 
-class LanguageServerWithSonarConfigMediumTests extends AbstractLanguageServerMediumTests {
+class LanguageServerWithSonarConfigIntegrationTests extends AbstractLanguageServerIntegrationTests {
 
   private static final String CONNECTION_ID = "sq";
   private static final String SERVER_URL = "http://localhost:1";
